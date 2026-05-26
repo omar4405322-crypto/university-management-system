@@ -1,0 +1,270 @@
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+const prisma = new PrismaClient();
+
+exports.getAllDoctors = async (req, res) => {
+  try {
+    const { search = '', page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+
+    // Enforce scope based on user role
+    const scopeWhere = {};
+    if (req.user.role === 'COLLEGE_ADMIN') {
+      scopeWhere.department = { collegeId: req.user.collegeId };
+    } else if (req.user.role === 'DEPARTMENT_ADMIN') {
+      scopeWhere.departmentId = req.user.departmentId;
+    }
+
+    const where = {
+      ...scopeWhere,
+      ...(search
+        ? {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+              { doctorId: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const [doctors, total] = await Promise.all([
+      prisma.doctor.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              email: true,
+              role: true,
+            },
+          },
+          department: {
+            include: { college: true }
+          },
+          _count: {
+            select: { courses: true },
+          },
+        },
+        skip,
+        take,
+        orderBy: { id: 'desc' },
+      }),
+      prisma.doctor.count({ where }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        doctors,
+        total,
+        page: parseInt(page),
+        totalPages: Math.ceil(total / take),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getDoctorById = async (req, res) => {
+  try {
+    const doctor = await prisma.doctor.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: {
+        user: {
+          select: {
+            email: true,
+            role: true,
+          },
+        },
+        department: {
+          include: { college: true }
+        },
+        courses: true,
+      },
+    });
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    // Enforce scope
+    if (req.user.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user.collegeId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    if (req.user.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user.departmentId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    res.json({ success: true, data: doctor });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.createDoctor = async (req, res) => {
+  let { email, password, firstName, lastName, doctorId, phone, specialty, departmentId } = req.body;
+
+  try {
+    // Enforce scope
+    if (req.user.role === 'DEPARTMENT_ADMIN') {
+      departmentId = req.user.departmentId;
+    } else if (req.user.role === 'COLLEGE_ADMIN') {
+      if (departmentId) {
+        const dept = await prisma.department.findUnique({ where: { id: parseInt(departmentId) } });
+        if (!dept || dept.collegeId !== req.user.collegeId) {
+          return res.status(403).json({ success: false, message: 'Invalid department for your college' });
+        }
+      }
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'Email already exists' });
+    }
+
+    const existingDoctor = await prisma.doctor.findUnique({ where: { doctorId } });
+    if (existingDoctor) {
+      return res.status(400).json({ success: false, message: 'Doctor ID already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          role: 'DOCTOR',
+        },
+      });
+
+      const doctor = await tx.doctor.create({
+        data: {
+          userId: user.id,
+          firstName,
+          lastName,
+          doctorId,
+          phone,
+          specialty,
+          departmentId: departmentId ? parseInt(departmentId) : null,
+        },
+        include: {
+          user: {
+            select: {
+              email: true,
+              role: true,
+            },
+          },
+          department: true
+        },
+      });
+
+      return doctor;
+    });
+
+    res.status(201).json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateDoctor = async (req, res) => {
+  const { firstName, lastName, phone, specialty, departmentId } = req.body;
+  const id = parseInt(req.params.id);
+
+  try {
+    // Find doctor first to check scope
+    const doctor = await prisma.doctor.findUnique({
+      where: { id },
+      include: { department: true }
+    });
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    // Enforce scope
+    if (req.user.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user.collegeId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    if (req.user.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user.departmentId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // If changing department, check scope for new department
+    if (departmentId) {
+      if (req.user.role === 'DEPARTMENT_ADMIN' && parseInt(departmentId) !== req.user.departmentId) {
+        return res.status(403).json({ success: false, message: 'Cannot move doctor to another department' });
+      }
+      if (req.user.role === 'COLLEGE_ADMIN') {
+        const newDept = await prisma.department.findUnique({ where: { id: parseInt(departmentId) } });
+        if (!newDept || newDept.collegeId !== req.user.collegeId) {
+          return res.status(403).json({ success: false, message: 'Invalid department for your college' });
+        }
+      }
+    }
+
+    const updatedDoctor = await prisma.doctor.update({
+      where: { id },
+      data: {
+        firstName,
+        lastName,
+        phone,
+        specialty,
+        departmentId: departmentId ? parseInt(departmentId) : undefined,
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+            role: true,
+          },
+        },
+        department: true
+      },
+    });
+
+    res.json({ success: true, data: updatedDoctor });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.deleteDoctor = async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    const doctor = await prisma.doctor.findUnique({
+      where: { id },
+      include: { department: true }
+    });
+
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    // Enforce scope
+    if (req.user.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user.collegeId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    if (req.user.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user.departmentId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Set doctorId to null for all courses assigned to this doctor
+      await tx.course.updateMany({
+        where: { doctorId: doctor.id },
+        data: { doctorId: null },
+      });
+      
+      await tx.doctor.delete({ where: { id: doctor.id } });
+      await tx.user.delete({ where: { id: doctor.userId } });
+    });
+
+    res.json({ success: true, message: 'Doctor deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
