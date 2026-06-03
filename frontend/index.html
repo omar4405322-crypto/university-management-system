@@ -1,10 +1,38 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      (function () {
+        try {
+          var lang = localStorage.getItem('language') || localStorage.getItem('i18nextLng') || 'ar';
+          var isAr = lang === 'ar' || (typeof lang === 'string' && lang.indexOf('ar') === 0);
+          var root = document.documentElement;
+          root.lang = isAr ? 'ar' : 'en';
+          root.dir = isAr ? 'rtl' : 'ltr';
+        } catch (e) {}
+      })();
+    </script>
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = saved === 'dark' || (!saved && prefersDark);
+          var root = document.documentElement;
+          if (isDark) {
+            root.classList.add('dark');
+            root.style.colorScheme = 'dark';
+          } else {
+            root.classList.remove('dark');
+            root.style.colorScheme = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>University Management System</title>
+    <title>6th of October University of Technology | Management System</title>
   </head>
   <body>
     <div id="root"></div>

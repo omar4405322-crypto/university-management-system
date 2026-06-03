@@ -19,6 +19,21 @@ const createNotification = async ({ userId, title, message, type = 'info' }) => 
   }
 };
 
+const notifyRole = async ({ role, title, message, type = 'info' }) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { role },
+      select: { id: true }
+    });
+
+    return await Promise.all(users.map(user => 
+      createNotification({ userId: user.id, title, message, type })
+    ));
+  } catch (error) {
+    console.error(`Error notifying role ${role}:`, error);
+  }
+};
+
 /**
  * Creates notifications for all students enrolled in a specific course
  */
@@ -107,6 +122,7 @@ const notifyAdminsOfNewRequest = async ({ role, firstName, lastName, departmentI
 
 module.exports = {
   createNotification,
+  notifyRole,
   notifyStudentsInCourse,
   notifyAdminsOfNewRequest
 };

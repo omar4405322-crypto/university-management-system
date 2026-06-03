@@ -1,3 +1,4 @@
+// FIXED: Dashboard queries match Exam schema (room column in DB)
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -31,7 +32,8 @@ exports.getAdminStats = async (req, res) => {
       recentPayments,
       upcomingExams,
       todaySchedule,
-      enrollmentByYear
+      enrollmentByYear,
+      collegesWithStudents
     ] = await Promise.all([
       prisma.student.count({ where: scopeWhere }),
       prisma.doctor.count({ where: scopeWhere }),
@@ -86,6 +88,17 @@ exports.getAdminStats = async (req, res) => {
         by: ['enrolledAt'],
         _count: { _all: true },
         where: scopeWhere,
+      }),
+      prisma.college.findMany({
+        where: req.user.role === 'SUPER_ADMIN' ? {} : { id: req.user.collegeId },
+        select: {
+          name: true,
+          departments: {
+            select: {
+              _count: { select: { students: true } }
+            }
+          }
+        }
       })
     ]);
 
@@ -103,6 +116,19 @@ exports.getAdminStats = async (req, res) => {
         students: enrollmentTrends[year]
       }));
 
+    const growthData = enrollmentData.map((row) => ({
+      name: row.name,
+      value: row.students
+    }));
+
+    const collegeDistribution = collegesWithStudents.map((college) => ({
+      name: college.name,
+      students: college.departments.reduce(
+        (sum, dept) => sum + dept._count.students,
+        0
+      )
+    }));
+
     const finance = {
       totalCollected: financeStats.find(s => s.status === 'PAID')?._sum.amount || 0,
       totalPending: financeStats.find(s => s.status === 'PENDING')?._sum.amount || 0,
@@ -116,6 +142,13 @@ exports.getAdminStats = async (req, res) => {
         finance,
         recentStudents,
         enrollmentData,
+        growthData,
+        collegeDistribution,
+        financeOverview: [
+          { name: 'PAID', value: finance.totalCollected },
+          { name: 'PENDING', value: finance.totalPending },
+          { name: 'OVERDUE', value: finance.totalOverdue }
+        ].filter((item) => item.value > 0),
         recentPayments: recentPayments.map(p => ({
           amount: p.amount,
           type: p.type,

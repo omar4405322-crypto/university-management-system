@@ -69,6 +69,9 @@ A full-stack university management system built with React, Node.js, and Postgre
    The frontend will be available at `http://localhost:3000`.
 
 ## Default Accounts (from seed)
+- **Super Admin:** `superadmin@university.com` / `SuperAdmin123!`
 - **Admin:** `admin@university.com` / `Admin123!`
-- **Doctor:** `doctor@university.com` / `Doctor123!`
-- **Student:** `student@university.com` / `Student123!`
+- **Doctor:** `doctor@university.com` / `Password123!`
+- **Student:** `student@university.com` / `Password123!`
+
+If login is locked after failed attempts, use **"Unlock and try again"** on the login page or clear browser storage keys starting with `login_`.

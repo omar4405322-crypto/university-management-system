@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, User, Mail, Shield, Calendar, Phone, MapPin } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
+import LoadingState from '../../components/ui/LoadingState';
 
 const StudentDetails = () => {
   const { id } = useParams();
@@ -33,44 +34,42 @@ const StudentDetails = () => {
   }, [id, t]);
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <LoadingState message={t('common.loading')} />;
   }
 
   if (error || !student) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <p className="text-red-600 dark:text-red-400 text-xl mb-4">{error || t('students.noStudents')}</p>
-        <button
-          onClick={() => navigate('/students')}
-          className="text-blue-600 dark:text-blue-400 hover:underline flex items-center justify-center gap-2 mx-auto"
-        >
-          <ArrowLeft size={18} /> {t('students.backToList')}
-        </button>
+      <div className="page-padding text-center">
+        <div className="max-w-md mx-auto py-20">
+          <p className="text-error text-xl mb-4 font-bold">{error || t('students.noStudents')}</p>
+          <button
+            onClick={() => navigate('/students')}
+            className="text-brand-accent-blue hover:underline flex items-center justify-center gap-2 mx-auto font-medium"
+          >
+            <ArrowLeft size={18} /> {t('students.backToList')}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6">
+    <div className="page-padding content-container section-gap">
       <button
         onClick={() => navigate('/students')}
-        className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
+        className="flex items-center gap-2 text-brand-text-secondary dark:text-brand-text-muted hover:text-info dark:hover:text-info transition-colors font-medium"
       >
         <ArrowLeft size={20} /> {t('students.backToList')}
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-5 xl:gap-6">
         {/* Personal Info Card */}
-        <Card className="lg:col-span-2">
-          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
-            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+        <Card className="lg:col-span-2 xl:col-span-3">
+          <div className="flex items-center gap-3 mb-6 border-b border-brand-border dark:border-brand-border pb-4">
+            <div className="p-2 bg-info/10 dark:bg-info/20 rounded-lg text-info dark:text-info">
               <User size={20} />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('students.personalInformation')}</h2>
+            <h2 className="text-xl font-bold text-brand-text-primary dark:text-brand-text-main">{t('students.personalInformation')}</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
@@ -86,31 +85,31 @@ const StudentDetails = () => {
 
         {/* Account Info Card */}
         <Card>
-          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
-            <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600 dark:text-purple-400">
+          <div className="flex items-center gap-3 mb-6 border-b border-brand-border dark:border-brand-border pb-4">
+            <div className="p-2 bg-info/10 dark:bg-info/20 rounded-lg text-info dark:text-info">
               <Shield size={20} />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('students.accountDetails')}</h2>
+            <h2 className="text-xl font-bold text-brand-text-primary dark:text-brand-text-main">{t('students.accountDetails')}</h2>
           </div>
           
           <div className="space-y-6">
             <InfoItem 
               label={t('profile.email')} 
               value={student.user?.email} 
-              icon={<Mail size={14} className="text-slate-400" />}
+              icon={<Mail size={14} className="text-brand-text-muted" />}
             />
             
             <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('students.accountRole')}</p>
+              <p className="text-xs font-bold text-brand-text-secondary dark:text-brand-text-muted uppercase tracking-wider">{t('students.accountRole')}</p>
               <Badge variant="info" className="mt-1">
                 {student.user?.role}
               </Badge>
             </div>
 
             <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('students.enrolledSince')}</p>
-              <div className="flex items-center gap-2 text-slate-900 dark:text-white">
-                <Calendar size={16} className="text-slate-400" />
+              <p className="text-xs font-bold text-brand-text-secondary dark:text-brand-text-muted uppercase tracking-wider">{t('students.enrolledSince')}</p>
+              <div className="flex items-center gap-2 text-brand-text-primary dark:text-brand-text-main">
+                <Calendar size={16} className="text-brand-text-muted" />
                 <span className="text-lg font-medium">
                   {new Date(student.enrolledAt).toLocaleDateString(undefined, {
                     year: 'numeric',
@@ -122,7 +121,7 @@ const StudentDetails = () => {
             </div>
 
             <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('profile.status')}</p>
+              <p className="text-xs font-bold text-brand-text-secondary dark:text-brand-text-muted uppercase tracking-wider">{t('profile.status')}</p>
               <Badge variant={student.status === 'active' ? 'success' : 'warning'}>
                 {t(`students.${student.status || 'active'}`)}
               </Badge>
@@ -136,10 +135,10 @@ const StudentDetails = () => {
 
 const InfoItem = ({ label, value, isMono = false, icon = null }) => (
   <div className="space-y-1">
-    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
+    <p className="text-xs font-bold text-brand-text-secondary dark:text-brand-text-muted uppercase tracking-wider">{label}</p>
     <div className="flex items-center gap-2">
       {icon}
-      <p className={`text-lg text-slate-900 dark:text-white ${isMono ? 'font-mono' : 'font-medium'}`}>
+      <p className={`text-lg text-brand-text-primary dark:text-brand-text-main ${isMono ? 'font-mono' : 'font-medium'}`}>
         {value}
       </p>
     </div>

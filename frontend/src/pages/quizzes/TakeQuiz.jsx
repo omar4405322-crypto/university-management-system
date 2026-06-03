@@ -87,27 +87,27 @@ const TakeQuiz = () => {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary-500"></div>
     </div>
   );
 
   if (submitted && result) {
     return (
-      <div className="max-w-2xl mx-auto mt-12 p-8 bg-white rounded-2xl shadow-lg text-center">
-        <div className="bg-green-100 text-green-600 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+      <div className="max-w-2xl mx-auto mt-12 p-8 bg-brand-bg-card rounded-2xl shadow-lg text-center">
+        <div className="bg-success/10 text-success w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle size={48} />
         </div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Quiz Submitted!</h1>
-        <p className="text-gray-600 mb-8">Your results are being processed or are shown below.</p>
+        <h1 className="text-3xl font-bold text-brand-text-primary mb-2">Quiz Submitted!</h1>
+        <p className="text-brand-text-secondary mb-8">Your results are being processed or are shown below.</p>
         
-        <div className="bg-gray-50 rounded-xl p-6 mb-8 grid grid-cols-2 gap-4">
+        <div className="bg-brand-bg-page rounded-xl p-6 mb-8 grid grid-cols-2 gap-4">
           <div>
-            <p className="text-xs text-gray-400 uppercase font-bold">Your Score</p>
-            <p className="text-3xl font-bold text-blue-600">{result.score} / {result.totalPoints}</p>
+            <p className="text-xs text-brand-text-muted uppercase font-bold">Your Score</p>
+            <p className="text-3xl font-bold text-info">{result.score} / {result.totalPoints}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-400 uppercase font-bold">Percentage</p>
-            <p className="text-3xl font-bold text-blue-600">
+            <p className="text-xs text-brand-text-muted uppercase font-bold">Percentage</p>
+            <p className="text-3xl font-bold text-info">
               {Math.round((result.score / result.totalPoints) * 100)}%
             </p>
           </div>
@@ -115,7 +115,7 @@ const TakeQuiz = () => {
 
         <button 
           onClick={() => navigate('/quizzes')}
-          className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+          className="px-8 py-3 bg-brand-primary-500 text-white rounded-xl font-bold hover:bg-brand-primary-600 transition-colors"
         >
           Back to Quizzes
         </button>
@@ -127,35 +127,35 @@ const TakeQuiz = () => {
   const isLastQuestion = currentQuestionIndex === quiz.questions.length - 1;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12">
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <h1 className="font-bold text-gray-800 truncate max-w-[200px] md:max-w-none">{quiz.title}</h1>
-          <div className={`flex items-center px-4 py-2 rounded-lg font-mono font-bold ${timeLeft < 60 ? 'bg-red-50 text-red-600 animate-pulse' : 'bg-blue-50 text-blue-600'}`}>
+    <div className="min-h-screen bg-brand-bg-page pb-12">
+      <div className="bg-brand-bg-card border-b border-brand-border sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+          <h1 className="font-bold text-brand-text-primary truncate max-w-[200px] md:max-w-none">{quiz.title}</h1>
+          <div className={`flex items-center px-4 py-2 rounded-lg font-mono font-bold ${timeLeft < 60 ? 'bg-error/10 text-error animate-pulse' : 'bg-info/10 text-info'}`}>
             <Clock size={18} className="mr-2" />
             {formatTime(timeLeft)}
           </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto mt-8 px-6">
-        <div className="mb-6 flex justify-between items-center text-sm text-gray-500">
+      <div className="max-w-5xl mx-auto mt-8 px-6">
+        <div className="mb-6 flex justify-between items-center text-sm text-brand-text-secondary">
           <span>Question {currentQuestionIndex + 1} of {quiz.questions.length}</span>
           <div className="flex space-x-1">
             {quiz.questions.map((_, i) => (
               <div 
                 key={i} 
                 className={`w-2 h-2 rounded-full ${
-                  i === currentQuestionIndex ? 'bg-blue-600' : 
-                  answers[quiz.questions[i].id] ? 'bg-green-400' : 'bg-gray-200'
+                  i === currentQuestionIndex ? 'bg-brand-primary-500' : 
+                  answers[quiz.questions[i].id] ? 'bg-success' : 'bg-brand-border'
                 }`}
               />
             ))}
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <h2 className="text-xl font-bold text-gray-800 mb-8">{currentQuestion.text}</h2>
+        <div className="bg-brand-bg-card rounded-2xl shadow-sm border border-brand-border p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <h2 className="text-xl font-bold text-brand-text-primary mb-8">{currentQuestion.text}</h2>
           
           <div className="space-y-4">
             {['A', 'B', 'C', 'D'].map((opt) => {
@@ -167,12 +167,12 @@ const TakeQuiz = () => {
                   onClick={() => handleAnswerSelect(currentQuestion.id, opt)}
                   className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center ${
                     isSelected 
-                      ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' 
-                      : 'border-gray-100 hover:border-gray-300 text-gray-600'
+                      ? 'border-info bg-info/10 text-info shadow-sm' 
+                      : 'border-brand-border hover:border-brand-border text-brand-text-secondary'
                   }`}
                 >
                   <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-4 ${
-                    isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'
+                    isSelected ? 'bg-brand-primary-500 text-white' : 'bg-brand-bg-page text-brand-text-muted'
                   }`}>
                     {opt}
                   </span>
@@ -187,7 +187,7 @@ const TakeQuiz = () => {
           <button
             onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
             disabled={currentQuestionIndex === 0}
-            className="flex items-center px-6 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-200 disabled:opacity-30 transition-colors"
+            className="flex items-center px-6 py-2 rounded-xl font-bold text-brand-text-secondary hover:bg-brand-border disabled:opacity-30 transition-colors"
           >
             <ChevronLeft size={20} className="mr-1" /> Previous
           </button>
@@ -200,7 +200,7 @@ const TakeQuiz = () => {
                 }
               }}
               disabled={submitting}
-              className="flex items-center px-8 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-200 disabled:opacity-50 transition-all"
+              className="flex items-center px-8 py-3 bg-success text-white rounded-xl font-bold hover:brightness-90 shadow-lg shadow-success/20 disabled:opacity-50 transition-all"
             >
               {submitting ? 'Submitting...' : (
                 <span className="flex items-center">
@@ -211,7 +211,7 @@ const TakeQuiz = () => {
           ) : (
             <button
               onClick={() => setCurrentQuestionIndex(prev => Math.min(quiz.questions.length - 1, prev + 1))}
-              className="flex items-center px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all"
+              className="flex items-center px-8 py-3 bg-brand-primary-500 text-white rounded-xl font-bold hover:bg-brand-primary-600 shadow-lg shadow-brand-primary-500/20 transition-all"
             >
               Next <ChevronRight size={20} className="ml-1" />
             </button>

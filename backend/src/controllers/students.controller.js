@@ -1,286 +1,282 @@
+// FIXED: Student active status via bio flag + stats/toggle endpoints - Phase 2
 const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
+const catchAsync = require('../utils/catchAsync');
+const { NotFoundError } = require('../utils/appError');
 
-exports.getAllStudents = async (req, res) => {
-  try {
-    const { search = '', page = 1, limit = 10 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const take = parseInt(limit);
+const INACTIVE_BIO_FLAG = 'INACTIVE';
 
-    // Enforce scope based on user role
-    const scopeWhere = {};
-    if (req.user.role === 'COLLEGE_ADMIN') {
-      scopeWhere.department = { collegeId: req.user.collegeId };
-    } else if (req.user.role === 'DEPARTMENT_ADMIN') {
-      scopeWhere.departmentId = req.user.departmentId;
-    }
+const mapStudentStatus = (student) => ({
+  ...student,
+  isActive: student.bio !== INACTIVE_BIO_FLAG,
+  status: student.bio === INACTIVE_BIO_FLAG ? 'inactive' : 'active',
+});
 
-    const where = {
-      ...scopeWhere,
-      ...(search
-        ? {
-            OR: [
-              { firstName: { contains: search, mode: 'insensitive' } },
-              { lastName: { contains: search, mode: 'insensitive' } },
-              { studentId: { contains: search, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-    };
+/**
+ * @desc    Get all students with advanced filtering, sorting and pagination
+ * @route   GET /api/students
+ * @access  Private (Admin)
+ */
+exports.getAllStudents = catchAsync(async (req, res, next) => {
+  const { 
+    search = '', 
+    page = 1, 
+    limit = 10, 
+    sortBy = 'enrolledAt', 
+    sortOrder = 'desc',
+    year,
+    departmentId,
+    gender
+  } = req.query;
 
-    const [students, total, stats] = await Promise.all([
-      prisma.student.findMany({
-        where,
-        include: {
-          user: {
-            select: {
-              email: true,
-              role: true,
-              profilePicture: true,
-            },
-          },
-          department: {
-            include: { college: true }
-          }
-        },
-        skip,
-        take,
-        orderBy: { enrolledAt: 'desc' },
-      }),
-      prisma.student.count({ where }),
-      Promise.all([
-        prisma.student.count({ where }), // For now, just using total as placeholders
-        prisma.student.count({ where }),
-        prisma.student.count({ where }),
-      ])
-    ]);
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const take = parseInt(limit);
 
-    const [activeCount, pendingCount, inactiveCount] = stats;
-
-    res.json({
-      success: true,
-      data: {
-        students,
-        total,
-        stats: {
-          total,
-          active: activeCount,
-          pending: pendingCount,
-          inactive: inactiveCount,
-        },
-        page: parseInt(page),
-        totalPages: Math.ceil(total / take),
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  // 1. Role-based scoping
+  const scopeWhere = {};
+  if (req.user.role === 'COLLEGE_ADMIN') {
+    scopeWhere.department = { collegeId: req.user.collegeId };
+  } else if (req.user.role === 'DEPARTMENT_ADMIN') {
+    scopeWhere.departmentId = req.user.departmentId;
   }
-};
 
-exports.getStudentById = async (req, res) => {
-  try {
-    const student = await prisma.student.findUnique({
-      where: { id: parseInt(req.params.id) },
+  // 2. Advanced Filtering
+  const where = {
+    ...scopeWhere,
+    ...(year && { year: parseInt(year) }),
+    ...(departmentId && { departmentId: parseInt(departmentId) }),
+    ...(gender && { gender }),
+    ...(search && {
+      OR: [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { studentId: { contains: search, mode: 'insensitive' } },
+        { user: { email: { contains: search, mode: 'insensitive' } } }
+      ],
+    }),
+  };
+
+  // 3. Optimized parallel execution
+  const [students, filteredTotal] = await Promise.all([
+    prisma.student.findMany({
+      where,
       include: {
         user: {
           select: {
             email: true,
-            role: true,
             profilePicture: true,
           },
         },
         department: {
-          include: { college: true }
+          select: { name: true, college: { select: { name: true } } }
         }
       },
-    });
+      skip,
+      take,
+      orderBy: { [sortBy]: sortOrder },
+    }),
+    prisma.student.count({ where })
+  ]);
 
-    if (!student) {
-      return res.status(404).json({ success: false, message: 'Student not found' });
-    }
+  const activeWhere = {
+    ...scopeWhere,
+    OR: [{ bio: null }, { bio: { not: INACTIVE_BIO_FLAG } }],
+  };
+  const inactiveWhere = { ...scopeWhere, bio: INACTIVE_BIO_FLAG };
 
-    // Enforce scope
-    if (req.user.role === 'COLLEGE_ADMIN' && student.department?.collegeId !== req.user.collegeId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-    if (req.user.role === 'DEPARTMENT_ADMIN' && student.departmentId !== req.user.departmentId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
+  const [statsTotal, active, pending, inactive] = await Promise.all([
+    prisma.student.count({ where: scopeWhere }),
+    prisma.student.count({ where: activeWhere }),
+    prisma.registrationRequest.count({
+      where: {
+        status: 'PENDING',
+        ...(scopeWhere.departmentId && { departmentId: scopeWhere.departmentId }),
+        ...(scopeWhere.department && { department: scopeWhere.department }),
+      },
+    }),
+    prisma.student.count({ where: inactiveWhere }),
+  ]);
 
-    res.json({ success: true, data: student });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  res.json({
+    success: true,
+    data: {
+      students: students.map(mapStudentStatus),
+      pagination: {
+        total: filteredTotal,
+        page: parseInt(page),
+        limit: take,
+        totalPages: Math.ceil(filteredTotal / take),
+      },
+      stats: {
+        total: statsTotal,
+        active,
+        pending,
+        inactive,
+      },
+      totalPages: Math.ceil(filteredTotal / take),
+    },
+  });
+});
+
+/**
+ * @desc    Toggle student active/inactive status
+ * @route   PATCH /api/students/:id/status
+ * @access  Private (Admin)
+ */
+exports.toggleStudentStatus = catchAsync(async (req, res, next) => {
+  const id = parseInt(req.params.id, 10);
+  const student = await prisma.student.findUnique({ where: { id } });
+
+  if (!student) {
+    return next(new NotFoundError('Student not found'));
   }
-};
 
-exports.createStudent = async (req, res) => {
-  let { email, password, firstName, lastName, studentId, phone, address, departmentId } = req.body;
+  const makeInactive = student.bio !== INACTIVE_BIO_FLAG;
+  const updated = await prisma.student.update({
+    where: { id },
+    data: {
+      bio: makeInactive ? INACTIVE_BIO_FLAG : null,
+    },
+    include: {
+      user: { select: { email: true, profilePicture: true } },
+      department: { select: { name: true, college: { select: { name: true } } } },
+    },
+  });
 
-  try {
-    // Enforce scope
-    if (req.user.role === 'DEPARTMENT_ADMIN') {
-      departmentId = req.user.departmentId;
-    } else if (req.user.role === 'COLLEGE_ADMIN') {
-      if (departmentId) {
-        const dept = await prisma.department.findUnique({ where: { id: parseInt(departmentId) } });
-        if (!dept || dept.collegeId !== req.user.collegeId) {
-          return res.status(403).json({ success: false, message: 'Invalid department for your college' });
-        }
+  res.json({
+    success: true,
+    data: mapStudentStatus(updated),
+    message: makeInactive ? 'Student deactivated' : 'Student activated',
+  });
+});
+
+/**
+ * @desc    Get student by ID
+ * @route   GET /api/students/:id
+ * @access  Private (Admin)
+ */
+exports.getStudentById = catchAsync(async (req, res, next) => {
+  const student = await prisma.student.findUnique({
+    where: { id: parseInt(req.params.id) },
+    include: {
+      user: {
+        select: {
+          email: true,
+          role: true,
+          profilePicture: true,
+        },
+      },
+      department: {
+        include: { college: true }
+      },
+      courses: {
+        select: { id: true, name: true, courseCode: true }
+      },
+      payments: {
+        orderBy: { createdAt: 'desc' },
+        take: 5
       }
-    }
+    },
+  });
 
-    // Check if email or studentId already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: 'Email already exists' });
-    }
-
-    const existingStudent = await prisma.student.findUnique({ where: { studentId } });
-    if (existingStudent) {
-      return res.status(400).json({ success: false, message: 'Student ID already exists' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          role: 'STUDENT',
-        },
-      });
-
-      const student = await tx.student.create({
-        data: {
-          userId: user.id,
-          firstName,
-          lastName,
-          studentId,
-          phone,
-          address,
-          departmentId: departmentId ? parseInt(departmentId) : null,
-        },
-        include: {
-          user: {
-            select: {
-              email: true,
-              role: true,
-            },
-          },
-          department: true
-        },
-      });
-
-      return student;
-    });
-
-    res.status(201).json({ success: true, data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  if (!student) {
+    return next(new NotFoundError('Student record not found'));
   }
-};
 
-exports.updateStudent = async (req, res) => {
-  const { firstName, lastName, phone, address, departmentId, studentId, year } = req.body;
-  const id = parseInt(req.params.id);
+  res.json({
+    success: true,
+    data: mapStudentStatus(student),
+  });
+});
 
-  try {
-    // Find student first to check scope
-    const student = await prisma.student.findUnique({
-      where: { id },
-      include: { department: true }
-    });
+/**
+ * @desc    Create new student
+ * @route   POST /api/students
+ * @access  Private (Admin)
+ */
+exports.createStudent = catchAsync(async (req, res, next) => {
+  const { email, password, collegeId: _collegeId, ...studentData } = req.body;
+  const bcrypt = require('bcryptjs');
+  const hashedPassword = await bcrypt.hash(password || 'Student@123', 10);
 
-    if (!student) {
-      return res.status(404).json({ success: false, message: 'Student not found' });
-    }
-
-    // Check if studentId already exists if it's being changed
-    if (studentId && studentId !== student.studentId) {
-      const existingStudent = await prisma.student.findUnique({ where: { studentId } });
-      if (existingStudent) {
-        return res.status(400).json({ success: false, message: 'Student ID already exists' });
-      }
-    }
-
-    // Enforce scope
-    if (req.user.role === 'COLLEGE_ADMIN' && student.department?.collegeId !== req.user.collegeId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-    if (req.user.role === 'DEPARTMENT_ADMIN' && student.departmentId !== req.user.departmentId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-
-    // If changing department, check scope for new department
-    if (departmentId) {
-      if (req.user.role === 'DEPARTMENT_ADMIN' && parseInt(departmentId) !== req.user.departmentId) {
-        return res.status(403).json({ success: false, message: 'Cannot move student to another department' });
-      }
-      if (req.user.role === 'COLLEGE_ADMIN') {
-        const newDept = await prisma.department.findUnique({ where: { id: parseInt(departmentId) } });
-        if (!newDept || newDept.collegeId !== req.user.collegeId) {
-          return res.status(403).json({ success: false, message: 'Invalid department for your college' });
-        }
-      }
-    }
-
-    const updatedStudent = await prisma.student.update({
-      where: { id },
+  const newStudent = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
       data: {
-        firstName,
-        lastName,
-        phone,
-        address,
-        studentId,
-        year: year ? parseInt(year) : undefined,
-        departmentId: departmentId ? parseInt(departmentId) : undefined,
-      },
-      include: {
-        user: {
-          select: {
-            email: true,
-            role: true,
-          },
-        },
-        department: true
+        email,
+        password: hashedPassword,
+        role: 'STUDENT',
       },
     });
 
-    res.json({ success: true, data: updatedStudent });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.deleteStudent = async (req, res) => {
-  const id = parseInt(req.params.id);
-  try {
-    const student = await prisma.student.findUnique({
-      where: { id },
-      include: { department: true }
+    return tx.student.create({
+      data: {
+        ...studentData,
+        userId: user.id,
+        departmentId: parseInt(studentData.departmentId),
+        year: parseInt(studentData.year),
+      },
     });
+  });
 
-    if (!student) {
-      return res.status(404).json({ success: false, message: 'Student not found' });
-    }
+  res.status(201).json({
+    success: true,
+    data: newStudent,
+  });
+});
 
-    // Enforce scope
-    if (req.user.role === 'COLLEGE_ADMIN' && student.department?.collegeId !== req.user.collegeId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-    if (req.user.role === 'DEPARTMENT_ADMIN' && student.departmentId !== req.user.departmentId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
+/**
+ * @desc    Update student
+ * @route   PUT /api/students/:id
+ * @access  Private (Admin)
+ */
+exports.updateStudent = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const updateData = req.body;
 
-    await prisma.$transaction(async (tx) => {
-      await tx.student.delete({ where: { id: student.id } });
-      await tx.user.delete({ where: { id: student.userId } });
-    });
+  const updatedStudent = await prisma.student.update({
+    where: { id: parseInt(id) },
+    data: {
+      ...updateData,
+      departmentId: updateData.departmentId ? parseInt(updateData.departmentId) : undefined,
+      year: updateData.year ? parseInt(updateData.year) : undefined,
+    },
+  });
 
-    res.json({ success: true, message: 'Student deleted' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  res.json({
+    success: true,
+    data: updatedStudent,
+  });
+});
+
+/**
+ * @desc    Delete student
+ * @route   DELETE /api/students/:id
+ * @access  Private (Admin)
+ */
+exports.deleteStudent = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Find user ID first to delete user which cascades (if configured) or manual delete
+  const student = await prisma.student.findUnique({
+    where: { id: parseInt(id) },
+    select: { userId: true }
+  });
+
+  if (!student) {
+    return next(new NotFoundError('Student not found'));
   }
-};
+
+  await prisma.$transaction([
+    prisma.attendance.deleteMany({ where: { studentId: parseInt(id) } }),
+    prisma.payment.deleteMany({ where: { studentId: parseInt(id) } }),
+    prisma.quizSubmission.deleteMany({ where: { studentId: parseInt(id) } }),
+    prisma.taskSubmission.deleteMany({ where: { studentId: parseInt(id) } }),
+    prisma.student.delete({ where: { id: parseInt(id) } }),
+    prisma.user.delete({ where: { id: student.userId } }),
+  ]);
+
+  res.json({
+    success: true,
+    message: 'Student and associated user account deleted successfully',
+  });
+});

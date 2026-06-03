@@ -121,14 +121,19 @@ const Navbar = () => {
           <div className="flex items-center">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 mr-2 md:hidden text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+              className="p-2 mr-2 rtl:ml-2 rtl:mr-0 md:hidden text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
             
             <Link to="/" className="flex items-center text-blue-600 font-bold text-xl mr-6 rtl:ml-6">
-              <BookOpen className="mr-2 rtl:ml-2" />
-              <span>UniSys</span>
+              <img 
+                src="/assets/university/logo.svg" 
+                alt="Logo" 
+                className="h-8 w-auto mr-2 rtl:ml-2"
+              />
+              <span className="hidden sm:inline">6th of October University</span>
+              <span className="sm:hidden">6th Oct Univ</span>
             </Link>
             
             <div className="hidden md:flex items-center space-x-4 lg:space-x-6 rtl:space-x-reverse">

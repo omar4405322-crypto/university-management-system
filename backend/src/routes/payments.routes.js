@@ -1,16 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const paymentsController = require('../controllers/payments.controller');
-const roleMiddleware = require('../middleware/role.middleware');
+const { authorize } = require('../middleware/auth.middleware');
+const { paymentValidation, functionalIdValidation } = require('../validations/functional.validation');
+const validate = require('../middleware/validate.middleware');
 
-router.get('/', roleMiddleware(['ADMIN']), paymentsController.getAllPayments);
-router.get('/my', roleMiddleware(['STUDENT']), paymentsController.getMyPayments);
-router.get('/stats', roleMiddleware(['ADMIN']), paymentsController.getStats);
-router.get('/:id', paymentsController.getPaymentById);
+router.get('/', authorize('SUPER_ADMIN', 'ADMIN'), paymentsController.getAllPayments);
+router.get('/my', authorize('STUDENT'), paymentsController.getMyPayments);
+router.get('/stats', authorize('SUPER_ADMIN', 'ADMIN'), paymentsController.getStats);
+router.get('/:id', functionalIdValidation, validate, paymentsController.getPaymentById);
 
-router.post('/', roleMiddleware(['ADMIN']), paymentsController.createPayment);
-router.put('/:id', roleMiddleware(['ADMIN']), paymentsController.updatePayment);
-router.put('/:id/pay', roleMiddleware(['ADMIN']), paymentsController.markAsPaid);
-router.delete('/:id', roleMiddleware(['ADMIN']), paymentsController.deletePayment);
+router.post('/', authorize('SUPER_ADMIN', 'ADMIN'), paymentValidation, validate, paymentsController.createPayment);
+router.put('/:id', authorize('SUPER_ADMIN', 'ADMIN'), [...functionalIdValidation, ...paymentValidation], validate, paymentsController.updatePayment);
+router.put('/:id/pay', authorize('SUPER_ADMIN', 'ADMIN'), functionalIdValidation, validate, paymentsController.markAsPaid);
+router.delete('/:id', authorize('SUPER_ADMIN', 'ADMIN'), functionalIdValidation, validate, paymentsController.deletePayment);
 
 module.exports = router;

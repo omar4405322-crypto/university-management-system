@@ -1,3 +1,4 @@
+// FIXED: Exam fields align with DB (room, no title/location column) - schema sync
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -71,7 +72,7 @@ exports.getUpcomingExams = async (req, res) => {
 };
 
 exports.createExam = async (req, res) => {
-  const { courseId, type, date, startTime, endTime, room } = req.body;
+  const { courseId, type, date, startTime, endTime, room, location } = req.body;
 
   try {
     // Check if course belongs to admin's scope
@@ -94,11 +95,11 @@ exports.createExam = async (req, res) => {
     const exam = await prisma.exam.create({
       data: {
         courseId: parseInt(courseId),
-        type,
+        type: type || 'MIDTERM',
         date: new Date(date),
         startTime,
         endTime,
-        room,
+        room: room || location || 'TBA',
       },
       include: {
         course: {
@@ -179,6 +180,37 @@ exports.deleteExam = async (req, res) => {
       where: { id },
     });
     res.json({ success: true, message: 'Exam deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getExamById = async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    const exam = await prisma.exam.findUnique({
+      where: { id },
+      include: {
+        course: {
+          select: {
+            name: true,
+            courseCode: true,
+            department: {
+              select: {
+                name: true,
+                college: { select: { name: true } }
+              }
+            }
+          },
+        },
+      },
+    });
+
+    if (!exam) {
+      return res.status(404).json({ success: false, message: 'Exam not found' });
+    }
+
+    res.json({ success: true, data: exam });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

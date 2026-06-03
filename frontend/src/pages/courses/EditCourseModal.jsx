@@ -77,10 +77,10 @@ const EditCourseModal = ({ isOpen, onClose, onSuccess, course }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 sm:px-6">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-white">Edit Course: {course?.courseCode}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+      <div className="bg-brand-bg-card dark:bg-brand-bg-elevated rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all max-h-[90vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-brand-border dark:border-brand-border flex justify-between items-center bg-brand-bg-page dark:bg-brand-bg-elevated/50">
+          <h2 className="text-xl font-bold text-brand-text-primary dark:text-brand-text-main">Edit Course: {course?.courseCode}</h2>
+          <button onClick={onClose} className="text-brand-text-muted hover:text-brand-text-secondary dark:text-brand-text-muted dark:hover:text-brand-text-secondary transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -89,35 +89,35 @@ const EditCourseModal = ({ isOpen, onClose, onSuccess, course }) => {
 
         <form onSubmit={handleSubmit} className="p-6">
           {toast && (
-            <div className={`mb-4 p-3 rounded text-white ${toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
+            <div className={`mb-4 p-3 rounded text-white ${toast.type === 'error' ? 'bg-error' : 'bg-success'}`}>
               {toast.message}
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Name *</label>
+              <label className="block text-sm font-medium text-brand-text-primary dark:text-brand-text-secondary mb-1">Course Name *</label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border border-brand-border dark:border-brand-border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-primary-500/30 dark:bg-brand-bg-elevated dark:text-brand-text-main"
                 required
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+              <label className="block text-sm font-medium text-brand-text-primary dark:text-brand-text-secondary mb-1">Description</label>
               <textarea
                 name="description"
                 rows="3"
                 value={formData.description}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border border-brand-border dark:border-brand-border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-primary-500/30 dark:bg-brand-bg-elevated dark:text-brand-text-main"
               ></textarea>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credits *</label>
+              <label className="block text-sm font-medium text-brand-text-primary dark:text-brand-text-secondary mb-1">Credits *</label>
               <input
                 type="number"
                 name="credits"
@@ -125,29 +125,29 @@ const EditCourseModal = ({ isOpen, onClose, onSuccess, course }) => {
                 max="10"
                 value={formData.credits}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border border-brand-border dark:border-brand-border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-primary-500/30 dark:bg-brand-bg-elevated dark:text-brand-text-main"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Students *</label>
+              <label className="block text-sm font-medium text-brand-text-primary dark:text-brand-text-secondary mb-1">Max Students *</label>
               <input
                 type="number"
                 name="maxStudents"
                 min="1"
                 value={formData.maxStudents}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border border-brand-border dark:border-brand-border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-primary-500/30 dark:bg-brand-bg-elevated dark:text-brand-text-main"
                 required
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assign Doctor</label>
+              <label className="block text-sm font-medium text-brand-text-primary dark:text-brand-text-secondary mb-1">Assign Doctor</label>
               <select
                 name="doctorId"
                 value={formData.doctorId}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border border-brand-border dark:border-brand-border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-primary-500/30 dark:bg-brand-bg-elevated dark:text-brand-text-main"
               >
                 <option value="">Unassigned</option>
                 {doctors.map((doc) => (
@@ -163,14 +163,14 @@ const EditCourseModal = ({ isOpen, onClose, onSuccess, course }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border dark:border-gray-600 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 border border-brand-border dark:border-brand-border rounded-md text-brand-text-secondary dark:text-brand-text-secondary hover:bg-brand-bg-page dark:hover:bg-brand-bg-elevated transition-colors"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
+              className="px-4 py-2 bg-brand-primary-500 text-white rounded-md hover:bg-brand-primary-600 disabled:opacity-50 transition-colors"
               disabled={loading}
             >
               {loading ? 'Updating...' : 'Save Changes'}

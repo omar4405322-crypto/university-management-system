@@ -22,7 +22,7 @@ const quizService = {
   },
 
   getQuizSubmissions: async (id) => {
-    const response = await api.get(`/quizzes/${id}/submissions`);
+    const response = await api.get(`/quizzes/${id}/results`);
     return response.data;
   },
 };

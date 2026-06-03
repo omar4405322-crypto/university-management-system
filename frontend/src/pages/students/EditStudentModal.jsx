@@ -112,23 +112,23 @@ const EditStudentModal = ({ isOpen, onClose, onSuccess, student }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="absolute inset-0 bg-brand-navy-500/40 backdrop-blur-sm" onClick={onClose}></div>
       
       {/* Modal Content */}
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+      <div className="relative bg-brand-bg-card dark:bg-brand-bg-elevated rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto border border-brand-border dark:border-brand-border">
+        <div className="px-6 py-4 border-b border-brand-border dark:border-brand-border flex justify-between items-center bg-brand-bg-page/50 dark:bg-brand-bg-elevated/50">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('students.editTitle')}: {student?.studentId}</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{t('students.editDesc')}</p>
+            <h2 className="text-xl font-bold text-brand-text-primary dark:text-brand-text-main">{t('students.editTitle')}: {student?.studentId}</h2>
+            <p className="text-sm text-brand-text-secondary dark:text-brand-text-muted mt-0.5">{t('students.editDesc')}</p>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+          <button onClick={onClose} className="p-2 text-brand-text-muted hover:text-brand-text-secondary dark:hover:text-brand-text-secondary hover:bg-brand-bg-page dark:hover:bg-brand-bg-elevated rounded-xl transition-colors">
             <X size={20} />
           </button>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6">
           {toast && (
-            <div className={`mb-6 p-4 rounded-xl text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-300 ${toast.type === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`}>
+            <div className={`mb-6 p-4 rounded-xl text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-300 ${toast.type === 'error' ? 'bg-error' : 'bg-success'}`}>
               {toast.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle size={20} />}
               <span className="font-medium">{toast.message}</span>
             </div>
@@ -136,8 +136,8 @@ const EditStudentModal = ({ isOpen, onClose, onSuccess, student }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <User size={14} className="text-slate-400 dark:text-slate-500" /> {t('students.firstName')} <span className="text-rose-500">*</span>
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <User size={14} className="text-brand-text-muted dark:text-brand-text-secondary" /> {t('students.firstName')} <span className="text-error">*</span>
               </label>
               <Input
                 name="firstName"
@@ -148,8 +148,8 @@ const EditStudentModal = ({ isOpen, onClose, onSuccess, student }) => {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <User size={14} className="text-slate-400 dark:text-slate-500" /> {t('students.lastName')} <span className="text-rose-500">*</span>
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <User size={14} className="text-brand-text-muted dark:text-brand-text-secondary" /> {t('students.lastName')} <span className="text-error">*</span>
               </label>
               <Input
                 name="lastName"
@@ -160,8 +160,8 @@ const EditStudentModal = ({ isOpen, onClose, onSuccess, student }) => {
               />
             </div>
             <div className="md:col-span-2 space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <Phone size={14} className="text-slate-400 dark:text-slate-500" /> {t('students.phoneNumber')}
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <Phone size={14} className="text-brand-text-muted dark:text-brand-text-secondary" /> {t('students.phoneNumber')}
               </label>
               <Input
                 name="phone"
@@ -171,29 +171,29 @@ const EditStudentModal = ({ isOpen, onClose, onSuccess, student }) => {
               />
             </div>
             <div className="md:col-span-2 space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <MapPin size={14} className="text-slate-400 dark:text-slate-500" /> {t('students.homeAddress')}
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <MapPin size={14} className="text-brand-text-muted dark:text-brand-text-secondary" /> {t('students.homeAddress')}
               </label>
               <textarea
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
                 rows="3"
-                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all resize-none placeholder:text-brand-text-muted dark:placeholder:text-brand-text-muted"
                 placeholder={t('students.addressPlaceholder')}
               ></textarea>
             </div>
 
-            <div className="border-t border-slate-100 dark:border-slate-800 md:col-span-2 pt-4 mt-2">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                <School size={16} className="text-blue-500" />
+            <div className="border-t border-brand-border dark:border-brand-border md:col-span-2 pt-4 mt-2">
+              <h3 className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main mb-4 flex items-center gap-2">
+                <School size={16} className="text-info" />
                 {t('profile.academicInfo')}
               </h3>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <Hash size={14} className="text-slate-400 dark:text-slate-500" /> {t('profile.studentId')} <span className="text-rose-500">*</span>
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <Hash size={14} className="text-brand-text-muted dark:text-brand-text-secondary" /> {t('profile.studentId')} <span className="text-error">*</span>
               </label>
               <Input
                 name="studentId"
@@ -204,14 +204,14 @@ const EditStudentModal = ({ isOpen, onClose, onSuccess, student }) => {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <Calendar size={14} className="text-slate-400 dark:text-slate-500" /> {t('profile.year')} <span className="text-rose-500">*</span>
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <Calendar size={14} className="text-brand-text-muted dark:text-brand-text-secondary" /> {t('profile.year')} <span className="text-error">*</span>
               </label>
               <select
                 name="year"
                 value={formData.year}
                 onChange={handleChange}
-                className="w-full h-10 px-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
+                className="w-full h-10 px-4 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
                 required
               >
@@ -224,14 +224,14 @@ const EditStudentModal = ({ isOpen, onClose, onSuccess, student }) => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <School size={14} className="text-slate-400 dark:text-slate-500" /> {t('profile.college')} <span className="text-rose-500">*</span>
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <School size={14} className="text-brand-text-muted dark:text-brand-text-secondary" /> {t('profile.college')} <span className="text-error">*</span>
               </label>
               <select
                 name="collegeId"
                 value={formData.collegeId}
                 onChange={handleChange}
-                className="w-full h-10 px-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
+                className="w-full h-10 px-4 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
                 required
               >
@@ -242,15 +242,15 @@ const EditStudentModal = ({ isOpen, onClose, onSuccess, student }) => {
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <GraduationCap size={14} className="text-slate-400 dark:text-slate-500" /> {t('profile.department')} <span className="text-rose-500">*</span>
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <GraduationCap size={14} className="text-brand-text-muted dark:text-brand-text-secondary" /> {t('profile.department')} <span className="text-error">*</span>
               </label>
               <select
                 name="departmentId"
                 value={formData.departmentId}
                 onChange={handleChange}
                 disabled={!formData.collegeId}
-                className="w-full h-10 px-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
+                className="w-full h-10 px-4 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
                 required
               >
@@ -262,7 +262,7 @@ const EditStudentModal = ({ isOpen, onClose, onSuccess, student }) => {
             </div>
           </div>
 
-          <div className="mt-8 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
+          <div className="mt-8 flex justify-end gap-3 border-t border-brand-border dark:border-brand-border pt-6">
             <Button
               type="button"
               variant="outline"

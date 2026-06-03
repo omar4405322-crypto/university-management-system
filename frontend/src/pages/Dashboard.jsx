@@ -1,16 +1,28 @@
-import React, { useState, useEffect } from 'react';
+// FIXED: Unified white KPI stat cards (no mixed dark featured) - Phase 6
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   AreaChart, 
   Area, 
+  BarChart,
+  Bar,
+  Cell,
+  PieChart,
+  Pie,
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
+  Legend,
   ResponsiveContainer 
 } from 'recharts';
+
+const CHART_GREEN = '#84cc16';
+const CHART_COLORS = ['#84cc16', '#22c55e', '#16a34a', '#15803d', '#8BB83C', '#132231'];
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
+import LoadingState from '../components/ui/LoadingState';
+import ErrorState from '../components/ui/ErrorState';
 import { 
   Users, 
   Building2, 
@@ -27,13 +39,23 @@ import {
   FileText,
   Calendar,
   Shield,
-  UserCheck
+  UserCheck,
+  ChevronRight,
+  Loader2,
+  History,
+  Download,
+  CreditCard,
+  Target,
+  Zap,
+  Bell
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import dashboardService from '../services/dashboard.service';
+import timetableService from '../services/timetable.service';
+import { CAMPUS_HERO_1 } from '../constants/universityAssets';
 
 const Dashboard = () => {
   const { t } = useTranslation();
@@ -41,15 +63,25 @@ const Dashboard = () => {
   const { isDark } = useTheme();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
+  const [myTimetable, setMyTimetable] = useState(null);
 
-  useEffect(() => {
-    fetchStats();
-  }, [user.role]);
+  const fetchMyTimetable = useCallback(async () => {
+    try {
+      const result = await timetableService.getTimetables();
+      if (result.success && result.data.length > 0) {
+        setMyTimetable(result.data[0]);
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard timetable:', err);
+    }
+  }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       let result;
       if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
         result = await dashboardService.getAdminStats();
@@ -59,66 +91,97 @@ const Dashboard = () => {
         result = await dashboardService.getDoctorStats();
       }
       
-      if (result && result.success) {
+      if (result?.success) {
         setStats(result.data);
+      } else {
+        setError(result?.message || 'Failed to load dashboard data.');
       }
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+    } catch (err) {
+      console.error('Error fetching dashboard stats:', err);
+      setError(err.message || 'Failed to load dashboard data. Please check your connection.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.role]);
+
+  useEffect(() => {
+    if (user?.role) {
+      fetchStats();
+      if (user.role === 'STUDENT') {
+        fetchMyTimetable();
+      }
+    }
+  }, [user?.role, fetchStats, fetchMyTimetable]);
+
+  if (!user) return null;
+
+  if (loading && !stats) {
+    return <LoadingState message="Assembling your university dashboard..." />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={fetchStats} />;
+  }
 
   const getKpis = () => {
     if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
       return [
         {
+          id: 'totalStudents',
           title: t('dashboard.totalStudents'),
           value: stats?.counts?.totalStudents?.toLocaleString() || '0',
-          change: stats?.counts?.totalStudents > 0 ? '+100%' : '0%',
+          change: '+100%',
           trend: 'up',
           icon: Users,
-          color: 'blue'
+          color: 'green',
         },
         {
+          id: 'totalColleges',
           title: t('dashboard.activeColleges'),
           value: stats?.counts?.totalColleges?.toLocaleString() || '0',
           change: 'Real-time',
           trend: 'neutral',
           icon: Building2,
-          color: 'indigo'
+          color: 'navy'
         },
         {
+          id: 'totalPayments',
           title: t('dashboard.totalPayments'),
           value: stats?.counts?.totalPayments?.toLocaleString() || '0',
           change: 'Active',
           trend: 'up',
           icon: Clock,
-          color: 'amber'
+          color: 'yellow',
+          alert: true,
+          alertLabel: t('dashboard.needsReview'),
+          tooltip: t('dashboard.paymentsBelowExpected')
         },
         {
+          id: 'totalDoctors',
           title: t('dashboard.totalDoctors'),
           value: stats?.counts?.totalDoctors?.toLocaleString() || '0',
           change: 'Faculty',
           trend: 'up',
           icon: GraduationCap,
-          color: 'emerald'
+          color: 'green',
         },
         {
+          id: 'totalSuperAdmins',
           title: t('dashboard.superAdmin'),
           value: stats?.counts?.totalSuperAdmins?.toLocaleString() || '0',
           change: 'System',
           trend: 'neutral',
           icon: Shield,
-          color: 'rose'
+          color: 'navy'
         },
         {
+          id: 'totalAdmins',
           title: t('dashboard.admin'),
           value: stats?.counts?.totalAdmins?.toLocaleString() || '0',
           change: 'Staff',
           trend: 'neutral',
           icon: UserCheck,
-          color: 'blue'
+          color: 'navy'
         }
       ];
     } else if (user.role === 'STUDENT') {
@@ -129,7 +192,7 @@ const Dashboard = () => {
           change: t('dashboard.yearOfStudy'),
           trend: 'neutral',
           icon: BookOpen,
-          color: 'blue'
+          color: 'navy'
         },
         {
           title: t('dashboard.paymentsStatus'),
@@ -137,7 +200,7 @@ const Dashboard = () => {
           change: t('dashboard.pendingPayments'),
           trend: stats?.myPayments?.pending?.count > 0 ? 'down' : 'up',
           icon: DollarSign,
-          color: 'amber'
+          color: 'yellow'
         },
         {
           title: t('dashboard.upcomingQuizzes'),
@@ -145,7 +208,7 @@ const Dashboard = () => {
           change: t('dashboard.activeNow'),
           trend: 'neutral',
           icon: ClipboardList,
-          color: 'indigo'
+          color: 'green'
         },
         {
           title: t('dashboard.currentSemester'),
@@ -153,7 +216,7 @@ const Dashboard = () => {
           change: stats?.profile?.semester === 2 ? t('dashboard.spring') : t('dashboard.fall'),
           trend: 'neutral',
           icon: Calendar,
-          color: 'emerald'
+          color: 'navy'
         }
       ];
     } else if (user.role === 'DOCTOR') {
@@ -164,7 +227,7 @@ const Dashboard = () => {
           change: t('dashboard.activeCourses'),
           trend: 'neutral',
           icon: BookOpen,
-          color: 'blue'
+          color: 'navy'
         },
         {
           title: t('dashboard.totalStudents'),
@@ -172,23 +235,23 @@ const Dashboard = () => {
           change: t('dashboard.enrolled'),
           trend: 'up',
           icon: Users,
-          color: 'emerald'
+          color: 'green'
         },
         {
-          title: t('dashboard.upcomingExams'),
-          value: stats?.upcomingExams?.length || '0',
-          change: t('dashboard.thisMonth'),
+          title: t('dashboard.totalQuizzes'),
+          value: stats?.counts?.totalQuizzes || '0',
+          change: t('dashboard.assessments'),
           trend: 'neutral',
           icon: ClipboardList,
-          color: 'indigo'
+          color: 'yellow'
         },
         {
-          title: t('dashboard.todayClasses'),
-          value: stats?.todaySchedule?.length || '0',
-          change: t('dashboard.scheduled'),
-          trend: 'neutral',
-          icon: Clock,
-          color: 'amber'
+          title: t('dashboard.pendingTasks'),
+          value: stats?.counts?.pendingTasks || '0',
+          change: t('dashboard.toGrade'),
+          trend: stats?.counts?.pendingTasks > 0 ? 'down' : 'up',
+          icon: FileText,
+          color: 'navy'
         }
       ];
     }
@@ -197,280 +260,380 @@ const Dashboard = () => {
 
   const kpis = getKpis();
 
-  const getRecentRequests = () => {
-    if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
-      return stats?.recentStudents?.map((student, index) => ({
-        id: index,
-        name: `${student.firstName} ${student.lastName}`,
-        subtitle: student.studentId,
-        date: new Date(student.enrolledAt).toLocaleDateString(),
-        status: 'active'
-      })) || [];
-    } else if (user.role === 'STUDENT') {
-      return stats?.upcomingExams?.map((exam, index) => ({
-        id: index,
-        name: exam.courseName,
-        subtitle: exam.type,
-        date: new Date(exam.date).toLocaleDateString(),
-        status: 'upcoming'
-      })) || [];
-    } else if (user.role === 'DOCTOR') {
-      return stats?.todaySchedule?.map((schedule, index) => ({
-        id: index,
-        name: schedule.courseName,
-        subtitle: `${schedule.startTime} - ${schedule.endTime}`,
-        date: schedule.room,
-        status: 'scheduled'
-      })) || [];
-    }
-    return [];
-  };
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role);
 
-  const recentRequests = getRecentRequests();
+  const academicChartData =
+    stats?.growthData?.length > 0
+      ? stats.growthData
+      : (stats?.enrollmentData || []).map((row) => ({
+          name: String(row.name),
+          value: row.students ?? row.value ?? 0
+        }));
 
-  // Academic control links for Doctors
-  const academicControls = [
-    {
-      title: t('nav.quizzes'),
-      description: 'Create and manage course quizzes',
-      path: '/quizzes',
-      icon: ClipboardList,
-      color: 'indigo',
-      action: 'Create New Quiz'
-    },
-    {
-      title: t('nav.tasks'),
-      description: 'Post assignments and grade submissions',
-      path: '/tasks',
-      icon: FileText,
-      color: 'blue',
-      action: 'Post Assignment'
-    }
-  ];
+  const collegeDistributionData = stats?.collegeDistribution || [];
+  const financeOverviewData = stats?.financeOverview || [];
 
-  const enrollmentData = stats?.enrollmentData?.length > 0 
-    ? stats.enrollmentData 
-    : [
-        { name: '2021', students: 0 },
-        { name: '2022', students: 0 },
-        { name: '2023', students: 0 },
-        { name: '2024', students: 0 },
-        { name: '2025', students: stats?.counts?.totalStudents || 0 },
-      ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  const getRoleTitle = () => {
-    switch (user.role) {
-      case 'SUPER_ADMIN': return t('dashboard.superAdmin');
-      case 'ADMIN': return t('dashboard.admin');
-      case 'COLLEGE_ADMIN': return t('dashboard.collegeAdmin');
-      case 'DEPARTMENT_ADMIN': return t('dashboard.deptAdmin');
-      case 'DOCTOR': return t('dashboard.doctor');
-      case 'STUDENT': return t('dashboard.student');
-      default: return '';
-    }
-  };
+  const totalStudentsCount = stats?.counts?.totalStudents ?? 0;
+  const subscriptionLimit = Math.max(10000, totalStudentsCount + 2000);
+  const subscriptionUsagePercent = subscriptionLimit
+    ? Math.min(100, Math.round((totalStudentsCount / subscriptionLimit) * 100))
+    : 0;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('dashboard.title')}</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">{t('dashboard.welcome')}, {getRoleTitle()}. {t('dashboard.subtitle')}</p>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((kpi, index) => (
-          <Card key={index} className="relative overflow-hidden group">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{kpi.title}</p>
-                <h3 className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{kpi.value}</h3>
-                <div className="mt-2 flex items-center gap-1.5">
-                  {kpi.trend === 'up' ? (
-                    <ArrowUpRight size={16} className="text-emerald-500 dark:text-emerald-400" />
-                  ) : kpi.trend === 'down' ? (
-                    <ArrowDownRight size={16} className="text-rose-500 dark:text-rose-400" />
-                  ) : null}
-                  <span className={`text-xs font-semibold ${
-                    kpi.trend === 'up' ? 'text-emerald-600 dark:text-emerald-400' : 
-                    kpi.trend === 'down' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'
-                  }`}>
-                    {kpi.change}
-                  </span>
-                  {!['neutral'].includes(kpi.trend) && <span className="text-xs text-slate-400 dark:text-slate-500">{t('dashboard.vsLastMonth')}</span>}
-                </div>
-              </div>
-              <div className={`rounded-xl p-3 ${
-                kpi.color === 'blue' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' :
-                kpi.color === 'indigo' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' :
-                kpi.color === 'amber' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' :
-                kpi.color === 'rose' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400' :
-                'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-              } transition-transform group-hover:scale-110`}>
-                <kpi.icon size={24} />
-              </div>
+    <div className="section-gap animate-in fade-in duration-700">
+      {/* === Hero Header === */}
+      <div
+        className="relative overflow-hidden rounded-[2rem] shadow-elevated"
+        style={{ minHeight: '180px' }}
+      >
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url('${CAMPUS_HERO_1}')` }}
+          role="img"
+          aria-label="University campus"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/25 rtl:bg-gradient-to-l" />
+        <div className="relative z-10 flex flex-col gap-6 p-6 md:flex-row md:items-end md:justify-between md:p-8">
+          <div className="space-y-2 max-w-2xl">
+            <h1 className="text-3xl font-black tracking-tight text-white md:text-4xl">
+              {t('dashboard.welcomeBack')},{' '}
+              {user?.student?.firstName || user?.doctor?.firstName || user?.email.split('@')[0]}
+            </h1>
+            <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-white/85">
+              <Shield size={16} className="text-brand-primary-400 shrink-0" />
+              <span>{user?.role.replace('_', ' ')}</span>
+              <span className="text-white/40">|</span>
+              <span>
+                {new Date().toLocaleDateString(undefined, {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </span>
             </div>
-            <div className={`absolute -right-4 -bottom-4 h-24 w-24 rounded-full ${
-              kpi.color === 'blue' ? 'bg-blue-50/50 dark:bg-blue-900/10' :
-              kpi.color === 'indigo' ? 'bg-indigo-50/50 dark:bg-indigo-900/10' :
-              kpi.color === 'amber' ? 'bg-amber-50/50 dark:bg-amber-900/10' :
-              kpi.color === 'rose' ? 'bg-rose-50/50 dark:bg-rose-900/10' :
-              'bg-emerald-50/50 dark:bg-emerald-900/10'
-            } blur-2xl group-hover:bg-opacity-100 transition-colors`}></div>
-          </Card>
-        ))}
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <Button
+              variant="outline"
+              size="md"
+              className="border-white/30 bg-white/10 font-bold text-xs uppercase tracking-widest text-white backdrop-blur-sm hover:bg-white/20"
+            >
+              <History size={16} /> {t('dashboard.activityLog')}
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              className="shadow-overlay shadow-brand-primary-500/30 font-bold text-xs uppercase tracking-widest"
+            >
+              <Zap size={16} /> {t('dashboard.quickActions')}
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Academic Control Section for Doctors */}
-      {user.role === 'DOCTOR' && (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {academicControls.map((control, i) => (
-            <Card key={i} className="group hover:border-blue-500/50 transition-colors border-dashed border-2">
-              <div className="flex items-center gap-6">
-                <div className={`p-4 rounded-2xl ${
-                  control.color === 'indigo' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 
-                  'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                }`}>
-                  <control.icon size={32} />
+      {/* === KPI Grid === */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-5">
+        {kpis.map((kpi, idx) => (
+            <Card
+              key={kpi.id || idx}
+              variant="default"
+              noPadding
+              className="group hover:-translate-y-0.5 transition-all duration-300 overflow-hidden relative"
+            >
+              <div className="p-5 space-y-3">
+                {kpi.alert && (
+                  <div className="absolute top-2 left-2 px-2 py-0.5 bg-brand-accent-yellow text-brand-navy-500 text-[8px] font-black rounded-full uppercase tracking-tighter animate-pulse">
+                    {kpi.alertLabel}
+                  </div>
+                )}
+                <div className="flex justify-between items-start">
+                  <div className={`p-2.5 rounded-2xl transition-colors duration-300 ${
+                    kpi.color === 'green' ? 'bg-brand-primary-50 text-brand-primary-500' : 
+                    kpi.color === 'navy' ? 'bg-brand-navy-50 text-brand-navy-500' : 
+                    'bg-brand-accent-yellow/10 text-brand-accent-yellow'
+                  }`}>
+                    <kpi.icon size={18} />
+                  </div>
+                  {kpi.trend === 'up' && <ArrowUpRight size={14} className="text-brand-primary-500" />}
+                  {kpi.trend === 'down' && <ArrowDownRight size={14} className="text-error" />}
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">{control.title}</h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{control.description}</p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Button onClick={() => navigate(control.path)} className="whitespace-nowrap">
-                    {control.action}
-                  </Button>
-                  <Button variant="ghost" onClick={() => navigate(control.path)} className="text-xs">
-                    View All
-                  </Button>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-brand-text-muted">{kpi.title}</p>
+                  <div className="flex items-baseline gap-2">
+                    <h3 className="text-2xl font-black tracking-tight text-brand-text-primary dark:text-brand-text-main">{kpi.value}</h3>
+                    <span className={`text-[10px] font-bold ${
+                      kpi.trend === 'up' ? 'text-brand-primary-500' : 
+                      kpi.trend === 'down' ? 'text-error' : 'text-brand-text-muted'
+                    }`}>
+                      {kpi.change}
+                    </span>
+                  </div>
                 </div>
               </div>
             </Card>
-          ))}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Main Chart Area */}
-        <Card title={user.role === 'STUDENT' ? t('dashboard.myPerformance') : t('dashboard.enrollmentTrends')} className="lg:col-span-2">
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={enrollmentData}>
-                <defs>
-                  <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#f1f5f9'} />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }}
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: 'none', 
-                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                    backgroundColor: isDark ? '#1e293b' : '#ffffff',
-                    color: isDark ? '#f8fafc' : '#0f172a'
-                  }}
-                  itemStyle={{ color: isDark ? '#f8fafc' : '#0f172a' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey={user.role === 'STUDENT' ? 'grade' : 'students'} 
-                  stroke="#3b82f6" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorStudents)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Recent Activities */}
-        <Card 
-          title={user.role === 'STUDENT' ? t('dashboard.upcomingExams') : user.role === 'DOCTOR' ? t('dashboard.todayClasses') : t('dashboard.recentRequests')} 
-          subtitle={user.role === 'STUDENT' ? t('dashboard.dontMiss') : t('dashboard.recentRequestsDesc')}
-        >
-          <div className="space-y-6">
-            {recentRequests.map((req) => (
-              <div key={req.id} className="flex items-center justify-between group">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 font-semibold group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {req.name.split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{req.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">{req.subtitle}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <Badge variant={req.status === 'active' || req.status === 'scheduled' ? 'success' : 'warning'}>
-                    {t(`dashboard.${req.status}`)}
-                  </Badge>
-                  <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-600">{req.date}</p>
-                </div>
-              </div>
-            ))}
-            {recentRequests.length === 0 && (
-              <p className="text-center text-sm text-slate-500 py-4">{t('common.noData')}</p>
-            )}
-            {recentRequests.length > 0 && (
-              <Button variant="ghost" className="w-full mt-4 text-sm">{t('dashboard.viewAll')}</Button>
-            )}
-          </div>
-        </Card>
+        ))}
       </div>
 
-      {/* System Health / Quick Stats */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card className="border-l-4 border-emerald-500 dark:bg-slate-800/50">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="text-emerald-500" />
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('dashboard.dbSync')}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-500">{t('dashboard.lastSync')}: {t('dashboard.fiveMinsAgo')}</p>
+      {/* === Main Content Grid === */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 2xl:gap-8">
+        {/* Charts Section */}
+        <div className="lg:col-span-8 xl:col-span-9 2xl:col-span-10 section-gap">
+          <Card 
+            variant="elevated"
+            title={t('dashboard.academicOverview')} 
+            subtitle={t('dashboard.growthTrend')}
+          >
+            <div className="h-[400px] w-full mt-6">
+              {!academicChartData.length ? (
+                <div className="flex h-full flex-col items-center justify-center gap-2 text-brand-text-muted">
+                  <TrendingUp size={40} className="opacity-40" />
+                  <p className="text-sm font-bold">{t('common.noData')}</p>
+                  <p className="text-xs">{t('dashboard.noRecentData')}</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={academicChartData}>
+                    <defs>
+                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_GREEN} stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor={CHART_GREEN} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{fill: isDark ? '#94A3B8' : '#64748B', fontSize: 12, fontWeight: 600}}
+                      dy={10}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{fill: isDark ? '#94A3B8' : '#64748B', fontSize: 12, fontWeight: 600}}
+                      dx={-10}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF', 
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                        borderRadius: '16px',
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                      }} 
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="value" 
+                      stroke={CHART_GREEN} 
+                      strokeWidth={3}
+                      fillOpacity={1} 
+                      fill="url(#colorValue)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
-          </div>
-        </Card>
-        <Card className="border-l-4 border-blue-500 dark:bg-slate-800/50">
-          <div className="flex items-center gap-3">
-            <GraduationCap className="text-blue-500" />
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('dashboard.academicYear')} {stats?.profile?.year ? `${stats.profile.year}` : t('dashboard.nextYear')}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-500">{t('dashboard.activeSemester')}: {stats?.profile?.semester === 2 ? t('dashboard.spring') : t('dashboard.fall')}</p>
+          </Card>
+
+          {isAdmin && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <Card
+                variant="elevated"
+                title={t('dashboard.collegeDistribution', 'College Distribution')}
+                subtitle={t('dashboard.enrollmentTrends')}
+              >
+                <div className="h-80 w-full mt-6">
+                  {!collegeDistributionData.length ? (
+                    <div className="flex h-full items-center justify-center text-sm font-bold text-brand-text-muted">
+                      {t('common.noData')}
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={collegeDistributionData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: isDark ? '#94A3B8' : '#64748B' }} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: isDark ? '#94A3B8' : '#64748B' }} />
+                        <Tooltip
+                          cursor={{ fill: isDark ? '#1E293B' : '#F8FAFC' }}
+                          contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                        />
+                        <Bar dataKey="students" radius={[4, 4, 0, 0]} barSize={40}>
+                          {collegeDistributionData.map((entry, index) => (
+                            <Cell key={`college-${entry.name}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </Card>
+
+              <Card
+                variant="elevated"
+                title={t('dashboard.financialOverview', 'Financial Overview')}
+                subtitle={t('dashboard.paymentsStatus')}
+              >
+                <div className="h-80 w-full mt-6 flex items-center">
+                  {!financeOverviewData.length ? (
+                    <div className="flex h-full w-full items-center justify-center text-sm font-bold text-brand-text-muted">
+                      {t('common.noData')}
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={financeOverviewData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={70}
+                          outerRadius={100}
+                          paddingAngle={6}
+                          dataKey="value"
+                        >
+                          {financeOverviewData.map((entry, index) => (
+                            <Cell key={`finance-${entry.name}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </Card>
             </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Card title={t('dashboard.recentActivity')} variant="default" noPadding>
+              <div className="divide-y divide-brand-border">
+                {[1, 2, 3, 4].map((item) => (
+                  <div key={item} className="p-5 flex items-center gap-4 hover:bg-surface-subtle/60 transition-colors group cursor-pointer">
+                    <div className="w-11 h-11 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-primary-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <CheckCircle2 size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main truncate">New student registration</p>
+                      <p className="text-caption mt-0.5">2 hours ago</p>
+                    </div>
+                    <ChevronRight size={16} className="text-brand-text-muted shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                ))}
+              </div>
+              <div className="px-5 py-4 border-t border-brand-border bg-surface-subtle/50">
+                <Button variant="ghost" size="sm" className="w-full font-black text-xs uppercase tracking-widest">
+                  {t('dashboard.viewAllActivity')}
+                </Button>
+              </div>
+            </Card>
+
+            <Card title={t('dashboard.systemStatus')} variant="default" noPadding>
+              <div className="p-6 space-y-6">
+                <div className="space-y-2.5">
+                  <div className="flex justify-between text-caption">
+                    <span className="text-brand-text-secondary">{t('dashboard.serverLoad')}</span>
+                    <span className="text-brand-primary-500 font-black">24%</span>
+                  </div>
+                  <div className="h-2 w-full bg-surface-subtle dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-brand-primary-500 w-[24%] rounded-full shadow-[0_0_8px_rgba(139,184,60,0.3)]" />
+                  </div>
+                </div>
+                <div className="space-y-2.5">
+                  <div className="flex justify-between text-caption">
+                    <span className="text-brand-text-secondary">{t('dashboard.storageUsage')}</span>
+                    <span className="text-brand-accent-yellow font-black">68%</span>
+                  </div>
+                  <div className="h-2 w-full bg-surface-subtle dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-brand-accent-yellow w-[68%] rounded-full shadow-[0_0_8px_rgba(214,186,52,0.3)]" />
+                  </div>
+                </div>
+                <div className="pt-2">
+                  <div className="p-4 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 border border-brand-primary-100 dark:border-brand-primary-900/20 flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-brand-primary-500 animate-ping" />
+                    <p className="text-xs font-black text-brand-primary-500 uppercase tracking-widest">{t('dashboard.allSystemsOperational')}</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
           </div>
-        </Card>
-        <Card className="border-l-4 border-amber-500 dark:bg-slate-800/50">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="text-amber-500" />
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">{t('dashboard.maintenance')}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-500">{t('dashboard.scheduledFor')} {t('dashboard.maintenanceDate')}</p>
+        </div>
+
+        {/* Sidebar Section */}
+        <div className="lg:col-span-4 xl:col-span-3 2xl:col-span-2 section-gap">
+          <Card variant="elevated" noPadding className="rounded-[2rem]">
+            <div className="p-8 space-y-8">
+              <div className="space-y-1">
+                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-text-muted">{t('dashboard.subscription')}</h4>
+                <h3 className="text-3xl font-black tracking-tightest uppercase italic text-brand-text-primary dark:text-brand-text-main">
+                  {t('dashboard.enterprise')}
+                </h3>
+              </div>
+              <div className="p-6 rounded-2xl bg-surface-subtle border border-brand-border space-y-5">
+                  <div className="flex justify-between items-center gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Target size={16} className="text-brand-primary-500 shrink-0" />
+                      <span className="text-[10px] font-black uppercase tracking-wider text-brand-text-secondary">
+                        {t('dashboard.quotaUsage')}
+                      </span>
+                    </div>
+                    <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main whitespace-nowrap">
+                      {totalStudentsCount.toLocaleString()} / {subscriptionLimit.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-brand-primary-500 rounded-full shadow-lg transition-all duration-500"
+                      style={{ width: `${subscriptionUsagePercent}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] font-bold text-brand-text-muted">
+                    {subscriptionUsagePercent}% {t('dashboard.quotaUsage')} · {totalStudentsCount.toLocaleString()} {t('dashboard.totalStudents').toLowerCase()}
+                  </p>
+                </div>
+              <Button 
+                variant="primary"
+                className="w-full font-black uppercase tracking-[0.2em] py-5 shadow-overlay shadow-brand-primary-500/20"
+                onClick={() => navigate('/settings')}
+              >
+                {t('dashboard.manageSubscription')}
+              </Button>
             </div>
-          </div>
-        </Card>
+          </Card>
+
+          <Card title={t('dashboard.upcomingEvents')} variant="default" noPadding>
+            <div className="p-6 space-y-5">
+              {[1, 2].map((item) => (
+                <div key={item} className="flex gap-4 group cursor-pointer">
+                  <div className="flex flex-col items-center justify-center w-14 h-16 rounded-xl bg-surface-subtle border border-brand-border group-hover:bg-brand-primary-500 group-hover:border-brand-primary-500 transition-all duration-300">
+                    <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-none group-hover:text-white transition-colors">1{item}</span>
+                    <span className="text-[9px] font-black uppercase text-brand-text-secondary group-hover:text-white/80 transition-colors">Jun</span>
+                  </div>
+                  <div className="flex-1 pt-1">
+                    <h5 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight group-hover:text-brand-primary-500 transition-colors">{t('dashboard.boardMeeting')}</h5>
+                    <p className="text-caption mt-1">{t('dashboard.conferenceRoom')} A</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card variant="subtle" className="border-brand-accent-yellow/20">
+            <div className="flex gap-4">
+              <div className="p-3 bg-brand-accent-yellow/20 text-brand-accent-yellow rounded-xl h-fit shrink-0">
+                <Bell size={18} />
+              </div>
+              <div className="space-y-1.5">
+                <h6 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight">{t('dashboard.examSchedulePublished')}</h6>
+                <p className="text-xs text-brand-text-secondary font-medium leading-relaxed">
+                  {t('dashboard.examScheduleNote')}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );

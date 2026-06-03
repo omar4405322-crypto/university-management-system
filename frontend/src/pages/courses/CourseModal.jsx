@@ -135,26 +135,26 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="absolute inset-0 bg-brand-navy-500/40 backdrop-blur-sm" onClick={onClose}></div>
       
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+      <div className="relative bg-brand-bg-card dark:bg-brand-bg-elevated rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b border-brand-border dark:border-brand-border flex justify-between items-center bg-brand-bg-page/50 dark:bg-brand-bg-elevated/50">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            <h2 className="text-xl font-bold text-brand-text-primary dark:text-brand-text-main">
               {course ? 'Edit Course' : 'Add New Course'}
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-sm text-brand-text-secondary dark:text-brand-text-muted mt-0.5">
               {course ? 'Update course details and linking.' : 'Create a new course and link it to a department.'}
             </p>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+          <button onClick={onClose} className="p-2 text-brand-text-muted hover:text-brand-text-secondary dark:hover:text-brand-text-secondary hover:bg-brand-bg-page dark:hover:bg-brand-bg-elevated rounded-xl transition-colors">
             <X size={20} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 max-h-[80vh] overflow-y-auto">
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-rose-500 text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-300">
+            <div className="mb-6 p-4 rounded-xl bg-error text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-300">
               <AlertCircle size={20} />
               <span className="font-medium">{error}</span>
             </div>
@@ -162,8 +162,8 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="md:col-span-2 space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <BookOpen size={14} className="text-slate-400" /> Course Name <span className="text-rose-500">*</span>
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <BookOpen size={14} className="text-brand-text-muted" /> Course Name <span className="text-error">*</span>
               </label>
               <Input
                 name="name"
@@ -175,8 +175,8 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <Hash size={14} className="text-slate-400" /> Course Code <span className="text-rose-500">*</span>
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <Hash size={14} className="text-brand-text-muted" /> Course Code <span className="text-error">*</span>
               </label>
               <Input
                 name="courseCode"
@@ -188,8 +188,8 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <GraduationCap size={14} className="text-slate-400" /> Credits <span className="text-rose-500">*</span>
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <GraduationCap size={14} className="text-brand-text-muted" /> Credits <span className="text-error">*</span>
               </label>
               <Input
                 type="number"
@@ -203,15 +203,15 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <School size={14} className="text-slate-400" /> College <span className="text-rose-500">*</span>
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <School size={14} className="text-brand-text-muted" /> College <span className="text-error">*</span>
               </label>
               <select
                 name="collegeId"
                 value={formData.collegeId}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white"
+                className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main"
               >
                 <option value="">Select College</option>
                 {colleges.map(c => (
@@ -221,8 +221,8 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <GraduationCap size={14} className="text-slate-400" /> Department <span className="text-rose-500">*</span>
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <GraduationCap size={14} className="text-brand-text-muted" /> Department <span className="text-error">*</span>
               </label>
               <select
                 name="departmentId"
@@ -230,7 +230,7 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
                 onChange={handleChange}
                 required
                 disabled={!formData.collegeId}
-                className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white disabled:opacity-50"
+                className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main disabled:opacity-50"
               >
                 <option value="">Select Department</option>
                 {departments.map(d => (
@@ -240,14 +240,14 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <User size={14} className="text-slate-400" /> Instructor
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <User size={14} className="text-brand-text-muted" /> Instructor
               </label>
               <select
                 name="doctorId"
                 value={formData.doctorId}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white"
+                className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main"
               >
                 <option value="">Select Instructor (TBA)</option>
                 {doctors.map(d => (
@@ -257,8 +257,8 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <User size={14} className="text-slate-400" /> Max Students
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <User size={14} className="text-brand-text-muted" /> Max Students
               </label>
               <Input
                 type="number"
@@ -270,14 +270,14 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
                 Year
               </label>
               <select
                 name="year"
                 value={formData.year}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white"
+                className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main"
               >
                 {[1, 2, 3, 4, 5].map(y => (
                   <option key={y} value={y}>Year {y}</option>
@@ -286,14 +286,14 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
                 Semester
               </label>
               <select
                 name="semester"
                 value={formData.semester}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white"
+                className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main"
               >
                 <option value={1}>First Semester</option>
                 <option value={2}>Second Semester</option>
@@ -302,21 +302,21 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
             </div>
 
             <div className="md:col-span-2 space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-                <FileText size={14} className="text-slate-400" /> Description
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <FileText size={14} className="text-brand-text-muted" /> Description
               </label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows="3"
-                className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white resize-none"
+                className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main resize-none"
                 placeholder="Course overview and objectives..."
               ></textarea>
             </div>
           </div>
 
-          <div className="mt-8 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
+          <div className="mt-8 flex justify-end gap-3 border-t border-brand-border dark:border-brand-border pt-6">
             <Button
               type="button"
               variant="outline"

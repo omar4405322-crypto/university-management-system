@@ -1,6 +1,11 @@
 import api from './api';
 
 const doctorsService = {
+  getStats: async () => {
+    const response = await api.get('/doctors/stats');
+    return response.data;
+  },
+
   getDoctors: async (params) => {
     const response = await api.get('/doctors', { params });
     return response.data;

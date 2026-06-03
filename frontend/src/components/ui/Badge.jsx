@@ -2,15 +2,16 @@ import React from 'react';
 
 const Badge = ({ children, variant = 'info', className = '' }) => {
   const variants = {
-    success: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/30',
-    warning: 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/30',
-    danger: 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/30',
-    info: 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30',
-    neutral: 'bg-slate-50 text-slate-700 border-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+    success: 'bg-success/10 text-success border-success/20 dark:bg-success/10 dark:text-success dark:border-success/20',
+    warning: 'bg-warning/10 text-warning border-warning/20 dark:bg-warning/10 dark:text-warning dark:border-warning/20',
+    danger: 'bg-error/10 text-error border-error/20 dark:bg-error/10 dark:text-error dark:border-error/20',
+    info: 'bg-info/10 text-info border-info/20 dark:bg-info/10 dark:text-info dark:border-info/20',
+    neutral: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+    primary: 'bg-brand-primary-50 text-brand-primary-700 border-brand-primary-100 dark:bg-brand-primary-500/10 dark:text-brand-primary-400 dark:border-brand-primary-500/20',
   };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${variants[variant]} ${className}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border uppercase tracking-wider ${variants[variant]} ${className}`}>
       {children}
     </span>
   );

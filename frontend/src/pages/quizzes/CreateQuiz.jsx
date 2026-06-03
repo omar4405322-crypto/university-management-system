@@ -94,49 +94,49 @@ const CreateQuiz = () => {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="section-gap animate-page">
       <div className="flex items-center mb-6">
         <button 
           onClick={() => navigate('/quizzes')}
-          className="mr-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+          className="mr-4 p-2 hover:bg-brand-bg-page rounded-full transition-colors"
         >
           <ChevronLeft size={24} />
         </button>
-        <h1 className="text-2xl font-bold text-gray-800">Create New Quiz</h1>
+        <h1 className="text-2xl font-bold text-brand-text-primary">Create New Quiz</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-700 border-b pb-2">Basic Information</h2>
+      <form onSubmit={handleSubmit} className="form-section">
+        <div className="bg-brand-bg-card p-6 rounded-xl shadow-sm border border-brand-border space-y-4">
+          <h2 className="text-lg font-semibold text-brand-text-primary border-b border-brand-border pb-2">Basic Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700">Quiz Title</label>
+              <label className="block text-sm font-medium text-brand-text-primary">Quiz Title</label>
               <input
                 type="text"
                 name="title"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-brand-primary-500/30 focus:border-brand-primary-500"
                 value={formData.title}
                 onChange={handleChange}
                 placeholder="e.g. Midterm Exam - CS101"
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <label className="block text-sm font-medium text-brand-text-primary">Description</label>
               <textarea
                 name="description"
                 rows="2"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-brand-primary-500/30 focus:border-brand-primary-500"
                 value={formData.description}
                 onChange={handleChange}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Course</label>
+              <label className="block text-sm font-medium text-brand-text-primary">Course</label>
               <select
                 name="courseId"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-brand-primary-500/30 focus:border-brand-primary-500"
                 value={formData.courseId}
                 onChange={handleChange}
               >
@@ -147,13 +147,13 @@ const CreateQuiz = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Duration (minutes)</label>
+              <label className="block text-sm font-medium text-brand-text-primary">Duration (minutes)</label>
               <input
                 type="number"
                 name="duration"
                 required
                 min="1"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-brand-primary-500/30 focus:border-brand-primary-500"
                 value={formData.duration}
                 onChange={handleChange}
               />
@@ -163,11 +163,11 @@ const CreateQuiz = () => {
 
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-gray-800">Questions</h2>
+            <h2 className="text-xl font-bold text-brand-text-primary">Questions</h2>
             <button
               type="button"
               onClick={addQuestion}
-              className="flex items-center text-blue-600 hover:text-blue-700 font-medium"
+              className="flex items-center text-info hover:text-info font-medium"
             >
               <Plus size={18} className="mr-1" />
               Add Question
@@ -175,11 +175,11 @@ const CreateQuiz = () => {
           </div>
 
           {formData.questions.map((q, index) => (
-            <div key={index} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative animate-in slide-in-from-top-4 duration-300">
+            <div key={index} className="bg-brand-bg-card p-6 rounded-xl shadow-sm border border-brand-border relative animate-in slide-in-from-top-4 duration-300">
               <button
                 type="button"
                 onClick={() => removeQuestion(index)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                className="absolute top-4 right-4 text-brand-text-muted hover:text-error transition-colors"
                 title="Remove Question"
               >
                 <Trash2 size={20} />
@@ -187,7 +187,7 @@ const CreateQuiz = () => {
               
               <div className="space-y-4">
                 <div className="flex items-center">
-                  <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-3">
+                  <span className="bg-brand-primary-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-3">
                     {index + 1}
                   </span>
                   <input
@@ -195,7 +195,7 @@ const CreateQuiz = () => {
                     name="text"
                     required
                     placeholder="Enter your question here..."
-                    className="flex-grow text-lg font-medium border-none focus:ring-0 placeholder-gray-300"
+                    className="flex-grow text-lg font-medium border-none focus:ring-0 placeholder-brand-text-muted"
                     value={q.text}
                     onChange={(e) => handleQuestionChange(index, e)}
                   />
@@ -203,49 +203,49 @@ const CreateQuiz = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-9">
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-bold text-gray-400">A</span>
+                    <span className="text-sm font-bold text-brand-text-muted">A</span>
                     <input
                       type="text"
                       name="optionA"
                       required
                       placeholder="Option A"
-                      className="flex-grow px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      className="flex-grow px-3 py-2 border border-brand-border rounded-lg text-sm focus:border-brand-primary-500 focus:ring-1 focus:ring-brand-primary-500/30"
                       value={q.optionA}
                       onChange={(e) => handleQuestionChange(index, e)}
                     />
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-bold text-gray-400">B</span>
+                    <span className="text-sm font-bold text-brand-text-muted">B</span>
                     <input
                       type="text"
                       name="optionB"
                       required
                       placeholder="Option B"
-                      className="flex-grow px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      className="flex-grow px-3 py-2 border border-brand-border rounded-lg text-sm focus:border-brand-primary-500 focus:ring-1 focus:ring-brand-primary-500/30"
                       value={q.optionB}
                       onChange={(e) => handleQuestionChange(index, e)}
                     />
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-bold text-gray-400">C</span>
+                    <span className="text-sm font-bold text-brand-text-muted">C</span>
                     <input
                       type="text"
                       name="optionC"
                       required
                       placeholder="Option C"
-                      className="flex-grow px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      className="flex-grow px-3 py-2 border border-brand-border rounded-lg text-sm focus:border-brand-primary-500 focus:ring-1 focus:ring-brand-primary-500/30"
                       value={q.optionC}
                       onChange={(e) => handleQuestionChange(index, e)}
                     />
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-bold text-gray-400">D</span>
+                    <span className="text-sm font-bold text-brand-text-muted">D</span>
                     <input
                       type="text"
                       name="optionD"
                       required
                       placeholder="Option D"
-                      className="flex-grow px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      className="flex-grow px-3 py-2 border border-brand-border rounded-lg text-sm focus:border-brand-primary-500 focus:ring-1 focus:ring-brand-primary-500/30"
                       value={q.optionD}
                       onChange={(e) => handleQuestionChange(index, e)}
                     />
@@ -254,10 +254,10 @@ const CreateQuiz = () => {
 
                 <div className="flex items-center justify-between ml-9 pt-2">
                   <div className="flex items-center space-x-4">
-                    <label className="text-sm font-medium text-gray-600">Correct Answer:</label>
+                    <label className="text-sm font-medium text-brand-text-secondary">Correct Answer:</label>
                     <select
                       name="correct"
-                      className="px-3 py-1 border border-gray-200 rounded-md text-sm focus:ring-blue-500"
+                      className="px-3 py-1 border border-brand-border rounded-md text-sm focus:ring-brand-primary-500/30"
                       value={q.correct}
                       onChange={(e) => handleQuestionChange(index, e)}
                     >
@@ -268,12 +268,12 @@ const CreateQuiz = () => {
                     </select>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <label className="text-sm font-medium text-gray-600">Points:</label>
+                    <label className="text-sm font-medium text-brand-text-secondary">Points:</label>
                     <input
                       type="number"
                       name="points"
                       min="1"
-                      className="w-16 px-2 py-1 border border-gray-200 rounded-md text-sm text-center"
+                      className="w-16 px-2 py-1 border border-brand-border rounded-md text-sm text-center"
                       value={q.points}
                       onChange={(e) => handleQuestionChange(index, e)}
                     />
@@ -288,14 +288,14 @@ const CreateQuiz = () => {
           <button
             type="button"
             onClick={() => navigate('/quizzes')}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            className="px-6 py-2 border border-brand-border rounded-lg text-brand-text-secondary hover:bg-brand-bg-page transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-8 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50"
+            className="px-8 py-2 bg-brand-primary-500 text-white rounded-lg hover:bg-brand-primary-600 transition-colors flex items-center disabled:opacity-50"
           >
             {loading ? (
               <span className="flex items-center">

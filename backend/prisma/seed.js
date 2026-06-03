@@ -145,16 +145,28 @@ async function main() {
   });
 
   console.log('Seeding Super Admin...');
+  const adminPassword = await bcrypt.hash('Admin123!', 10);
   // 3. Super Admin
   await prisma.user.upsert({
     where: { email: 'superadmin@university.com' },
-    update: { role: 'SUPER_ADMIN' },
+    update: { role: 'SUPER_ADMIN', adminRole: null, twoFactorEnabled: true },
     create: {
       email: 'superadmin@university.com',
       password: superAdminPassword,
       role: 'SUPER_ADMIN',
-      adminRole: 'SUPER_ADMIN'
+      twoFactorEnabled: true,
     }
+  });
+
+  // Admin account (matches README / login placeholder)
+  await prisma.user.upsert({
+    where: { email: 'admin@university.com' },
+    update: { role: 'ADMIN', password: adminPassword, adminRole: null },
+    create: {
+      email: 'admin@university.com',
+      password: adminPassword,
+      role: 'ADMIN',
+    },
   });
 
   console.log('Seeding ICT Curriculum (Year 1 Semester 1)...');

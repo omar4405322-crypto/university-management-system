@@ -65,32 +65,32 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses, onSuccess }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between p-6 border-b border-slate-100">
-          <h2 className="text-xl font-bold text-slate-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-navy-500/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-brand-bg-card rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-6 border-b border-brand-border">
+          <h2 className="text-xl font-bold text-brand-text-primary">
             {schedule ? 'Edit Schedule' : 'Create New Schedule'}
           </h2>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg transition-colors">
+          <button onClick={onClose} className="p-2 text-brand-text-muted hover:text-brand-text-secondary rounded-lg transition-colors">
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 form-section">
           {error && (
-            <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-sm flex items-center gap-2 border border-rose-100">
+            <div className="p-3 bg-error/10 text-error rounded-xl text-sm flex items-center gap-2 border border-error/20">
               <AlertCircle size={16} />
               {error}
             </div>
           )}
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <BookOpen size={14} className="text-slate-400" /> Course
+            <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2">
+              <BookOpen size={14} className="text-brand-text-muted" /> Course
             </label>
             <select
               required
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
+              className="w-full px-4 py-2 rounded-xl border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all bg-brand-bg-card"
               value={formData.courseId}
               onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
               disabled={!!schedule}
@@ -105,12 +105,12 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses, onSuccess }) => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <Calendar size={14} className="text-slate-400" /> Day of Week
+            <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2">
+              <Calendar size={14} className="text-brand-text-muted" /> Day of Week
             </label>
             <select
               required
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
+              className="w-full px-4 py-2 rounded-xl border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all bg-brand-bg-card"
               value={formData.dayOfWeek}
               onChange={(e) => setFormData({ ...formData, dayOfWeek: e.target.value })}
             >
@@ -122,25 +122,25 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses, onSuccess }) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Clock size={14} className="text-slate-400" /> Start Time
+              <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2">
+                <Clock size={14} className="text-brand-text-muted" /> Start Time
               </label>
               <input
                 type="time"
                 required
-                className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="w-full px-4 py-2 rounded-xl border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all"
                 value={formData.startTime}
                 onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Clock size={14} className="text-slate-400" /> End Time
+              <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2">
+                <Clock size={14} className="text-brand-text-muted" /> End Time
               </label>
               <input
                 type="time"
                 required
-                className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="w-full px-4 py-2 rounded-xl border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all"
                 value={formData.endTime}
                 onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
               />
@@ -148,13 +148,13 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses, onSuccess }) => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <MapPin size={14} className="text-slate-400" /> Room / Location
+            <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2">
+              <MapPin size={14} className="text-brand-text-muted" /> Room / Location
             </label>
             <input
               type="text"
               placeholder="e.g. Hall 302, Lab 105"
-              className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              className="w-full px-4 py-2 rounded-xl border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all"
               value={formData.room}
               onChange={(e) => setFormData({ ...formData, room: e.target.value })}
             />
