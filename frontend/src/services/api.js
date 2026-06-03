@@ -4,11 +4,13 @@ import axios from 'axios';
  * Enterprise-grade Axios instance with interceptors
  */
 const api = axios.create({ 
+  // In production (Vercel), we use relative paths. 
+  // In development, we can use VITE_API_URL or fallback to /api (which is proxied by Vite)
   baseURL: import.meta.env.VITE_API_URL || '/api', 
   headers: { 
     'Content-Type': 'application/json' 
   },
-  timeout: 15000, // 15 seconds timeout
+  timeout: 30000, // Increased timeout for serverless cold starts
 });
 
 // Interceptor to add token to headers
