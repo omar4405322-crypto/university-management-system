@@ -1,9 +1,16 @@
+// FIXED: View submissions opens modal with API results - Phase 5
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import quizService from '../../services/quiz.service';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { BookOpen, Clock, Plus, HelpCircle, FileText, CheckCircle } from 'lucide-react';
+import { BookOpen, Clock, HelpCircle, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import Card from '../../components/ui/Card';
+import Badge from '../../components/ui/Badge';
+import Button from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PageHeader } from '../../components/ui/PageHeader';
+import QuizSubmissionsModal from './QuizSubmissionsModal';
 
 const QuizzesList = () => {
   const { t } = useTranslation();
@@ -15,6 +22,7 @@ const QuizzesList = () => {
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [submissionsQuiz, setSubmissionsQuiz] = useState(null);
 
   const fetchQuizzes = async () => {
     try {
@@ -40,90 +48,116 @@ const QuizzesList = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto dark:bg-gray-900 transition-colors duration-200">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">{t('quizzes.title')}</h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-            {isDoctor ? t('quizzes.subtitleDoctor') : t('quizzes.subtitleStudent')}
-          </p>
-        </div>
-        {isDoctor && (
-          <button 
-            onClick={() => navigate('/quizzes/create')}
-            className="w-full sm:w-auto flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-150 shadow-sm"
-          >
-            <Plus size={18} className="mr-2" />
-            {t('quizzes.createQuiz')}
-          </button>
-        )}
-      </div>
+    <div className="section-gap animate-page">
+      <PageHeader 
+        title={t('quizzes.title')}
+        subtitle={isDoctor ? t('quizzes.subtitleDoctor') : t('quizzes.subtitleStudent')}
+        action={isDoctor ? {
+          label: t('quizzes.createQuiz'),
+          onClick: () => navigate('/quizzes/create')
+        } : null}
+      />
 
       {toast && (
-        <div className={`fixed top-20 right-4 z-50 p-4 rounded-md shadow-lg text-white transition-opacity duration-300 ${toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
-          {toast.message}
+        <div className={`${toast.type === 'error' ? 'toast-error' : 'toast-success'}`}>
+          <div className="flex items-center gap-2">
+            {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
+            <span className="font-medium">{toast.message}</span>
+          </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {loading ? (
-          <div className="col-span-full flex justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
+          <div className="col-span-full flex flex-col items-center justify-center py-24 gap-4">
+            <Loader2 className="animate-spin text-brand-primary-500" size={48} />
+            <p className="label-stat">Syncing assessments...</p>
           </div>
         ) : quizzes.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-dashed border-gray-300 dark:border-gray-700">
-            {t('quizzes.noQuizzes')}
+          <div className="col-span-full">
+            <EmptyState 
+              icon={<BookOpen size={48} />}
+              title={t('quizzes.noQuizzes')}
+              subtitle={isDoctor ? t('quizzes.subtitleDoctor') : t('quizzes.subtitleStudent')}
+              action={isDoctor ? {
+                label: t('quizzes.createQuiz'),
+                onClick: () => navigate('/quizzes/create')
+              } : null}
+            />
           </div>
         ) : (
           quizzes.map((quiz) => (
-            <div key={quiz.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-100 dark:border-gray-700 flex flex-col transition-transform hover:scale-[1.01]">
-              <div className="p-4 sm:p-5 flex-grow">
-                <div className="flex justify-between items-start mb-3">
-                  <span className="px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-[10px] sm:text-xs font-bold rounded uppercase tracking-wider">
+            <Card key={quiz.id} noPadding className="group hover:-translate-y-2 duration-500 border-none shadow-soft rounded-[2rem] overflow-hidden flex flex-col">
+              <div className="p-8 flex-grow">
+                <div className="flex justify-between items-start mb-6">
+                  <Badge variant="primary" className="px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-brand-navy-500 text-white border-none">
                     {quiz.course?.courseCode}
-                  </span>
-                  <div className="flex items-center text-gray-500 dark:text-gray-400 text-[10px] sm:text-xs">
-                    <Clock size={14} className="mr-1" />
-                    {quiz.duration} {t('quizzes.minutes')}
+                  </Badge>
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-surface-subtle dark:bg-slate-800/50">
+                    <Clock size={14} className="text-brand-primary-500" />
+                    <span className="text-[10px] font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">{quiz.duration} {t('quizzes.minutes')}</span>
                   </div>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white mb-2">{quiz.title}</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-4 line-clamp-2">
+
+                <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tight mb-3 group-hover:text-brand-primary-500 transition-colors">
+                  {quiz.title}
+                </h3>
+                <p className="text-sm font-bold text-brand-text-secondary mb-8 line-clamp-2 leading-relaxed opacity-80">
                   {quiz.description || t('common.noData')}
                 </p>
                 
-                <div className="space-y-2 text-[11px] sm:text-sm text-gray-500 dark:text-gray-400">
-                  <div className="flex items-center">
-                    <HelpCircle size={16} className="mr-2 text-gray-400 dark:text-gray-500" />
-                    <span>{quiz._count?.questions || 0} {t('quizzes.questions')}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface-subtle dark:bg-slate-800/50">
+                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center text-brand-primary-500">
+                      <HelpCircle size={16} />
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black text-brand-text-muted uppercase tracking-widest">Questions</p>
+                      <p className="text-xs font-black text-brand-text-primary dark:text-brand-text-main">{quiz._count?.questions || 0}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <BookOpen size={16} className="mr-2 text-gray-400 dark:text-gray-500" />
-                    <span className="truncate">{quiz.course?.name}</span>
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface-subtle dark:bg-slate-800/50">
+                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center text-brand-accent-emerald">
+                      <BookOpen size={16} />
+                    </div>
+                    <div className="truncate">
+                      <p className="text-[8px] font-black text-brand-text-muted uppercase tracking-widest">Course</p>
+                      <p className="text-xs font-black text-brand-text-primary dark:text-brand-text-main truncate max-w-[80px]">{quiz.course?.name}</p>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="px-4 sm:px-5 py-3 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 mt-auto">
+
+              <div className="px-8 py-5 bg-surface-subtle dark:bg-slate-800/30 border-t border-brand-border dark:border-brand-border mt-auto">
                 {isStudent ? (
-                  <button 
+                  <Button 
                     onClick={() => navigate(`/quizzes/${quiz.id}/take`)}
-                    className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition duration-150 flex items-center justify-center text-sm"
+                    className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 shadow-lg shadow-brand-primary-500/20"
                   >
-                    <FileText size={16} className="mr-2" />
+                    <FileText size={16} />
                     {t('quizzes.takeQuiz')}
-                  </button>
+                  </Button>
                 ) : (
-                  <button className="w-full border border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 py-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 transition duration-150 flex items-center justify-center text-sm">
-                    <CheckCircle size={16} className="mr-2" />
+                  <Button 
+                    variant="outline"
+                    className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 border-slate-200"
+                    onClick={() => setSubmissionsQuiz(quiz)}
+                  >
+                    <CheckCircle size={16} />
                     {t('quizzes.viewSubmissions')}
-                  </button>
+                  </Button>
                 )}
               </div>
-            </div>
-          ))
-        )}
+            </Card>
+          )))}
+        </div>
+
+      <QuizSubmissionsModal
+        isOpen={Boolean(submissionsQuiz)}
+        onClose={() => setSubmissionsQuiz(null)}
+        quiz={submissionsQuiz}
+      />
       </div>
-    </div>
   );
 };
 

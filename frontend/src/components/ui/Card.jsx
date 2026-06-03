@@ -1,19 +1,32 @@
 import React from 'react';
 
-const Card = ({ children, title, subtitle, footer, className = '', noPadding = false }) => {
+const Card = ({ children, title, subtitle, footer, className = '', noPadding = false, borderLeft = false, variant = 'default', ...props }) => {
+  const variants = {
+    elevated: 'card-elevated hover:shadow-elevated',
+    default: 'card-default hover:shadow-card',
+    subtle: 'card-subtle',
+  };
+
   return (
-    <div className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden ${className}`}>
+    <div
+      className={`${variants[variant]} overflow-hidden ${borderLeft ? 'border-r-4 border-r-brand-primary-500 rtl:border-l-4 rtl:border-l-brand-primary-500 rtl:border-r-0' : ''} ${className}`}
+      {...props}
+    >
       {(title || subtitle) && (
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
-          {title && <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h3>}
-          {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{subtitle}</p>}
+        <div className="card-header">
+          {title && (
+            <h3 className="heading-2 m-0">{title}</h3>
+          )}
+          {subtitle && (
+            <p className="text-caption mt-1.5">{subtitle}</p>
+          )}
         </div>
       )}
-      <div className={noPadding ? '' : 'p-6'}>
+      <div className={noPadding ? '' : 'card-body'}>
         {children}
       </div>
       {footer && (
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700">
+        <div className="card-footer">
           {footer}
         </div>
       )}

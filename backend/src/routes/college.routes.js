@@ -7,15 +7,17 @@ const {
   deleteCollege 
 } = require('../controllers/college.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
+const { collegeValidation, adminIdValidation } = require('../validations/admin.validation');
+const validate = require('../middleware/validate.middleware');
 
 const router = express.Router();
 
 router.get('/', getAllColleges);
-router.get('/:id', getCollegeById);
+router.get('/:id', adminIdValidation, validate, getCollegeById);
 
 // Admin only routes
-router.post('/', protect, authorize('SUPER_ADMIN'), createCollege);
-router.put('/:id', protect, authorize('SUPER_ADMIN'), updateCollege);
-router.delete('/:id', protect, authorize('SUPER_ADMIN'), deleteCollege);
+router.post('/', protect, authorize('SUPER_ADMIN'), collegeValidation, validate, createCollege);
+router.put('/:id', protect, authorize('SUPER_ADMIN'), [...adminIdValidation, ...collegeValidation], validate, updateCollege);
+router.delete('/:id', protect, authorize('SUPER_ADMIN'), adminIdValidation, validate, deleteCollege);
 
 module.exports = router;

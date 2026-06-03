@@ -4,6 +4,29 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 
+// FIXED: Two-factor enable/disable for super admins - Phase 3
+exports.updateTwoFactor = async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { twoFactorEnabled: Boolean(enabled) },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        twoFactorEnabled: true,
+        profilePicture: true,
+      },
+    });
+
+    res.json({ success: true, data: user });
+  } catch (error) {
+    console.error('Update 2FA error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // @desc    Get current user profile
 // @route   GET /api/users/profile
 // @access  Private
@@ -241,6 +264,17 @@ exports.updateProfilePicture = async (req, res) => {
 // @desc    Get all users (Admins only)
 // @route   GET /api/users
 // @access  Private/Admin
+// FIXED: Parse role query (comma-separated or array) so /admins only returns admin roles - Phase 2
+const parseRoleFilter = (roleParam) => {
+  if (!roleParam) return null;
+  if (Array.isArray(roleParam)) return roleParam.map((r) => String(r).trim()).filter(Boolean);
+  const str = String(roleParam).trim();
+  if (!str) return null;
+  return str.split(',').map((r) => r.trim()).filter(Boolean);
+};
+
+const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'];
+
 exports.getAllUsers = async (req, res) => {
   try {
     const { role, collegeId, departmentId } = req.query;
@@ -254,12 +288,9 @@ exports.getAllUsers = async (req, res) => {
     }
 
     const where = {};
-    if (role) {
-      if (Array.isArray(role)) {
-        where.role = { in: role };
-      } else {
-        where.role = role;
-      }
+    const roles = parseRoleFilter(role);
+    if (roles?.length) {
+      where.role = { in: roles };
     }
     if (collegeId) where.collegeId = parseInt(collegeId);
     if (departmentId) where.departmentId = parseInt(departmentId);
@@ -290,19 +321,16 @@ exports.getAllUsers = async (req, res) => {
         departmentId: true,
         college: { select: { name: true } },
         department: { select: { name: true } },
-        doctor: {
-          select: {
-            firstName: true,
-            lastName: true,
-            phone: true
-          }
-        },
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json({ success: true, data: users });
+    const data = roles?.length
+      ? users.filter((u) => ADMIN_ROLES.includes(u.role))
+      : users;
+
+    res.json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

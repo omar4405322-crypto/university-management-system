@@ -11,6 +11,11 @@ const examsService = {
     return response.data;
   },
 
+  getExamById: async (id) => {
+    const response = await api.get(`/exams/${id}`);
+    return response.data;
+  },
+
   createExam: async (data) => {
     const response = await api.post('/exams', data);
     return response.data;

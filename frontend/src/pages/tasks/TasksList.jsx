@@ -3,7 +3,12 @@ import taskService from '../../services/task.service';
 import coursesService from '../../services/courses.service';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { ClipboardList, Calendar, Plus, FileUp, CheckCircle, Clock, X, Send } from 'lucide-react';
+import { ClipboardList, Calendar, Plus, FileUp, CheckCircle, Clock, X, Send, AlertCircle, Loader2 } from 'lucide-react';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PageHeader } from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import Badge from '../../components/ui/Badge';
+import Button from '../../components/ui/Button';
 
 const TasksList = () => {
   const { t } = useTranslation();
@@ -109,68 +114,64 @@ const TasksList = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto dark:bg-gray-900 transition-colors duration-200">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 space-y-4 sm:space-y-0">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">{t('tasks.title')}</h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-            {isDoctor ? t('tasks.subtitleDoctor') : t('tasks.subtitleStudent')}
-          </p>
-        </div>
-        {isDoctor && (
-          <button 
-            onClick={() => setShowCreateModal(true)}
-            className="w-full sm:w-auto flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-150 shadow-sm"
-          >
-            <Plus size={18} className="mr-2" />
-            {t('tasks.createTask')}
-          </button>
-        )}
-      </div>
-
+    <div className="section-gap animate-page">
+      {/* Toast Notification */}
       {toast && (
-        <div className={`fixed top-20 right-4 z-50 p-4 rounded-md shadow-lg text-white transition-opacity duration-300 ${toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
-          {toast.message}
+        <div className={`${toast.type === 'error' ? 'toast-error' : 'toast-success'}`}>
+          <div className="flex items-center gap-2">
+            {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
+            <span className="font-medium">{toast.message}</span>
+          </div>
         </div>
       )}
+
+      {/* FIXED: Move action button next to title */}
+      <PageHeader 
+        title={t('tasks.title')}
+        subtitle={isDoctor ? t('tasks.subtitleDoctor') : t('tasks.subtitleStudent')}
+        action={isDoctor ? {
+          label: t('tasks.createTask'),
+          onClick: () => setShowCreateModal(true)
+        } : null}
+      />
 
       {/* Create Task Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-gray-700">
-            <div className="p-4 sm:p-6 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700/50">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">{t('tasks.createTask')}</h2>
-              <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <div className="bg-brand-bg-card rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 border border-brand-border">
+            <div className="p-4 sm:p-6 border-b border-brand-border flex justify-between items-center bg-brand-bg-page">
+              <h2 className="text-lg sm:text-xl font-bold text-brand-text-main">{t('tasks.createTask')}</h2>
+              <button onClick={() => setShowCreateModal(false)} className="text-brand-text-muted hover:text-brand-text-sub">
                 <X size={24} />
               </button>
             </div>
             <form onSubmit={handleCreateTask} className="p-4 sm:p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('auth.title')}</label>
+                <label className="block text-sm font-medium text-brand-text-sub">{t('auth.title')}</label>
                 <input
                   type="text"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-white"
+                  className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-2 focus:ring-brand-primary-500 outline-none bg-brand-bg-card"
                   value={createFormData.title}
                   onChange={(e) => setCreateFormData({...createFormData, title: e.target.value})}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('profile.bio')}</label>
+                <label className="block text-sm font-medium text-brand-text-sub">{t('profile.bio')}</label>
                 <textarea
                   required
                   rows="3"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-white"
+                  className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-2 focus:ring-brand-primary-500 outline-none bg-brand-bg-card"
                   value={createFormData.description}
                   onChange={(e) => setCreateFormData({...createFormData, description: e.target.value})}
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('nav.courses')}</label>
+                  <label className="block text-sm font-medium text-brand-text-sub">{t('nav.courses')}</label>
                   <select
                     required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-white"
+                    className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-2 focus:ring-brand-primary-500 outline-none bg-brand-bg-card"
                     value={createFormData.courseId}
                     onChange={(e) => setCreateFormData({...createFormData, courseId: e.target.value})}
                   >
@@ -181,22 +182,22 @@ const TasksList = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('tasks.maxPoints')}</label>
+                  <label className="block text-sm font-medium text-brand-text-sub">{t('tasks.maxPoints')}</label>
                   <input
                     type="number"
                     required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-white"
+                    className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-2 focus:ring-brand-primary-500 outline-none bg-brand-bg-card"
                     value={createFormData.maxScore}
                     onChange={(e) => setCreateFormData({...createFormData, maxScore: e.target.value})}
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('tasks.due')}</label>
+                <label className="block text-sm font-medium text-brand-text-sub">{t('tasks.due')}</label>
                 <input
                   type="datetime-local"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-white"
+                  className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-2 focus:ring-brand-primary-500 outline-none bg-brand-bg-card"
                   value={createFormData.dueDate}
                   onChange={(e) => setCreateFormData({...createFormData, dueDate: e.target.value})}
                 />
@@ -205,14 +206,14 @@ const TasksList = () => {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                  className="px-4 py-2 text-brand-text-sub hover:bg-brand-bg-page rounded-md"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 shadow-sm"
+                  className="px-6 py-2 bg-brand-primary-500 text-white rounded-md hover:bg-brand-primary-600 disabled:opacity-50 shadow-sm"
                 >
                   {submitting ? t('common.loading') : t('tasks.createTask')}
                 </button>
@@ -225,33 +226,33 @@ const TasksList = () => {
       {/* Submit Task Modal */}
       {showSubmitModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 border dark:border-gray-700">
-            <div className="p-4 sm:p-6 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700/50">
+          <div className="bg-brand-bg-card rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 border border-brand-border">
+            <div className="p-4 sm:p-6 border-b border-brand-border flex justify-between items-center bg-brand-bg-page">
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">{t('tasks.submitTask')}</h2>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{selectedTask?.title}</p>
+                <h2 className="text-lg sm:text-xl font-bold text-brand-text-main">{t('tasks.submitTask')}</h2>
+                <p className="text-xs sm:text-sm text-brand-text-muted">{selectedTask?.title}</p>
               </div>
-              <button onClick={() => setShowSubmitModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+              <button onClick={() => setShowSubmitModal(false)} className="text-brand-text-muted hover:text-brand-text-sub">
                 <X size={24} />
               </button>
             </div>
             <form onSubmit={handleSubmitTask} className="p-4 sm:p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('tasks.submissions')} {t('profile.bio')}</label>
+                <label className="block text-sm font-medium text-brand-text-sub">{t('tasks.submissions')} {t('profile.bio')}</label>
                 <textarea
                   rows="3"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-white"
+                  className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-2 focus:ring-brand-primary-500 outline-none bg-brand-bg-card"
                   placeholder="..."
                   value={submitFormData.notes}
                   onChange={(e) => setSubmitFormData({...submitFormData, notes: e.target.value})}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">File URL</label>
+                <label className="block text-sm font-medium text-brand-text-sub">File URL</label>
                 <input
                   type="url"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-white"
+                  className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-2 focus:ring-brand-primary-500 outline-none bg-brand-bg-card"
                   placeholder="https://..."
                   value={submitFormData.fileUrl}
                   onChange={(e) => setSubmitFormData({...submitFormData, fileUrl: e.target.value})}
@@ -261,14 +262,14 @@ const TasksList = () => {
                 <button
                   type="button"
                   onClick={() => setShowSubmitModal(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                  className="px-4 py-2 text-brand-text-sub hover:bg-brand-bg-page rounded-md"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center justify-center shadow-sm"
+                  className="px-6 py-2 bg-brand-primary-500 text-white rounded-md hover:bg-brand-primary-600 disabled:opacity-50 flex items-center justify-center shadow-sm"
                 >
                   {submitting ? t('common.loading') : (
                     <>
@@ -282,65 +283,92 @@ const TasksList = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {loading ? (
-          <div className="col-span-full flex justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
+          <div className="col-span-full flex flex-col items-center justify-center py-24 gap-4">
+            <Loader2 className="animate-spin text-brand-primary-500" size={48} />
+            <p className="label-stat">Syncing assignments...</p>
           </div>
         ) : tasks.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-dashed border-gray-300 dark:border-gray-700">
-            {t('tasks.noTasks')}
+          <div className="col-span-full">
+            <EmptyState 
+              icon={<ClipboardList size={48} />}
+              title={t('tasks.noTasks', 'No Assignments')}
+              subtitle={isDoctor ? t('tasks.subtitleDoctor') : t('tasks.subtitleStudent')}
+              action={isDoctor ? {
+                label: t('tasks.createTask'),
+                onClick: () => setShowCreateModal(true)
+              } : null}
+            />
           </div>
         ) : (
           tasks.map((task) => (
-            <div key={task.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-100 dark:border-gray-700 flex flex-col transition-transform hover:scale-[1.01]">
-              <div className="p-4 sm:p-5 flex-grow">
-                <div className="flex justify-between items-start mb-3">
-                  <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] sm:text-xs font-bold rounded uppercase tracking-wider">
+            <Card key={task.id} noPadding className="group hover:-translate-y-2 duration-500 border-none shadow-soft rounded-[2rem] overflow-hidden flex flex-col">
+              <div className="p-8 flex-grow">
+                <div className="flex justify-between items-start mb-6">
+                  <Badge variant="primary" className="px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-brand-navy-500 text-white border-none">
                     {task.course?.courseCode}
-                  </span>
-                  <div className={`flex items-center text-[10px] sm:text-xs font-medium ${isOverdue(task.dueDate) ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                    <Clock size={14} className="mr-1" />
-                    {t('tasks.due')}: {new Date(task.dueDate).toLocaleDateString()}
+                  </Badge>
+                  <div className={`flex items-center gap-2 p-2 rounded-xl ${isOverdue(task.dueDate) ? 'bg-rose-50 dark:bg-rose-900/10 text-rose-500' : 'bg-surface-subtle dark:bg-slate-800/50 text-brand-primary-500'}`}>
+                    <Clock size={14} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">
+                      {new Date(task.dueDate).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white mb-2">{task.title}</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-4 line-clamp-3">
+
+                <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tight mb-3 group-hover:text-brand-primary-500 transition-colors">
+                  {task.title}
+                </h3>
+                <p className="text-sm font-bold text-brand-text-secondary mb-8 line-clamp-2 leading-relaxed opacity-80">
                   {task.description}
                 </p>
                 
-                <div className="mt-4 pt-4 border-t border-gray-50 dark:border-gray-700 flex justify-between items-center text-[11px] sm:text-sm">
-                  <div className="flex items-center text-gray-500 dark:text-gray-400">
-                    <ClipboardList size={16} className="mr-1" />
-                    {t('tasks.maxPoints')}: {task.maxScore}
-                  </div>
-                  {isDoctor && (
-                    <div className="text-blue-600 dark:text-blue-400 font-medium">
-                      {task._count?.submissions || 0} {t('tasks.submissions')}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface-subtle dark:bg-slate-800/50">
+                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center text-brand-accent-yellow">
+                      <Send size={16} />
                     </div>
-                  )}
+                    <div>
+                      <p className="text-[8px] font-black text-brand-text-muted uppercase tracking-widest">Points</p>
+                      <p className="text-xs font-black text-brand-text-primary dark:text-brand-text-main">{task.maxScore}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface-subtle dark:bg-slate-800/50">
+                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center text-brand-primary-500">
+                      <Calendar size={16} />
+                    </div>
+                    <div className="truncate">
+                      <p className="text-[8px] font-black text-brand-text-muted uppercase tracking-widest">Course</p>
+                      <p className="text-xs font-black text-brand-text-primary dark:text-brand-text-main truncate max-w-[80px]">{task.course?.name}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="px-4 sm:px-5 py-3 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 mt-auto">
+
+              <div className="px-8 py-5 bg-surface-subtle dark:bg-slate-800/30 border-t border-brand-border dark:border-brand-border mt-auto">
                 {isStudent ? (
-                  <button 
+                  <Button 
                     onClick={() => {
                       setSelectedTask(task);
-                      setShowSubmitModal(true);
-                    }}
-                    className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition duration-150 flex items-center justify-center text-sm"
+                      setShowSubmitModal(true)}
+                    }
+                    className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 shadow-lg shadow-brand-primary-500/20"
                   >
-                    <FileUp size={16} className="mr-2" />
+                    <FileUp size={16} />
                     {t('tasks.submitTask')}
-                  </button>
+                  </Button>
                 ) : (
-                  <button className="w-full border border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 py-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 transition duration-150 flex items-center justify-center text-sm">
-                    <CheckCircle size={16} className="mr-2" />
-                    {t('tasks.gradeSubmissions')}
-                  </button>
+                  <Button 
+                    variant="outline"
+                    className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 border-slate-200"
+                  >
+                    <CheckCircle size={16} />
+                    {t('tasks.viewSubmissions')}
+                  </Button>
                 )}
               </div>
-            </div>
+            </Card>
           ))
         )}
       </div>

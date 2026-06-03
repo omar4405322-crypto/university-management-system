@@ -25,6 +25,11 @@ const studentsService = {
     const response = await api.delete(`/students/${id}`);
     return response.data;
   },
+
+  toggleStatus: async (id) => {
+    const response = await api.patch(`/students/${id}/status`);
+    return response.data;
+  },
 };
 
 export default studentsService;

@@ -11,6 +11,11 @@ const coursesService = {
     return response.data;
   },
 
+  getCourseRoster: async (id) => {
+    const response = await api.get(`/courses/${id}/roster`);
+    return response.data;
+  },
+
   createCourse: async (data) => {
     const response = await api.post('/courses', data);
     return response.data;

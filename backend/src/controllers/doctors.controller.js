@@ -1,6 +1,54 @@
+// FIXED: Live stats endpoint for doctors dashboard cards - Phase 2
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
+
+const getScopeWhere = (user) => {
+  const scopeWhere = {};
+  if (user.role === 'COLLEGE_ADMIN') {
+    scopeWhere.department = { collegeId: user.collegeId };
+  } else if (user.role === 'DEPARTMENT_ADMIN') {
+    scopeWhere.departmentId = user.departmentId;
+  }
+  return scopeWhere;
+};
+
+exports.getDoctorStats = async (req, res) => {
+  try {
+    const scopeWhere = getScopeWhere(req.user);
+    const courseWhere = {};
+    if (req.user.role === 'COLLEGE_ADMIN') {
+      courseWhere.department = { collegeId: req.user.collegeId };
+    } else if (req.user.role === 'DEPARTMENT_ADMIN') {
+      courseWhere.departmentId = req.user.departmentId;
+    }
+
+    const [totalFaculty, activeProfessors, totalCourses, researchProjects] = await Promise.all([
+      prisma.doctor.count({ where: scopeWhere }),
+      prisma.doctor.count({
+        where: { ...scopeWhere, courses: { some: {} } },
+      }),
+      prisma.course.count({ where: courseWhere }),
+      prisma.task.count({
+        where: Object.keys(scopeWhere).length
+          ? { doctor: scopeWhere }
+          : {},
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        totalFaculty,
+        activeProfessors,
+        totalCourses,
+        researchProjects,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 exports.getAllDoctors = async (req, res) => {
   try {
@@ -8,13 +56,7 @@ exports.getAllDoctors = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
 
-    // Enforce scope based on user role
-    const scopeWhere = {};
-    if (req.user.role === 'COLLEGE_ADMIN') {
-      scopeWhere.department = { collegeId: req.user.collegeId };
-    } else if (req.user.role === 'DEPARTMENT_ADMIN') {
-      scopeWhere.departmentId = req.user.departmentId;
-    }
+    const scopeWhere = getScopeWhere(req.user);
 
     const where = {
       ...scopeWhere,

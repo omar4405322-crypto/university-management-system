@@ -15,8 +15,12 @@ const updatePassword = async (data) => {
   return response.data;
 };
 
-const getUsers = async (params) => {
-  const response = await api.get('/users', { params });
+const getUsers = async (params = {}) => {
+  const query = { ...params };
+  if (Array.isArray(query.role)) {
+    query.role = query.role.join(',');
+  }
+  const response = await api.get('/users', { params: query });
   return response.data;
 };
 

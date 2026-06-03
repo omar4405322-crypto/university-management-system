@@ -1,258 +1,220 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const catchAsync = require('../utils/catchAsync');
+const { NotFoundError } = require('../utils/appError');
 
-exports.getAllCourses = async (req, res) => {
-  try {
-    const { search = '', doctorId, departmentId, collegeId } = req.query;
+/**
+ * @desc    Get all courses with advanced filtering, sorting and pagination
+ * @route   GET /api/courses
+ * @access  Private
+ */
+exports.getAllCourses = catchAsync(async (req, res, next) => {
+  const { 
+    search = '', 
+    page = 1, 
+    limit = 10, 
+    sortBy = 'createdAt', 
+    sortOrder = 'desc',
+    departmentId,
+    year,
+    semester
+  } = req.query;
 
-    // Enforce scope based on user role
-    let scopeWhere = {};
-    if (req.user.role === 'COLLEGE_ADMIN') {
-      scopeWhere = { department: { collegeId: req.user.collegeId } };
-    } else if (req.user.role === 'DEPARTMENT_ADMIN') {
-      scopeWhere = { departmentId: req.user.departmentId };
-    } else if (req.user.role === 'DOCTOR') {
-      const doctor = await prisma.doctor.findUnique({ where: { userId: req.user.id } });
-      if (doctor) {
-        scopeWhere = { doctorId: doctor.id };
-      }
-    }
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const take = parseInt(limit);
 
-    const where = {
-      AND: [
-        scopeWhere,
-        search
-          ? {
-              OR: [
-                { name: { contains: search, mode: 'insensitive' } },
-                { courseCode: { contains: search, mode: 'insensitive' } },
-              ],
-            }
-          : {},
-        doctorId ? { doctorId: parseInt(doctorId) } : {},
-        departmentId ? { departmentId: parseInt(departmentId) } : {},
-        collegeId ? { department: { collegeId: parseInt(collegeId) } } : {},
+  const where = {
+    ...(departmentId && { departmentId: parseInt(departmentId) }),
+    ...(year && { year: parseInt(year) }),
+    ...(semester && { semester: parseInt(semester) }),
+    ...(search && {
+      OR: [
+        { name: { contains: search, mode: 'insensitive' } },
+        { courseCode: { contains: search, mode: 'insensitive' } },
       ],
-    };
+    }),
+  };
 
-    const courses = await prisma.course.findMany({
+  const [courses, total] = await Promise.all([
+    prisma.course.findMany({
       where,
       include: {
-        department: {
-          include: {
-            college: true
-          }
-        },
-        doctor: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        _count: {
-          select: {
-            students: true
-          }
-        }
+        department: { select: { name: true } },
+        doctor: { select: { firstName: true, lastName: true } },
+        _count: { select: { students: true } }
       },
-      orderBy: { courseCode: 'asc' },
-    });
+      skip,
+      take,
+      orderBy: { [sortBy]: sortOrder },
+    }),
+    prisma.course.count({ where })
+  ]);
 
-    res.json({ success: true, data: courses });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+  res.json({
+    success: true,
+    data: {
+      courses,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: take,
+        totalPages: Math.ceil(total / take),
+      }
+    },
+  });
+});
 
-exports.getCourseById = async (req, res) => {
-  try {
-    const course = await prisma.course.findUnique({
-      where: { id: parseInt(req.params.id) },
-      include: {
-        department: {
-          include: {
-            college: true
-          }
-        },
-        doctor: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            specialty: true,
-          },
-        },
-        students: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            studentId: true,
-          }
-        }
+/**
+ * @desc    Get course by ID with stats
+ * @route   GET /api/courses/:id
+ * @access  Private
+ */
+exports.getCourseById = catchAsync(async (req, res, next) => {
+  const course = await prisma.course.findUnique({
+    where: { id: parseInt(req.params.id) },
+    include: {
+      department: { include: { college: true } },
+      doctor: true,
+      students: {
+        select: { id: true, firstName: true, lastName: true, studentId: true },
       },
-    });
-
-    if (!course) {
-      return res.status(404).json({ success: false, message: 'Course not found' });
-    }
-
-    // Enforce scope
-    if (req.user.role === 'COLLEGE_ADMIN' && course.department?.collegeId !== req.user.collegeId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-    if (req.user.role === 'DEPARTMENT_ADMIN' && course.departmentId !== req.user.departmentId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-
-    res.json({ success: true, data: course });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.createCourse = async (req, res) => {
-  let { courseCode, name, description, credits, maxStudents, doctorId, departmentId, year, semester } = req.body;
-
-  try {
-    // Enforce scope
-    if (req.user.role === 'DEPARTMENT_ADMIN') {
-      departmentId = req.user.departmentId;
-    } else if (req.user.role === 'COLLEGE_ADMIN') {
-      if (departmentId) {
-        const dept = await prisma.department.findUnique({ where: { id: parseInt(departmentId) } });
-        if (!dept || dept.collegeId !== req.user.collegeId) {
-          return res.status(403).json({ success: false, message: 'Invalid department for your college' });
+      schedules: true,
+      _count: {
+        select: {
+          students: true,
+          quizzes: true,
+          tasks: true,
+          exams: true
         }
       }
-    }
+    },
+  });
 
-    const existingCourse = await prisma.course.findUnique({ where: { courseCode } });
-    if (existingCourse) {
-      return res.status(400).json({ success: false, message: 'Course code already exists' });
-    }
-
-    const course = await prisma.course.create({
-      data: {
-        courseCode,
-        name,
-        description,
-        credits: parseInt(credits),
-        maxStudents: parseInt(maxStudents),
-        doctorId: doctorId ? parseInt(doctorId) : null,
-        departmentId: departmentId ? parseInt(departmentId) : null,
-        year: year ? parseInt(year) : 1,
-        semester: semester ? parseInt(semester) : 1,
-      },
-      include: {
-        department: true,
-        doctor: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-    });
-
-    res.status(201).json({ success: true, data: course });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  if (!course) {
+    return next(new NotFoundError('Course not found'));
   }
-};
 
-exports.updateCourse = async (req, res) => {
-  const { name, description, credits, maxStudents, doctorId, departmentId, year, semester } = req.body;
-  const id = parseInt(req.params.id);
+  res.json({
+    success: true,
+    data: course,
+  });
+});
 
-  try {
-    // Find course first to check scope
-    const course = await prisma.course.findUnique({
-      where: { id },
-      include: { department: true }
-    });
-
-    if (!course) {
-      return res.status(404).json({ success: false, message: 'Course not found' });
-    }
-
-    // Enforce scope
-    if (req.user.role === 'COLLEGE_ADMIN' && course.department?.collegeId !== req.user.collegeId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-    if (req.user.role === 'DEPARTMENT_ADMIN' && course.departmentId !== req.user.departmentId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-
-    // If changing department, check scope for new department
-    if (departmentId) {
-      if (req.user.role === 'DEPARTMENT_ADMIN' && parseInt(departmentId) !== req.user.departmentId) {
-        return res.status(403).json({ success: false, message: 'Cannot move course to another department' });
-      }
-      if (req.user.role === 'COLLEGE_ADMIN') {
-        const newDept = await prisma.department.findUnique({ where: { id: parseInt(departmentId) } });
-        if (!newDept || newDept.collegeId !== req.user.collegeId) {
-          return res.status(403).json({ success: false, message: 'Invalid department for your college' });
-        }
-      }
-    }
-
-    const updatedCourse = await prisma.course.update({
-      where: { id },
-      data: {
-        name,
-        description,
-        credits: parseInt(credits),
-        maxStudents: parseInt(maxStudents),
-        doctorId: doctorId ? parseInt(doctorId) : null,
-        departmentId: departmentId ? parseInt(departmentId) : null,
-        year: year ? parseInt(year) : undefined,
-        semester: semester ? parseInt(semester) : undefined,
+/**
+ * @desc    Course roster for attendance (enrolled + same dept/year)
+ * @route   GET /api/courses/:id/roster
+ * @access  Private
+ */
+exports.getCourseRoster = catchAsync(async (req, res, next) => {
+  const courseId = parseInt(req.params.id, 10);
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: {
+      id: true,
+      departmentId: true,
+      year: true,
+      students: {
+        select: { id: true, firstName: true, lastName: true, studentId: true },
       },
-      include: {
-        department: true,
-        doctor: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
+    },
+  });
+
+  if (!course) {
+    return next(new NotFoundError('Course not found'));
+  }
+
+  const rosterMap = new Map();
+  course.students.forEach((s) => rosterMap.set(s.id, s));
+
+  if (course.departmentId) {
+    const deptStudents = await prisma.student.findMany({
+      where: {
+        departmentId: course.departmentId,
+        year: course.year,
+        OR: [{ bio: null }, { bio: { not: 'INACTIVE' } }],
       },
+      select: { id: true, firstName: true, lastName: true, studentId: true },
+      orderBy: { lastName: 'asc' },
     });
-
-    res.json({ success: true, data: updatedCourse });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    deptStudents.forEach((s) => rosterMap.set(s.id, s));
   }
-};
 
-exports.deleteCourse = async (req, res) => {
-  const id = parseInt(req.params.id);
-  try {
-    const course = await prisma.course.findUnique({
-      where: { id },
-      include: { department: true }
-    });
+  res.json({
+    success: true,
+    data: Array.from(rosterMap.values()),
+  });
+});
 
-    if (!course) {
-      return res.status(404).json({ success: false, message: 'Course not found' });
-    }
+/**
+ * @desc    Create new course
+ * @route   POST /api/courses
+ * @access  Private (Admin)
+ */
+exports.createCourse = catchAsync(async (req, res, next) => {
+  const courseData = req.body;
+  
+  const newCourse = await prisma.course.create({
+    data: {
+      ...courseData,
+      credits: parseInt(courseData.credits),
+      departmentId: parseInt(courseData.departmentId),
+      doctorId: courseData.doctorId ? parseInt(courseData.doctorId) : undefined,
+      maxStudents: courseData.maxStudents ? parseInt(courseData.maxStudents) : undefined,
+      year: courseData.year ? parseInt(courseData.year) : undefined,
+      semester: courseData.semester ? parseInt(courseData.semester) : undefined,
+    },
+  });
 
-    // Enforce scope
-    if (req.user.role === 'COLLEGE_ADMIN' && course.department?.collegeId !== req.user.collegeId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-    if (req.user.role === 'DEPARTMENT_ADMIN' && course.departmentId !== req.user.departmentId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
+  res.status(201).json({
+    success: true,
+    data: newCourse,
+  });
+});
 
-    await prisma.course.delete({
-      where: { id },
-    });
+/**
+ * @desc    Update course
+ * @route   PUT /api/courses/:id
+ * @access  Private (Admin)
+ */
+exports.updateCourse = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const updateData = req.body;
 
-    res.json({ success: true, message: 'Course deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+  const updatedCourse = await prisma.course.update({
+    where: { id: parseInt(id) },
+    data: {
+      ...updateData,
+      credits: updateData.credits ? parseInt(updateData.credits) : undefined,
+      departmentId: updateData.departmentId ? parseInt(updateData.departmentId) : undefined,
+      doctorId: updateData.doctorId ? parseInt(updateData.doctorId) : undefined,
+      maxStudents: updateData.maxStudents ? parseInt(updateData.maxStudents) : undefined,
+      year: updateData.year ? parseInt(updateData.year) : undefined,
+      semester: updateData.semester ? parseInt(updateData.semester) : undefined,
+    },
+  });
+
+  res.json({
+    success: true,
+    data: updatedCourse,
+  });
+});
+
+/**
+ * @desc    Delete course
+ * @route   DELETE /api/courses/:id
+ * @access  Private (Admin)
+ */
+exports.deleteCourse = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  await prisma.$transaction([
+    prisma.schedule.deleteMany({ where: { courseId: parseInt(id) } }),
+    prisma.attendance.deleteMany({ where: { courseId: parseInt(id) } }),
+    prisma.course.delete({ where: { id: parseInt(id) } }),
+  ]);
+
+  res.json({
+    success: true,
+    message: 'Course deleted successfully',
+  });
+});

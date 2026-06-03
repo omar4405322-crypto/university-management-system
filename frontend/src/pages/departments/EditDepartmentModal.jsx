@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import departmentService from '../../services/department.service';
+import Modal from '../../components/ui/Modal';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import { useTranslation } from 'react-i18next';
+import { School, GraduationCap, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 const EditDepartmentModal = ({ isOpen, onClose, department, colleges, onSuccess }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: '',
     nameAr: '',
@@ -18,7 +24,7 @@ const EditDepartmentModal = ({ isOpen, onClose, department, colleges, onSuccess 
         collegeId: department.collegeId || '',
       });
     }
-  }, [department]);
+  }, [department, isOpen]);
 
   const showToast = (message, type) => {
     setToast({ message, type });
@@ -36,7 +42,7 @@ const EditDepartmentModal = ({ isOpen, onClose, department, colleges, onSuccess 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.collegeId) {
-      showToast('Please fill all required fields', 'error');
+      showToast(t('departments.fillRequired'), 'error');
       return;
     }
 
@@ -47,95 +53,94 @@ const EditDepartmentModal = ({ isOpen, onClose, department, colleges, onSuccess 
         onSuccess();
       }
     } catch (error) {
-      showToast(error.response?.data?.message || 'Error updating department', 'error');
+      showToast(error.response?.data?.message || t('departments.updateError'), 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-lg overflow-hidden">
-        <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-          <h2 className="text-xl font-bold text-gray-800">Edit Department</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t('departments.editDept')}
+      subtitle={t('departments.editDesc')}
+    >
+      <form onSubmit={handleSubmit} className="form-section">
+        {toast && (
+          <div className={`p-4 rounded-xl text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-300 ${toast.type === 'error' ? 'bg-rose-500' : 'bg-brand-green'}`}>
+            {toast.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle size={20} />}
+            <span className="font-medium">{toast.message}</span>
+          </div>
+        )}
+
+        <div className="space-y-5">
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <School size={14} className="text-brand-text-muted" /> {t('colleges.parentCollege')} <span className="text-rose-500">*</span>
+            </label>
+            <select
+              name="collegeId"
+              value={formData.collegeId}
+              onChange={handleChange}
+              className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer select-custom-arrow"
+              required
+            >
+              <option value="">{t('auth.selectCollege')}</option>
+              {colleges.map(college => (
+                <option key={college.id} value={college.id}>{college.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <GraduationCap size={14} className="text-brand-text-muted" /> {t('departments.nameEn')} <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="e.g. Computer Science"
+              required
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <GraduationCap size={14} className="text-brand-text-muted" /> {t('departments.nameAr')}
+            </label>
+            <Input
+              name="nameAr"
+              value={formData.nameAr}
+              onChange={handleChange}
+              placeholder="e.g. قسم علوم الحاسب"
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic text-right"
+              dir="rtl"
+            />
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          {toast && (
-            <div className={`mb-4 p-3 rounded text-white ${toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
-              {toast.message}
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Parent College *</label>
-              <select
-                name="collegeId"
-                value={formData.collegeId}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                <option value="">Select a College</option>
-                {colleges.map(college => (
-                  <option key={college.id} value={college.id}>{college.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Department Name (English) *</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="e.g. Computer Science"
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Department Name (Arabic)</label>
-              <input
-                type="text"
-                name="nameAr"
-                value={formData.nameAr}
-                onChange={handleChange}
-                placeholder="e.g. قسم علوم الحاسب"
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-arabic"
-                dir="rtl"
-              />
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-50"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300"
-              disabled={loading}
-            >
-              {loading ? 'Updating...' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="mt-8 flex justify-end gap-3 border-t border-brand-border pt-6">
+          <Button 
+            type="button" 
+            variant="ghost" 
+            onClick={onClose} 
+            disabled={loading}
+          >
+            {t('common.cancel')}
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={loading}
+            className="min-w-[140px]"
+          >
+            {loading ? <Loader2 className="animate-spin" size={20} /> : t('common.saveChanges')}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 };
 

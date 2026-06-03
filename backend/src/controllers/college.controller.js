@@ -20,10 +20,37 @@ exports.getCollegeById = async (req, res) => {
   try {
     const college = await prisma.college.findUnique({
       where: { id: parseInt(req.params.id) },
-      include: { departments: true }
+      include: { 
+        departments: {
+          include: {
+            _count: {
+              select: { students: true, doctors: true, courses: true }
+            }
+          }
+        }
+      }
     });
+    
     if (!college) return res.status(404).json({ success: false, message: 'College not found' });
-    res.json({ success: true, data: college });
+
+    // Calculate total students and doctors across all departments
+    const stats = college.departments.reduce((acc, dept) => {
+      acc.totalStudents += dept._count.students;
+      acc.totalDoctors += dept._count.doctors;
+      return acc;
+    }, { totalStudents: 0, totalDoctors: 0 });
+
+    res.json({ 
+      success: true, 
+      data: {
+        ...college,
+        _count: {
+          departments: college.departments.length,
+          students: stats.totalStudents,
+          doctors: stats.totalDoctors
+        }
+      } 
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

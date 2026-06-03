@@ -1,37 +1,33 @@
-import React, { useState, useEffect } from 'react';
+// FIXED: Missing PageHeader import caused blank page; query-param scope header and safe filters - Phase 1
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Calendar, 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  Edit2, 
-  Trash2, 
-  Clock, 
   MapPin, 
   BookOpen,
   Loader2,
   AlertCircle,
   CheckCircle,
-  ExternalLink
+  Edit2,
+  Trash2
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
-import Table, { TableRow, TableCell } from '../../components/ui/Table';
+import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
+import FilterBar from '../../components/ui/FilterBar';
 import schedulesService from '../../services/schedules.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import coursesService from '../../services/courses.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { PageHeader } from '../../components/ui/PageHeader';
 import ScheduleModal from './ScheduleModal';
 
 const SchedulesList = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [schedules, setSchedules] = useState([]);
   const [colleges, setColleges] = useState([]);
@@ -53,21 +49,28 @@ const SchedulesList = () => {
   const canManage = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const collegeId = queryParams.get('collegeId');
-    const departmentId = queryParams.get('departmentId');
-    
+    const collegeId = searchParams.get('collegeId');
+    const departmentId = searchParams.get('departmentId');
+
     if (collegeId) {
-      setSelectedCollege(collegeId);
+      setSelectedCollege(String(collegeId));
       fetchDepartments(collegeId);
     }
-    
+
     if (departmentId) {
-      setSelectedDept(departmentId);
+      setSelectedDept(String(departmentId));
+      if (!collegeId) {
+        departmentService.getDepartmentById(departmentId).then((res) => {
+          if (res.success && res.data?.collegeId) {
+            setSelectedCollege(String(res.data.collegeId));
+            fetchDepartments(res.data.collegeId);
+          }
+        }).catch(() => {});
+      }
     }
 
     fetchInitialData();
-  }, [location.search]);
+  }, [searchParams]);
 
   useEffect(() => {
     fetchSchedules();
@@ -148,17 +151,29 @@ const SchedulesList = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const filteredSchedules = schedules.filter(s => 
-    s.course.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.course.courseCode.toLowerCase().includes(search.toLowerCase()) ||
-    (s.room && s.room.toLowerCase().includes(search.toLowerCase()))
-  );
+  const scopeLabel = useMemo(() => {
+    const college = colleges.find((c) => String(c.id) === String(selectedCollege));
+    const dept = departments.find((d) => String(d.id) === String(selectedDept));
+    if (dept) return dept.name;
+    if (college) return college.name;
+    return null;
+  }, [colleges, departments, selectedCollege, selectedDept]);
+
+  const filteredSchedules = (schedules || []).filter((s) => {
+    const course = s.course || {};
+    const term = (search || '').toLowerCase();
+    return (
+      (course.name || '').toLowerCase().includes(term) ||
+      (course.courseCode || '').toLowerCase().includes(term) ||
+      (s.room && s.room.toLowerCase().includes(term))
+    );
+  });
 
   return (
-    <div className="space-y-6">
+    <div className="section-gap animate-page">
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed top-20 right-4 z-50 p-4 rounded-xl shadow-xl text-white transition-all duration-300 animate-in fade-in slide-in-from-top-4 ${toast.type === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`}>
+        <div className={`${toast.type === 'error' ? 'toast-error' : 'toast-success'}`}>
           <div className="flex items-center gap-2">
             {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
             <span className="font-medium">{toast.message}</span>
@@ -166,173 +181,140 @@ const SchedulesList = () => {
         </div>
       )}
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Schedules Management</h1>
-          <p className="text-slate-500 mt-1">Manage university timetables and class assignments.</p>
-        </div>
-        {canManage && (
-          <Button 
-            className="flex items-center gap-2"
-            onClick={() => {
-              setEditingSchedule(null);
-              setIsModalOpen(true);
-            }}
+      <PageHeader
+        title={scopeLabel ? `${t('SCHEDULES.TITLE', 'Schedules Management')} — ${scopeLabel}` : t('SCHEDULES.TITLE', 'Schedules Management')}
+        subtitle={t('SCHEDULES.SUBTITLE', 'Manage university timetables and class assignments.')}
+        action={canManage ? {
+          label: t('SCHEDULES.CREATE', 'Create Schedule'),
+          onClick: () => {
+            setEditingSchedule(null);
+            setIsModalOpen(true);
+          }
+        } : null}
+      />
+
+      <Card noPadding className="border-none shadow-soft overflow-hidden">
+        <FilterBar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by course or room..."
+        >
+          <select
+            className="h-9 px-3 rounded-xl border border-brand-border bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
+            value={selectedCollege}
+            onChange={(e) => handleCollegeChange(e.target.value)}
           >
-            <Plus size={18} /> Create Schedule
-          </Button>
-        )}
-      </div>
+            <option value="">All Colleges</option>
+            {colleges.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <select
+            className="h-9 px-3 rounded-xl border border-brand-border bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value)}
+            disabled={!selectedCollege}
+          >
+            <option value="">All Departments</option>
+            {departments.map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          <select
+            className="h-9 px-3 rounded-xl border border-brand-border bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+          >
+            <option value="">All Years</option>
+            {[1, 2, 3, 4, 5].map(y => (
+              <option key={y} value={y.toString()}>Year {y}</option>
+            ))}
+          </select>
+          <select
+            className="h-9 px-3 rounded-xl border border-brand-border bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
+            value={selectedSemester}
+            onChange={(e) => setSelectedSemester(e.target.value)}
+          >
+            <option value="">All Semesters</option>
+            <option value="1">Semester 1</option>
+            <option value="2">Semester 2</option>
+            <option value="3">Semester 3</option>
+          </select>
+        </FilterBar>
 
-      <Card>
-        <div className="flex flex-col md:row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search by course or room..."
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-wrap gap-4">
-            <select
-              className="px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
-              value={selectedCollege}
-              onChange={(e) => handleCollegeChange(e.target.value)}
-            >
-              <option value="">All Colleges</option>
-              {colleges.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-            <select
-              className="px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
-              value={selectedDept}
-              onChange={(e) => setSelectedDept(e.target.value)}
-              disabled={!selectedCollege}
-            >
-              <option value="">All Departments</option>
-              {departments.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-
-            <select
-              className="px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-            >
-              <option value="">All Years</option>
-              <option value="1">Year 1</option>
-              <option value="2">Year 2</option>
-              <option value="3">Year 3</option>
-              <option value="4">Year 4</option>
-              <option value="5">Year 5</option>
-            </select>
-
-            <select
-              className="px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
-              value={selectedSemester}
-              onChange={(e) => setSelectedSemester(e.target.value)}
-            >
-              <option value="">All Semesters</option>
-              <option value="1">Semester 1</option>
-              <option value="2">Semester 2</option>
-              <option value="3">Semester 3 (Summer)</option>
-            </select>
-          </div>
-        </div>
-      </Card>
-
-      <Card noPadding>
-        <Table headers={['Course', 'Time Slot', 'Room', 'Department', 'Actions']}>
+        <div className="min-h-[400px]">
           {loading ? (
-            <TableRow>
-              <TableCell colSpan={5} className="text-center py-12">
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="animate-spin text-blue-600" size={32} />
-                  <p className="text-slate-500 font-medium">Loading schedules...</p>
-                </div>
-              </TableCell>
-            </TableRow>
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+              <Loader2 className="animate-spin text-brand-primary-500" size={40} />
+              <p className="label-stat">Loading schedules...</p>
+            </div>
           ) : filteredSchedules.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="text-center py-12">
-                <div className="flex flex-col items-center gap-2 text-slate-500">
-                  <Calendar size={48} className="text-slate-200" />
-                  <p className="font-medium">No schedules found</p>
-                  <p className="text-sm">Try adjusting your filters or search terms.</p>
-                </div>
-              </TableCell>
-            </TableRow>
+            <div className="flex flex-col items-center justify-center h-96 text-center p-8">
+              <div className="w-24 h-24 rounded-[2.5rem] bg-surface-subtle dark:bg-surface-subtle flex items-center justify-center mb-6 border-2 border-dashed border-slate-200 dark:border-slate-700">
+                <Calendar size={48} className="text-brand-text-muted opacity-50" />
+              </div>
+              <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tight uppercase mb-2">
+                {t('SCHEDULES.EMPTY_TITLE', 'No schedules yet')}
+              </h3>
+              <p className="text-brand-text-secondary font-bold max-w-xs mx-auto">
+                {t('SCHEDULES.EMPTY_DESC', 'There are no class schedules for this selection. Create one to get started.')}
+              </p>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => { setEditingSchedule(null); setIsModalOpen(true); }}
+                  className="mt-6 px-6 py-3 rounded-2xl bg-brand-primary-500 text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+                >
+                  {t('SCHEDULES.CREATE', 'Create Schedule')}
+                </button>
+              )}
+            </div>
           ) : (
-            filteredSchedules.map((schedule) => (
-              <TableRow key={schedule.id}>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-slate-900">{schedule.course.name}</span>
-                    <span className="text-xs text-slate-500">{schedule.course.courseCode}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
-                      <Calendar size={14} className="text-slate-400" />
-                      {t(`days.${schedule.dayOfWeek.toLowerCase()}`)}
+            <Table headers={['Course', 'Time Slot', 'Room', 'Department', 'Actions']}>
+              {filteredSchedules.map((schedule) => (
+                <TableRow key={schedule.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-primary-500 font-black shadow-inner">
+                        <BookOpen size={20} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight">{schedule.course.name}</span>
+                        <span className="text-[10px] font-black uppercase text-brand-primary-500 tracking-wider">{schedule.course.courseCode}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <Clock size={14} className="text-slate-400" />
-                      {schedule.startTime} - {schedule.endTime}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">{schedule.dayOfWeek}</span>
+                      <span className="text-[10px] font-bold text-brand-text-secondary uppercase">{schedule.startTime} - {schedule.endTime}</span>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                    <MapPin size={16} className="text-slate-400" />
-                    {schedule.room || 'TBA'}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium text-slate-700">
-                      {schedule.course.department?.name || 'N/A'}
-                    </span>
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">
-                      {schedule.course.department?.college?.name || ''}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {canManage && (
-                      <>
-                        <button 
-                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edit"
-                          onClick={() => {
-                            setEditingSchedule(schedule);
-                            setIsModalOpen(true);
-                          }}
-                        >
-                          <Edit2 size={18} />
-                        </button>
-                        <button 
-                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Delete"
-                          onClick={() => handleDelete(schedule.id)}
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-brand-accent-yellow/10 flex items-center justify-center text-brand-accent-yellow">
+                        <MapPin size={14} />
+                      </div>
+                      <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">{schedule.room || 'TBA'}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-tight truncate max-w-[150px]">{schedule.department?.name}</span>
+                      <span className="text-[10px] font-bold text-brand-text-muted uppercase">Year {schedule.year} • Sem {schedule.semester}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <ActionMenu actions={[
+                      { label: 'Edit', icon: Edit2, variant: 'edit', onClick: () => { setEditingSchedule(schedule); setIsModalOpen(true); } },
+                      ...(canManage ? [{ label: 'Delete', icon: Trash2, variant: 'delete', onClick: () => handleDelete(schedule.id) }] : []),
+                    ]} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </Table>
           )}
-        </Table>
+        </div>
       </Card>
 
       <ScheduleModal

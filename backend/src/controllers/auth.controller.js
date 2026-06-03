@@ -1,271 +1,273 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const { generateToken } = require('../utils/jwt.utils');
-const { notifyAdminsOfNewRequest } = require('../utils/notification.utils');
+const { notifyAdminsOfNewRequest, createNotification } = require('../utils/notification.utils');
+const catchAsync = require('../utils/catchAsync');
+const { AppError, AuthenticationError, ConflictError, NotFoundError } = require('../utils/appError');
 
 const prisma = new PrismaClient();
 
-const register = async (req, res) => {
-  try {
-    const { email, password, role, firstName, lastName, departmentId, studentId, year } = req.body;
-
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: 'Email already registered' });
-    }
-
-    // Check if studentId already exists if it's a student
-    if (role === 'STUDENT' && studentId) {
-      const existingStudent = await prisma.student.findUnique({ where: { studentId } });
-      if (existingStudent) {
-        return res.status(400).json({ success: false, message: 'Student ID already exists' });
-      }
-    }
-
-    // Check if request already exists
-    const existingRequest = await prisma.registrationRequest.findUnique({ where: { email } });
-    if (existingRequest) {
-      return res.status(400).json({ success: false, message: 'Registration request already pending' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const request = await prisma.registrationRequest.create({
-      data: {
-        email,
-        password: hashedPassword,
-        role,
-        firstName,
-        lastName,
-        studentId: role === 'STUDENT' ? studentId : null,
-        year: role === 'STUDENT' ? (year ? parseInt(year) : 1) : null,
-        departmentId: departmentId ? parseInt(departmentId) : null
-      }
-    });
-
-    // Notify relevant admins
-    if (request.departmentId) {
-      await notifyAdminsOfNewRequest({
-        role: request.role,
-        firstName: request.firstName,
-        lastName: request.lastName,
-        departmentId: request.departmentId
-      });
-    }
-
-    res.status(201).json({ 
-      success: true, 
-      message: 'Registration request submitted. Pending admin approval.' 
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+// FIXED: Public registration is student-only, pending approval, login blocked until approved - Phase 3
+const register = catchAsync(async (req, res, next) => {
+  const { email, password, role: requestedRole, firstName, lastName, departmentId, studentId, year, phone } = req.body;
+  const role = 'STUDENT';
+  if (requestedRole && requestedRole !== 'STUDENT') {
+    return next(new AppError('Only student registration is available. Faculty accounts are created by administrators.', 400));
   }
-};
 
-const getRequests = async (req, res) => {
-  try {
-    const { user } = req;
-    let where = { status: 'PENDING' };
-
-    // Scope filtering
-    if (user.role === 'COLLEGE_ADMIN') {
-      const admin = await prisma.user.findUnique({
-        where: { id: user.id },
-        include: { doctor: true }
-      });
-      if (admin.doctor && admin.doctor.departmentId) {
-        const dept = await prisma.department.findUnique({
-          where: { id: admin.doctor.departmentId }
-        });
-        where.department = { collegeId: dept.collegeId };
-      }
-    } else if (user.role === 'DEPARTMENT_ADMIN') {
-      const admin = await prisma.user.findUnique({
-        where: { id: user.id },
-        include: { doctor: true }
-      });
-      if (admin.doctor) {
-        where.departmentId = admin.doctor.departmentId;
-      }
-    }
-
-    const requests = await prisma.registrationRequest.findMany({
-      where,
-      include: { department: { include: { college: true } } },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    res.json({ success: true, data: requests });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  // Check if user already exists
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    return next(new ConflictError('Email already registered'));
   }
-};
 
-const approveRequest = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const request = await prisma.registrationRequest.findUnique({
-      where: { id: parseInt(id) }
-    });
-
-    if (!request || request.status !== 'PENDING') {
-      return res.status(404).json({ success: false, message: 'Pending request not found' });
+  // Check if studentId already exists if it's a student
+  if (role === 'STUDENT' && studentId) {
+    const existingStudent = await prisma.student.findUnique({ where: { studentId } });
+    if (existingStudent) {
+      return next(new ConflictError('Student ID already exists'));
     }
-
-    await prisma.$transaction(async (tx) => {
-      // 1. Create User
-      const user = await tx.user.create({
-        data: {
-          email: request.email,
-          password: request.password,
-          role: request.role
-        }
-      });
-
-      // 2. Create Student or Doctor profile
-      if (request.role === 'STUDENT') {
-        let studentId = request.studentId;
-        if (!studentId) {
-          const studentCount = await tx.student.count();
-          studentId = `STU${new Date().getFullYear()}${String(studentCount + 1).padStart(4, '0')}`;
-        }
-        
-        await tx.student.create({
-          data: {
-            userId: user.id,
-            firstName: request.firstName,
-            lastName: request.lastName,
-            studentId,
-            year: request.year || 1,
-            departmentId: request.departmentId
-          }
-        });
-      } else if (['DOCTOR', 'DEPARTMENT_ADMIN', 'COLLEGE_ADMIN'].includes(request.role)) {
-        const doctorCount = await tx.doctor.count();
-        const doctorId = `DOC${new Date().getFullYear()}${String(doctorCount + 1).padStart(4, '0')}`;
-        
-        await tx.doctor.create({
-          data: {
-            userId: user.id,
-            firstName: request.firstName,
-            lastName: request.lastName,
-            doctorId,
-            departmentId: request.departmentId
-          }
-        });
-
-        // If it's an admin role, update User.adminRole
-        if (['DEPARTMENT_ADMIN', 'COLLEGE_ADMIN'].includes(request.role)) {
-          await tx.user.update({
-            where: { id: user.id },
-            data: { adminRole: request.role }
-          });
-        }
-      }
-
-      // 3. Update request status
-      await tx.registrationRequest.update({
-        where: { id: parseInt(id) },
-        data: { status: 'APPROVED' }
-      });
-    });
-
-    res.json({ success: true, message: 'Request approved and user created' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
   }
-};
 
-const rejectRequest = async (req, res) => {
-  const { id } = req.params;
-  try {
-    await prisma.registrationRequest.update({
-      where: { id: parseInt(id) },
-      data: { status: 'REJECTED' }
-    });
-    res.json({ success: true, message: 'Request rejected' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  // Check if request already exists
+  const existingRequest = await prisma.registrationRequest.findUnique({ where: { email } });
+  if (existingRequest) {
+    return next(new ConflictError('Registration request already pending'));
   }
-};
 
-const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        student: true,
-        doctor: true,
-      },
+  const request = await prisma.registrationRequest.create({
+    data: {
+      email,
+      password: hashedPassword,
+      role,
+      firstName,
+      lastName,
+      studentId: role === 'STUDENT' ? studentId : null,
+      year: role === 'STUDENT' ? (year ? parseInt(year) : 1) : null,
+      departmentId: departmentId ? parseInt(departmentId) : null,
+      phone: phone?.trim() || null,
+    }
+  });
+
+  // Notify relevant admins
+  if (request.departmentId) {
+    await notifyAdminsOfNewRequest({
+      role: request.role,
+      firstName: request.firstName,
+      lastName: request.lastName,
+      departmentId: request.departmentId
     });
-
-    if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    const token = generateToken(user.id);
-
-    // Determine profile based on role
-    let profile = null;
-    if (user.role === 'STUDENT') {
-      profile = user.student;
-    } else if (['DOCTOR', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
-      profile = user.doctor;
-    }
-
-    res.json({
-      success: true,
-      message: 'Login successful',
-      data: {
-        token,
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          profilePicture: user.profilePicture,
-          profile,
-        },
-      },
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ success: false, message: error.message || 'Login failed' });
   }
-};
 
-const getMe = async (req, res) => {
-  try {
-    const user = req.user;
+  res.status(201).json({
+    success: true,
+    message: 'Your application is under review. You will be notified upon acceptance.',
+    data: { status: 'PENDING', requestId: request.id },
+  });
+});
 
-    // Determine profile based on role
-    let profile = null;
-    if (user.role === 'STUDENT') {
-      profile = user.student;
-    } else if (['DOCTOR', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
-      profile = user.doctor;
-    }
+const login = catchAsync(async (req, res, next) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const { password } = req.body;
 
-    res.json({
-      success: true,
-      data: {
+  const registrationRequest = await prisma.registrationRequest.findUnique({
+    where: { email },
+  });
+
+  if (registrationRequest?.status === 'PENDING') {
+    return next(
+      new AuthenticationError(
+        'Your application is under review. You will be notified upon acceptance.'
+      )
+    );
+  }
+
+  if (registrationRequest?.status === 'REJECTED') {
+    return next(
+      new AuthenticationError(
+        'Your registration request was rejected. Please contact the administration office.'
+      )
+    );
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: { student: true, doctor: true },
+  });
+
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    return next(new AuthenticationError('Invalid email or password'));
+  }
+
+  const token = generateToken(user.id);
+
+  res.json({
+    success: true,
+    data: {
+      token,
+      user: {
         id: user.id,
         email: user.email,
         role: user.role,
-        profile,
+        twoFactorEnabled: user.twoFactorEnabled,
+        profile: user.student || user.doctor || null,
       },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to fetch user info' });
+    },
+  });
+});
+
+const getMe = catchAsync(async (req, res, next) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    include: { student: true, doctor: true }
+  });
+
+  if (!user) {
+    return next(new NotFoundError('User no longer exists'));
   }
-};
+
+  const { password: _password, ...safeUser } = user;
+
+  res.json({
+    success: true,
+    data: {
+      ...safeUser,
+      twoFactorEnabled: user.twoFactorEnabled,
+    },
+  });
+});
+
+const getRequests = catchAsync(async (req, res, next) => {
+  const { user } = req;
+  const { status } = req.query;
+  let where = {};
+  if (status && status !== 'ALL') {
+    where.status = status;
+  }
+
+  // Scope filtering
+  if (user.role === 'COLLEGE_ADMIN') {
+    const admin = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { doctor: true }
+    });
+    if (admin.doctor && admin.doctor.departmentId) {
+      const dept = await prisma.department.findUnique({
+        where: { id: admin.doctor.departmentId }
+      });
+      where.department = { collegeId: dept.collegeId };
+    }
+  } else if (user.role === 'DEPARTMENT_ADMIN') {
+    const admin = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { doctor: true }
+    });
+    if (admin.doctor) {
+      where.departmentId = admin.doctor.departmentId;
+    }
+  }
+
+  const requests = await prisma.registrationRequest.findMany({
+    where,
+    include: { department: { include: { college: true } } },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  res.json({ success: true, data: requests });
+});
+
+const approveRequest = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const request = await prisma.registrationRequest.findUnique({
+    where: { id: parseInt(id) }
+  });
+
+  if (!request) {
+    return next(new NotFoundError('Request not found'));
+  }
+
+  // Transaction to create user and profile
+  const result = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email: request.email,
+        password: request.password,
+        role: request.role,
+        departmentId: request.departmentId
+      }
+    });
+
+    if (request.role === 'STUDENT') {
+      await tx.student.create({
+        data: {
+          userId: user.id,
+          firstName: request.firstName,
+          lastName: request.lastName,
+          studentId: request.studentId,
+          year: request.year || 1,
+          departmentId: request.departmentId,
+          phone: request.phone || null,
+        }
+      });
+    } else if (request.role === 'DOCTOR') {
+      await tx.doctor.create({
+        data: {
+          userId: user.id,
+          firstName: request.firstName,
+          lastName: request.lastName,
+          doctorId: `DOC-${Date.now()}`, // Generate a temporary doctor ID
+          departmentId: request.departmentId
+        }
+      });
+    }
+
+    await tx.registrationRequest.update({
+      where: { id: parseInt(id) },
+      data: { status: 'APPROVED' }
+    });
+
+    return user;
+  });
+
+  await createNotification({
+    userId: result.id,
+    title: 'Registration Approved',
+    message: 'Your registration request has been accepted. You can now sign in to the university portal.',
+    type: 'success',
+  });
+
+  res.json({ success: true, message: 'Request approved successfully', data: result });
+});
+
+const rejectRequest = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const request = await prisma.registrationRequest.findUnique({
+    where: { id: parseInt(id) },
+  });
+
+  if (!request) {
+    return next(new NotFoundError('Request not found'));
+  }
+
+  await prisma.registrationRequest.update({
+    where: { id: parseInt(id) },
+    data: { status: 'REJECTED' },
+  });
+
+  res.json({
+    success: true,
+    message: 'Request rejected',
+    data: {
+      email: request.email,
+      notified: false,
+      note: 'Applicant will see rejection message if they attempt to log in.',
+    },
+  });
+});
 
 module.exports = {
   register,
@@ -273,5 +275,5 @@ module.exports = {
   getMe,
   getRequests,
   approveRequest,
-  rejectRequest,
+  rejectRequest
 };

@@ -1,5 +1,14 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const path = require('path');
+
+// Error Handling imports
+const globalErrorHandler = require('./middleware/error.middleware');
+const { NotFoundError } = require('./utils/appError');
+
+// Route imports
 const authRoutes = require('./routes/auth.routes');
 const studentsRoutes = require('./routes/students.routes');
 const coursesRoutes = require('./routes/courses.routes');
@@ -14,38 +23,90 @@ const quizRoutes = require('./routes/quiz.routes');
 const taskRoutes = require('./routes/task.routes');
 const usersRoutes = require('./routes/users.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const analyticsRoutes = require('./routes/analytics.routes');
+const attendanceRoutes = require('./routes/attendance.routes');
+const timetableRoutes = require('./routes/timetable.routes');
+const searchRoutes = require('./routes/search.routes');
 const { protect } = require('./middleware/auth.middleware');
 
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./utils/swagger');
+
 const app = express();
-const path = require('path');
 
-// Serve static files
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// 1. SWAGGER DOCUMENTATION
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
-// Middleware
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://localhost:3001'
-];
+// 2. SECURITY HEADERS (Enterprise-grade)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  xssFilter: true,
+  noSniff: true,
+  hidePoweredBy: true,
+  frameguard: { action: 'deny' }
+}));
+
+// 2. CORS CONFIGURATION
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:3001'];
 
 app.use(cors({ 
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+      return callback(new Error('CORS Policy: Origin not allowed'), false);
     }
     return callback(null, true);
   },
   credentials: true, 
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
-  allowedHeaders: ['Content-Type', 'Authorization'] 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], 
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'] 
 }));
-app.use(express.json());
 
-// Routes
+// 3. RATE LIMITING
+// Global limiter
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 500, // Limit each IP to 500 requests per window
+  message: { success: false, message: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', globalLimiter);
+
+// Strict limiter for Auth
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // 50 auth requests per window (login/register)
+  message: { success: false, message: 'Too many authentication attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+});
+app.use('/api/auth', authLimiter);
+
+// 4. BODY PARSING
+app.use(express.json({ limit: '10kb' })); 
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// 5. STATIC FILES
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// 6. ROUTES
 app.use('/api/auth', authRoutes);
 app.use('/api/students', protect, studentsRoutes);
 app.use('/api/courses', protect, coursesRoutes);
@@ -60,10 +121,31 @@ app.use('/api/quizzes', quizRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/users', protect, usersRoutes);
 app.use('/api/notifications', protect, notificationRoutes);
+app.use('/api/analytics', protect, analyticsRoutes);
+app.use('/api/attendance', protect, attendanceRoutes);
+app.use('/api/timetables', protect, timetableRoutes);
+app.use('/api/search', searchRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK' });
+// Health check & Root
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    success: true, 
+    message: 'Smart University API is active', 
+    version: '1.0.0',
+    documentation: '/api-docs'
+  });
 });
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date() });
+});
+
+// 404 handler for undefined routes
+app.use((req, res, next) => {
+  next(new NotFoundError(`Can't find ${req.originalUrl} on this server!`));
+});
+
+// 7. GLOBAL ERROR HANDLING
+app.use(globalErrorHandler);
 
 module.exports = app;

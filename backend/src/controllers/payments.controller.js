@@ -59,47 +59,56 @@ exports.getMyPayments = async (req, res) => {
   }
 };
 
+// FIXED: Finance stats include activePlans count and monthly revenue from real payments - Phase 2
 exports.getStats = async (req, res) => {
   try {
-    const paidSum = await prisma.payment.aggregate({
-      where: { status: 'PAID' },
-      _sum: { amount: true },
+    const [paidSum, pendingSum, overdueSum, byType, recentPayments, activePlans, totalPayments] = await Promise.all([
+      prisma.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
+      prisma.payment.aggregate({ where: { status: 'PENDING' }, _sum: { amount: true } }),
+      prisma.payment.aggregate({ where: { status: 'OVERDUE' }, _sum: { amount: true } }),
+      prisma.payment.groupBy({ by: ['type'], _count: { _all: true } }),
+      prisma.payment.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { student: { select: { firstName: true, lastName: true } } },
+      }),
+      prisma.payment.count({ where: { status: { in: ['PENDING', 'OVERDUE'] } } }),
+      prisma.payment.count(),
+    ]);
+
+    const paidWithDates = await prisma.payment.findMany({
+      where: { status: 'PAID', paidAt: { not: null } },
+      select: { amount: true, paidAt: true },
     });
 
-    const pendingSum = await prisma.payment.aggregate({
-      where: { status: 'PENDING' },
-      _sum: { amount: true },
+    const monthlyMap = {};
+    paidWithDates.forEach((p) => {
+      const d = new Date(p.paidAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthlyMap[key] = (monthlyMap[key] || 0) + Number(p.amount || 0);
     });
 
-    const overdueSum = await prisma.payment.aggregate({
-      where: { status: 'OVERDUE' },
-      _sum: { amount: true },
-    });
-
-    const byType = await prisma.payment.groupBy({
-      by: ['type'],
-      _count: { _all: true },
-    });
-
-    const recentPayments = await prisma.payment.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        student: {
-          select: { firstName: true, lastName: true },
-        },
-      },
-    });
+    const monthlyRevenue = Object.entries(monthlyMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([key, amount]) => {
+        const [, month] = key.split('-');
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return { name: monthNames[parseInt(month, 10) - 1] || key, amount };
+      });
 
     const stats = {
-      totalCollected: paidSum._sum.amount || 0,
-      totalPending: pendingSum._sum.amount || 0,
-      totalOverdue: overdueSum._sum.amount || 0,
+      totalCollected: Number(paidSum._sum.amount || 0),
+      totalPending: Number(pendingSum._sum.amount || 0),
+      totalOverdue: Number(overdueSum._sum.amount || 0),
+      activePlans,
+      totalPayments,
       paymentsByType: byType.reduce((acc, curr) => {
         acc[curr.type] = curr._count._all;
         return acc;
       }, {}),
       recentPayments,
+      monthlyRevenue,
     };
 
     res.json({ success: true, data: stats });

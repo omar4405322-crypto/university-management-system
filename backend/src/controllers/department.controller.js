@@ -1,3 +1,4 @@
+// FIXED: Enriched getDepartmentById with students, courses, doctors for detail page - Phase 1
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -26,7 +27,22 @@ exports.getDepartmentById = async (req, res) => {
   try {
     const department = await prisma.department.findUnique({
       where: { id: parseInt(req.params.id) },
-      include: { college: true }
+      include: {
+        college: true,
+        students: {
+          select: { id: true, firstName: true, lastName: true, studentId: true, year: true },
+          orderBy: { lastName: 'asc' },
+        },
+        courses: {
+          select: { id: true, name: true, courseCode: true, credits: true, year: true, semester: true },
+          orderBy: { name: 'asc' },
+        },
+        doctors: {
+          select: { id: true, firstName: true, lastName: true, doctorId: true, specialty: true },
+          orderBy: { lastName: 'asc' },
+        },
+        _count: { select: { students: true, courses: true, doctors: true } },
+      },
     });
     if (!department) return res.status(404).json({ success: false, message: 'Department not found' });
     res.json({ success: true, data: department });

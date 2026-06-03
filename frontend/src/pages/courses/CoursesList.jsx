@@ -1,91 +1,86 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Card from '../../components/ui/Card';
-import Table, { TableRow, TableCell } from '../../components/ui/Table';
+import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
 import Badge from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
+import LoadingState from '../../components/ui/LoadingState';
+import { TruncatedText } from '../../components/ui/TruncatedText';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PageHeader } from '../../components/ui/PageHeader';
+import ErrorState from '../../components/ui/ErrorState';
 import Input from '../../components/ui/Input';
+import FilterBar from '../../components/ui/FilterBar';
+import Pagination from '../../components/ui/Pagination';
 import { 
-  Search, 
-  Plus, 
-  Filter, 
   BookOpen, 
-  User, 
-  Layers, 
-  Edit2, 
-  Trash2, 
+  Filter, 
+  Search,
   AlertCircle, 
   CheckCircle,
   Loader2,
-  X
+  Edit2,
+  Trash2,
+  Eye
 } from 'lucide-react';
 import coursesService from '../../services/courses.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import CourseModal from './CourseModal';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 
 const CoursesList = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [colleges, setColleges] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [selectedCollege, setSelectedCollege] = useState('');
   const [selectedDept, setSelectedDept] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [toast, setToast] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchInitialData = async () => {
     try {
-      setLoading(true);
-      const [coursesRes, collegesRes] = await Promise.all([
-        coursesService.getCourses(),
-        collegeService.getColleges()
-      ]);
-
-      if (coursesRes.success) setCourses(coursesRes.data);
+      const collegesRes = await collegeService.getColleges();
       if (collegesRes.success) setColleges(collegesRes.data);
-    } catch (error) {
-      console.error('Error fetching initial data:', error);
-      showToast('Failed to load courses', 'error');
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching metadata:', err);
     }
   };
 
-  const fetchDepartments = async (collegeId) => {
-    if (!collegeId) {
-      setDepartments([]);
-      return;
-    }
-    try {
-      const res = await departmentService.getDepartmentsByCollege(collegeId);
-      if (res.success) setDepartments(res.data);
-    } catch (error) {
-      console.error('Error fetching departments:', error);
-    }
-  };
-
-  const fetchFilteredCourses = async () => {
+  const fetchFilteredCourses = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const params = {
         search,
-        collegeId: selectedCollege || undefined,
-        departmentId: selectedDept || undefined
+        departmentId: selectedDept || undefined,
+        page,
+        limit: 10
       };
       const res = await coursesService.getCourses(params);
-      if (res.success) setCourses(res.data);
-    } catch (error) {
-      console.error('Error filtering courses:', error);
+      if (res.success) {
+        setCourses(res.data.courses);
+        setTotalPages(res.data.pagination.totalPages);
+      }
+    } catch (err) {
+      console.error('Error filtering courses:', err);
+      setError(err.message || 'Failed to load courses.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, selectedDept, page]);
 
   useEffect(() => {
     fetchInitialData();
@@ -96,13 +91,25 @@ const CoursesList = () => {
       fetchFilteredCourses();
     }, 400);
     return () => clearTimeout(timer);
-  }, [search, selectedCollege, selectedDept]);
+  }, [fetchFilteredCourses]);
 
-  const handleCollegeChange = (e) => {
+  const handleCollegeChange = async (e) => {
     const collegeId = e.target.value;
     setSelectedCollege(collegeId);
     setSelectedDept('');
-    fetchDepartments(collegeId);
+    setPage(1);
+    
+    if (!collegeId) {
+      setDepartments([]);
+      return;
+    }
+    
+    try {
+      const res = await departmentService.getDepartmentsByCollege(collegeId);
+      if (res.success) setDepartments(res.data);
+    } catch (err) {
+      console.error('Error fetching departments:', err);
+    }
   };
 
   const showToast = (message, type) => {
@@ -110,27 +117,21 @@ const CoursesList = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this course?')) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      const res = await coursesService.deleteCourse(id);
+      setDeleteLoading(true);
+      const res = await coursesService.deleteCourse(deleteTarget.id);
       if (res.success) {
-        showToast('Course deleted successfully', 'success');
+        showToast(t('courses.deleteSuccess'), 'success');
+        setDeleteTarget(null);
         fetchFilteredCourses();
       }
-    } catch (error) {
-      showToast(error.response?.data?.message || 'Failed to delete course', 'error');
+    } catch (err) {
+      showToast(err.message || t('courses.deleteError'), 'error');
+    } finally {
+      setDeleteLoading(false);
     }
-  };
-
-  const handleEdit = (course) => {
-    setSelectedCourse(course);
-    setIsModalOpen(true);
-  };
-
-  const handleAdd = () => {
-    setSelectedCourse(null);
-    setIsModalOpen(true);
   };
 
   const resetFilters = () => {
@@ -138,179 +139,166 @@ const CoursesList = () => {
     setSelectedCollege('');
     setSelectedDept('');
     setDepartments([]);
+    setPage(1);
   };
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN' || (user?.role === 'ADMIN' && user?.adminRole === 'SUPER_ADMIN');
+  const canManage = user?.role === 'SUPER_ADMIN' || user?.role === 'COLLEGE_ADMIN';
 
   return (
-    <div className="space-y-6">
-      {/* Toast Notification */}
+    <div className="section-gap animate-page">
       {toast && (
-        <div className={`fixed top-20 right-4 z-50 p-4 rounded-xl shadow-xl text-white transition-all duration-300 animate-in fade-in slide-in-from-top-4 ${toast.type === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`}>
+        <div className={`${toast.type === 'error' ? 'toast-error' : 'toast-success'}`}>
           <div className="flex items-center gap-2">
             {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
             <span className="font-medium">{toast.message}</span>
           </div>
         </div>
       )}
+      <PageHeader 
+        title={t('courses.title')}
+        subtitle={t('COURSES.SUBTITLE')}
+        action={canManage ? {
+          label: t('courses.addCourse'),
+          onClick: () => { setSelectedCourse(null); setIsModalOpen(true); }
+        } : null}
+      />
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Course Catalog</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Browse and manage all available university courses.</p>
-        </div>
-        {isSuperAdmin && (
-          <Button onClick={handleAdd} className="flex items-center gap-2">
-            <Plus size={18} /> Add New Course
-          </Button>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-        <Card className="md:col-span-1 h-fit">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Filter size={18} /> Filters
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+        <Card noPadding className="md:col-span-1 h-fit border-none shadow-soft overflow-hidden">
+          <div className="p-6 bg-surface-subtle dark:bg-slate-800/30 border-b border-brand-border dark:border-brand-border flex items-center justify-between">
+            <h3 className="font-black text-brand-text-primary dark:text-brand-text-main flex items-center gap-2 uppercase tracking-widest text-xs">
+              <Filter size={16} className="text-brand-primary-500" /> 
+              {t('students.filters')}
             </h3>
-            <button onClick={resetFilters} className="text-xs text-blue-600 hover:underline">Reset</button>
+            <button onClick={resetFilters} className="text-[10px] font-black text-brand-primary-500 hover:opacity-70 transition-opacity uppercase tracking-widest">
+              {t('COMMON.RESET')}
+            </button>
           </div>
           
-          <div className="space-y-4">
-            <Input 
-              label="Search Course" 
-              placeholder="Name or ID..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="p-6 space-y-6">
+            <div className="space-y-1.5">
+              <label className="label-stat ml-1">{t('COURSES.SEARCHCOURSE')}</label>
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted h-4 w-4 group-focus-within:text-brand-primary-500 transition-colors" />
+                <Input 
+                  placeholder={t('COURSES.SEARCHPLACEHOLDER')} 
+                  className="pl-10 h-10 bg-surface-subtle dark:bg-surface-subtle border-none font-bold text-sm"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                />
+              </div>
+            </div>
             
-            <div>
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1.5">College</label>
+            <div className="space-y-1.5">
+              <label className="label-stat ml-1">{t('auth.college')}</label>
               <select 
                 value={selectedCollege}
                 onChange={handleCollegeChange}
-                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white"
+                className="w-full h-10 px-4 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-xs font-black uppercase tracking-widest text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
               >
-                <option value="">All Colleges</option>
-                {colleges.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+                <option value="">{t('colleges.allColleges')}</option>
+                {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1.5">Department</label>
+            <div className="space-y-1.5">
+              <label className="label-stat ml-1">{t('auth.department')}</label>
               <select 
                 value={selectedDept}
-                onChange={(e) => setSelectedDept(e.target.value)}
+                onChange={(e) => { setSelectedDept(e.target.value); setPage(1); }}
                 disabled={!selectedCollege}
-                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-10 px-4 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-xs font-black uppercase tracking-widest text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
               >
-                <option value="">All Departments</option>
-                {departments.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
+                <option value="">{t('departments.allDepartments')}</option>
+                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
           </div>
         </Card>
 
-        <Card noPadding className="md:col-span-3 min-h-[400px]">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center h-64 gap-3">
-              <Loader2 className="animate-spin text-blue-600" size={32} />
-              <p className="text-sm text-slate-500 font-medium">Loading courses...</p>
-            </div>
-          ) : courses.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <div className="h-16 w-16 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-4">
-                <Search size={32} className="text-slate-300 dark:text-slate-600" />
-              </div>
-              <p className="text-lg font-semibold text-slate-900 dark:text-white">No courses found</p>
-              <p className="text-sm text-slate-500 mt-1">Try adjusting your filters or search query.</p>
-            </div>
+        <div className="md:col-span-3">
+          {loading && courses.length === 0 ? (
+            <LoadingState message="Fetching academic curriculum..." />
+          ) : error ? (
+            <ErrorState message={error} onRetry={fetchFilteredCourses} />
           ) : (
-            <Table headers={['Course', 'Credits', 'Department / College', 'Instructor', 'Students', 'Actions']}>
-              {courses.map((course) => (
-                <TableRow key={course.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                        <BookOpen size={18} />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-slate-900 dark:text-white">{course.name}</p>
-                        <p className="text-xs text-slate-500">{course.courseCode}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="neutral">{course.credits} Credits</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-slate-700 dark:text-slate-300 text-xs font-medium">
-                        {course.department?.name || 'Unassigned'}
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {course.department?.college?.name}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-400">
-                        {course.doctor ? `${course.doctor.firstName[0]}${course.doctor.lastName[0]}` : '?'}
-                      </div>
-                      <span className="text-sm text-slate-600 dark:text-slate-400">
-                        {course.doctor ? `Dr. ${course.doctor.firstName} ${course.doctor.lastName}` : 'TBA'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5">
-                      <User size={14} className="text-slate-400" />
-                      <span className="text-sm text-slate-600 dark:text-slate-400">
-                        {course._count?.students || 0} / {course.maxStudents}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {isSuperAdmin && (
-                        <>
-                          <button 
-                            onClick={() => handleEdit(course)}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(course.id)}
-                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </Table>
+            <Card noPadding className="border-none shadow-soft overflow-hidden">
+              <div className="min-h-[400px]">
+                {courses.length === 0 ? (
+                  <EmptyState 
+                    icon={<BookOpen size={48} />}
+                    title={t('courses.noCourses')}
+                    subtitle={t('courses.noCoursesDesc')}
+                    action={canManage ? {
+                      label: t('courses.addCourse'),
+                      onClick: () => { setSelectedCourse(null); setIsModalOpen(true); }
+                    } : null}
+                  />
+                ) : (
+                  <>
+                    <Table headers={[t('courses.courseCode'), t('courses.courseName'), t('auth.department'), t('courses.instructor'), t('courses.students'), t('common.actions')]}>
+                      {courses.map((course) => (
+                        <TableRow key={course.id} className="hover:bg-surface-subtle dark:hover:bg-slate-800/50 transition-colors">
+                          <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-400 tracking-widest text-xs uppercase">{course.courseCode}</TableCell>
+                          <TableCell className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight">
+                            <TruncatedText text={course.name} />
+                          </TableCell>
+                          <TableCell className="label-stat max-w-[150px]">
+                            <TruncatedText text={course.department?.name} />
+                          </TableCell>
+                          <TableCell>
+                            {course.doctor ? (
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-primary-500 flex items-center justify-center text-[10px] font-black shadow-inner">
+                                  {course.doctor.firstName[0]}
+                                </div>
+                                <span className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main">{course.doctor.firstName} {course.doctor.lastName}</span>
+                              </div>
+                            ) : <span className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted opacity-50">Unassigned</span>}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="info" className="font-black text-[10px]">{course._count.students}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <ActionMenu actions={[
+                              { label: t('common.view'), icon: Eye, variant: 'view', onClick: () => navigate(`/courses/${course.id}`) },
+                              { label: t('common.edit'), icon: Edit2, variant: 'edit', onClick: () => { setSelectedCourse(course); setIsModalOpen(true); } },
+                              {
+                                label: t('common.delete'),
+                                icon: Trash2,
+                                variant: 'delete',
+                                onClick: () => setDeleteTarget({ id: course.id, name: course.name }),
+                              },
+                            ]} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </Table>
+
+                    <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+                  </>
+                )}
+              </div>
+            </Card>
           )}
-        </Card>
+        </div>
       </div>
 
-      <CourseModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        course={selectedCourse}
-        onSuccess={() => {
-          setIsModalOpen(false);
-          fetchFilteredCourses();
-          showToast(selectedCourse ? 'Course updated successfully' : 'Course added successfully', 'success');
-        }}
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteTarget)}
+        itemName={deleteTarget?.name}
+        onClose={() => !deleteLoading && setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        loading={deleteLoading}
       />
+
+      {isModalOpen && (
+        <CourseModal 
+          course={selectedCourse}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => { setIsModalOpen(false); fetchFilteredCourses(); showToast(selectedCourse ? t('courses.updateSuccess') : t('courses.addSuccess'), 'success'); }}
+        />
+      )}
     </div>
   );
 };

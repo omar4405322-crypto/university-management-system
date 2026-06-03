@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const schedulesController = require('../controllers/schedules.controller');
-const roleMiddleware = require('../middleware/role.middleware');
+const { authorize } = require('../middleware/auth.middleware');
 
 router.get('/', schedulesController.getAllSchedules);
 router.get('/week', schedulesController.getWeeklyTimetable);
 
-router.post('/', roleMiddleware(['ADMIN']), schedulesController.createSchedule);
-router.put('/:id', roleMiddleware(['ADMIN']), schedulesController.updateSchedule);
-router.delete('/:id', roleMiddleware(['ADMIN']), schedulesController.deleteSchedule);
+router.post('/', authorize('SUPER_ADMIN', 'ADMIN'), schedulesController.createSchedule);
+router.put('/:id', authorize('SUPER_ADMIN', 'ADMIN'), schedulesController.updateSchedule);
+router.delete('/:id', authorize('SUPER_ADMIN', 'ADMIN'), schedulesController.deleteSchedule);
 
 module.exports = router;

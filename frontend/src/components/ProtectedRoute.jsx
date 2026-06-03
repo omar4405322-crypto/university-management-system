@@ -1,15 +1,20 @@
+// FIXED: Avoid indefinite blank spinner when session has token but no user - Phase 1
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import LoadingState from './ui/LoadingState';
+import Button from './ui/Button';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, token, loading } = useAuth();
   const location = useLocation();
+  const { t } = useTranslation();
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <LoadingState message={t('common.loading', 'Loading...')} fullPage />
       </div>
     );
   }
@@ -20,8 +25,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-8 text-center">
+        <p className="text-brand-text-sub font-bold">{t('common.sessionExpired', 'Your session could not be verified.')}</p>
+        <Button onClick={() => { window.location.href = '/login'; }}>
+          {t('auth.login', 'Sign in')}
+        </Button>
       </div>
     );
   }
