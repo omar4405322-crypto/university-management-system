@@ -298,12 +298,12 @@ const Profile = () => {
                     placeholder="+1 (555) 000-0000" 
                   />
                   <div className="md:col-span-2">
-                    <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('profile.bio')}</label>
+                    <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">{t('profile.bio')}</label>
                     <textarea 
                       name="bio"
                       value={formData.bio}
                       onChange={handleChange}
-                      className="mt-1.5 w-full px-4 py-3 bg-white dark:bg-slate-900 border border-brand-border rounded-xl text-sm font-semibold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all resize-none"
+                      className="mt-1.5 w-full px-4 py-3 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-xl text-sm font-semibold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all resize-none"
                       rows="4"
                       placeholder={t('profile.bioPlaceholder')}
                     ></textarea>

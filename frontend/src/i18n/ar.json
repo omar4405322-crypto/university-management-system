@@ -69,7 +69,8 @@
     "loadingRoster": "جاري تحميل قائمة الطلاب...",
     "coursesLoadError": "تعذر تحميل المقررات.",
     "rosterLoadError": "تعذر تحميل طلاب هذا المقرر.",
-    "saveSuccess": "تم حفظ الحضور بنجاح",
+    "saveSuccess": "تم حفظ الحضور بنجاح.",
+    "saveFailedRetry": "فشل الحفظ. تغييراتك لا تزال موجودة — يرجى المحاولة مرة أخرى.",
     "saveError": "خطأ في حفظ الحضور",
     "accessDenied": "الوصول مرفوض",
     "accessDeniedDesc": "يمكن لأعضاء هيئة التدريس والمسؤولين فقط تسجيل الحضور."
@@ -125,9 +126,15 @@
     "attemptsRemaining": "محاولات فاشلة متبقية: {{count}}",
     "loginSubtitle": "سجّل الدخول للوصول إلى لوحة الجامعة",
     "forgotPassword": "نسيت كلمة المرور؟",
+    "forgotPasswordTitle": "إعادة تعيين كلمة المرور",
+    "forgotPasswordInstructions": "لإعادة تعيين كلمة مرورك، يرجى التواصل مع مسؤول الجامعة أو قسم الدعم التقني.",
+    "understood": "فهمت",
     "emailAddress": "البريد الإلكتروني",
     "emailPlaceholder": "example@mail.com",
     "passwordPlaceholder": "••••••••",
+    "showPassword": "إظهار كلمة المرور",
+    "hidePassword": "إخفاء كلمة المرور",
+    "forgotPasswordComingSoon": "هذه الميزة قريباً",
     "firstNamePlaceholder": "أحمد",
     "lastNamePlaceholder": "محمد",
     "universityName": "جامعة 6 أكتوبر التكنولوجية",
@@ -214,7 +221,9 @@
     "videoUnsupported": "متصفحك لا يدعم تشغيل الفيديو.",
     "universityPromoTitle": "اكتشف جامعتنا",
     "universityPromoDesc": "تعرّف على الحرم الجامعي والبرامج والمجتمع",
-    "updatePassword": "تحديث كلمة المرور"
+    "updatePassword": "تحديث كلمة المرور",
+    "videoUnavailable": "الفيديو غير متاح حالياً",
+    "themeNote": "يمكنك أيضاً تغيير المظهر من شريط الأدوات العلوي."
   },
   "colleges": {
     "about": "حول الكلية",
@@ -287,6 +296,8 @@
     "pending": "معلق",
     "pm": "مساءً",
     "previous": "السابق",
+    "previousShort": "السابق",
+    "next": "التالي",
     "reject": "رفض",
     "rejected": "مرفوض",
     "reset": "إعادة تعيين",
@@ -397,6 +408,8 @@
     "paymentsStatus": "حالة المدفوعات",
     "needsReview": "يحتاج مراجعة",
     "paymentsBelowExpected": "المدفوعات الفعلية أقل من المتوقع — راجع التقرير المالي",
+    "systemStatusNote": "المقاييس التفصيلية متاحة لمديري النظام فقط.",
+    "noUpcomingEvents": "لا توجد أحداث قادمة",
     "viewAllActivity": "عرض كل النشاط",
     "growthTrend": "اتجاه النمو",
     "pending": "معلق",
@@ -488,6 +501,18 @@
     "noCourses": "لا توجد مقررات في هذا القسم.",
     "noDoctors": "لا يوجد أساتذة معينون.",
     "assignedProfessors": "أعضاء هيئة التدريس"
+  },
+  "exam": {
+    "leaveWarningTitle": "مغادرة الامتحان؟",
+    "leaveWarningMessage": "هل أنت متأكد من المغادرة؟ سيتم فقدان تقدمك.",
+    "stayButton": "البقاء",
+    "leaveButton": "المغادرة على أي حال"
+  },
+  "quiz": {
+    "leaveWarningTitle": "مغادرة الاختبار؟",
+    "leaveWarningMessage": "هل أنت متأكد من المغادرة؟ سيتم فقدان تقدمك.",
+    "stayButton": "البقاء",
+    "leaveButton": "المغادرة على أي حال"
   },
   "exams": {
     "createTitle": "جدولة امتحان جديد",
@@ -710,8 +735,8 @@
     "system": "النظام",
     "tasks": "المهام",
     "userManagement": "إدارة المستخدمين",
-    "expandSidebar": "توسيع القائمة الجانبية",
-    "collapseSidebar": "طي القائمة الجانبية",
+    "expandSidebar": "توسيع الشريط الجانبي",
+    "collapseSidebar": "طي الشريط الجانبي",
     "closeSidebar": "إغلاق القائمة",
     "openMenu": "فتح القائمة"
   },
@@ -767,6 +792,12 @@
     "title": "إعدادات الحساب",
     "twoFactor": "المصادقة الثنائية",
     "twoFactorSubtitle": "أضف طبقة أمان إضافية لحسابك.",
+    "twoFactorRequired": "المصادقة الثنائية مطلوبة",
+    "twoFactorRequiredDesc": "يجب على المديرين العامين تفعيل المصادقة الثنائية للوصول إلى ميزات الإدارة.",
+    "twoFactorEnabled": "تم تفعيل المصادقة الثنائية بنجاح.",
+    "twoFactorError": "تعذر تفعيل المصادقة الثنائية.",
+    "enable2fa": "تفعيل المصادقة الثنائية",
+    "enabled": "مفعّل",
     "update": "تحديث",
     "uploadPic": "تحديث الصورة",
     "year": "السنة الدراسية"

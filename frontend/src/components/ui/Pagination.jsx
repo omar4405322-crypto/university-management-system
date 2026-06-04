@@ -2,9 +2,11 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 
 const Pagination = ({ page, totalPages, onPageChange, total, pageSize }) => {
   const { isRTL } = useLanguage();
+  const { t } = useTranslation();
   const PrevIcon = isRTL ? ChevronRight : ChevronLeft;
   const NextIcon = isRTL ? ChevronLeft : ChevronRight;
   if (totalPages <= 0) return null;
@@ -39,14 +41,38 @@ const Pagination = ({ page, totalPages, onPageChange, total, pageSize }) => {
   const to = total ? Math.min(page * pageSize, total) : 0;
 
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-t border-brand-border bg-brand-bg-card">
+    <div className="flex flex-col gap-3 px-6 py-3 border-t border-brand-border bg-brand-bg-card sm:flex-row sm:items-center sm:justify-between">
+      {/* Record count — hidden on very small screens */}
       {total > 0 && (
-        <p className="text-xs font-semibold text-brand-text-muted">
+        <p className="hidden sm:block text-xs font-semibold text-brand-text-muted">
           <span className="text-brand-text-primary">{from}</span>–<span className="text-brand-text-primary">{to}</span>
-          {total && <span> of <span className="text-brand-text-primary">{total}</span></span>}
+          {total && <span> of <span className="text-brand-text-primary">{total.toLocaleString()}</span></span>}
         </p>
       )}
-      <div className="flex items-center gap-1.5">
+
+      {/* Mobile: simple prev/page-info/next */}
+      <div className="flex items-center justify-between sm:hidden">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 1}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-brand-text-secondary hover:text-brand-text-primary hover:bg-surface-subtle disabled:opacity-30 disabled:pointer-events-none transition-all"
+        >
+          <PrevIcon size={14} /> {t('common.previousShort', 'Prev')}
+        </button>
+        <span className="text-xs font-bold text-brand-text-primary">
+          {page} / {totalPages}
+        </span>
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page === totalPages}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-brand-text-secondary hover:text-brand-text-primary hover:bg-surface-subtle disabled:opacity-30 disabled:pointer-events-none transition-all"
+        >
+          {t('common.next', 'Next')} <NextIcon size={14} />
+        </button>
+      </div>
+
+      {/* Desktop: full page number buttons */}
+      <div className="hidden sm:flex items-center gap-1.5">
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page === 1}

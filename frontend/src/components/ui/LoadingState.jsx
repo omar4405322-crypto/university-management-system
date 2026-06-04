@@ -11,7 +11,7 @@ const LoadingState = ({ message = 'Loading...', fullPage = false }) => {
 
   if (fullPage) {
     return (
-      <div className="fixed inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-brand-bg-card/80 dark:bg-brand-bg-page/80 backdrop-blur-sm z-50 flex items-center justify-center">
         {content}
       </div>
     );

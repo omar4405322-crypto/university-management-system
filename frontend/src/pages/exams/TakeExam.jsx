@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import examsService from '../../services/exams.service';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -17,15 +17,36 @@ import {
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import { useTranslation } from 'react-i18next';
 
 const TakeExam = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('PREPARING'); // PREPARING, READY, IN_PROGRESS, COMPLETED
+  const [showEmergencyExitConfirm, setShowEmergencyExitConfirm] = useState(false);
+
+  // 1. Add a beforeunload event listener
+  useEffect(() => { 
+    if (status !== 'IN_PROGRESS') return; 
+    const handleBeforeUnload = (e) => { 
+      e.preventDefault(); 
+      e.returnValue = ''; 
+    }; 
+    window.addEventListener('beforeunload', handleBeforeUnload); 
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload); 
+  }, [status]);
+
+  // 2. Add a React Router navigation blocker
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      status === 'IN_PROGRESS' && currentLocation.pathname !== nextLocation.pathname
+  );
 
   useEffect(() => {
     fetchExam();
@@ -202,7 +223,7 @@ const TakeExam = () => {
             </p>
           </div>
           <div className="flex gap-4">
-            <Button variant="outline" className="border-brand-border" onClick={() => setStatus('PREPARING')}>
+            <Button variant="outline" className="border-brand-border" onClick={() => setShowEmergencyExitConfirm(true)}>
               Emergency Exit
             </Button>
             <Button onClick={() => setStatus('COMPLETED')}>
@@ -244,6 +265,32 @@ const TakeExam = () => {
           </Button>
         </div>
       )}
+
+      {/* Navigation Protection Modal */}
+      <ConfirmDeleteModal
+        isOpen={blocker.state === 'blocked'}
+        onClose={() => blocker.reset()}
+        onConfirm={() => blocker.proceed()}
+        title={t('exam.leaveWarningTitle')}
+        message={t('exam.leaveWarningMessage')}
+        confirmLabel={t('exam.leaveButton')}
+        cancelLabel={t('exam.stayButton')}
+        variant="warning"
+      />
+
+      <ConfirmDeleteModal
+        isOpen={showEmergencyExitConfirm}
+        onClose={() => setShowEmergencyExitConfirm(false)}
+        onConfirm={() => {
+          setShowEmergencyExitConfirm(false);
+          setStatus('PREPARING');
+        }}
+        title={t('exam.leaveWarningTitle')}
+        message={t('exam.leaveWarningMessage')}
+        confirmLabel={t('exam.leaveButton')}
+        cancelLabel={t('exam.stayButton')}
+        variant="warning"
+      />
     </div>
   );
 };

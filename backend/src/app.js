@@ -99,8 +99,17 @@ const authLimiter = rateLimit({
 });
 app.use('/api/auth', authLimiter);
 
-// 4. BODY PARSING
-app.use(express.json({ limit: '10kb' })); 
+// 4. HEALTH CHECK
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    success: true, 
+    message: 'Server is healthy',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 5. BODY PARSERS
+app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // 5. STATIC FILES

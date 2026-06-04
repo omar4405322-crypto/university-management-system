@@ -37,6 +37,7 @@ const AttendancePage = () => {
   const [attendanceData, setAttendanceData] = useState({});
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [toast, setToast] = useState(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const isAdminOrDoctor = ['SUPER_ADMIN', 'ADMIN', 'DOCTOR'].includes(user?.role);
 
@@ -129,10 +130,16 @@ const AttendancePage = () => {
 
       if (result.success) {
         showToast(t('attendance.saveSuccess'), 'success');
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
         fetchRoster();
       }
     } catch (err) {
-      showToast(err.response?.data?.message || t('attendance.saveError'), 'error');
+      console.error('Save attendance error:', err);
+      // Specific error message from API or generic fallback
+      const errorMsg = err.response?.data?.message || t('attendance.saveFailedRetry');
+      showToast(errorMsg, 'error');
+      // DO NOT reset attendanceData or students here - state is preserved
     } finally {
       setSaving(false);
     }
@@ -173,6 +180,11 @@ const AttendancePage = () => {
         action={{
           label: saving ? t('common.loading') : t('attendance.save'),
           onClick: saveAttendance,
+          disabled: saving || !selectedCourse || students.length === 0,
+          icon: saveSuccess ? CheckCircle2 : (saving ? Loader2 : Save),
+          className: saveSuccess 
+            ? 'bg-brand-green hover:bg-brand-green border-transparent shadow-brand-green/20' 
+            : ''
         }}
       />
 
@@ -219,17 +231,31 @@ const AttendancePage = () => {
               </p>
             )}
             <Button
-              className="w-full gap-2"
+              className={`w-full gap-2 transition-all duration-300 ${saveSuccess ? 'bg-brand-green hover:bg-brand-green border-transparent' : ''}`}
               onClick={saveAttendance}
               disabled={saving || !selectedCourse || students.length === 0}
             >
-              {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              {saveSuccess ? (
+                <CheckCircle2 className="animate-in zoom-in duration-300" size={18} />
+              ) : saving ? (
+                <Loader2 className="animate-spin" size={18} />
+              ) : (
+                <Save size={18} />
+              )}
               {t('attendance.save')}
             </Button>
           </Card>
         </div>
 
-        <div className="lg:col-span-3 xl:col-span-4">
+        <div className="lg:col-span-3 xl:col-span-4 relative">
+          {saving && (
+            <div className="absolute inset-0 z-20 bg-brand-bg-page/40 backdrop-blur-[1px] flex items-center justify-center rounded-3xl animate-in fade-in duration-300">
+              <div className="bg-brand-bg-card dark:bg-brand-bg-elevated p-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-brand-border">
+                <Loader2 className="animate-spin text-brand-primary-500" size={24} />
+                <span className="font-bold text-brand-text-main">{t('common.loading')}</span>
+              </div>
+            </div>
+          )}
           <Card noPadding className="border-l-0 overflow-hidden min-h-[500px]">
             {!selectedCourse ? (
               <EmptyState
@@ -282,11 +308,12 @@ const AttendancePage = () => {
                                 key={status.id}
                                 type="button"
                                 onClick={() => handleStatusChange(student.id, status.id)}
+                                disabled={saving}
                                 title={status.label}
                                 className={`flex flex-col items-center justify-center w-20 py-2 rounded-xl border-2 transition-all duration-300 ${
                                   attendanceData[student.id] === status.id
                                     ? `${status.active} border-transparent`
-                                    : `border-transparent ${status.bg} ${status.color} hover:scale-105`
+                                    : `border-transparent ${status.bg} ${status.color} ${saving ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`
                                 }`}
                               >
                                 <status.icon size={18} className="mb-1" />
