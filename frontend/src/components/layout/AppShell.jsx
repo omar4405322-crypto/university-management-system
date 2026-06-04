@@ -11,9 +11,12 @@ const AppShell = ({ children }) => {
   const { isRTL } = useLanguage();
   const { isSidebarCollapsed } = useTheme();
 
+  // SIDEBAR LOGIC:
+  // On mobile (< 768px): Sidebar is HIDDEN by default (translate-x-full/translate-x--full)
+  // On desktop (>= 768px): Sidebar is ALWAYS VISIBLE (md:translate-x-0)
   const sidebarInset = isSidebarCollapsed
-    ? (isRTL ? 'md:pr-16' : 'md:pl-16')
-    : (isRTL ? 'md:pr-72' : 'md:pl-72');
+    ? (isRTL ? 'md:mr-20' : 'md:ml-20')
+    : (isRTL ? 'md:mr-72' : 'md:ml-72');
 
   return (
     <div
