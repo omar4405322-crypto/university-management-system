@@ -31,7 +31,8 @@
     "STORAGEUSAGE": "استخدام التخزين",
     "SUBSCRIPTION": "الاشتراك",
     "UPCOMINGEVENTS": "الأحداث القادمة",
-    "VIEWALLACTIVITY": "عرض كل النشاط"
+    "VIEWALLACTIVITY": "عرض كل النشاط",
+    "newStudentRegistration": "تسجيل طالب جديد"
   },
   "NAV": {
     "NOTIFICATIONS": "الإشعارات"

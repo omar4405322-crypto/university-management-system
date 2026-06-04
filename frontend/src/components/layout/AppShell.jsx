@@ -12,7 +12,7 @@ const AppShell = ({ children }) => {
   const { isSidebarCollapsed } = useTheme();
 
   const sidebarInset = isSidebarCollapsed
-    ? (isRTL ? 'md:pr-20' : 'md:pl-20')
+    ? (isRTL ? 'md:pr-16' : 'md:pl-16')
     : (isRTL ? 'md:pr-72' : 'md:pl-72');
 
   return (

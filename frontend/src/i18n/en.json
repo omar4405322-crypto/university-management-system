@@ -31,7 +31,8 @@
     "STORAGEUSAGE": "Storage Usage",
     "SUBSCRIPTION": "Subscription",
     "UPCOMINGEVENTS": "Upcoming Events",
-    "VIEWALLACTIVITY": "View All Activity"
+    "VIEWALLACTIVITY": "View All Activity",
+    "newStudentRegistration": "New student registration"
   },
   "NAV": {
     "NOTIFICATIONS": "Notifications"
