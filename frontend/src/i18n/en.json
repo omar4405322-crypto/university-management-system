@@ -521,7 +521,16 @@
     "roomPlaceholder": "e.g. Hall 4, Room 302",
     "schedulingNote": "Scheduling Note",
     "schedulingNoteBody": "Ensure there are no schedule conflicts for the selected room and course before saving.",
-    "saveExam": "Save Exam Schedule"
+    "saveExam": "Save Exam Schedule",
+    "scheduleNew": "Schedule New Exam",
+    "scheduleSubtitle": "Define the date, time, and location for the exam",
+    "createError": "Error creating exam",
+    "selectCourse": "Select Course",
+    "chooseCourse": "Choose a course",
+    "examType": "Exam Type",
+    "midterm": "Midterm Exam",
+    "final": "Final Examination",
+    "quiz": "General Quiz"
   },
   "doctors": {
     "activeProfessors": "Active Professors",
@@ -657,6 +666,9 @@
     "emailPlaceholder": "Enter your email",
     "subscribe": "Subscribe",
     "copyright": "All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "cookies": "Cookies Policy",
     "legalComingSoon": "Legal pages coming soon",
     "subscribeSuccess": "✔ Got it! We'll reach out when the newsletter launches."
   },
@@ -705,7 +717,7 @@
     "openMenu": "Open menu"
   },
   "notifications": {
-    "empty": "No notifications",
+    "empty": "No notifications yet",
     "emptyDesc": "We'll notify you when something important happens.",
     "markAllAsRead": "Mark all as read",
     "subtitle": "Stay updated with your latest university alerts",
@@ -898,7 +910,8 @@
     "submitTask": "Submit Assignment",
     "subtitleDoctor": "Manage course assignments and grading",
     "subtitleStudent": "View and submit your assignments",
-    "title": "Assignments"
+    "title": "Assignments",
+    "fetchError": "Error fetching tasks"
   },
   "timetables": {
     "academicYear": "Academic Year",

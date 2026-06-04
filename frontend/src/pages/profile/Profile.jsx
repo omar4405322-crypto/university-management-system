@@ -49,6 +49,8 @@ const Profile = () => {
     }
   }, [user]);
 
+  const [fullProfile, setFullProfile] = useState(null);
+
   const fetchFullProfile = async () => {
     try {
       const response = await api.get('/users/profile');
@@ -63,8 +65,6 @@ const Profile = () => {
   useEffect(() => {
     fetchFullProfile();
   }, []);
-
-  const [fullProfile, setFullProfile] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

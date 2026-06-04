@@ -17,9 +17,10 @@ import { useTranslation } from 'react-i18next';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 const NotificationsPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { 
     notifications, 
     unreadCount, 
@@ -48,42 +49,32 @@ const NotificationsPage = () => {
 
   const getTimeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " years ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " months ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " days ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " hours ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutes ago";
-    return Math.floor(seconds) + " seconds ago";
+    const rtf = new Intl.RelativeTimeFormat(i18n.language || 'en', { numeric: 'auto' });
+    const intervals = [
+      { label: 'year',   secs: 31536000 },
+      { label: 'month',  secs: 2592000  },
+      { label: 'day',    secs: 86400    },
+      { label: 'hour',   secs: 3600     },
+      { label: 'minute', secs: 60       },
+    ];
+    for (const { label, secs } of intervals) {
+      const val = Math.floor(seconds / secs);
+      if (val >= 1) return rtf.format(-val, label);
+    }
+    return rtf.format(-seconds, 'second');
   };
 
   return (
     <div className="section-gap animate-in fade-in duration-700">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-brand-text-main tracking-tight">
-            {t('header.notifications')}
-          </h1>
-          <p className="text-brand-text-sub font-bold mt-1 uppercase tracking-wider">
-            {t('notifications.subtitle')}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2 border-brand-border"
-            onClick={markAllAsRead}
-            disabled={unreadCount === 0}
-          >
-            <CheckCheck size={18} /> {t('header.markAllRead')}
-          </Button>
-        </div>
-      </div>
+      <PageHeader 
+        title={t('header.notifications')}
+        subtitle={t('notifications.subtitle')}
+        action={{
+          label: t('header.markAllRead'),
+          onClick: markAllAsRead,
+          disabled: unreadCount === 0,
+        }}
+      />
 
       <Card className="border-l-0" noPadding>
             {loading ? (
@@ -96,7 +87,7 @@ const NotificationsPage = () => {
                 <div className="h-20 w-20 rounded-full bg-brand-navy/5 flex items-center justify-center mb-4 border border-brand-border">
                   <Inbox size={40} className="text-brand-text-muted" />
                 </div>
-                <h3 className="text-lg font-black text-brand-text-main">No Notifications</h3>
+                <h3 className="text-lg font-black text-brand-text-main">{t('notifications.empty')}</h3>
                 <p className="text-sm text-brand-text-sub max-w-xs mx-auto mt-1 font-bold">
                   {filter === 'unread' ? "You've caught up with everything!" : "Your notification box is empty."}
                 </p>

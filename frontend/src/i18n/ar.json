@@ -520,7 +520,16 @@
     "roomPlaceholder": "مثال: القاعة 4، غرفة 302",
     "schedulingNote": "ملاحظة الجدولة",
     "schedulingNoteBody": "تأكد من عدم وجود تعارض في الجدول للقاعة والمقرر المحددين قبل الحفظ.",
-    "saveExam": "حفظ جدول الامتحان"
+    "saveExam": "حفظ جدول الامتحان",
+    "scheduleNew": "جدولة امتحان جديد",
+    "scheduleSubtitle": "حدد التاريخ والوقت والمكان للامتحان",
+    "createError": "خطأ في إنشاء الامتحان",
+    "selectCourse": "اختر المادة",
+    "chooseCourse": "اختر مادة",
+    "examType": "نوع الامتحان",
+    "midterm": "امتحان منتصف الفصل",
+    "final": "الامتحان النهائي",
+    "quiz": "اختبار عام"
   },
   "doctors": {
     "activeProfessors": "الأساتذة النشطون",
@@ -656,6 +665,9 @@
     "emailPlaceholder": "أدخل بريدك الإلكتروني",
     "subscribe": "اشتراك",
     "copyright": "جميع الحقوق محفوظة.",
+    "privacy": "سياسة الخصوصية",
+    "terms": "شروط الخدمة",
+    "cookies": "ملفات تعريف الارتباط",
     "legalComingSoon": "صفحات قانونية قريباً",
     "subscribeSuccess": "✔ تم! سنتواصل معك عند إطلاق النشرة الإخبارية."
   },
@@ -704,7 +716,7 @@
     "openMenu": "فتح القائمة"
   },
   "notifications": {
-    "empty": "لا توجد إشعارات",
+    "empty": "لا توجد إشعارات بعد",
     "emptyDesc": "سنخطرك عندما يحدث شيء مهم.",
     "markAllAsRead": "تحديد الكل كمقروء",
     "subtitle": "ابق على اطلاع بآخر تنبيهات الجامعة",
@@ -891,7 +903,8 @@
     "submitTask": "تسليم التكليف",
     "subtitleDoctor": "إدارة تكليفات المساق والتقييم",
     "subtitleStudent": "عرض وتسليم تكليفاتك",
-    "title": "التكليفات"
+    "title": "التكليفات",
+    "fetchError": "خطأ في تحميل المهام"
   },
   "timetables": {
     "academicYear": "السنة الدراسية",

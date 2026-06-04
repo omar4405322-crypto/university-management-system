@@ -65,6 +65,7 @@ const CoursesList = () => {
       setError(null);
       const params = {
         search,
+        collegeId: selectedCollege || undefined,
         departmentId: selectedDept || undefined,
         page,
         limit: 10
@@ -80,7 +81,7 @@ const CoursesList = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, selectedDept, page]);
+  }, [search, selectedCollege, selectedDept, page]);
 
   useEffect(() => {
     fetchInitialData();

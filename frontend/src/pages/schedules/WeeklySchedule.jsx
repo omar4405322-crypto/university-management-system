@@ -7,7 +7,6 @@ import {
   User, 
   ChevronLeft, 
   ChevronRight, 
-  Loader2, 
   Calendar,
   AlertCircle,
   FileText,
@@ -18,6 +17,7 @@ import timetableService from '../../services/timetable.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { SkeletonTable } from '../../components/ui/Skeleton';
 
 const WeeklySchedule = () => {
   const { t } = useTranslation();
@@ -76,12 +76,7 @@ const WeeklySchedule = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <Loader2 className="animate-spin text-brand-green" size={48} />
-        <p className="text-sm font-black text-brand-text-sub uppercase tracking-widest">{t('common.loading')}</p>
-      </div>
-    );
+    return <SkeletonTable rows={7} />;
   }
 
   if (!timetable) {

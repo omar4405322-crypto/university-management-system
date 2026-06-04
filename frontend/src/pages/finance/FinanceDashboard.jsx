@@ -16,6 +16,7 @@ import {
 import paymentsService from '../../services/payments.service';
 import { useAuth } from '../../context/AuthContext';
 import AddPaymentModal from './AddPaymentModal';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import Card from '../../components/ui/Card';
 import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
 import Button from '../../components/ui/Button';
@@ -50,6 +51,7 @@ const FinanceDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [confirmPaymentId, setConfirmPaymentId] = useState(null);
 
   const [filters, setFilters] = useState({
     status: 'ALL',
@@ -92,19 +94,19 @@ const FinanceDashboard = () => {
     fetchData();
   }, [filters]);
 
-  const handleMarkAsPaid = async (id) => {
-    if (window.confirm(t('finance.markAsPaidConfirm'))) {
-      try {
-        const result = await paymentsService.markAsPaid(id);
-        if (result.success) {
-          showToast(t('finance.updateSuccess'), 'success');
-          fetchData();
-        }
-      } catch (err) {
-        showToast(t('finance.updateError'), 'error');
-      }
-    }
-  };
+  const handleMarkAsPaid = async () => { 
+    if (!confirmPaymentId) return; 
+    try { 
+      const result = await paymentsService.markAsPaid(confirmPaymentId); 
+      if (result.success) { 
+        showToast(t('finance.updateSuccess'), 'success'); 
+        setConfirmPaymentId(null); 
+        fetchData(); 
+      } 
+    } catch (err) { 
+      showToast(t('finance.updateError'), 'error'); 
+    } 
+  }; 
 
   const showToast = (message, type) => {
     setToast({ message, type });
@@ -420,7 +422,7 @@ const FinanceDashboard = () => {
                     </TableCell>
                     <TableCell>
                       <ActionMenu actions={[
-                      ...(isAdmin && payment.status !== 'PAID' ? [{ label: t('finance.markPaid'), icon: CheckCircle, variant: 'edit', onClick: () => handleMarkAsPaid(payment.id) }] : []),
+                      ...(isAdmin && payment.status !== 'PAID' ? [{ label: t('finance.markPaid'), icon: CheckCircle, variant: 'edit', onClick: () => setConfirmPaymentId(payment.id) }] : []),
                       ...(!isAdmin && payment.status !== 'PAID' ? [{ label: t('finance.payNow'), icon: CreditCard, variant: 'default', onClick: () => {} }] : []),
                       { label: 'Download Receipt', icon: Download, variant: 'default', onClick: () => {} },
                     ]} />
@@ -441,6 +443,14 @@ const FinanceDashboard = () => {
           fetchData();
           showToast(t('finance.createSuccess'), 'success');
         }}
+      />
+
+      <ConfirmDeleteModal 
+        isOpen={!!confirmPaymentId} 
+        onClose={() => setConfirmPaymentId(null)} 
+        onConfirm={handleMarkAsPaid} 
+        title={t('finance.markAsPaidConfirm')} 
+        confirmLabel={t('finance.markPaid')} 
       />
     </div>
   );
