@@ -7,3 +7,7 @@ dist/
 build/
 uploads/
 coverage/
+
+# Logs
+combined.log
+*.log

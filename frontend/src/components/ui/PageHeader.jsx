@@ -1,6 +1,6 @@
 import React from 'react';
 import Button from './Button';
-import { Plus } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 
 export function PageHeader({ title, subtitle, action }) {
   const Icon = action?.icon || Plus;
