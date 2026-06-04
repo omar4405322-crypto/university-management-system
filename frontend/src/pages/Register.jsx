@@ -14,7 +14,6 @@ const Register = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    role: 'STUDENT',
     firstName: '',
     lastName: '',
     departmentId: '',
@@ -36,7 +35,6 @@ const Register = () => {
     setFormData({
       email: '',
       password: '',
-      role: 'STUDENT',
       firstName: '',
       lastName: '',
       departmentId: '',
@@ -62,6 +60,7 @@ const Register = () => {
   }, []);
 
   useEffect(() => {
+    setFormData(prev => ({ ...prev, departmentId: '' }));
     const fetchDepartments = async () => {
       if (!formData.collegeId) {
         setDepartments([]);
@@ -120,13 +119,12 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const result = await register({ ...formData, role: 'STUDENT' });
+      const result = await register(formData);
       if (result.success) {
         setSubmitted(true);
         setFormData({
           email: '',
           password: '',
-          role: 'STUDENT',
           firstName: '',
           lastName: '',
           departmentId: '',

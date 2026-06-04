@@ -103,9 +103,12 @@ const Login = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between ml-1">
                 <label className="text-brand-text-sub font-bold text-brand-text-main">{t('auth.password')}</label>
-                <Link to="/forgot-password" className="text-xs font-bold text-brand-green hover:text-brand-green-dark">
-                  {t('auth.forgotPassword')}
-                </Link>
+                <span 
+                  className="text-xs font-bold text-brand-text-muted cursor-not-allowed select-none" 
+                  title="Coming soon" 
+                > 
+                  {t('auth.forgotPassword')} 
+                </span>
               </div>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted" size={18} />

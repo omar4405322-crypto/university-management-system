@@ -16,8 +16,6 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 
-const CHART_GREEN = '#84cc16';
-const CHART_COLORS = ['#84cc16', '#22c55e', '#16a34a', '#15803d', '#8BB83C', '#132231'];
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -62,6 +60,12 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const { user } = useAuth();
+
+  const CHART_GREEN = '#8BB83C';
+  const CHART_COLORS = isDark
+    ? ['#8BB83C', '#a3d150', '#b4d16e', '#5e7d25', '#6f9330', '#94a3b8']
+    : ['#8BB83C', '#22c55e', '#16a34a', '#15803d', '#6f9330', '#132231'];
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
@@ -134,6 +138,7 @@ const Dashboard = () => {
           trend: 'up',
           icon: Users,
           color: 'green',
+          link: '/students'
         },
         {
           id: 'totalColleges',
@@ -142,7 +147,8 @@ const Dashboard = () => {
           change: 'Real-time',
           trend: 'neutral',
           icon: Building2,
-          color: 'navy'
+          color: 'navy',
+          link: '/colleges'
         },
         {
           id: 'totalPayments',
@@ -154,7 +160,8 @@ const Dashboard = () => {
           color: 'yellow',
           alert: true,
           alertLabel: t('dashboard.needsReview'),
-          tooltip: t('dashboard.paymentsBelowExpected')
+          tooltip: t('dashboard.paymentsBelowExpected'),
+          link: '/finance'
         },
         {
           id: 'totalDoctors',
@@ -164,6 +171,7 @@ const Dashboard = () => {
           trend: 'up',
           icon: GraduationCap,
           color: 'green',
+          link: '/doctors'
         },
         {
           id: 'totalSuperAdmins',
@@ -172,7 +180,8 @@ const Dashboard = () => {
           change: 'System',
           trend: 'neutral',
           icon: Shield,
-          color: 'navy'
+          color: 'navy',
+          link: '/admins'
         },
         {
           id: 'totalAdmins',
@@ -181,7 +190,8 @@ const Dashboard = () => {
           change: 'Staff',
           trend: 'neutral',
           icon: UserCheck,
-          color: 'navy'
+          color: 'navy',
+          link: '/admins'
         }
       ];
     } else if (user.role === 'STUDENT') {
@@ -339,7 +349,10 @@ const Dashboard = () => {
               key={kpi.id || idx}
               variant="default"
               noPadding
-              className="group hover:-translate-y-0.5 transition-all duration-300 overflow-hidden relative"
+              onClick={() => kpi.link && navigate(kpi.link)}
+              className={`group hover:-translate-y-0.5 transition-all duration-300 overflow-hidden relative ${kpi.link ? 'cursor-pointer hover:shadow-elevated' : ''}`}
+              role={kpi.link ? 'button' : undefined}
+              aria-label={kpi.link ? `Go to ${kpi.title}` : undefined}
             >
               <div className="p-5 space-y-3">
                 {kpi.alert && (
@@ -516,7 +529,7 @@ const Dashboard = () => {
                       <CheckCircle2 size={18} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main truncate">New student registration</p>
+                      <p className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main truncate group-hover:text-brand-primary-500 transition-colors">{t('dashboard.newStudentRegistration')}</p>
                       <p className="text-caption mt-0.5">2 hours ago</p>
                     </div>
                     <ChevronRight size={16} className="text-brand-text-muted shrink-0 group-hover:translate-x-0.5 transition-transform" />

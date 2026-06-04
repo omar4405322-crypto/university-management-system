@@ -55,7 +55,7 @@ const Header = ({ onMenuClick }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-brand-border bg-brand-bg-card/90 px-4 backdrop-blur-xl md:px-8 transition-colors duration-300">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-brand-border bg-brand-bg-card/90 px-4 backdrop-blur-xl md:px-8 transition-colors duration-300">
       <div className="flex items-center gap-6">
         <button
           onClick={onMenuClick}

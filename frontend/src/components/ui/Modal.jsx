@@ -39,7 +39,7 @@ const Modal = ({ isOpen, onClose, title, subtitle, children, size = 'md' }) => {
           </div>
         </div>
 
-        <div className="px-6 pb-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        <div className="px-6 pb-6 max-h-[60vh] sm:max-h-[75vh] overflow-y-auto custom-scrollbar overscroll-contain">
           {children}
         </div>
       </div>

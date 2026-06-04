@@ -90,18 +90,18 @@ const AppContent = () => {
                 <SuperAdminGuard>
                 <ErrorBoundary>
                   <Routes>
-                    <Route path="dashboard" element={<div className="fade-in"><Dashboard /></div>} />
-                    <Route path="students" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="fade-in"><StudentsList /></div></ProtectedRoute>} />
-                    <Route path="students/:id" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="fade-in"><StudentDetails /></div></ProtectedRoute>} />
-                    <Route path="courses" element={<div className="fade-in"><CoursesList /></div>} />
-                    <Route path="courses/:id" element={<div className="fade-in"><CourseDetails /></div>} />
-                    <Route path="doctors" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="fade-in"><DoctorsList /></div></ProtectedRoute>} />
-                    <Route path="schedule" element={<div className="fade-in"><WeeklySchedule /></div>} />
+                    <Route path="dashboard" element={<div className="animate-page"><Dashboard /></div>} />
+                    <Route path="students" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><StudentsList /></div></ProtectedRoute>} />
+                    <Route path="students/:id" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><StudentDetails /></div></ProtectedRoute>} />
+                    <Route path="courses" element={<div className="animate-page"><CoursesList /></div>} />
+                    <Route path="courses/:id" element={<div className="animate-page"><CourseDetails /></div>} />
+                    <Route path="doctors" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><DoctorsList /></div></ProtectedRoute>} />
+                    <Route path="schedule" element={<div className="animate-page"><WeeklySchedule /></div>} />
                     <Route
                       path="timetables-management"
                       element={
                         <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
-                          <div className="fade-in">
+                          <div className="animate-page">
                             <LazyRoute><TimetableManagement /></LazyRoute>
                           </div>
                         </ProtectedRoute>
@@ -111,66 +111,66 @@ const AppContent = () => {
                       path="schedules-management"
                       element={
                         <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
-                          <div className="fade-in">
+                          <div className="animate-page">
                             <LazyRoute><SchedulesList /></LazyRoute>
                           </div>
                         </ProtectedRoute>
                       }
                     />
-                    <Route path="exams" element={<div className="fade-in"><ExamsList /></div>} />
+                    <Route path="exams" element={<div className="animate-page"><ExamsList /></div>} />
                     <Route
                       path="exams/create"
                       element={
                         <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR']}>
-                          <div className="fade-in">
+                          <div className="animate-page">
                             <LazyRoute><CreateExam /></LazyRoute>
                           </div>
                         </ProtectedRoute>
                       }
                     />
-                    <Route path="exams/:id/take" element={<ProtectedRoute allowedRoles={['STUDENT']}><div className="fade-in"><TakeExam /></div></ProtectedRoute>} />
-                    <Route path="exams/:id" element={<div className="fade-in"><ExamDetails /></div>} />
-                    <Route path="finance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="fade-in"><FinanceDashboard /></div></ProtectedRoute>} />
-                    <Route path="analytics" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="fade-in"><AnalyticsDashboard /></div></ProtectedRoute>} />
-                    <Route path="colleges" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="fade-in"><CollegesList /></div></ProtectedRoute>} />
-                    <Route path="colleges/:id" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="fade-in"><CollegeDetails /></div></ProtectedRoute>} />
+                    <Route path="exams/:id/take" element={<ProtectedRoute allowedRoles={['STUDENT']}><div className="animate-page"><TakeExam /></div></ProtectedRoute>} />
+                    <Route path="exams/:id" element={<div className="animate-page"><ExamDetails /></div>} />
+                    <Route path="finance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><FinanceDashboard /></div></ProtectedRoute>} />
+                    <Route path="analytics" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><AnalyticsDashboard /></div></ProtectedRoute>} />
+                    <Route path="colleges" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><CollegesList /></div></ProtectedRoute>} />
+                    <Route path="colleges/:id" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><CollegeDetails /></div></ProtectedRoute>} />
                     <Route
                       path="departments/:id"
                       element={
                         <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
-                          <div className="fade-in">
+                          <div className="animate-page">
                             <LazyRoute><DepartmentDetails /></LazyRoute>
                           </div>
                         </ProtectedRoute>
                       }
                     />
-                    <Route path="departments" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}><div className="fade-in"><DepartmentsList /></div></ProtectedRoute>} />
-                    <Route path="registration-requests" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}><div className="fade-in"><RegistrationRequests /></div></ProtectedRoute>} />
+                    <Route path="departments" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}><div className="animate-page"><DepartmentsList /></div></ProtectedRoute>} />
+                    <Route path="registration-requests" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}><div className="animate-page"><RegistrationRequests /></div></ProtectedRoute>} />
                     <Route
                       path="admins"
                       element={
                         <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
-                          <div className="fade-in">
+                          <div className="animate-page">
                             <LazyRoute><AdminsList /></LazyRoute>
                           </div>
                         </ProtectedRoute>
                       }
                     />
-                    <Route path="quizzes" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT']}><div className="fade-in"><QuizzesList /></div></ProtectedRoute>} />
-                    <Route path="quizzes/create" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR']}><div className="fade-in"><CreateQuiz /></div></ProtectedRoute>} />
-                    <Route path="quizzes/:id/take" element={<ProtectedRoute allowedRoles={['STUDENT']}><div className="fade-in"><TakeQuiz /></div></ProtectedRoute>} />
-                    <Route path="tasks" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT']}><div className="fade-in"><TasksList /></div></ProtectedRoute>} />
-                    <Route path="notifications" element={<div className="fade-in"><NotificationsPage /></div>} />
-                    <Route path="attendance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT']}><div className="fade-in"><AttendancePage /></div></ProtectedRoute>} />
+                    <Route path="quizzes" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT']}><div className="animate-page"><QuizzesList /></div></ProtectedRoute>} />
+                    <Route path="quizzes/create" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR']}><div className="animate-page"><CreateQuiz /></div></ProtectedRoute>} />
+                    <Route path="quizzes/:id/take" element={<ProtectedRoute allowedRoles={['STUDENT']}><div className="animate-page"><TakeQuiz /></div></ProtectedRoute>} />
+                    <Route path="tasks" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT']}><div className="animate-page"><TasksList /></div></ProtectedRoute>} />
+                    <Route path="notifications" element={<div className="animate-page"><NotificationsPage /></div>} />
+                    <Route path="attendance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT']}><div className="animate-page"><AttendancePage /></div></ProtectedRoute>} />
                     <Route
                       path="settings"
                       element={
-                        <div className="fade-in">
+                        <div className="animate-page">
                           <LazyRoute><SettingsPage /></LazyRoute>
                         </div>
                       }
                     />
-                    <Route path="profile" element={<div className="fade-in"><Profile /></div>} />
+                    <Route path="profile" element={<div className="animate-page"><Profile /></div>} />
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>

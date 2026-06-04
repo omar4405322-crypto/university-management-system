@@ -10,12 +10,26 @@ const Footer = () => {
   const { t } = useTranslation();
   const { language } = useLanguage();
   const currentYear = new Date().getFullYear();
+  const [subscribed, setSubscribed] = React.useState(false);
+  const [newsletterEmail, setNewsletterEmail] = React.useState('');
+  const [newsletterError, setNewsletterError] = React.useState('');
+
+  const handleNewsletter = (e) => {
+    e.preventDefault();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!newsletterEmail || !emailRegex.test(newsletterEmail)) {
+      setNewsletterError('Please enter a valid email address.');
+      return;
+    }
+    setNewsletterError('');
+    setSubscribed(true);
+  };
 
   const quickLinks = [
     { key: 'academicCalendar', to: '/schedule' },
     { key: 'campusMap', to: '/colleges' },
-    { key: 'careerServices', to: '/tasks' },
-    { key: 'studentPortal', to: '/login' },
+    { key: 'careerServices', to: '/courses' },
+    { key: 'studentPortal', to: '/dashboard' },
   ];
 
   return (
@@ -86,15 +100,30 @@ const Footer = () => {
           <div className="space-y-6">
             <h3 className="text-lg font-bold border-b border-brand-primary-500/30 pb-2 inline-block">{t('footer.newsletter')}</h3>
             <p className="text-sm text-slate-400">{t('footer.newsletterDesc')}</p>
-            <form className="flex gap-2" onSubmit={(e) => e.preventDefault()}>
-              <input
-                type="email"
-                placeholder={t('footer.emailPlaceholder')}
-                className="bg-slate-800/50 border border-white/10 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-brand-primary-500 text-white placeholder:text-slate-500"
-              />
-              <button type="submit" className="bg-brand-primary-500 text-white px-4 py-2 rounded-lg hover:bg-brand-primary-600 transition-colors text-xs font-black uppercase tracking-widest">
-                {t('footer.subscribe')}
-              </button>
+            <form className="flex flex-col gap-2" onSubmit={handleNewsletter}>
+              {subscribed ? (
+                <p className="text-sm text-brand-primary-400 font-semibold">
+                  {t('footer.subscribeSuccess') || '✔ Subscribed successfully!'}
+                </p>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={newsletterEmail}
+                      onChange={(e) => setNewsletterEmail(e.target.value)}
+                      placeholder={t('footer.emailPlaceholder')}
+                      className="bg-slate-800/50 border border-white/10 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-brand-primary-500 text-white placeholder:text-slate-500"
+                    />
+                    <button type="submit" className="bg-brand-primary-500 text-white px-4 py-2 rounded-lg hover:bg-brand-primary-600 transition-colors text-xs font-black uppercase tracking-widest">
+                      {t('footer.subscribe')}
+                    </button>
+                  </div>
+                  {newsletterError && (
+                    <p className="text-xs text-red-400 mt-1">{newsletterError}</p>
+                  )}
+                </>
+              )}
             </form>
           </div>
         </div>
@@ -102,9 +131,9 @@ const Footer = () => {
         <div className="mt-12 pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© {currentYear} {t('footer.universityName')}. {t('footer.copyright')}</p>
           <div className="flex items-center gap-6">
-            <Link to="/settings" className="hover:text-white transition-colors underline decoration-white/10 hover:decoration-white">{t('footer.privacy')}</Link>
-            <Link to="/settings" className="hover:text-white transition-colors underline decoration-white/10 hover:decoration-white">{t('footer.terms')}</Link>
-            <Link to="/settings" className="hover:text-white transition-colors underline decoration-white/10 hover:decoration-white">{t('footer.cookies')}</Link>
+            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors opacity-60 cursor-not-allowed">{t('footer.privacy')}</a>
+            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors opacity-60 cursor-not-allowed">{t('footer.terms')}</a>
+            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors opacity-60 cursor-not-allowed">{t('footer.cookies')}</a>
           </div>
         </div>
       </div>

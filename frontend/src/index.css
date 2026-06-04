@@ -353,11 +353,11 @@
 
   /* Toast notifications */
   .toast-success {
-    @apply fixed top-20 right-4 z-50 px-5 py-3.5 rounded-2xl shadow-overlay text-white bg-success flex items-center gap-3 text-sm font-semibold;
+    @apply fixed top-16 right-4 z-50 px-5 py-3.5 rounded-2xl shadow-overlay text-white bg-success flex items-center gap-3 text-sm font-semibold;
   }
 
   .toast-error {
-    @apply fixed top-20 right-4 z-50 px-5 py-3.5 rounded-2xl shadow-overlay text-white bg-error flex items-center gap-3 text-sm font-semibold;
+    @apply fixed top-16 right-4 z-50 px-5 py-3.5 rounded-2xl shadow-overlay text-white bg-error flex items-center gap-3 text-sm font-semibold;
   }
 
   /* Pagination */
@@ -381,6 +381,18 @@
   .tab-inactive {
     @apply text-brand-text-secondary hover:text-brand-text-primary hover:bg-slate-50 dark:hover:bg-slate-800/50;
   }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--brand-border) transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--brand-border);
+    border-radius: 99px;
+  }
 }
 
 /* === RTL Utilities === */
@@ -401,7 +413,7 @@
   text-overflow: ellipsis;
 }
 
-[dir="rtl"] .fixed.top-20.right-4 {
+[dir="rtl"] .fixed.top-16.right-4 {
   right: auto;
   left: 1rem;
 }

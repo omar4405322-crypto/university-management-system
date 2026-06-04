@@ -16,6 +16,7 @@ import Pagination from '../../components/ui/Pagination';
 import { EmptyState } from '../../components/ui/EmptyState';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { downloadCsv } from '../../utils/exportCsv';
+import { SkeletonTable, SkeletonKPIGrid } from '../../components/ui/Skeleton';
 import { 
   Users,
   Download,
@@ -167,8 +168,17 @@ const StudentsList = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
+  if (loading && students.length === 0) {
+    return (
+      <div className="space-y-6">
+        <SkeletonKPIGrid />
+        <SkeletonTable rows={8} />
+      </div>
+    );
+  }
+
   return (
-    <div className="section-gap animate-in fade-in duration-700">
+    <div className="section-gap animate-in fade-in duration-500">
       {/* Toast Notification */}
       {toast && (
         <div className={`${toast.type === 'error' ? 'toast-error' : 'toast-success'}`}>
@@ -234,9 +244,7 @@ const StudentsList = () => {
         </FilterBar>
 
         <div className="min-h-[400px]">
-          {loading && students.length === 0 ? (
-            <LoadingState message="Synchronizing student records..." />
-          ) : error ? (
+          {error ? (
             <div className="p-8">
               <ErrorState message={error} onRetry={fetchStudents} />
             </div>

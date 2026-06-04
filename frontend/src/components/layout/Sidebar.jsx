@@ -132,6 +132,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { title: 'nav.colleges', path: '/colleges', icon: Building2, roles: ['SUPER_ADMIN', 'ADMIN'] },
         { title: 'nav.departments', path: '/departments', icon: Layers, roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'] },
         { title: 'nav.courses', path: '/courses', icon: BookOpen, roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'] },
+        { title: 'nav.schedule', path: '/schedule', icon: Calendar, roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'] },
         { title: 'nav.exams', path: '/exams', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'] },
         { title: 'timetables.title', path: '/timetables-management', icon: Calendar, roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] },
         { title: 'nav.quizzes', path: '/quizzes', icon: CheckSquare, roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'] },
@@ -151,7 +152,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { title: 'nav.requests', path: '/registration-requests', icon: ClipboardList, roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] },
         { title: 'nav.attendance', path: '/attendance', icon: UserCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'] },
         { title: 'nav.tasks', path: '/tasks', icon: Activity, roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'] },
-        { title: 'nav.finance', path: '/finance', icon: DollarSign, roles: ['SUPER_ADMIN', 'ADMIN', 'STUDENT'] },
+        { title: 'nav.finance', path: '/finance', icon: DollarSign, roles: ['SUPER_ADMIN', 'ADMIN'] },
       ]
     },
     {
