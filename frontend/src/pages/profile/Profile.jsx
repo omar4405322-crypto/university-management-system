@@ -195,7 +195,7 @@ const Profile = () => {
                 </div>
                 <button 
                   onClick={() => setIsPicModalOpen(true)}
-                  className="absolute bottom-1 right-1 rounded-full bg-white p-1.5 shadow-lg border border-brand-border text-brand-text-sub hover:text-brand-primary-500 transition-colors"
+                  className="absolute bottom-1 right-1 rounded-full bg-brand-bg-card dark:bg-slate-700 p-1.5 shadow-lg border border-brand-border text-brand-text-sub hover:text-brand-primary-500 transition-colors"
                   title={t('profile.uploadPic')}
                 >
                   <Camera size={15} />

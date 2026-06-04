@@ -22,6 +22,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Badge from '../../components/ui/Badge';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { SkeletonKPIGrid, SkeletonTable } from '../../components/ui/Skeleton';
 import { 
   DollarSign, 
   Clock, 
@@ -34,8 +35,7 @@ import {
   TrendingUp,
   CreditCard,
   History,
-  LayoutDashboard,
-  Loader2
+  LayoutDashboard
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -124,6 +124,15 @@ const FinanceDashboard = () => {
     totalPending: payments.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + p.amount, 0),
     totalOverdue: payments.filter(p => p.status === 'OVERDUE').reduce((sum, p) => sum + p.amount, 0),
   } : null;
+
+  if (loading && !stats && payments.length === 0) {
+    return (
+      <div className="space-y-8 animate-page">
+        <SkeletonKPIGrid />
+        <SkeletonTable rows={10} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-page">
@@ -355,12 +364,7 @@ const FinanceDashboard = () => {
           </div>
 
           <div className="min-h-[400px]">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center h-64 gap-3">
-                <Loader2 className="animate-spin text-brand-primary-500" size={40} />
-                <p className="text-sm text-brand-text-sub font-medium">{t('common.loading')}</p>
-              </div>
-            ) : payments.length === 0 ? (
+            {payments.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-center">
                 <div className="h-16 w-16 rounded-full bg-surface-subtle flex items-center justify-center mb-4 border border-brand-border">
                   <History size={32} className="text-brand-text-muted" />

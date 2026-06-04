@@ -112,7 +112,7 @@ const NotificationsPage = () => {
                     }`}
                   >
                     <div className={`mt-1 p-2 rounded-xl shrink-0 ${
-                      !notification.isRead ? 'bg-white shadow-sm' : 'bg-brand-navy/5'
+                      !notification.isRead ? 'bg-brand-bg-card dark:bg-slate-700 shadow-sm border border-brand-border' : 'bg-brand-navy/5 dark:bg-slate-800/30'
                     }`}>
                       {getNotificationIcon(notification.type)}
                     </div>

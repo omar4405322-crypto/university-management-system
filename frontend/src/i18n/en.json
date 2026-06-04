@@ -641,6 +641,25 @@
     "viewAll": "View All",
     "revenueByType": "Revenue by Type"
   },
+  "footer": {
+    "universityName": "6th of October University of Technology",
+    "universityNameAr": "جامعة 6 أكتوبر التكنولوجية",
+    "tagline": "A leading institution for technological education and professional excellence.",
+    "quickLinks": "Quick Links",
+    "academicCalendar": "Academic Calendar",
+    "campusMap": "Campus Map",
+    "careerServices": "Career Services",
+    "studentPortal": "Student Portal",
+    "contactUs": "Contact Us",
+    "address": "6th of October City, Giza, Egypt",
+    "newsletter": "Newsletter",
+    "newsletterDesc": "Subscribe to get the latest university news and events.",
+    "emailPlaceholder": "Enter your email",
+    "subscribe": "Subscribe",
+    "copyright": "All rights reserved.",
+    "legalComingSoon": "Legal pages coming soon",
+    "subscribeSuccess": "✔ Got it! We'll reach out when the newsletter launches."
+  },
   "header": {
     "arabic": "Arabic",
     "changeLanguage": "Change Language",
@@ -679,7 +698,11 @@
     "students": "Students",
     "system": "System",
     "tasks": "Tasks",
-    "userManagement": "Users Management"
+    "userManagement": "Users Management",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "closeSidebar": "Close menu",
+    "openMenu": "Open menu"
   },
   "notifications": {
     "empty": "No notifications",

@@ -104,8 +104,8 @@ const Login = () => {
               <div className="flex items-center justify-between ml-1">
                 <label className="text-brand-text-sub font-bold text-brand-text-main">{t('auth.password')}</label>
                 <span 
-                  className="text-xs font-bold text-brand-text-muted cursor-not-allowed select-none" 
-                  title="Coming soon" 
+                  className="text-xs text-brand-text-muted/40 select-none pointer-events-none" 
+                  aria-disabled="true" 
                 > 
                   {t('auth.forgotPassword')} 
                 </span>

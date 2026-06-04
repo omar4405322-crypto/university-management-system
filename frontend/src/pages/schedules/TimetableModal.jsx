@@ -302,7 +302,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
             <div className="lg:col-span-2 space-y-1.5">
               <label className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('timetables.day')}</label>
               <select
-                className="w-full h-11 px-3 bg-white border border-brand-border rounded-xl text-xs font-bold"
+                className="w-full h-11 px-3 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-xl text-xs font-bold text-brand-text-primary dark:text-brand-text-main"
                 value={newSlot.day}
                 onChange={(e) => setNewSlot({ ...newSlot, day: e.target.value })}
               >
@@ -312,7 +312,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
             <div className="lg:col-span-3 space-y-1.5">
               <label className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('timetables.courseName')}</label>
               <input
-                className="w-full h-11 px-3 bg-white border border-brand-border rounded-xl text-xs font-bold"
+                className="w-full h-11 px-3 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-xl text-xs font-bold text-brand-text-primary dark:text-brand-text-main"
                 placeholder="e.g. Data Structures"
                 value={newSlot.courseName}
                 onChange={(e) => setNewSlot({ ...newSlot, courseName: e.target.value })}
@@ -321,7 +321,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
             <div className="lg:col-span-2 space-y-1.5">
               <label className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('timetables.instructor')}</label>
               <input
-                className="w-full h-11 px-3 bg-white border border-brand-border rounded-xl text-xs font-bold"
+                className="w-full h-11 px-3 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-xl text-xs font-bold text-brand-text-primary dark:text-brand-text-main"
                 placeholder="Professor name"
                 value={newSlot.instructor}
                 onChange={(e) => setNewSlot({ ...newSlot, instructor: e.target.value })}
@@ -331,7 +331,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
               <label className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('timetables.startTime')}</label>
               <input
                 type="time"
-                className="w-full h-11 px-3 bg-white border border-brand-border rounded-xl text-xs font-bold"
+                className="w-full h-11 px-3 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-xl text-xs font-bold text-brand-text-primary dark:text-brand-text-main"
                 value={newSlot.startTime}
                 onChange={(e) => setNewSlot({ ...newSlot, startTime: e.target.value })}
               />
@@ -339,7 +339,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
             <div className="lg:col-span-1 space-y-1.5">
               <label className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('timetables.room')}</label>
               <input
-                className="w-full h-11 px-3 bg-white border border-brand-border rounded-xl text-xs font-bold"
+                className="w-full h-11 px-3 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-xl text-xs font-bold text-brand-text-primary dark:text-brand-text-main"
                 placeholder="Hall A"
                 value={newSlot.room}
                 onChange={(e) => setNewSlot({ ...newSlot, room: e.target.value })}
@@ -359,7 +359,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
               </div>
             ) : (
               (formData.scheduleData?.slots || []).map((slot, idx) => (
-                <div key={slot.id || idx} className="flex items-center justify-between p-4 bg-white border border-brand-border rounded-2xl hover:border-brand-green/30 transition-all group">
+                <div key={slot.id || idx} className="flex items-center justify-between p-4 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-2xl hover:border-brand-green/30 transition-all group">
                   <div className="flex items-center gap-6">
                     <div className="w-24 text-xs font-black text-brand-navy bg-brand-navy/5 py-1 px-3 rounded-lg text-center">
                       {t(`days.${(slot.day || 'Monday').toLowerCase()}`)}
