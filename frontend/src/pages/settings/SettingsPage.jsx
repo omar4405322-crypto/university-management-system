@@ -32,6 +32,7 @@ const SettingsPage = () => {
   const { isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('account');
+  const [videoError, setVideoError] = useState(false);
   
   const [accountData, setAccountData] = useState({
     firstName: '',
@@ -469,19 +470,26 @@ const SettingsPage = () => {
       </div>
 
       <div className="overflow-hidden rounded-[2rem] shadow-elevated border border-brand-border">
-        <video
-          src={UNIVERSITY_PROMO_VIDEO}
-          controls
-          className="w-full max-h-[480px] bg-black object-cover"
-          poster={CAMPUS_HERO_2}
-          preload="metadata"
-          playsInline
-        >
-          <track kind="captions" />
-          <p className="p-4 text-sm text-brand-text-muted">
-            {t('settings.videoUnsupported', 'Your browser does not support video playback.')}
-          </p>
-        </video>
+        {!videoError ? ( 
+          <video 
+            src={UNIVERSITY_PROMO_VIDEO} 
+            controls 
+            onError={() => setVideoError(true)} 
+            className="w-full max-h-[480px] bg-black object-cover" 
+            poster={CAMPUS_HERO_2}
+            preload="metadata"
+            playsInline
+          >
+            <track kind="captions" />
+            <p className="p-4 text-sm text-brand-text-muted">
+              {t('settings.videoUnsupported', 'Your browser does not support video playback.')}
+            </p>
+          </video>
+        ) : ( 
+          <div className="w-full rounded-2xl bg-surface-subtle border border-brand-border flex items-center justify-center py-12"> 
+            <p className="text-sm text-brand-text-muted font-bold">{t('settings.videoUnavailable') || 'Video unavailable'}</p> 
+          </div> 
+        )} 
         <div className="bg-brand-navy px-6 py-5">
           <h3 className="text-lg font-black text-white">
             {t('settings.universityPromoTitle')}

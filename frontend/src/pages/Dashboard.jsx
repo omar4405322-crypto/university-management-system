@@ -328,6 +328,7 @@ const Dashboard = () => {
               variant="outline"
               size="md"
               className="border-white/30 bg-white/10 font-bold text-xs uppercase tracking-widest text-white backdrop-blur-sm hover:bg-white/20"
+              onClick={() => navigate('/notifications')}
             >
               <History size={16} /> {t('dashboard.activityLog')}
             </Button>
@@ -335,6 +336,7 @@ const Dashboard = () => {
               variant="primary"
               size="md"
               className="shadow-overlay shadow-brand-primary-500/30 font-bold text-xs uppercase tracking-widest"
+              onClick={() => navigate('/settings')}
             >
               <Zap size={16} /> {t('dashboard.quickActions')}
             </Button>
@@ -343,7 +345,7 @@ const Dashboard = () => {
       </div>
 
       {/* === KPI Grid === */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-5 xl:gap-6">
         {kpis.map((kpi, idx) => (
             <Card
               key={kpi.id || idx}
@@ -391,7 +393,7 @@ const Dashboard = () => {
       {/* === Main Content Grid === */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 2xl:gap-8">
         {/* Charts Section */}
-        <div className="lg:col-span-8 xl:col-span-9 2xl:col-span-10 section-gap">
+        <div className="lg:col-span-8 xl:col-span-9 2xl:col-span-9 section-gap">
           <Card 
             variant="elevated"
             title={t('dashboard.academicOverview')} 
@@ -523,14 +525,23 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card title={t('dashboard.recentActivity')} variant="default" noPadding>
               <div className="divide-y divide-brand-border">
-                {[1, 2, 3, 4].map((item) => (
-                  <div key={item} className="p-5 flex items-center gap-4 hover:bg-surface-subtle/60 transition-colors group cursor-pointer">
+                {(!stats?.recentActivity?.length) ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
+                    <CheckCircle2 size={32} className="text-brand-text-muted opacity-30" />
+                    <p className="text-sm font-bold text-brand-text-muted">{t('common.noData')}</p>
+                  </div>
+                ) : stats.recentActivity.slice(0, 4).map((activity) => (
+                  <div key={activity.id} className="p-5 flex items-center gap-4 hover:bg-surface-subtle/60 transition-colors group cursor-pointer">
                     <div className="w-11 h-11 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-primary-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                       <CheckCircle2 size={18} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main truncate group-hover:text-brand-primary-500 transition-colors">{t('dashboard.newStudentRegistration')}</p>
-                      <p className="text-caption mt-0.5">2 hours ago</p>
+                      <p className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main truncate group-hover:text-brand-primary-500 transition-colors">
+                        {activity.description || t('dashboard.newStudentRegistration')}
+                      </p>
+                      <p className="text-caption mt-0.5">
+                        {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : ''}
+                      </p>
                     </div>
                     <ChevronRight size={16} className="text-brand-text-muted shrink-0 group-hover:translate-x-0.5 transition-transform" />
                   </div>
@@ -544,38 +555,23 @@ const Dashboard = () => {
             </Card>
 
             <Card title={t('dashboard.systemStatus')} variant="default" noPadding>
-              <div className="p-6 space-y-6">
-                <div className="space-y-2.5">
-                  <div className="flex justify-between text-caption">
-                    <span className="text-brand-text-secondary">{t('dashboard.serverLoad')}</span>
-                    <span className="text-brand-primary-500 font-black">24%</span>
-                  </div>
-                  <div className="h-2 w-full bg-surface-subtle dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-brand-primary-500 w-[24%] rounded-full shadow-[0_0_8px_rgba(139,184,60,0.3)]" />
-                  </div>
+              <div className="p-6 flex flex-col items-center justify-center gap-4 min-h-[160px]">
+                <div className="p-4 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 border border-brand-primary-100 dark:border-brand-primary-900/20 flex items-center gap-3 w-full">
+                  <div className="w-2.5 h-2.5 rounded-full bg-brand-primary-500 animate-ping shrink-0" />
+                  <p className="text-xs font-black text-brand-primary-500 uppercase tracking-widest">
+                    {t('dashboard.allSystemsOperational')}
+                  </p>
                 </div>
-                <div className="space-y-2.5">
-                  <div className="flex justify-between text-caption">
-                    <span className="text-brand-text-secondary">{t('dashboard.storageUsage')}</span>
-                    <span className="text-brand-accent-yellow font-black">68%</span>
-                  </div>
-                  <div className="h-2 w-full bg-surface-subtle dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-brand-accent-yellow w-[68%] rounded-full shadow-[0_0_8px_rgba(214,186,52,0.3)]" />
-                  </div>
-                </div>
-                <div className="pt-2">
-                  <div className="p-4 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 border border-brand-primary-100 dark:border-brand-primary-900/20 flex items-center gap-3">
-                    <div className="w-2.5 h-2.5 rounded-full bg-brand-primary-500 animate-ping" />
-                    <p className="text-xs font-black text-brand-primary-500 uppercase tracking-widest">{t('dashboard.allSystemsOperational')}</p>
-                  </div>
-                </div>
+                <p className="text-xs text-brand-text-muted text-center font-medium">
+                  {t('dashboard.systemStatusNote') || 'Detailed metrics available to system administrators.'}
+                </p>
               </div>
             </Card>
           </div>
         </div>
 
         {/* Sidebar Section */}
-        <div className="lg:col-span-4 xl:col-span-3 2xl:col-span-2 section-gap">
+        <div className="lg:col-span-4 xl:col-span-3 2xl:col-span-3 section-gap">
           <Card variant="elevated" noPadding className="rounded-[2rem]">
             <div className="p-8 space-y-8">
               <div className="space-y-1">
@@ -618,34 +614,54 @@ const Dashboard = () => {
 
           <Card title={t('dashboard.upcomingEvents')} variant="default" noPadding>
             <div className="p-6 space-y-5">
-              {[1, 2].map((item) => (
-                <div key={item} className="flex gap-4 group cursor-pointer">
-                  <div className="flex flex-col items-center justify-center w-14 h-16 rounded-xl bg-surface-subtle border border-brand-border group-hover:bg-brand-primary-500 group-hover:border-brand-primary-500 transition-all duration-300">
-                    <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-none group-hover:text-white transition-colors">1{item}</span>
-                    <span className="text-[9px] font-black uppercase text-brand-text-secondary group-hover:text-white/80 transition-colors">Jun</span>
-                  </div>
-                  <div className="flex-1 pt-1">
-                    <h5 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight group-hover:text-brand-primary-500 transition-colors">{t('dashboard.boardMeeting')}</h5>
-                    <p className="text-caption mt-1">{t('dashboard.conferenceRoom')} A</p>
-                  </div>
+              {(!stats?.upcomingEvents?.length) ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+                  <Calendar size={28} className="text-brand-text-muted opacity-30" />
+                  <p className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">
+                    {t('dashboard.noUpcomingEvents') || 'No upcoming events'}
+                  </p>
                 </div>
-              ))}
+              ) : stats.upcomingEvents.slice(0, 3).map((event) => {
+                const d = new Date(event.date);
+                return (
+                  <div key={event.id} className="flex gap-4 group cursor-pointer">
+                    <div className="flex flex-col items-center justify-center w-14 h-16 rounded-xl bg-surface-subtle border border-brand-border group-hover:bg-brand-primary-500 group-hover:border-brand-primary-500 transition-all duration-300">
+                      <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-none group-hover:text-white transition-colors">
+                        {d.getDate()}
+                      </span>
+                      <span className="text-[9px] font-black uppercase text-brand-text-secondary group-hover:text-white/80 transition-colors">
+                        {d.toLocaleString('default', { month: 'short' })}
+                      </span>
+                    </div>
+                    <div className="flex-1 pt-1">
+                      <h5 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight group-hover:text-brand-primary-500 transition-colors">
+                        {event.title}
+                      </h5>
+                      <p className="text-caption mt-1">{event.location || ''}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </Card>
 
-          <Card variant="subtle" className="border-brand-accent-yellow/20">
-            <div className="flex gap-4">
-              <div className="p-3 bg-brand-accent-yellow/20 text-brand-accent-yellow rounded-xl h-fit shrink-0">
-                <Bell size={18} />
+          {stats?.latestAnnouncement && (
+            <Card variant="subtle" className="border-brand-accent-yellow/20">
+              <div className="flex gap-4">
+                <div className="p-3 bg-brand-accent-yellow/20 text-brand-accent-yellow rounded-xl h-fit shrink-0">
+                  <Bell size={18} />
+                </div>
+                <div className="space-y-1.5">
+                  <h6 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight">
+                    {stats.latestAnnouncement.title || t('dashboard.examSchedulePublished')}
+                  </h6>
+                  <p className="text-xs text-brand-text-secondary font-medium leading-relaxed">
+                    {stats.latestAnnouncement.body || t('dashboard.examScheduleNote')}
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <h6 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight">{t('dashboard.examSchedulePublished')}</h6>
-                <p className="text-xs text-brand-text-secondary font-medium leading-relaxed">
-                  {t('dashboard.examScheduleNote')}
-                </p>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          )}
         </div>
       </div>
     </div>

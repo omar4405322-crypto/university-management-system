@@ -57,7 +57,7 @@ const AddExamModal = ({ isOpen, onClose, onSuccess }) => {
         onClose();
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Error creating exam');
+      setError(err.response?.data?.message || t('exams.createError'));
     } finally {
       setLoading(false);
     }
@@ -67,36 +67,36 @@ const AddExamModal = ({ isOpen, onClose, onSuccess }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Schedule New Exam"
-      subtitle="Define the date, time, and location for the exam"
+      title={t('exams.scheduleNew')}
+      subtitle={t('exams.scheduleSubtitle')}
     >
       <form onSubmit={handleSubmit} className="form-section">
         {error && <div className="p-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-sm font-bold">{error}</div>}
         
         <div className="space-y-1.5">
-          <label className="text-sm font-bold text-brand-text-main ml-1">Select Course *</label>
+          <label className="text-sm font-bold text-brand-text-main ml-1">{t('exams.selectCourse')} *</label>
           <select
             required
             className="w-full h-11 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer"
             value={formData.courseId}
             onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
           >
-            <option value="">Choose a course</option>
+            <option value="">{t('exams.chooseCourse')}</option>
             {courses.map(c => <option key={c.id} value={c.id}>{c.courseCode} - {c.name}</option>)}
           </select>
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-bold text-brand-text-main ml-1">Exam Type *</label>
+          <label className="text-sm font-bold text-brand-text-main ml-1">{t('exams.examType')} *</label>
           <select
             required
             className="w-full h-11 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer"
             value={formData.type}
             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
           >
-            <option value="MIDTERM">Midterm Exam</option>
-            <option value="FINAL">Final Examination</option>
-            <option value="QUIZ">General Quiz</option>
+            <option value="MIDTERM">{t('exams.midterm')}</option>
+            <option value="FINAL">{t('exams.final')}</option>
+            <option value="QUIZ">{t('exams.quiz')}</option>
           </select>
         </div>
 

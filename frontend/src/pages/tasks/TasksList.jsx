@@ -46,7 +46,7 @@ const TasksList = () => {
         setTasks(result.data);
       }
     } catch (error) {
-      showToast('Error fetching tasks', 'error');
+      showToast(t('tasks.fetchError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,10 @@ const TasksList = () => {
     try {
       const result = await coursesService.getCourses();
       if (result.success) {
-        setCourses(result.data);
+        const list = Array.isArray(result.data) 
+          ? result.data 
+          : result.data?.courses || [];
+        setCourses(list);
       }
     } catch (error) {
       console.error('Error fetching courses:', error);

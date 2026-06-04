@@ -84,7 +84,7 @@ const Login = () => {
             </p>
 
             <div className="space-y-2">
-              <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">{t('auth.emailAddress')}</label>
+              <label className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main ml-1">{t('auth.emailAddress')}</label>
               <div className="relative group">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted" size={18} />
                 <Input
@@ -102,7 +102,7 @@ const Login = () => {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between ml-1">
-                <label className="text-brand-text-sub font-bold text-brand-text-main">{t('auth.password')}</label>
+                <label className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main">{t('auth.password')}</label>
                 <span 
                   className="text-xs text-brand-text-muted/40 select-none pointer-events-none" 
                   aria-disabled="true" 

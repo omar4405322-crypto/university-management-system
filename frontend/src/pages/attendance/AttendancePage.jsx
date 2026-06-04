@@ -22,6 +22,7 @@ import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { SkeletonTable } from '../../components/ui/Skeleton';
 
 const AttendancePage = () => {
   const { t } = useTranslation();
@@ -237,7 +238,7 @@ const AttendancePage = () => {
                 subtitle={t('attendance.chooseCourseDesc')}
               />
             ) : rosterLoading ? (
-              <LoadingState message={t('attendance.loadingRoster')} />
+              <SkeletonTable rows={5} />
             ) : error ? (
               <div className="p-12">
                 <ErrorState message={error} onRetry={fetchRoster} />
