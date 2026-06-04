@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import quizService from '../../services/quiz.service';
 import { Clock, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, Send } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 
 const TakeQuiz = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [quiz, setQuiz] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -14,6 +17,23 @@ const TakeQuiz = () => {
   const [timeLeft, setTimeLeft] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState(null);
+
+  // 1. Add a beforeunload event listener
+  useEffect(() => { 
+    if (submitted) return; 
+    const handleBeforeUnload = (e) => { 
+      e.preventDefault(); 
+      e.returnValue = ''; 
+    }; 
+    window.addEventListener('beforeunload', handleBeforeUnload); 
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload); 
+  }, [submitted]);
+
+  // 2. Add a React Router navigation blocker
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !submitted && currentLocation.pathname !== nextLocation.pathname
+  );
 
   const fetchQuiz = useCallback(async () => {
     try {
@@ -218,6 +238,18 @@ const TakeQuiz = () => {
           )}
         </div>
       </div>
+
+      {/* Navigation Protection Modal */}
+      <ConfirmDeleteModal
+        isOpen={blocker.state === 'blocked'}
+        onClose={() => blocker.reset()}
+        onConfirm={() => blocker.proceed()}
+        title={t('quiz.leaveWarningTitle')}
+        message={t('quiz.leaveWarningMessage')}
+        confirmLabel={t('quiz.leaveButton')}
+        cancelLabel={t('quiz.stayButton')}
+        variant="warning"
+      />
     </div>
   );
 };

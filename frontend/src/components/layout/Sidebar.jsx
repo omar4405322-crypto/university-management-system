@@ -273,14 +273,19 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         <button
           onClick={toggleSidebar}
-          className={`
-            hidden md:flex absolute -right-3 top-24 h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-brand-navy text-white shadow-xl transition-transform
-            ${isRTL ? (isCollapsed ? '' : 'rotate-180') : (isCollapsed ? 'rotate-180' : '')}
-            ${isRTL ? 'right-auto -left-3' : '-right-3'}
-          `}
-          aria-label={isCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')} // Translation keys may not exist yet
+          className={[
+            'hidden md:flex absolute top-24 h-6 w-6',
+            'items-center justify-center rounded-full',
+            'border border-white/20 bg-brand-navy text-white',
+            'shadow-xl transition-all duration-300 z-10',
+            isRTL ? '-left-3' : '-right-3',
+            isRTL
+              ? (isCollapsed ? 'rotate-180' : 'rotate-0')
+              : (isCollapsed ? 'rotate-0' : 'rotate-180'),
+          ].join(' ')}
+          aria-label={isCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
         >
-          {isRTL ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          <ChevronLeft size={14} />
         </button>
       </aside>
     </>

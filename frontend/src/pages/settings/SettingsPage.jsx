@@ -13,7 +13,8 @@ import {
   Loader2,
   Sun,
   Moon,
-  Smartphone
+  Smartphone,
+  Video
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
@@ -205,46 +206,46 @@ const SettingsPage = () => {
                 <div className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('auth.firstName')}</label>
+                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">{t('auth.firstName')}</label>
                       <input
                         value={accountData.firstName}
                         onChange={(e) => {
                           setAccountData({...accountData, firstName: e.target.value});
                           if (errors.firstName) setErrors({...errors, firstName: null});
                         }}
-                        className={`w-full px-4 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.firstName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.firstName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                         placeholder={t('settings.firstNamePlaceholder')}
                       />
                       {errors.firstName && <p className="text-[10px] font-bold text-error uppercase tracking-widest">{errors.firstName}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('auth.lastName')}</label>
+                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">{t('auth.lastName')}</label>
                       <input
                         value={accountData.lastName}
                         onChange={(e) => {
                           setAccountData({...accountData, lastName: e.target.value});
                           if (errors.lastName) setErrors({...errors, lastName: null});
                         }}
-                        className={`w-full px-4 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.lastName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.lastName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                         placeholder={t('settings.lastNamePlaceholder')}
                       />
                       {errors.lastName && <p className="text-[10px] font-bold text-error uppercase tracking-widest">{errors.lastName}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('profile.phone')}</label>
+                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">{t('profile.phone')}</label>
                       <input
                         value={accountData.phone}
                         onChange={(e) => {
                           setAccountData({...accountData, phone: e.target.value});
                           if (errors.phone) setErrors({...errors, phone: null});
                         }}
-                        className={`w-full px-4 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.phone ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.phone ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                         placeholder={t('settings.phonePlaceholder')}
                       />
                       {errors.phone && <p className="text-[10px] font-bold text-error uppercase tracking-widest">{errors.phone}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('auth.emailAddress')}</label>
+                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">{t('auth.emailAddress')}</label>
                       <input
                         value={user?.email || ''}
                         disabled
@@ -275,7 +276,7 @@ const SettingsPage = () => {
                 <form onSubmit={handlePasswordChange}>
                   <div className="p-6 space-y-5">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('settings.currentPassword')}</label>
+                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">{t('settings.currentPassword')}</label>
                       <input
                         type="password"
                         value={passwordData.currentPassword}
@@ -283,14 +284,14 @@ const SettingsPage = () => {
                           setPasswordData({...passwordData, currentPassword: e.target.value});
                           if (errors.currentPassword) setErrors({...errors, currentPassword: null});
                         }}
-                        className={`w-full px-4 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.currentPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.currentPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                         placeholder={t('auth.passwordPlaceholder')}
                       />
                       {errors.currentPassword && <p className="text-[10px] font-bold text-error uppercase tracking-widest">{errors.currentPassword}</p>}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('settings.newPassword')}</label>
+                        <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">{t('settings.newPassword')}</label>
                         <input
                           type="password"
                           value={passwordData.newPassword}
@@ -298,13 +299,13 @@ const SettingsPage = () => {
                             setPasswordData({...passwordData, newPassword: e.target.value});
                             if (errors.newPassword) setErrors({...errors, newPassword: null});
                           }}
-                          className={`w-full px-4 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.newPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                          className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.newPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                           placeholder={t('settings.minPasswordPlaceholder')}
                         />
                         {errors.newPassword && <p className="text-[10px] font-bold text-error uppercase tracking-widest">{errors.newPassword}</p>}
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ml-1">{t('settings.confirmPassword')}</label>
+                        <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">{t('settings.confirmPassword')}</label>
                         <input
                           type="password"
                           value={passwordData.confirmPassword}
@@ -312,7 +313,7 @@ const SettingsPage = () => {
                             setPasswordData({...passwordData, confirmPassword: e.target.value});
                             if (errors.confirmPassword) setErrors({...errors, confirmPassword: null});
                           }}
-                          className={`w-full px-4 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.confirmPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                          className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.confirmPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                           placeholder={t('settings.repeatPasswordPlaceholder')}
                         />
                         {errors.confirmPassword && <p className="text-[10px] font-bold text-error uppercase tracking-widest">{errors.confirmPassword}</p>}
@@ -398,6 +399,9 @@ const SettingsPage = () => {
                     <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${isDark ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                 </div>
+                <p className="text-xs text-brand-text-muted mt-2"> 
+                  {t('settings.themeNote') || 'You can also toggle theme from the header toolbar.'} 
+                </p>
 
                 <div className="flex items-center justify-between p-4 rounded-xl border border-brand-border bg-brand-bg-page/30">
                   <div className="flex items-center gap-4">
@@ -472,31 +476,41 @@ const SettingsPage = () => {
       <div className="overflow-hidden rounded-[2rem] shadow-elevated border border-brand-border">
         {!videoError ? ( 
           <video 
-            src={UNIVERSITY_PROMO_VIDEO} 
-            controls 
-            onError={() => setVideoError(true)} 
             className="w-full max-h-[480px] bg-black object-cover" 
+            autoPlay 
+            muted 
+            loop 
+            playsInline 
+            onError={() => setVideoError(true)} 
             poster={CAMPUS_HERO_2}
-            preload="metadata"
-            playsInline
-          >
+          > 
+            <source src={UNIVERSITY_PROMO_VIDEO} type="video/mp4" /> 
             <track kind="captions" />
             <p className="p-4 text-sm text-brand-text-muted">
               {t('settings.videoUnsupported', 'Your browser does not support video playback.')}
             </p>
-          </video>
+          </video> 
         ) : ( 
-          <div className="w-full rounded-2xl bg-surface-subtle border border-brand-border flex items-center justify-center py-12"> 
-            <p className="text-sm text-brand-text-muted font-bold">{t('settings.videoUnavailable') || 'Video unavailable'}</p> 
+          <div className="w-full aspect-video rounded-2xl bg-surface-subtle border border-brand-border flex flex-col items-center justify-center gap-3 text-brand-text-muted"> 
+            <Video size={48} className="opacity-30" /> 
+            <p className="text-sm font-bold">{t('settings.videoUnavailable') || 'Video currently unavailable'}</p> 
           </div> 
         )} 
         <div className="bg-brand-navy px-6 py-5">
           <h3 className="text-lg font-black text-white">
             {t('settings.universityPromoTitle')}
           </h3>
-          <p className="mt-1 text-sm font-medium text-white/60">
-            {t('settings.universityPromoDesc')}
-          </p>
+          <div className="mt-1 flex items-start gap-4">
+            <p className="text-sm font-medium text-white/60 flex-1">
+              {t('settings.universityPromoDesc')}
+            </p>
+            <img 
+              src={CAMPUS_HERO_2} 
+              alt="" 
+              className="h-12 w-20 rounded-lg object-cover opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500" 
+              onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+            />
+          </div>
         </div>
       </div>
     </div>

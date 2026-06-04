@@ -82,7 +82,7 @@ const Header = ({ onMenuClick }) => {
           >
             <Bell size={20} />
             {unreadCount > 0 && (
-              <span className="absolute right-2 rtl:right-auto rtl:left-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-brand-primary-500 text-[10px] font-black text-white ring-2 ring-white dark:ring-slate-900 shadow-sm">
+              <span className="absolute right-2 rtl:right-auto rtl:left-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-brand-primary-500 text-[10px] font-black text-white ring-2 ring-brand-bg-card shadow-sm">
                 {unreadCount}
               </span>
             )}
@@ -148,9 +148,9 @@ const Header = ({ onMenuClick }) => {
         <div className="relative" ref={profileRef}>
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center gap-3 rounded-2xl border border-brand-border bg-slate-50 dark:bg-slate-800/30 p-1.5 pr-4 rtl:pl-4 rtl:pr-1.5 transition-all hover:border-brand-primary-500/50 hover:bg-white dark:hover:bg-slate-800 shadow-sm"
+            className="flex items-center gap-3 rounded-2xl border border-brand-border bg-slate-50 dark:bg-slate-800/30 p-1.5 pr-4 rtl:pl-4 rtl:pr-1.5 transition-all hover:border-brand-primary-500/50 hover:bg-brand-bg-card shadow-sm"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-primary-500 font-black text-white shadow-lg shadow-brand-primary-500/20 ring-2 ring-white dark:ring-slate-900 transition-transform group-hover:scale-105">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-primary-500 font-black text-white shadow-lg shadow-brand-primary-500/20 ring-2 ring-brand-bg-card transition-transform group-hover:scale-105">
               {user?.profilePicture ? (
                 <img src={user.profilePicture} alt="Avatar" className="h-full w-full rounded-xl object-cover" />
               ) : getInitials()}

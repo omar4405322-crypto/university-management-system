@@ -7,9 +7,9 @@ const Table = ({ headers, children, className = '' }) => {
       <div className="overflow-x-auto">
         <table className="w-full text-start border-collapse">
           <thead>
-            <tr className="bg-brand-bg-card border-b border-brand-border">
+            <tr className="bg-brand-bg-card">
               {headers.map((header, index) => (
-                <th key={index} className="sticky top-0 z-10 bg-brand-bg-card px-5 py-3.5 text-caption text-brand-text-secondary first:pl-6 last:pr-6 whitespace-nowrap after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-brand-border">
+                <th key={index} className="sticky top-0 z-10 bg-brand-bg-card px-5 py-3.5 text-start text-caption text-brand-text-secondary first:pl-6 last:pr-6 whitespace-nowrap after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-brand-border">
                   {header}
                 </th>
               ))}
@@ -25,7 +25,7 @@ const Table = ({ headers, children, className = '' }) => {
 };
 
 export const TableRow = ({ children, className = '', ...props }) => (
-  <tr className={`group transition-all duration-150 hover:bg-surface-subtle/80 even:bg-surface-subtle/30 ${className}`} {...props}>
+  <tr className={`group transition-all duration-150 hover:bg-surface-subtle/80 even:bg-surface-subtle/30 dark:even:bg-white/[0.02] ${className}`} {...props}>
     {children}
   </tr>
 );
@@ -55,6 +55,7 @@ const actionVariants = {
 
 export const ActionMenu = ({ actions, icon: Icon, size = 18, className = '' }) => {
   const [open, setOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -65,10 +66,19 @@ export const ActionMenu = ({ actions, icon: Icon, size = 18, className = '' }) =
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  const handleToggle = () => {
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setOpenUpward(spaceBelow < 200); // flip if less than 200px below
+    }
+    setOpen(prev => !prev);
+  };
+
   return (
     <div className={`relative inline-block ${className}`} ref={ref}>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         className="p-2 rounded-xl text-brand-text-muted hover:text-brand-text-primary hover:bg-surface-subtle transition-all duration-150"
       >
         {Icon ? <Icon size={size} /> : <MoreVertical size={size} />}
@@ -76,7 +86,9 @@ export const ActionMenu = ({ actions, icon: Icon, size = 18, className = '' }) =
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[160px] bg-white dark:bg-slate-800 rounded-xl border border-brand-border shadow-elevated py-1.5 animate-in fade-in zoom-in-95 origin-top-right duration-150">
+          <div className={`absolute right-0 z-50 min-w-[160px] bg-brand-bg-card dark:bg-brand-bg-elevated rounded-xl border border-brand-border shadow-elevated py-1.5 animate-in fade-in zoom-in-95 duration-150 ${
+            openUpward ? 'bottom-full mb-1 origin-bottom-right' : 'top-full mt-1 origin-top-right'
+          }`}>
             {actions.map((action, i) => (
               <button
                 key={i}

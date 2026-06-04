@@ -352,13 +352,48 @@
   }
 
   /* Toast notifications */
-  .toast-success {
-    @apply fixed top-16 right-4 z-50 px-5 py-3.5 rounded-2xl shadow-overlay text-white bg-success flex items-center gap-3 text-sm font-semibold;
-  }
-
-  .toast-error {
-    @apply fixed top-16 right-4 z-50 px-5 py-3.5 rounded-2xl shadow-overlay text-white bg-error flex items-center gap-3 text-sm font-semibold;
-  }
+  .toast-success { 
+    position: fixed; 
+    top: 4.5rem; 
+    inset-inline-end: 1rem; /* auto-flips: right in LTR, left in RTL */ 
+    z-index: 50; 
+    padding: 0.875rem 1.25rem; 
+    border-radius: 1rem; 
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05); 
+    color: white; 
+    background-color: var(--success); 
+    display: flex; 
+    align-items: center; 
+    gap: 0.75rem; 
+    font-size: 0.875rem; 
+    font-weight: 600; 
+    max-width: 360px; 
+    animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+  } 
+  
+  .toast-error { 
+    position: fixed; 
+    top: 4.5rem; 
+    inset-inline-end: 1rem; 
+    z-index: 50; 
+    padding: 0.875rem 1.25rem; 
+    border-radius: 1rem; 
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05); 
+    color: white; 
+    background-color: var(--error); 
+    display: flex; 
+    align-items: center; 
+    gap: 0.75rem; 
+    font-size: 0.875rem; 
+    font-weight: 600; 
+    max-width: 360px; 
+    animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+  } 
+  
+  @keyframes toast-in { 
+    from { opacity: 0; transform: translateY(-8px) scale(0.96); } 
+    to   { opacity: 1; transform: translateY(0) scale(1); } 
+  } 
 
   /* Pagination */
   .pagination-btn {
@@ -413,21 +448,6 @@
   text-overflow: ellipsis;
 }
 
-[dir="rtl"] .fixed.top-16.right-4 {
-  right: auto;
-  left: 1rem;
-}
-
-[dir="rtl"] .search-icon-wrapper {
-  left: auto !important;
-  right: 0.75rem !important;
-}
-
-[dir="rtl"] .search-input-padded {
-  padding-left: 1rem !important;
-  padding-right: 2.5rem !important;
-}
-
 [dir="rtl"] .label-icon {
   margin-left: 0 !important;
   margin-right: 0.25rem !important;
@@ -436,11 +456,6 @@
 [dir="rtl"] .icon-input-pl {
   padding-left: 1rem !important;
   padding-right: 3rem !important;
-}
-
-[dir="rtl"] .ml-1 {
-  margin-left: 0;
-  margin-right: 0.25rem;
 }
 
 /* === Screen Density Utilities === */
@@ -468,6 +483,15 @@
 /* Vertical rhythm: 4 | 8 | 12 | 16 | 20 | 24 | 28 | 32 | 40 | 48 | 64 */
 
 /* Section spacing — between major page blocks */
+.section-gap {
+  @apply space-y-6 md:space-y-8;
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
 .section-gap {
   @apply space-y-8;
 }

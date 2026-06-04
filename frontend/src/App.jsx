@@ -1,6 +1,6 @@
 // FIXED: ErrorBoundary, Suspense lazy routes, department detail route, catch-all - Phase 1
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, createRoutesFromElements, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -36,6 +36,8 @@ import TasksList from './pages/tasks/TasksList';
 import Profile from './pages/profile/Profile';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from './context/LanguageContext';
+import { ShieldOff } from 'lucide-react';
+import Button from './components/ui/Button';
 
 const TimetableManagement = lazy(() => import('./pages/schedules/TimetableManagement'));
 const SchedulesList = lazy(() => import('./pages/schedules/SchedulesList'));
@@ -50,24 +52,32 @@ const LazyRoute = ({ children }) => (
   </ErrorBoundary>
 );
 
-const Unauthorized = () => {
-  const { t } = useTranslation();
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-red-600">{t('common.unauthorizedTitle')}</h1>
-        <p className="mt-4 text-gray-600 dark:text-gray-400">{t('common.unauthorizedMessage')}</p>
-        <button
-          type="button"
-          onClick={() => window.history.back()}
-          className="mt-6 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-150"
-        >
-          {t('common.goBack')}
-        </button>
-      </div>
-    </div>
-  );
-};
+const Unauthorized = () => { 
+  const { t } = useTranslation(); 
+  return ( 
+    <div className="min-h-screen flex items-center justify-center bg-brand-bg-page transition-colors duration-300"> 
+      <div className="text-center max-w-md px-6"> 
+        <div className="w-20 h-20 rounded-3xl bg-error/10 flex items-center justify-center mx-auto mb-6"> 
+          <ShieldOff size={36} className="text-error" /> 
+        </div> 
+        <h1 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main mb-3"> 
+          {t('common.unauthorizedTitle')} 
+        </h1> 
+        <p className="text-brand-text-secondary font-medium mb-8"> 
+          {t('common.unauthorizedMessage')} 
+        </p> 
+        <Button 
+          onClick={() => window.history.back()} 
+          variant="primary" 
+          size="lg" 
+          className="rounded-2xl" 
+        > 
+          {t('common.goBack')} 
+        </Button> 
+      </div> 
+    </div> 
+  ); 
+}; 
 
 const AppContent = () => {
   const { isRTL } = useLanguage();
@@ -185,15 +195,19 @@ const AppContent = () => {
   );
 };
 
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <Route path="*" element={<AppContent />} />
+  )
+);
+
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <NotificationProvider>
-          <AppContent />
-        </NotificationProvider>
-      </AuthProvider>
-    </Router>
+    <AuthProvider>
+      <NotificationProvider>
+        <RouterProvider router={router} />
+      </NotificationProvider>
+    </AuthProvider>
   );
 }
 

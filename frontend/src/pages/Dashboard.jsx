@@ -134,7 +134,7 @@ const Dashboard = () => {
           id: 'totalStudents',
           title: t('dashboard.totalStudents'),
           value: stats?.counts?.totalStudents?.toLocaleString() || '0',
-          change: '+100%',
+          change: stats?.growth?.students ? `+${stats.growth.students}%` : null,
           trend: 'up',
           icon: Users,
           color: 'green',
@@ -144,7 +144,7 @@ const Dashboard = () => {
           id: 'totalColleges',
           title: t('dashboard.activeColleges'),
           value: stats?.counts?.totalColleges?.toLocaleString() || '0',
-          change: 'Real-time',
+          change: stats?.growth?.colleges ? `+${stats.growth.colleges}%` : null,
           trend: 'neutral',
           icon: Building2,
           color: 'navy',
@@ -154,7 +154,7 @@ const Dashboard = () => {
           id: 'totalPayments',
           title: t('dashboard.totalPayments'),
           value: stats?.counts?.totalPayments?.toLocaleString() || '0',
-          change: 'Active',
+          change: stats?.growth?.payments ? `+${stats.growth.payments}%` : null,
           trend: 'up',
           icon: Clock,
           color: 'yellow',
@@ -167,7 +167,7 @@ const Dashboard = () => {
           id: 'totalDoctors',
           title: t('dashboard.totalDoctors'),
           value: stats?.counts?.totalDoctors?.toLocaleString() || '0',
-          change: 'Faculty',
+          change: stats?.growth?.doctors ? `+${stats.growth.doctors}%` : null,
           trend: 'up',
           icon: GraduationCap,
           color: 'green',
@@ -177,7 +177,7 @@ const Dashboard = () => {
           id: 'totalSuperAdmins',
           title: t('dashboard.superAdmin'),
           value: stats?.counts?.totalSuperAdmins?.toLocaleString() || '0',
-          change: 'System',
+          change: null,
           trend: 'neutral',
           icon: Shield,
           color: 'navy',
@@ -187,7 +187,7 @@ const Dashboard = () => {
           id: 'totalAdmins',
           title: t('dashboard.admin'),
           value: stats?.counts?.totalAdmins?.toLocaleString() || '0',
-          change: 'Staff',
+          change: null,
           trend: 'neutral',
           icon: UserCheck,
           color: 'navy',
@@ -377,12 +377,18 @@ const Dashboard = () => {
                   <p className="text-[10px] font-black uppercase tracking-[0.15em] text-brand-text-muted">{kpi.title}</p>
                   <div className="flex items-baseline gap-2">
                     <h3 className="text-2xl font-black tracking-tight text-brand-text-primary dark:text-brand-text-main">{kpi.value}</h3>
-                    <span className={`text-[10px] font-bold ${
-                      kpi.trend === 'up' ? 'text-brand-primary-500' : 
-                      kpi.trend === 'down' ? 'text-error' : 'text-brand-text-muted'
-                    }`}>
-                      {kpi.change}
-                    </span>
+                    {kpi.change && (
+                      <div className="flex items-center gap-1">
+                        <span className={`text-[10px] font-bold ${
+                          kpi.trend === 'up' ? 'text-brand-primary-500' : 
+                          kpi.trend === 'down' ? 'text-error' : 'text-brand-text-muted'
+                        }`}>
+                          {kpi.change}
+                        </span>
+                        {kpi.trend === 'up' && <ArrowUpRight size={12} className="text-brand-primary-500" />}
+                        {kpi.trend === 'down' && <ArrowDownRight size={12} className="text-error" />}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -548,7 +554,13 @@ const Dashboard = () => {
                 ))}
               </div>
               <div className="px-5 py-4 border-t border-brand-border bg-surface-subtle/50">
-                <Button variant="ghost" size="sm" className="w-full font-black text-xs uppercase tracking-widest">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full font-black text-xs uppercase tracking-widest"
+                  onClick={() => navigate('/notifications')}
+                >
+                  {/* TODO: Link to dedicated activity log page when available */}
                   {t('dashboard.viewAllActivity')}
                 </Button>
               </div>
@@ -572,45 +584,47 @@ const Dashboard = () => {
 
         {/* Sidebar Section */}
         <div className="lg:col-span-4 xl:col-span-3 2xl:col-span-3 section-gap">
-          <Card variant="elevated" noPadding className="rounded-[2rem]">
-            <div className="p-8 space-y-8">
-              <div className="space-y-1">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-text-muted">{t('dashboard.subscription')}</h4>
-                <h3 className="text-3xl font-black tracking-tightest uppercase italic text-brand-text-primary dark:text-brand-text-main">
-                  {t('dashboard.enterprise')}
-                </h3>
-              </div>
-              <div className="p-6 rounded-2xl bg-surface-subtle border border-brand-border space-y-5">
-                  <div className="flex justify-between items-center gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Target size={16} className="text-brand-primary-500 shrink-0" />
-                      <span className="text-[10px] font-black uppercase tracking-wider text-brand-text-secondary">
-                        {t('dashboard.quotaUsage')}
+          {isAdmin && (
+            <Card variant="elevated" noPadding className="rounded-[2rem]">
+              <div className="p-8 space-y-8">
+                <div className="space-y-1">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-text-muted">{t('dashboard.subscription')}</h4>
+                  <h3 className="text-3xl font-black tracking-tightest uppercase italic text-brand-text-primary dark:text-brand-text-main">
+                    {t('dashboard.enterprise')}
+                  </h3>
+                </div>
+                <div className="p-6 rounded-2xl bg-surface-subtle border border-brand-border space-y-5">
+                    <div className="flex justify-between items-center gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Target size={16} className="text-brand-primary-500 shrink-0" />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-brand-text-secondary">
+                          {t('dashboard.quotaUsage')}
+                        </span>
+                      </div>
+                      <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main whitespace-nowrap">
+                        {totalStudentsCount.toLocaleString()} / {subscriptionLimit.toLocaleString()}
                       </span>
                     </div>
-                    <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main whitespace-nowrap">
-                      {totalStudentsCount.toLocaleString()} / {subscriptionLimit.toLocaleString()}
-                    </span>
+                    <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-brand-primary-500 rounded-full shadow-lg transition-all duration-500"
+                        style={{ width: `${subscriptionUsagePercent}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] font-bold text-brand-text-muted">
+                      {subscriptionUsagePercent}% {t('dashboard.quotaUsage')} · {totalStudentsCount.toLocaleString()} {t('dashboard.totalStudents').toLowerCase()}
+                    </p>
                   </div>
-                  <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-brand-primary-500 rounded-full shadow-lg transition-all duration-500"
-                      style={{ width: `${subscriptionUsagePercent}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] font-bold text-brand-text-muted">
-                    {subscriptionUsagePercent}% {t('dashboard.quotaUsage')} · {totalStudentsCount.toLocaleString()} {t('dashboard.totalStudents').toLowerCase()}
-                  </p>
-                </div>
-              <Button 
-                variant="primary"
-                className="w-full font-black uppercase tracking-[0.2em] py-5 shadow-overlay shadow-brand-primary-500/20"
-                onClick={() => navigate('/settings')}
-              >
-                {t('dashboard.manageSubscription')}
-              </Button>
-            </div>
-          </Card>
+                <Button 
+                  variant="primary"
+                  className="w-full font-black uppercase tracking-[0.2em] py-5 shadow-overlay shadow-brand-primary-500/20"
+                  onClick={() => navigate('/settings')}
+                >
+                  {t('dashboard.manageSubscription')}
+                </Button>
+              </div>
+            </Card>
+          )}
 
           <Card title={t('dashboard.upcomingEvents')} variant="default" noPadding>
             <div className="p-6 space-y-5">

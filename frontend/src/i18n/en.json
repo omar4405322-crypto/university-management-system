@@ -69,7 +69,8 @@
     "loadingRoster": "Loading student roster...",
     "coursesLoadError": "Failed to load courses.",
     "rosterLoadError": "Failed to load students for this course.",
-    "saveSuccess": "Attendance saved successfully",
+    "saveSuccess": "Attendance saved successfully.",
+    "saveFailedRetry": "Failed to save. Your changes are still here — please try again.",
     "saveError": "Error saving attendance",
     "accessDenied": "Access denied",
     "accessDeniedDesc": "Only faculty and administrators can record attendance."
@@ -130,9 +131,15 @@
     "invalidCredentials": "Invalid email or password",
     "loginSubtitle": "Sign in to access your university dashboard",
     "forgotPassword": "Forgot password?",
+    "forgotPasswordTitle": "Password Reset",
+    "forgotPasswordInstructions": "To reset your password, please contact your university administrator or IT support department.",
+    "understood": "Got it",
     "emailAddress": "Email Address",
     "emailPlaceholder": "example@mail.com",
     "passwordPlaceholder": "••••••••",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "forgotPasswordComingSoon": "Feature coming soon",
     "firstNamePlaceholder": "John",
     "lastNamePlaceholder": "Doe",
     "universityName": "6th of October University of Technology",
@@ -215,7 +222,9 @@
     "videoUnsupported": "Your browser does not support video playback.",
     "universityPromoTitle": "Discover Our University",
     "universityPromoDesc": "Learn about our campus, programs, and community",
-    "updatePassword": "Update Password"
+    "updatePassword": "Update Password",
+    "videoUnavailable": "Video currently unavailable",
+    "themeNote": "You can also toggle theme from the header."
   },
   "colleges": {
     "about": "About College",
@@ -288,6 +297,8 @@
     "pending": "Pending",
     "pm": "PM",
     "previous": "Previous",
+    "previousShort": "Prev",
+    "next": "Next",
     "reject": "Reject",
     "rejected": "Rejected",
     "reset": "Reset",
@@ -398,6 +409,8 @@
     "paymentsStatus": "Payments Status",
     "needsReview": "Needs review",
     "paymentsBelowExpected": "Actual payments are below expected — review the financial report",
+    "systemStatusNote": "Detailed metrics available to system administrators.",
+    "noUpcomingEvents": "No upcoming events",
     "viewAllActivity": "View all activity",
     "growthTrend": "Growth Trend",
     "pending": "Pending",
@@ -489,6 +502,18 @@
     "noCourses": "No courses in this department.",
     "noDoctors": "No professors assigned.",
     "assignedProfessors": "Assigned professors"
+  },
+  "exam": {
+    "leaveWarningTitle": "Leave Exam?",
+    "leaveWarningMessage": "Are you sure you want to leave? Your progress will be lost.",
+    "stayButton": "Stay",
+    "leaveButton": "Leave Anyway"
+  },
+  "quiz": {
+    "leaveWarningTitle": "Leave Quiz?",
+    "leaveWarningMessage": "Are you sure you want to leave? Your progress will be lost.",
+    "stayButton": "Stay",
+    "leaveButton": "Leave Anyway"
   },
   "exams": {
     "createTitle": "Schedule New Exam",

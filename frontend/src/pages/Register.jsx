@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import departmentService from '../services/department.service';
 import collegeService from '../services/college.service';
-import { UserPlus, Mail, Lock, User, GraduationCap, AlertCircle, CheckCircle, Loader2, School, Hash, Calendar, ChevronDown, Clock, Phone } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, GraduationCap, AlertCircle, CheckCircle, Loader2, School, Hash, Calendar, ChevronDown, Clock, Phone, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -27,6 +27,7 @@ const Register = () => {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -255,16 +256,24 @@ const Register = () => {
             <div className="space-y-2">
               <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">{t('auth.password')} *</label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10 rtl:left-auto rtl:right-4" size={18} />
                 <Input
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   placeholder={t('auth.passwordPlaceholder')}
-                  className="pl-12 h-12"
+                  className="pl-12 pr-12 h-12 rtl:pr-12 rtl:pl-12"
                   value={formData.password}
                   onChange={handleChange}
                 />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(prev => !prev)} 
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 rtl:right-auto rtl:left-4 text-brand-text-muted hover:text-brand-text-primary transition-colors" 
+                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')} 
+                > 
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />} 
+                </button> 
               </div>
             </div>
 
