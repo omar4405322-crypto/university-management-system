@@ -155,7 +155,7 @@ const WeeklySchedule = () => {
                         {entries.length > 0 ? (
                           <div className="space-y-2">
                             {entries.map((entry, idx) => (
-                              <div key={idx} className="rounded-2xl p-4 border border-brand-border shadow-sm transition-all hover:shadow-lg hover:scale-[1.02] bg-white group/entry">
+                              <div key={idx} className="rounded-2xl p-4 border border-brand-border shadow-sm transition-all hover:shadow-lg hover:scale-[1.02] bg-brand-bg-card dark:bg-brand-bg-elevated group/entry">
                                 <div className="flex justify-between items-start mb-2">
                                   <Badge variant="info" className="text-[9px] font-black px-2 py-0.5">
                                     {entry.startTime} - {entry.endTime}

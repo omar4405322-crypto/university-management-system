@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { 
   TrendingUp, Users, DollarSign, BookOpen, Download, Filter, 
-  Calendar, Building2, PieChart as PieChartIcon, Loader2 
+  Calendar, Building2, PieChart as PieChartIcon
 } from 'lucide-react';
 import analyticsService from '../../services/analytics.service';
 import Card from '../../components/ui/Card';
@@ -14,12 +14,15 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../../context/ThemeContext';
+import { SkeletonKPIGrid } from '../../components/ui/Skeleton';
 
 const COLORS = ['#84cc16', '#22c55e', '#16a34a', '#15803d', '#8BB83C', '#132231'];
 const BAR_GREEN = '#84cc16';
 
 const AnalyticsDashboard = () => {
   const { t } = useTranslation();
+  const { isDark } = useTheme();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [filters, setFilters] = useState({
@@ -27,6 +30,20 @@ const AnalyticsDashboard = () => {
     startDate: '',
     endDate: ''
   });
+
+  const tooltipStyle = { 
+    contentStyle: { 
+      borderRadius: '16px', 
+      border: `1px solid ${isDark ? '#334155' : '#E2E8F0'}`, 
+      backgroundColor: isDark ? '#1E293B' : '#FFFFFF', 
+      color: isDark ? '#f8fafc' : '#132231', 
+      boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.15)', 
+      padding: '14px 18px', 
+      fontSize: '13px', 
+      fontWeight: 700, 
+    }, 
+    cursor: { fill: isDark ? '#1E293B' : '#F8FAFC' }, 
+  }; 
 
   useEffect(() => {
     fetchAnalytics();
@@ -46,11 +63,56 @@ const AnalyticsDashboard = () => {
     }
   };
 
+  const handleExportCsv = () => {
+    if (!data) return;
+
+    const sections = [];
+
+    // 1. Summary Statistics
+    const summaryHeader = 'Metric,Value';
+    const summaryRows = [
+      `Total Students,${data.counts?.totalStudents || 0}`,
+      `Total Doctors,${data.counts?.totalDoctors || 0}`,
+      `Total Courses,${data.counts?.totalCourses || 0}`,
+      `Total Colleges,${data.counts?.totalColleges || 0}`
+    ];
+    sections.push(['Summary Statistics', summaryHeader, ...summaryRows].join('\n'));
+
+    // 2. Enrollment Trends
+    const trendHeader = 'Period,Enrollment Count';
+    const trendRows = (data.enrollmentTrends || []).map(t => `"${t.name}",${t.count}`);
+    sections.push(['Enrollment Trends', trendHeader, ...trendRows].join('\n'));
+
+    // 3. College Distribution
+    const collegeHeader = 'College Name,Student Count';
+    const collegeRows = (data.collegeDistribution || []).map(c => `"${c.name}",${c.students}`);
+    sections.push(['College Distribution', collegeHeader, ...collegeRows].join('\n'));
+
+    // 4. Financial Overview
+    const financeHeader = 'Status,Total Amount,Transaction Count';
+    const financeRows = (data.finance || []).map(f => `${f.status},${f._sum.amount || 0},${f._count._all}`);
+    sections.push(['Financial Overview', financeHeader, ...financeRows].join('\n'));
+
+    const csvContent = sections.join('\n\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    const date = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `analytics-report-${date}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (loading && !data) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] gap-4">
-        <Loader2 className="animate-spin text-brand-primary-500" size={48} />
-        <p className="text-caption">{t('analytics.loading')}</p>
+      <div className="space-y-8 animate-page">
+        <SkeletonKPIGrid />
+        <SkeletonKPIGrid />
       </div>
     );
   }
@@ -73,7 +135,7 @@ const AnalyticsDashboard = () => {
         subtitle={t('analytics.subtitle')}
         action={{
           label: t('analytics.exportReports'),
-          onClick: () => console.log('Exporting...')
+          onClick: handleExportCsv
         }}
       />
 
@@ -162,13 +224,10 @@ const AnalyticsDashboard = () => {
                     <stop offset="95%" stopColor="#8BB83C" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: '#94A3B8'}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: '#94A3B8'}} />
-                <Tooltip 
-                  contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '16px'}}
-                  itemStyle={{fontWeight: 900, fontSize: '14px'}}
-                />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: isDark ? '#64748B' : '#94A3B8'}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: isDark ? '#64748B' : '#94A3B8'}} />
+                <Tooltip {...tooltipStyle} />
                 <Area type="monotone" dataKey="count" stroke="#8BB83C" strokeWidth={4} fillOpacity={1} fill="url(#colorEnroll)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -180,13 +239,10 @@ const AnalyticsDashboard = () => {
           <div className="h-80 w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data?.collegeDistribution || []}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: '#94A3B8'}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: '#94A3B8'}} />
-                <Tooltip 
-                  cursor={{fill: '#F8FAFC'}}
-                  contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '16px'}}
-                />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: isDark ? '#64748B' : '#94A3B8'}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: isDark ? '#64748B' : '#94A3B8'}} />
+                <Tooltip {...tooltipStyle} />
                 <Bar dataKey="students" fill={BAR_GREEN} radius={[12, 12, 0, 0]} barSize={40}>
                   {(data?.collegeDistribution || []).map((entry, index) => (
                     <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
@@ -215,9 +271,7 @@ const AnalyticsDashboard = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '16px'}}
-                />
+                <Tooltip {...tooltipStyle} />
                 <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em'}} />
               </PieChart>
             </ResponsiveContainer>

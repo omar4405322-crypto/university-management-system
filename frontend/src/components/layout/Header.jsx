@@ -60,6 +60,7 @@ const Header = ({ onMenuClick }) => {
         <button
           onClick={onMenuClick}
           className="rounded-xl p-2 text-brand-text-primary dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden transition-colors"
+          aria-label={t('nav.openMenu')}
         >
           <Menu size={22} />
         </button>
@@ -76,6 +77,8 @@ const Header = ({ onMenuClick }) => {
           <button
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
             className="relative rounded-xl p-2 text-brand-text-secondary dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+            aria-label={t('header.notifications')}
+            aria-expanded={isNotificationsOpen}
           >
             <Bell size={20} />
             {unreadCount > 0 && (

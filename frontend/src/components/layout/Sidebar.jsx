@@ -22,7 +22,8 @@ import {
   Layers,
   CheckSquare,
   Activity,
-  ChevronLeft
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -218,7 +219,11 @@ const Sidebar = ({ isOpen, onClose }) => {
             />
           )}
 
-          <button onClick={onClose} className="rounded-xl p-2 text-white/70 hover:bg-white/10 md:hidden">
+          <button 
+            onClick={onClose} 
+            className="rounded-xl p-2 text-white/70 hover:bg-white/10 md:hidden"
+            aria-label={t('nav.closeSidebar')}
+          >
             <X size={20} />
           </button>
         </div>
@@ -257,6 +262,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   onClick={logout}
                   className="p-2.5 rounded-xl bg-white/5 text-white/40 hover:text-rose-500 hover:bg-rose-500/10 transition-all duration-300"
                   title={t('nav.logout')}
+                  aria-label={t('nav.logout')}
                 >
                   <LogOut size={18} />
                 </button>
@@ -269,11 +275,12 @@ const Sidebar = ({ isOpen, onClose }) => {
           onClick={toggleSidebar}
           className={`
             hidden md:flex absolute -right-3 top-24 h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-brand-navy text-white shadow-xl transition-transform
-            ${isCollapsed ? 'rotate-180' : ''}
+            ${isRTL ? (isCollapsed ? '' : 'rotate-180') : (isCollapsed ? 'rotate-180' : '')}
             ${isRTL ? 'right-auto -left-3' : '-right-3'}
           `}
+          aria-label={isCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')} // Translation keys may not exist yet
         >
-          <ChevronLeft size={14} />
+          {isRTL ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
       </aside>
     </>

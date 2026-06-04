@@ -55,13 +55,8 @@ const initSocket = (server) => {
  * Get Socket.io instance
  */
 const getIO = () => {
-  // Gracefully handle missing Socket.io for Serverless environments (Vercel)
   if (!io) {
-    logger.warn('[SOCKET] Socket.io not initialized (expected in Serverless/Vercel)');
-    return {
-      to: () => ({ emit: () => {} }),
-      emit: () => {},
-    };
+    throw new Error('Socket.io not initialized!');
   }
   return io;
 };
@@ -72,8 +67,6 @@ const getIO = () => {
 const sendToUser = (userId, event, data) => {
   if (io) {
     io.to(`user_${userId}`).emit(event, data);
-  } else {
-    logger.debug(`[SOCKET] Mock sendToUser: ${userId} -> ${event}`);
   }
 };
 
@@ -83,8 +76,6 @@ const sendToUser = (userId, event, data) => {
 const broadcastToRole = (role, event, data) => {
   if (io) {
     io.to(`role_${role}`).emit(event, data);
-  } else {
-    logger.debug(`[SOCKET] Mock broadcastToRole: ${role} -> ${event}`);
   }
 };
 

@@ -23,6 +23,8 @@ const Footer = () => {
     }
     setNewsletterError('');
     setSubscribed(true);
+    // TODO: Wire to /api/newsletter endpoint when ready 
+    console.warn('[Newsletter] Subscription not yet wired to backend.'); 
   };
 
   const quickLinks = [
@@ -103,7 +105,7 @@ const Footer = () => {
             <form className="flex flex-col gap-2" onSubmit={handleNewsletter}>
               {subscribed ? (
                 <p className="text-sm text-brand-primary-400 font-semibold">
-                  {t('footer.subscribeSuccess') || '✔ Subscribed successfully!'}
+                  {t('footer.subscribeSuccess') || "✔ Got it! We'll reach out when the newsletter launches."}
                 </p>
               ) : (
                 <>
@@ -130,11 +132,7 @@ const Footer = () => {
 
         <div className="mt-12 pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© {currentYear} {t('footer.universityName')}. {t('footer.copyright')}</p>
-          <div className="flex items-center gap-6">
-            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors opacity-60 cursor-not-allowed">{t('footer.privacy')}</a>
-            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors opacity-60 cursor-not-allowed">{t('footer.terms')}</a>
-            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white transition-colors opacity-60 cursor-not-allowed">{t('footer.cookies')}</a>
-          </div>
+          <p className="text-xs text-slate-600 italic">{t('footer.legalComingSoon') || 'Legal pages coming soon'}</p>
         </div>
       </div>
     </footer>

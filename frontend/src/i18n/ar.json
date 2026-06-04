@@ -640,6 +640,25 @@
     "viewAll": "عرض الكل",
     "revenueByType": "الإيرادات حسب النوع"
   },
+  "footer": {
+    "universityName": "جامعة 6 أكتوبر التكنولوجية",
+    "universityNameAr": "جامعة 6 أكتوبر التكنولوجية",
+    "tagline": "مؤسسة رائدة للتعليم التكنولوجي والتميز المهني.",
+    "quickLinks": "روابط سريعة",
+    "academicCalendar": "التقويم الأكاديمي",
+    "campusMap": "خريطة الحرم الجامعي",
+    "careerServices": "الخدمات المهنية",
+    "studentPortal": "بوابة الطالب",
+    "contactUs": "اتصل بنا",
+    "address": "مدينة 6 أكتوبر، الجيزة، مصر",
+    "newsletter": "النشرة الإخبارية",
+    "newsletterDesc": "اشترك للحصول على آخر أخبار وفعاليات الجامعة.",
+    "emailPlaceholder": "أدخل بريدك الإلكتروني",
+    "subscribe": "اشتراك",
+    "copyright": "جميع الحقوق محفوظة.",
+    "legalComingSoon": "صفحات قانونية قريباً",
+    "subscribeSuccess": "✔ تم! سنتواصل معك عند إطلاق النشرة الإخبارية."
+  },
   "header": {
     "arabic": "العربية",
     "changeLanguage": "تغيير اللغة",
@@ -678,7 +697,11 @@
     "students": "الطلاب",
     "system": "النظام",
     "tasks": "المهام",
-    "userManagement": "إدارة المستخدمين"
+    "userManagement": "إدارة المستخدمين",
+    "expandSidebar": "توسيع القائمة الجانبية",
+    "collapseSidebar": "طي القائمة الجانبية",
+    "closeSidebar": "إغلاق القائمة",
+    "openMenu": "فتح القائمة"
   },
   "notifications": {
     "empty": "لا توجد إشعارات",
