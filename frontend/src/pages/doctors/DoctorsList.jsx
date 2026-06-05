@@ -234,7 +234,7 @@ const DoctorsList = () => {
               <Table headers={[t('doctors.doctorId'), t('students.fullName'), t('profile.email'), t('doctors.specialty'), t('doctors.courses'), t('profile.status'), t('common.actions')]}>
                 {doctors.map((doctor) => (
                   <TableRow key={doctor.id}>
-                    <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-400 tracking-widest text-xs uppercase">{doctor.doctorId}</TableCell>
+                    <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-400 tracking-widest text-xs uppercase hidden md:table-cell">{doctor.doctorId}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-4">
                         <DoctorAvatar
@@ -246,13 +246,13 @@ const DoctorsList = () => {
                         <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-primary-500 transition-colors">{doctor.firstName} {doctor.lastName}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-brand-text-secondary font-bold text-xs">{doctor.user?.email}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-brand-text-secondary font-bold text-xs hidden md:table-cell">{doctor.user?.email}</TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <span className="inline-flex items-center px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-primary-500 border border-brand-primary-100/50 dark:border-brand-primary-900/20">
                         {doctor.specialty || t('students.notProvided')}
                       </span>
                     </TableCell>
-                    <TableCell className="text-brand-text-primary dark:text-brand-text-main font-black text-sm">
+                    <TableCell className="text-brand-text-primary dark:text-brand-text-main font-black text-sm hidden md:table-cell">
                       {doctor._count?.courses || 0}
                     </TableCell>
                     <TableCell>

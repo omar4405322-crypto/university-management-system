@@ -406,7 +406,7 @@ const Dashboard = () => {
             title={t('dashboard.academicOverview')} 
             subtitle={t('dashboard.growthTrend')}
           >
-            <div className="h-[400px] w-full mt-6">
+            <div className="h-[400px] w-full overflow-hidden mt-6">
               {!academicChartData.length ? (
                 <div className="flex h-full flex-col items-center justify-center gap-2 text-brand-text-muted">
                   <TrendingUp size={40} className="opacity-40" />
@@ -458,7 +458,7 @@ const Dashboard = () => {
                 title={t('dashboard.collegeDistribution', 'College Distribution')}
                 subtitle={t('dashboard.enrollmentTrends')}
               >
-                <div className="h-80 w-full mt-6">
+                <div className="h-80 w-full overflow-hidden mt-6">
                   {!collegeDistributionData.length ? (
                     <div className="flex h-full items-center justify-center text-sm font-bold text-brand-text-muted">
                       {t('common.noData')}
@@ -486,7 +486,7 @@ const Dashboard = () => {
                 title={t('dashboard.financialOverview', 'Financial Overview')}
                 subtitle={t('dashboard.paymentsStatus')}
               >
-                <div className="h-80 w-full mt-6 flex items-center">
+                <div className="h-80 w-full overflow-hidden mt-6 flex items-center">
                   {!financeOverviewData.length ? (
                     <div className="flex h-full w-full items-center justify-center text-sm font-bold text-brand-text-muted">
                       {t('common.noData')}
