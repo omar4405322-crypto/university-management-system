@@ -8,15 +8,33 @@ import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 const TakeQuiz = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [quiz, setQuiz] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState({}); // { questionId: answer }
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [answers, setAnswers] = useState(() => {
+    const saved = localStorage.getItem(`quiz_answers_${id}`);
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const saved = localStorage.getItem(`quiz_timer_${id}`);
+    return saved ? parseInt(saved) : 0;
+  });
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState(null);
+
+  // Save answers to localStorage
+  useEffect(() => {
+    localStorage.setItem(`quiz_answers_${id}`, JSON.stringify(answers));
+  }, [answers, id]);
+
+  // Save timer to localStorage
+  useEffect(() => {
+    if (timeLeft > 0) {
+      localStorage.setItem(`quiz_timer_${id}`, timeLeft.toString());
+    }
+  }, [timeLeft, id]);
 
   // 1. Add a beforeunload event listener
   useEffect(() => { 
@@ -41,7 +59,11 @@ const TakeQuiz = () => {
       const res = await quizService.getQuizById(id);
       if (res.success) {
         setQuiz(res.data);
-        setTimeLeft(res.data.duration * 60);
+        if (!localStorage.getItem(`quiz_timer_${id}`)) {
+          const duration = res.data.duration || 30; // default 30 mins
+          setTimeLeft(duration * 60);
+          localStorage.setItem(`quiz_timer_${id}`, (duration * 60).toString());
+        }
         if (res.data.hasSubmitted) {
           setSubmitted(true);
           // If already submitted, we might want to fetch results or just show message
@@ -71,6 +93,8 @@ const TakeQuiz = () => {
       if (res.success) {
         setResult(res.data);
         setSubmitted(true);
+        localStorage.removeItem(`quiz_answers_${id}`);
+        localStorage.removeItem(`quiz_timer_${id}`);
       }
     } catch (error) {
       alert(error.response?.data?.message || 'Error submitting quiz');
@@ -104,6 +128,8 @@ const TakeQuiz = () => {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  const isTimeCritical = timeLeft > 0 && timeLeft <= 300; // 5 minutes
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -151,14 +177,23 @@ const TakeQuiz = () => {
       <div className="bg-brand-bg-card border-b border-brand-border sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <h1 className="font-bold text-brand-text-primary truncate max-w-[200px] md:max-w-none">{quiz.title}</h1>
-          <div className={`flex items-center px-4 py-2 rounded-lg font-mono font-bold ${timeLeft < 60 ? 'bg-error/10 text-error animate-pulse' : 'bg-info/10 text-info'}`}>
+          <div className={`flex items-center px-4 py-2 rounded-lg font-mono font-bold transition-colors ${isTimeCritical ? 'bg-error text-white animate-pulse' : 'bg-info/10 text-info'}`}>
             <Clock size={18} className="mr-2" />
             {formatTime(timeLeft)}
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto mt-8 px-6">
+      <div className="max-w-5xl mx-auto mt-4 px-6">
+        {isTimeCritical && (
+          <div className="mb-4 p-4 rounded-xl bg-error/10 border border-error/20 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
+            <AlertCircle size={20} className="text-error" />
+            <p className="text-sm font-black text-error uppercase tracking-widest">
+              {i18n.language === 'ar' ? 'تبقى 5 دقائق فقط!' : 'Only 5 minutes left!'}
+            </p>
+          </div>
+        )}
+
         <div className="mb-6 flex justify-between items-center text-sm text-brand-text-secondary">
           <span>Question {currentQuestionIndex + 1} of {quiz.questions.length}</span>
           <div className="flex space-x-1">

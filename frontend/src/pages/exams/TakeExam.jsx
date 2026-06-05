@@ -23,13 +23,68 @@ import { useTranslation } from 'react-i18next';
 const TakeExam = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('PREPARING'); // PREPARING, READY, IN_PROGRESS, COMPLETED
   const [showEmergencyExitConfirm, setShowEmergencyExitConfirm] = useState(false);
+  const [answers, setAnswers] = useState(() => {
+    const saved = localStorage.getItem(`exam_answers_${id}`);
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const saved = localStorage.getItem(`exam_timer_${id}`);
+    return saved ? parseInt(saved) : 0;
+  });
+
+  // Save answers to localStorage
+  useEffect(() => {
+    if (status === 'IN_PROGRESS') {
+      localStorage.setItem(`exam_answers_${id}`, JSON.stringify(answers));
+    }
+  }, [answers, id, status]);
+
+  // Save timer to localStorage
+  useEffect(() => {
+    if (status === 'IN_PROGRESS' && timeLeft > 0) {
+      localStorage.setItem(`exam_timer_${id}`, timeLeft.toString());
+    }
+  }, [timeLeft, id, status]);
+
+  // Countdown timer logic
+  useEffect(() => {
+    if (status !== 'IN_PROGRESS' || timeLeft <= 0) return;
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          // auto-submit would go here
+          setStatus('COMPLETED');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [status, timeLeft]);
+
+  // Clear storage on completion
+  useEffect(() => {
+    if (status === 'COMPLETED') {
+      localStorage.removeItem(`exam_answers_${id}`);
+      localStorage.removeItem(`exam_timer_${id}`);
+    }
+  }, [status, id]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const isTimeCritical = timeLeft > 0 && timeLeft <= 300; // 5 minutes
 
   // 1. Add a beforeunload event listener
   useEffect(() => { 
@@ -67,13 +122,12 @@ const TakeExam = () => {
   };
 
   const startExam = () => {
-    if (exam?.type === 'QUIZ') {
-      // If it's a quiz, we might want to link it to an actual quiz if it exists
-      // For now, let's just show the simulation
-      setStatus('IN_PROGRESS');
-    } else {
-      setStatus('IN_PROGRESS');
+    const duration = exam?.durationMinutes || exam?.duration || 120;
+    if (!localStorage.getItem(`exam_timer_${id}`)) {
+      setTimeLeft(duration * 60);
+      localStorage.setItem(`exam_timer_${id}`, (duration * 60).toString());
     }
+    setStatus('IN_PROGRESS');
   };
 
   if (loading) {
@@ -210,6 +264,22 @@ const TakeExam = () => {
 
       {status === 'IN_PROGRESS' && (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center space-y-6 animate-in zoom-in duration-500">
+          <div className="sticky top-0 z-20 w-full flex justify-end mb-8">
+            <div className={`flex items-center px-6 py-3 rounded-2xl font-mono text-xl font-black shadow-xl transition-colors ${isTimeCritical ? 'bg-error text-white animate-pulse' : 'bg-brand-navy text-brand-green'}`}>
+              <Timer size={24} className="mr-3" />
+              {formatTime(timeLeft)}
+            </div>
+          </div>
+
+          {isTimeCritical && (
+            <div className="mb-4 p-4 rounded-2xl bg-error/10 border border-error/20 flex items-center gap-3 animate-bounce">
+              <AlertTriangle size={20} className="text-error" />
+              <p className="text-sm font-black text-error uppercase tracking-widest">
+                {i18n.language === 'ar' ? 'تبقى 5 دقائق فقط!' : 'Only 5 minutes left!'}
+              </p>
+            </div>
+          )}
+
           <div className="relative">
             <div className="h-32 w-32 rounded-full border-4 border-brand-green border-t-transparent animate-spin"></div>
             <div className="absolute inset-0 flex items-center justify-center">

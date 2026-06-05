@@ -21,14 +21,24 @@ import { SkeletonTable } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 const WeeklySchedule = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [timetable, setTimetable] = useState(null);
   const [error, setError] = useState(null);
 
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const isRTL = i18n.language === 'ar';
+  const days = isRTL 
+    ? ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
   const [selectedDay, setSelectedDay] = useState(days[0]);
+
+  // Update selected day if days array order changes due to language
+  useEffect(() => {
+    setSelectedDay(days[0]);
+  }, [i18n.language]);
+
   const times = [
     '08:00', '09:00', '10:00', '11:00', '12:00', 
     '13:00', '14:00', '15:00', '16:00', '17:00'
@@ -146,8 +156,8 @@ const WeeklySchedule = () => {
       {/* Desktop View */}
       <div className="hidden md:block">
         <Card noPadding className="overflow-hidden border-l-0 shadow-soft">
-          <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-            <div className="min-w-[700px]">
+          <div className="overflow-x-auto">
+            <div className="min-w-[1000px]">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-brand-navy/5 border-b border-brand-border">
@@ -168,7 +178,7 @@ const WeeklySchedule = () => {
                       {days.map(day => {
                         const entries = getEntriesForTimeSlot(day, time);
                         return (
-                          <td key={`${day}-${time}`} className="p-2 min-w-[180px] border-r border-brand-border last:border-r-0 align-top group-hover:bg-brand-navy/[0.01] transition-colors">
+                          <td key={`${day}-${time}`} className="p-2 border-r border-brand-border last:border-r-0 align-top group-hover:bg-brand-navy/[0.01] transition-colors">
                             {entries.length > 0 ? (
                               <div className="space-y-2">
                                 {entries.map((entry, idx) => (
@@ -211,6 +221,9 @@ const WeeklySchedule = () => {
 
       {/* Mobile View */}
       <div className="md:hidden space-y-4">
+        <p className="text-[10px] font-black uppercase text-brand-text-muted text-center tracking-widest animate-pulse">
+          {isRTL ? 'اسحب يميناً لرؤية باقي الأيام' : 'Swipe to see other days'}
+        </p>
         {times.flatMap(time => getEntriesForTimeSlot(selectedDay, time)).length > 0 ? (
           times.flatMap(time => getEntriesForTimeSlot(selectedDay, time)).map((entry, idx) => (
             <Card key={idx} className="p-5 border-l-4 border-l-brand-primary-500 shadow-soft animate-in slide-in-from-bottom-2 duration-300">
