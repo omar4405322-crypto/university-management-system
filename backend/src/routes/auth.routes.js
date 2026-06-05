@@ -11,8 +11,8 @@ router.post('/login', loginValidation, validate, login);
 router.get('/me', protect, getMe);
 
 // Registration requests
-router.get('/requests', protect, authorize('SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), getRequests);
-router.put('/requests/:id/approve', protect, authorize('SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), requestIdValidation, validate, approveRequest);
-router.put('/requests/:id/reject', protect, authorize('SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), requestIdValidation, validate, rejectRequest);
+router.get('/requests', protect, authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), getRequests);
+router.put('/requests/:id/approve', protect, authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), requestIdValidation, validate, approveRequest);
+router.put('/requests/:id/reject', protect, authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), requestIdValidation, validate, rejectRequest);
 
 module.exports = router;
