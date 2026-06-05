@@ -89,19 +89,19 @@ const Header = ({ onMenuClick }) => {
           </button>
 
           {isNotificationsOpen && (
-            <div className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-3 w-96 origin-top-right rounded-[2rem] border border-brand-border bg-brand-bg-card shadow-elevated ring-1 ring-black/5 animate-in fade-in slide-in-from-top-4 duration-300`}>
+            <div className={`fixed inset-x-2 top-20 z-50 md:absolute md:inset-x-auto ${isRTL ? 'md:left-0' : 'md:right-0'} md:top-full mt-3 w-[calc(100vw-2rem)] md:w-96 origin-top-right rounded-[2rem] border border-brand-border bg-brand-bg-card shadow-elevated ring-1 ring-black/5 animate-in fade-in slide-in-from-top-4 duration-300`}>
               <div className="flex items-center justify-between border-b border-brand-border px-6 py-5">
                 <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">{t('header.notifications')}</h3>
                 {unreadCount > 0 && (
                   <button
                     onClick={() => markAllAsRead()}
-                    className="label-stat text-brand-primary-500 hover:text-brand-primary-600 transition-colors"
+                    className="label-stat text-brand-primary-500 hover:text-brand-primary-600 transition-colors font-bold"
                   >
                     {t('header.markAllRead')}
                   </button>
                 )}
               </div>
-              <div className="max-h-[32rem] overflow-y-auto py-2 custom-scrollbar">
+              <div className="max-h-[60vh] md:max-h-[32rem] overflow-y-auto py-2 custom-scrollbar">
                 {notifications.length === 0 ? (
                   <div className="py-12 text-center">
                     <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-brand-border">

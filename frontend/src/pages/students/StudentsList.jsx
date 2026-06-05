@@ -216,33 +216,33 @@ const StudentsList = () => {
           ) : (
             <>
               <Table headers={[t('students.studentId'), t('students.fullName'), t('auth.email'), t('students.phone'), t('students.enrolledDate'), t('profile.status'), t('common.actions')]}>
-                {filteredStudents.map((student) => (
-                  <TableRow key={student.id}>
-                    <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-400 tracking-widest text-xs uppercase">{student.studentId}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-primary-500 font-black shadow-inner ring-1 ring-brand-primary-100/50 dark:ring-brand-primary-900/20 group-hover:scale-110 transition-transform">
-                          {student.firstName[0]}{student.lastName[0]}
+                  {filteredStudents.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-400 tracking-widest text-xs uppercase hidden md:table-cell">{student.studentId}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-4">
+                          <div className="w-11 h-11 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-primary-500 font-black shadow-inner ring-1 ring-brand-primary-100/50 dark:ring-brand-primary-900/20 group-hover:scale-110 transition-transform">
+                            {student.firstName[0]}{student.lastName[0]}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-primary-500 transition-colors">{student.firstName} {student.lastName}</span>
+                            <span className="text-[10px] font-black uppercase text-brand-text-muted tracking-wider">{t(`STUDENTS.YEAR${student.year}`, `Year ${student.year}`)}</span>
+                          </div>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-primary-500 transition-colors">{student.firstName} {student.lastName}</span>
-                          <span className="text-[10px] font-black uppercase text-brand-text-muted tracking-wider">{t(`STUDENTS.YEAR${student.year}`, `Year ${student.year}`)}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-brand-text-secondary font-bold text-xs">{student.user?.email}</TableCell>
-                    <TableCell className="text-brand-text-secondary font-bold text-xs">
-                      {student.phone?.trim() ? student.phone : t('students.phoneNotSpecified')}
-                    </TableCell>
-                    <TableCell className="text-brand-text-secondary font-bold text-xs">
-                      {new Date(student.enrolledAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={student.isActive ? 'success' : 'neutral'}>
-                        {student.isActive ? t('students.active') : t('students.inactive')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
+                      </TableCell>
+                      <TableCell className="text-brand-text-secondary font-bold text-xs hidden md:table-cell">{student.user?.email}</TableCell>
+                      <TableCell className="text-brand-text-secondary font-bold text-xs hidden md:table-cell">
+                        {student.phone?.trim() ? student.phone : t('students.phoneNotSpecified')}
+                      </TableCell>
+                      <TableCell className="text-brand-text-secondary font-bold text-xs hidden md:table-cell">
+                        {new Date(student.enrolledAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={student.isActive ? 'success' : 'neutral'}>
+                          {student.isActive ? t('students.active') : t('students.inactive')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                       <ActionMenu actions={[
                         { label: t('common.view'), icon: Eye, variant: 'view', onClick: () => navigate(`/students/${student.id}`) },
                         { label: t('common.edit'), icon: Edit2, variant: 'edit', onClick: () => setEditingStudent(student) },

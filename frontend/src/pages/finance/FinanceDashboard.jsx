@@ -157,16 +157,16 @@ const FinanceDashboard = () => {
 
       {/* === Tab Bar === */}
       {isAdmin && (
-        <div className="flex items-center gap-1 p-1 bg-surface-subtle rounded-2xl w-fit border border-brand-border">
+        <div className="flex items-center gap-1 p-1 bg-surface-subtle rounded-2xl w-full md:w-fit border border-brand-border overflow-x-auto scrollbar-hide flex-nowrap">
           <button
             onClick={() => setActiveTab('OVERVIEW')}
-            className={`tab-base ${activeTab === 'OVERVIEW' ? 'tab-active' : 'tab-inactive'}`}
+            className={`tab-base flex-shrink-0 ${activeTab === 'OVERVIEW' ? 'tab-active' : 'tab-inactive'}`}
           >
             <LayoutDashboard size={14} /> {t('finance.overview')}
           </button>
           <button
             onClick={() => setActiveTab('PAYMENTS')}
-            className={`tab-base ${activeTab === 'PAYMENTS' ? 'tab-active' : 'tab-inactive'}`}
+            className={`tab-base flex-shrink-0 ${activeTab === 'PAYMENTS' ? 'tab-active' : 'tab-inactive'}`}
           >
             <History size={14} /> {t('finance.allPayments')}
           </button>

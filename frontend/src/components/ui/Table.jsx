@@ -2,18 +2,32 @@ import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { MoreVertical } from 'lucide-react';
 
-const Table = ({ headers, children, className = '' }) => {
+const Table = ({ headers, children, className = '', headerClassName = '' }) => {
   return (
-    <div className={`w-full overflow-hidden ${className}`}>
+    <div className={`w-full overflow-hidden rounded-lg border border-brand-border/60 ${className}`}>
       <div className="overflow-x-auto">
-        <table className="w-full text-start border-collapse">
+        <table className="w-full text-start border-collapse min-w-[800px]">
           <thead>
             <tr className="bg-brand-bg-card">
-              {headers.map((header, index) => (
-                <th key={index} className="sticky top-0 z-10 bg-brand-bg-card px-5 py-3.5 text-start text-caption text-brand-text-secondary first:pl-6 last:pr-6 whitespace-nowrap after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-brand-border">
-                  {header}
-                </th>
-              ))}
+              {headers.map((header, index) => {
+                const isEssential = typeof header === 'string' && (
+                  header.toLowerCase().includes('name') || 
+                  header.toLowerCase().includes('status') || 
+                  header.toLowerCase().includes('actions') ||
+                  header.toLowerCase().includes('الاسم') ||
+                  header.toLowerCase().includes('الحالة') ||
+                  header.toLowerCase().includes('إجراءات')
+                );
+                
+                return (
+                  <th 
+                    key={index} 
+                    className={`sticky top-0 z-10 bg-brand-bg-card px-5 py-3.5 text-start text-caption text-brand-text-secondary first:pl-6 last:pr-6 whitespace-nowrap after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-brand-border ${!isEssential ? 'hidden md:table-cell' : ''} ${headerClassName}`}
+                  >
+                    {header}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-border/60">
