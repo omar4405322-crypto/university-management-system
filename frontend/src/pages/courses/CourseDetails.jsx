@@ -12,9 +12,11 @@ import coursesService from '../../services/courses.service';
 const CourseDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const isRTL = i18n.language === 'ar';
 
   useEffect(() => {
     const load = async () => {
@@ -47,7 +49,7 @@ const CourseDetails = () => {
         <AlertCircle size={40} className="text-brand-text-muted mx-auto mb-4" />
         <h2 className="text-2xl font-bold">{t('courses.noCourses')}</h2>
         <Button variant="outline" className="mt-6" onClick={() => navigate('/courses')}>
-          <ArrowLeft size={18} className="me-2" /> {t('common.back')}
+          <ArrowLeft size={18} className={isRTL ? 'ml-2 rotate-180' : 'mr-2'} /> {t('common.back')}
         </Button>
       </div>
     );
@@ -66,16 +68,18 @@ const CourseDetails = () => {
 
   return (
     <div className="section-gap animate-in fade-in duration-500">
-      <Breadcrumbs items={breadcrumbItems} />
+      <div className="mb-4">
+        <Breadcrumbs items={breadcrumbItems} />
+      </div>
 
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between bg-brand-bg-card p-6 rounded-3xl border border-brand-border shadow-soft">
         <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => navigate('/courses')}
-            className="p-3 rounded-2xl hover:bg-brand-primary-50 text-brand-text-sub"
+            className="p-3 rounded-2xl hover:bg-brand-primary-50 text-brand-text-sub transition-colors"
           >
-            <ArrowLeft size={22} />
+            <ArrowLeft size={22} className={isRTL ? 'rotate-180' : ''} />
           </button>
           <div>
             <Badge variant="primary" className="mb-2">{course.courseCode}</Badge>

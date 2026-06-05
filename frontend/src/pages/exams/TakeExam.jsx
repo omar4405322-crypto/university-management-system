@@ -1,39 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
-import examsService from '../../services/exams.service';
-import { useAuth } from '../../context/AuthContext';
 import { 
-  ChevronLeft, 
   Timer, 
   AlertTriangle, 
-  CheckCircle2, 
+  ChevronRight, 
+  ChevronLeft, 
+  Send,
   Loader2,
-  Lock,
-  Camera,
-  Monitor,
-  ShieldCheck,
-  Play
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
-import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Badge from '../../components/ui/Badge';
-import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../context/AuthContext';
+import examsService from '../../services/exams.service';
+import Button from '../../components/ui/Button';
+import Card from '../../components/ui/Card';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 
 const TakeExam = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('PREPARING'); // PREPARING, READY, IN_PROGRESS, COMPLETED
   const [showEmergencyExitConfirm, setShowEmergencyExitConfirm] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
   const [answers, setAnswers] = useState(() => {
     const saved = localStorage.getItem(`exam_answers_${id}`);
     return saved ? JSON.parse(saved) : {};
   });
+  
   const [timeLeft, setTimeLeft] = useState(() => {
     const saved = localStorage.getItem(`exam_timer_${id}`);
     return saved ? parseInt(saved) : 0;
@@ -56,37 +57,59 @@ const TakeExam = () => {
   // Countdown timer logic
   useEffect(() => {
     if (status !== 'IN_PROGRESS' || timeLeft <= 0) return;
+    
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          // auto-submit would go here
-          setStatus('COMPLETED');
+          handleSubmitExam();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
+    
     return () => clearInterval(timer);
   }, [status, timeLeft]);
 
-  // Clear storage on completion
+  // Alert at 5 minutes
   useEffect(() => {
-    if (status === 'COMPLETED') {
-      localStorage.removeItem(`exam_answers_${id}`);
-      localStorage.removeItem(`exam_timer_${id}`);
+    if (status === 'IN_PROGRESS' && timeLeft === 300) {
+      // show toast warning (simulated)
+      console.warn('تبقى 5 دقائق فقط!');
     }
-  }, [status, id]);
+  }, [timeLeft, status]);
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const fetchExam = useCallback(async () => {
+    try {
+      setLoading(true);
+      const result = await examsService.getExamById(id);
+      if (result.success) {
+        setExam(result.data);
+        // If no timer exists, initialize from exam duration
+        if (!localStorage.getItem(`exam_timer_${id}`)) {
+          const duration = result.data.durationMinutes || result.data.duration || 120;
+          setTimeLeft(duration * 60);
+        }
+      }
+    } catch (err) {
+      setError('Failed to load exam details.');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchExam();
+  }, [fetchExam]);
+
+  const handleSubmitExam = async () => {
+    // simulation of submission
+    setStatus('COMPLETED');
+    localStorage.removeItem(`exam_answers_${id}`);
+    localStorage.removeItem(`exam_timer_${id}`);
   };
 
-  const isTimeCritical = timeLeft > 0 && timeLeft <= 300; // 5 minutes
-
-  // 1. Add a beforeunload event listener
   useEffect(() => { 
     if (status !== 'IN_PROGRESS') return; 
     const handleBeforeUnload = (e) => { 
@@ -103,24 +126,6 @@ const TakeExam = () => {
       status === 'IN_PROGRESS' && currentLocation.pathname !== nextLocation.pathname
   );
 
-  useEffect(() => {
-    fetchExam();
-  }, [id]);
-
-  const fetchExam = async () => {
-    try {
-      setLoading(true);
-      const result = await examsService.getExamById(id);
-      if (result.success) {
-        setExam(result.data);
-      }
-    } catch (err) {
-      setError('Failed to load exam details.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const startExam = () => {
     const duration = exam?.durationMinutes || exam?.duration || 120;
     if (!localStorage.getItem(`exam_timer_${id}`)) {
@@ -130,32 +135,51 @@ const TakeExam = () => {
     setStatus('IN_PROGRESS');
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] gap-4">
-        <Loader2 className="animate-spin text-brand-green" size={48} />
-        <p className="text-brand-text-sub font-black uppercase tracking-widest text-sm">Initializing Secure Exam Environment...</p>
-      </div>
-    );
-  }
+  const handleAnswerSelect = (questionId, optionIndex) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: optionIndex
+    }));
+  };
 
-  if (error || !exam) {
-    return (
-      <div className="max-w-md mx-auto mt-20 text-center p-8 bg-brand-bg-card rounded-[2rem] border border-brand-border shadow-soft">
-        <div className="h-20 w-20 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-6">
-          <AlertTriangle size={40} className="text-rose-500" />
-        </div>
-        <h2 className="text-2xl font-black text-brand-text-main">Access Denied</h2>
-        <p className="text-brand-text-sub font-bold mt-2">{error || 'This exam is not available or you do not have access.'}</p>
-        <Button variant="outline" className="mt-8 w-full border-brand-border" onClick={() => navigate('/exams')}>
-          Back to Schedule
-        </Button>
+  const nextQuestion = () => {
+    if (currentQuestionIndex < (exam?.questions?.length || 1) - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    }
+  };
+
+  const prevQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1);
+    }
+  };
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-[calc(100vh-120px)] gap-4">
+      <Loader2 className="animate-spin text-brand-primary-500" size={48} />
+      <p className="text-sm font-black uppercase tracking-widest text-brand-text-muted">{t('common.loading')}</p>
+    </div>
+  );
+
+  if (status === 'COMPLETED') return (
+    <div className="max-w-3xl mx-auto py-20 px-6 text-center animate-in zoom-in duration-500">
+      <div className="w-20 h-20 rounded-3xl bg-brand-primary-50 dark:bg-brand-primary-900/20 flex items-center justify-center mx-auto mb-8 shadow-xl">
+        <CheckCircle2 size={40} className="text-brand-primary-500" />
       </div>
-    );
-  }
+      <h2 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main mb-3">{t('exams.submittedTitle')}</h2>
+      <p className="text-brand-text-secondary font-bold mb-10 max-w-md mx-auto leading-relaxed">
+        {t('exams.submittedDesc')}
+      </p>
+      <Button onClick={() => navigate('/exams')} className="rounded-2xl px-8 h-12 shadow-xl shadow-brand-primary-500/20">
+        {t('exams.backToExams')}
+      </Button>
+    </div>
+  );
+
+  const currentQuestion = exam?.questions?.[currentQuestionIndex];
 
   return (
-    <div className="section-gap animate-in fade-in duration-700">
+    <div className="max-w-4xl mx-auto px-6 py-12">
       {status === 'PREPARING' && (
         <div className="space-y-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -263,103 +287,104 @@ const TakeExam = () => {
       )}
 
       {status === 'IN_PROGRESS' && (
-        <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center space-y-6 animate-in zoom-in duration-500">
-          <div className="sticky top-0 z-20 w-full flex justify-end mb-8">
-            <div className={`flex items-center px-6 py-3 rounded-2xl font-mono text-xl font-black shadow-xl transition-colors ${isTimeCritical ? 'bg-error text-white animate-pulse' : 'bg-brand-navy text-brand-green'}`}>
-              <Timer size={24} className="mr-3" />
+        <div className="space-y-8">
+          <div className="sticky top-4 z-20 flex justify-between items-center bg-brand-bg-card/80 backdrop-blur-xl p-4 rounded-[2rem] border border-brand-border shadow-soft">
+            <div className="flex items-center gap-4 px-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest">{t('exams.progress')}</span>
+                <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main">
+                  {currentQuestionIndex + 1} / {exam?.questions?.length}
+                </span>
+              </div>
+              <div className="w-32 h-2 rounded-full bg-brand-bg-page border border-brand-border overflow-hidden">
+                <div 
+                  className="h-full bg-brand-primary-500 transition-all duration-500" 
+                  style={{ width: `${((currentQuestionIndex + 1) / (exam?.questions?.length || 1)) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            <div className={`flex items-center px-6 py-2.5 rounded-2xl font-mono text-lg font-black shadow-inner transition-colors ${isTimeCritical ? 'bg-error text-white animate-pulse' : 'bg-brand-navy text-brand-green'}`}>
+              <Timer size={20} className="mr-3" />
               {formatTime(timeLeft)}
             </div>
           </div>
 
-          {isTimeCritical && (
-            <div className="mb-4 p-4 rounded-2xl bg-error/10 border border-error/20 flex items-center gap-3 animate-bounce">
-              <AlertTriangle size={20} className="text-error" />
-              <p className="text-sm font-black text-error uppercase tracking-widest">
-                {i18n.language === 'ar' ? 'تبقى 5 دقائق فقط!' : 'Only 5 minutes left!'}
-              </p>
-            </div>
-          )}
+          <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+            <Card className="p-8 border-l-0 rounded-[2.5rem]">
+              <h3 className="text-xl md:text-2xl font-black text-brand-text-primary dark:text-brand-text-main mb-10 leading-relaxed">
+                {currentQuestion?.text}
+              </h3>
+              
+              <div className="grid grid-cols-1 gap-4">
+                {currentQuestion?.options?.map((option, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleAnswerSelect(currentQuestion.id, idx)}
+                    className={`flex items-center gap-5 p-6 rounded-3xl border-2 text-start transition-all duration-300 group ${
+                      answers[currentQuestion.id] === idx
+                        ? 'border-brand-primary-500 bg-brand-primary-500/5 shadow-lg shadow-brand-primary-500/10'
+                        : 'border-brand-border bg-brand-bg-page/50 hover:border-brand-primary-500/30 hover:bg-brand-bg-page'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black transition-all ${
+                      answers[currentQuestion.id] === idx
+                        ? 'bg-brand-primary-500 text-white shadow-lg'
+                        : 'bg-brand-bg-page border border-brand-border text-brand-text-muted group-hover:text-brand-primary-500'
+                    }`}>
+                      {String.fromCharCode(65 + idx)}
+                    </div>
+                    <span className={`text-lg font-bold ${
+                      answers[currentQuestion.id] === idx ? 'text-brand-text-primary dark:text-brand-text-main' : 'text-brand-text-secondary'
+                    }`}>
+                      {option}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </Card>
 
-          <div className="relative">
-            <div className="h-32 w-32 rounded-full border-4 border-brand-green border-t-transparent animate-spin"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Monitor size={48} className="text-brand-green" />
+            <div className="flex items-center justify-between pt-4">
+              <Button 
+                variant="ghost" 
+                onClick={prevQuestion} 
+                disabled={currentQuestionIndex === 0}
+                className="rounded-2xl px-6 h-12 gap-2"
+              >
+                <ChevronLeft size={20} /> {t('common.previous')}
+              </Button>
+
+              {currentQuestionIndex === (exam?.questions?.length || 1) - 1 ? (
+                <Button 
+                  onClick={() => setShowEmergencyExitConfirm(true)}
+                  className="rounded-2xl px-8 h-12 shadow-xl shadow-brand-primary-500/20 gap-2 bg-brand-primary-500 hover:bg-brand-primary-600 font-black"
+                >
+                  <Send size={20} /> {t('exams.finishAndSubmit')}
+                </Button>
+              ) : (
+                <Button 
+                  onClick={nextQuestion} 
+                  className="rounded-2xl px-8 h-12 gap-2"
+                >
+                  {t('common.next')} <ChevronRight size={20} />
+                </Button>
+              )}
             </div>
-          </div>
-          <div>
-            <h2 className="text-3xl font-black text-brand-text-main">Digital Exam in Progress</h2>
-            <p className="text-brand-text-sub font-bold mt-2 max-w-md mx-auto">
-              You are now in a secure proctored session. Please follow the instructions on your screen and do not leave this window.
-            </p>
-          </div>
-          <div className="flex gap-4">
-            <Button variant="outline" className="border-brand-border" onClick={() => setShowEmergencyExitConfirm(true)}>
-              Emergency Exit
-            </Button>
-            <Button onClick={() => setStatus('COMPLETED')}>
-              Submit Exam
-            </Button>
           </div>
         </div>
       )}
-
-      {status === 'COMPLETED' && (
-        <div className="max-w-md mx-auto text-center space-y-8 animate-in slide-in-from-bottom-8 duration-700">
-          <div className="h-24 w-24 rounded-full bg-brand-green/10 flex items-center justify-center mx-auto border-2 border-brand-green">
-            <CheckCircle2 size={48} className="text-brand-green" />
-          </div>
-          <div>
-            <h2 className="text-3xl font-black text-brand-text-main">Exam Submitted</h2>
-            <p className="text-brand-text-sub font-bold mt-2">
-              Your exam has been successfully submitted and received by the system.
-            </p>
-          </div>
-          <Card className="border-l-0 bg-brand-navy/5">
-            <div className="space-y-4 text-left">
-              <div className="flex justify-between items-center py-2 border-b border-brand-border">
-                <span className="text-xs font-black text-brand-text-muted uppercase">Submission ID</span>
-                <span className="text-sm font-black text-brand-text-main">EX-{id.substring(0, 6).toUpperCase()}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-brand-border">
-                <span className="text-xs font-black text-brand-text-muted uppercase">Submitted At</span>
-                <span className="text-sm font-black text-brand-text-main">{new Date().toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-xs font-black text-brand-text-muted uppercase">Status</span>
-                <Badge variant="success">PENDING GRADING</Badge>
-              </div>
-            </div>
-          </Card>
-          <Button className="w-full h-14 rounded-2xl" onClick={() => navigate('/exams')}>
-            Return to Dashboard
-          </Button>
-        </div>
-      )}
-
-      {/* Navigation Protection Modal */}
-      <ConfirmDeleteModal
-        isOpen={blocker.state === 'blocked'}
-        onClose={() => blocker.reset()}
-        onConfirm={() => blocker.proceed()}
-        title={t('exam.leaveWarningTitle')}
-        message={t('exam.leaveWarningMessage')}
-        confirmLabel={t('exam.leaveButton')}
-        cancelLabel={t('exam.stayButton')}
-        variant="warning"
-      />
 
       <ConfirmDeleteModal
         isOpen={showEmergencyExitConfirm}
+        title={t('exams.submitConfirmTitle')}
+        message={t('exams.submitConfirmDesc')}
+        confirmLabel={t('exams.submitConfirmAction')}
+        confirmVariant="primary"
         onClose={() => setShowEmergencyExitConfirm(false)}
         onConfirm={() => {
           setShowEmergencyExitConfirm(false);
-          setStatus('PREPARING');
+          handleSubmitExam();
         }}
-        title={t('exam.leaveWarningTitle')}
-        message={t('exam.leaveWarningMessage')}
-        confirmLabel={t('exam.leaveButton')}
-        cancelLabel={t('exam.stayButton')}
-        variant="warning"
       />
     </div>
   );

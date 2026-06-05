@@ -176,6 +176,20 @@ const Sidebar = ({ isOpen, onClose }) => {
       .filter(group => group.items.length > 0);
   }, [navigationConfig, user]);
 
+  const initials = useMemo(() => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    return user?.email?.[0]?.toUpperCase() ?? '?';
+  }, [user]);
+
+  const fullName = useMemo(() => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    return user?.email?.split('@')[0] || 'User';
+  }, [user]);
+
   return (
     <>
       <div
@@ -249,11 +263,11 @@ const Sidebar = ({ isOpen, onClose }) => {
           <div className="p-6 border-t border-white/5 bg-black/10 backdrop-blur-md">
             <div className={`flex items-center gap-4 ${isCollapsed ? 'justify-center' : 'px-2'}`}>
               <div className="w-11 h-11 rounded-2xl bg-brand-primary-500 text-white flex items-center justify-center font-black shadow-lg shadow-brand-primary-500/30 ring-2 ring-white/10">
-                {user?.email[0].toUpperCase()}
+                {initials}
               </div>
               {!isCollapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-white truncate uppercase tracking-wider">{user?.email.split('@')[0]}</p>
+                  <p className="text-sm font-black text-white truncate uppercase tracking-wider">{fullName}</p>
                   <p className="label-stat text-brand-primary-500 mt-1 opacity-80">{user?.role.replace('_', ' ')}</p>
                 </div>
               )}
@@ -276,8 +290,8 @@ const Sidebar = ({ isOpen, onClose }) => {
           className={[
             'hidden md:flex absolute top-24 h-6 w-6',
             'items-center justify-center rounded-full',
-            'border border-white/20 bg-brand-navy text-white',
-            'shadow-xl transition-all duration-300 z-10',
+            'border border-white/20 bg-brand-sidebar text-white',
+            'shadow-md transition-all duration-300 z-30',
             isRTL ? '-left-3' : '-right-3',
             isRTL
               ? (isCollapsed ? 'rotate-180' : 'rotate-0')
