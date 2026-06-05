@@ -120,7 +120,7 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const result = await register(formData);
+      const result = await register({ ...formData, role: 'STUDENT' });
       if (result.success) {
         setSubmitted(true);
         setFormData({
