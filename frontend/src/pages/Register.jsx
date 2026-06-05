@@ -25,6 +25,7 @@ const Register = () => {
   const [colleges, setColleges] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -90,30 +91,36 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
     setSubmitted(false);
 
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+    const newFieldErrors = {};
+    if (!formData.firstName) newFieldErrors.firstName = true;
+    if (!formData.lastName) newFieldErrors.lastName = true;
+    if (!formData.email) newFieldErrors.email = true;
+    if (!formData.password) newFieldErrors.password = true;
+    if (!formData.collegeId) newFieldErrors.collegeId = true;
+    if (!formData.departmentId) newFieldErrors.departmentId = true;
+    if (!formData.studentId) newFieldErrors.studentId = true;
+
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
       setError(t('common.fillRequired'));
+      
+      setTimeout(() => {
+        const firstError = document.querySelector('[data-error="true"]');
+        firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
       return;
     }
 
     if (formData.password.length < 6) {
       setError(t('students.passwordLength'));
-      return;
-    }
-
-    if (!formData.collegeId) {
-      setError(t('auth.selectCollegeError'));
-      return;
-    }
-
-    if (!formData.departmentId) {
-      setError(t('auth.selectDeptError'));
-      return;
-    }
-
-    if (!formData.studentId) {
-      setError(t('auth.studentIdRequired'));
+      setFieldErrors({ password: true });
+      setTimeout(() => {
+        const firstError = document.querySelector('[data-error="true"]');
+        firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
       return;
     }
 
@@ -189,7 +196,7 @@ const Register = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2">
+              <div className="space-y-2" data-error={fieldErrors.firstName ? "true" : "false"}>
                 <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">{t('auth.firstName')} *</label>
                 <div className="relative group">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
@@ -201,10 +208,11 @@ const Register = () => {
                     className="pl-12 h-12"
                     value={formData.firstName}
                     onChange={handleChange}
+                    error={fieldErrors.firstName}
                   />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-error={fieldErrors.lastName ? "true" : "false"}>
                 <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">{t('auth.lastName')} *</label>
                 <div className="relative group">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
@@ -216,12 +224,13 @@ const Register = () => {
                     className="pl-12 h-12"
                     value={formData.lastName}
                     onChange={handleChange}
+                    error={fieldErrors.lastName}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2" data-error={fieldErrors.email ? "true" : "false"}>
               <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">{t('auth.emailAddress')} *</label>
               <div className="relative group">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
@@ -234,6 +243,7 @@ const Register = () => {
                   className="pl-12 h-12"
                   value={formData.email}
                   onChange={handleChange}
+                  error={fieldErrors.email}
                 />
               </div>
             </div>
@@ -253,7 +263,7 @@ const Register = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2" data-error={fieldErrors.password ? "true" : "false"}>
               <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">{t('auth.password')} *</label>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10 rtl:left-auto rtl:right-4" size={18} />
@@ -265,6 +275,7 @@ const Register = () => {
                   className="pl-12 pr-12 h-12 rtl:pr-12 rtl:pl-12"
                   value={formData.password}
                   onChange={handleChange}
+                  error={fieldErrors.password}
                 />
                 <button 
                   type="button" 
@@ -278,14 +289,14 @@ const Register = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2">
+              <div className="space-y-2" data-error={fieldErrors.collegeId ? "true" : "false"}>
                 <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">{t('auth.college')} *</label>
                 <div className="relative group">
                   <School className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
                   <select
                     name="collegeId"
                     required
-                    className="w-full h-12 pl-12 pr-12 bg-brand-bg-page/30 border border-brand-border rounded-xl font-bold appearance-none cursor-pointer"
+                    className={`w-full h-12 pl-12 pr-12 bg-brand-bg-page/30 border ${fieldErrors.collegeId ? 'border-red-500' : 'border-brand-border'} rounded-xl font-bold appearance-none cursor-pointer`}
                     value={formData.collegeId}
                     onChange={handleChange}
                   >
@@ -297,7 +308,7 @@ const Register = () => {
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none" size={18} />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-error={fieldErrors.departmentId ? "true" : "false"}>
                 <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">{t('auth.department')} *</label>
                 <div className="relative group">
                   <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
@@ -305,7 +316,7 @@ const Register = () => {
                     name="departmentId"
                     required
                     disabled={!formData.collegeId}
-                    className="w-full h-12 pl-12 pr-12 bg-brand-bg-page/30 border border-brand-border rounded-xl font-bold appearance-none cursor-pointer disabled:opacity-50"
+                    className={`w-full h-12 pl-12 pr-12 bg-brand-bg-page/30 border ${fieldErrors.departmentId ? 'border-red-500' : 'border-brand-border'} rounded-xl font-bold appearance-none cursor-pointer disabled:opacity-50`}
                     value={formData.departmentId}
                     onChange={handleChange}
                   >
@@ -320,7 +331,7 @@ const Register = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2">
+              <div className="space-y-2" data-error={fieldErrors.studentId ? "true" : "false"}>
                 <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">{t('auth.studentId')} *</label>
                 <div className="relative group">
                   <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
@@ -332,6 +343,7 @@ const Register = () => {
                     className="pl-12 h-12"
                     value={formData.studentId}
                     onChange={handleChange}
+                    error={fieldErrors.studentId}
                   />
                 </div>
               </div>
@@ -356,6 +368,10 @@ const Register = () => {
                 </div>
               </div>
             </div>
+
+            {Object.keys(fieldErrors).length > 0 && (
+              <p className="text-sm text-red-500 mt-4 text-center">يرجى تصحيح الأخطاء أعلاه</p>
+            )}
 
             <Button type="submit" disabled={loading} className="w-full h-12 rounded-2xl mt-4">
               {loading ? (

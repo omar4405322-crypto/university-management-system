@@ -299,7 +299,9 @@ const Dashboard = () => {
       >
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url('${CAMPUS_HERO_1}')` }}
+          style={{ 
+            backgroundImage: `url(${CAMPUS_HERO_1}), linear-gradient(135deg, var(--color-brand-navy) 0%, var(--color-brand-teal) 100%)` 
+          }}
           role="img"
           aria-label="University campus"
         />

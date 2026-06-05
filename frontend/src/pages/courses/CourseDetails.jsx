@@ -122,11 +122,15 @@ const CourseDetails = () => {
         </Card>
       </div>
 
-      {course.description && (
-        <Card title={t('courses.description')}>
+      <Card title={t('courses.description')}>
+        {course.description ? (
           <p className="text-brand-text-sub font-medium leading-relaxed">{course.description}</p>
-        </Card>
-      )}
+        ) : (
+          <p className="text-[var(--color-text-secondary)] italic text-sm">
+            {i18n.language === 'ar' ? 'لا يوجد وصف لهذه المادة حتى الآن' : 'No description available for this course yet.'}
+          </p>
+        )}
+      </Card>
     </div>
   );
 };

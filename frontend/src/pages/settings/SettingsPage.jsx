@@ -34,6 +34,7 @@ const SettingsPage = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('account');
   const [videoError, setVideoError] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   
   const [accountData, setAccountData] = useState({
     firstName: '',
@@ -63,6 +64,17 @@ const SettingsPage = () => {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const twoFactorEnabled = Boolean(user?.twoFactorEnabled);
 
+  useEffect(() => {
+    const handler = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
   const showToast = (message, type) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -87,6 +99,7 @@ const SettingsPage = () => {
     try {
       await api.put('/users/profile', accountData);
       showToast(t('settings.profileUpdated'), 'success');
+      setIsDirty(false);
     } catch (error) {
       showToast(error.response?.data?.message || t('settings.profileUpdateError'), 'error');
     } finally {
@@ -115,6 +128,7 @@ const SettingsPage = () => {
       showToast(t('settings.passwordUpdated'), 'success');
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setErrors({});
+      setIsDirty(false);
     } catch (error) {
       showToast(error.response?.data?.message || t('settings.passwordUpdateError'), 'error');
     } finally {
@@ -211,6 +225,7 @@ const SettingsPage = () => {
                         value={accountData.firstName}
                         onChange={(e) => {
                           setAccountData({...accountData, firstName: e.target.value});
+                          setIsDirty(true);
                           if (errors.firstName) setErrors({...errors, firstName: null});
                         }}
                         className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.firstName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
@@ -224,6 +239,7 @@ const SettingsPage = () => {
                         value={accountData.lastName}
                         onChange={(e) => {
                           setAccountData({...accountData, lastName: e.target.value});
+                          setIsDirty(true);
                           if (errors.lastName) setErrors({...errors, lastName: null});
                         }}
                         className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.lastName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
@@ -237,6 +253,7 @@ const SettingsPage = () => {
                         value={accountData.phone}
                         onChange={(e) => {
                           setAccountData({...accountData, phone: e.target.value});
+                          setIsDirty(true);
                           if (errors.phone) setErrors({...errors, phone: null});
                         }}
                         className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.phone ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
@@ -282,6 +299,7 @@ const SettingsPage = () => {
                         value={passwordData.currentPassword}
                         onChange={(e) => {
                           setPasswordData({...passwordData, currentPassword: e.target.value});
+                          setIsDirty(true);
                           if (errors.currentPassword) setErrors({...errors, currentPassword: null});
                         }}
                         className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.currentPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
@@ -297,6 +315,7 @@ const SettingsPage = () => {
                           value={passwordData.newPassword}
                           onChange={(e) => {
                             setPasswordData({...passwordData, newPassword: e.target.value});
+                            setIsDirty(true);
                             if (errors.newPassword) setErrors({...errors, newPassword: null});
                           }}
                           className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.newPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
@@ -311,6 +330,7 @@ const SettingsPage = () => {
                           value={passwordData.confirmPassword}
                           onChange={(e) => {
                             setPasswordData({...passwordData, confirmPassword: e.target.value});
+                            setIsDirty(true);
                             if (errors.confirmPassword) setErrors({...errors, confirmPassword: null});
                           }}
                           className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all ${errors.confirmPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
