@@ -155,11 +155,11 @@ const Header = ({ onMenuClick }) => {
                 <img src={user.profilePicture} alt="Avatar" className="h-full w-full rounded-xl object-cover" />
               ) : getInitials()}
             </div>
-            <div className="hidden text-start md:block">
-              <p className="text-xs font-black text-brand-text-primary dark:text-brand-text-main leading-none uppercase tracking-wider">{user?.firstName} {user?.lastName}</p>
-              <p className="label-stat text-brand-text-secondary mt-1">{user?.role?.replace('_', ' ')}</p>
+            <div className="flex flex-col items-end">
+              <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main truncate max-w-[120px]">{user?.firstName} {user?.lastName}</span>
+              <span className="text-[10px] font-black text-brand-primary-500 uppercase tracking-tighter">{user?.role?.replace('_', ' ')}</span>
             </div>
-            <ChevronDown size={14} className={`text-brand-text-muted transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown size={16} className={`text-brand-text-muted transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''} ${isRTL ? 'rotate-180' : ''}`} />
           </button>
 
           {isProfileOpen && (

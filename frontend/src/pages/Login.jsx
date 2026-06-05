@@ -12,6 +12,9 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotForgotEmail] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
@@ -19,6 +22,28 @@ const Login = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) return;
+
+    setForgotLoading(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setForgotSuccess(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const closeForgotModal = () => {
+    setShowForgotModal(false);
+    setForgotForgotEmail('');
+    setForgotSuccess(false);
+  };
 
   useEffect(() => {
     if (searchParams.get('expired') === 'true') {
@@ -163,17 +188,59 @@ const Login = () => {
             <h3 className="text-xl font-black text-center text-brand-text-primary dark:text-brand-text-main mb-2"> 
               {t('auth.forgotPasswordTitle')} 
             </h3> 
-            <p className="text-sm text-center text-brand-text-secondary mb-6 leading-relaxed"> 
-              {t('auth.forgotPasswordInstructions')} 
-            </p> 
-            <Button 
-              type="button" 
-              onClick={() => setShowForgotModal(false)} 
-              variant="primary" 
-              className="w-full rounded-2xl" 
-            > 
-              {t('auth.understood')} 
-            </Button> 
+            
+            {forgotSuccess ? (
+              <div className="space-y-6 text-center">
+                <p className="text-sm text-brand-text-secondary leading-relaxed">
+                  {t('auth.forgotPasswordSuccess') || 'تم إرسال طلبك للإدارة، سيتم التواصل معك قريباً'}
+                </p>
+                <Button 
+                  type="button" 
+                  onClick={closeForgotModal} 
+                  variant="primary" 
+                  className="w-full rounded-2xl" 
+                > 
+                  {t('auth.understood')} 
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotSubmit} className="space-y-6">
+                <p className="text-sm text-center text-brand-text-secondary leading-relaxed"> 
+                  {t('auth.forgotPasswordInstructions')} 
+                </p> 
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-brand-text-muted uppercase tracking-widest ml-1">
+                    {t('auth.emailAddress')}
+                  </label>
+                  <Input 
+                    type="email"
+                    required
+                    placeholder="example@university.edu"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotForgotEmail(e.target.value)}
+                    className="h-12"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <Button 
+                    type="button" 
+                    onClick={closeForgotModal} 
+                    variant="ghost" 
+                    className="flex-1 rounded-2xl" 
+                  > 
+                    {t('common.cancel')} 
+                  </Button> 
+                  <Button 
+                    type="submit" 
+                    disabled={forgotLoading || !forgotEmail.trim()}
+                    variant="primary" 
+                    className="flex-1 rounded-2xl" 
+                  > 
+                    {forgotLoading ? <Loader2 className="animate-spin" size={18} /> : t('auth.sendRequest') || 'إرسال طلب'}
+                  </Button> 
+                </div>
+              </form>
+            )}
           </div> 
         </div> 
       )} 
