@@ -1,3 +1,4 @@
+// redeployed: 2026-06-05
 require('dotenv').config();
 
 const requiredEnv = ['DATABASE_URL', 'JWT_SECRET', 'PORT'];
