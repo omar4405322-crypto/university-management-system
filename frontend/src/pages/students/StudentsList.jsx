@@ -1,148 +1,106 @@
-// FIXED: Phase 5 Add Student modal; Phase 7 empty state, CSV export, delete confirm modal
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import studentsService from '../../services/students.service';
-import { PageHeader } from '../../components/ui/PageHeader';
-import AddStudentModal from './AddStudentModal';
-import EditStudentModal from './EditStudentModal';
 import Card from '../../components/ui/Card';
 import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
-import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
-import LoadingState from '../../components/ui/LoadingState';
-import ErrorState from '../../components/ui/ErrorState';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import { 
+  Users, 
+  Search, 
+  Plus, 
+  Download, 
+  Eye, 
+  Edit2, 
+  Trash2, 
+  UserX, 
+  UserCheck,
+  Filter
+} from 'lucide-react';
+import studentService from '../../services/students.service';
+import { useTranslation } from 'react-i18next';
+import AddStudentModal from './AddStudentModal';
+import EditStudentModal from './EditStudentModal';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import FilterBar from '../../components/ui/FilterBar';
 import Pagination from '../../components/ui/Pagination';
+import ErrorState from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
-import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
-import { downloadCsv } from '../../utils/exportCsv';
-import { SkeletonTable, SkeletonKPIGrid } from '../../components/ui/Skeleton';
-import { 
-  Users,
-  Download,
-  User,
-  GraduationCap,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  Eye,
-  Edit2,
-  Trash2,
-  UserCheck,
-  UserX
-} from 'lucide-react';
-
-import { useTranslation } from 'react-i18next';
 
 const StudentsList = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [students, setStudents] = useState([]);
-  const [stats, setStats] = useState([
-    { label: t('students.totalStudents'), value: '0', icon: GraduationCap, color: 'navy' },
-    { label: t('students.active'), value: '0', icon: CheckCircle, color: 'green' },
-    { label: t('students.pending'), value: '0', icon: Clock, color: 'yellow' },
-    { label: t('students.inactive'), value: '0', icon: User, color: 'navy' },
-  ]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [totalPages, setTotalPages] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
-  const [toast, setToast] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const navigate = useNavigate();
+  const [toast, setToast] = useState(null);
 
-  const fetchStudents = useCallback(async () => {
+  useEffect(() => {
+    fetchStudents();
+  }, [page, search]);
+
+  const fetchStudents = async () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await studentsService.getStudents({ search, page, limit: 10 });
+      const result = await studentService.getStudents({
+        page,
+        limit: 10,
+        search: search.trim()
+      });
       if (result.success) {
-        setStudents(result.data.students);
-        setTotalPages(
-          result.data.totalPages
-            ?? result.data.pagination?.totalPages
-            ?? 1
-        );
-        
-        if (result.data.stats) {
-          const s = result.data.stats;
-          setStats([
-            { label: t('students.totalStudents'), value: (s.total || 0).toLocaleString(), icon: GraduationCap, color: 'navy' },
-            { label: t('students.active'), value: (s.active || 0).toLocaleString(), icon: CheckCircle, color: 'green' },
-            { label: t('students.pending'), value: (s.pending || 0).toLocaleString(), icon: Clock, color: 'yellow' },
-            { label: t('students.inactive'), value: (s.inactive || 0).toLocaleString(), icon: User, color: 'navy' },
-          ]);
-        }
-      } else {
-        setStudents([]);
-        setTotalPages(1);
+        setStudents(result.data);
+        setTotalPages(result.pagination.pages);
       }
     } catch (err) {
-      console.error('Error fetching students:', err);
-      setError(err.message || 'Unable to retrieve student data. Please try again.');
-      setStudents([]);
+      setError(t('common.errorFetching'));
     } finally {
       setLoading(false);
     }
-  }, [search, page, t]);
+  };
 
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      fetchStudents();
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [fetchStudents]);
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const blob = await studentService.exportStudents();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `students_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showToast(t('students.exportSuccess'), 'success');
+    } catch (err) {
+      showToast(t('students.exportError'), 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleToggleStatus = async (student) => {
     try {
-      const result = await studentsService.toggleStatus(student.id);
+      const result = await studentService.updateStudent(student.id, {
+        isActive: !student.isActive
+      });
       if (result.success) {
         showToast(
-          result.message || (student.isActive ? t('students.deactivateSuccess') : t('students.activateSuccess')),
+          student.isActive ? t('students.deactivated') : t('students.activated'),
           'success'
         );
         fetchStudents();
       }
     } catch (err) {
-      showToast(err.response?.data?.message || t('students.statusError'), 'error');
-    }
-  };
-
-  const handleExportCsv = async () => {
-    try {
-      setExporting(true);
-      const result = await studentsService.getStudents({ search, page: 1, limit: 5000 });
-      const rows = (result.data?.students || []).map((s) => [
-        s.studentId,
-        `${s.firstName} ${s.lastName}`,
-        s.user?.email || '',
-        s.phone || '',
-        s.year,
-        s.isActive ? t('students.active') : t('students.inactive'),
-      ]);
-      downloadCsv(
-        `students-${new Date().toISOString().slice(0, 10)}.csv`,
-        [
-          t('students.studentId'),
-          t('students.fullName'),
-          t('auth.email'),
-          t('students.phone'),
-          t('auth.year'),
-          t('profile.status'),
-        ],
-        rows
-      );
-      showToast(t('common.exportSuccess'), 'success');
-    } catch (err) {
-      showToast(t('common.exportError'), 'error');
-    } finally {
-      setExporting(false);
+      showToast(t('common.error'), 'error');
     }
   };
 
@@ -150,14 +108,14 @@ const StudentsList = () => {
     if (!deleteTarget) return;
     try {
       setDeleteLoading(true);
-      const result = await studentsService.deleteStudent(deleteTarget.id);
+      const result = await studentService.deleteStudent(deleteTarget.id);
       if (result.success) {
         showToast(t('students.deleteSuccess'), 'success');
         setDeleteTarget(null);
         fetchStudents();
       }
     } catch (err) {
-      showToast(err.message || t('students.deleteError'), 'error');
+      showToast(t('common.error'), 'error');
     } finally {
       setDeleteLoading(false);
     }
@@ -168,79 +126,68 @@ const StudentsList = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  if (loading && students.length === 0) {
-    return (
-      <div className="space-y-6">
-        <SkeletonKPIGrid />
-        <SkeletonTable rows={8} />
-      </div>
-    );
-  }
+  const filteredStudents = students.filter(s => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'active') return s.isActive;
+    if (statusFilter === 'inactive') return !s.isActive;
+    if (statusFilter === 'pending') return false;
+    return true;
+  });
 
   return (
-    <div className="section-gap animate-in fade-in duration-500">
-      {/* Toast Notification */}
+    <div className="section-gap animate-in fade-in duration-700">
       {toast && (
-        <div className={`${toast.type === 'error' ? 'toast-error' : 'toast-success'}`}>
-          <div className="flex items-center gap-2">
-            {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
-            <span className="font-medium">{toast.message}</span>
-          </div>
+        <div className={`fixed top-20 right-4 z-50 p-4 rounded-xl shadow-xl text-white animate-in slide-in-from-top-4 ${toast.type === 'error' ? 'bg-rose-500' : 'bg-brand-primary-500'}`}>
+          <p className="font-bold">{toast.message}</p>
         </div>
       )}
 
-      {/* FIXED: Move action button next to title */}
-      <PageHeader 
-        title={t('students.title')}
-        subtitle={t('students.subtitle')}
-        action={{
-          label: t('students.addStudent'),
-          onClick: () => setShowAddModal(true)
-        }}
-      />
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {stats.map((stat, i) => (
-          <Card key={i} noPadding className="group hover:-translate-y-1 transition-all duration-300">
-            <div className="p-6 flex items-center justify-between">
-              <div>
-                <p className="label-stat mb-1">{stat.label}</p>
-                <h3 className="m-0 text-3xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tightest">{stat.value}</h3>
-              </div>
-              <div className={`rounded-[1.25rem] p-3.5 transition-all duration-500 shadow-inner ${
-                stat.color === 'navy' ? 'bg-brand-navy-50 text-brand-navy-500 group-hover:bg-brand-navy-500 group-hover:text-white' :
-                stat.color === 'green' ? 'bg-brand-primary-50 text-brand-primary-500 group-hover:bg-brand-primary-500 group-hover:text-white' :
-                'bg-brand-accent-yellow/10 text-brand-accent-yellow group-hover:bg-brand-accent-yellow group-hover:text-white'
-              }`}>
-                <stat.icon size={28} />
-              </div>
-            </div>
-          </Card>
-        ))}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-black text-brand-text-primary tracking-tight">
+            {t('students.title')}
+          </h1>
+          <p className="text-brand-text-muted font-bold mt-1 uppercase tracking-widest text-xs">
+            {t('students.subtitle')}
+          </p>
+        </div>
+        <Button onClick={() => setShowAddModal(true)} className="shadow-xl shadow-brand-primary-500/20 h-12 px-6">
+          <Plus size={18} className="mr-2" /> {t('students.addStudent')}
+        </Button>
       </div>
 
-      <Card noPadding className="border-none shadow-soft overflow-hidden">
-        <FilterBar
-          search={search}
-          onSearchChange={(v) => { setSearch(v); setPage(1); }}
-          searchPlaceholder={t('students.searchPlaceholder')}
-        >
+      <Card noPadding className="border-l-0 overflow-hidden shadow-soft">
+        <FilterBar>
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted" size={18} />
+            <Input
+              placeholder={t('students.searchPlaceholder')}
+              className="pl-11 h-11 bg-brand-bg-page/50 border-transparent focus:bg-white"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           <Button
-            type="button"
             variant="outline"
-            size="sm"
+            onClick={handleExport}
             disabled={exporting}
-            onClick={handleExportCsv}
-            className="text-[10px] font-black uppercase tracking-widest gap-2"
+            className="h-11 px-5 border-brand-border hover:bg-brand-bg-page"
           >
             <Download size={14} />
             {exporting ? t('common.loading') : t('common.exportCsv')}
           </Button>
-          <Badge variant="primary" className="cursor-pointer px-3 py-1">{t('students.allStudents')}</Badge>
-          <Badge variant="success" className="cursor-pointer px-3 py-1">{t('students.active')}</Badge>
-          <Badge variant="warning" className="cursor-pointer px-3 py-1">{t('students.pending')}</Badge>
-          <Badge variant="danger" className="cursor-pointer px-3 py-1">{t('students.inactive')}</Badge>
+          <button onClick={() => setStatusFilter('all')}>
+            <Badge variant={statusFilter === 'all' ? 'primary' : 'outline'} className="cursor-pointer px-3 py-1">{t('students.allStudents')}</Badge>
+          </button>
+          <button onClick={() => setStatusFilter('active')}>
+            <Badge variant={statusFilter === 'active' ? 'success' : 'outline'} className="cursor-pointer px-3 py-1">{t('students.active')}</Badge>
+          </button>
+          <button onClick={() => setStatusFilter('pending')}>
+            <Badge variant={statusFilter === 'pending' ? 'warning' : 'outline'} className="cursor-pointer px-3 py-1">{t('students.pending')}</Badge>
+          </button>
+          <button onClick={() => setStatusFilter('inactive')}>
+            <Badge variant={statusFilter === 'inactive' ? 'danger' : 'outline'} className="cursor-pointer px-3 py-1">{t('students.inactive')}</Badge>
+          </button>
         </FilterBar>
 
         <div className="min-h-[400px]">
@@ -259,10 +206,17 @@ const StudentsList = () => {
                   : { label: t('students.addFirstStudent'), onClick: () => setShowAddModal(true) }
               }
             />
+          ) : filteredStudents.length === 0 ? (
+            <EmptyState
+              icon={<Users size={40} />}
+              title={t('students.noStudentsWithFilter') || 'لا يوجد طلاب بهذا الفلتر'}
+              subtitle={t('students.noStudentsWithFilterDesc') || 'حاول تغيير الفلتر لعرض المزيد من النتائج'}
+              action={{ label: t('common.clearFilter') || 'مسح الفلتر', onClick: () => setStatusFilter('all') }}
+            />
           ) : (
             <>
               <Table headers={[t('students.studentId'), t('students.fullName'), t('auth.email'), t('students.phone'), t('students.enrolledDate'), t('profile.status'), t('common.actions')]}>
-                {students.map((student) => (
+                {filteredStudents.map((student) => (
                   <TableRow key={student.id}>
                     <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-400 tracking-widest text-xs uppercase">{student.studentId}</TableCell>
                     <TableCell>
@@ -288,27 +242,27 @@ const StudentsList = () => {
                         {student.isActive ? t('students.active') : t('students.inactive')}
                       </Badge>
                     </TableCell>
-                  <TableCell>
-                    <ActionMenu actions={[
-                      { label: t('common.view'), icon: Eye, variant: 'view', onClick: () => navigate(`/students/${student.id}`) },
-                      { label: t('common.edit'), icon: Edit2, variant: 'edit', onClick: () => setEditingStudent(student) },
-                      {
-                        label: student.isActive ? t('students.deactivate') : t('students.activate'),
-                        icon: student.isActive ? UserX : UserCheck,
-                        variant: student.isActive ? 'delete' : 'edit',
-                        onClick: () => handleToggleStatus(student),
-                      },
-                      {
-                        label: t('common.delete'),
-                        icon: Trash2,
-                        variant: 'delete',
-                        onClick: () => setDeleteTarget({
-                          id: student.id,
-                          name: `${student.firstName} ${student.lastName}`,
-                        }),
-                      },
-                    ]} />
-                  </TableCell>
+                    <TableCell>
+                      <ActionMenu actions={[
+                        { label: t('common.view'), icon: Eye, variant: 'view', onClick: () => navigate(`/students/${student.id}`) },
+                        { label: t('common.edit'), icon: Edit2, variant: 'edit', onClick: () => setEditingStudent(student) },
+                        {
+                          label: student.isActive ? t('students.deactivate') : t('students.activate'),
+                          icon: student.isActive ? UserX : UserCheck,
+                          variant: student.isActive ? 'delete' : 'edit',
+                          onClick: () => handleToggleStatus(student),
+                        },
+                        {
+                          label: t('common.delete'),
+                          icon: Trash2,
+                          variant: 'delete',
+                          onClick: () => setDeleteTarget({
+                            id: student.id,
+                            name: `${student.firstName} ${student.lastName}`,
+                          }),
+                        },
+                      ]} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </Table>
