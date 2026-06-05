@@ -51,6 +51,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import ChartTooltip from '../components/ui/ChartTooltip';
 import dashboardService from '../services/dashboard.service';
 import timetableService from '../services/timetable.service';
 import { CAMPUS_HERO_1 } from '../constants/universityAssets';
@@ -364,9 +365,9 @@ const Dashboard = () => {
                 )}
                 <div className="flex justify-between items-start">
                   <div className={`p-2.5 rounded-2xl transition-colors duration-300 ${
-                    kpi.color === 'green' ? 'bg-brand-primary-50 text-brand-primary-500' : 
-                    kpi.color === 'navy' ? 'bg-brand-navy-50 text-brand-navy-500' : 
-                    'bg-brand-accent-yellow/10 text-brand-accent-yellow'
+                    kpi.color === 'green' ? 'bg-brand-primary-50 text-brand-primary-500 group-hover:bg-[var(--kpi-icon-hover)] group-hover:text-white' : 
+                    kpi.color === 'navy' ? 'bg-brand-navy-50 text-brand-navy-500 group-hover:bg-[var(--kpi-icon-hover)] group-hover:text-white' : 
+                    'bg-brand-accent-yellow/10 text-brand-accent-yellow group-hover:bg-[var(--kpi-icon-hover)] group-hover:text-white'
                   }`}>
                     <kpi.icon size={18} />
                   </div>
@@ -435,14 +436,7 @@ const Dashboard = () => {
                       tick={{fill: isDark ? '#94A3B8' : '#64748B', fontSize: 12, fontWeight: 600}}
                       dx={-10}
                     />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF', 
-                        borderColor: isDark ? '#334155' : '#E2E8F0',
-                        borderRadius: '16px',
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                      }} 
-                    />
+                    <Tooltip content={<ChartTooltip />} />
                     <Area 
                       type="monotone" 
                       dataKey="value" 
@@ -475,10 +469,7 @@ const Dashboard = () => {
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: isDark ? '#94A3B8' : '#64748B' }} dy={10} />
                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: isDark ? '#94A3B8' : '#64748B' }} />
-                        <Tooltip
-                          cursor={{ fill: isDark ? '#1E293B' : '#F8FAFC' }}
-                          contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                        />
+                        <Tooltip content={<ChartTooltip />} cursor={{ fill: isDark ? '#1E293B' : '#F8FAFC' }} />
                         <Bar dataKey="students" radius={[4, 4, 0, 0]} barSize={40}>
                           {collegeDistributionData.map((entry, index) => (
                             <Cell key={`college-${entry.name}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -516,9 +507,7 @@ const Dashboard = () => {
                             <Cell key={`finance-${entry.name}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip
-                          contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                        />
+                        <Tooltip content={<ChartTooltip />} />
                         <Legend verticalAlign="bottom" height={36} iconType="circle" />
                       </PieChart>
                     </ResponsiveContainer>
