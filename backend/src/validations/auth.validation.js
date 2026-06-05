@@ -9,6 +9,7 @@ const registerValidation = [
     .matches(/\d/).withMessage('Password must contain at least one number')
     .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter'),
   body('role')
+    .optional()
     .isIn(['STUDENT', 'DOCTOR', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN'])
     .withMessage('Invalid user role'),
   body('firstName')
