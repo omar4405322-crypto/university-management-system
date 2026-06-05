@@ -6,7 +6,7 @@ const Badge = ({ children, variant = 'info', className = '' }) => {
     warning: 'bg-warning/10 text-warning border-warning/20 dark:bg-warning/10 dark:text-warning dark:border-warning/20',
     danger: 'bg-error/10 text-error border-error/20 dark:bg-error/10 dark:text-error dark:border-error/20',
     info: 'bg-info/10 text-info border-info/20 dark:bg-info/10 dark:text-info dark:border-info/20',
-    neutral: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+    neutral: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600',
     primary: 'bg-brand-primary-50 text-brand-primary-700 border-brand-primary-100 dark:bg-brand-primary-500/10 dark:text-brand-primary-400 dark:border-brand-primary-500/20',
   };
 

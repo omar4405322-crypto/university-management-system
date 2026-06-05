@@ -127,6 +127,8 @@
   --warning:             #F59E0B;
   --error:               #EF4444;
   --info:                #3B82F6;
+
+  --kpi-icon-hover:      #132231;
 }
 
 .dark {
@@ -143,6 +145,8 @@
 
   --brand-green:         #8BB83C;
   --brand-green-glow:    rgba(139, 184, 60, 0.1);
+
+  --kpi-icon-hover:      #94a3b8;
 }
 
 @layer base {
@@ -346,9 +350,14 @@
 
   /* Select dropdown base */
   .select-brand {
-    @apply h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900
-           text-xs font-black uppercase tracking-widest text-brand-text-primary dark:text-brand-text-main
-           focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer pr-8;
+    @apply w-full h-11 px-4 pr-10 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+  }
+
+  .dark .select-brand {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cbd5e1' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   }
 
   /* Toast notifications */

@@ -15,14 +15,18 @@ import Badge from '../../components/ui/Badge';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
+import ChartTooltip from '../../components/ui/ChartTooltip';
 import { SkeletonKPIGrid } from '../../components/ui/Skeleton';
-
-const COLORS = ['#84cc16', '#22c55e', '#16a34a', '#15803d', '#8BB83C', '#132231'];
-const BAR_GREEN = '#84cc16';
 
 const AnalyticsDashboard = () => {
   const { t } = useTranslation();
   const { isDark } = useTheme();
+
+  const COLORS_LIGHT = ['#16a34a', '#2563eb', '#9333ea', '#ea580c', '#0891b2', '#132231'];
+  const COLORS_DARK = ['#4ade80', '#60a5fa', '#c084fc', '#fb923c', '#22d3ee', '#8BB83C'];
+  const COLORS = isDark ? COLORS_DARK : COLORS_LIGHT;
+  const BAR_GREEN = isDark ? '#4ade80' : '#16a34a';
+
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [filters, setFilters] = useState({
@@ -227,7 +231,7 @@ const AnalyticsDashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: isDark ? '#64748B' : '#94A3B8'}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: isDark ? '#64748B' : '#94A3B8'}} />
-                <Tooltip {...tooltipStyle} />
+                <Tooltip content={<ChartTooltip />} />
                 <Area type="monotone" dataKey="count" stroke="#8BB83C" strokeWidth={4} fillOpacity={1} fill="url(#colorEnroll)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -242,7 +246,7 @@ const AnalyticsDashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: isDark ? '#64748B' : '#94A3B8'}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: isDark ? '#64748B' : '#94A3B8'}} />
-                <Tooltip {...tooltipStyle} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: isDark ? '#1E293B' : '#F8FAFC' }} />
                 <Bar dataKey="students" fill={BAR_GREEN} radius={[12, 12, 0, 0]} barSize={40}>
                   {(data?.collegeDistribution || []).map((entry, index) => (
                     <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
@@ -271,7 +275,7 @@ const AnalyticsDashboard = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip {...tooltipStyle} />
+                <Tooltip content={<ChartTooltip />} />
                 <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em'}} />
               </PieChart>
             </ResponsiveContainer>

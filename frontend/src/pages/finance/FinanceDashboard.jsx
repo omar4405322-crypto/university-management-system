@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import paymentsService from '../../services/payments.service';
 import { useAuth } from '../../context/AuthContext';
+import ChartTooltip from '../../components/ui/ChartTooltip';
 import AddPaymentModal from './AddPaymentModal';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import Card from '../../components/ui/Card';
@@ -267,10 +268,7 @@ const FinanceDashboard = () => {
                       tickLine={false} 
                       tick={{fontSize: 10, fontWeight: 900, fill: '#94A3B8'}} 
                     />
-                    <Tooltip 
-                      cursor={{fill: '#F8FAFC'}}
-                      contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '16px'}}
-                    />
+                    <Tooltip content={<ChartTooltip />} cursor={{fill: 'var(--surface-subtle)'}} />
                     <Bar dataKey="amount" fill="#8BB83C" radius={[12, 12, 0, 0]} barSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -286,22 +284,20 @@ const FinanceDashboard = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={100}
-                      paddingAngle={8}
-                      dataKey="value"
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '16px'}}
-                    />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em'}} />
+                          data={chartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={70}
+                          outerRadius={100}
+                          paddingAngle={8}
+                          dataKey="value"
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<ChartTooltip />} />
+                        <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em'}} />
                   </PieChart>
                 </ResponsiveContainer>
                 )}
