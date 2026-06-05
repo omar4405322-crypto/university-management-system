@@ -57,10 +57,10 @@ const DoctorAvatar = ({ name, imageUrl, size = 'md', className = '' }) => {
 
   return (
     <div
-      className={`${sizeClasses[size]} ${getAvatarColor(name)} ${roundedClass} flex shrink-0 items-center justify-center font-bold text-white select-none ${className}`}
+      className={`${sizeClasses[size]} bg-[var(--color-brand-navy)] ${roundedClass} flex shrink-0 items-center justify-center font-medium text-white select-none ${className}`}
       aria-hidden={!name}
     >
-      {getInitials(name)}
+      {name?.slice(0, 2).toUpperCase() ?? 'DR'}
     </div>
   );
 };
