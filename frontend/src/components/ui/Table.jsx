@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { MoreVertical } from 'lucide-react';
 
 const Table = ({ headers, children, className = '' }) => {
@@ -55,40 +56,62 @@ const actionVariants = {
 
 export const ActionMenu = ({ actions, icon: Icon, size = 18, className = '' }) => {
   const [open, setOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
-  const ref = useRef(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     const handleClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (
+        menuRef.current && !menuRef.current.contains(e.target) && 
+        btnRef.current && !btnRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   const handleToggle = () => {
-    if (!open && ref.current) {
-      const rect = ref.current.getBoundingClientRect();
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
-      setOpenUpward(spaceBelow < 200); // flip if less than 200px below
+      if (spaceBelow < 180) {
+        setMenuPos({ bottom: window.innerHeight - rect.top + 4, left: rect.right - 160, top: 'auto' });
+      } else {
+        setMenuPos({ top: rect.bottom + 4, left: rect.right - 160, bottom: 'auto' });
+      }
     }
     setOpen(prev => !prev);
   };
 
   return (
-    <div className={`relative inline-block ${className}`} ref={ref}>
-      <button
-        onClick={handleToggle}
-        className="p-2 rounded-xl text-brand-text-muted hover:text-brand-text-primary hover:bg-surface-subtle transition-all duration-150"
-      >
-        {Icon ? <Icon size={size} /> : <MoreVertical size={size} />}
-      </button>
-      {open && (
+    <>
+      <div className={`relative inline-block ${className}`}>
+        <button
+          ref={btnRef}
+          onClick={handleToggle}
+          className="p-2 rounded-xl text-brand-text-muted hover:text-brand-text-primary hover:bg-surface-subtle transition-all duration-150"
+        >
+          {Icon ? <Icon size={size} /> : <MoreVertical size={size} />}
+        </button>
+      </div>
+
+      {open && typeof document !== 'undefined' && ReactDOM.createPortal(
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className={`absolute right-0 z-50 min-w-[160px] bg-brand-bg-card dark:bg-brand-bg-elevated rounded-xl border border-brand-border shadow-elevated py-1.5 animate-in fade-in zoom-in-95 duration-150 ${
-            openUpward ? 'bottom-full mb-1 origin-bottom-right' : 'top-full mt-1 origin-top-right'
-          }`}>
+          <div
+            ref={menuRef}
+            style={{
+              position: 'fixed',
+              top: menuPos.top,
+              bottom: menuPos.bottom,
+              left: menuPos.left,
+              zIndex: 9999,
+            }}
+            className="min-w-[160px] bg-brand-bg-card dark:bg-brand-bg-elevated rounded-xl border border-brand-border shadow-elevated py-1.5 animate-in fade-in zoom-in-95 duration-150"
+          >
             {actions.map((action, i) => (
               <button
                 key={i}
@@ -100,9 +123,10 @@ export const ActionMenu = ({ actions, icon: Icon, size = 18, className = '' }) =
               </button>
             ))}
           </div>
-        </>
+        </>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 
