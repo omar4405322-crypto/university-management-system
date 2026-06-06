@@ -4,19 +4,29 @@ require('dotenv').config();
 const REQUIRED_ENV_VARS = [ 
   'DATABASE_URL', 
   'JWT_SECRET',
+]; 
+
+const OPTIONAL_ENV_VARS = [
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
   'REDIS_URL'
-]; 
+];
 
-const missing = REQUIRED_ENV_VARS.filter(key => !process.env[key]); 
-if (missing.length > 0) { 
+const missingRequired = REQUIRED_ENV_VARS.filter(key => !process.env[key]); 
+if (missingRequired.length > 0) { 
   console.error('❌ FATAL: Missing required environment variables:'); 
-  missing.forEach(key => console.error(`   - ${key}`)); 
+  missingRequired.forEach(key => console.error(`   - ${key}`)); 
   console.error('Please check your .env file.'); 
   process.exit(1); 
 } 
+
+const missingOptional = OPTIONAL_ENV_VARS.filter(key => !process.env[key]);
+if (missingOptional.length > 0) {
+  console.warn('⚠️ WARNING: Some optional environment variables are missing:');
+  missingOptional.forEach(key => console.warn(`   - ${key}`));
+  console.warn('Production features like Cloudinary storage and Redis caching will be disabled.');
+}
 
 const app = require('./app');
 const http = require('http');
