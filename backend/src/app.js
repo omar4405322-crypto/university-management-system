@@ -105,12 +105,24 @@ const authLimiter = rateLimit({
 app.use('/api/auth', authLimiter);
 
 // 4. HEALTH CHECK
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    success: true, 
-    message: 'Server is healthy',
-    timestamp: new Date().toISOString()
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    const prisma = require('./utils/prismaClient');
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ 
+      success: true, 
+      message: 'Server and Database are healthy',
+      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Database connection failed',
+      error: err.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // 5. BODY PARSERS
