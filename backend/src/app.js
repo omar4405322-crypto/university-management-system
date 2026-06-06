@@ -71,17 +71,22 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
       'http://localhost:5173', 
       'http://localhost:3000', 
       'http://localhost:3001',
-      'https://capable-bienenstitch-1fc9d2.netlify.app',
-      'https://university-management-system-m7gchxssw-omar-s-project1.vercel.app'
+      'https://capable-bienenstitch-1fc9d2.netlify.app'
     ];
 
 app.use(cors({ 
   origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      return callback(new Error('CORS Policy: Origin not allowed'), false);
+
+    const isAllowed = allowedOrigins.includes(origin) || 
+                     origin.match(/https:\/\/university-management-system.*\.vercel\.app$/);
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS Policy: Origin not allowed'), false);
     }
-    return callback(null, true);
   },
   credentials: true, 
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], 
