@@ -1,5 +1,6 @@
 const { verifyToken } = require('../utils/jwt.utils');
 const prisma = require('../utils/prismaClient');
+const catchAsync = require('../utils/catchAsync');
 
 /**
  * Protect routes - ensures user is authenticated
@@ -13,52 +14,46 @@ const protect = catchAsync(async (req, res, next) => {
   }
 
   if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Access denied. No security token provided.',
-      });
-    }
-
-    // Verify token
-    const decoded = verifyToken(token);
-
-    // Check if user still exists
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      include: {
-        student: {
-          select: { id: true, firstName: true, lastName: true, studentId: true }
-        },
-        doctor: {
-          select: { id: true, firstName: true, lastName: true, doctorId: true }
-        },
-      },
-    });
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'The user belonging to this token no longer exists.',
-      });
-    }
-
-    if (decoded.tokenVersion !== user.tokenVersion) { 
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Session invalidated. Please login again.', 
-      }); 
-    } 
-
-    // Grant access to protected route
-    req.user = user;
-    next();
-  } catch (error) {
     return res.status(401).json({
       success: false,
-      message: error.message || 'Not authorized to access this resource',
+      message: 'Access denied. No security token provided.',
     });
   }
-};
+
+  // Verify token
+  const decoded = verifyToken(token);
+
+  // Check if user still exists
+  const user = await prisma.user.findUnique({
+    where: { id: decoded.id },
+    include: {
+      student: {
+        select: { id: true, firstName: true, lastName: true, studentId: true }
+      },
+      doctor: {
+        select: { id: true, firstName: true, lastName: true, doctorId: true }
+      },
+    },
+  });
+
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'The user belonging to this token no longer exists.',
+    });
+  }
+
+  if (decoded.tokenVersion !== user.tokenVersion) { 
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Session invalidated. Please login again.', 
+    }); 
+  } 
+
+  // Grant access to protected route
+  req.user = user;
+  next();
+});
 
 /**
  * Authorize roles - ensures user has required permissions

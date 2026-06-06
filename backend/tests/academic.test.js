@@ -12,6 +12,14 @@ describe('Academic CRUD API', () => {
   let department;
 
   beforeAll(async () => {
+    // Cleanup first to avoid unique constraint issues
+    await prisma.attendance.deleteMany({ where: { student: { user: { email: { contains: 'test' } } } } });
+    await prisma.student.deleteMany({ where: { user: { email: { contains: 'test' } } } });
+    await prisma.course.deleteMany({ where: { name: { contains: 'Test' } } });
+    await prisma.user.deleteMany({ where: { email: { contains: 'test' } } });
+    await prisma.department.deleteMany({ where: { name: { contains: 'Test' } } });
+    await prisma.college.deleteMany({ where: { name: { contains: 'Test' } } });
+
     // Setup environment
     const hashedPassword = await bcrypt.hash('Password123', 10);
     
@@ -47,10 +55,10 @@ describe('Academic CRUD API', () => {
 
   afterAll(async () => {
     // Cleanup
-    await prisma.attendance.deleteMany({ where: { student: { user: { email: { contains: 'test@example.com' } } } } });
-    await prisma.student.deleteMany({ where: { user: { email: { contains: 'test@example.com' } } } });
+    await prisma.attendance.deleteMany({ where: { student: { user: { email: { contains: 'test' } } } } });
+    await prisma.student.deleteMany({ where: { user: { email: { contains: 'test' } } } });
     await prisma.course.deleteMany({ where: { name: { contains: 'Test' } } });
-    await prisma.user.deleteMany({ where: { email: { contains: 'test@example.com' } } });
+    await prisma.user.deleteMany({ where: { email: { contains: 'test' } } });
     await prisma.department.deleteMany({ where: { name: { contains: 'Test' } } });
     await prisma.college.deleteMany({ where: { name: { contains: 'Test' } } });
     await prisma.$disconnect();
@@ -109,7 +117,11 @@ describe('Academic CRUD API', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           firstName: 'John Updated',
-          year: 2
+          lastName: 'Doe',
+          email: 'test-john@example.com',
+          studentId: 'STU-999',
+          year: 2,
+          departmentId: department.id
         });
 
       expect(res.status).toBe(200);

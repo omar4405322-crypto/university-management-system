@@ -1,25 +1,44 @@
 const jwt = require('jsonwebtoken');
+const { AuthenticationError } = require('./appError');
+const prisma = require('./prismaClient');
+const crypto = require('crypto');
 
 /**
- * Generate a JWT token for a user
- * @param {number} userId - The user ID
- * @param {number} tokenVersion - The version of the token for invalidation
- * @returns {string} - Signed JWT
+ * Generate a short-lived access token
  */
-const generateToken = (userId, tokenVersion = 0) => { 
+const generateAccessToken = (userId, tokenVersion = 0) => { 
   return jwt.sign( 
     { id: userId, tokenVersion }, 
     process.env.JWT_SECRET, 
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d', issuer: 'Smart University Platform', audience: 'University Users' } 
+    { 
+      expiresIn: '15m', 
+      issuer: 'Smart University Platform', 
+      audience: 'University Users' 
+    } 
   ); 
 }; 
 
+/**
+ * Generate a long-lived refresh token and store it in DB
+ */
+const generateRefreshToken = async (userId) => {
+  const token = crypto.randomBytes(40).toString('hex');
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+
+  await prisma.refreshToken.create({
+    data: {
+      token,
+      userId,
+      expiresAt
+    }
+  });
+
+  return token;
+};
 
 /**
- * Verify a JWT token
- * @param {string} token - Token to verify
- * @returns {Object} - Decoded payload
- * @throws {Error} - If token is invalid or expired
+ * Verify a JWT access token
  */
 const verifyToken = (token) => {
   try {
@@ -29,23 +48,23 @@ const verifyToken = (token) => {
     });
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
-      throw new Error('Session expired, please login again');
+      throw new AuthenticationError('Session expired, please login again');
     }
-    throw new Error('Invalid or corrupted security token');
+    throw new AuthenticationError('Invalid or corrupted security token');
   }
 };
 
 /**
  * Decode a JWT token without verification
- * @param {string} token - Token to decode
- * @returns {Object|null} - Decoded payload or null
  */
 const decodeToken = (token) => {
   return jwt.decode(token);
 };
 
 module.exports = {
-  generateToken,
+  generateToken: generateAccessToken, // Keep original name for compatibility if needed
+  generateAccessToken,
+  generateRefreshToken,
   verifyToken,
   decodeToken,
 };

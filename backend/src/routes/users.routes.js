@@ -4,7 +4,9 @@ const {
   updateProfile, 
   updatePassword, 
   updateProfilePicture,
-  updateTwoFactor,
+  setup2FA,
+  enable2FA,
+  disable2FA,
   getAllUsers,
   createAdmin,
   deleteUser
@@ -31,9 +33,15 @@ router.put('/profile/password', [
 
 router.put('/profile/picture', upload.single('profilePicture'), updateProfilePicture);
 
-router.patch('/profile/two-factor', [
-  body('enabled').isBoolean().withMessage('enabled must be a boolean'),
-], validate, updateTwoFactor);
+// 2FA Routes
+router.post('/2fa/setup', setup2FA);
+router.post('/2fa/enable', [
+  body('token').notEmpty().withMessage('Verification code is required'),
+], validate, enable2FA);
+router.post('/2fa/disable', [
+  body('token').notEmpty().withMessage('Verification code is required'),
+  body('password').notEmpty().withMessage('Password is required'),
+], validate, disable2FA);
 
 // Admin management
 router.get('/', authorize('SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), getAllUsers);
