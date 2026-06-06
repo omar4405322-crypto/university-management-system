@@ -36,6 +36,7 @@ exports.getAdminStats = catchAsync(async (req, res) => {
     totalColleges,
     totalAdmins,
     totalSuperAdmins,
+    totalAtRiskStudents,
     financeStats,
     recentStudents,
     recentPayments,
@@ -51,6 +52,12 @@ exports.getAdminStats = catchAsync(async (req, res) => {
     prisma.college.count(req.user.role === 'SUPER_ADMIN' ? {} : { where: { id: req.user.collegeId } }),
     prisma.user.count({ where: { role: { in: ['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] } } }),
     prisma.user.count({ where: { role: 'SUPER_ADMIN' } }),
+    prisma.studentSuccessMetric.count({
+      where: {
+        predictedRisk: { in: ['HIGH', 'CRITICAL'] },
+        student: scopeWhere
+      }
+    }),
     prisma.payment.groupBy({
       where: { student: scopeWhere },
       by: ['status'],
@@ -145,7 +152,7 @@ exports.getAdminStats = catchAsync(async (req, res) => {
   };
 
   const responseData = {
-    counts: { totalStudents, totalDoctors, totalCourses, totalPayments, totalColleges, totalAdmins, totalSuperAdmins },
+    counts: { totalStudents, totalDoctors, totalCourses, totalPayments, totalColleges, totalAdmins, totalSuperAdmins, totalAtRiskStudents },
     finance,
     recentStudents,
     enrollmentData,
@@ -190,7 +197,8 @@ exports.getStudentStats = catchAsync(async (req, res) => {
   const student = await prisma.student.findUnique({
     where: { userId: req.user.id },
     include: { 
-      department: { include: { college: true } }
+      department: { include: { college: true } },
+      successMetrics: true
     }
   });
 
@@ -307,7 +315,8 @@ exports.getStudentStats = catchAsync(async (req, res) => {
         department: student.department ? student.department.name : 'N/A',
         college: student.department?.college ? student.department.college.name : 'N/A',
         year: studentYear,
-        semester: semester
+        semester: semester,
+        successMetrics: student.successMetrics
       },
       curriculum: curriculumCourses,
       myPayments,

@@ -12,12 +12,14 @@ const api = axios.create({
   withCredentials: true,
 });
 
+let _accessToken = null;
+export const setAccessToken = (t) => { _accessToken = t; };
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (_accessToken) {
+      config.headers.Authorization = `Bearer ${_accessToken}`;
     }
     return config;
   },
@@ -39,8 +41,8 @@ api.interceptors.response.use(
         const response = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {}, { withCredentials: true });
         const { accessToken } = response.data.data;
 
-        // Save new token
-        localStorage.setItem('token', accessToken);
+        // Save new token in memory
+        setAccessToken(accessToken);
         
         // Update header and retry
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
@@ -48,7 +50,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed - logout
         localStorage.removeItem('user');
-        localStorage.removeItem('token');
+        setAccessToken(null);
         
         if (!window.location.pathname.includes('/login')) {
           window.location.href = '/login?expired=true';

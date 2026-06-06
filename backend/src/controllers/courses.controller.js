@@ -22,6 +22,11 @@ exports.getAllCourses = catchAsync(async (req, res, next) => {
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const take = parseInt(limit);
 
+  // Sorting whitelist
+  const COURSE_SORT_FIELDS = ['createdAt', 'name', 'courseCode', 'credits', 'year']; 
+  const safeSortBy = COURSE_SORT_FIELDS.includes(sortBy) ? sortBy : 'createdAt'; 
+  const safeSortOrder = ['asc', 'desc'].includes(sortOrder) ? sortOrder : 'desc'; 
+
   const where = {
     ...(departmentId && { departmentId: parseInt(departmentId) }),
     ...(year && { year: parseInt(year) }),
@@ -44,7 +49,7 @@ exports.getAllCourses = catchAsync(async (req, res, next) => {
       },
       skip,
       take,
-      orderBy: { [sortBy]: sortOrder },
+      orderBy: { [safeSortBy]: safeSortOrder },
     }),
     prisma.course.count({ where })
   ]);

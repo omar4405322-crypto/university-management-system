@@ -13,8 +13,6 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
-import StudentsList from './pages/students/StudentsList';
-import StudentDetails from './pages/students/StudentDetails';
 import CoursesList from './pages/courses/CoursesList';
 import CourseDetails from './pages/courses/CourseDetails';
 import DoctorsList from './pages/doctors/DoctorsList';
@@ -22,15 +20,11 @@ import WeeklySchedule from './pages/schedules/WeeklySchedule';
 import ExamsList from './pages/exams/ExamsList';
 import ExamDetails from './pages/exams/ExamDetails';
 import TakeExam from './pages/exams/TakeExam';
-import FinanceDashboard from './pages/finance/FinanceDashboard';
-import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
 import CollegesList from './pages/colleges/CollegesList';
 import CollegeDetails from './pages/colleges/CollegeDetails';
 import DepartmentsList from './pages/departments/DepartmentsList';
 import RegistrationRequests from './pages/registration/RegistrationRequests';
 import NotificationsPage from './pages/notifications/NotificationsPage';
-import AttendancePage from './pages/attendance/AttendancePage';
-import QuizzesList from './pages/quizzes/QuizzesList';
 import CreateQuiz from './pages/quizzes/CreateQuiz';
 import TakeQuiz from './pages/quizzes/TakeQuiz';
 import TasksList from './pages/tasks/TasksList';
@@ -46,6 +40,12 @@ const CreateExam = lazy(() => import('./pages/exams/CreateExam'));
 const DepartmentDetails = lazy(() => import('./pages/departments/DepartmentDetails'));
 const AdminsList = lazy(() => import('./pages/registration/AdminsList'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
+const StudentsList = lazy(() => import('./pages/students/StudentsList'));
+const StudentDetails = lazy(() => import('./pages/students/StudentDetails'));
+const FinanceDashboard = lazy(() => import('./pages/finance/FinanceDashboard'));
+const AnalyticsDashboard = lazy(() => import('./pages/analytics/AnalyticsDashboard'));
+const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'));
+const QuizzesList = lazy(() => import('./pages/quizzes/QuizzesList'));
 
 const LazyRoute = ({ children }) => (
   <ErrorBoundary>
@@ -104,8 +104,8 @@ const AppContent = () => {
                 <ErrorBoundary>
                   <Routes>
                     <Route path="dashboard" element={<div className="animate-page"><Dashboard /></div>} />
-                    <Route path="students" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><StudentsList /></div></ProtectedRoute>} />
-                    <Route path="students/:id" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><StudentDetails /></div></ProtectedRoute>} />
+                    <Route path="students" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><LazyRoute><StudentsList /></LazyRoute></div></ProtectedRoute>} />
+                    <Route path="students/:id" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><LazyRoute><StudentDetails /></LazyRoute></div></ProtectedRoute>} />
                     <Route path="courses" element={<div className="animate-page"><CoursesList /></div>} />
                     <Route path="courses/:id" element={<div className="animate-page"><CourseDetails /></div>} />
                     <Route path="doctors" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><DoctorsList /></div></ProtectedRoute>} />
@@ -143,8 +143,8 @@ const AppContent = () => {
                     />
                     <Route path="exams/:id/take" element={<ProtectedRoute allowedRoles={['STUDENT']}><div className="animate-page"><TakeExam /></div></ProtectedRoute>} />
                     <Route path="exams/:id" element={<div className="animate-page"><ExamDetails /></div>} />
-                    <Route path="finance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><FinanceDashboard /></div></ProtectedRoute>} />
-                    <Route path="analytics" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><AnalyticsDashboard /></div></ProtectedRoute>} />
+                    <Route path="finance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><LazyRoute><FinanceDashboard /></LazyRoute></div></ProtectedRoute>} />
+                    <Route path="analytics" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><LazyRoute><AnalyticsDashboard /></LazyRoute></div></ProtectedRoute>} />
                     <Route path="colleges" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><CollegesList /></div></ProtectedRoute>} />
                     <Route path="colleges/:id" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><CollegeDetails /></div></ProtectedRoute>} />
                     <Route
@@ -169,12 +169,12 @@ const AppContent = () => {
                         </ProtectedRoute>
                       }
                     />
-                    <Route path="quizzes" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT']}><div className="animate-page"><QuizzesList /></div></ProtectedRoute>} />
+                    <Route path="quizzes" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT']}><div className="animate-page"><LazyRoute><QuizzesList /></LazyRoute></div></ProtectedRoute>} />
                     <Route path="quizzes/create" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR']}><div className="animate-page"><CreateQuiz /></div></ProtectedRoute>} />
                     <Route path="quizzes/:id/take" element={<ProtectedRoute allowedRoles={['STUDENT']}><div className="animate-page"><TakeQuiz /></div></ProtectedRoute>} />
                     <Route path="tasks" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT']}><div className="animate-page"><TasksList /></div></ProtectedRoute>} />
                     <Route path="notifications" element={<div className="animate-page"><NotificationsPage /></div>} />
-                    <Route path="attendance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT']}><div className="animate-page"><AttendancePage /></div></ProtectedRoute>} />
+                    <Route path="attendance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT']}><div className="animate-page"><LazyRoute><AttendancePage /></LazyRoute></div></ProtectedRoute>} />
                     <Route
                       path="settings"
                       element={

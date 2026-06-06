@@ -1,7 +1,7 @@
 const prisma = require('../utils/prismaClient');
 const catchAsync = require('../utils/catchAsync');
 const { createNotification } = require('../utils/notification.utils');
-const { AppError } = require('../utils/appError');
+const { AppError, AuthorizationError } = require('../utils/appError');
 
 /**
  * @desc    Record attendance for multiple students
@@ -31,17 +31,24 @@ exports.recordAttendance = catchAsync(async (req, res, next) => {
     )
   );
 
-  // Async notifications - don't block the response
-  createdRecords.forEach(async (attendance) => {
-    if (attendance.status === 'ABSENT' || attendance.status === 'LATE') {
-      await createNotification({
-        userId: attendance.student.userId,
-        title: `Attendance Alert: ${attendance.status}`,
-        message: `You were marked ${attendance.status.toLowerCase()} for ${attendance.course.name} on ${attendanceDate.toLocaleDateString()}.`,
-        type: attendance.status === 'ABSENT' ? 'error' : 'warning'
-      });
-    }
-  });
+  // Send attendance notifications concurrently (non-blocking, errors logged)
+  Promise.all(
+    createdRecords
+      .filter((a) => a.status === 'ABSENT' || a.status === 'LATE')
+      .map(async (attendance) => {
+        try {
+          await createNotification({
+            userId: attendance.student.userId,
+            title: `Attendance Alert: ${attendance.status}`,
+            message: `You were marked ${attendance.status.toLowerCase()} for ${attendance.course.name} on ${attendanceDate.toLocaleDateString()}.`,
+            type: attendance.status === 'ABSENT' ? 'error' : 'warning'
+          });
+        } catch (err) {
+          const logger = require('../utils/logger');
+          logger.error(`[ATTENDANCE] Failed to send notification: ${err.message}`);
+        }
+      })
+  ).catch(() => {}); // Non-blocking: response already sent
 
   res.status(201).json({ success: true, data: createdRecords });
 });
@@ -88,6 +95,20 @@ exports.getCourseAttendance = catchAsync(async (req, res, next) => {
  */
 exports.getStudentAttendance = catchAsync(async (req, res, next) => {
   const studentId = parseInt(req.params.studentId);
+
+  // Ownership check for students (Fix IDOR)
+  if (req.user.role === 'STUDENT') {
+    const myStudent = await prisma.student.findUnique({
+      where: { userId: req.user.id },
+      select: { id: true }
+    });
+    if (!myStudent || myStudent.id !== studentId) {
+      return next(new AuthorizationError(
+        'You can only view your own attendance records.'
+      ));
+    }
+  }
+
   const { courseId, page = 1, limit = 20 } = req.query;
 
   const skip = (parseInt(page) - 1) * parseInt(limit);

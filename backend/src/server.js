@@ -21,6 +21,13 @@ if (missingRequired.length > 0) {
   process.exit(1); 
 } 
 
+// Security Check: JWT_SECRET strength
+const weakSecrets = ['your-super-secret-key-change-this', 'secret', 'changeme']; 
+if (weakSecrets.includes(process.env.JWT_SECRET) || process.env.JWT_SECRET.length < 32) { 
+  console.error('❌ FATAL: JWT_SECRET is too weak or is the default value. Please set a strong random secret.'); 
+  process.exit(1); 
+} 
+
 const missingOptional = OPTIONAL_ENV_VARS.filter(key => !process.env[key]);
 if (missingOptional.length > 0) {
   console.warn('⚠️ WARNING: Some optional environment variables are missing:');

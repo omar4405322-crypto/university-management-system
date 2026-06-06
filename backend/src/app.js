@@ -174,10 +174,6 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', timestamp: new Date() });
-});
-
 // 404 handler for undefined routes
 app.use((req, res, next) => {
   next(new NotFoundError(`Can't find ${req.originalUrl} on this server!`));
