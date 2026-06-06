@@ -33,6 +33,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./utils/swagger');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // 1. SWAGGER DOCUMENTATION
 if (process.env.NODE_ENV !== 'production') { 
