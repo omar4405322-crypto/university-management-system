@@ -1,7 +1,7 @@
 // FIXED: Student active status via bio flag + stats/toggle endpoints - Phase 2
 const prisma = require('../utils/prismaClient');
 const catchAsync = require('../utils/catchAsync');
-const { NotFoundError } = require('../utils/appError');
+const { AppError, NotFoundError } = require('../utils/appError');
 
 const mapStudentStatus = (student) => ({
   ...student,
@@ -275,4 +275,35 @@ exports.deleteStudent = catchAsync(async (req, res, next) => {
     success: true,
     message: 'Student and associated user account deleted successfully',
   });
+});
+
+exports.resetStudentPassword = catchAsync(async (req, res, next) => { 
+  const { id } = req.params; 
+  const { newPassword } = req.body; 
+
+  if (!newPassword || newPassword.length < 6) { 
+    return next(new AppError('Password must be at least 6 characters', 400)); 
+  } 
+
+  const student = await prisma.student.findUnique({ 
+    where: { id: parseInt(id) }, 
+    include: { user: true } 
+  }); 
+
+  if (!student) { 
+    return next(new NotFoundError('Student not found')); 
+  } 
+
+  const bcrypt = require('bcryptjs'); 
+  const hashedPassword = await bcrypt.hash(newPassword, 10); 
+
+  await prisma.user.update({ 
+    where: { id: student.userId }, 
+    data: { password: hashedPassword } 
+  }); 
+
+  res.json({ 
+    success: true, 
+    message: `Password reset successfully for ${student.firstName} ${student.lastName}` 
+  }); 
 });

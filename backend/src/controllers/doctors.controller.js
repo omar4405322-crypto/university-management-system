@@ -2,6 +2,9 @@
 const prisma = require('../utils/prismaClient');
 const bcrypt = require('bcryptjs');
 
+const catchAsync = require('../utils/catchAsync');
+const { AppError, NotFoundError } = require('../utils/appError');
+
 const getScopeWhere = (user) => {
   const scopeWhere = {};
   if (user.role === 'COLLEGE_ADMIN') {
@@ -309,3 +312,34 @@ exports.deleteDoctor = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.resetDoctorPassword = catchAsync(async (req, res, next) => { 
+  const { id } = req.params; 
+  const { newPassword } = req.body; 
+
+  if (!newPassword || newPassword.length < 6) { 
+    return next(new AppError('Password must be at least 6 characters', 400)); 
+  } 
+
+  const doctor = await prisma.doctor.findUnique({ 
+    where: { id: parseInt(id) }, 
+    include: { user: true } 
+  }); 
+
+  if (!doctor) { 
+    return next(new NotFoundError('Doctor not found')); 
+  } 
+
+  const bcrypt = require('bcryptjs'); 
+  const hashedPassword = await bcrypt.hash(newPassword, 10); 
+
+  await prisma.user.update({ 
+    where: { id: doctor.userId }, 
+    data: { password: hashedPassword } 
+  }); 
+
+  res.json({ 
+    success: true, 
+    message: `Password reset successfully for ${doctor.firstName} ${doctor.lastName}` 
+  }); 
+});

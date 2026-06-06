@@ -15,12 +15,14 @@ import {
   Trash2, 
   UserX, 
   UserCheck,
-  Filter
+  Filter,
+  KeyRound
 } from 'lucide-react';
 import studentService from '../../services/students.service';
 import { useTranslation } from 'react-i18next';
 import AddStudentModal from './AddStudentModal';
 import EditStudentModal from './EditStudentModal';
+import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import FilterBar from '../../components/ui/FilterBar';
 import Pagination from '../../components/ui/Pagination';
@@ -42,6 +44,7 @@ const StudentsList = () => {
   const [editingStudent, setEditingStudent] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [resetPasswordStudent, setResetPasswordStudent] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -246,6 +249,7 @@ const StudentsList = () => {
                       <ActionMenu actions={[
                         { label: t('common.view'), icon: Eye, variant: 'view', onClick: () => navigate(`/students/${student.id}`) },
                         { label: t('common.edit'), icon: Edit2, variant: 'edit', onClick: () => setEditingStudent(student) },
+                        { label: 'Reset Password', icon: KeyRound, variant: 'edit', onClick: () => setResetPasswordStudent(student) },
                         {
                           label: student.isActive ? t('students.deactivate') : t('students.activate'),
                           icon: student.isActive ? UserX : UserCheck,
@@ -305,6 +309,13 @@ const StudentsList = () => {
           }}
         />
       )}
+
+      <ResetPasswordModal 
+        isOpen={!!resetPasswordStudent} 
+        onClose={() => setResetPasswordStudent(null)} 
+        person={resetPasswordStudent} 
+        type="student" 
+      />
     </div>
   );
 };
