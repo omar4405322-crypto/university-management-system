@@ -67,7 +67,13 @@ app.use(helmet({
 // 2. CORS CONFIGURATION
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:3001'];
+  : [
+      'http://localhost:5173', 
+      'http://localhost:3000', 
+      'http://localhost:3001',
+      'https://capable-bienenstitch-1fc9d2.netlify.app',
+      'https://university-management-system-m7gchxssw-omar-s-project1.vercel.app'
+    ];
 
 app.use(cors({ 
   origin: function (origin, callback) {
