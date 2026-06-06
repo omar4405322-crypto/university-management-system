@@ -130,7 +130,7 @@ exports.getCourseRoster = catchAsync(async (req, res, next) => {
       where: {
         departmentId: course.departmentId,
         year: course.year,
-        OR: [{ bio: null }, { bio: { not: 'INACTIVE' } }],
+        isActive: true,
       },
       select: { id: true, firstName: true, lastName: true, studentId: true },
       orderBy: { lastName: 'asc' },
