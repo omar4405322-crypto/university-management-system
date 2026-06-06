@@ -15,6 +15,8 @@ const Login = () => {
   const [forgotEmail, setForgotForgotEmail] = useState('');
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [show2FA, setShow2FA] = useState(false);
+  const [totpToken, setTotpToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
@@ -57,7 +59,14 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const result = await login(email, password);
+      const result = await login(email, password, show2FA ? totpToken : null);
+      
+      if (result.requires2FA) {
+        setShow2FA(true);
+        setLoading(false);
+        return;
+      }
+
       if (result.success) {
         navigate('/dashboard', { replace: true });
         return;
@@ -157,55 +166,97 @@ const Login = () => {
                 </div>
               )}
 
-              <div className="space-y-2 text-right">
-                <label className="text-xs font-black uppercase tracking-widest text-brand-text-muted mr-1">
-                  {t('auth.emailAddress')}
-                </label>
-                <div className="relative group">
-                  <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-green transition-colors" size={18} />
-                  <input
-                    type="email"
-                    required
-                    placeholder={t('auth.emailPlaceholder')}
-                    className="w-full h-12 pr-12 pl-4 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green transition-all"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-              </div>
+              {!show2FA ? (
+                <>
+                  <div className="space-y-2 text-right">
+                    <label className="text-xs font-black uppercase tracking-widest text-brand-text-muted mr-1">
+                      {t('auth.emailAddress')}
+                    </label>
+                    <div className="relative group">
+                      <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-green transition-colors" size={18} />
+                      <input
+                        type="email"
+                        required
+                        placeholder={t('auth.emailPlaceholder')}
+                        className="w-full h-12 pr-12 pl-4 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green transition-all"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
 
-              <div className="space-y-2 text-right">
-                <div className="flex items-center justify-between mr-1">
-                  <label className="text-xs font-black uppercase tracking-widest text-brand-text-muted">
-                    {t('auth.password')}
-                  </label>
+                  <div className="space-y-2 text-right">
+                    <div className="flex items-center justify-between mr-1">
+                      <label className="text-xs font-black uppercase tracking-widest text-brand-text-muted">
+                        {t('auth.password')}
+                      </label>
+                      <button 
+                        type="button" 
+                        onClick={() => setShowForgotModal(true)} 
+                        className="text-[10px] font-black uppercase tracking-widest text-brand-green hover:text-brand-green-dark transition-colors" 
+                      > 
+                        {t('auth.forgotPassword')} 
+                      </button>
+                    </div>
+                    <div className="relative group">
+                      <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-green transition-colors" size={18} />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        placeholder={t('auth.passwordPlaceholder')}
+                        className="w-full h-12 pr-12 pl-12 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green transition-all"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPassword(prev => !prev)} 
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text-primary transition-colors" 
+                      > 
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />} 
+                      </button> 
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+                  <div className="p-4 bg-brand-primary-50 dark:bg-brand-primary-900/10 rounded-2xl border border-brand-primary-100 dark:border-brand-primary-900/20 text-center">
+                    <p className="text-sm font-bold text-brand-primary-600 dark:text-brand-primary-400">
+                      Two-Factor Authentication Required
+                    </p>
+                    <p className="text-xs text-brand-text-secondary mt-1">
+                      Enter the 6-digit code from your authenticator app
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2 text-right">
+                    <label className="text-xs font-black uppercase tracking-widest text-brand-text-muted mr-1">
+                      Verification Code
+                    </label>
+                    <div className="relative group">
+                      <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-primary-500 transition-colors" size={18} />
+                      <input
+                        type="text"
+                        required
+                        autoFocus
+                        placeholder="000000"
+                        maxLength={6}
+                        className="w-full h-12 pr-12 pl-4 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm text-center font-mono tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all"
+                        value={totpToken}
+                        onChange={(e) => setTotpToken(e.target.value.replace(/\D/g, ''))}
+                      />
+                    </div>
+                  </div>
+                  
                   <button 
-                    type="button" 
-                    onClick={() => setShowForgotModal(true)} 
-                    className="text-[10px] font-black uppercase tracking-widest text-brand-green hover:text-brand-green-dark transition-colors" 
-                  > 
-                    {t('auth.forgotPassword')} 
+                    type="button"
+                    onClick={() => setShow2FA(false)}
+                    className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted hover:text-brand-text-primary transition-colors"
+                  >
+                    ← Back to login
                   </button>
                 </div>
-                <div className="relative group">
-                  <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-green transition-colors" size={18} />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    placeholder={t('auth.passwordPlaceholder')}
-                    className="w-full h-12 pr-12 pl-12 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green transition-all"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPassword(prev => !prev)} 
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text-primary transition-colors" 
-                  > 
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />} 
-                  </button> 
-                </div>
-              </div>
+              )}
 
               <Button 
                 type="submit" 
@@ -214,8 +265,8 @@ const Login = () => {
               >
                 {loading ? <Loader2 className="animate-spin" size={24} /> : (
                   <div className="flex items-center justify-center gap-3">
-                    <LogIn size={20} />
-                    {t('auth.login')}
+                    {show2FA ? <CheckCircle2 size={20} /> : <LogIn size={20} />}
+                    {show2FA ? 'Verify Code' : t('auth.login')}
                   </div>
                 )}
               </Button>
