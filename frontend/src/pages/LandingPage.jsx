@@ -12,12 +12,7 @@ import {
   Trophy, 
   Briefcase, 
   Microscope,
-  ArrowLeft,
-  Facebook,
-  Twitter,
-  Instagram,
-  Linkedin,
-  Youtube
+  ArrowLeft
 } from 'lucide-react';
 
 // Assets
@@ -517,11 +512,10 @@ const LandingPage = () => {
                 صرح تعليمي تكنولوجي رائد يسعى للتميز والابتكار في إعداد أجيال قادرة على قيادة المستقبل الرقمي في مصر.
               </p>
               <div className="flex items-center gap-4">
-                {[Facebook, Twitter, Instagram, Linkedin, Youtube].map((Icon, i) => (
-                  <a key={i} href="#" className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300">
-                    <Icon size={18} />
-                  </a>
-                ))}
+                <a href="#" aria-label="Facebook" className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300 text-sm font-bold">f</a>
+                <a href="#" aria-label="Twitter" className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300 text-sm font-bold">𝕏</a>
+                <a href="#" aria-label="Instagram" className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300 text-sm font-bold">ig</a>
+                <a href="#" aria-label="LinkedIn" className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300 text-sm font-bold">in</a>
               </div>
             </div>
 
