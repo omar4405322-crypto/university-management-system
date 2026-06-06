@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prismaClient');
 const catchAsync = require('../utils/catchAsync');
 const { createNotification } = require('../utils/notification.utils');
 const { AppError } = require('../utils/appError');

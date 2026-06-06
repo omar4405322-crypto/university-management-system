@@ -1,11 +1,9 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../utils/prismaClient');
 const bcrypt = require('bcryptjs');
 const { generateToken } = require('../utils/jwt.utils');
 const { notifyAdminsOfNewRequest, createNotification } = require('../utils/notification.utils');
 const catchAsync = require('../utils/catchAsync');
 const { AppError, AuthenticationError, ConflictError, NotFoundError } = require('../utils/appError');
-
-const prisma = new PrismaClient();
 
 // FIXED: Public registration is student-only, pending approval, login blocked until approved - Phase 3
 const register = catchAsync(async (req, res, next) => {

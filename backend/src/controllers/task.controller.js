@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prismaClient');
 const { notifyStudentsInCourse } = require('../utils/notification.utils');
 
 exports.createTask = async (req, res) => {

@@ -1,6 +1,5 @@
 // FIXED: Exam fields align with DB (room, no title/location column) - schema sync
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prismaClient');
 
 exports.getAllExams = async (req, res) => {
   try {

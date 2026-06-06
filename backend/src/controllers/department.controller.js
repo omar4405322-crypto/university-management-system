@@ -1,6 +1,5 @@
 // FIXED: Enriched getDepartmentById with students, courses, doctors for detail page - Phase 1
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prismaClient');
 
 exports.getAllDepartments = async (req, res) => {
   try {

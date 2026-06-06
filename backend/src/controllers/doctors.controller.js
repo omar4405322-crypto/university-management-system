@@ -1,7 +1,6 @@
 // FIXED: Live stats endpoint for doctors dashboard cards - Phase 2
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../utils/prismaClient');
 const bcrypt = require('bcryptjs');
-const prisma = new PrismaClient();
 
 const getScopeWhere = (user) => {
   const scopeWhere = {};

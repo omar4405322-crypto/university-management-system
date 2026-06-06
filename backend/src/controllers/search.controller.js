@@ -1,6 +1,5 @@
 // FIXED [Phase 7.2]: Global search across students, doctors, courses, colleges, departments
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prismaClient');
 const catchAsync = require('../utils/catchAsync');
 
 const TAKE = 8;

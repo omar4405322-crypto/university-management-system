@@ -1,6 +1,5 @@
 const { verifyToken } = require('../utils/jwt.utils');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prismaClient');
 
 /**
  * Protect routes - ensures user is authenticated
