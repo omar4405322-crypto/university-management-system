@@ -77,8 +77,15 @@ const DoctorsList = () => {
       setLoading(true);
       const result = await doctorsService.getDoctors({ search, page, limit: 10 });
       if (result.success) {
-        setDoctors(result.data.doctors);
-        setTotalPages(result.data.totalPages);
+        const doctorsArray = Array.isArray(result.data) 
+          ? result.data 
+          : Array.isArray(result.data?.doctors) 
+            ? result.data.doctors 
+            : Array.isArray(result.data?.data) 
+              ? result.data.data 
+              : [];
+        setDoctors(doctorsArray);
+        setTotalPages(result.data?.pagination?.totalPages || result.data?.totalPages || 1);
       } else {
         setTotalPages(1);
       }
@@ -238,7 +245,7 @@ const DoctorsList = () => {
           ) : (
             <>
               <Table headers={[t('doctors.doctorId'), t('students.fullName'), t('profile.email'), t('doctors.specialty'), t('doctors.courses'), t('profile.status'), t('common.actions')]}>
-                {doctors.map((doctor) => (
+                {(Array.isArray(doctors) ? doctors : []).map((doctor) => (
                   <TableRow key={doctor.id}>
                     <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-400 tracking-widest text-xs uppercase hidden md:table-cell">{doctor.doctorId}</TableCell>
                     <TableCell>

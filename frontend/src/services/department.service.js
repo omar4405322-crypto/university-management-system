@@ -2,28 +2,48 @@ import api from './api';
 
 const departmentService = {
   getDepartments: async (params) => {
-    const response = await api.get('/departments', { params });
-    return response.data;
+    try {
+      const response = await api.get('/departments', { params });
+      return { success: true, data: response.data?.data || response.data };
+    } catch (error) {
+      return { success: false, message: error.message, data: [] };
+    }
   },
 
   getDepartmentById: async (id) => {
-    const response = await api.get(`/departments/${id}`);
-    return response.data;
+    try {
+      const response = await api.get(`/departments/${id}`);
+      return { success: true, data: response.data?.data || response.data };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
   },
 
   createDepartment: async (data) => {
-    const response = await api.post('/departments', data);
-    return response.data;
+    try {
+      const response = await api.post('/departments', data);
+      return { success: true, data: response.data?.data || response.data };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
   },
 
   updateDepartment: async (id, data) => {
-    const response = await api.put(`/departments/${id}`, data);
-    return response.data;
+    try {
+      const response = await api.put(`/departments/${id}`, data);
+      return { success: true, data: response.data?.data || response.data };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
   },
 
   deleteDepartment: async (id) => {
-    const response = await api.delete(`/departments/${id}`);
-    return response.data;
+    try {
+      const response = await api.delete(`/departments/${id}`);
+      return { success: true, data: response.data?.data || response.data };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
   },
 };
 

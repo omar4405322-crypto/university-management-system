@@ -55,14 +55,24 @@ const StudentsList = () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await studentService.getStudents({
+      const response = await studentService.getStudents({
         page,
         limit: 10,
         search: search.trim()
       });
-      if (result.success) {
-        setStudents(result.data?.students || result.data || []);
-        setTotalPages(result.data?.pagination?.totalPages || result.pagination?.pages || 1);
+      
+      console.log('Students API response:', JSON.stringify(response, null, 2));
+
+      if (response.success) {
+        const studentsArray = Array.isArray(response.data) 
+          ? response.data 
+          : Array.isArray(response.data?.students) 
+            ? response.data.students 
+            : Array.isArray(response.data?.data) 
+              ? response.data.data 
+              : [];
+        setStudents(studentsArray);
+        setTotalPages(response.data?.pagination?.totalPages || response.data?.totalPages || response.pagination?.pages || 1);
       }
     } catch (err) {
       setError(t('common.errorFetching'));
@@ -129,13 +139,13 @@ const StudentsList = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const filteredStudents = Array.isArray(students) ? students.filter(s => {
+  const filteredStudents = (Array.isArray(students) ? students : []).filter(s => {
     if (statusFilter === 'all') return true;
     if (statusFilter === 'active') return s.isActive;
     if (statusFilter === 'inactive') return !s.isActive;
     if (statusFilter === 'pending') return false;
     return true;
-  }) : [];
+  });
 
   return (
     <div className="section-gap animate-in fade-in duration-700">

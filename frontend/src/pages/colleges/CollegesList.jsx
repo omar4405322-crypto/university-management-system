@@ -119,7 +119,7 @@ const CollegesList = () => {
         />
       ) : (
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {colleges.map((college) => (
+          {(Array.isArray(colleges) ? colleges : []).map((college) => (
             <Card key={college.id} noPadding className="group border-none shadow-soft hover:-translate-y-2 duration-500 rounded-[2.5rem] overflow-hidden">
               <div className="relative h-64 w-full overflow-hidden">
                 <CollegeCardImage name={college.name} image={college.image} collegeId={college.id} />
