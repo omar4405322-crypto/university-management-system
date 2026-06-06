@@ -19,6 +19,7 @@ model User {
   department     Department?    @relation(fields: [departmentId], references: [id])
   profilePicture String?
   twoFactorEnabled Boolean      @default(false)
+  tokenVersion  Int            @default(0)
   createdAt      DateTime       @default(now())
   doctor         Doctor?
   student        Student?
@@ -220,7 +221,7 @@ model Doctor {
   user         User     @relation(fields: [userId], references: [id])
   firstName    String
   lastName     String
-  doctorId     String   @unique
+  doctorId     String         @unique @default(dbgenerated("'DOC-' || lpad(nextval('doctor_id_seq'::regclass)::text, 5, '0')"))
   phone        String?
   address      String?
   bio          String?

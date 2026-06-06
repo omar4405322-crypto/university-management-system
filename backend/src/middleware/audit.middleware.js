@@ -1,5 +1,15 @@
 const prisma = require('../utils/prismaClient');
 
+const SENSITIVE_FIELDS = ['password', 'newPassword', 'currentPassword', 'token', 'secret']; 
+const sanitizeBody = (body) => { 
+  if (!body || typeof body !== 'object') return body; 
+  const sanitized = { ...body }; 
+  SENSITIVE_FIELDS.forEach(field => { 
+    if (sanitized[field] !== undefined) sanitized[field] = '[REDACTED]'; 
+  }); 
+  return sanitized; 
+}; 
+
 /**
  * Middleware to track user actions and log them to the database
  * @param {string} action - The action being performed (e.g., "CREATE_STUDENT")
@@ -35,7 +45,7 @@ const auditLog = (action, entity) => {
             details: {
               method: req.method,
               url: req.originalUrl,
-              body: req.method !== 'GET' ? req.body : undefined,
+              body: req.method !== 'GET' ? sanitizeBody(req.body) : undefined,
               params: req.params,
               query: req.query
             },

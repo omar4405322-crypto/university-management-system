@@ -4,15 +4,15 @@ const prisma = require('../utils/prismaClient');
 /**
  * Protect routes - ensures user is authenticated
  */
-const protect = async (req, res, next) => {
-  try {
-    let token;
+const protect = catchAsync(async (req, res, next) => {
+  let token;
+  if (req.cookies?.auth_token) { 
+    token = req.cookies.auth_token; 
+  } else if (req.headers.authorization?.startsWith('Bearer')) { 
+    token = req.headers.authorization.split(' ')[1]; 
+  }
 
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
-
-    if (!token) {
+  if (!token) {
       return res.status(401).json({
         success: false,
         message: 'Access denied. No security token provided.',
@@ -41,6 +41,13 @@ const protect = async (req, res, next) => {
         message: 'The user belonging to this token no longer exists.',
       });
     }
+
+    if (decoded.tokenVersion !== user.tokenVersion) { 
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Session invalidated. Please login again.', 
+      }); 
+    } 
 
     // Grant access to protected route
     req.user = user;
