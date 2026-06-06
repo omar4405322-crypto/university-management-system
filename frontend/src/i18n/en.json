@@ -459,7 +459,8 @@
     "vsLastMonth": "vs last month",
     "welcome": "Welcome",
     "welcomeBack": "Welcome back",
-    "yearOfStudy": "Year of Study"
+    "yearOfStudy": "Year of Study",
+    "loading": "Loading your dashboard..."
   },
   "days": {
     "friday": "Friday",

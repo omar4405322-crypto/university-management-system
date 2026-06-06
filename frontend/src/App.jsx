@@ -181,7 +181,7 @@ const AppContent = () => {
                       }
                     />
                     <Route path="profile" element={<div className="animate-page"><Profile /></div>} />
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route index element={<Navigate to="dashboard" replace />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </ErrorBoundary>

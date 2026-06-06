@@ -458,7 +458,8 @@
     "vsLastMonth": "مقارنة بالشهر الماضي",
     "welcome": "مرحباً",
     "welcomeBack": "مرحباً بعودتك",
-    "yearOfStudy": "سنة الدراسة"
+    "yearOfStudy": "سنة الدراسة",
+    "loading": "جاري تحميل لوحة التحكم..."
   },
   "days": {
     "friday": "الجمعة",

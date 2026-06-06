@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import Footer from './Footer';
+import AdminFooter from './AdminFooter';
 import SuperAdminTwoFactorBanner from '../SuperAdminTwoFactorBanner';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -40,7 +40,7 @@ const AppShell = ({ children }) => {
           </div>
         </main>
 
-        <Footer />
+        <AdminFooter />
       </div>
     </div>
   );
