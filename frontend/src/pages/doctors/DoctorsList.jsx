@@ -218,7 +218,7 @@ const DoctorsList = () => {
               <Loader2 className="animate-spin text-brand-primary-500" size={40} />
               <p className="label-stat">{t('doctors.loading')}</p>
             </div>
-          ) : doctors.length === 0 ? (
+          ) : !Array.isArray(doctors) || doctors.length === 0 ? (
             <EmptyState
               icon={<Users size={40} />}
               title={search ? t('doctors.noSearchResults') : t('doctors.noDoctors')}

@@ -218,22 +218,26 @@ const CoursesList = () => {
         </Card>
 
         <div className="md:col-span-3">
-          {loading && courses.length === 0 ? (
+          {loading && (!Array.isArray(courses) || courses.length === 0) ? (
             <LoadingState message="Fetching academic curriculum..." />
           ) : error ? (
             <ErrorState message={error} onRetry={fetchFilteredCourses} />
           ) : (
             <Card noPadding className="border-none shadow-soft overflow-hidden">
               <div className="min-h-[400px]">
-                {courses.length === 0 ? (
+                {!Array.isArray(courses) || courses.length === 0 ? (
                   <EmptyState 
                     icon={<BookOpen size={48} />}
-                    title={t('courses.noCourses')}
-                    subtitle={t('courses.noCoursesDesc')}
-                    action={canManage ? {
-                      label: t('courses.addCourse'),
-                      onClick: () => { setSelectedCourse(null); setIsModalOpen(true); }
-                    } : null}
+                    title={search ? t('courses.noSearchResults') : t('courses.noCourses')}
+                    subtitle={search ? t('courses.noSearchResultsDesc') : t('courses.noCoursesDesc')}
+                    action={
+                      search
+                        ? { label: t('common.clearSearch'), onClick: () => setSearch('') }
+                        : canManage ? {
+                          label: t('courses.addCourse'),
+                          onClick: () => { setSelectedCourse(null); setIsModalOpen(true); }
+                        } : null
+                    }
                   />
                 ) : (
                   <>
