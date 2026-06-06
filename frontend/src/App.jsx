@@ -11,6 +11,7 @@ import NotFoundPage from './components/NotFoundPage';
 import AppShell from './components/layout/AppShell';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import StudentsList from './pages/students/StudentsList';
 import StudentDetails from './pages/students/StudentDetails';
@@ -81,6 +82,7 @@ const Unauthorized = () => {
 
 const AppContent = () => {
   const { isRTL } = useLanguage();
+  const { user } = useAuth();
 
   return (
     <div
@@ -88,6 +90,7 @@ const AppContent = () => {
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <Routes>
+        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
@@ -181,7 +184,6 @@ const AppContent = () => {
                       }
                     />
                     <Route path="profile" element={<div className="animate-page"><Profile /></div>} />
-                    <Route index element={<Navigate to="dashboard" replace />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </ErrorBoundary>
