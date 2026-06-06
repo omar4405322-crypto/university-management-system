@@ -19,16 +19,28 @@ model User {
   department     Department?    @relation(fields: [departmentId], references: [id])
   profilePicture String?
   twoFactorEnabled Boolean      @default(false)
+  twoFactorSecret  String?      // TOTP secret
   tokenVersion  Int            @default(0)
   createdAt      DateTime       @default(now())
   doctor         Doctor?
   student        Student?
   notifications  Notification[]
   auditLogs      AuditLog[]
+  refreshTokens  RefreshToken[]
 
   @@index([role])
   @@index([email])
 }
+
+model RefreshToken { 
+  id        Int      @id @default(autoincrement()) 
+  token     String   @unique 
+  userId    Int 
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade) 
+  expiresAt DateTime 
+  createdAt DateTime @default(now()) 
+  @@index([userId]) 
+} 
 
 model AuditLog {
   id             Int      @id @default(autoincrement())

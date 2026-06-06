@@ -1,9 +1,22 @@
 const prisma = require('../utils/prismaClient');
 const catchAsync = require('../utils/catchAsync');
 const { NotFoundError } = require('../utils/appError');
+const { invalidateCache } = require('../utils/redis.utils');
 
 exports.getAllPayments = catchAsync(async (req, res, next) => {
-  const { status, type, studentId, search } = req.query;
+  const { 
+    status, 
+    type, 
+    studentId, 
+    search, 
+    page = 1, 
+    limit = 20, 
+    sortBy = 'createdAt', 
+    sortOrder = 'desc' 
+  } = req.query;
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const take = parseInt(limit);
 
   const where = {};
   if (status) where.status = status;
@@ -18,21 +31,35 @@ exports.getAllPayments = catchAsync(async (req, res, next) => {
     };
   }
 
-  const payments = await prisma.payment.findMany({
-    where,
-    include: {
-      student: {
-        select: {
-          firstName: true,
-          lastName: true,
-          studentId: true,
+  const [payments, total] = await Promise.all([
+    prisma.payment.findMany({
+      where,
+      include: {
+        student: {
+          select: {
+            firstName: true,
+            lastName: true,
+            studentId: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      skip,
+      take,
+      orderBy: { [sortBy]: sortOrder },
+    }),
+    prisma.payment.count({ where })
+  ]);
 
-  res.json({ success: true, data: payments });
+  res.json({ 
+    success: true, 
+    data: payments,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / parseInt(limit))
+    }
+  });
 });
 
 exports.getMyPayments = catchAsync(async (req, res, next) => {
@@ -136,6 +163,8 @@ exports.createPayment = catchAsync(async (req, res, next) => {
     },
   });
 
+  await invalidateCache('dashboard:*');
+
   res.status(201).json({ success: true, data: payment });
 });
 
@@ -171,5 +200,8 @@ exports.deletePayment = catchAsync(async (req, res, next) => {
   await prisma.payment.delete({
     where: { id: parseInt(req.params.id) },
   });
+  
+  await invalidateCache('dashboard:*');
+  
   res.json({ success: true, message: 'Payment deleted' });
 });
