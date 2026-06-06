@@ -87,26 +87,43 @@ export const ActionMenu = ({ actions, icon: Icon, size = 18, className = '' }) =
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const handleToggle = () => {
+  const handleToggle = (e) => {
+    e.stopPropagation();
     if (!open && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
+      const menuWidth = 180;
       const spaceBelow = window.innerHeight - rect.bottom;
-      if (spaceBelow < 180) {
-        setMenuPos({ bottom: window.innerHeight - rect.top + 4, left: rect.right - 160, top: 'auto' });
-      } else {
-        setMenuPos({ top: rect.bottom + 4, left: rect.right - 160, bottom: 'auto' });
+      const spaceRight = window.innerWidth - rect.left;
+      
+      let top = rect.bottom + 8;
+      let left = rect.right - menuWidth;
+      let bottom = 'auto';
+
+      // Adjust vertical position
+      if (spaceBelow < 220) {
+        top = 'auto';
+        bottom = window.innerHeight - rect.top + 8;
       }
+
+      // Adjust horizontal position (especially for RTL or edge cases)
+      if (rect.right < menuWidth) {
+        left = rect.left;
+      } else if (spaceRight < menuWidth && rect.right > menuWidth) {
+        left = rect.right - menuWidth;
+      }
+
+      setMenuPos({ top, left, bottom });
     }
     setOpen(prev => !prev);
   };
 
   return (
     <>
-      <div className={`relative inline-block ${className}`}>
+      <div className={`relative inline-block ${className}`} onClick={(e) => e.stopPropagation()}>
         <button
           ref={btnRef}
           onClick={handleToggle}
-          className="p-2 rounded-xl text-brand-text-muted hover:text-brand-text-primary hover:bg-surface-subtle transition-all duration-150"
+          className="p-2 rounded-xl text-brand-text-muted hover:text-brand-text-primary hover:bg-surface-subtle transition-all duration-150 flex items-center justify-center"
         >
           {Icon ? <Icon size={size} /> : <MoreVertical size={size} />}
         </button>
@@ -114,7 +131,7 @@ export const ActionMenu = ({ actions, icon: Icon, size = 18, className = '' }) =
 
       {open && typeof document !== 'undefined' && ReactDOM.createPortal(
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-[9998]" onClick={(e) => { e.stopPropagation(); setOpen(false); }} />
           <div
             ref={menuRef}
             style={{
@@ -123,17 +140,27 @@ export const ActionMenu = ({ actions, icon: Icon, size = 18, className = '' }) =
               bottom: menuPos.bottom,
               left: menuPos.left,
               zIndex: 9999,
+              minWidth: '180px'
             }}
-            className="min-w-[160px] bg-brand-bg-card dark:bg-brand-bg-elevated rounded-xl border border-brand-border shadow-elevated py-1.5 animate-in fade-in zoom-in-95 duration-150"
+            className="bg-brand-bg-card dark:bg-brand-bg-elevated rounded-2xl border border-brand-border shadow-elevated py-2 animate-in fade-in zoom-in-95 duration-150 overflow-hidden"
           >
+            <div className="px-3 py-1.5 mb-1 border-b border-brand-border/50">
+              <span className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted opacity-50">
+                Actions / إجراءات
+              </span>
+            </div>
             {actions.map((action, i) => (
               <button
                 key={i}
-                onClick={() => { action.onClick?.(); setOpen(false); }}
-                className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg transition-all duration-150 cursor-pointer ${actionVariants[action.variant] || actionVariants.default}`}
+                onClick={(e) => { 
+                  e.stopPropagation();
+                  action.onClick?.(); 
+                  setOpen(false); 
+                }}
+                className={`flex w-full items-center gap-3 px-4 py-2.5 text-[11px] font-black uppercase tracking-tight transition-all duration-150 cursor-pointer ${actionVariants[action.variant] || actionVariants.default}`}
               >
-                {action.icon && <action.icon size={15} />}
-                <span>{action.label}</span>
+                {action.icon && <action.icon size={16} className="shrink-0" />}
+                <span className="truncate">{action.label}</span>
               </button>
             ))}
           </div>
