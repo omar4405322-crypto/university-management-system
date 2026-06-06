@@ -1,16 +1,9 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "builds": [
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist",
-        "nodeVersion": "22.x"
-      }
-    }
-  ],
+  "outputDirectory": "frontend/dist",
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "installCommand": "cd frontend && npm install",
+  "framework": null,
   "routes": [
     {
       "handle": "filesystem"
