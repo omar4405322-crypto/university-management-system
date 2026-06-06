@@ -228,8 +228,21 @@ exports.updateProfilePicture = catchAsync(async (req, res, next) => {
     return next(new AppError('Please upload a profile picture', 400));
   }
 
-  // With CloudinaryStorage, req.file.path is the Cloudinary URL
-  const profilePictureUrl = req.file.path;
+  // Handle both Cloudinary URL and local disk storage
+  let profilePictureUrl;
+  if (req.file.path.startsWith('http')) {
+    // Cloudinary
+    profilePictureUrl = req.file.path;
+  } else {
+    // Disk storage - store relative path
+    profilePictureUrl = `/uploads/profiles/${req.file.filename}`;
+  }
+
+  // Get old profile picture to delete it if it's local
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { profilePicture: true }
+  });
 
   // Update user in DB
   await prisma.user.update({
@@ -238,6 +251,18 @@ exports.updateProfilePicture = catchAsync(async (req, res, next) => {
       profilePicture: profilePictureUrl,
     },
   });
+
+  // Delete old local profile picture if it exists
+  if (user && user.profilePicture && user.profilePicture.startsWith('/uploads/')) {
+    const oldPath = path.join(__dirname, '../../', user.profilePicture);
+    if (fs.existsSync(oldPath)) {
+      try {
+        fs.unlinkSync(oldPath);
+      } catch (err) {
+        console.error('Failed to delete old profile picture:', err.message);
+      }
+    }
+  }
 
   res.json({
     success: true,

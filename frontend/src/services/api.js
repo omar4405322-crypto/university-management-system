@@ -57,7 +57,7 @@ api.interceptors.response.use(
     }
     
     return Promise.reject({
-      message: error.response?.data?.message || 'Something went wrong',
+      message: error.response?.data?.message || (error.code === 'ERR_NETWORK' ? 'Unable to connect to server. Please ensure the backend is running.' : 'Something went wrong'),
       status: error.response?.status,
       data: error.response?.data
     });
