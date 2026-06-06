@@ -4,6 +4,8 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LogIn, Mail, Lock, AlertCircle, Loader2, Eye, EyeOff, ArrowRight, CheckCircle2 } from 'lucide-react';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 
 const Login = () => {
   const [email, setEmail] = useState('');
