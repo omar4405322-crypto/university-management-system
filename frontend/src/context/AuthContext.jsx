@@ -46,23 +46,29 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, [initAuth]);
 
-  const login = async (email, password) => {
+  const login = async (email, password, totpToken = null) => {
     try {
       setError(null);
       const normalizedEmail = email.trim().toLowerCase();
       const response = await api.post('/auth/login', {
         email: normalizedEmail,
         password,
+        totpToken,
       });
-      const { token: newToken, user: userData } = response.data.data;
 
-      localStorage.setItem('token', newToken);
+      if (response.data.requires2FA) {
+        return { success: false, requires2FA: true };
+      }
+
+      const { accessToken, user: userData } = response.data.data;
+
+      localStorage.setItem('token', accessToken);
 
       const normalizedUser = {
         ...userData,
         twoFactorEnabled: Boolean(userData.twoFactorEnabled),
       };
-      setToken(newToken);
+      setToken(accessToken);
       setUser(normalizedUser);
       localStorage.setItem('user', JSON.stringify(normalizedUser));
       setLoading(false);
