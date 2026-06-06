@@ -211,12 +211,17 @@ const approveRequest = catchAsync(async (req, res, next) => {
         }
       });
     } else if (request.role === 'DOCTOR') {
+      // Generate a proper sequential Doctor ID 
+      const lastDoctor = await tx.doctor.findFirst({ orderBy: { id: 'desc' } }); 
+      const nextNum = (lastDoctor?.id ?? 0) + 1; 
+      const doctorId = `DOC-${String(nextNum).padStart(5, '0')}`; 
+
       await tx.doctor.create({
         data: {
           userId: user.id,
           firstName: request.firstName,
           lastName: request.lastName,
-          doctorId: `DOC-${Date.now()}`, // Generate a temporary doctor ID
+          doctorId: doctorId,
           departmentId: request.departmentId
         }
       });
