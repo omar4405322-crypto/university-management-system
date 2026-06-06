@@ -16,6 +16,8 @@ const globalErrorHandler = (err, req, res, next) => {
     // Handle specific Prisma errors
     if (err.code === 'P2002') error = handlePrismaUniqueConstraintError(err);
     if (err.code === 'P2025') error = handlePrismaNotFoundError(err);
+    if (err.code === 'P2003') error = handlePrismaForeignKeyError(err);
+    if (err.code === 'P1001') error = handlePrismaConnectionError(err);
     if (err.name === 'JsonWebTokenError') error = handleJWTError();
     if (err.name === 'TokenExpiredError') error = handleJWTExpiredError();
 
@@ -31,6 +33,15 @@ const handlePrismaUniqueConstraintError = (err) => {
 
 const handlePrismaNotFoundError = () => {
   return new (require('../utils/appError').NotFoundError)('The requested resource was not found.');
+};
+
+const handlePrismaForeignKeyError = (err) => {
+  const message = `Invalid reference: The related record for ${err.meta?.field_name || 'a field'} does not exist.`;
+  return new (require('../utils/appError').ValidationError)(message);
+};
+
+const handlePrismaConnectionError = () => {
+  return new (require('../utils/appError').AppError)('Database connection failed. Please try again later.', 503);
 };
 
 const handleJWTError = () => 

@@ -80,6 +80,9 @@ const login = catchAsync(async (req, res, next) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const { password } = req.body;
 
+  const logger = require('../utils/logger');
+  logger.info(`[AUTH] Login attempt for email: ${email}`);
+
   const registrationRequest = await prisma.registrationRequest.findUnique({
     where: { email },
   });
@@ -97,11 +100,15 @@ const login = catchAsync(async (req, res, next) => {
     include: { student: true, doctor: true },
   });
 
+  logger.debug(`[AUTH] User search result: ${user ? 'Found' : 'Not Found'}`);
+
   if (!user || !(await bcrypt.compare(password, user.password))) {
+    logger.warn(`[AUTH] Invalid login attempt for: ${email}`);
     return next(new AuthenticationError('Invalid email or password'));
   }
 
   if (user.twoFactorEnabled) { 
+    logger.info(`[AUTH] 2FA required for: ${email}`);
     const { totpToken } = req.body;
     if (!totpToken) { 
       return res.status(200).json({ 
@@ -112,12 +119,17 @@ const login = catchAsync(async (req, res, next) => {
     } 
     const { verifyTOTP } = require('../utils/twoFactor.utils'); 
     const isValid = verifyTOTP(user.twoFactorSecret, totpToken); 
-    if (!isValid) return next(new AuthenticationError('Invalid 2FA code')); 
+    if (!isValid) {
+      logger.warn(`[AUTH] Invalid 2FA token for: ${email}`);
+      return next(new AuthenticationError('Invalid 2FA code')); 
+    }
   } 
 
+  logger.info(`[AUTH] Generating tokens for user: ${user.id}`);
   const accessToken = generateAccessToken(user.id, user.tokenVersion);
   const refreshToken = await generateRefreshToken(user.id);
 
+  logger.info(`[AUTH] Setting cookies and sending response for: ${email}`);
   setAuthCookies(res, accessToken, refreshToken);
 
   res.json({
