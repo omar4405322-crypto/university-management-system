@@ -125,6 +125,7 @@ model Student {
   phone        String?
   address      String?
   bio          String?
+  isActive     Boolean  @default(true)
   gender       String?
   birthDate    DateTime?
   enrolledAt   DateTime @default(now())

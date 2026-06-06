@@ -3,12 +3,9 @@ const prisma = require('../utils/prismaClient');
 const catchAsync = require('../utils/catchAsync');
 const { NotFoundError } = require('../utils/appError');
 
-const INACTIVE_BIO_FLAG = 'INACTIVE';
-
 const mapStudentStatus = (student) => ({
   ...student,
-  isActive: student.bio !== INACTIVE_BIO_FLAG,
-  status: student.bio === INACTIVE_BIO_FLAG ? 'inactive' : 'active',
+  status: student.isActive ? 'active' : 'inactive',
 });
 
 /**
@@ -79,9 +76,9 @@ exports.getAllStudents = catchAsync(async (req, res, next) => {
 
   const activeWhere = {
     ...scopeWhere,
-    OR: [{ bio: null }, { bio: { not: INACTIVE_BIO_FLAG } }],
+    isActive: true,
   };
-  const inactiveWhere = { ...scopeWhere, bio: INACTIVE_BIO_FLAG };
+  const inactiveWhere = { ...scopeWhere, isActive: false };
 
   const [statsTotal, active, pending, inactive] = await Promise.all([
     prisma.student.count({ where: scopeWhere }),
@@ -130,11 +127,11 @@ exports.toggleStudentStatus = catchAsync(async (req, res, next) => {
     return next(new NotFoundError('Student not found'));
   }
 
-  const makeInactive = student.bio !== INACTIVE_BIO_FLAG;
+  const makeInactive = student.isActive;
   const updated = await prisma.student.update({
     where: { id },
     data: {
-      bio: makeInactive ? INACTIVE_BIO_FLAG : null,
+      isActive: !makeInactive,
     },
     include: {
       user: { select: { email: true, profilePicture: true } },
