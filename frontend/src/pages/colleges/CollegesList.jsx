@@ -47,7 +47,7 @@ const CollegesList = () => {
       setLoading(true);
       const result = await collegeService.getColleges();
       if (result.success) {
-        setColleges(result.data);
+        setColleges(result.data?.colleges || result.data || []);
       }
     } catch (error) {
       console.error('Error fetching colleges:', error);
@@ -110,7 +110,7 @@ const CollegesList = () => {
           <Loader2 className="animate-spin text-brand-primary-500" size={48} />
           <p className="text-caption">{t('common.loading')}</p>
         </div>
-      ) : colleges.length === 0 ? (
+      ) : !Array.isArray(colleges) || colleges.length === 0 ? (
         <EmptyState
           icon={<Building2 size={40} />}
           title={t('colleges.noColleges')}

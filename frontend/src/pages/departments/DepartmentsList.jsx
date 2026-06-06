@@ -43,7 +43,7 @@ const DepartmentsList = () => {
       setLoading(true);
       const result = await departmentService.getDepartments();
       if (result.success) {
-        setDepartments(result.data);
+        setDepartments(result.data?.departments || result.data || []);
       }
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -57,7 +57,7 @@ const DepartmentsList = () => {
     try {
       const result = await collegeService.getColleges();
       if (result.success) {
-        setColleges(result.data);
+        setColleges(result.data?.colleges || result.data || []);
       }
     } catch (error) {
       console.error('Error fetching colleges:', error);
@@ -96,11 +96,11 @@ const DepartmentsList = () => {
     setIsEditModalOpen(true);
   };
 
-  const filteredDepartments = departments.filter(dept => {
+  const filteredDepartments = Array.isArray(departments) ? departments.filter(dept => {
     const matchesSearch = dept.name.toLowerCase().includes(search.toLowerCase());
     const matchesCollege = selectedCollegeId === 'all' || selectedCollegeId === '' || dept.collegeId === parseInt(selectedCollegeId);
     return matchesSearch && matchesCollege;
-  });
+  }) : [];
 
   return (
     <div className="section-gap animate-page">
@@ -141,7 +141,7 @@ const DepartmentsList = () => {
             onChange={(e) => setSelectedCollegeId(e.target.value)}
           >
             <option value="">{t('colleges.allColleges')}</option>
-            {colleges.map(college => (
+            {Array.isArray(colleges) && colleges.map(college => (
               <option key={college.id} value={college.id}>{college.name}</option>
             ))}
           </select>

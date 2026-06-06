@@ -58,8 +58,8 @@ const StudentsList = () => {
         search: search.trim()
       });
       if (result.success) {
-        setStudents(result.data);
-        setTotalPages(result.pagination.pages);
+        setStudents(result.data?.students || result.data || []);
+        setTotalPages(result.data?.pagination?.totalPages || result.pagination?.pages || 1);
       }
     } catch (err) {
       setError(t('common.errorFetching'));
@@ -126,13 +126,13 @@ const StudentsList = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const filteredStudents = students.filter(s => {
+  const filteredStudents = Array.isArray(students) ? students.filter(s => {
     if (statusFilter === 'all') return true;
     if (statusFilter === 'active') return s.isActive;
     if (statusFilter === 'inactive') return !s.isActive;
     if (statusFilter === 'pending') return false;
     return true;
-  });
+  }) : [];
 
   return (
     <div className="section-gap animate-in fade-in duration-700">
@@ -195,7 +195,7 @@ const StudentsList = () => {
             <div className="p-8">
               <ErrorState message={error} onRetry={fetchStudents} />
             </div>
-          ) : students.length === 0 ? (
+          ) : !Array.isArray(students) || students.length === 0 ? (
             <EmptyState
               icon={<Users size={40} />}
               title={search ? t('students.noSearchResults') : t('students.noStudents')}
