@@ -26,3 +26,7 @@
 {"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-05 01:30:58"}
 {"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-06 12:31:15"}
 {"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-06 12:31:15"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-06 13:20:31"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-06 13:20:31"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-06 14:36:24"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-06 14:36:24"}
