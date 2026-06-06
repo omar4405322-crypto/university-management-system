@@ -72,8 +72,15 @@ const CoursesList = () => {
       };
       const res = await coursesService.getCourses(params);
       if (res.success) {
-        setCourses(res.data.courses);
-        setTotalPages(res.data.pagination.totalPages);
+        const coursesArray = Array.isArray(res.data) 
+          ? res.data 
+          : Array.isArray(res.data?.courses) 
+            ? res.data.courses 
+            : Array.isArray(res.data?.data) 
+              ? res.data.data 
+              : [];
+        setCourses(coursesArray);
+        setTotalPages(res.data?.pagination?.totalPages || res.data?.totalPages || 1);
       }
     } catch (err) {
       console.error('Error filtering courses:', err);
@@ -198,7 +205,7 @@ const CoursesList = () => {
                 className="w-full h-10 px-4 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-xs font-black uppercase tracking-widest text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
               >
                 <option value="">{t('colleges.allColleges')}</option>
-                {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {Array.isArray(colleges) && colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
 
@@ -211,7 +218,7 @@ const CoursesList = () => {
                 className="w-full h-10 px-4 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-xs font-black uppercase tracking-widest text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
               >
                 <option value="">{t('departments.allDepartments')}</option>
-                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                {Array.isArray(departments) && departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
           </div>
@@ -242,7 +249,7 @@ const CoursesList = () => {
                 ) : (
                   <>
                     <Table headers={[t('courses.courseCode'), t('courses.courseName'), t('auth.department'), t('courses.instructor'), t('courses.students'), t('common.actions')]}>
-                      {courses.map((course) => (
+                      {(Array.isArray(courses) ? courses : []).map((course) => (
                         <TableRow key={course.id} className="hover:bg-surface-subtle dark:hover:bg-slate-800/50 transition-colors">
                           <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-400 tracking-widest text-xs uppercase">{course.courseCode}</TableCell>
                           <TableCell className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight">
