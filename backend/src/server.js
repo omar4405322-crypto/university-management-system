@@ -1,5 +1,18 @@
-// redeployed: 2026-06-05
+// redeployed: 2026-06-06
 require('dotenv').config();
+const crypto = require('crypto');
+const pkg = require('../package.json');
+
+console.log(`🚀 [BOOT] Starting Smart University API v${pkg.version}`);
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+// 1. Auto-fix JWT_SECRET in development if missing or weak
+if (!isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
+  const tempSecret = crypto.randomBytes(32).toString('hex');
+  process.env.JWT_SECRET = tempSecret;
+  console.warn('⚠️ [DEV] No strong JWT_SECRET found. Generated a temporary one for this session.');
+}
 
 const REQUIRED_ENV_VARS = [ 
   'DATABASE_URL', 
@@ -22,13 +35,12 @@ if (missingRequired.length > 0) {
 } 
 
 // Security Check: JWT_SECRET strength
-const isProduction = process.env.NODE_ENV === 'production';
-const jwtSecret = process.env.JWT_SECRET;
+const jwtSecret = process.env.JWT_SECRET || '';
 const weakSecrets = ['your-super-secret-key-change-this', 'secret', 'changeme', 'replace-with-any-32-char-string-for-tests']; 
 
 if (weakSecrets.includes(jwtSecret)) {
   console.error('❌ FATAL: JWT_SECRET is using a default/insecure value.');
-  console.error('👉 Fix: Set a unique JWT_SECRET in your Vercel/Environment settings.');
+  console.error('👉 Fix: Set a unique JWT_SECRET in your platform (Vercel/Railway) environment settings.');
   process.exit(1);
 }
 
