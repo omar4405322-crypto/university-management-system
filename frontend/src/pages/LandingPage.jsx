@@ -287,9 +287,9 @@ const LandingPage = () => {
               {stats.map((stat, i) => (
                 <div 
                   key={i} 
-                  className="bg-white p-6 md:p-8 rounded-[2rem] shadow-soft border border-brand-border flex flex-col items-center text-center group hover:-translate-y-2 transition-all duration-500"
+                  className="bg-white/95 backdrop-blur-md p-6 md:p-8 rounded-[2rem] shadow-2xl shadow-brand-navy/10 border border-brand-border flex flex-col items-center text-center group hover:-translate-y-2 transition-all duration-500 ring-1 ring-brand-navy/5"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-brand-primary-50 text-brand-green flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand-green group-hover:text-white transition-all duration-500">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-primary-50 text-brand-green flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand-green group-hover:text-white transition-all duration-500 shadow-inner">
                     {stat.icon}
                   </div>
                   <h4 className="text-2xl md:text-3xl font-black text-brand-navy mb-1">{stat.value}</h4>
@@ -336,7 +336,7 @@ const LandingPage = () => {
 
               <div className="flex flex-wrap gap-3">
                 {['معتمدة دولياً', 'بحث علمي متقدم', 'شراكات عالمية'].map((pill) => (
-                  <span key={pill} className="px-5 py-2 rounded-xl bg-white border border-brand-border text-brand-navy text-xs font-black shadow-sm group hover:border-brand-green transition-all duration-300">
+                  <span key={pill} className="px-5 py-2 rounded-xl bg-white border border-brand-border text-brand-navy text-xs font-black shadow-soft hover:shadow-md hover:border-brand-green transition-all duration-300">
                     {pill}
                   </span>
                 ))}
@@ -369,7 +369,7 @@ const LandingPage = () => {
             {colleges.map((college, i) => (
               <div 
                 key={i} 
-                className="group relative bg-white p-10 rounded-[2.5rem] border border-brand-border shadow-soft transition-all duration-500 hover:border-brand-green hover:shadow-elevated text-right flex flex-col"
+                className="group relative bg-white p-10 rounded-[2.5rem] border border-brand-border shadow-soft transition-all duration-500 hover:border-brand-green hover:shadow-2xl hover:shadow-brand-navy/5 text-right flex flex-col"
               >
                 <div className="text-5xl mb-6 transform transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6">{college.icon}</div>
                 <h3 className="text-xl font-black text-brand-navy mb-4 group-hover:text-brand-green transition-colors">{college.name}</h3>
@@ -441,28 +441,28 @@ const LandingPage = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="md:col-span-2 md:row-span-2 group overflow-hidden rounded-[2.5rem] shadow-soft">
+            <div className="md:col-span-2 md:row-span-2 group overflow-hidden rounded-[2.5rem] shadow-elevated">
               <ImageWithFallback 
                 src={BUILDING} 
                 alt="Main Building" 
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-pointer" 
               />
             </div>
-            <div className="group overflow-hidden rounded-[2rem] shadow-soft h-64">
+            <div className="group overflow-hidden rounded-[2rem] shadow-elevated h-64">
               <ImageWithFallback 
                 src={ENTRANCE} 
                 alt="Entrance" 
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-pointer" 
               />
             </div>
-            <div className="group overflow-hidden rounded-[2rem] shadow-soft h-64">
+            <div className="group overflow-hidden rounded-[2rem] shadow-elevated h-64">
               <ImageWithFallback 
                 src={PORTRAIT_1} 
                 alt="Students" 
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-pointer" 
               />
             </div>
-            <div className="md:col-span-2 group overflow-hidden rounded-[2rem] shadow-soft h-80">
+            <div className="md:col-span-2 group overflow-hidden rounded-[2rem] shadow-elevated h-80">
               <ImageWithFallback 
                 src={WIDE} 
                 alt="Wide View" 
