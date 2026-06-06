@@ -193,6 +193,18 @@ const Dashboard = () => {
           icon: UserCheck,
           color: 'navy',
           link: '/admins'
+        },
+        {
+          id: 'totalAtRiskStudents',
+          title: t('dashboard.atRiskStudents'),
+          value: stats?.counts?.totalAtRiskStudents?.toLocaleString() || '0',
+          change: stats?.counts?.totalAtRiskStudents > 0 ? t('dashboard.requiresAttention') : t('dashboard.allClear'),
+          trend: stats?.counts?.totalAtRiskStudents > 0 ? 'down' : 'up',
+          icon: AlertCircle,
+          color: stats?.counts?.totalAtRiskStudents > 0 ? 'yellow' : 'green',
+          alert: stats?.counts?.totalAtRiskStudents > 0,
+          alertLabel: t('dashboard.highRisk'),
+          link: '/students?risk=high'
         }
       ];
     } else if (user.role === 'STUDENT') {
@@ -204,6 +216,14 @@ const Dashboard = () => {
           trend: 'neutral',
           icon: BookOpen,
           color: 'navy'
+        },
+        {
+          title: t('dashboard.academicRisk'),
+          value: stats?.profile?.successMetrics?.predictedRisk || 'LOW',
+          change: `${Math.round(stats?.profile?.successMetrics?.attendanceRate || 100)}% ${t('dashboard.attendance')}`,
+          trend: ['HIGH', 'CRITICAL'].includes(stats?.profile?.successMetrics?.predictedRisk) ? 'down' : 'up',
+          icon: Target,
+          color: ['HIGH', 'CRITICAL'].includes(stats?.profile?.successMetrics?.predictedRisk) ? 'yellow' : 'green'
         },
         {
           title: t('dashboard.paymentsStatus'),

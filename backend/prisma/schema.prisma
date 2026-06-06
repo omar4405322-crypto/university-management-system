@@ -116,6 +116,7 @@ model RegistrationRequest {
   departmentId Int?
   department   Department? @relation(fields: [departmentId], references: [id])
   status       RequestStatus @default(PENDING)
+  rejectionReason String?
   createdAt    DateTime @default(now())
 
   @@index([status])

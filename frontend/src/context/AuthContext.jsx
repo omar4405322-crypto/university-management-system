@@ -1,6 +1,6 @@
 // FIXED: Session init vs login loading; parse standardized API errors - login fix
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import api from '../services/api';
+import api, { setAccessToken } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -8,12 +8,11 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
-  const [loading, setLoading] = useState(!!localStorage.getItem('token'));
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token');
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
@@ -21,30 +20,34 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const initAuth = useCallback(async () => {
-    if (token) {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await api.get('/auth/me');
-        const me = response.data.data;
-        setUser({
-          ...me,
-          twoFactorEnabled: Boolean(me.twoFactorEnabled),
-        });
-      } catch (err) {
-        console.error('Session verification failed:', err.message);
-        logout();
-      } finally {
-        setLoading(false);
-      }
-    } else {
+    setLoading(true);
+    try {
+      // Try to get a new access token via the httpOnly refresh cookie
+      const refreshResponse = await api.post('/auth/refresh');
+      const { accessToken } = refreshResponse.data.data;
+      setToken(accessToken);
+      
+      // Now fetch the user profile
+      const meResponse = await api.get('/auth/me');
+      const me = meResponse.data.data;
+      setUser({ ...me, twoFactorEnabled: Boolean(me.twoFactorEnabled) });
+    } catch (err) {
+      // No valid refresh cookie — user must log in
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('user');
+    } finally {
       setLoading(false);
     }
-  }, [token, logout]);
+  }, []);
 
   useEffect(() => {
     initAuth();
   }, [initAuth]);
+
+  useEffect(() => {
+    setAccessToken(token);
+  }, [token]);
 
   const login = async (email, password, totpToken = null) => {
     try {
@@ -61,8 +64,6 @@ export const AuthProvider = ({ children }) => {
       }
 
       const { accessToken, user: userData } = response.data.data;
-
-      localStorage.setItem('token', accessToken);
 
       const normalizedUser = {
         ...userData,

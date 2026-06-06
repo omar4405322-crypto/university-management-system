@@ -18,6 +18,11 @@ exports.getAllPayments = catchAsync(async (req, res, next) => {
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const take = parseInt(limit);
 
+  // Sorting whitelist
+  const PAYMENT_SORT_FIELDS = ['createdAt', 'amount', 'status', 'type', 'paidAt']; 
+  const safeSortBy = PAYMENT_SORT_FIELDS.includes(sortBy) ? sortBy : 'createdAt'; 
+  const safeSortOrder = ['asc', 'desc'].includes(sortOrder) ? sortOrder : 'desc'; 
+
   const where = {};
   if (status) where.status = status;
   if (type) where.type = type;
@@ -45,7 +50,7 @@ exports.getAllPayments = catchAsync(async (req, res, next) => {
       },
       skip,
       take,
-      orderBy: { [sortBy]: sortOrder },
+      orderBy: { [safeSortBy]: safeSortOrder },
     }),
     prisma.payment.count({ where })
   ]);

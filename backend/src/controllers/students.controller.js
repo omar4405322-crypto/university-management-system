@@ -31,6 +31,11 @@ exports.getAllStudents = catchAsync(async (req, res, next) => {
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const take = parseInt(limit);
 
+  // Sorting whitelist
+  const STUDENT_SORT_FIELDS = ['enrolledAt', 'firstName', 'lastName', 'year', 'studentId']; 
+  const safeSortBy = STUDENT_SORT_FIELDS.includes(sortBy) ? sortBy : 'enrolledAt'; 
+  const safeSortOrder = ['asc', 'desc'].includes(sortOrder) ? sortOrder : 'desc'; 
+
   // 1. Role-based scoping
   const scopeWhere = {};
   if (req.user.role === 'COLLEGE_ADMIN') {
@@ -72,7 +77,7 @@ exports.getAllStudents = catchAsync(async (req, res, next) => {
       },
       skip,
       take,
-      orderBy: { [sortBy]: sortOrder },
+      orderBy: { [safeSortBy]: safeSortOrder },
     }),
     prisma.student.count({ where })
   ]);
