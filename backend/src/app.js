@@ -35,7 +35,10 @@ const swaggerSpecs = require('./utils/swagger');
 const app = express();
 
 // 1. SWAGGER DOCUMENTATION
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+if (process.env.NODE_ENV !== 'production') { 
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs)); 
+  console.log('📚 Swagger Docs available at /api-docs (development only)'); 
+}
 
 // 2. SECURITY HEADERS (Enterprise-grade)
 app.use(helmet({
@@ -133,7 +136,7 @@ app.use('/api/notifications', protect, notificationRoutes);
 app.use('/api/analytics', protect, analyticsRoutes);
 app.use('/api/attendance', protect, attendanceRoutes);
 app.use('/api/timetables', protect, timetableRoutes);
-app.use('/api/search', searchRoutes);
+app.use('/api/search', protect, searchRoutes);
 
 // Health check & Root
 app.get('/', (req, res) => {

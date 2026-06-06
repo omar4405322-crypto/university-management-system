@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prismaClient');
 
 exports.getAllSchedules = async (req, res) => {
   try {

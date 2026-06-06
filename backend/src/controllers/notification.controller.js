@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prismaClient');
 
 // @desc    Get all notifications for current user
 // @route   GET /api/notifications

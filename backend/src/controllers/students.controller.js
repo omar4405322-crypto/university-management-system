@@ -1,6 +1,5 @@
 // FIXED: Student active status via bio flag + stats/toggle endpoints - Phase 2
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prismaClient');
 const catchAsync = require('../utils/catchAsync');
 const { NotFoundError } = require('../utils/appError');
 

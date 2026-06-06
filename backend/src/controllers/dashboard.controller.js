@@ -1,6 +1,5 @@
 // FIXED: Dashboard queries match Exam schema (room column in DB)
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../utils/prismaClient');
 
 const getTodayDayOfWeek = () => {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
