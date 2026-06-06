@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 
 // Error Handling imports
 const globalErrorHandler = require('./middleware/error.middleware');
@@ -115,6 +116,7 @@ app.get('/api/health', (req, res) => {
 // 5. BODY PARSERS
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(cookieParser());
 
 // 5. STATIC FILES
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

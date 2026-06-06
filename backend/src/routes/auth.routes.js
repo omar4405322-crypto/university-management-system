@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, getMe, getRequests, approveRequest, rejectRequest } = require('../controllers/auth.controller');
+const { register, login, logout, getMe, getRequests, approveRequest, rejectRequest } = require('../controllers/auth.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
 const { registerValidation, loginValidation, requestIdValidation } = require('../validations/auth.validation');
 const validate = require('../middleware/validate.middleware');
@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
+router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
 
 // Registration requests

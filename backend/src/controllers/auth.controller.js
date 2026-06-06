@@ -99,12 +99,18 @@ const login = catchAsync(async (req, res, next) => {
     return next(new AuthenticationError('Invalid email or password'));
   }
 
-  const token = generateToken(user.id);
+  const token = generateToken(user.id, user.tokenVersion);
+
+  res.cookie('auth_token', token, { 
+    httpOnly: true, 
+    secure: process.env.NODE_ENV === 'production', 
+    sameSite: 'strict', 
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms 
+  }); 
 
   res.json({
     success: true,
     data: {
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -115,6 +121,15 @@ const login = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+const logout = (req, res) => { 
+  res.clearCookie('auth_token', { 
+    httpOnly: true, 
+    secure: process.env.NODE_ENV === 'production', 
+    sameSite: 'strict', 
+  }); 
+  res.json({ success: true, message: 'Logged out successfully' }); 
+}; 
 
 const getMe = catchAsync(async (req, res, next) => {
   const user = await prisma.user.findUnique({
@@ -211,17 +226,11 @@ const approveRequest = catchAsync(async (req, res, next) => {
         }
       });
     } else if (request.role === 'DOCTOR') {
-      // Generate a proper sequential Doctor ID 
-      const lastDoctor = await tx.doctor.findFirst({ orderBy: { id: 'desc' } }); 
-      const nextNum = (lastDoctor?.id ?? 0) + 1; 
-      const doctorId = `DOC-${String(nextNum).padStart(5, '0')}`; 
-
       await tx.doctor.create({
         data: {
           userId: user.id,
           firstName: request.firstName,
           lastName: request.lastName,
-          doctorId: doctorId,
           departmentId: request.departmentId
         }
       });
@@ -275,6 +284,7 @@ const rejectRequest = catchAsync(async (req, res, next) => {
 module.exports = {
   register,
   login,
+  logout,
   getMe,
   getRequests,
   approveRequest,

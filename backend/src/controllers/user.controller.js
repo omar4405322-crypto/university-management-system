@@ -191,6 +191,7 @@ exports.updatePassword = async (req, res) => {
       where: { id: userId },
       data: {
         password: hashedPassword,
+        tokenVersion: { increment: 1 }, 
       },
     });
 

@@ -11,7 +11,8 @@ let io;
 const initSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+      origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:5173'],
+      credentials: true,
       methods: ['GET', 'POST'],
     },
   });
