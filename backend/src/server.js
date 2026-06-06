@@ -22,11 +22,24 @@ if (missingRequired.length > 0) {
 } 
 
 // Security Check: JWT_SECRET strength
-const weakSecrets = ['your-super-secret-key-change-this', 'secret', 'changeme']; 
-if (weakSecrets.includes(process.env.JWT_SECRET) || process.env.JWT_SECRET.length < 32) { 
-  console.error('❌ FATAL: JWT_SECRET is too weak or is the default value. Please set a strong random secret.'); 
-  process.exit(1); 
-} 
+const isProduction = process.env.NODE_ENV === 'production';
+const jwtSecret = process.env.JWT_SECRET;
+const weakSecrets = ['your-super-secret-key-change-this', 'secret', 'changeme', 'replace-with-any-32-char-string-for-tests']; 
+
+if (weakSecrets.includes(jwtSecret)) {
+  console.error('❌ FATAL: JWT_SECRET is using a default/insecure value.');
+  console.error('👉 Fix: Set a unique JWT_SECRET in your Vercel/Environment settings.');
+  process.exit(1);
+}
+
+if (isProduction && jwtSecret.length < 32) {
+  console.error(`❌ FATAL: JWT_SECRET must be at least 32 characters in production (currently ${jwtSecret.length}).`);
+  console.error('👉 Fix: Generate a strong secret using: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  process.exit(1);
+} else if (jwtSecret.length < 8) {
+  console.error('❌ FATAL: JWT_SECRET is dangerously short.');
+  process.exit(1);
+}
 
 const missingOptional = OPTIONAL_ENV_VARS.filter(key => !process.env[key]);
 if (missingOptional.length > 0) {
