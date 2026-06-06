@@ -121,7 +121,7 @@ const Dashboard = () => {
   if (!user) return null;
 
   if (loading && !stats) {
-    return <LoadingState message="Assembling your university dashboard..." />;
+    return <LoadingState message={t('dashboard.loading')} />;
   }
 
   if (error) {
