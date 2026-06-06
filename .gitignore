@@ -4,12 +4,15 @@ backend/node_modules/
 
 # Environment files
 .env
+.env.test
 .env.*
 !.env.example
 backend/.env
+backend/.env.test
 backend/.env.*
 !backend/.env.example
 frontend/.env
+frontend/.env.test
 frontend/.env.*
 !frontend/.env.example
 
