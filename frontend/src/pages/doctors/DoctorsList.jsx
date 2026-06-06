@@ -25,10 +25,15 @@ import {
   Edit2,
   Trash2,
   Download,
+  KeyRound,
+  Eye
 } from 'lucide-react';
+import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
+import { useNavigate } from 'react-router-dom';
 
 const DoctorsList = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -37,6 +42,7 @@ const DoctorsList = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [resetPasswordDoctor, setResetPasswordDoctor] = useState(null);
   const [toast, setToast] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -265,7 +271,9 @@ const DoctorsList = () => {
                     </TableCell>
                     <TableCell>
                       <ActionMenu actions={[
+                        { label: t('common.view'), icon: Eye, variant: 'view', onClick: () => navigate(`/doctors/${doctor.id}`) },
                         { label: t('common.edit'), icon: Edit2, variant: 'edit', onClick: () => handleEdit(doctor) },
+                        { label: 'Reset Password', icon: KeyRound, variant: 'edit', onClick: () => setResetPasswordDoctor(doctor) },
                         {
                           label: t('common.delete'),
                           icon: Trash2,
@@ -324,6 +332,13 @@ const DoctorsList = () => {
           }}
         />
       )}
+
+      <ResetPasswordModal 
+        isOpen={!!resetPasswordDoctor} 
+        onClose={() => setResetPasswordDoctor(null)} 
+        person={resetPasswordDoctor} 
+        type="doctor" 
+      />
     </div>
   );
 };

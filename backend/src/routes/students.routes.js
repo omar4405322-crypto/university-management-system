@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const studentsController = require('../controllers/students.controller');
+const { resetStudentPassword } = require('../controllers/students.controller');
 const { authorize } = require('../middleware/auth.middleware');
 const { studentValidation, idParamValidation } = require('../validations/academic.validation');
 const validate = require('../middleware/validate.middleware');
@@ -13,6 +14,11 @@ router.patch('/:id/status', idParamValidation, validate, studentsController.togg
 router.get('/:id', idParamValidation, validate, studentsController.getStudentById);
 router.post('/', studentValidation, validate, studentsController.createStudent);
 router.put('/:id', [...idParamValidation, ...studentValidation], validate, studentsController.updateStudent);
+router.patch(
+  '/:id/reset-password',
+  authorize('SUPER_ADMIN', 'ADMIN'),
+  resetStudentPassword
+);
 router.delete('/:id', idParamValidation, validate, studentsController.deleteStudent);
 
 module.exports = router;
