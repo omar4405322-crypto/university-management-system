@@ -289,7 +289,7 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
 });
 
 exports.createAdmin = catchAsync(async (req, res, next) => {
-  const { email, password, role, collegeId, departmentId } = req.body;
+  const { email, password, role, collegeId, departmentId, managedCollegeId } = req.body;
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
@@ -305,12 +305,15 @@ exports.createAdmin = catchAsync(async (req, res, next) => {
       role,
       collegeId: collegeId ? parseInt(collegeId) : null,
       departmentId: departmentId ? parseInt(departmentId) : null,
+      // Only allow assigning managedCollegeId for ADMIN role (nullable)
+      managedCollegeId: role === 'ADMIN' && managedCollegeId ? parseInt(managedCollegeId) : null,
     },
     select: {
       id: true,
       email: true,
       role: true,
       createdAt: true,
+      managedCollegeId: true,
     },
   });
 
