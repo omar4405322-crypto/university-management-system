@@ -27,6 +27,7 @@ import departmentService from '../../services/department.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import AddDepartmentModal from '../departments/AddDepartmentModal';
+import EditCollegeModal from './EditCollegeModal';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
 
 const CollegeDetails = () => {
@@ -37,6 +38,7 @@ const CollegeDetails = () => {
   const [college, setCollege] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAddDeptModalOpen, setIsAddDeptModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
   const canManage = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
@@ -108,7 +110,7 @@ const CollegeDetails = () => {
   ];
 
   return (
-    <div className="section-gap animate-in fade-in duration-500">
+    <div className="pt-6 pb-6 animate-in fade-in duration-500">
       <Breadcrumbs items={breadcrumbItems} />
       {/* Toast Notification */}
       {toast && (
@@ -121,7 +123,7 @@ const CollegeDetails = () => {
       )}
 
       {/* Header */}
-      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between bg-brand-bg-card p-6 rounded-3xl border border-brand-border shadow-soft">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-brand-bg-card p-6 rounded-3xl border border-brand-border shadow-soft">
         <div className="flex items-center gap-6">
           <button 
             onClick={() => navigate('/colleges')}
@@ -141,52 +143,58 @@ const CollegeDetails = () => {
         </div>
         <div className="flex items-center gap-3">
           {canManage && (
-            <>
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2 border-brand-border hover:bg-brand-navy/5 text-brand-text-main font-bold"
-                onClick={() => navigate(`/schedules-management?collegeId=${college.id}`)}
-              >
-                <Calendar size={18} className="text-brand-green" /> {t('nav.schedule')}
-              </Button>
-              <Button variant="outline" className="p-2.5 border-brand-border hover:bg-brand-navy/5 text-brand-text-main">
-                <Settings size={20} />
-              </Button>
-            </>
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2 border-brand-border hover:bg-brand-navy/5 text-brand-text-main font-bold"
+              onClick={() => navigate(`/schedules-management?collegeId=${college.id}`)}
+            >
+              <Calendar size={18} className="text-brand-green" /> {t('nav.schedule')}
+            </Button>
           )}
-          <Button className="flex items-center gap-2 shadow-xl shadow-brand-green/20 font-bold" onClick={() => setIsAddDeptModalOpen(true)}>
-            <Plus size={18} /> {t('departments.addDept')}
-          </Button>
+
+          {/* Settings (SUPER_ADMIN only) */}
+          {user?.role === 'SUPER_ADMIN' && (
+            <Button variant="outline" className="p-2.5 border-brand-border hover:bg-brand-navy/5 text-brand-text-main" onClick={() => setIsEditModalOpen(true)}>
+              <Settings size={20} />
+            </Button>
+          )}
+
+          {/* Add Department follows existing canManage rule */}
+          {canManage && (
+            <Button className="flex items-center gap-2 shadow-xl shadow-brand-green/20 font-bold" onClick={() => setIsAddDeptModalOpen(true)}>
+              <Plus size={18} /> {t('departments.addDept')}
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <Card className="flex items-center gap-5 border-l-0 hover:translate-y-[-4px] transition-all duration-300">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="flex items-center gap-5 border-l-4 border-brand-navy/30 hover:translate-y-[-4px] transition-all duration-300">
           <div className="p-4 bg-brand-navy/10 text-brand-navy rounded-2xl">
             <Layers size={28} strokeWidth={2.5} />
           </div>
           <div>
             <p className="text-xs font-black text-brand-text-muted uppercase tracking-widest">{t('nav.departments')}</p>
-            <h3 className="text-2xl font-black text-brand-text-main mt-1">{college._count?.departments || 0}</h3>
+            <h3 className="text-3xl font-bold text-brand-text-main mt-1">{college._count?.departments || 0}</h3>
           </div>
         </Card>
-        <Card className="flex items-center gap-5 border-l-0 hover:translate-y-[-4px] transition-all duration-300">
+        <Card className="flex items-center gap-5 border-l-4 border-brand-green/30 hover:translate-y-[-4px] transition-all duration-300">
           <div className="p-4 bg-brand-green/10 text-brand-green rounded-2xl">
             <Users size={28} strokeWidth={2.5} />
           </div>
           <div>
             <p className="text-xs font-black text-brand-text-muted uppercase tracking-widest">{t('nav.students')}</p>
-            <h3 className="text-2xl font-black text-brand-text-main mt-1">{college._count?.students || 0}</h3>
+            <h3 className="text-3xl font-bold text-brand-text-main mt-1">{college._count?.students || 0}</h3>
           </div>
         </Card>
-        <Card className="flex items-center gap-5 border-l-0 hover:translate-y-[-4px] transition-all duration-300">
+        <Card className="flex items-center gap-5 border-l-4 border-brand-yellow/30 hover:translate-y-[-4px] transition-all duration-300">
           <div className="p-4 bg-brand-yellow/10 text-brand-yellow rounded-2xl">
             <GraduationCap size={28} strokeWidth={2.5} />
           </div>
           <div>
             <p className="text-xs font-black text-brand-text-muted uppercase tracking-widest">{t('nav.doctors')}</p>
-            <h3 className="text-2xl font-black text-brand-text-main mt-1">{college._count?.doctors || 0}</h3>
+            <h3 className="text-3xl font-bold text-brand-text-main mt-1">{college._count?.doctors || 0}</h3>
           </div>
         </Card>
       </div>
@@ -196,7 +204,7 @@ const CollegeDetails = () => {
         </div>
         <div className="lg:col-span-2 xl:col-span-3">
           <Card className="border-l-0" title={t('nav.departments')} noPadding>
-            <div className="min-h-[400px]">
+            <div className="h-auto">
               {college.departments?.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-96 text-center p-8">
                   <div className="h-20 w-20 rounded-full bg-brand-navy/5 flex items-center justify-center mb-4 border border-brand-border">
@@ -211,9 +219,9 @@ const CollegeDetails = () => {
                   )}
                 </div>
               ) : (
-                <Table headers={[t('departments.nameEn'), t('departments.nameAr'), t('courses.title'), t('nav.students'), t('common.actions')]}>
-                  {college.departments.map((dept) => (
-                    <TableRow key={dept.id} className="hover:bg-brand-navy/[0.02] transition-colors cursor-pointer" onClick={() => navigate(`/departments/${dept.id}`)}>
+                <Table headers={[t('departments.nameEn'), t('departments.nameAr'), t('courses.title'), t('nav.students'), t('common.actions')]} className="w-full">
+                  {college.departments.map((dept, idx) => (
+                    <TableRow key={dept.id} className="cursor-pointer" onClick={() => navigate(`/departments/${dept.id}`)}>
                       <TableCell className="font-black text-brand-text-main">{dept.name}</TableCell>
                       <TableCell className="font-arabic text-brand-text-sub" dir="rtl">{dept.nameAr || '--'}</TableCell>
                       <TableCell>
@@ -239,6 +247,17 @@ const CollegeDetails = () => {
           </Card>
         </div>
       </div>
+
+      <EditCollegeModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        college={college}
+        onSuccess={() => {
+          setIsEditModalOpen(false);
+          fetchCollegeDetails();
+          showToast(t('colleges.updateSuccess') || 'College updated', 'success');
+        }}
+      />
 
       <AddDepartmentModal
         isOpen={isAddDeptModalOpen}
