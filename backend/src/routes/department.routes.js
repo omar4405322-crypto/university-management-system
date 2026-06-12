@@ -16,8 +16,8 @@ router.get('/', getAllDepartments);
 router.get('/:id', adminIdValidation, validate, getDepartmentById);
 
 // Admin only routes
-router.post('/', protect, authorize('SUPER_ADMIN', 'COLLEGE_ADMIN'), departmentValidation, validate, createDepartment);
-router.put('/:id', protect, authorize('SUPER_ADMIN', 'COLLEGE_ADMIN'), [...adminIdValidation, ...departmentValidation], validate, updateDepartment);
-router.delete('/:id', protect, authorize('SUPER_ADMIN', 'COLLEGE_ADMIN'), adminIdValidation, validate, deleteDepartment);
+router.post('/', protect, authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'), departmentValidation, validate, createDepartment);
+router.put('/:id', protect, authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'), [...adminIdValidation, ...departmentValidation], validate, updateDepartment);
+router.delete('/:id', protect, authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'), adminIdValidation, validate, deleteDepartment);
 
 module.exports = router;

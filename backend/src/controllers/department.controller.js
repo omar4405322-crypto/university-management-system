@@ -4,7 +4,15 @@ const prisma = require('../utils/prismaClient');
 exports.getAllDepartments = async (req, res) => {
   try {
     const { collegeId } = req.query;
-    let where = {};
+    // Scope support: ADMIN with managedCollegeId, COLLEGE_ADMIN and DEPARTMENT_ADMIN
+    const scopeWhere = {};
+    if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+      scopeWhere.collegeId = req.user.managedCollegeId;
+    } else if (req.user && req.user.role === 'COLLEGE_ADMIN') {
+      scopeWhere.collegeId = req.user.collegeId;
+    }
+
+    let where = { ...scopeWhere };
     if (collegeId) where.collegeId = parseInt(collegeId);
 
     const departments = await prisma.department.findMany({
@@ -44,6 +52,14 @@ exports.getDepartmentById = async (req, res) => {
       },
     });
     if (!department) return res.status(404).json({ success: false, message: 'Department not found' });
+
+    // Scoped ADMIN enforcement
+    if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+      if (department.collegeId !== req.user.managedCollegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
     res.json({ success: true, data: department });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -52,7 +68,17 @@ exports.getDepartmentById = async (req, res) => {
 
 exports.createDepartment = async (req, res) => {
   try {
-    const { name, nameAr, collegeId } = req.body;
+    let { name, nameAr, collegeId } = req.body;
+
+    // Scoped ADMIN: enforce managedCollegeId
+    if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+      // If a collegeId is provided, it must match managedCollegeId; otherwise set it automatically
+      if (collegeId && parseInt(collegeId) !== req.user.managedCollegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+      collegeId = req.user.managedCollegeId;
+    }
+
     const department = await prisma.department.create({
       data: { name, nameAr, collegeId: parseInt(collegeId) }
     });
@@ -65,8 +91,24 @@ exports.createDepartment = async (req, res) => {
 exports.updateDepartment = async (req, res) => {
   try {
     const { name, nameAr, collegeId } = req.body;
+    const deptId = parseInt(req.params.id);
+
+    // Fetch existing for scope check
+    const existing = await prisma.department.findUnique({ where: { id: deptId } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Department not found' });
+
+    if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+      if (existing.collegeId !== req.user.managedCollegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+      // If collegeId is provided, it must match managedCollegeId
+      if (collegeId && parseInt(collegeId) !== req.user.managedCollegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
     const department = await prisma.department.update({
-      where: { id: parseInt(req.params.id) },
+      where: { id: deptId },
       data: { name, nameAr, collegeId: collegeId ? parseInt(collegeId) : undefined }
     });
     res.json({ success: true, data: department });
@@ -79,13 +121,22 @@ exports.deleteDepartment = async (req, res) => {
   try {
     const departmentId = parseInt(req.params.id);
 
+n    // Fetch and scope check
+    const existing = await prisma.department.findUnique({ where: { id: departmentId } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Department not found' });
+    if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+      if (existing.collegeId !== req.user.managedCollegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       // 1. Nullify references in related models
       await tx.student.updateMany({ where: { departmentId }, data: { departmentId: null } });
       await tx.doctor.updateMany({ where: { departmentId }, data: { departmentId: null } });
       await tx.course.updateMany({ where: { departmentId }, data: { departmentId: null } });
       await tx.user.updateMany({ where: { departmentId }, data: { departmentId: null } });
-      
+
       // 2. Delete dependent records that can't exist without a department
       await tx.registrationRequest.deleteMany({ where: { departmentId } });
 
