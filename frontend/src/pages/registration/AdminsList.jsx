@@ -112,19 +112,19 @@ const AdminModal = ({ isOpen, onClose, onSuccess, colleges }) => {
             <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('admins.roleType')}</label>
             <select name="role" value={formData.role} onChange={handleChange} className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 outline-none dark:text-white">
               <option value="SUPER_ADMIN">{t('admins.roleSuperAdmin')}</option>
+              <option value="ADMIN">Admin</option>
               <option value="COLLEGE_ADMIN">{t('admins.roleCollegeAdmin')}</option>
               <option value="DEPARTMENT_ADMIN">{t('admins.roleDeptAdmin')}</option>
             </select>
           </div>
 
-          {(formData.role === 'COLLEGE_ADMIN' || formData.role === 'DEPARTMENT_ADMIN') && (
+          {(formData.role === 'ADMIN' || formData.role === 'COLLEGE_ADMIN' || formData.role === 'DEPARTMENT_ADMIN') && (
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('admins.college')}</label>
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formData.role === 'ADMIN' ? 'Managed College (optional)' : t('admins.college')}</label>
               <select 
-                name="collegeId" 
-                value={formData.collegeId} 
+                name={formData.role === 'ADMIN' ? 'managedCollegeId' : 'collegeId'} 
+                value={formData.role === 'ADMIN' ? formData.managedCollegeId || '' : formData.collegeId} 
                 onChange={handleChange} 
-                required 
                 className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm dark:text-white"
               >
                 <option value="">{t('admins.selectCollege')}</option>

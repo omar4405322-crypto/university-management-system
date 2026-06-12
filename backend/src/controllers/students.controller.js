@@ -36,12 +36,15 @@ exports.getAllStudents = catchAsync(async (req, res, next) => {
   const safeSortBy = STUDENT_SORT_FIELDS.includes(sortBy) ? sortBy : 'enrolledAt'; 
   const safeSortOrder = ['asc', 'desc'].includes(sortOrder) ? sortOrder : 'desc'; 
 
-  // 1. Role-based scoping
+  // 1. Role-based scoping (including scoped ADMIN)
   const scopeWhere = {};
   if (req.user.role === 'COLLEGE_ADMIN') {
     scopeWhere.department = { collegeId: req.user.collegeId };
   } else if (req.user.role === 'DEPARTMENT_ADMIN') {
     scopeWhere.departmentId = req.user.departmentId;
+  } else if (req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+    // Scoped ADMIN — restrict to managed college
+    scopeWhere.department = { collegeId: req.user.managedCollegeId };
   }
 
   // 2. Advanced Filtering

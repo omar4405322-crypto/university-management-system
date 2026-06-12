@@ -26,13 +26,19 @@ const protect = catchAsync(async (req, res, next) => {
   // Check if user still exists
   const user = await prisma.user.findUnique({
     where: { id: decoded.id },
-    include: {
-      student: {
-        select: { id: true, firstName: true, lastName: true, studentId: true }
-      },
-      doctor: {
-        select: { id: true, firstName: true, lastName: true, doctorId: true }
-      },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      adminRole: true,
+      collegeId: true,
+      departmentId: true,
+      managedCollegeId: true,
+      tokenVersion: true,
+      profilePicture: true,
+      createdAt: true,
+      student: { select: { id: true, firstName: true, lastName: true, studentId: true } },
+      doctor: { select: { id: true, firstName: true, lastName: true, doctorId: true } },
     },
   });
 
@@ -50,7 +56,7 @@ const protect = catchAsync(async (req, res, next) => {
     }); 
   } 
 
-  // Grant access to protected route
+  // Attach user (including managedCollegeId) to request for downstream scope checks
   req.user = user;
   next();
 });

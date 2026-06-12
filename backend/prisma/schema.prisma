@@ -8,25 +8,30 @@ datasource db {
 }
 
 model User {
-  id             Int            @id @default(autoincrement())
-  email          String         @unique
-  password       String
-  role           Role           @default(STUDENT)
-  adminRole      AdminRole?
-  collegeId      Int?           // For COLLEGE_ADMIN
-  college        College?       @relation(fields: [collegeId], references: [id])
-  departmentId   Int?           // For DEPARTMENT_ADMIN
-  department     Department?    @relation(fields: [departmentId], references: [id])
-  profilePicture String?
-  twoFactorEnabled Boolean      @default(false)
-  twoFactorSecret  String?      // TOTP secret
-  tokenVersion  Int            @default(0)
-  createdAt      DateTime       @default(now())
-  doctor         Doctor?
-  student        Student?
-  notifications  Notification[]
-  auditLogs      AuditLog[]
-  refreshTokens  RefreshToken[]
+  id               Int            @id @default(autoincrement())
+  email            String         @unique
+  password         String
+  role             Role           @default(STUDENT)
+  adminRole        AdminRole?
+  collegeId        Int?           // For COLLEGE_ADMIN
+  college          College?       @relation(fields: [collegeId], references: [id])
+  departmentId     Int?           // For DEPARTMENT_ADMIN
+  department       Department?    @relation(fields: [departmentId], references: [id])
+
+  // For scoped ADMIN users — optional FK to the college they manage
+  managedCollegeId Int?
+  managedCollege   College?       @relation("ManagedCollege", fields: [managedCollegeId], references: [id])
+
+  profilePicture   String?
+  twoFactorEnabled Boolean        @default(false)
+  twoFactorSecret  String?        // TOTP secret
+  tokenVersion     Int            @default(0)
+  createdAt        DateTime       @default(now())
+  doctor           Doctor?
+  student          Student?
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  refreshTokens    RefreshToken[]
 
   @@index([role])
   @@index([email])
@@ -76,14 +81,16 @@ model Notification {
 }
 
 model College {
-  id          Int          @id @default(autoincrement())
-  name        String
-  nameAr      String?
-  description String?
-  departments Department[]
-  admins      User[]
-  timetables  Timetable[]
-  createdAt   DateTime     @default(now())
+  id            Int          @id @default(autoincrement())
+  name          String
+  nameAr        String?
+  description   String?
+  departments   Department[]
+  admins        User[]
+  // Back relation for scoped ADMIN users who manage a single college
+  managedAdmins User[]       @relation("ManagedCollege")
+  timetables    Timetable[]
+  createdAt     DateTime     @default(now())
 }
 
 model Department {
