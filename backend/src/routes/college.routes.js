@@ -13,8 +13,8 @@ const validate = require('../middleware/validate.middleware');
 
 const router = express.Router();
 
-router.get('/', getAllColleges);
-router.get('/:id', adminIdValidation, validate, getCollegeById);
+router.get('/', protect, getAllColleges);
+router.get('/:id', protect, adminIdValidation, validate, getCollegeById);
 
 // Admin only routes
 router.post('/', protect, authorize('SUPER_ADMIN'), collegeValidation, validate, createCollege);

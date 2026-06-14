@@ -25,6 +25,8 @@ const DepartmentsList = () => {
   const initialCollegeId = searchParams.get('collegeId') || '';
   
   const canManage = user?.role === 'SUPER_ADMIN' || user?.role === 'COLLEGE_ADMIN';
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isCollegeAdmin = user?.role === 'COLLEGE_ADMIN';
   
   const [departments, setDepartments] = useState([]);
   const [colleges, setColleges] = useState([]);
@@ -144,22 +146,24 @@ const DepartmentsList = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="relative md:max-w-xs w-full group">
-          <Building className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-primary-500 transition-colors" />
-          <select
-            className="w-full h-11 pl-11 pr-10 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-sm font-bold text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
-            value={selectedCollegeId}
-            onChange={(e) => setSelectedCollegeId(e.target.value)}
-          >
-            <option value="">{t('colleges.allColleges')}</option>
-            {Array.isArray(colleges) && colleges.map(college => (
-              <option key={college.id} value={college.id}>{college.name}</option>
-            ))}
-          </select>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-brand-text-muted">
-            <Layers size={14} />
+        {!isCollegeAdmin && (
+          <div className="relative md:max-w-xs w-full group">
+            <Building className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-primary-500 transition-colors" />
+            <select
+              className="w-full h-11 pl-11 pr-10 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-sm font-bold text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
+              value={selectedCollegeId}
+              onChange={(e) => setSelectedCollegeId(e.target.value)}
+            >
+              <option value="">{t('colleges.allColleges')}</option>
+              {Array.isArray(colleges) && colleges.map(college => (
+                <option key={college.id} value={college.id}>{college.name}</option>
+              ))}
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-brand-text-muted">
+              <Layers size={14} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {loading ? (
@@ -195,13 +199,15 @@ const DepartmentsList = () => {
                       >
                         <Edit2 size={18} />
                       </button>
-                      <button 
-                        onClick={() => setDeleteTarget({ id: dept.id, name: dept.name })}
-                        className="p-2.5 text-brand-text-muted hover:text-error hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-xl transition-all"
-                        title={t('common.delete')}
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      {isSuperAdmin && (
+                        <button 
+                          onClick={() => setDeleteTarget({ id: dept.id, name: dept.name })}
+                          className="p-2.5 text-brand-text-muted hover:text-error hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-xl transition-all"
+                          title={t('common.delete')}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

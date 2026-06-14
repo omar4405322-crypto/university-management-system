@@ -145,8 +145,8 @@ const AppContent = () => {
                     <Route path="exams/:id" element={<div className="animate-page"><ExamDetails /></div>} />
                     <Route path="finance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><LazyRoute><FinanceDashboard /></LazyRoute></div></ProtectedRoute>} />
                     <Route path="analytics" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><LazyRoute><AnalyticsDashboard /></LazyRoute></div></ProtectedRoute>} />
-                    <Route path="colleges" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><CollegesList /></div></ProtectedRoute>} />
-                    <Route path="colleges/:id" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}><div className="animate-page"><CollegeDetails /></div></ProtectedRoute>} />
+                    <Route path="colleges" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}><div className="animate-page"><CollegesList /></div></ProtectedRoute>} />
+                    <Route path="colleges/:id" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}><div className="animate-page"><CollegeDetails /></div></ProtectedRoute>} />
                     <Route
                       path="departments/:id"
                       element={

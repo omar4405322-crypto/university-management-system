@@ -36,8 +36,15 @@ exports.getAllColleges = async (req, res) => {
 
 exports.getCollegeById = async (req, res) => {
   try {
+    const collegeId = parseInt(req.params.id);
+
+    // Scope check: COLLEGE_ADMIN can only access their managed college
+    if (req.user && req.user.role === 'COLLEGE_ADMIN' && req.user.managedCollegeId !== collegeId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     const college = await prisma.college.findUnique({
-      where: { id: parseInt(req.params.id) },
+      where: { id: collegeId },
       include: { 
         departments: {
           include: {
