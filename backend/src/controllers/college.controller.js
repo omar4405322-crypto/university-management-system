@@ -9,7 +9,26 @@ exports.getAllColleges = async (req, res) => {
         }
       }
     });
-    res.json({ success: true, data: colleges });
+
+    // Fetch admin for each college
+    const collegesWithAdmins = await Promise.all(
+      colleges.map(async (college) => {
+        const admin = await prisma.user.findFirst({
+          where: { managedCollegeId: college.id },
+          select: { id: true, email: true, doctor: { select: { firstName: true, lastName: true } } }
+        });
+        return {
+          ...college,
+          assignedAdmin: admin ? {
+            id: admin.id,
+            email: admin.email,
+            name: admin.doctor ? `${admin.doctor.firstName} ${admin.doctor.lastName}`.trim() : null
+          } : null
+        };
+      })
+    );
+
+    res.json({ success: true, data: collegesWithAdmins });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -29,8 +48,14 @@ exports.getCollegeById = async (req, res) => {
         }
       }
     });
-    
+
     if (!college) return res.status(404).json({ success: false, message: 'College not found' });
+
+    // Fetch assigned admin
+    const admin = await prisma.user.findFirst({
+      where: { managedCollegeId: college.id },
+      select: { id: true, email: true, doctor: { select: { firstName: true, lastName: true } } }
+    });
 
     // Calculate total students and doctors across all departments
     const stats = college.departments.reduce((acc, dept) => {
@@ -43,6 +68,11 @@ exports.getCollegeById = async (req, res) => {
       success: true, 
       data: {
         ...college,
+        assignedAdmin: admin ? {
+          id: admin.id,
+          email: admin.email,
+          name: admin.doctor ? `${admin.doctor.firstName} ${admin.doctor.lastName}`.trim() : null
+        } : null,
         _count: {
           departments: college.departments.length,
           students: stats.totalStudents,
@@ -121,6 +151,58 @@ exports.deleteCollege = async (req, res) => {
     });
 
     res.json({ success: true, message: 'College and its departments deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.assignAdmin = async (req, res) => {
+  try {
+    const collegeId = parseInt(req.params.id);
+    const { adminId } = req.body;
+
+    if (!adminId) {
+      return res.status(400).json({ success: false, message: 'Admin ID is required' });
+    }
+
+    const college = await prisma.college.findUnique({ where: { id: collegeId } });
+    if (!college) {
+      return res.status(404).json({ success: false, message: 'College not found' });
+    }
+
+    const admin = await prisma.user.findUnique({ 
+      where: { id: parseInt(adminId) },
+      select: { role: true, managedCollegeId: true }
+    });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (admin.role !== 'COLLEGE_ADMIN') {
+      return res.status(400).json({ success: false, message: 'Only COLLEGE_ADMIN users can be assigned to colleges' });
+    }
+
+    // Update admin to manage this college
+    await prisma.user.update({
+      where: { id: parseInt(adminId) },
+      data: { managedCollegeId: collegeId }
+    });
+
+    // Fetch updated admin info
+    const updatedAdmin = await prisma.user.findUnique({
+      where: { id: parseInt(adminId) },
+      select: { id: true, email: true, doctor: { select: { firstName: true, lastName: true } } }
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Admin assigned to college successfully',
+      data: {
+        id: updatedAdmin.id,
+        email: updatedAdmin.email,
+        name: updatedAdmin.doctor ? `${updatedAdmin.doctor.firstName} ${updatedAdmin.doctor.lastName}`.trim() : null
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

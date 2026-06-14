@@ -4,7 +4,8 @@ const {
   getCollegeById, 
   createCollege, 
   updateCollege, 
-  deleteCollege 
+  deleteCollege,
+  assignAdmin
 } = require('../controllers/college.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
 const { collegeValidation, adminIdValidation } = require('../validations/admin.validation');
@@ -18,6 +19,7 @@ router.get('/:id', adminIdValidation, validate, getCollegeById);
 // Admin only routes
 router.post('/', protect, authorize('SUPER_ADMIN'), collegeValidation, validate, createCollege);
 router.put('/:id', protect, authorize('SUPER_ADMIN'), [...adminIdValidation, ...collegeValidation], validate, updateCollege);
+router.put('/:id/assign-admin', protect, authorize('SUPER_ADMIN'), adminIdValidation, validate, assignAdmin);
 router.delete('/:id', protect, authorize('SUPER_ADMIN'), adminIdValidation, validate, deleteCollege);
 
 module.exports = router;

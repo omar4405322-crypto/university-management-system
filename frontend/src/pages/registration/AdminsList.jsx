@@ -293,7 +293,7 @@ const AdminsList = () => {
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-tight truncate max-w-[180px]">
-                        {admin.college?.name || 'All University'}
+                        {admin.managedCollege?.name || admin.college?.name || 'All University'}
                       </span>
                       {admin.department && (
                         <span className="text-[10px] font-bold text-brand-text-secondary uppercase truncate max-w-[150px]">

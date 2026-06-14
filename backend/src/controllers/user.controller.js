@@ -279,17 +279,32 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
       email: true,
       role: true,
       adminRole: true,
+      managedCollegeId: true,
       createdAt: true,
       profilePicture: true,
     },
     orderBy: { createdAt: 'desc' },
   });
 
-  res.json({ success: true, data: users });
+  // Fetch college info for COLLEGE_ADMIN users
+  const usersWithColleges = await Promise.all(
+    users.map(async (user) => {
+      if (user.managedCollegeId) {
+        const college = await prisma.college.findUnique({
+          where: { id: user.managedCollegeId },
+          select: { id: true, name: true }
+        });
+        return { ...user, managedCollege: college };
+      }
+      return { ...user, managedCollege: null };
+    })
+  );
+
+  res.json({ success: true, data: usersWithColleges });
 });
 
 exports.createAdmin = catchAsync(async (req, res, next) => {
-  const { email, password, role, collegeId, departmentId, managedCollegeId, managedDepartmentId } = req.body;
+  const { email, password, role, collegeId, departmentId, managedCollegeId, managedDepartmentId, firstName, lastName } = req.body;
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
@@ -298,17 +313,30 @@ exports.createAdmin = catchAsync(async (req, res, next) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  // For COLLEGE_ADMIN, create a Doctor profile for name
+  const userData = {
+    email,
+    password: hashedPassword,
+    role,
+    collegeId: collegeId ? parseInt(collegeId) : null,
+    departmentId: departmentId ? parseInt(departmentId) : null,
+    managedCollegeId: (role === 'COLLEGE_ADMIN' || role === 'ADMIN') && managedCollegeId ? parseInt(managedCollegeId) : null,
+    managedDepartmentId: role === 'DEPARTMENT_ADMIN' && managedDepartmentId ? parseInt(managedDepartmentId) : null,
+  };
+
+  // If COLLEGE_ADMIN or DEPARTMENT_ADMIN, also create Doctor profile
+  if ((role === 'COLLEGE_ADMIN' || role === 'DEPARTMENT_ADMIN') && firstName && lastName) {
+    userData.doctor = {
+      create: {
+        firstName,
+        lastName,
+        departmentId: (role === 'DEPARTMENT_ADMIN' && managedDepartmentId) ? parseInt(managedDepartmentId) : null,
+      },
+    };
+  }
+
   const admin = await prisma.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      role,
-      collegeId: collegeId ? parseInt(collegeId) : null,
-      departmentId: departmentId ? parseInt(departmentId) : null,
-      // Map managed fields according to new role types
-      managedCollegeId: (role === 'COLLEGE_ADMIN' || role === 'ADMIN') && managedCollegeId ? parseInt(managedCollegeId) : null,
-      managedDepartmentId: role === 'DEPARTMENT_ADMIN' && managedDepartmentId ? parseInt(managedDepartmentId) : null,
-    },
+    data: userData,
     select: {
       id: true,
       email: true,
@@ -316,6 +344,12 @@ exports.createAdmin = catchAsync(async (req, res, next) => {
       createdAt: true,
       managedCollegeId: true,
       managedDepartmentId: true,
+      doctor: {
+        select: {
+          firstName: true,
+          lastName: true,
+        },
+      },
     },
   });
 
