@@ -4,10 +4,12 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../context/AuthContext';
 import { School, Info, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     nameAr: '',
@@ -28,7 +30,7 @@ const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
 
   const showToast = (message, type) => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 4000);
   };
 
   const handleChange = (e) => {
@@ -36,10 +38,27 @@ const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
     setFormData({ ...formData, [name]: value });
   };
 
+  const getErrorMessage = (error) => {
+    if (error.status === 403) {
+      return t('colleges.insufficientPermissions', 'You do not have permission to edit colleges. Only Super Admins can edit colleges.');
+    }
+    if (error.status === 401) {
+      return t('colleges.sessionExpired', 'Your session has expired. Please login again.');
+    }
+    if (error.data?.message) {
+      return error.data.message;
+    }
+    if (error.message) {
+      return error.message;
+    }
+    return t('colleges.updateError', 'Failed to update college. Please try again.');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name) {
-      showToast(t('colleges.enterName'), 'error');
+
+    if (!formData.name.trim()) {
+      showToast(t('colleges.enterName', 'Please enter the college name'), 'error');
       return;
     }
 
@@ -47,14 +66,21 @@ const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
       setLoading(true);
       const result = await collegeService.updateCollege(college.id, formData);
       if (result.success) {
+        showToast(t('colleges.updateSuccess', 'College updated successfully!'), 'success');
         onSuccess();
       }
     } catch (error) {
-      showToast(error.response?.data?.message || t('colleges.updateError'), 'error');
+      console.error('Error updating college:', error);
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setLoading(false);
     }
   };
+
+  // Guard: Only SUPER_ADMIN can access this modal
+  if (!isOpen || user?.role !== 'SUPER_ADMIN') {
+    return null;
+  }
 
   return (
     <Modal
@@ -82,7 +108,8 @@ const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
               onChange={handleChange}
               placeholder="e.g. College of Engineering"
               required
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
+              disabled={loading}
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -95,7 +122,8 @@ const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
               value={formData.nameAr}
               onChange={handleChange}
               placeholder={t('colleges.nameArPlaceholder', 'e.g. Faculty of Engineering')}
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic"
+              disabled={loading}
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed font-arabic"
               dir="rtl"
             />
           </div>
@@ -109,7 +137,8 @@ const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
               rows="3"
               value={formData.description}
               onChange={handleChange}
-              className="w-full px-4 py-3 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all resize-none"
+              disabled={loading}
+              className="w-full px-4 py-3 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all resize-none disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="Brief description of the college..."
             />
           </div>
@@ -127,9 +156,16 @@ const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
           <Button 
             type="submit" 
             disabled={loading}
-            className="min-w-[140px]"
+            className="min-w-[140px] flex items-center justify-center gap-2"
           >
-            {loading ? <Loader2 className="animate-spin" size={20} /> : t('common.saveChanges')}
+            {loading ? (
+              <>
+                <Loader2 className="animate-spin" size={20} />
+                <span>{t('common.saving', 'Saving...')}</span>
+              </>
+            ) : (
+              t('common.saveChanges')
+            )}
           </Button>
         </div>
       </form>

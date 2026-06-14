@@ -50,7 +50,10 @@ const AttendancePage = () => {
     try {
       setCoursesLoading(true);
       setError(null);
-      const result = await coursesService.getCourses({ limit: 100 });
+      const useScope = require('../../hooks/useScope').default;
+      const scope = useScope ? useScope() : null;
+      const params = { limit: 100, ...scope?.scopeParams };
+      const result = await coursesService.getCourses(params);
       if (result.success) {
         const list = result.data.courses || result.data || [];
         setCourses(Array.isArray(list) ? list : []);

@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { getScopeWhere } = require('../utils/scope.utils');
 
 exports.getAllSchedules = async (req, res) => {
   try {
@@ -40,22 +41,32 @@ exports.getAllSchedules = async (req, res) => {
         semester: filterSemester
       };
     } else {
-      // For Admins and Doctors
-      if (courseId) {
-        where.courseId = parseInt(courseId);
-      } else if (departmentId) {
-        where.course = { departmentId: parseInt(departmentId) };
-      } else if (collegeId) {
-        where.course = { department: { collegeId: parseInt(collegeId) } };
-      }
+       // For Admins and Doctors
+       if (courseId) {
+         where.courseId = parseInt(courseId);
+       } else if (departmentId) {
+         where.course = { departmentId: parseInt(departmentId) };
+       } else if (collegeId) {
+         where.course = { department: { collegeId: parseInt(collegeId) } };
+       }
 
-      if (year) {
-        where.course = { ...where.course, year: parseInt(year) };
-      }
-      if (semester) {
-        where.course = { ...where.course, semester: parseInt(semester) };
-      }
-    }
+       if (year) {
+         where.course = { ...where.course, year: parseInt(year) };
+       }
+       if (semester) {
+         where.course = { ...where.course, semester: parseInt(semester) };
+       }
+
+       // Apply role scoping via helper (for COLLEGE_ADMIN / DEPARTMENT_ADMIN)
+       const courseScope = getScopeWhere(user, 'course');
+       if (courseScope && Object.keys(courseScope).length) {
+         if (courseScope.department) {
+           where.course = { ... (where.course || {}), ...courseScope.department };
+         } else if (courseScope.departmentId) {
+           where.course = { ... (where.course || {}), departmentId: courseScope.departmentId };
+         }
+       }
+     }
 
     const schedules = await prisma.schedule.findMany({
       where,
@@ -182,6 +193,19 @@ exports.createSchedule = async (req, res) => {
   const { courseId, dayOfWeek, startTime, endTime, room } = req.body;
 
   try {
+    // Validate course exists and is within user's scope
+    const course = await prisma.course.findUnique({ where: { id: parseInt(courseId) }, include: { department: true } });
+    if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+    const courseScope = getScopeWhere(req.user, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      if (courseScope.department && course.department?.collegeId !== courseScope.department.collegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+      if (courseScope.departmentId && course.departmentId !== courseScope.departmentId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
     // Validate: no time conflict for same room on same day
     const conflict = await prisma.schedule.findFirst({
       where: {
@@ -239,6 +263,20 @@ exports.updateSchedule = async (req, res) => {
   const { dayOfWeek, startTime, endTime, room } = req.body;
 
   try {
+    const existing = await prisma.schedule.findUnique({ where: { id: parseInt(req.params.id) }, include: { course: { include: { department: true } } } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Schedule not found' });
+
+    // Enforce scope
+    const courseScope = getScopeWhere(req.user, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      if (courseScope.department && existing.course?.department?.collegeId !== courseScope.department.collegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+      if (courseScope.departmentId && existing.course?.departmentId !== courseScope.departmentId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
     const schedule = await prisma.schedule.update({
       where: { id: parseInt(req.params.id) },
       data: {
@@ -257,9 +295,21 @@ exports.updateSchedule = async (req, res) => {
 
 exports.deleteSchedule = async (req, res) => {
   try {
-    await prisma.schedule.delete({
-      where: { id: parseInt(req.params.id) },
-    });
+    const existing = await prisma.schedule.findUnique({ where: { id: parseInt(req.params.id) }, include: { course: { include: { department: true } } } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Schedule not found' });
+
+    // Enforce scope
+    const courseScope = getScopeWhere(req.user, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      if (courseScope.department && existing.course?.department?.collegeId !== courseScope.department.collegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+      if (courseScope.departmentId && existing.course?.departmentId !== courseScope.departmentId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
+    await prisma.schedule.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true, message: 'Schedule deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

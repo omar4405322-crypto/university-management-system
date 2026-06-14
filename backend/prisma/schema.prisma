@@ -22,6 +22,10 @@ model User {
   managedCollegeId Int?
   managedCollege   College?       @relation("ManagedCollege", fields: [managedCollegeId], references: [id])
 
+  // For scoped ADMIN users — optional FK to the department they manage
+  managedDepartmentId Int?
+  managedDepartment   Department?   @relation("ManagedDepartment", fields: [managedDepartmentId], references: [id])
+
   profilePicture   String?
   twoFactorEnabled Boolean        @default(false)
   twoFactorSecret  String?        // TOTP secret
@@ -103,6 +107,8 @@ model Department {
   students    Student[]
   doctors     Doctor[]
   admins      User[]
+  // Back relation for scoped DEPARTMENT_ADMIN users who manage a single department
+  managedAdmins User[]       @relation("ManagedDepartment")
   registrationRequests RegistrationRequest[]
   timetables  Timetable[]
   createdAt    DateTime @default(now())

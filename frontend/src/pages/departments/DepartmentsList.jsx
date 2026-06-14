@@ -65,8 +65,19 @@ const DepartmentsList = () => {
   };
 
   useEffect(() => {
-    fetchDepartments();
-    fetchColleges();
+    // If user is college or department admin, apply scope
+    if (user?.role === 'COLLEGE_ADMIN' && user?.managedCollegeId) {
+      setSelectedCollegeId(String(user.managedCollegeId));
+      fetchDepartments(user.managedCollegeId);
+    } else if (user?.role === 'DEPARTMENT_ADMIN' && user?.managedDepartmentId) {
+      // If department admin, show only their department
+      setSelectedCollegeId('');
+      setDepartments([]);
+      // Optionally, fetch single department data
+    } else {
+      fetchDepartments();
+      fetchColleges();
+    }
   }, []);
 
   const showToast = (message, type) => {

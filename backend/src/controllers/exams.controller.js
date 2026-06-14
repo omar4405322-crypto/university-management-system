@@ -2,19 +2,19 @@
 const prisma = require('../utils/prismaClient');
 const catchAsync = require('../utils/catchAsync');
 const { NotFoundError, AuthorizationError } = require('../utils/appError');
+const { getScopeWhere } = require('../utils/scope.utils');
 
 exports.getAllExams = catchAsync(async (req, res, next) => {
   const { type, upcoming } = req.query;
 
-  // Enforce scope
-  const scopeWhere = {};
-  if (req.user.role === 'COLLEGE_ADMIN') {
-    scopeWhere.course = { department: { collegeId: req.user.collegeId } };
-  } else if (req.user.role === 'DEPARTMENT_ADMIN') {
-    scopeWhere.course = { departmentId: req.user.departmentId };
+  // Apply centralized scope
+  const courseScope = getScopeWhere(req.user, 'course');
+  let where = {};
+  if (courseScope && Object.keys(courseScope).length) {
+    if (courseScope.department) where.course = courseScope.department;
+    else if (courseScope.departmentId) where.course = { departmentId: courseScope.departmentId };
   }
 
-  let where = { ...scopeWhere };
   if (type) where.type = type;
   if (upcoming === 'true') {
     where.date = { gte: new Date() };
@@ -37,17 +37,11 @@ exports.getAllExams = catchAsync(async (req, res, next) => {
 });
 
 exports.getUpcomingExams = catchAsync(async (req, res, next) => {
-  // Enforce scope
-  const scopeWhere = {};
-  if (req.user.role === 'COLLEGE_ADMIN') {
-    scopeWhere.course = { department: { collegeId: req.user.collegeId } };
-  } else if (req.user.role === 'DEPARTMENT_ADMIN') {
-    scopeWhere.course = { departmentId: req.user.departmentId };
-  }
-
+  // Apply centralized scope
+  const courseScope = getScopeWhere(req.user, 'course');
   const exams = await prisma.exam.findMany({
     where: {
-      ...scopeWhere,
+      ...(courseScope && Object.keys(courseScope).length ? (courseScope.department ? { course: courseScope.department } : { course: { departmentId: courseScope.departmentId } }) : {}),
       date: { gte: new Date() },
     },
     include: {
@@ -77,11 +71,15 @@ exports.createExam = catchAsync(async (req, res, next) => {
     return next(new NotFoundError('Course not found'));
   }
 
-  if (req.user.role === 'COLLEGE_ADMIN' && course.department?.collegeId !== req.user.collegeId) {
-    return next(new AuthorizationError('Access denied'));
-  }
-  if (req.user.role === 'DEPARTMENT_ADMIN' && course.departmentId !== req.user.departmentId) {
-    return next(new AuthorizationError('Access denied'));
+  // Enforce scope via helper
+  const courseScope = getScopeWhere(req.user, 'course');
+  if (courseScope && Object.keys(courseScope).length) {
+    if (courseScope.department && course.department?.collegeId !== courseScope.department.collegeId) {
+      return next(new AuthorizationError('Access denied'));
+    }
+    if (courseScope.departmentId && course.departmentId !== courseScope.departmentId) {
+      return next(new AuthorizationError('Access denied'));
+    }
   }
 
   const exam = await prisma.exam.create({
@@ -119,12 +117,11 @@ exports.updateExam = catchAsync(async (req, res, next) => {
     return next(new NotFoundError('Exam not found'));
   }
 
-  // Enforce scope
-  if (req.user.role === 'COLLEGE_ADMIN' && exam.course?.department?.collegeId !== req.user.collegeId) {
-    return next(new AuthorizationError('Access denied'));
-  }
-  if (req.user.role === 'DEPARTMENT_ADMIN' && exam.course?.departmentId !== req.user.departmentId) {
-    return next(new AuthorizationError('Access denied'));
+  // Enforce scope via helper
+  const examCourseScope = getScopeWhere(req.user, 'course');
+  if (examCourseScope && Object.keys(examCourseScope).length) {
+    if (examCourseScope.department && exam.course?.department?.collegeId !== examCourseScope.department.collegeId) return next(new AuthorizationError('Access denied'));
+    if (examCourseScope.departmentId && exam.course?.departmentId !== examCourseScope.departmentId) return next(new AuthorizationError('Access denied'));
   }
 
   const updatedExam = await prisma.exam.update({
@@ -152,12 +149,11 @@ exports.deleteExam = catchAsync(async (req, res, next) => {
     return next(new NotFoundError('Exam not found'));
   }
 
-  // Enforce scope
-  if (req.user.role === 'COLLEGE_ADMIN' && exam.course?.department?.collegeId !== req.user.collegeId) {
-    return next(new AuthorizationError('Access denied'));
-  }
-  if (req.user.role === 'DEPARTMENT_ADMIN' && exam.course?.departmentId !== req.user.departmentId) {
-    return next(new AuthorizationError('Access denied'));
+  // Enforce scope via helper
+  const examCourseScope = getScopeWhere(req.user, 'course');
+  if (examCourseScope && Object.keys(examCourseScope).length) {
+    if (examCourseScope.department && exam.course?.department?.collegeId !== examCourseScope.department.collegeId) return next(new AuthorizationError('Access denied'));
+    if (examCourseScope.departmentId && exam.course?.departmentId !== examCourseScope.departmentId) return next(new AuthorizationError('Access denied'));
   }
 
   await prisma.exam.delete({
@@ -188,6 +184,17 @@ exports.getExamById = catchAsync(async (req, res, next) => {
 
   if (!exam) {
     return next(new NotFoundError('Exam not found'));
+  }
+
+  // Enforce scope on read
+  const courseScope = getScopeWhere(req.user, 'course');
+  if (courseScope && Object.keys(courseScope).length) {
+    if (courseScope.department && exam.course?.department?.collegeId !== courseScope.department.collegeId) {
+      return next(new AuthorizationError('Access denied'));
+    }
+    if (courseScope.departmentId && exam.course?.departmentId !== courseScope.departmentId) {
+      return next(new AuthorizationError('Access denied'));
+    }
   }
 
   res.json({ success: true, data: exam });

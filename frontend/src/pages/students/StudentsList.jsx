@@ -48,18 +48,22 @@ const StudentsList = () => {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    fetchStudents();
+    // Apply scope params when fetching
+    const scope = require('../../hooks/useScope').default ? require('../../hooks/useScope').default() : null;
+    fetchStudents(scope?.scopeParams);
   }, [page, search]);
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (extraParams = {}) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await studentService.getStudents({
+      const params = {
         page,
         limit: 10,
-        search: search.trim()
-      });
+        search: search.trim(),
+        ...extraParams
+      };
+      const response = await studentService.getStudents(params);
       
       console.log('Students API response:', JSON.stringify(response, null, 2));
 

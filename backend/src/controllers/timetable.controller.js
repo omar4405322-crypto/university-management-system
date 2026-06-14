@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { getScopeWhere } = require('../utils/scope.utils');
 
 /**
  * @desc    Get all timetables (Admin) or matching timetable (Student)
@@ -43,6 +44,13 @@ exports.getTimetables = async (req, res) => {
       if (academicYear) where.academicYear = parseInt(academicYear);
       if (semester) where.semester = parseInt(semester);
       if (status) where.status = status;
+
+      // Apply scope (COLLEGE_ADMIN/DEPARTMENT_ADMIN)
+      const deptScope = getScopeWhere(user, 'department');
+      if (deptScope && Object.keys(deptScope).length) {
+        if (deptScope.collegeId) where.collegeId = deptScope.collegeId;
+        if (deptScope.id) where.departmentId = deptScope.id;
+      }
     }
 
     const timetables = await prisma.timetable.findMany({
@@ -79,6 +87,13 @@ exports.getTimetableById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Timetable not found' });
     }
 
+    // Enforce scope on read
+    const deptScope = getScopeWhere(req.user, 'department');
+    if (deptScope && Object.keys(deptScope).length) {
+      if (deptScope.collegeId && timetable.collegeId !== deptScope.collegeId) return res.status(403).json({ success: false, message: 'Access denied' });
+      if (deptScope.id && timetable.departmentId !== deptScope.id) return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     res.json({ success: true, data: timetable });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -100,6 +115,13 @@ exports.createTimetable = async (req, res) => {
         success: false, 
         message: 'Faculty, Department, Academic Year, Semester, and Title are required' 
       });
+    }
+
+    // Enforce scope for creation
+    const deptScope = getScopeWhere(req.user, 'department');
+    if (deptScope && Object.keys(deptScope).length) {
+      if (deptScope.collegeId && parseInt(collegeId) !== deptScope.collegeId) return res.status(403).json({ success: false, message: 'Access denied' });
+      if (deptScope.id && parseInt(departmentId) !== deptScope.id) return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     // Check for duplicates (handled by unique constraint in DB, but better to check)
@@ -151,6 +173,15 @@ exports.updateTimetable = async (req, res) => {
     const { title, description, scheduleData, fileUrl, status, academicYear, semester } = req.body;
     const id = parseInt(req.params.id);
 
+    // Enforce scope on update
+    const deptScope = getScopeWhere(req.user, 'department');
+    const existing = await prisma.timetable.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Timetable not found' });
+    if (deptScope && Object.keys(deptScope).length) {
+      if (deptScope.collegeId && existing.collegeId !== deptScope.collegeId) return res.status(403).json({ success: false, message: 'Access denied' });
+      if (deptScope.id && existing.departmentId !== deptScope.id) return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     const timetable = await prisma.timetable.update({
       where: { id },
       data: {
@@ -177,6 +208,14 @@ exports.updateTimetable = async (req, res) => {
  */
 exports.deleteTimetable = async (req, res) => {
   try {
+    const existing = await prisma.timetable.findUnique({ where: { id: parseInt(req.params.id) } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Timetable not found' });
+    const deptScope = getScopeWhere(req.user, 'department');
+    if (deptScope && Object.keys(deptScope).length) {
+      if (deptScope.collegeId && existing.collegeId !== deptScope.collegeId) return res.status(403).json({ success: false, message: 'Access denied' });
+      if (deptScope.id && existing.departmentId !== deptScope.id) return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     await prisma.timetable.delete({
       where: { id: parseInt(req.params.id) }
     });

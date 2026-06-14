@@ -4,10 +4,12 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../context/AuthContext';
 import { School, Info, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     nameAr: '',
@@ -18,7 +20,7 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
 
   const showToast = (message, type) => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 4000);
   };
 
   const handleChange = (e) => {
@@ -26,10 +28,27 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
     setFormData({ ...formData, [name]: value });
   };
 
+  const getErrorMessage = (error) => {
+    if (error.status === 403) {
+      return t('colleges.insufficientPermissions', 'You do not have permission to create colleges. Only Super Admins can create colleges.');
+    }
+    if (error.status === 401) {
+      return t('colleges.sessionExpired', 'Your session has expired. Please login again.');
+    }
+    if (error.data?.message) {
+      return error.data.message;
+    }
+    if (error.message) {
+      return error.message;
+    }
+    return t('colleges.createError', 'Failed to create college. Please try again.');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name) {
-      showToast(t('colleges.enterName'), 'error');
+
+    if (!formData.name.trim()) {
+      showToast(t('colleges.enterName', 'Please enter the college name'), 'error');
       return;
     }
 
@@ -37,15 +56,22 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
       setLoading(true);
       const result = await collegeService.createCollege(formData);
       if (result.success) {
+        showToast(t('colleges.addSuccess', 'College added successfully!'), 'success');
         onSuccess();
         setFormData({ name: '', nameAr: '', description: '' });
       }
     } catch (error) {
-      showToast(error.response?.data?.message || t('colleges.createError'), 'error');
+      console.error('Error creating college:', error);
+      showToast(getErrorMessage(error), 'error');
     } finally {
       setLoading(false);
     }
   };
+
+  // Guard: Only SUPER_ADMIN can access this modal
+  if (!isOpen || user?.role !== 'SUPER_ADMIN') {
+    return null;
+  }
 
   return (
     <Modal
@@ -73,7 +99,8 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
               onChange={handleChange}
               placeholder="e.g. College of Engineering"
               required
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
+              disabled={loading}
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -86,7 +113,8 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
               value={formData.nameAr}
               onChange={handleChange}
               placeholder={t('colleges.nameArPlaceholder', 'e.g. Faculty of Engineering')}
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic"
+              disabled={loading}
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed font-arabic"
               dir="rtl"
             />
           </div>
@@ -101,7 +129,8 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
               value={formData.description}
               onChange={handleChange}
               placeholder={t('colleges.descPlaceholder')}
-              className="w-full px-4 py-2 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all resize-none placeholder:text-brand-text-muted"
+              disabled={loading}
+              className="w-full px-4 py-2 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all resize-none placeholder:text-brand-text-muted disabled:opacity-50 disabled:cursor-not-allowed"
             ></textarea>
           </div>
         </div>
@@ -118,9 +147,16 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
           <Button
             type="submit"
             disabled={loading}
-            className="min-w-[140px]"
+            className="min-w-[140px] flex items-center justify-center gap-2"
           >
-            {loading ? <Loader2 className="animate-spin" size={20} /> : t('colleges.addCollege')}
+            {loading ? (
+              <>
+                <Loader2 className="animate-spin" size={20} />
+                <span>{t('common.creating', 'Creating...')}</span>
+              </>
+            ) : (
+              t('colleges.addCollege')
+            )}
           </Button>
         </div>
       </form>

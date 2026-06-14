@@ -1,5 +1,6 @@
 const prisma = require('../utils/prismaClient');
 const { notifyStudentsInCourse } = require('../utils/notification.utils');
+const { getScopeWhere } = require('../utils/scope.utils');
 
 exports.createTask = async (req, res) => {
   try {
@@ -7,6 +8,15 @@ exports.createTask = async (req, res) => {
     const doctor = await prisma.doctor.findUnique({ where: { userId: req.user.id } });
 
     if (!doctor) return res.status(403).json({ success: false, message: 'Only doctors can create tasks' });
+
+    // Ensure course is within doctor's/admin's scope
+    const course = await prisma.course.findUnique({ where: { id: parseInt(courseId) }, include: { department: true } });
+    if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+    const courseScope = getScopeWhere(req.user, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      if (courseScope.department && course.department?.collegeId !== courseScope.department.collegeId) return res.status(403).json({ success: false, message: 'Access denied' });
+      if (courseScope.departmentId && course.departmentId !== courseScope.departmentId) return res.status(403).json({ success: false, message: 'Access denied' });
+    }
 
     const task = await prisma.task.create({
       data: {
@@ -60,6 +70,13 @@ exports.getTasks = async (req, res) => {
       }
     }
 
+    // Apply admin scope (COLLEGE_ADMIN / DEPARTMENT_ADMIN)
+    const courseScope = getScopeWhere(req.user, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      if (courseScope.department) where.course = courseScope.department;
+      else if (courseScope.departmentId) where.course = { departmentId: courseScope.departmentId };
+    }
+
     const tasks = await prisma.task.findMany({
       where,
       include: {
@@ -84,6 +101,15 @@ exports.submitTask = async (req, res) => {
 
     if (!student) return res.status(403).json({ success: false, message: 'Only students can submit tasks' });
 
+    // Ensure student/course within scope (students submit own work; doctor/admin may accept)
+    const taskObj = await prisma.task.findUnique({ where: { id: parseInt(id) }, include: { course: { include: { department: true } } } });
+    if (!taskObj) return res.status(404).json({ success: false, message: 'Task not found' });
+    const courseScope2 = getScopeWhere(req.user, 'course');
+    if (courseScope2 && Object.keys(courseScope2).length) {
+      if (courseScope2.department && taskObj.course?.department?.collegeId !== courseScope2.department.collegeId) return res.status(403).json({ success: false, message: 'Access denied' });
+      if (courseScope2.departmentId && taskObj.course?.departmentId !== courseScope2.departmentId) return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     const submission = await prisma.taskSubmission.create({
       data: {
         taskId: parseInt(id),
@@ -104,6 +130,15 @@ exports.gradeSubmission = async (req, res) => {
     const { sid } = req.params;
     const { score } = req.body;
     
+    // Ensure grader has access to the task's course
+    const existingSubmission = await prisma.taskSubmission.findUnique({ where: { id: parseInt(sid) }, include: { task: { include: { course: { include: { department: true } } } } } });
+    if (!existingSubmission) return res.status(404).json({ success: false, message: 'Submission not found' });
+    const courseScope3 = getScopeWhere(req.user, 'course');
+    if (courseScope3 && Object.keys(courseScope3).length) {
+      if (courseScope3.department && existingSubmission.task.course?.department?.collegeId !== courseScope3.department.collegeId) return res.status(403).json({ success: false, message: 'Access denied' });
+      if (courseScope3.departmentId && existingSubmission.task.course?.departmentId !== courseScope3.departmentId) return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     const submission = await prisma.taskSubmission.update({
       where: { id: parseInt(sid) },
       data: { score: parseFloat(score) }
@@ -118,6 +153,15 @@ exports.gradeSubmission = async (req, res) => {
 exports.getTaskSubmissions = async (req, res) => {
   try {
     const { id } = req.params;
+    // Ensure task within scope
+    const taskObj = await prisma.task.findUnique({ where: { id: parseInt(id) }, include: { course: { include: { department: true } } } });
+    if (!taskObj) return res.status(404).json({ success: false, message: 'Task not found' });
+    const courseScope4 = getScopeWhere(req.user, 'course');
+    if (courseScope4 && Object.keys(courseScope4).length) {
+      if (courseScope4.department && taskObj.course?.department?.collegeId !== courseScope4.department.collegeId) return res.status(403).json({ success: false, message: 'Access denied' });
+      if (courseScope4.departmentId && taskObj.course?.departmentId !== courseScope4.departmentId) return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     const submissions = await prisma.taskSubmission.findMany({
       where: { taskId: parseInt(id) },
       include: { student: true }

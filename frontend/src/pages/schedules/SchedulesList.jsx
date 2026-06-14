@@ -110,7 +110,11 @@ const SchedulesList = () => {
       if (selectedYear) params.year = selectedYear;
       if (selectedSemester) params.semester = selectedSemester;
       
-      const result = await schedulesService.getSchedules(params);
+      // Merge admin scope
+      const useScope = require('../../hooks/useScope').default;
+      const scope = useScope ? useScope() : null;
+      const mergedParams = { ...params, ...scope?.scopeParams };
+      const result = await schedulesService.getSchedules(mergedParams);
       if (result.success) {
         setSchedules(result.data);
       }

@@ -12,8 +12,8 @@ const validate = require('../middleware/validate.middleware');
 
 const router = express.Router();
 
-router.get('/', getAllDepartments);
-router.get('/:id', adminIdValidation, validate, getDepartmentById);
+router.get('/', protect, getAllDepartments);
+router.get('/:id', protect, adminIdValidation, validate, getDepartmentById);
 
 // Admin only routes
 router.post('/', protect, authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'), departmentValidation, validate, createDepartment);

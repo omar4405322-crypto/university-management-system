@@ -1,6 +1,7 @@
 const prisma = require('../utils/prismaClient');
 const catchAsync = require('../utils/catchAsync');
 const { NotFoundError } = require('../utils/appError');
+const { getScopeWhere } = require('../utils/scope.utils');
 
 /**
  * @desc    Get all courses with advanced filtering, sorting and pagination
@@ -27,7 +28,11 @@ exports.getAllCourses = catchAsync(async (req, res, next) => {
   const safeSortBy = COURSE_SORT_FIELDS.includes(sortBy) ? sortBy : 'createdAt'; 
   const safeSortOrder = ['asc', 'desc'].includes(sortOrder) ? sortOrder : 'desc'; 
 
+  // Scoping: use centralized helper
+  const scopeWhere = getScopeWhere(req.user, 'course');
+
   const where = {
+    ...scopeWhere,
     ...(departmentId && { departmentId: parseInt(departmentId) }),
     ...(year && { year: parseInt(year) }),
     ...(semester && { semester: parseInt(semester) }),
@@ -98,6 +103,13 @@ exports.getCourseById = catchAsync(async (req, res, next) => {
     return next(new NotFoundError('Course not found'));
   }
 
+  // Scoped ADMIN enforcement
+  if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+    if (course.department?.collegeId !== req.user.managedCollegeId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+  }
+
   res.json({
     success: true,
     data: course,
@@ -157,6 +169,14 @@ exports.getCourseRoster = catchAsync(async (req, res, next) => {
 exports.createCourse = catchAsync(async (req, res, next) => {
   const courseData = req.body;
   
+  // If scoped ADMIN, ensure department belongs to managedCollegeId or set automatically
+  if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+    const dept = await prisma.department.findUnique({ where: { id: parseInt(courseData.departmentId) } });
+    if (!dept || dept.collegeId !== req.user.managedCollegeId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+  }
+
   const newCourse = await prisma.course.create({
     data: {
       ...courseData,
@@ -184,6 +204,21 @@ exports.updateCourse = catchAsync(async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
 
+  // fetch existing and enforce scope for scoped ADMIN
+  const existing = await prisma.course.findUnique({ where: { id: parseInt(id) }, include: { department: true } });
+  if (!existing) return next(new NotFoundError('Course not found'));
+  if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+    if (existing.department?.collegeId !== req.user.managedCollegeId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    if (updateData.departmentId) {
+      const newDept = await prisma.department.findUnique({ where: { id: parseInt(updateData.departmentId) } });
+      if (!newDept || newDept.collegeId !== req.user.managedCollegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+  }
+
   const updatedCourse = await prisma.course.update({
     where: { id: parseInt(id) },
     data: {
@@ -210,6 +245,15 @@ exports.updateCourse = catchAsync(async (req, res, next) => {
  */
 exports.deleteCourse = catchAsync(async (req, res, next) => {
   const { id } = req.params;
+
+  // Ensure scoped ADMIN can only delete within their managed college
+  const existingCourse = await prisma.course.findUnique({ where: { id: parseInt(id) }, include: { department: { select: { collegeId: true } } } });
+  if (!existingCourse) return next(new NotFoundError('Course not found'));
+  if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+    if (existingCourse.department?.collegeId !== req.user.managedCollegeId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+  }
 
   await prisma.$transaction([
     prisma.schedule.deleteMany({ where: { courseId: parseInt(id) } }),

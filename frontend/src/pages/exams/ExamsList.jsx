@@ -170,7 +170,10 @@ const ExamsList = () => {
       if (filter !== 'ALL') params.type = filter;
       if (upcomingOnly) params.upcoming = 'true';
       
-      const result = await examsService.getExams(params);
+      const useScope = require('../../hooks/useScope').default;
+      const scope = useScope ? useScope() : null;
+      const merged = { ...params, ...scope?.scopeParams };
+      const result = await examsService.getExams(merged);
       if (result.success) setExams(result.data);
     } catch (err) {
       console.error(err);

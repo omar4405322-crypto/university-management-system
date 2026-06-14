@@ -4,6 +4,8 @@ const logger = require('../utils/logger');
  * Global Error Handler Middleware
  */
 const globalErrorHandler = (err, req, res, next) => {
+  // Always log to console for immediate visibility during debugging
+  console.error('Global error:', err?.message, err?.stack);
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 

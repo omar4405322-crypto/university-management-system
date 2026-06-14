@@ -2,6 +2,7 @@ const prisma = require('../utils/prismaClient');
 const catchAsync = require('../utils/catchAsync');
 const { createNotification } = require('../utils/notification.utils');
 const { AppError, AuthorizationError } = require('../utils/appError');
+const { getScopeWhere } = require('../utils/scope.utils');
 
 /**
  * @desc    Record attendance for multiple students
@@ -10,6 +11,15 @@ const { AppError, AuthorizationError } = require('../utils/appError');
  */
 exports.recordAttendance = catchAsync(async (req, res, next) => {
   const { courseId, date, records } = req.body; // records: [{ studentId, status, remarks }]
+
+  // Validate course scope
+  const course = await prisma.course.findUnique({ where: { id: parseInt(courseId) }, include: { department: true } });
+  if (!course) return next(new AppError('Course not found', 404));
+  const courseScope = getScopeWhere(req.user, 'course');
+  if (courseScope && Object.keys(courseScope).length) {
+    if (courseScope.department && course.department?.collegeId !== courseScope.department.collegeId) return next(new AuthorizationError('Access denied'));
+    if (courseScope.departmentId && course.departmentId !== courseScope.departmentId) return next(new AuthorizationError('Access denied'));
+  }
 
   const attendanceDate = date ? new Date(date) : new Date();
 
@@ -63,6 +73,15 @@ exports.getCourseAttendance = catchAsync(async (req, res, next) => {
   const { date } = req.query;
 
   const where = { courseId: parseInt(courseId) };
+
+  // Enforce scope: ensure course within admin scope
+  const course = await prisma.course.findUnique({ where: { id: parseInt(courseId) }, include: { department: true } });
+  if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+  const courseScope = getScopeWhere(req.user, 'course');
+  if (courseScope && Object.keys(courseScope).length) {
+    if (courseScope.department && course.department?.collegeId !== courseScope.department.collegeId) return res.status(403).json({ success: false, message: 'Access denied' });
+    if (courseScope.departmentId && course.departmentId !== courseScope.departmentId) return res.status(403).json({ success: false, message: 'Access denied' });
+  }
   if (date) {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
@@ -106,6 +125,15 @@ exports.getStudentAttendance = catchAsync(async (req, res, next) => {
       return next(new AuthorizationError(
         'You can only view your own attendance records.'
       ));
+    }
+  } else {
+    // If admin viewing other student's attendance, ensure student is within scope
+    const studentRecord = await prisma.student.findUnique({ where: { id: studentId }, include: { department: true } });
+    if (!studentRecord) return next(new NotFoundError('Student not found'));
+    const deptScope = getScopeWhere(req.user, 'department');
+    if (deptScope && Object.keys(deptScope).length) {
+      if (deptScope.collegeId && studentRecord.department?.collegeId !== deptScope.collegeId) return next(new AuthorizationError('Access denied'));
+      if (deptScope.id && studentRecord.departmentId !== deptScope.id) return next(new AuthorizationError('Access denied'));
     }
   }
 

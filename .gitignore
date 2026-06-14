@@ -24,3 +24,7 @@ coverage/
 # Logs
 combined.log
 *.log
+
+# IDE / workspace
+.vs/
+.dbg/

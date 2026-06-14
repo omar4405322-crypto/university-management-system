@@ -5,21 +5,15 @@ const bcrypt = require('bcryptjs');
 const catchAsync = require('../utils/catchAsync');
 const { AppError, NotFoundError } = require('../utils/appError');
 
-const getScopeWhere = (user) => {
-  const scopeWhere = {};
-  if (user.role === 'COLLEGE_ADMIN') {
-    scopeWhere.department = { collegeId: user.collegeId };
-  } else if (user.role === 'DEPARTMENT_ADMIN') {
-    scopeWhere.departmentId = user.departmentId;
-  }
-  return scopeWhere;
-};
+const { getScopeWhere } = require('../utils/scope.utils');
 
 exports.getDoctorStats = async (req, res) => {
   try {
     const scopeWhere = getScopeWhere(req.user);
     const courseWhere = {};
-    if (req.user.role === 'COLLEGE_ADMIN') {
+    if (req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+      courseWhere.department = { collegeId: req.user.managedCollegeId };
+    } else if (req.user.role === 'COLLEGE_ADMIN') {
       courseWhere.department = { collegeId: req.user.collegeId };
     } else if (req.user.role === 'DEPARTMENT_ADMIN') {
       courseWhere.departmentId = req.user.departmentId;
@@ -152,7 +146,14 @@ exports.createDoctor = async (req, res) => {
 
   try {
     // Enforce scope
-    if (req.user.role === 'DEPARTMENT_ADMIN') {
+    if (req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+      if (departmentId) {
+        const dept = await prisma.department.findUnique({ where: { id: parseInt(departmentId) } });
+        if (!dept || dept.collegeId !== req.user.managedCollegeId) {
+          return res.status(403).json({ success: false, message: 'Invalid department for your college' });
+        }
+      }
+    } else if (req.user.role === 'DEPARTMENT_ADMIN') {
       departmentId = req.user.departmentId;
     } else if (req.user.role === 'COLLEGE_ADMIN') {
       if (departmentId) {
@@ -230,19 +231,26 @@ exports.updateDoctor = async (req, res) => {
     }
 
     // Enforce scope
-    if (req.user.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user.collegeId) {
+    if (req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+      if (doctor.department?.collegeId !== req.user.managedCollegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    } else if (req.user.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user.collegeId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-    if (req.user.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user.departmentId) {
+    } else if (req.user.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user.departmentId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     // If changing department, check scope for new department
     if (departmentId) {
-      if (req.user.role === 'DEPARTMENT_ADMIN' && parseInt(departmentId) !== req.user.departmentId) {
+      if (req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+        const newDept = await prisma.department.findUnique({ where: { id: parseInt(departmentId) } });
+        if (!newDept || newDept.collegeId !== req.user.managedCollegeId) {
+          return res.status(403).json({ success: false, message: 'Invalid department for your college' });
+        }
+      } else if (req.user.role === 'DEPARTMENT_ADMIN' && parseInt(departmentId) !== req.user.departmentId) {
         return res.status(403).json({ success: false, message: 'Cannot move doctor to another department' });
-      }
-      if (req.user.role === 'COLLEGE_ADMIN') {
+      } else if (req.user.role === 'COLLEGE_ADMIN') {
         const newDept = await prisma.department.findUnique({ where: { id: parseInt(departmentId) } });
         if (!newDept || newDept.collegeId !== req.user.collegeId) {
           return res.status(403).json({ success: false, message: 'Invalid department for your college' });
@@ -289,10 +297,13 @@ exports.deleteDoctor = async (req, res) => {
     }
 
     // Enforce scope
-    if (req.user.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user.collegeId) {
+    if (req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+      if (doctor.department?.collegeId !== req.user.managedCollegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    } else if (req.user.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user.collegeId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-    if (req.user.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user.departmentId) {
+    } else if (req.user.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user.departmentId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 

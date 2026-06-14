@@ -34,6 +34,7 @@ const protect = catchAsync(async (req, res, next) => {
       collegeId: true,
       departmentId: true,
       managedCollegeId: true,
+      managedDepartmentId: true,
       tokenVersion: true,
       profilePicture: true,
       createdAt: true,
@@ -73,12 +74,16 @@ const authorize = (...roles) => {
       });
     }
 
+    // Normalize role comparison to be case-insensitive and robust
+    const userRole = (req.user.role || '').toString().toUpperCase();
+
     // SUPER_ADMIN has god-mode access
-    if (req.user.role === 'SUPER_ADMIN') {
+    if (userRole === 'SUPER_ADMIN') {
       return next();
     }
 
-    if (!roles.includes(req.user.role)) {
+    const allowed = roles.map(r => r.toString().toUpperCase());
+    if (!allowed.includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: `Forbidden: Your role (${req.user.role}) does not have permission for this action.`,
