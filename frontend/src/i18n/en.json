@@ -257,7 +257,26 @@
     "viewDetails": "View Details",
     "noColleges": "No colleges yet",
     "noCollegesDesc": "Create your first college to organize departments and programs.",
-    "addFirstCollege": "Add first college"
+    "addFirstCollege": "Add first college",
+    "assignedAdmin": "Assigned Admin",
+    "noAdminAssigned": "No admin assigned",
+    "selectExistingAdmin": "Select Existing Admin",
+    "createNewAdmin": "Create New Admin",
+    "assignAdmin": "Assign Admin",
+    "assignAdminDesc": "Assign an admin to manage this college (optional)",
+    "noAvailableAdmins": "No available COLLEGE_ADMIN users found",
+    "canCreateAdminLater": "You can assign an admin later",
+    "selectCollegeAdmin": "Select College Admin",
+    "admin": "Admin",
+    "createAdminDesc": "Create a new COLLEGE_ADMIN user who will be assigned to this college",
+    "createAndAssign": "Create & Assign",
+    "adminAssignedSuccess": "Admin assigned successfully",
+    "assignAdminError": "Failed to assign admin",
+    "fillAllFields": "Please fill in all fields",
+    "adminCreatedAssigned": "Admin created and assigned successfully",
+    "createAdminError": "Failed to create admin",
+    "insufficientPermissions": "You do not have permission to create colleges. Only Super Admins can create colleges.",
+    "sessionExpired": "Your session has expired. Please login again."
   },
   "common": {
     "actions": "Actions",
@@ -324,7 +343,9 @@
     "setup": "Setup",
     "comingSoon": "Coming Soon",
     "disabled": "Disabled",
-    "open": "Open"
+    "open": "Open",
+    "select": "Select",
+    "selectOptional": "Select (optional)"
   },
   "courses": {
     "addCourse": "Add Course",

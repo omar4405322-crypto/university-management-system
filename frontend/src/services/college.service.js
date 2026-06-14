@@ -37,6 +37,15 @@ const collegeService = {
     }
   },
 
+  assignAdmin: async (collegeId, adminId) => {
+    try {
+      const response = await api.put(`/colleges/${collegeId}/assign-admin`, { adminId });
+      return { success: true, data: response.data?.data || response.data };
+    } catch (error) {
+      throw error;
+    }
+  },
+
   deleteCollege: async (id) => {
     try {
       const response = await api.delete(`/colleges/${id}`);

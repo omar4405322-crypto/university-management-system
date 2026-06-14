@@ -188,6 +188,25 @@ const CollegesList = () => {
                   </div>
                 </div>
 
+                {/* Assigned Admin Section */}
+                <div className="mt-6 p-4 bg-brand-navy/5 rounded-lg border border-brand-border">
+                  <p className="text-xs font-bold text-brand-text-secondary uppercase tracking-widest mb-2">{t('colleges.assignedAdmin') || 'Assigned Admin'}</p>
+                  {college.assignedAdmin ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">👤</span>
+                      <div className="flex-1">
+                        <p className="font-bold text-sm text-brand-text-main">{college.assignedAdmin.name || college.assignedAdmin.email}</p>
+                        <p className="text-xs text-brand-text-secondary">{college.assignedAdmin.email}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-warning">
+                      <AlertCircle size={16} />
+                      <span className="text-sm font-semibold">{t('colleges.noAdminAssigned') || 'No admin assigned'}</span>
+                    </div>
+                  )}
+                </div>
+
                 <div className="mt-8 flex items-center gap-3">
                   <Button 
                     variant="primary" 

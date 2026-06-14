@@ -256,7 +256,26 @@
     "viewDetails": "عرض التفاصيل",
     "noColleges": "لا توجد كليات بعد",
     "noCollegesDesc": "أنشئ أول كلية لتنظيم الأقسام والبرامج.",
-    "addFirstCollege": "إضافة أول كلية"
+    "addFirstCollege": "إضافة أول كلية",
+    "assignedAdmin": "الأدمن المعين",
+    "noAdminAssigned": "لا يوجد أدمن معين",
+    "selectExistingAdmin": "اختر أدمن موجود",
+    "createNewAdmin": "إنشاء أدمن جديد",
+    "assignAdmin": "تعيين أدمن",
+    "assignAdminDesc": "عين أدمن لإدارة هذه الكلية (اختياري)",
+    "noAvailableAdmins": "لا يوجد أدمن COLLEGE_ADMIN متاح",
+    "canCreateAdminLater": "يمكنك تعيين أدمن لاحقاً",
+    "selectCollegeAdmin": "اختر أدمن الكلية",
+    "admin": "أدمن",
+    "createAdminDesc": "إنشاء مستخدم COLLEGE_ADMIN جديد سيتم تعيينه لهذه الكلية",
+    "createAndAssign": "إنشاء وتعيين",
+    "adminAssignedSuccess": "تم تعيين الأدمن بنجاح",
+    "assignAdminError": "فشل في تعيين الأدمن",
+    "fillAllFields": "يرجى ملء جميع الحقول",
+    "adminCreatedAssigned": "تم إنشاء الأدمن وتعيينه بنجاح",
+    "createAdminError": "فشل في إنشاء الأدمن",
+    "insufficientPermissions": "ليس لديك صلاحية لإنشاء الكليات. فقط المدراء العامون يمكنهم إنشاء الكليات.",
+    "sessionExpired": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى."
   },
   "common": {
     "actions": "الإجراءات",
@@ -323,7 +342,9 @@
     "setup": "إعداد",
     "comingSoon": "قريباً",
     "disabled": "معطل",
-    "open": "مفتوح"
+    "open": "مفتوح",
+    "select": "اختر",
+    "selectOptional": "اختر (اختياري)"
   },
   "courses": {
     "addCourse": "إضافة مقرر",

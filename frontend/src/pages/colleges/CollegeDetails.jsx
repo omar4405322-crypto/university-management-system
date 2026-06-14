@@ -16,7 +16,8 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  UserPlus
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -28,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import AddDepartmentModal from '../departments/AddDepartmentModal';
 import EditCollegeModal from './EditCollegeModal';
+import AssignAdminModal from './AssignAdminModal';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
 
 const CollegeDetails = () => {
@@ -39,6 +41,7 @@ const CollegeDetails = () => {
   const [loading, setLoading] = useState(true);
   const [isAddDeptModalOpen, setIsAddDeptModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAssignAdminModalOpen, setIsAssignAdminModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
   const canManage = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
@@ -199,6 +202,56 @@ const CollegeDetails = () => {
         </Card>
       </div>
 
+      {/* Assigned Admin Section */}
+      {user?.role === 'SUPER_ADMIN' && (
+        <Card className="mt-6 border-l-4 border-brand-primary-500/50">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h3 className="text-lg font-black text-brand-text-main mb-4 flex items-center gap-2">
+                <UserPlus size={20} className="text-brand-primary-500" />
+                {t('colleges.assignedAdmin') || 'Assigned Admin'}
+              </h3>
+              {college.assignedAdmin ? (
+                <div className="bg-brand-navy/5 rounded-lg p-4 border border-brand-border">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-bold text-brand-text-secondary mb-1 uppercase tracking-widest">{t('common.name')}</p>
+                      <p className="font-bold text-brand-text-main">{college.assignedAdmin.name || college.assignedAdmin.email}</p>
+                      <p className="text-sm text-brand-text-sub mt-2">{college.assignedAdmin.email}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      onClick={() => setIsAssignAdminModalOpen(true)}
+                    >
+                      <Edit2 size={16} />
+                      {t('common.change')}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle size={20} className="text-yellow-600 dark:text-yellow-400" />
+                      <span className="font-semibold text-yellow-800 dark:text-yellow-200">{t('colleges.noAdminAssigned') || 'No admin assigned to this college'}</span>
+                    </div>
+                    <Button
+                      variant="primary"
+                      className="flex items-center gap-2"
+                      onClick={() => setIsAssignAdminModalOpen(true)}
+                    >
+                      <UserPlus size={16} />
+                      {t('colleges.assignAdmin') || 'Assign Admin'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-5 xl:gap-6">
         <div className="lg:col-span-1">
         </div>
@@ -267,6 +320,18 @@ const CollegeDetails = () => {
           setIsAddDeptModalOpen(false);
           fetchCollegeDetails();
           showToast(t('departments.createSuccess'), 'success');
+        }}
+      />
+
+      <AssignAdminModal
+        isOpen={isAssignAdminModalOpen}
+        onClose={() => setIsAssignAdminModalOpen(false)}
+        collegeId={college.id}
+        collegeName={college.name}
+        onSuccess={() => {
+          setIsAssignAdminModalOpen(false);
+          fetchCollegeDetails();
+          showToast(t('colleges.adminAssignedSuccess') || 'Admin assigned successfully', 'success');
         }}
       />
     </div>
