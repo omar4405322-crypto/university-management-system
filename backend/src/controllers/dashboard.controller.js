@@ -16,9 +16,9 @@ exports.getAdminStats = catchAsync(async (req, res) => {
   let collegeId = req.user.collegeId || 'ALL';
   let departmentId = req.user.departmentId || 'ALL';
 
-  if (req.user.role === 'COLLEGE_ADMIN') {
+  if (req.user.role === 'COLLEGE_ADMIN' && req.user.collegeId) {
     scopeWhere.department = { collegeId: req.user.collegeId };
-  } else if (req.user.role === 'DEPARTMENT_ADMIN') {
+  } else if (req.user.role === 'DEPARTMENT_ADMIN' && req.user.departmentId) {
     scopeWhere.departmentId = req.user.departmentId;
   }
 
@@ -49,7 +49,11 @@ exports.getAdminStats = catchAsync(async (req, res) => {
     prisma.doctor.count({ where: scopeWhere }),
     prisma.course.count({ where: scopeWhere }),
     prisma.payment.count({ where: { student: scopeWhere } }),
-    prisma.college.count(req.user.role === 'SUPER_ADMIN' ? {} : { where: { id: req.user.collegeId } }),
+    // Safe college count (avoid passing null id)
+    (() => {
+      const where = req.user.role === 'SUPER_ADMIN' ? {} : (req.user.collegeId ? { where: { id: req.user.collegeId } } : {});
+      return prisma.college.count(where);
+    })(),
     prisma.user.count({ where: { role: { in: ['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] } } }),
     prisma.user.count({ where: { role: 'SUPER_ADMIN' } }),
     prisma.studentSuccessMetric.count({
@@ -106,7 +110,7 @@ exports.getAdminStats = catchAsync(async (req, res) => {
       where: scopeWhere,
     }),
     prisma.college.findMany({
-      where: req.user.role === 'SUPER_ADMIN' ? {} : { id: req.user.collegeId },
+      where: req.user.role === 'SUPER_ADMIN' ? {} : (req.user.collegeId ? { id: req.user.collegeId } : {}),
       select: {
         name: true,
         departments: {

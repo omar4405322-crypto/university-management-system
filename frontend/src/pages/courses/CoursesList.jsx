@@ -65,8 +65,8 @@ const CoursesList = () => {
       setError(null);
       const params = {
         search,
-        collegeId: selectedCollege || undefined,
-        departmentId: selectedDept || undefined,
+        collegeId: selectedCollege || scope?.effectiveCollegeId || undefined,
+        departmentId: selectedDept || scope?.effectiveDepartmentId || undefined,
         page,
         limit: 10
       };
@@ -93,6 +93,9 @@ const CoursesList = () => {
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  // Apply scope defaults for admins
+  const scope = require('../../hooks/useScope').default ? require('../../hooks/useScope').default() : null;
 
   useEffect(() => {
     const timer = setTimeout(() => {

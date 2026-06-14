@@ -75,7 +75,9 @@ const DoctorsList = () => {
   const fetchDoctors = async () => {
     try {
       setLoading(true);
-      const result = await doctorsService.getDoctors({ search, page, limit: 10 });
+      const scope = require('../../hooks/useScope').default ? require('../../hooks/useScope').default() : null;
+      const params = { search, page, limit: 10, ...scope?.scopeParams };
+      const result = await doctorsService.getDoctors(params);
       if (result.success) {
         const doctorsArray = Array.isArray(result.data) 
           ? result.data 

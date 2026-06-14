@@ -40,7 +40,7 @@ const Table = ({ headers, children, className = '', headerClassName = '' }) => {
 };
 
 export const TableRow = ({ children, className = '', ...props }) => (
-  <tr className={`group transition-all duration-150 hover:bg-surface-subtle/80 even:bg-surface-subtle/30 dark:even:bg-white/[0.02] ${className}`} {...props}>
+  <tr className={`group transition-all duration-150 hover:bg-gray-100 even:bg-gray-50 dark:even:bg-white/[0.02] ${className}`} {...props}>
     {children}
   </tr>
 );

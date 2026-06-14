@@ -20,6 +20,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import collegeService from '../../services/college.service';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import AddCollegeModal from './AddCollegeModal';
 import EditCollegeModal from './EditCollegeModal';
 import CollegeCardImage from '../../components/CollegeCardImage';
@@ -29,6 +30,7 @@ import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 const CollegesList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [colleges, setColleges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -39,6 +41,16 @@ const CollegesList = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
+    // If user is COLLEGE_ADMIN or DEPARTMENT_ADMIN, redirect to their scoped view
+    if (user?.role === 'COLLEGE_ADMIN' && user?.managedCollegeId) {
+      navigate(`/colleges/${user.managedCollegeId}`);
+      return;
+    }
+    if (user?.role === 'DEPARTMENT_ADMIN' && user?.managedDepartmentId) {
+      navigate(`/departments/${user.managedDepartmentId}`);
+      return;
+    }
+
     fetchColleges();
   }, []);
 
@@ -73,7 +85,8 @@ const CollegesList = () => {
         fetchColleges();
       }
     } catch (error) {
-      showToast(error.response?.data?.message || t('colleges.deleteError'), 'error');
+      const message = error.data?.message || error.message || t('colleges.deleteError');
+      showToast(message, 'error');
     } finally {
       setDeleteLoading(false);
     }
@@ -99,10 +112,10 @@ const CollegesList = () => {
       <PageHeader 
         title={t('colleges.title')}
         subtitle={t('colleges.subtitle')}
-        action={{
+        action={user?.role === 'SUPER_ADMIN' ? {
           label: t('colleges.addCollege'),
           onClick: () => setIsAddModalOpen(true)
-        }}
+        } : null}
       />
 
       {loading ? (
@@ -115,7 +128,7 @@ const CollegesList = () => {
           icon={<Building2 size={40} />}
           title={t('colleges.noColleges')}
           subtitle={t('colleges.noCollegesDesc')}
-          action={{ label: t('colleges.addFirstCollege'), onClick: () => setIsAddModalOpen(true) }}
+          action={user?.role === 'SUPER_ADMIN' ? { label: t('colleges.addFirstCollege'), onClick: () => setIsAddModalOpen(true) } : null}
         />
       ) : (
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -126,20 +139,24 @@ const CollegesList = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-brand-navy-900/90 via-brand-navy-900/20 to-transparent z-10" />
                 
                 <div className="absolute top-6 right-6 z-20 flex gap-2">
-                  <button 
-                    onClick={() => handleEdit(college)}
-                    className="w-10 h-10 rounded-xl bg-white/10 p-2.5 text-white backdrop-blur-xl hover:bg-brand-primary-500 transition-all duration-300 shadow-xl border border-white/10 flex items-center justify-center"
-                    title={t('common.edit')}
-                  >
-                    <Edit2 size={18} />
-                  </button>
-                  <button 
-                    onClick={() => setDeleteTarget({ id: college.id, name: college.name })}
-                    className="w-10 h-10 rounded-xl bg-white/10 p-2.5 text-white backdrop-blur-xl hover:bg-error transition-all duration-300 shadow-xl border border-white/10 flex items-center justify-center"
-                    title={t('common.delete')}
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  {user?.role === 'SUPER_ADMIN' && (
+                    <>
+                      <button 
+                        onClick={() => handleEdit(college)}
+                        className="w-10 h-10 rounded-xl bg-white/10 p-2.5 text-white backdrop-blur-xl hover:bg-brand-primary-500 transition-all duration-300 shadow-xl border border-white/10 flex items-center justify-center"
+                        title={t('common.edit')}
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button 
+                        onClick={() => setDeleteTarget({ id: college.id, name: college.name })}
+                        className="w-10 h-10 rounded-xl bg-white/10 p-2.5 text-white backdrop-blur-xl hover:bg-error transition-all duration-300 shadow-xl border border-white/10 flex items-center justify-center"
+                        title={t('common.delete')}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 <div className="absolute bottom-6 right-6 left-6 z-20">

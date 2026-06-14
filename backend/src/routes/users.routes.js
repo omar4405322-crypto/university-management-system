@@ -51,6 +51,8 @@ router.post('/admins', authorize('SUPER_ADMIN'), [
   body('role').isIn(['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN']),
   body('collegeId').optional().isInt(),
   body('departmentId').optional().isInt(),
+  body('managedCollegeId').optional().isInt(),
+  body('managedDepartmentId').optional().isInt(),
 ], validate, createAdmin);
 
 router.delete('/:id', authorize('SUPER_ADMIN'), adminIdValidation, validate, deleteUser);

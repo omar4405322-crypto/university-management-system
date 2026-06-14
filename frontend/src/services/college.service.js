@@ -24,7 +24,7 @@ const collegeService = {
       const response = await api.post('/colleges', data);
       return { success: true, data: response.data?.data || response.data };
     } catch (error) {
-      return { success: false, message: error.message };
+      throw error;
     }
   },
 
@@ -33,7 +33,7 @@ const collegeService = {
       const response = await api.put(`/colleges/${id}`, data);
       return { success: true, data: response.data?.data || response.data };
     } catch (error) {
-      return { success: false, message: error.message };
+      throw error;
     }
   },
 
@@ -42,7 +42,7 @@ const collegeService = {
       const response = await api.delete(`/colleges/${id}`);
       return { success: true, data: response.data?.data || response.data };
     } catch (error) {
-      return { success: false, message: error.message };
+      throw error;
     }
   },
 };
