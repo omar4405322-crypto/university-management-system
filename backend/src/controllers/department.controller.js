@@ -5,11 +5,22 @@ const { getScopeWhere } = require('../utils/scope.utils');
 exports.getAllDepartments = async (req, res) => {
   try {
     const { collegeId } = req.query;
+    
+    // For COLLEGE_ADMIN, explicitly check if they're trying to access another college
+    if (req.user && req.user.role === 'COLLEGE_ADMIN' && req.user.managedCollegeId && collegeId) {
+      if (parseInt(collegeId) !== req.user.managedCollegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied: Cannot access departments of another college' });
+      }
+    }
+
     // Scope support via helper
     const scopeWhere = getScopeWhere(req.user, 'department');
 
     let where = { ...scopeWhere };
-    if (collegeId) where.collegeId = parseInt(collegeId);
+    // For non-COLLEGE_ADMIN or when no collegeId provided, apply query filter
+    if (!(req.user && req.user.role === 'COLLEGE_ADMIN' && req.user.managedCollegeId)) {
+      if (collegeId) where.collegeId = parseInt(collegeId);
+    }
 
     const departments = await prisma.department.findMany({
       where,

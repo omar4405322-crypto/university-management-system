@@ -41,11 +41,7 @@ const CollegesList = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
-    // If user is COLLEGE_ADMIN or DEPARTMENT_ADMIN, redirect to their scoped view
-    if (user?.role === 'COLLEGE_ADMIN' && user?.managedCollegeId) {
-      navigate(`/colleges/${user.managedCollegeId}`);
-      return;
-    }
+    // If user is DEPARTMENT_ADMIN, redirect to their scoped view
     if (user?.role === 'DEPARTMENT_ADMIN' && user?.managedDepartmentId) {
       navigate(`/departments/${user.managedDepartmentId}`);
       return;
@@ -53,6 +49,11 @@ const CollegesList = () => {
 
     fetchColleges();
   }, []);
+
+  // For COLLEGE_ADMIN, filter colleges to only show their managed college
+  const visibleColleges = user?.role === 'COLLEGE_ADMIN' && user?.managedCollegeId
+    ? (Array.isArray(colleges) ? colleges.filter(c => c.id === user.managedCollegeId) : [])
+    : colleges;
 
   const fetchColleges = async () => {
     try {
@@ -123,7 +124,7 @@ const CollegesList = () => {
           <Loader2 className="animate-spin text-brand-primary-500" size={48} />
           <p className="text-caption">{t('common.loading')}</p>
         </div>
-      ) : !Array.isArray(colleges) || colleges.length === 0 ? (
+      ) : !Array.isArray(visibleColleges) || visibleColleges.length === 0 ? (
         <EmptyState
           icon={<Building2 size={40} />}
           title={t('colleges.noColleges')}
@@ -132,7 +133,7 @@ const CollegesList = () => {
         />
       ) : (
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {(Array.isArray(colleges) ? colleges : []).map((college) => (
+          {(Array.isArray(visibleColleges) ? visibleColleges : []).map((college) => (
             <Card key={college.id} noPadding className="group border-none shadow-soft hover:-translate-y-2 duration-500 rounded-[2.5rem] overflow-hidden">
               <div className="relative h-64 w-full overflow-hidden">
                 <CollegeCardImage name={college.name} image={college.image} collegeId={college.id} />
