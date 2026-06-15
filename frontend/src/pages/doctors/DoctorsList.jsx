@@ -15,6 +15,8 @@ import Button from '../../components/ui/Button';
 import { downloadCsv } from '../../utils/exportCsv';
 import DoctorAvatar from '../../components/DoctorAvatar';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../context/AuthContext';
+import useScope from '../../hooks/useScope';
 import { 
   Users,
   BookOpen,
@@ -34,6 +36,9 @@ import { useNavigate } from 'react-router-dom';
 const DoctorsList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { scopeParams, isCollegeAdmin } = useScope();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -75,8 +80,7 @@ const DoctorsList = () => {
   const fetchDoctors = async () => {
     try {
       setLoading(true);
-      const scope = require('../../hooks/useScope').default ? require('../../hooks/useScope').default() : null;
-      const params = { search, page, limit: 10, ...scope?.scopeParams };
+      const params = { search, page, limit: 10, ...scopeParams };
       const result = await doctorsService.getDoctors(params);
       if (result.success) {
         const doctorsArray = Array.isArray(result.data) 
@@ -108,7 +112,7 @@ const DoctorsList = () => {
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [search, page]);
+  }, [search, page, scopeParams]);
 
   const showToast = (message, type) => {
     setToast({ message, type });
@@ -283,7 +287,7 @@ const DoctorsList = () => {
                         { label: t('common.view'), icon: Eye, variant: 'view', onClick: () => navigate(`/doctors/${doctor.id}`) },
                         { label: t('common.edit'), icon: Edit2, variant: 'edit', onClick: () => handleEdit(doctor) },
                         { label: 'Reset Password', icon: KeyRound, variant: 'edit', onClick: () => setResetPasswordDoctor(doctor) },
-                        {
+                        ...(isSuperAdmin ? [{
                           label: t('common.delete'),
                           icon: Trash2,
                           variant: 'delete',
@@ -291,7 +295,7 @@ const DoctorsList = () => {
                             id: doctor.id,
                             name: `${doctor.firstName} ${doctor.lastName}`,
                           }),
-                        },
+                        }] : []),
                       ]} />
                     </TableCell>
                   </TableRow>
