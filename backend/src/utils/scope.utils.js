@@ -9,6 +9,12 @@ const getScopeWhere = (user, entity) => {
   if (user.role === 'COLLEGE_ADMIN' && user.managedCollegeId) {
     // Most entities are related via department.collegeId; for department entity itself we filter by collegeId
     if (entity === 'department') return { collegeId: user.managedCollegeId };
+    if (entity === 'course') return { department: { collegeId: user.managedCollegeId } };
+    if (entity === 'schedule') return { course: { department: { collegeId: user.managedCollegeId } } };
+    if (entity === 'exam') return { course: { department: { collegeId: user.managedCollegeId } } };
+    if (entity === 'student') return { department: { collegeId: user.managedCollegeId } };
+    if (entity === 'doctor') return { department: { collegeId: user.managedCollegeId } };
+    if (entity === 'timetable') return { department: { collegeId: user.managedCollegeId } };
     return { department: { collegeId: user.managedCollegeId } };
   }
 
@@ -16,12 +22,24 @@ const getScopeWhere = (user, entity) => {
   if (user.role === 'DEPARTMENT_ADMIN' && user.managedDepartmentId) {
     // For department entity, match id; for others, departmentId
     if (entity === 'department') return { id: user.managedDepartmentId };
+    if (entity === 'course') return { departmentId: user.managedDepartmentId };
+    if (entity === 'schedule') return { course: { departmentId: user.managedDepartmentId } };
+    if (entity === 'exam') return { course: { departmentId: user.managedDepartmentId } };
+    if (entity === 'student') return { departmentId: user.managedDepartmentId };
+    if (entity === 'doctor') return { departmentId: user.managedDepartmentId };
+    if (entity === 'timetable') return { departmentId: user.managedDepartmentId };
     return { departmentId: user.managedDepartmentId };
   }
 
   // Backwards-compat: support legacy ADMIN with managedCollegeId (temporary)
   if (user.role === 'ADMIN' && user.managedCollegeId) {
     if (entity === 'department') return { collegeId: user.managedCollegeId };
+    if (entity === 'course') return { department: { collegeId: user.managedCollegeId } };
+    if (entity === 'schedule') return { course: { department: { collegeId: user.managedCollegeId } } };
+    if (entity === 'exam') return { course: { department: { collegeId: user.managedCollegeId } } };
+    if (entity === 'student') return { department: { collegeId: user.managedCollegeId } };
+    if (entity === 'doctor') return { department: { collegeId: user.managedCollegeId } };
+    if (entity === 'timetable') return { department: { collegeId: user.managedCollegeId } };
     return { department: { collegeId: user.managedCollegeId } };
   }
 

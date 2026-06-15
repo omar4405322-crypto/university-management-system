@@ -8,11 +8,10 @@ exports.getAllExams = catchAsync(async (req, res, next) => {
   const { type, upcoming } = req.query;
 
   // Apply centralized scope
-  const courseScope = getScopeWhere(req.user, 'course');
+  const examScope = getScopeWhere(req.user, 'exam');
   let where = {};
-  if (courseScope && Object.keys(courseScope).length) {
-    if (courseScope.department) where.course = courseScope.department;
-    else if (courseScope.departmentId) where.course = { departmentId: courseScope.departmentId };
+  if (examScope && Object.keys(examScope).length) {
+    where = { ...where, ...examScope };
   }
 
   if (type) where.type = type;
@@ -38,10 +37,10 @@ exports.getAllExams = catchAsync(async (req, res, next) => {
 
 exports.getUpcomingExams = catchAsync(async (req, res, next) => {
   // Apply centralized scope
-  const courseScope = getScopeWhere(req.user, 'course');
+  const examScope = getScopeWhere(req.user, 'exam');
   const exams = await prisma.exam.findMany({
     where: {
-      ...(courseScope && Object.keys(courseScope).length ? (courseScope.department ? { course: courseScope.department } : { course: { departmentId: courseScope.departmentId } }) : {}),
+      ...(examScope && Object.keys(examScope).length ? examScope : {}),
       date: { gte: new Date() },
     },
     include: {
