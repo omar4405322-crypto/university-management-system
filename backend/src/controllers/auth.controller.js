@@ -185,7 +185,11 @@ const logout = catchAsync(async (req, res, next) => {
 const getMe = catchAsync(async (req, res, next) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
-    include: { student: true, doctor: true }
+    include: { 
+      student: true, 
+      doctor: true,
+      managedCollege: { select: { id: true, name: true, nameAr: true } }
+    }
   });
 
   if (!user) {

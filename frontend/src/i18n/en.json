@@ -989,7 +989,9 @@
     "startTime": "Start Time",
     "subtitle": "Assign and organize schedules by academic hierarchy",
     "targetCohort": "Target Cohort",
-    "title": "Timetable Management"
+    "title": "Timetable Management",
+    "yourCollege": "Your College",
+    "managingFor": "Managing timetables for {college}"
   },
   "footer": {
     "universityName": "6th of October University of Technology",
