@@ -753,3 +753,63 @@
 {"level":"debug","message":"[AUTH] User search result: Found","service":"university-management-system","timestamp":"2026-06-15 13:35:24"}
 {"level":"info","message":"[AUTH] Generating tokens for user: 9","service":"university-management-system","timestamp":"2026-06-15 13:35:24"}
 {"level":"info","message":"[AUTH] Setting cookies and sending response for: industry.admin@university.com","service":"university-management-system","timestamp":"2026-06-15 13:35:24"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-15 13:55:28"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-15 13:55:28"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-15 13:56:15"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-15 13:56:15"}
+{"level":"info","message":"[AUTH] Login attempt for email: test@test.com","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"info","message":"[AUTH] Login attempt for email: test@test.com","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"info","message":"[AUTH] Login attempt for email: test@test.com","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"info","message":"[AUTH] Login attempt for email: test@test.com","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"info","message":"[AUTH] Login attempt for email: test@test.com","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"debug","message":"[AUTH] User search result: Not Found","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"warn","message":"[AUTH] Invalid login attempt for: test@test.com","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"error","message":"[DEV ERROR] Invalid email or password","path":"/api/auth/login","service":"university-management-system","stack":"Error: Invalid email or password\n    at C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\auth.controller.js:107:17","timestamp":"2026-06-15 13:58:04"}
+{"level":"debug","message":"[AUTH] User search result: Not Found","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"warn","message":"[AUTH] Invalid login attempt for: test@test.com","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"error","message":"[DEV ERROR] Invalid email or password","path":"/api/auth/login","service":"university-management-system","stack":"Error: Invalid email or password\n    at C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\auth.controller.js:107:17","timestamp":"2026-06-15 13:58:04"}
+{"level":"debug","message":"[AUTH] User search result: Not Found","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"warn","message":"[AUTH] Invalid login attempt for: test@test.com","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"error","message":"[DEV ERROR] Invalid email or password","path":"/api/auth/login","service":"university-management-system","stack":"Error: Invalid email or password\n    at C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\auth.controller.js:107:17","timestamp":"2026-06-15 13:58:04"}
+{"level":"debug","message":"[AUTH] User search result: Not Found","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"warn","message":"[AUTH] Invalid login attempt for: test@test.com","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"error","message":"[DEV ERROR] Invalid email or password","path":"/api/auth/login","service":"university-management-system","stack":"Error: Invalid email or password\n    at C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\auth.controller.js:107:17","timestamp":"2026-06-15 13:58:04"}
+{"level":"debug","message":"[AUTH] User search result: Not Found","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"warn","message":"[AUTH] Invalid login attempt for: test@test.com","service":"university-management-system","timestamp":"2026-06-15 13:58:04"}
+{"level":"error","message":"[DEV ERROR] Invalid email or password","path":"/api/auth/login","service":"university-management-system","stack":"Error: Invalid email or password\n    at C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\auth.controller.js:107:17","timestamp":"2026-06-15 13:58:04"}
+{"level":"info","message":"[AUTH] Login attempt for email: industry.admin@university.com","service":"university-management-system","timestamp":"2026-06-15 13:59:32"}
+{"level":"debug","message":"[AUTH] User search result: Found","service":"university-management-system","timestamp":"2026-06-15 13:59:32"}
+{"level":"info","message":"[AUTH] Generating tokens for user: 9","service":"university-management-system","timestamp":"2026-06-15 13:59:32"}
+{"level":"info","message":"[AUTH] Setting cookies and sending response for: industry.admin@university.com","service":"university-management-system","timestamp":"2026-06-15 13:59:32"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-15 14:00:35"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-15 14:00:35"}
+{"level":"info","message":"[AUTH] Login attempt for email: industry.admin@university.com","service":"university-management-system","timestamp":"2026-06-15 14:00:41"}
+{"level":"debug","message":"[AUTH] User search result: Found","service":"university-management-system","timestamp":"2026-06-15 14:00:41"}
+{"level":"info","message":"[AUTH] Generating tokens for user: 9","service":"university-management-system","timestamp":"2026-06-15 14:00:41"}
+{"level":"info","message":"[AUTH] Setting cookies and sending response for: industry.admin@university.com","service":"university-management-system","timestamp":"2026-06-15 14:00:41"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-15 14:04:27"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-15 14:04:27"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-15 14:08:33"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-15 14:08:33"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-15 14:22:19"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-15 14:22:19"}
+{"level":"info","message":"[AUTH] Login attempt for email: omar@university.com","service":"university-management-system","timestamp":"2026-06-15 14:26:13"}
+{"level":"error","message":"[DEV ERROR] Your application is under review.","path":"/api/auth/login","service":"university-management-system","stack":"Error: Your application is under review.\n    at C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\auth.controller.js:91:17","timestamp":"2026-06-15 14:26:13"}
+{"level":"info","message":"[AUTH] Login attempt for email: omar@university.com","service":"university-management-system","timestamp":"2026-06-15 14:26:13"}
+{"level":"error","message":"[DEV ERROR] Your application is under review.","path":"/api/auth/login","service":"university-management-system","stack":"Error: Your application is under review.\n    at C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\auth.controller.js:91:17","timestamp":"2026-06-15 14:26:13"}
+{"level":"info","message":"[AUTH] Login attempt for email: industry.admin@university.com","service":"university-management-system","timestamp":"2026-06-15 14:27:55"}
+{"level":"debug","message":"[AUTH] User search result: Found","service":"university-management-system","timestamp":"2026-06-15 14:27:55"}
+{"level":"info","message":"[AUTH] Generating tokens for user: 9","service":"university-management-system","timestamp":"2026-06-15 14:27:55"}
+{"level":"info","message":"[AUTH] Setting cookies and sending response for: industry.admin@university.com","service":"university-management-system","timestamp":"2026-06-15 14:27:55"}
+{"level":"info","message":"[AUTH] Login attempt for email: omar@university.com","service":"university-management-system","timestamp":"2026-06-15 14:28:48"}
+{"level":"debug","message":"[AUTH] User search result: Found","service":"university-management-system","timestamp":"2026-06-15 14:28:48"}
+{"level":"info","message":"[AUTH] Generating tokens for user: 12","service":"university-management-system","timestamp":"2026-06-15 14:28:48"}
+{"level":"info","message":"[AUTH] Setting cookies and sending response for: omar@university.com","service":"university-management-system","timestamp":"2026-06-15 14:28:48"}
+{"level":"info","message":"[AUTH] Login attempt for email: industry.admin@university.com","service":"university-management-system","timestamp":"2026-06-15 14:30:22"}
+{"level":"debug","message":"[AUTH] User search result: Found","service":"university-management-system","timestamp":"2026-06-15 14:30:22"}
+{"level":"info","message":"[AUTH] Generating tokens for user: 9","service":"university-management-system","timestamp":"2026-06-15 14:30:22"}
+{"level":"info","message":"[AUTH] Setting cookies and sending response for: industry.admin@university.com","service":"university-management-system","timestamp":"2026-06-15 14:30:22"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-15 14:37:24"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-15 14:37:24"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-15 14:40:04"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-15 14:40:04"}

@@ -1,4 +1,5 @@
 import { useAuth } from '../context/AuthContext';
+import { useMemo } from 'react';
 
 export default function useScope() {
   const { user } = useAuth();
@@ -8,9 +9,12 @@ export default function useScope() {
   const effectiveCollegeId = isCollegeAdmin ? (user?.managedCollegeId || user?.collegeId) : undefined;
   const effectiveDepartmentId = isDeptAdmin ? (user?.managedDepartmentId || user?.departmentId) : undefined;
 
-  const scopeParams = {};
-  if (effectiveCollegeId) scopeParams.collegeId = effectiveCollegeId;
-  if (effectiveDepartmentId) scopeParams.departmentId = effectiveDepartmentId;
+  const scopeParams = useMemo(() => {
+    const params = {};
+    if (effectiveCollegeId) params.collegeId = effectiveCollegeId;
+    if (effectiveDepartmentId) params.departmentId = effectiveDepartmentId;
+    return params;
+  }, [effectiveCollegeId, effectiveDepartmentId]);
 
   return {
 	user,
