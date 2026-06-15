@@ -97,7 +97,11 @@ const login = catchAsync(async (req, res, next) => {
 
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { student: true, doctor: true },
+    include: { 
+      student: true, 
+      doctor: true,
+      managedCollege: { select: { id: true, name: true, nameAr: true } }
+    },
   });
 
   logger.debug(`[AUTH] User search result: ${user ? 'Found' : 'Not Found'}`);
@@ -142,6 +146,9 @@ const login = catchAsync(async (req, res, next) => {
         role: user.role,
         twoFactorEnabled: user.twoFactorEnabled,
         profile: user.student || user.doctor || null,
+        managedCollege: user.managedCollege || null,
+        managedCollegeId: user.managedCollegeId || null,
+        managedCollegeName: user.managedCollege?.name || user.managedCollege?.nameAr || null,
       },
     },
   });
