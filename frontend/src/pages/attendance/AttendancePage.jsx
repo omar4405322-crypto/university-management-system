@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import useScope from '../../hooks/useScope';
 import attendanceService from '../../services/attendance.service';
 import coursesService from '../../services/courses.service';
 import Card from '../../components/ui/Card';
@@ -27,6 +28,7 @@ import { SkeletonTable } from '../../components/ui/Skeleton';
 const AttendancePage = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { scopeParams } = useScope();
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [rosterLoading, setRosterLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -50,9 +52,7 @@ const AttendancePage = () => {
     try {
       setCoursesLoading(true);
       setError(null);
-      const useScope = require('../../hooks/useScope').default;
-      const scope = useScope ? useScope() : null;
-      const params = { limit: 100, ...scope?.scopeParams };
+      const params = { limit: 100, ...scopeParams };
       const result = await coursesService.getCourses(params);
       if (result.success) {
         const list = result.data.courses || result.data || [];
@@ -64,7 +64,7 @@ const AttendancePage = () => {
     } finally {
       setCoursesLoading(false);
     }
-  }, [t]);
+  }, [t, scopeParams]);
 
   const fetchRoster = useCallback(async () => {
     if (!selectedCourse) {

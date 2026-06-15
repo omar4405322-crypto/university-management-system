@@ -20,6 +20,7 @@ import departmentService from '../../services/department.service';
 import coursesService from '../../services/courses.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import useScope from '../../hooks/useScope';
 import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
 import ScheduleModal from './ScheduleModal';
@@ -27,6 +28,7 @@ import ScheduleModal from './ScheduleModal';
 const SchedulesList = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { scopeParams, isCollegeAdmin } = useScope();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [schedules, setSchedules] = useState([]);
@@ -46,6 +48,7 @@ const SchedulesList = () => {
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [toast, setToast] = useState(null);
 
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const canManage = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
 
   useEffect(() => {
@@ -74,7 +77,7 @@ const SchedulesList = () => {
 
   useEffect(() => {
     fetchSchedules();
-  }, [selectedCollege, selectedDept, selectedYear, selectedSemester]);
+  }, [selectedCollege, selectedDept, selectedYear, selectedSemester, scopeParams]);
 
   const fetchInitialData = async () => {
     try {
@@ -104,17 +107,15 @@ const SchedulesList = () => {
   const fetchSchedules = async () => {
     try {
       setLoading(true);
-      const params = {};
-      if (selectedCollege) params.collegeId = selectedCollege;
-      if (selectedDept) params.departmentId = selectedDept;
+      const params = { ...scopeParams };
+      if (!isCollegeAdmin) {
+        if (selectedCollege) params.collegeId = selectedCollege;
+        if (selectedDept) params.departmentId = selectedDept;
+      }
       if (selectedYear) params.year = selectedYear;
       if (selectedSemester) params.semester = selectedSemester;
       
-      // Merge admin scope
-      const useScope = require('../../hooks/useScope').default;
-      const scope = useScope ? useScope() : null;
-      const mergedParams = { ...params, ...scope?.scopeParams };
-      const result = await schedulesService.getSchedules(mergedParams);
+      const result = await schedulesService.getSchedules(params);
       if (result.success) {
         setSchedules(result.data);
       }
@@ -203,27 +204,31 @@ const SchedulesList = () => {
           onSearchChange={setSearch}
           searchPlaceholder="Search by course or room..."
         >
-          <select
-            className="h-9 px-3 rounded-xl border border-brand-border bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
-            value={selectedCollege}
-            onChange={(e) => handleCollegeChange(e.target.value)}
-          >
-            <option value="">All Colleges</option>
-            {colleges.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          <select
-            className="h-9 px-3 rounded-xl border border-brand-border bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
-            value={selectedDept}
-            onChange={(e) => setSelectedDept(e.target.value)}
-            disabled={!selectedCollege}
-          >
-            <option value="">All Departments</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
+          {!isCollegeAdmin && (
+            <>
+              <select
+                className="h-9 px-3 rounded-xl border border-brand-border bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
+                value={selectedCollege}
+                onChange={(e) => handleCollegeChange(e.target.value)}
+              >
+                <option value="">All Colleges</option>
+                {colleges.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <select
+                className="h-9 px-3 rounded-xl border border-brand-border bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
+                value={selectedDept}
+                onChange={(e) => setSelectedDept(e.target.value)}
+                disabled={!selectedCollege}
+              >
+                <option value="">All Departments</option>
+                {departments.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </>
+          )}
           <select
             className="h-9 px-3 rounded-xl border border-brand-border bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
             value={selectedYear}
@@ -311,7 +316,7 @@ const SchedulesList = () => {
                   <TableCell>
                     <ActionMenu actions={[
                       { label: 'Edit', icon: Edit2, variant: 'edit', onClick: () => { setEditingSchedule(schedule); setIsModalOpen(true); } },
-                      ...(canManage ? [{ label: 'Delete', icon: Trash2, variant: 'delete', onClick: () => handleDelete(schedule.id) }] : []),
+                      ...(isSuperAdmin ? [{ label: 'Delete', icon: Trash2, variant: 'delete', onClick: () => handleDelete(schedule.id) }] : []),
                     ]} />
                   </TableCell>
                 </TableRow>

@@ -21,12 +21,14 @@ import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import useScope from '../../hooks/useScope';
 import { PageHeader } from '../../components/ui/PageHeader';
 import TimetableModal from './TimetableModal';
 
 const TimetableManagement = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { scopeParams, isCollegeAdmin } = useScope();
   
   // State
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,7 @@ const TimetableManagement = () => {
   const [editingTimetable, setEditingTimetable] = useState(null);
   const [toast, setToast] = useState(null);
 
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const canManage = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
 
   const fetchInitialData = async () => {
@@ -79,12 +82,13 @@ const TimetableManagement = () => {
     try {
       setLoading(true);
       setError(null);
-      const params = {
-        collegeId: selectedCollege || undefined,
-        departmentId: selectedDept || undefined,
-        academicYear: selectedYear || undefined,
-        semester: selectedSemester || undefined
-      };
+      const params = { ...scopeParams };
+      if (!isCollegeAdmin) {
+        if (selectedCollege) params.collegeId = selectedCollege;
+        if (selectedDept) params.departmentId = selectedDept;
+      }
+      if (selectedYear) params.academicYear = selectedYear;
+      if (selectedSemester) params.semester = selectedSemester;
       const result = await timetableService.getTimetables(params);
       if (result.success) {
         setTimetables(Array.isArray(result.data) ? result.data : []);
@@ -95,7 +99,7 @@ const TimetableManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedCollege, selectedDept, selectedYear, selectedSemester]);
+  }, [selectedCollege, selectedDept, selectedYear, selectedSemester, scopeParams, isCollegeAdmin]);
 
   useEffect(() => {
     fetchInitialData();
@@ -239,7 +243,7 @@ const TimetableManagement = () => {
                     <TableCell>
                       <ActionMenu actions={[
                         { label: t('common.edit'), icon: Edit2, variant: 'edit', onClick: () => { setEditingTimetable(ti); setIsModalOpen(true); } },
-                        { label: t('common.delete'), icon: Trash2, variant: 'delete', onClick: () => handleDelete(ti.id) },
+                        ...(isSuperAdmin ? [{ label: t('common.delete'), icon: Trash2, variant: 'delete', onClick: () => handleDelete(ti.id) }] : []),
                       ]} />
                     </TableCell>
                   </TableRow>

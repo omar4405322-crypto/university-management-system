@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import studentService from '../../services/students.service';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../context/AuthContext';
+import useScope from '../../hooks/useScope';
 import AddStudentModal from './AddStudentModal';
 import EditStudentModal from './EditStudentModal';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
@@ -32,6 +34,9 @@ import { EmptyState } from '../../components/ui/EmptyState';
 const StudentsList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { scopeParams, isCollegeAdmin } = useScope();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -48,10 +53,8 @@ const StudentsList = () => {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    // Apply scope params when fetching
-    const scope = require('../../hooks/useScope').default ? require('../../hooks/useScope').default() : null;
-    fetchStudents(scope?.scopeParams);
-  }, [page, search]);
+    fetchStudents(scopeParams);
+  }, [page, search, scopeParams]);
 
   const fetchStudents = async (extraParams = {}) => {
     try {
@@ -270,7 +273,7 @@ const StudentsList = () => {
                           variant: student.isActive ? 'delete' : 'edit',
                           onClick: () => handleToggleStatus(student),
                         },
-                        {
+                        ...(isSuperAdmin ? [{
                           label: t('common.delete'),
                           icon: Trash2,
                           variant: 'delete',
@@ -278,7 +281,7 @@ const StudentsList = () => {
                             id: student.id,
                             name: `${student.firstName} ${student.lastName}`,
                           }),
-                        },
+                        }] : []),
                       ]} />
                     </TableCell>
                   </TableRow>

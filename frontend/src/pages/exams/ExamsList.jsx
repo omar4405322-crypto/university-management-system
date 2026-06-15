@@ -4,6 +4,7 @@ import examsService from '../../services/exams.service';
 import coursesService from '../../services/courses.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import useScope from '../../hooks/useScope';
 import { Plus, Search, Calendar, Clock, MapPin, Filter, Trash2, Eye, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -154,7 +155,9 @@ const AddExamModal = ({ isOpen, onClose, onSuccess }) => {
 const ExamsList = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { scopeParams } = useScope();
   const navigate = useNavigate();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -166,14 +169,11 @@ const ExamsList = () => {
   const fetchExams = async () => {
     try {
       setLoading(true);
-      const params = {};
+      const params = { ...scopeParams };
       if (filter !== 'ALL') params.type = filter;
       if (upcomingOnly) params.upcoming = 'true';
       
-      const useScope = require('../../hooks/useScope').default;
-      const scope = useScope ? useScope() : null;
-      const merged = { ...params, ...scope?.scopeParams };
-      const result = await examsService.getExams(merged);
+      const result = await examsService.getExams(params);
       if (result.success) setExams(result.data);
     } catch (err) {
       console.error(err);
@@ -184,7 +184,7 @@ const ExamsList = () => {
 
   useEffect(() => {
     fetchExams();
-  }, [filter, upcomingOnly]);
+  }, [filter, upcomingOnly, scopeParams]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this exam?')) {
@@ -333,7 +333,7 @@ const ExamsList = () => {
                     <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase tracking-widest" onClick={() => navigate(`/exams/${exam.id}`)}>
                       View Details
                     </Button>
-                    {isAdmin && (
+                    {isSuperAdmin && (
                       <div className="flex gap-1">
                         <button 
                           onClick={() => handleDelete(exam.id)}
