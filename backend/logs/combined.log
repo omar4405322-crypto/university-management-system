@@ -825,3 +825,7 @@
 {"level":"debug","message":"[AUTH] User search result: Found","service":"university-management-system","timestamp":"2026-06-15 15:57:48"}
 {"level":"info","message":"[AUTH] Generating tokens for user: 9","service":"university-management-system","timestamp":"2026-06-15 15:57:48"}
 {"level":"info","message":"[AUTH] Setting cookies and sending response for: industry.admin@university.com","service":"university-management-system","timestamp":"2026-06-15 15:57:48"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-15 16:17:41"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-15 16:17:41"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-15 16:23:53"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-15 16:23:53"}

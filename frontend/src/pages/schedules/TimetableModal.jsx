@@ -55,30 +55,35 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
     room: ''
   });
 
+  // Set collegeId when modal opens for COLLEGE_ADMIN
   useEffect(() => {
-    if (isOpen) {
-      if (isCollegeAdmin && managedCollegeId) {
-        // Auto-set college for COLLEGE_ADMIN
-        setFormData(prev => ({ ...prev, collegeId: managedCollegeId.toString() }));
-        fetchDepartments(managedCollegeId);
-      } else {
-        fetchColleges();
-      }
-      if (timetable) {
-        setFormData({
-          ...timetable,
-          collegeId: (timetable.collegeId || '').toString(),
-          departmentId: (timetable.departmentId || '').toString(),
-          academicYear: (timetable.academicYear || '1').toString(),
-          semester: (timetable.semester || '1').toString(),
-          scheduleData: timetable.scheduleData?.slots ? timetable.scheduleData : { slots: [] }
-        });
-        if (timetable.collegeId) fetchDepartments(timetable.collegeId);
-      } else {
-        resetForm();
-      }
+    if (isOpen && isCollegeAdmin && managedCollegeId) {
+      setFormData(prev => ({ ...prev, collegeId: managedCollegeId.toString() }));
     }
-  }, [isOpen, timetable, isCollegeAdmin, managedCollegeId]);
+  }, [isOpen, isCollegeAdmin, managedCollegeId]);
+
+  // Fetch departments when collegeId changes
+  useEffect(() => {
+    if (formData.collegeId) {
+      fetchDepartments(formData.collegeId);
+    }
+  }, [formData.collegeId]);
+
+  // Handle timetable editing
+  useEffect(() => {
+    if (isOpen && timetable) {
+      setFormData({
+        ...timetable,
+        collegeId: (timetable.collegeId || '').toString(),
+        departmentId: (timetable.departmentId || '').toString(),
+        academicYear: (timetable.academicYear || '1').toString(),
+        semester: (timetable.semester || '1').toString(),
+        scheduleData: timetable.scheduleData?.slots ? timetable.scheduleData : { slots: [] }
+      });
+    } else if (isOpen && !timetable && !isCollegeAdmin) {
+      resetForm();
+    }
+  }, [isOpen, timetable]);
 
   const resetForm = () => {
     setFormData({
