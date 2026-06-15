@@ -162,8 +162,8 @@ const TimetableManagement = () => {
 
       {/* FIXED: Move action button next to title */}
       <PageHeader 
-        title={t('timetables.title')}
-        subtitle={t('timetables.subtitle')}
+        title={isCollegeAdmin && user?.managedCollegeName ? `${t('timetables.title')} — ${user.managedCollegeName}` : t('timetables.title')}
+        subtitle={isCollegeAdmin ? t('timetables.managingFor', { college: user.managedCollegeName }) : t('timetables.subtitle')}
         action={canManage ? {
           label: t('timetables.create'),
           onClick: () => {

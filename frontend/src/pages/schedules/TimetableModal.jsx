@@ -9,7 +9,8 @@ import {
   Clock, 
   User, 
   MapPin, 
-  BookOpen 
+  BookOpen,
+  Building2
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
@@ -19,9 +20,14 @@ import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import timetableService from '../../services/timetable.service';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../context/AuthContext';
 
 const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isCollegeAdmin = user?.role === 'COLLEGE_ADMIN';
+  const managedCollegeId = user?.managedCollegeId;
+  const managedCollegeName = user?.managedCollege?.name;
   const [loading, setLoading] = useState(false);
   const [colleges, setColleges] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -51,7 +57,13 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
 
   useEffect(() => {
     if (isOpen) {
-      fetchColleges();
+      if (isCollegeAdmin && managedCollegeId) {
+        // Auto-set college for COLLEGE_ADMIN
+        setFormData(prev => ({ ...prev, collegeId: managedCollegeId.toString() }));
+        fetchDepartments(managedCollegeId);
+      } else {
+        fetchColleges();
+      }
       if (timetable) {
         setFormData({
           ...timetable,
@@ -66,7 +78,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
         resetForm();
       }
     }
-  }, [isOpen, timetable]);
+  }, [isOpen, timetable, isCollegeAdmin, managedCollegeId]);
 
   const resetForm = () => {
     setFormData({
@@ -203,16 +215,24 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">{t('timetables.selectFaculty')} *</label>
-                <select
-                  required
-                  className="w-full h-11 px-4 bg-brand-bg-page/50 border border-brand-border rounded-xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20"
-                  value={formData.collegeId}
-                  onChange={(e) => handleCollegeChange(e.target.value)}
-                >
-                  <option value="">{t('timetables.selectFaculty')}</option>
-                  {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
+                {isCollegeAdmin ? (
+                  <div className="w-full h-11 px-4 bg-brand-navy/5 border border-brand-border rounded-xl flex items-center gap-3">
+                    <Building2 size={20} className="text-brand-primary-500" />
+                    <span className="font-black text-brand-text-main text-sm">
+                      {managedCollegeName || t('timetables.yourCollege')}
+                    </span>
+                  </div>
+                ) : (
+                  <select
+                    required
+                    className="w-full h-11 px-4 bg-brand-bg-page/50 border border-brand-border rounded-xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                    value={formData.collegeId}
+                    onChange={(e) => handleCollegeChange(e.target.value)}
+                  >
+                    <option value="">{t('timetables.selectFaculty')}</option>
+                    {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                )}
 
               <div className="space-y-1.5">
                 <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">{t('timetables.selectDept')} *</label>
@@ -394,6 +414,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
             )}
           </div>
         </div>
+      </div>
 
         <div className="pt-6 border-t border-brand-border flex justify-end gap-3">
           <Button type="button" variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
