@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
+import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';

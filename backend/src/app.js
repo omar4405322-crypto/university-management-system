@@ -97,7 +97,7 @@ app.use(cors({
 // Global limiter
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Limit each IP to 500 requests per window
+  max: process.env.NODE_ENV === 'development' ? 2000 : 500, // 2000 requests in dev, 500 in production
   message: { success: false, message: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -107,7 +107,7 @@ app.use('/api', globalLimiter);
 // Strict limiter for Auth
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // 50 auth requests per window (login/register)
+  max: process.env.NODE_ENV === 'development' ? 100 : 50, // 100 auth requests in dev, 50 in production
   message: { success: false, message: 'Too many authentication attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
