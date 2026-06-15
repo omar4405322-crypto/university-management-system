@@ -57,15 +57,11 @@ exports.getAllSchedules = async (req, res) => {
          where.course = { ...where.course, semester: parseInt(semester) };
        }
 
-       // Apply role scoping via helper (for COLLEGE_ADMIN / DEPARTMENT_ADMIN)
-       const courseScope = getScopeWhere(user, 'course');
-       if (courseScope && Object.keys(courseScope).length) {
-         if (courseScope.department) {
-           where.course = { ... (where.course || {}), ...courseScope.department };
-         } else if (courseScope.departmentId) {
-           where.course = { ... (where.course || {}), departmentId: courseScope.departmentId };
-         }
-       }
+        // Apply role scoping via helper (for COLLEGE_ADMIN / DEPARTMENT_ADMIN)
+        const scheduleScope = getScopeWhere(user, 'schedule');
+        if (scheduleScope && Object.keys(scheduleScope).length) {
+          where = { ...where, ...scheduleScope };
+        }
      }
 
     const schedules = await prisma.schedule.findMany({
@@ -151,6 +147,12 @@ exports.getWeeklyTimetable = async (req, res) => {
       }
       if (semester) {
         where.course = { ...where.course, semester: parseInt(semester) };
+      }
+
+      // Apply role scoping via helper
+      const scheduleScope = getScopeWhere(user, 'schedule');
+      if (scheduleScope && Object.keys(scheduleScope).length) {
+        where = { ...where, ...scheduleScope };
       }
     }
 
