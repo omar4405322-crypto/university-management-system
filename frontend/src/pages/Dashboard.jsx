@@ -56,13 +56,22 @@ import dashboardService from '../services/dashboard.service';
 import timetableService from '../services/timetable.service';
 import { CAMPUS_HERO_1 } from '../constants/universityAssets';
 
-const Dashboard = () => {
+  const Dashboard = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const { user } = useAuth();
 
   const CHART_GREEN = '#8BB83C';
+
+  // Get college name for COLLEGE_ADMIN
+  const getCollegeName = () => {
+    if (user?.role === 'COLLEGE_ADMIN' && user?.managedCollegeId && stats?.collegeDistribution) {
+      const college = stats.collegeDistribution.find(c => c.name);
+      if (college) return college.name;
+    }
+    return null;
+  };
   const CHART_COLORS = isDark
     ? ['#8BB83C', '#a3d150', '#b4d16e', '#5e7d25', '#6f9330', '#94a3b8']
     : ['#8BB83C', '#22c55e', '#16a34a', '#15803d', '#6f9330', '#132231'];
@@ -327,25 +336,31 @@ const Dashboard = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/25 rtl:bg-gradient-to-l" />
         <div className="relative z-10 flex flex-col gap-6 p-6 md:flex-row md:items-end md:justify-between md:p-8">
-          <div className="space-y-2 max-w-2xl">
-            <h1 className="text-3xl font-black tracking-tight text-white md:text-4xl">
-              {t('dashboard.welcomeBack')},{' '}
-              {user?.student?.firstName || user?.doctor?.firstName || user?.email.split('@')[0]}
-            </h1>
-            <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-white/85">
-              <Shield size={16} className="text-brand-primary-400 shrink-0" />
-              <span>{user?.role.replace('_', ' ')}</span>
-              <span className="text-white/40">|</span>
-              <span>
-                {new Date().toLocaleDateString(undefined, {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </span>
+            <div className="space-y-2 max-w-2xl">
+              <h1 className="text-3xl font-black tracking-tight text-white md:text-4xl">
+                {t('dashboard.welcomeBack')},{' '}
+                {user?.student?.firstName || user?.doctor?.firstName || user?.email.split('@')[0]}
+              </h1>
+              {user?.role === 'COLLEGE_ADMIN' && getCollegeName() && (
+                <div className="flex items-center gap-2 mt-2">
+                  <Building2 size={16} className="text-brand-primary-400" />
+                  <span className="text-sm font-bold text-white/90 bg-white/10 px-3 py-1 rounded-full">{getCollegeName()}</span>
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-white/85">
+                <Shield size={16} className="text-brand-primary-400 shrink-0" />
+                <span>{user?.role.replace('_', ' ')}</span>
+                <span className="text-white/40">|</span>
+                <span>
+                  {new Date().toLocaleDateString(undefined, {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </span>
+              </div>
             </div>
-          </div>
           <div className="flex shrink-0 items-center gap-3">
             <Button
               variant="outline"

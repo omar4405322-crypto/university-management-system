@@ -2,6 +2,7 @@
 const prisma = require('../utils/prismaClient');
 const { getCache, setCache } = require('../utils/redis.utils');
 const catchAsync = require('../utils/catchAsync');
+const { getScopeWhere } = require('../utils/scope.utils');
 
 const getTodayDayOfWeek = () => {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -11,15 +12,22 @@ const getTodayDayOfWeek = () => {
 exports.getAdminStats = catchAsync(async (req, res) => {
   const today = getTodayDayOfWeek();
 
-  // Enforce scope
-  const scopeWhere = {};
-  let collegeId = req.user.collegeId || 'ALL';
-  let departmentId = req.user.departmentId || 'ALL';
+  // Use centralized scope utility for each entity type
+  const studentScope = getScopeWhere(req.user, 'student');
+  const doctorScope = getScopeWhere(req.user, 'doctor');
+  const courseScope = getScopeWhere(req.user, 'course');
+  const departmentScope = getScopeWhere(req.user, 'department');
+  const paymentScope = { student: studentScope };
+  const examScope = getScopeWhere(req.user, 'exam');
+  const scheduleScope = getScopeWhere(req.user, 'schedule');
 
-  if (req.user.role === 'COLLEGE_ADMIN' && req.user.collegeId) {
-    scopeWhere.department = { collegeId: req.user.collegeId };
-  } else if (req.user.role === 'DEPARTMENT_ADMIN' && req.user.departmentId) {
-    scopeWhere.departmentId = req.user.departmentId;
+  let collegeId = 'ALL';
+  let departmentId = 'ALL';
+
+  if (req.user.role === 'COLLEGE_ADMIN' && req.user.managedCollegeId) {
+    collegeId = req.user.managedCollegeId;
+  } else if (req.user.role === 'DEPARTMENT_ADMIN' && req.user.managedDepartmentId) {
+    departmentId = req.user.managedDepartmentId;
   }
 
   const cacheKey = `dashboard:${req.user.role}:${collegeId}:${departmentId}`;
@@ -28,12 +36,16 @@ exports.getAdminStats = catchAsync(async (req, res) => {
     return res.json({ success: true, data: cachedData, fromCache: true });
   }
 
+  // Safe college count (avoid passing null id)
+  const collegeWhere = req.user.role === 'SUPER_ADMIN' ? {} : (req.user.managedCollegeId ? { id: req.user.managedCollegeId } : {});
+  const totalColleges = await prisma.college.count({ where: collegeWhere });
+
   const [
     totalStudents,
     totalDoctors,
     totalCourses,
+    totalDepartments,
     totalPayments,
-    totalColleges,
     totalAdmins,
     totalSuperAdmins,
     totalAtRiskStudents,
@@ -45,36 +57,32 @@ exports.getAdminStats = catchAsync(async (req, res) => {
     enrollmentByYear,
     collegesWithStudents
   ] = await Promise.all([
-    prisma.student.count({ where: scopeWhere }),
-    prisma.doctor.count({ where: scopeWhere }),
-    prisma.course.count({ where: scopeWhere }),
-    prisma.payment.count({ where: { student: scopeWhere } }),
-    // Safe college count (avoid passing null id)
-    (() => {
-      const where = req.user.role === 'SUPER_ADMIN' ? {} : (req.user.collegeId ? { where: { id: req.user.collegeId } } : {});
-      return prisma.college.count(where);
-    })(),
+    prisma.student.count({ where: studentScope }),
+    prisma.doctor.count({ where: doctorScope }),
+    prisma.course.count({ where: courseScope }),
+    prisma.department.count({ where: departmentScope }),
+    prisma.payment.count({ where: paymentScope }),
     prisma.user.count({ where: { role: { in: ['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] } } }),
     prisma.user.count({ where: { role: 'SUPER_ADMIN' } }),
     prisma.studentSuccessMetric.count({
       where: {
         predictedRisk: { in: ['HIGH', 'CRITICAL'] },
-        student: scopeWhere
+        student: studentScope
       }
     }),
     prisma.payment.groupBy({
-      where: { student: scopeWhere },
+      where: paymentScope,
       by: ['status'],
       _sum: { amount: true },
     }),
     prisma.student.findMany({
-      where: scopeWhere,
+      where: studentScope,
       take: 5,
       orderBy: { enrolledAt: 'desc' },
       select: { firstName: true, lastName: true, studentId: true, enrolledAt: true }
     }),
     prisma.payment.findMany({
-      where: { student: scopeWhere },
+      where: paymentScope,
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -83,7 +91,7 @@ exports.getAdminStats = catchAsync(async (req, res) => {
     }),
     prisma.exam.findMany({
       where: { 
-        course: scopeWhere,
+        course: examScope.course,
         date: { gte: new Date() } 
       },
       take: 3,
@@ -93,7 +101,7 @@ exports.getAdminStats = catchAsync(async (req, res) => {
     prisma.schedule.findMany({
       where: { 
         dayOfWeek: today,
-        course: scopeWhere
+        course: scheduleScope.course
       },
       include: {
         course: {
@@ -107,10 +115,10 @@ exports.getAdminStats = catchAsync(async (req, res) => {
     prisma.student.groupBy({
       by: ['enrolledAt'],
       _count: { _all: true },
-      where: scopeWhere,
+      where: studentScope,
     }),
     prisma.college.findMany({
-      where: req.user.role === 'SUPER_ADMIN' ? {} : (req.user.collegeId ? { id: req.user.collegeId } : {}),
+      where: req.user.role === 'SUPER_ADMIN' ? {} : (req.user.managedCollegeId ? { id: req.user.managedCollegeId } : {}),
       select: {
         name: true,
         departments: {
@@ -156,7 +164,7 @@ exports.getAdminStats = catchAsync(async (req, res) => {
   };
 
   const responseData = {
-    counts: { totalStudents, totalDoctors, totalCourses, totalPayments, totalColleges, totalAdmins, totalSuperAdmins, totalAtRiskStudents },
+    counts: { totalStudents, totalDoctors, totalCourses, totalDepartments, totalPayments, totalColleges, totalAdmins, totalSuperAdmins, totalAtRiskStudents },
     finance,
     recentStudents,
     enrollmentData,
