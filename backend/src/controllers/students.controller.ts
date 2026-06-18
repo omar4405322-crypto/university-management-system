@@ -45,8 +45,8 @@ export const getAllStudents = catchAsync(async (req: Request, res: Response, nex
   // 2. Advanced Filtering
   const where: any = {
     ...scopeWhere,
-    ...(year && { year: parseInt(year as string) }),
-    ...(departmentId && { departmentId: parseInt(departmentId as string) }),
+    ...(year !== undefined && year !== '' && { year: parseInt(year as string) }),
+    ...(departmentId !== undefined && departmentId !== '' && { departmentId: parseInt(departmentId as string) }),
     ...(gender && { gender }),
     ...(search && {
       OR: [
@@ -172,8 +172,12 @@ export const getStudentById = catchAsync(async (req: Request, res: Response, nex
       department: {
         include: { college: true }
       },
-      courses: {
-        select: { id: true, name: true, courseCode: true }
+      enrollments: {
+        select: {
+          course: {
+            select: { id: true, name: true, courseCode: true }
+          }
+        }
       },
       payments: {
         orderBy: { createdAt: 'desc' },
@@ -265,8 +269,8 @@ export const updateStudent = catchAsync(async (req: Request, res: Response, next
       where: { id: parseInt(id as string) },
       data: {
         ...updateData,
-        departmentId: updateData.departmentId ? parseInt(updateData.departmentId) : undefined,
-        year: updateData.year ? parseInt(updateData.year) : undefined,
+        departmentId: (updateData.departmentId !== undefined && updateData.departmentId !== '') ? parseInt(updateData.departmentId) : undefined,
+        year: (updateData.year !== undefined && updateData.year !== '') ? parseInt(updateData.year) : undefined,
       },
     });
   });
