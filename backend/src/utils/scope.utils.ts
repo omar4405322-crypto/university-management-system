@@ -1,6 +1,23 @@
-const getScopeWhere = (user, entity) => {
+export interface UserScope {
+  role?: string;
+  managedCollegeId?: number | null;
+  managedDepartmentId?: number | null;
+  [key: string]: any;
+}
+
+export type EntityType = 
+  | 'department'
+  | 'course'
+  | 'schedule'
+  | 'exam'
+  | 'student'
+  | 'doctor'
+  | 'timetable'
+  | string;
+
+export const getScopeWhere = (user: UserScope | undefined | null, entity?: EntityType): Record<string, any> => {
   // Returns a Prisma where filter appropriate for the entity based on user scope
-  if (!user) return {};
+  if (!user) return { id: -1 };
 
   // SUPER_ADMIN: no filter
   if (user.role === 'SUPER_ADMIN') return {};
@@ -43,7 +60,5 @@ const getScopeWhere = (user, entity) => {
     return { department: { collegeId: user.managedCollegeId } };
   }
 
-  return {};
+  return { id: -1 };
 };
-
-module.exports = { getScopeWhere };
