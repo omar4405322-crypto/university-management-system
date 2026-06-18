@@ -1,7 +1,8 @@
-const prisma = require('../utils/prismaClient');
+import { Request, Response, NextFunction } from 'express';
+import prisma from '../utils/prismaClient.js';
 
 const SENSITIVE_FIELDS = ['password', 'newPassword', 'currentPassword', 'token', 'secret']; 
-const sanitizeBody = (body) => { 
+const sanitizeBody = (body: any) => { 
   if (!body || typeof body !== 'object') return body; 
   const sanitized = { ...body }; 
   SENSITIVE_FIELDS.forEach(field => { 
@@ -12,26 +13,27 @@ const sanitizeBody = (body) => {
 
 /**
  * Middleware to track user actions and log them to the database
- * @param {string} action - The action being performed (e.g., "CREATE_STUDENT")
- * @param {string} entity - The entity affected (e.g., "Student")
+ * @param action - The action being performed (e.g., "CREATE_STUDENT")
+ * @param entity - The entity affected (e.g., "Student")
  */
-const auditLog = (action, entity) => {
-  return async (req, res, next) => {
+const auditLog = (action: string, entity: string) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     // We want to log AFTER the request is successfully processed
     const originalJson = res.json;
     
-    res.json = function(data) {
+    res.json = function(this: any, data: any) {
       // Restore the original json function
       res.json = originalJson;
       
       // If the request was successful (2xx status), log it
       if (res.statusCode >= 200 && res.statusCode < 300 && req.method !== 'GET') {
-        const userId = req.user ? req.user.id : null;
-        const userEmail = req.user ? req.user.email : null;
-        const userRole = req.user ? req.user.role : null;
+        const user = (req as any).user;
+        const userId = user ? user.id : null;
+        const userEmail = user ? user.email : null;
+        const userRole = user ? user.role : null;
         
         // Extract entity ID if possible (from params or response data)
-        const entityId = req.params.id || (data.data && data.data.id ? String(data.data.id) : null);
+        const entityId = req.params.id || (data?.data?.id ? String(data.data.id) : null);
 
         // Async logging - don't block the response
         prisma.auditLog.create({
@@ -52,7 +54,7 @@ const auditLog = (action, entity) => {
             ipAddress: req.ip,
             userAgent: req.get('User-Agent')
           }
-        }).catch(err => {
+        }).catch((err: any) => {
           console.error('[AUDIT LOG ERROR]', err);
         });
       }
@@ -64,4 +66,4 @@ const auditLog = (action, entity) => {
   };
 };
 
-module.exports = auditLog;
+export default auditLog;
