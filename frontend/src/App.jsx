@@ -17,6 +17,8 @@ import CoursesList from './pages/courses/CoursesList';
 import CourseDetails from './pages/courses/CourseDetails';
 import DoctorsList from './pages/doctors/DoctorsList';
 import WeeklySchedule from './pages/schedules/WeeklySchedule';
+import DoctorSchedule from './pages/schedules/DoctorSchedule';
+import StudentSchedule from './pages/schedules/StudentSchedule';
 import ExamsList from './pages/exams/ExamsList';
 import ExamDetails from './pages/exams/ExamDetails';
 import TakeExam from './pages/exams/TakeExam';
@@ -34,6 +36,7 @@ import { useLanguage } from './context/LanguageContext';
 import { ShieldOff } from 'lucide-react';
 import Button from './components/ui/Button';
 
+const TimetableGrid = lazy(() => import('./pages/schedules/TimetableGrid'));
 const TimetableManagement = lazy(() => import('./pages/schedules/TimetableManagement'));
 const SchedulesList = lazy(() => import('./pages/schedules/SchedulesList'));
 const CreateExam = lazy(() => import('./pages/exams/CreateExam'));
@@ -46,6 +49,7 @@ const FinanceDashboard = lazy(() => import('./pages/finance/FinanceDashboard'));
 const AnalyticsDashboard = lazy(() => import('./pages/analytics/AnalyticsDashboard'));
 const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'));
 const QuizzesList = lazy(() => import('./pages/quizzes/QuizzesList'));
+const DegreeAudit = lazy(() => import('./pages/degree-audit/DegreeAudit'));
 
 const LazyRoute = ({ children }) => (
   <ErrorBoundary>
@@ -110,6 +114,8 @@ const AppContent = () => {
                     <Route path="courses/:id" element={<div className="animate-page"><CourseDetails /></div>} />
                     <Route path="doctors" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}><div className="animate-page"><DoctorsList /></div></ProtectedRoute>} />
                     <Route path="schedule" element={<div className="animate-page"><WeeklySchedule /></div>} />
+                    <Route path="schedules/doctor" element={<ProtectedRoute allowedRoles={['DOCTOR']}><div className="animate-page"><DoctorSchedule /></div></ProtectedRoute>} />
+                    <Route path="schedules/student" element={<ProtectedRoute allowedRoles={['STUDENT']}><div className="animate-page"><StudentSchedule /></div></ProtectedRoute>} />
                     <Route
                       path="timetables-management"
                       element={
@@ -126,6 +132,16 @@ const AppContent = () => {
                         <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
                           <div className="animate-page">
                             <LazyRoute><SchedulesList /></LazyRoute>
+                          </div>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="schedules/timetable"
+                      element={
+                        <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
+                          <div className="animate-page">
+                            <LazyRoute><TimetableGrid /></LazyRoute>
                           </div>
                         </ProtectedRoute>
                       }
@@ -170,6 +186,7 @@ const AppContent = () => {
                       }
                     />
                     <Route path="quizzes" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT', 'COLLEGE_ADMIN']}><div className="animate-page"><LazyRoute><QuizzesList /></LazyRoute></div></ProtectedRoute>} />
+                    <Route path="degree-audit/:studentId" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'STUDENT']}><div className="animate-page"><LazyRoute><DegreeAudit /></LazyRoute></div></ProtectedRoute>} />
                     <Route path="quizzes/create" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'COLLEGE_ADMIN']}><div className="animate-page"><CreateQuiz /></div></ProtectedRoute>} />
                     <Route path="quizzes/:id/take" element={<ProtectedRoute allowedRoles={['STUDENT']}><div className="animate-page"><TakeQuiz /></div></ProtectedRoute>} />
                     <Route path="tasks" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT', 'COLLEGE_ADMIN']}><div className="animate-page"><TasksList /></div></ProtectedRoute>} />

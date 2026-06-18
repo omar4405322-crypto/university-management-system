@@ -224,7 +224,7 @@ const FinanceDashboard = () => {
               <div className="p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-caption text-brand-text-secondary">{t('finance.totalOverdue')}</p>
-                  <div className="rounded-xl p-3 bg-rose-50 text-error group-hover:bg-error group-hover:text-white transition-all duration-300">
+                  <div className="rounded-xl p-3 bg-rose-50 dark:bg-rose-900/20 text-error group-hover:bg-error group-hover:text-white transition-all duration-300">
                     <AlertCircle size={24} />
                   </div>
                 </div>

@@ -42,7 +42,13 @@
     "SUBTITLE": "إدارة الجداول الدراسية وتعيين المحاضرات.",
     "CREATE": "إنشاء جدول",
     "EMPTY_TITLE": "لا توجد جداول بعد",
-    "EMPTY_DESC": "لا توجد محاضرات مجدولة لهذا الاختيار. أنشئ جدولاً للبدء."
+    "EMPTY_DESC": "لا توجد محاضرات مجدولة لهذا الاختيار. أنشئ جدولاً للبدء.",
+    "EDIT_TITLE": "تعديل الجدول",
+    "CREATE_TITLE": "إنشاء جدول جديد",
+    "deleteConfirm": "هل أنت متأكد من حذف هذا الجدول؟",
+    "searchPlaceholder": "بحث بالمقرر أو القاعة...",
+    "updateSuccess": "تم تحديث الجدول بنجاح",
+    "createSuccess": "تم إنشاء الجدول بنجاح"
   },
   "STUDENTS": {
     "YEAR1": "السنة الأولى",
@@ -344,9 +350,21 @@
     "disabled": "معطل",
     "open": "مفتوح",
     "select": "اختر",
-    "selectOptional": "اختر (اختياري)"
+    "selectOptional": "اختر (اختياري)",
+    "allColleges": "كل الكليات",
+    "allDepartments": "كل الأقسام",
+    "allYears": "كل السنوات",
+    "tba": "غير محدد",
+    "staff": "طاقم التدريس",
+    "noDetails": "لا توجد تفاصيل إضافية",
+    "general": "عام",
+    "year": "السنة",
+    "university": "الجامعة",
+    "managementSystem": "نظام الإدارة"
   },
   "courses": {
+    "course": "المقرر",
+    "selectCourse": "اختر مقرراً",
     "addCourse": "إضافة مقرر",
     "addDesc": "إضافة مقرر جديد إلى الكتالوج",
     "addNew": "إضافة مقرر جديد",
@@ -756,7 +774,9 @@
     "reports": "التقارير والتحليلات",
     "requests": "الطلبات",
     "schedule": "الجدول الدراسي",
+    "mySchedule": "جدولي الأسبوعي",
     "schedulesManagement": "إدارة الجداول",
+    "timetableGrid": "مخطط الجداول",
     "search": "بحث عن أي شيء...",
     "settings": "الإعدادات",
     "students": "الطلاب",
@@ -878,6 +898,24 @@
     "STUDENT": "طالب",
     "SUPER_ADMIN": "مدير عام"
   },
+  "schedule": {
+    "mySchedule": "جدولي الأسبوعي",
+    "academicYear": "العام الدراسي",
+    "semester1": "الفصل الأول",
+    "semester2": "الفصل الثاني",
+    "allSemesters": "كل الفصول",
+    "doctorScheduleTitle": "جدولي الأسبوعي",
+    "doctorScheduleSubtitle": "إجمالي المحاضرات",
+    "noSchedule": "لا توجد محاضرات مجدولة",
+    "noRoom": "بدون قاعة",
+    "sessionType": "نوع الحصة",
+    "lecture": "محاضرة",
+    "lab": "معمل",
+    "seminar": "سيمنار",
+    "addSlot": "إضافة الحصة",
+    "selectCourse": "اختر المقرر",
+    "roomPlaceholder": "مثال: A101"
+  },
   "schedules": {
     "title": "الجداول الدراسية"
   },
@@ -966,6 +1004,17 @@
     "fetchError": "خطأ في تحميل المهام"
   },
   "timetables": {
+    "status": "الحالة",
+    "actions": "الإجراءات",
+    "publish": "نشر",
+    "unpublish": "إلغاء النشر",
+    "unpublished": "غير منشور",
+    "publishSuccess": "تم النشر بنجاح",
+    "unpublishSuccess": "تم إلغاء النشر بنجاح",
+    "showing": "عرض",
+    "timetables": "جدول",
+    "selectRequired": "يرجى اختيار القسم والسنة والفصل الدراسي",
+    "fillSlotRequired": "يرجى ملء اسم المقرر، ووقت البدء، ووقت الانتهاء.",
     "academicYear": "السنة الدراسية",
     "addSlot": "إضافة حصة دراسية",
     "courseName": "اسم المقرر",
@@ -990,7 +1039,28 @@
     "targetCohort": "الفئة المستهدفة",
     "title": "إدارة الجداول الدراسية",
     "yourCollege": "كلية الخاصة بك",
-    "managingFor": "إدارة الجداول لـ {college}"
+    "managingFor": "إدارة الجداول لـ {college}",
+    "statsAll": "الكل",
+    "statsPublished": "منشور",
+    "statsDraft": "مسودة",
+    "searchPlaceholder": "ابحث باسم الجدول...",
+    "emptyTitle": "لا توجد جداول دراسية بعد",
+    "emptySubtitle": "ابدأ بإنشاء جدول جديد",
+    "emptyButton": "إنشاء أول جدول",
+    "viewListView": "قائمة",
+    "viewCardView": "بطاقات",
+    "viewDetails": "عرض",
+    "editBasicInfo": "تعديل",
+    "collegePrefix": "كلية: ",
+    "deptPrefix": "قسم: ",
+    "allColleges": "جميع الكليات",
+    "deleteSlotConfirm": "هل أنت متأكد من حذف هذا الحصة؟"
+  },
+  "timetable": {
+    "addSlot": "إضافة حصة",
+    "deleteSlot": "حذف الحصة",
+    "noDoctors": "لا يوجد أساتذة مسجلون",
+    "otherCollege": "كلية أخرى"
   },
   "footer": {
     "universityName": "جامعة 6 أكتوبر التكنولوجية",

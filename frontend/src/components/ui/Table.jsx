@@ -6,7 +6,7 @@ const Table = ({ headers, children, className = '', headerClassName = '' }) => {
   return (
     <div className={`w-full overflow-hidden rounded-lg border border-brand-border/60 ${className}`}>
       <div className="overflow-x-auto">
-        <table className="w-full text-start border-collapse min-w-[800px]">
+        <table className="w-full table-fixed text-start border-collapse min-w-[800px]">
           <thead>
             <tr className="bg-brand-bg-card">
               {headers.map((header, index) => {

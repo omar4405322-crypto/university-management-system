@@ -1,6 +1,7 @@
 const { verifyToken } = require('../utils/jwt.utils');
 const prisma = require('../utils/prismaClient');
 const catchAsync = require('../utils/catchAsync');
+const { redis } = require('../utils/redis.utils');
 
 /**
  * Protect routes - ensures user is authenticated
@@ -23,6 +24,16 @@ const protect = catchAsync(async (req, res, next) => {
   // Verify token
   const decoded = verifyToken(token);
 
+  if (redis) {
+    const isBlacklisted = await redis.get(`blacklist:${token}`);
+    if (isBlacklisted) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token has been invalidated',
+      });
+    }
+  }
+
   // Check if user still exists
   const user = await prisma.user.findUnique({
     where: { id: decoded.id },
@@ -38,7 +49,7 @@ const protect = catchAsync(async (req, res, next) => {
       tokenVersion: true,
       profilePicture: true,
       createdAt: true,
-      student: { select: { id: true, firstName: true, lastName: true, studentId: true } },
+      student: { select: { id: true, firstName: true, lastName: true, studentId: true, year: true, departmentId: true } },
       doctor: { select: { id: true, firstName: true, lastName: true, doctorId: true } },
     },
   });

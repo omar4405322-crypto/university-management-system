@@ -6,7 +6,15 @@ import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
-import { GraduationCap, CheckCircle2, XCircle, AlertTriangle, BookOpen, Calculator, Calendar } from 'lucide-react';
+import {
+  GraduationCap,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  BookOpen,
+  Calculator,
+  Calendar,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const DegreeAudit: React.FC = () => {
@@ -42,7 +50,7 @@ const DegreeAudit: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader 
+      <PageHeader
         title={t('degreeAudit.title', 'Degree Audit')}
         subtitle={`${audit.programName} - ${t('degreeAudit.studentId', 'ID')}: ${audit.studentId}`}
       />
@@ -57,7 +65,10 @@ const DegreeAudit: React.FC = () => {
               {t('degreeAudit.eligibleTitle', 'Eligible for Graduation!')}
             </h3>
             <p className="text-brand-text-muted">
-              {t('degreeAudit.eligibleDesc', 'You have met all academic requirements for graduation.')}
+              {t(
+                'degreeAudit.eligibleDesc',
+                'You have met all academic requirements for graduation.'
+              )}
             </p>
           </div>
         </div>
@@ -85,7 +96,9 @@ const DegreeAudit: React.FC = () => {
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-2">
             <Calculator className="text-brand-green" size={20} />
-            <span className="text-sm font-medium text-brand-text-muted">{t('degreeAudit.gpa', 'Current GPA')}</span>
+            <span className="text-sm font-medium text-brand-text-muted">
+              {t('degreeAudit.gpa', 'Current GPA')}
+            </span>
           </div>
           <div className="text-2xl font-bold flex items-center gap-2">
             {audit.gpa.toFixed(2)}
@@ -98,15 +111,19 @@ const DegreeAudit: React.FC = () => {
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-2">
             <BookOpen className="text-brand-green" size={20} />
-            <span className="text-sm font-medium text-brand-text-muted">{t('degreeAudit.credits', 'Credits Completed')}</span>
+            <span className="text-sm font-medium text-brand-text-muted">
+              {t('degreeAudit.credits', 'Credits Completed')}
+            </span>
           </div>
           <div className="text-2xl font-bold">
             {audit.totalCreditsCompleted} / {audit.totalCreditsRequired}
           </div>
           <div className="mt-2 w-full bg-brand-bg-page h-2 rounded-full overflow-hidden">
-            <div 
-              className="bg-brand-green h-full transition-all duration-1000" 
-              style={{ width: `${(audit.totalCreditsCompleted / audit.totalCreditsRequired) * 100}%` }}
+            <div
+              className="bg-brand-green h-full transition-all duration-1000"
+              style={{
+                width: `${(audit.totalCreditsCompleted / audit.totalCreditsRequired) * 100}%`,
+              }}
             />
           </div>
         </Card>
@@ -114,7 +131,9 @@ const DegreeAudit: React.FC = () => {
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-2">
             <Calendar className="text-brand-green" size={20} />
-            <span className="text-sm font-medium text-brand-text-muted">{t('degreeAudit.estimatedGraduation', 'Estimated Graduation')}</span>
+            <span className="text-sm font-medium text-brand-text-muted">
+              {t('degreeAudit.estimatedGraduation', 'Estimated Graduation')}
+            </span>
           </div>
           <div className="text-2xl font-bold">{audit.estimatedGraduationSemester}</div>
         </Card>
@@ -132,17 +151,18 @@ const DegreeAudit: React.FC = () => {
               </div>
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-brand-text-muted">
-                  {category.completedCredits} / {category.requiredCredits} {t('degreeAudit.credits', 'Credits')}
+                  {category.completedCredits} / {category.requiredCredits}{' '}
+                  {t('degreeAudit.credits', 'Credits')}
                 </span>
               </div>
               <div className="w-full bg-brand-border h-2 rounded-full overflow-hidden">
-                <div 
-                  className="bg-brand-green h-full transition-all duration-1000" 
+                <div
+                  className="bg-brand-green h-full transition-all duration-1000"
                   style={{ width: `${category.percentage}%` }}
                 />
               </div>
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
@@ -165,17 +185,23 @@ const DegreeAudit: React.FC = () => {
                         {course.status === 'completed' ? (
                           <div className="flex items-center gap-1.5 text-brand-green">
                             <CheckCircle2 size={14} />
-                            <span className="text-xs font-bold uppercase">{t('common.completed', 'Completed')}</span>
+                            <span className="text-xs font-bold uppercase">
+                              {t('common.completed', 'Completed')}
+                            </span>
                           </div>
                         ) : course.status === 'in_progress' ? (
                           <div className="flex items-center gap-1.5 text-brand-blue">
                             <Calendar size={14} />
-                            <span className="text-xs font-bold uppercase">{t('common.inProgress', 'In Progress')}</span>
+                            <span className="text-xs font-bold uppercase">
+                              {t('common.inProgress', 'In Progress')}
+                            </span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-brand-text-muted">
                             <XCircle size={14} />
-                            <span className="text-xs font-bold uppercase">{t('common.remaining', 'Remaining')}</span>
+                            <span className="text-xs font-bold uppercase">
+                              {t('common.remaining', 'Remaining')}
+                            </span>
                           </div>
                         )}
                       </td>
@@ -183,7 +209,10 @@ const DegreeAudit: React.FC = () => {
                   ))}
                   {category.courses.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-brand-text-muted italic">
+                      <td
+                        colSpan={5}
+                        className="px-6 py-8 text-center text-brand-text-muted italic"
+                      >
                         {t('degreeAudit.noCourses', 'No courses found in this category')}
                       </td>
                     </tr>

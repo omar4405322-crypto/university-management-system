@@ -202,7 +202,7 @@ const DepartmentsList = () => {
                       {isSuperAdmin && (
                         <button 
                           onClick={() => setDeleteTarget({ id: dept.id, name: dept.name })}
-                          className="p-2.5 text-brand-text-muted hover:text-error hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-xl transition-all"
+                          className="p-2.5 text-brand-text-muted hover:text-error hover:bg-rose-50 dark:bg-rose-900/20 dark:hover:bg-rose-900/10 rounded-xl transition-all"
                           title={t('common.delete')}
                         >
                           <Trash2 size={18} />
@@ -241,7 +241,7 @@ const DepartmentsList = () => {
                   className="text-brand-primary-500 font-black text-[11px] uppercase tracking-widest hover:text-brand-primary-600 flex items-center gap-2 transition-colors"
                   onClick={() => navigate(`/departments/${dept.id}`)}
                 >
-                  {t('departments.manageCurriculum')} <ExternalLink size={14} />
+                  {t('departments.manageCurriculum')} <ExternalLink size={14} className="rtl:-scale-x-100" />
                 </button>
                 <button 
                   className="text-brand-navy-500 dark:text-brand-text-main font-black text-[11px] uppercase tracking-widest hover:text-brand-primary-500 flex items-center gap-2 transition-colors"

@@ -6,8 +6,8 @@ const schedulesService = {
     return response.data;
   },
 
-  getWeeklyTimetable: async () => {
-    const response = await api.get('/schedules/week');
+  getWeeklyTimetable: async (params = {}) => {
+    const response = await api.get('/schedules/week', { params });
     return response.data;
   },
 

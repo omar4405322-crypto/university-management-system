@@ -1,5 +1,6 @@
 // FIXED: Exam fields align with DB (room, no title/location column) - schema sync
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 const catchAsync = require('../utils/catchAsync');
 const { NotFoundError, AuthorizationError } = require('../utils/appError');
 const { getScopeWhere } = require('../utils/scope.utils');
@@ -158,6 +159,7 @@ exports.deleteExam = catchAsync(async (req, res, next) => {
   await prisma.exam.delete({
     where: { id },
   });
+  auditLog('DELETE_EXAM', 'Exam', req.params.id, req);
   res.json({ success: true, message: 'Exam deleted' });
 });
 

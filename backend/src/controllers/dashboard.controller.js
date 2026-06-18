@@ -242,8 +242,8 @@ exports.getStudentStats = catchAsync(async (req, res) => {
       where: { 
         date: { gte: new Date() },
         course: {
-          students: {
-            some: { id: student.id }
+          enrollments: {
+            some: { studentId: student.id, status: 'ENROLLED' }
           }
         }
       },
@@ -254,8 +254,8 @@ exports.getStudentStats = catchAsync(async (req, res) => {
       where: { 
         dayOfWeek: today,
         course: {
-          students: {
-            some: { id: student.id }
+          enrollments: {
+            some: { studentId: student.id, status: 'ENROLLED' }
           }
         }
       },
@@ -279,8 +279,8 @@ exports.getStudentStats = catchAsync(async (req, res) => {
       take: 3,
       where: {
         course: {
-          students: {
-            some: { id: student.id }
+          enrollments: {
+            some: { studentId: student.id, status: 'ENROLLED' }
           }
         },
         endTime: { gte: new Date() }
@@ -291,8 +291,8 @@ exports.getStudentStats = catchAsync(async (req, res) => {
       take: 3,
       where: {
         course: {
-          students: {
-            some: { id: student.id }
+          enrollments: {
+            some: { studentId: student.id, status: 'ENROLLED' }
           }
         },
         dueDate: { gte: new Date() }

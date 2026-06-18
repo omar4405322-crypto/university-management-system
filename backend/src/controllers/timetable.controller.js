@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 const { getScopeWhere } = require('../utils/scope.utils');
 
 /**
@@ -219,7 +220,32 @@ exports.deleteTimetable = async (req, res) => {
     await prisma.timetable.delete({
       where: { id: parseInt(req.params.id) }
     });
+    auditLog('DELETE_TIMETABLE', 'Timetable', req.params.id, req);
     res.json({ success: true, message: 'Timetable deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.publishTimetable = async (req, res) => {
+  try {
+    const timetable = await prisma.timetable.update({
+      where: { id: parseInt(req.params.id) },
+      data: { status: 'PUBLISHED' }
+    });
+    res.json({ success: true, data: timetable });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.unpublishTimetable = async (req, res) => {
+  try {
+    const timetable = await prisma.timetable.update({
+      where: { id: parseInt(req.params.id) },
+      data: { status: 'DRAFT' }
+    });
+    res.json({ success: true, data: timetable });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

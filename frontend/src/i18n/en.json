@@ -42,7 +42,13 @@
     "SUBTITLE": "Manage university timetables and class assignments.",
     "CREATE": "Create Schedule",
     "EMPTY_TITLE": "No schedules yet",
-    "EMPTY_DESC": "There are no class schedules for this selection. Create one to get started."
+    "EMPTY_DESC": "There are no class schedules for this selection. Create one to get started.",
+    "EDIT_TITLE": "Edit Schedule",
+    "CREATE_TITLE": "Create New Schedule",
+    "deleteConfirm": "Are you sure you want to delete this schedule?",
+    "searchPlaceholder": "Search by course or room...",
+    "updateSuccess": "Schedule updated successfully",
+    "createSuccess": "Schedule created successfully"
   },
   "STUDENTS": {
     "YEAR1": "Year 1",
@@ -345,9 +351,21 @@
     "disabled": "Disabled",
     "open": "Open",
     "select": "Select",
-    "selectOptional": "Select (optional)"
+    "selectOptional": "Select (optional)",
+    "allColleges": "All Colleges",
+    "allDepartments": "All Departments",
+    "allYears": "All Years",
+    "tba": "TBA",
+    "staff": "Staff",
+    "noDetails": "No additional details",
+    "general": "General",
+    "year": "Year",
+    "university": "University",
+    "managementSystem": "Management System"
   },
   "courses": {
+    "course": "Course",
+    "selectCourse": "Select a course",
     "addCourse": "Add Course",
     "addDesc": "Add a new course to the catalog",
     "addNew": "Add New Course",
@@ -757,7 +775,9 @@
     "reports": "Reports & Analytics",
     "requests": "Requests",
     "schedule": "Schedule",
+    "mySchedule": "My Weekly Schedule",
     "schedulesManagement": "Schedules Management",
+    "timetableGrid": "Timetable Grid",
     "search": "Search anything...",
     "settings": "Settings",
     "students": "Students",
@@ -879,6 +899,24 @@
     "STUDENT": "Student",
     "SUPER_ADMIN": "Super Admin"
   },
+  "schedule": {
+    "mySchedule": "My Schedule",
+    "academicYear": "Academic Year",
+    "semester1": "Semester 1",
+    "semester2": "Semester 2",
+    "allSemesters": "All Semesters",
+    "doctorScheduleTitle": "My Weekly Schedule",
+    "doctorScheduleSubtitle": "Total classes",
+    "noSchedule": "No scheduled classes",
+    "noRoom": "No room",
+    "sessionType": "Session Type",
+    "lecture": "Lecture",
+    "lab": "Lab",
+    "seminar": "Seminar",
+    "addSlot": "Add Slot",
+    "selectCourse": "Select Course",
+    "roomPlaceholder": "e.g. A101"
+  },
   "schedules": {
     "title": "Schedules"
   },
@@ -967,6 +1005,17 @@
     "fetchError": "Error fetching tasks"
   },
   "timetables": {
+    "status": "Status",
+    "actions": "Actions",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "unpublished": "Unpublished",
+    "publishSuccess": "Published Successfully",
+    "unpublishSuccess": "Unpublished Successfully",
+    "showing": "Showing",
+    "timetables": "Timetables",
+    "selectRequired": "Please select department, year, and semester",
+    "fillSlotRequired": "Please fill in course name, start time, and end time.",
     "academicYear": "Academic Year",
     "addSlot": "Add Class Slot",
     "courseName": "Course Name",
@@ -991,7 +1040,28 @@
     "targetCohort": "Target Cohort",
     "title": "Timetable Management",
     "yourCollege": "Your College",
-    "managingFor": "Managing timetables for {college}"
+    "managingFor": "Managing timetables for {college}",
+    "statsAll": "All",
+    "statsPublished": "Published",
+    "statsDraft": "Draft",
+    "searchPlaceholder": "Search timetable by name...",
+    "emptyTitle": "No timetables yet",
+    "emptySubtitle": "Start by creating a new timetable",
+    "emptyButton": "Create first timetable",
+    "viewListView": "List",
+    "viewCardView": "Cards",
+    "viewDetails": "View",
+    "editBasicInfo": "Edit",
+    "collegePrefix": "College: ",
+    "deptPrefix": "Department: ",
+    "allColleges": "All Colleges",
+    "deleteSlotConfirm": "Delete this class slot?"
+  },
+  "timetable": {
+    "addSlot": "Add Class Slot",
+    "deleteSlot": "Delete slot",
+    "noDoctors": "No professors registered",
+    "otherCollege": "Other college"
   },
   "footer": {
     "universityName": "6th of October University of Technology",

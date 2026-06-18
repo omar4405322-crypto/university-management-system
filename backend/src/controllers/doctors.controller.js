@@ -1,5 +1,6 @@
 // FIXED: Live stats endpoint for doctors dashboard cards - Phase 2
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 const bcrypt = require('bcryptjs');
 
 const catchAsync = require('../utils/catchAsync');
@@ -318,6 +319,7 @@ exports.deleteDoctor = async (req, res) => {
       await tx.user.delete({ where: { id: doctor.userId } });
     });
 
+    auditLog('DELETE_DOCTOR', 'Doctor', req.params.id, req);
     res.json({ success: true, message: 'Doctor deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -349,6 +351,7 @@ exports.resetDoctorPassword = catchAsync(async (req, res, next) => {
     data: { password: hashedPassword } 
   }); 
 
+  auditLog('RESET_DOCTOR_PASSWORD', 'Doctor', req.params.id, req);
   res.json({ 
     success: true, 
     message: `Password reset successfully for ${doctor.firstName} ${doctor.lastName}` 

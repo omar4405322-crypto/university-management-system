@@ -3,8 +3,14 @@ const logger = require('./logger');
 
 let redis = null;
 
-if (process.env.REDIS_URL) {
-  redis = new Redis(process.env.REDIS_URL);
+if (process.env.REDIS_URL && process.env.NODE_ENV?.trim() !== 'test') {
+  redis = new Redis(process.env.REDIS_URL, {
+    maxRetriesPerRequest: 3,
+    retryStrategy(times) {
+      if (times > 3) return null;
+      return Math.min(times * 50, 2000);
+    }
+  });
   
   redis.on('connect', () => logger.info('[REDIS] Connected to instance'));
   redis.on('error', (err) => logger.error(`[REDIS] Error: ${err.message}`));

@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 const catchAsync = require('../utils/catchAsync');
 const { NotFoundError } = require('../utils/appError');
 const { getScopeWhere } = require('../utils/scope.utils');
@@ -50,7 +51,7 @@ exports.getAllCourses = catchAsync(async (req, res, next) => {
       include: {
         department: { select: { name: true } },
         doctor: { select: { firstName: true, lastName: true } },
-        _count: { select: { students: true } }
+        _count: { select: { enrollments: true } }
       },
       skip,
       take,
@@ -84,13 +85,13 @@ exports.getCourseById = catchAsync(async (req, res, next) => {
     include: {
       department: { include: { college: true } },
       doctor: true,
-      students: {
-        select: { id: true, firstName: true, lastName: true, studentId: true },
+      enrollments: {
+        include: { student: true }
       },
       schedules: true,
       _count: {
         select: {
-          students: true,
+          enrollments: true,
           quizzes: true,
           tasks: true,
           exams: true
@@ -129,8 +130,13 @@ exports.getCourseRoster = catchAsync(async (req, res, next) => {
       id: true,
       departmentId: true,
       year: true,
-      students: {
-        select: { id: true, firstName: true, lastName: true, studentId: true },
+      enrollments: {
+        where: { status: 'ENROLLED' },
+        select: {
+          student: {
+            select: { id: true, firstName: true, lastName: true, studentId: true },
+          },
+        },
       },
     },
   });
@@ -140,7 +146,7 @@ exports.getCourseRoster = catchAsync(async (req, res, next) => {
   }
 
   const rosterMap = new Map();
-  course.students.forEach((s) => rosterMap.set(s.id, s));
+  course.enrollments.forEach((e) => rosterMap.set(e.student.id, e.student));
 
   if (course.departmentId) {
     const deptStudents = await prisma.student.findMany({
@@ -261,6 +267,7 @@ exports.deleteCourse = catchAsync(async (req, res, next) => {
     prisma.course.delete({ where: { id: parseInt(id) } }),
   ]);
 
+  auditLog('DELETE_COURSE', 'Course', req.params.id, req);
   res.json({
     success: true,
     message: 'Course deleted successfully',

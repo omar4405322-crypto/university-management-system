@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('../src/app');
+const app = require('../src/app').default || require('../src/app');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const bcrypt = require('bcryptjs');
@@ -53,6 +53,24 @@ describe('Academic CRUD API', () => {
     });
   });
 
+  beforeEach(async () => {
+    await prisma.enrollment.deleteMany({});
+    await prisma.student.deleteMany({});
+    await prisma.course.deleteMany({});
+    await prisma.user.deleteMany({
+      where: {
+        email: {
+          in: [
+            'test-john@example.com',
+            'test-fetch@example.com',
+            'test-update@example.com',
+            'test-update-changed@example.com'
+          ]
+        }
+      }
+    });
+  });
+
   afterAll(async () => {
     // Cleanup
     await prisma.attendance.deleteMany({ where: { student: { user: { email: { contains: 'test' } } } } });
@@ -65,8 +83,6 @@ describe('Academic CRUD API', () => {
   });
 
   describe('Students CRUD', () => {
-    let studentId;
-
     it('should create a new student as Admin', async () => {
       const res = await request(app)
         .post('/api/students')
@@ -82,7 +98,6 @@ describe('Academic CRUD API', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
-      studentId = res.body.data.id;
     });
 
     it('should deny student creation by a Student', async () => {
@@ -102,6 +117,23 @@ describe('Academic CRUD API', () => {
     });
 
     it('should fetch all students with pagination', async () => {
+      await prisma.user.create({
+        data: {
+          email: 'test-fetch@example.com',
+          password: 'Password123',
+          role: 'STUDENT',
+          student: {
+            create: {
+              firstName: 'Fetch',
+              lastName: 'Student',
+              studentId: 'STU-FETCH',
+              year: 1,
+              departmentId: department.id
+            }
+          }
+        }
+      });
+
       const res = await request(app)
         .get('/api/students?page=1&limit=10')
         .set('Authorization', `Bearer ${adminToken}`);
@@ -112,14 +144,32 @@ describe('Academic CRUD API', () => {
     });
 
     it('should update student details', async () => {
+      const user = await prisma.user.create({
+        data: {
+          email: 'test-update@example.com',
+          password: 'Password123',
+          role: 'STUDENT',
+          student: {
+            create: {
+              firstName: 'Update',
+              lastName: 'Student',
+              studentId: 'STU-UPDATE',
+              year: 1,
+              departmentId: department.id
+            }
+          }
+        },
+        include: { student: true }
+      });
+
       const res = await request(app)
-        .put(`/api/students/${studentId}`)
+        .put(`/api/students/${user.student.id}`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           firstName: 'John Updated',
           lastName: 'Doe',
-          email: 'test-john@example.com',
-          studentId: 'STU-999',
+          email: 'test-update-changed@example.com',
+          studentId: 'STU-UPDATE-2',
           year: 2,
           departmentId: department.id
         });
@@ -130,8 +180,6 @@ describe('Academic CRUD API', () => {
   });
 
   describe('Courses CRUD', () => {
-    let courseId;
-
     it('should create a new course', async () => {
       const res = await request(app)
         .post('/api/courses')
@@ -146,10 +194,20 @@ describe('Academic CRUD API', () => {
         });
 
       expect(res.status).toBe(201);
-      courseId = res.body.data.id;
     });
 
     it('should fetch courses with filters', async () => {
+      await prisma.course.create({
+        data: {
+          name: 'Test Course 101',
+          courseCode: 'T101',
+          credits: 3,
+          departmentId: department.id,
+          year: 1,
+          semester: 1
+        }
+      });
+
       const res = await request(app)
         .get(`/api/courses?search=Test&departmentId=${department.id}`)
         .set('Authorization', `Bearer ${adminToken}`);

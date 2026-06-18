@@ -25,7 +25,7 @@ const auditLog = (action, entity) => {
       res.json = originalJson;
       
       // If the request was successful (2xx status), log it
-      if (res.statusCode >= 200 && res.statusCode < 300) {
+      if (res.statusCode >= 200 && res.statusCode < 300 && req.method !== 'GET') {
         const userId = req.user ? req.user.id : null;
         const userEmail = req.user ? req.user.email : null;
         const userRole = req.user ? req.user.role : null;

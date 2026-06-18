@@ -15,7 +15,7 @@ const SuperAdminTwoFactorBanner = () => {
 
   return (
     <div
-      className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
+      className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-amber-900"
       role="status"
     >
       <div className="flex items-start gap-3 flex-1">

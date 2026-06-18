@@ -1,5 +1,6 @@
 // FIXED: Enriched getDepartmentById with students, courses, doctors for detail page - Phase 1
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 const { getScopeWhere } = require('../utils/scope.utils');
 
 exports.getAllDepartments = async (req, res) => {
@@ -160,6 +161,7 @@ exports.deleteDepartment = async (req, res) => {
       });
     });
 
+    auditLog('DELETE_DEPARTMENT', 'Department', req.params.id, req);
     res.json({ success: true, message: 'Department deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

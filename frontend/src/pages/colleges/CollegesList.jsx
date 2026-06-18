@@ -221,7 +221,7 @@ const CollegesList = () => {
                     className="flex-1 text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 border-slate-200" 
                     onClick={() => navigate(`/colleges/${college.id}`)}
                   >
-                    {t('colleges.viewDetails')} <ExternalLink size={14} />
+                    {t('colleges.viewDetails')} <ExternalLink size={14} className="rtl:-scale-x-100" />
                   </Button>
                 </div>
               </div>

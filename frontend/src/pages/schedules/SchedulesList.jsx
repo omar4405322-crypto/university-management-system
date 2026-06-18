@@ -31,6 +31,7 @@ const SchedulesList = () => {
   const { scopeParams, isCollegeAdmin } = useScope();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [colleges, setColleges] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -86,8 +87,14 @@ const SchedulesList = () => {
         coursesService.getCourses()
       ]);
       
-      if (collegesRes.success) setColleges(collegesRes.data);
-      if (coursesRes.success) setCourses(coursesRes.data);
+      if (collegesRes.success) {
+        const arr = Array.isArray(collegesRes.data) ? collegesRes.data : collegesRes.data?.data?.colleges || collegesRes.data?.colleges || collegesRes.data?.data || [];
+        setColleges(arr);
+      }
+      if (coursesRes.success) {
+        const arr = Array.isArray(coursesRes.data) ? coursesRes.data : coursesRes.data?.data?.courses || coursesRes.data?.courses || coursesRes.data?.data || [];
+        setCourses(arr);
+      }
     } catch (error) {
       console.error('Error fetching initial data:', error);
     }
@@ -97,7 +104,8 @@ const SchedulesList = () => {
     try {
       const result = await departmentService.getDepartments({ collegeId });
       if (result.success) {
-        setDepartments(result.data);
+        const arr = Array.isArray(result.data) ? result.data : result.data?.data?.departments || result.data?.departments || result.data?.data || [];
+        setDepartments(arr);
       }
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -107,6 +115,7 @@ const SchedulesList = () => {
   const fetchSchedules = async () => {
     try {
       setLoading(true);
+      setError(null);
       const params = { ...scopeParams };
       if (!isCollegeAdmin) {
         if (selectedCollege) params.collegeId = selectedCollege;
@@ -117,11 +126,13 @@ const SchedulesList = () => {
       
       const result = await schedulesService.getSchedules(params);
       if (result.success) {
-        setSchedules(result.data);
+        const arr = Array.isArray(result.data) ? result.data : result.data?.data?.schedules || result.data?.schedules || result.data?.data || [];
+        setSchedules(arr);
       }
-    } catch (error) {
-      console.error('Error fetching schedules:', error);
-      showToast('Error fetching schedules', 'error');
+    } catch (err) {
+      console.error('Error fetching schedules:', err);
+      setError(err.message || t('common.fetchError', 'Error fetching schedules'));
+      showToast(t('common.fetchError', 'Error fetching schedules'), 'error');
     } finally {
       setLoading(false);
     }
@@ -138,15 +149,15 @@ const SchedulesList = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this schedule?')) {
+    if (window.confirm(t('SCHEDULES.deleteConfirm', 'Are you sure you want to delete this schedule?'))) {
       try {
         const result = await schedulesService.deleteSchedule(id);
         if (result.success) {
-          showToast('Schedule deleted successfully', 'success');
+          showToast(t('common.deleteSuccess', 'Schedule deleted successfully'), 'success');
           fetchSchedules();
         }
       } catch (error) {
-        showToast('Error deleting schedule', 'error');
+        showToast(t('common.deleteError', 'Error deleting schedule'), 'error');
       }
     }
   };
@@ -202,7 +213,7 @@ const SchedulesList = () => {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search by course or room..."
+          searchPlaceholder={t('SCHEDULES.searchPlaceholder', 'Search by course or room...')}
         >
           {!isCollegeAdmin && (
             <>
@@ -211,7 +222,7 @@ const SchedulesList = () => {
                 value={selectedCollege}
                 onChange={(e) => handleCollegeChange(e.target.value)}
               >
-                <option value="">All Colleges</option>
+                <option value="">{t('common.allColleges', 'All Colleges')}</option>
                 {colleges.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -222,7 +233,7 @@ const SchedulesList = () => {
                 onChange={(e) => setSelectedDept(e.target.value)}
                 disabled={!selectedCollege}
               >
-                <option value="">All Departments</option>
+                <option value="">{t('common.allDepartments', 'All Departments')}</option>
                 {departments.map(d => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
@@ -234,9 +245,9 @@ const SchedulesList = () => {
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
           >
-            <option value="">All Years</option>
+            <option value="">{t('common.allYears', 'All Years')}</option>
             {[1, 2, 3, 4, 5].map(y => (
-              <option key={y} value={y.toString()}>Year {y}</option>
+              <option key={y} value={y.toString()}>{t('common.year', 'Year')} {y}</option>
             ))}
           </select>
           <select
@@ -244,10 +255,10 @@ const SchedulesList = () => {
             value={selectedSemester}
             onChange={(e) => setSelectedSemester(e.target.value)}
           >
-            <option value="">All Semesters</option>
-            <option value="1">Semester 1</option>
-            <option value="2">Semester 2</option>
-            <option value="3">Semester 3</option>
+            <option value="">{t('schedule.allSemesters', 'All Semesters')}</option>
+            <option value="1">{t('schedule.semester1', 'Semester 1')}</option>
+            <option value="2">{t('schedule.semester2', 'Semester 2')}</option>
+            <option value="3">{t('timetables.semester', 'Semester')} 3</option>
           </select>
         </FilterBar>
 
@@ -255,7 +266,26 @@ const SchedulesList = () => {
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
               <Loader2 className="animate-spin text-brand-primary-500" size={40} />
-              <p className="label-stat">Loading schedules...</p>
+              <p className="label-stat">{t('common.loading', 'Loading schedules...')}</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-96 text-center p-8">
+              <div className="w-24 h-24 rounded-[2.5rem] bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center mb-6 border-2 border-dashed border-rose-200 dark:border-rose-700">
+                <AlertCircle size={48} className="text-rose-500" />
+              </div>
+              <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tight uppercase mb-2">
+                {t('common.errorOccurred', 'An error occurred')}
+              </h3>
+              <p className="text-brand-text-secondary font-bold max-w-xs mx-auto mb-4">
+                {error}
+              </p>
+              <button
+                type="button"
+                onClick={fetchSchedules}
+                className="px-6 py-3 rounded-2xl bg-brand-primary-500 text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+              >
+                {t('common.retry', 'Retry')}
+              </button>
             </div>
           ) : filteredSchedules.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-96 text-center p-8">
@@ -279,7 +309,7 @@ const SchedulesList = () => {
               )}
             </div>
           ) : (
-            <Table headers={['Course', 'Time Slot', 'Room', 'Department', 'Actions']}>
+            <Table headers={[t('courses.course', 'Course'), t('timetables.day', 'Time Slot'), t('timetables.room', 'Room'), t('auth.department', 'Department'), t('common.actions', 'Actions')]}>
               {filteredSchedules.map((schedule) => (
                 <TableRow key={schedule.id}>
                   <TableCell>
@@ -304,19 +334,19 @@ const SchedulesList = () => {
                       <div className="w-6 h-6 rounded-lg bg-brand-accent-yellow/10 flex items-center justify-center text-brand-accent-yellow">
                         <MapPin size={14} />
                       </div>
-                      <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">{schedule.room || 'TBA'}</span>
+                      <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">{schedule.room || t('common.tba', 'TBA')}</span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-tight truncate max-w-[150px]">{schedule.department?.name}</span>
-                      <span className="text-[10px] font-bold text-brand-text-muted uppercase">Year {schedule.year} • Sem {schedule.semester}</span>
+                      <span className="text-[10px] font-bold text-brand-text-muted uppercase">{t('common.year', 'Year')} {schedule.year} • {t('timetables.semester', 'Sem')} {schedule.semester}</span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <ActionMenu actions={[
-                      { label: 'Edit', icon: Edit2, variant: 'edit', onClick: () => { setEditingSchedule(schedule); setIsModalOpen(true); } },
-                      ...(isSuperAdmin ? [{ label: 'Delete', icon: Trash2, variant: 'delete', onClick: () => handleDelete(schedule.id) }] : []),
+                      { label: t('common.edit', 'Edit'), icon: Edit2, variant: 'edit', onClick: () => { setEditingSchedule(schedule); setIsModalOpen(true); } },
+                      ...(isSuperAdmin ? [{ label: t('common.delete', 'Delete'), icon: Trash2, variant: 'delete', onClick: () => handleDelete(schedule.id) }] : []),
                     ]} />
                   </TableCell>
                 </TableRow>
@@ -334,7 +364,7 @@ const SchedulesList = () => {
         onSuccess={() => {
           setIsModalOpen(false);
           fetchSchedules();
-          showToast(editingSchedule ? 'Schedule updated successfully' : 'Schedule created successfully', 'success');
+          showToast(editingSchedule ? t('SCHEDULES.updateSuccess', 'Schedule updated successfully') : t('SCHEDULES.createSuccess', 'Schedule created successfully'), 'success');
         }}
       />
     </div>

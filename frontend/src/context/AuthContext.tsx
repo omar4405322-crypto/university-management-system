@@ -2,34 +2,44 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import api, { setAccessToken } from '../services/api';
 
-export interface User { 
-  id: string; 
-  email: string; 
-  role: string; 
-  firstName?: string; 
-  lastName?: string; 
+export interface User {
+  id: string;
+  email: string;
+  role: string;
+  firstName?: string;
+  lastName?: string;
   twoFactorEnabled?: boolean;
-  [key: string]: any; 
+  [key: string]: any;
 }
 
-export interface AuthContextType { 
-  user: User | null; 
+export interface AuthContextType {
+  user: User | null;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  token: string | null; 
-  loading: boolean; 
+  token: string | null;
+  loading: boolean;
   error: string | null;
-  login: (email: string, password: string, totpToken?: string | null) => Promise<{ success: boolean; user?: User; requires2FA?: boolean; message?: string; status?: number }>; 
+  login: (
+    email: string,
+    password: string,
+    totpToken?: string | null
+  ) => Promise<{
+    success: boolean;
+    user?: User;
+    requires2FA?: boolean;
+    message?: string;
+    status?: number;
+  }>;
   register: (data: any) => Promise<{ success: boolean; message: string }>;
-  logout: () => void; 
-  isAuthenticated: boolean; 
+  logout: () => void;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export const useAuth = (): AuthContextType => { 
-  const context = useContext(AuthContext); 
-  if (!context) throw new Error('useAuth must be used within AuthProvider'); 
-  return context; 
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  return context;
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -58,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const refreshResponse = await api.post('/auth/refresh');
       const { accessToken } = refreshResponse.data.data;
       setToken(accessToken);
-      
+
       // Now fetch the user profile
       const meResponse = await api.get('/auth/me');
       const me = meResponse.data.data;

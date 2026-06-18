@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 
 // @desc    Get all notifications for current user
 // @route   GET /api/notifications
@@ -119,6 +120,7 @@ exports.deleteNotification = async (req, res) => {
       where: { id: notificationId },
     });
 
+    auditLog('DELETE_NOTIFICATION', 'Notification', req.params.id, req);
     res.json({
       success: true,
       message: 'Notification deleted',

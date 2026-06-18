@@ -51,19 +51,26 @@ const Profile = () => {
 
   const [fullProfile, setFullProfile] = useState(null);
 
-  const fetchFullProfile = async () => {
-    try {
-      const response = await api.get('/users/profile');
-      if (response.data.success) {
-        setFullProfile(response.data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching full profile:', error);
-    }
-  };
-
   useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchFullProfile = async () => {
+      try {
+        const response = await api.get('/users/profile', { signal: controller.signal });
+        if (response.data.success) {
+          setFullProfile(response.data.data);
+        }
+      } catch (error) {
+        import('axios').then(axios => {
+          if (!axios.default.isCancel(error)) {
+            console.error('Error fetching full profile:', error);
+          }
+        });
+      }
+    };
+
     fetchFullProfile();
+    return () => controller.abort();
   }, []);
 
   const handleChange = (e) => {

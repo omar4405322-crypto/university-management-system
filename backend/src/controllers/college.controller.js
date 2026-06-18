@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 
 exports.getAllColleges = async (req, res) => {
   try {
@@ -157,6 +158,7 @@ exports.deleteCollege = async (req, res) => {
       });
     });
 
+    auditLog('DELETE_COLLEGE', 'College', req.params.id, req);
     res.json({ success: true, message: 'College and its departments deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -201,6 +203,7 @@ exports.assignAdmin = async (req, res) => {
       select: { id: true, email: true, doctor: { select: { firstName: true, lastName: true } } }
     });
 
+    auditLog('ASSIGN_COLLEGE_ADMIN', 'College', req.params.id, req);
     res.json({ 
       success: true, 
       message: 'Admin assigned to college successfully',
