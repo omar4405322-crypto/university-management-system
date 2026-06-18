@@ -1,29 +1,29 @@
-const Redis = require('ioredis');
-const logger = require('./logger');
+import Redis from 'ioredis';
+import logger from './logger.js';
 
-let redis = null;
+let redis: Redis | null = null;
 
 if (process.env.REDIS_URL && process.env.NODE_ENV?.trim() !== 'test') {
   redis = new Redis(process.env.REDIS_URL, {
     maxRetriesPerRequest: 3,
-    retryStrategy(times) {
+    retryStrategy(times: number) {
       if (times > 3) return null;
       return Math.min(times * 50, 2000);
     }
   });
   
   redis.on('connect', () => logger.info('[REDIS] Connected to instance'));
-  redis.on('error', (err) => logger.error(`[REDIS] Error: ${err.message}`));
+  redis.on('error', (err: Error) => logger.error(`[REDIS] Error: ${err.message}`));
 }
 
 /**
  * Cache data with a TTL
  */
-const setCache = async (key, value, ttlSeconds = 300) => {
+export const setCache = async (key: string, value: any, ttlSeconds: number = 300): Promise<void> => {
   if (!redis) return;
   try {
     await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
-  } catch (err) {
+  } catch (err: any) {
     logger.error(`[REDIS] Set error for ${key}: ${err.message}`);
   }
 };
@@ -31,12 +31,12 @@ const setCache = async (key, value, ttlSeconds = 300) => {
 /**
  * Get data from cache
  */
-const getCache = async (key) => {
+export const getCache = async (key: string): Promise<any | null> => {
   if (!redis) return null;
   try {
     const data = await redis.get(key);
     return data ? JSON.parse(data) : null;
-  } catch (err) {
+  } catch (err: any) {
     logger.error(`[REDIS] Get error for ${key}: ${err.message}`);
     return null;
   }
@@ -45,7 +45,7 @@ const getCache = async (key) => {
 /**
  * Invalidate cache by pattern
  */
-const invalidateCache = async (pattern) => {
+export const invalidateCache = async (pattern: string): Promise<void> => {
   if (!redis) return;
   try {
     const keys = await redis.keys(pattern);
@@ -53,14 +53,9 @@ const invalidateCache = async (pattern) => {
       await redis.del(...keys);
       logger.info(`[REDIS] Invalidated ${keys.length} keys matching ${pattern}`);
     }
-  } catch (err) {
+  } catch (err: any) {
     logger.error(`[REDIS] Invalidation error for ${pattern}: ${err.message}`);
   }
 };
 
-module.exports = {
-  setCache,
-  getCache,
-  invalidateCache,
-  redis
-};
+export { redis };
