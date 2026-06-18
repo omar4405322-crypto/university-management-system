@@ -8,9 +8,9 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "start": "node src/server.js",
+    "start": "tsx src/server.ts",
     "build": "prisma generate && tsc",
-    "dev": "nodemon src/server.js",
+    "dev": "nodemon --exec tsx src/server.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "seed": "node prisma/seed.js",
@@ -67,6 +67,7 @@
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3"
   }
 }
