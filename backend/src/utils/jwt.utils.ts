@@ -1,15 +1,20 @@
-const jwt = require('jsonwebtoken');
-const { AuthenticationError } = require('./appError');
-const prisma = require('./prismaClient');
-const crypto = require('crypto');
+import jwt from 'jsonwebtoken';
+import { AuthenticationError } from './appError.js';
+import prisma from './prismaClient.js';
+import crypto from 'crypto';
+
+export interface TokenPayload {
+  id: number;
+  tokenVersion: number;
+}
 
 /**
  * Generate a short-lived access token
  */
-const generateAccessToken = (userId, tokenVersion = 0) => { 
+export const generateAccessToken = (userId: number, tokenVersion: number = 0): string => { 
   return jwt.sign( 
     { id: userId, tokenVersion }, 
-    process.env.JWT_SECRET, 
+    process.env.JWT_SECRET as string, 
     { 
       expiresIn: '15m', 
       issuer: 'Smart University Platform', 
@@ -18,10 +23,13 @@ const generateAccessToken = (userId, tokenVersion = 0) => {
   ); 
 }; 
 
+// Keep original name for compatibility if needed
+export const generateToken = generateAccessToken;
+
 /**
  * Generate a long-lived refresh token and store it in DB
  */
-const generateRefreshToken = async (userId) => {
+export const generateRefreshToken = async (userId: number): Promise<string> => {
   const token = crypto.randomBytes(40).toString('hex');
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
@@ -40,14 +48,14 @@ const generateRefreshToken = async (userId) => {
 /**
  * Verify a JWT access token
  */
-const verifyToken = (token) => {
+export const verifyToken = (token: string): TokenPayload => {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET, {
+    return jwt.verify(token, process.env.JWT_SECRET as string, {
       issuer: 'Smart University Platform',
       audience: 'University Users'
-    });
-  } catch (error) {
-    if (error.name === 'TokenExpiredError') {
+    }) as TokenPayload;
+  } catch (error: any) {
+    if (error?.name === 'TokenExpiredError') {
       throw new AuthenticationError('Session expired, please login again');
     }
     throw new AuthenticationError('Invalid or corrupted security token');
@@ -57,14 +65,6 @@ const verifyToken = (token) => {
 /**
  * Decode a JWT token without verification
  */
-const decodeToken = (token) => {
+export const decodeToken = (token: string): any => {
   return jwt.decode(token);
-};
-
-module.exports = {
-  generateToken: generateAccessToken, // Keep original name for compatibility if needed
-  generateAccessToken,
-  generateRefreshToken,
-  verifyToken,
-  decodeToken,
 };
