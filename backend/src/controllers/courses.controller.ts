@@ -230,12 +230,12 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
     where: { id: parseInt(id as string) },
     data: {
       ...updateData,
-      credits: updateData.credits ? parseInt(updateData.credits as string) : undefined,
-      departmentId: updateData.departmentId ? parseInt(updateData.departmentId as string) : undefined,
-      doctorId: updateData.doctorId ? parseInt(updateData.doctorId as string) : undefined,
-      maxStudents: updateData.maxStudents ? parseInt(updateData.maxStudents as string) : undefined,
-      year: updateData.year ? parseInt(updateData.year as string) : undefined,
-      semester: updateData.semester ? parseInt(updateData.semester as string) : undefined,
+      credits: updateData.credits !== undefined ? parseInt(updateData.credits as string) : undefined,
+      departmentId: updateData.departmentId !== undefined ? parseInt(updateData.departmentId as string) : undefined,
+      doctorId: updateData.doctorId !== undefined ? parseInt(updateData.doctorId as string) : undefined,
+      maxStudents: updateData.maxStudents !== undefined ? parseInt(updateData.maxStudents as string) : undefined,
+      year: updateData.year !== undefined ? parseInt(updateData.year as string) : undefined,
+      semester: updateData.semester !== undefined ? parseInt(updateData.semester as string) : undefined,
     },
   });
 
