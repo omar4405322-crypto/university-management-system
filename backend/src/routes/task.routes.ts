@@ -1,15 +1,13 @@
-const express = require('express');
-const { 
-  createTask, 
+import express from 'express';
+import { createTask, 
   getTasks, 
   submitTask, 
   gradeSubmission, 
-  getTaskSubmissions 
-} = require('../controllers/task.controller');
-const { protect, authorize } = require('../middleware/auth.middleware');
-const { taskValidation, functionalIdValidation } = require('../validations/functional.validation');
-const { body, param } = require('express-validator');
-const validate = require('../middleware/validate.middleware');
+  getTaskSubmissions } from '../controllers/task.controller.js';
+import { protect, authorize } from '../middleware/auth.middleware.js';
+import { taskValidation, functionalIdValidation } from '../validations/functional.validation.js';
+import { body, param } from 'express-validator';
+import validate from '../middleware/validate.middleware.js';
 
 const router = express.Router();
 
@@ -26,4 +24,4 @@ router.put('/:id/submissions/:sid/grade', authorize('DOCTOR'), [
 ], validate, gradeSubmission);
 router.get('/:id/submissions', authorize('DOCTOR', 'SUPER_ADMIN'), functionalIdValidation, validate, getTaskSubmissions);
 
-module.exports = router;
+export default router;

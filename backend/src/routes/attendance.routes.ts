@@ -1,10 +1,10 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const attendanceController = require('../controllers/attendance.controller');
-const { protect, authorize } = require('../middleware/auth.middleware');
-const { attendanceValidation } = require('../validations/functional.validation');
-const { param } = require('express-validator');
-const validate = require('../middleware/validate.middleware');
+import * as attendanceController from '../controllers/attendance.controller.js';
+import { protect, authorize } from '../middleware/auth.middleware.js';
+import { attendanceValidation } from '../validations/functional.validation.js';
+import { param } from 'express-validator';
+import validate from '../middleware/validate.middleware.js';
 
 router.post('/', protect, authorize('SUPER_ADMIN', 'ADMIN', 'DOCTOR'), attendanceValidation, validate, attendanceController.recordAttendance);
 router.get('/course/:courseId', protect, authorize('SUPER_ADMIN', 'ADMIN', 'DOCTOR'), [
@@ -14,4 +14,4 @@ router.get('/student/:studentId', protect, [
   param('studentId').isInt().withMessage('Invalid student ID')
 ], validate, attendanceController.getStudentAttendance);
 
-module.exports = router;
+export default router;

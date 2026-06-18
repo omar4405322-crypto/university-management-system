@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const timetableController = require('../controllers/timetable.controller');
-const { protect, authorize } = require('../middleware/auth.middleware');
+import * as timetableController from '../controllers/timetable.controller.js';
+import { protect, authorize } from '../middleware/auth.middleware.js';
 
 router.use(protect);
 
@@ -16,4 +16,4 @@ router.delete('/:id', authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPART
 router.patch('/:id/publish', authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), timetableController.publishTimetable);
 router.patch('/:id/unpublish', authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), timetableController.unpublishTimetable);
 
-module.exports = router;
+export default router;

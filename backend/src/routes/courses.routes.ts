@@ -1,9 +1,9 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const coursesController = require('../controllers/courses.controller');
-const { authorize } = require('../middleware/auth.middleware');
-const { courseValidation, idParamValidation } = require('../validations/academic.validation');
-const validate = require('../middleware/validate.middleware');
+import * as coursesController from '../controllers/courses.controller.js';
+import { authorize } from '../middleware/auth.middleware.js';
+import { courseValidation, idParamValidation } from '../validations/academic.validation.js';
+import validate from '../middleware/validate.middleware.js';
 
 // GET routes are accessible by all authenticated users
 router.get('/', coursesController.getAllCourses);
@@ -15,4 +15,4 @@ router.post('/', authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_
 router.put('/:id', authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), [...idParamValidation, ...courseValidation], validate, coursesController.updateCourse);
 router.delete('/:id', authorize('SUPER_ADMIN', 'ADMIN'), idParamValidation, validate, coursesController.deleteCourse);
 
-module.exports = router;
+export default router;

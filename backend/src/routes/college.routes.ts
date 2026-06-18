@@ -1,15 +1,13 @@
-const express = require('express');
-const { 
-  getAllColleges, 
+import express from 'express';
+import { getAllColleges, 
   getCollegeById, 
   createCollege, 
   updateCollege, 
   deleteCollege,
-  assignAdmin
-} = require('../controllers/college.controller');
-const { protect, authorize } = require('../middleware/auth.middleware');
-const { collegeValidation, adminIdValidation } = require('../validations/admin.validation');
-const validate = require('../middleware/validate.middleware');
+  assignAdmin } from '../controllers/college.controller.js';
+import { protect, authorize } from '../middleware/auth.middleware.js';
+import { collegeValidation, adminIdValidation } from '../validations/admin.validation.js';
+import validate from '../middleware/validate.middleware.js';
 
 const router = express.Router();
 
@@ -22,4 +20,4 @@ router.put('/:id', protect, authorize('SUPER_ADMIN'), [...adminIdValidation, ...
 router.put('/:id/assign-admin', protect, authorize('SUPER_ADMIN'), adminIdValidation, validate, assignAdmin);
 router.delete('/:id', protect, authorize('SUPER_ADMIN'), adminIdValidation, validate, deleteCollege);
 
-module.exports = router;
+export default router;

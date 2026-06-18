@@ -1,14 +1,12 @@
-const express = require('express');
-const { 
-  createQuiz, 
+import express from 'express';
+import { createQuiz, 
   getQuizzes, 
   getQuizById, 
   submitQuiz, 
-  getQuizResults 
-} = require('../controllers/quiz.controller');
-const { protect, authorize } = require('../middleware/auth.middleware');
-const { quizValidation, functionalIdValidation } = require('../validations/functional.validation');
-const validate = require('../middleware/validate.middleware');
+  getQuizResults } from '../controllers/quiz.controller.js';
+import { protect, authorize } from '../middleware/auth.middleware.js';
+import { quizValidation, functionalIdValidation } from '../validations/functional.validation.js';
+import validate from '../middleware/validate.middleware.js';
 
 const router = express.Router();
 
@@ -20,4 +18,4 @@ router.get('/:id', functionalIdValidation, validate, getQuizById);
 router.post('/:id/submit', authorize('STUDENT'), functionalIdValidation, validate, submitQuiz);
 router.get('/:id/results', authorize('DOCTOR', 'SUPER_ADMIN'), functionalIdValidation, validate, getQuizResults);
 
-module.exports = router;
+export default router;

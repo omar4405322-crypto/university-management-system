@@ -1,9 +1,9 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const paymentsController = require('../controllers/payments.controller');
-const { authorize } = require('../middleware/auth.middleware');
-const { paymentValidation, functionalIdValidation } = require('../validations/functional.validation');
-const validate = require('../middleware/validate.middleware');
+import * as paymentsController from '../controllers/payments.controller.js';
+import { authorize } from '../middleware/auth.middleware.js';
+import { paymentValidation, functionalIdValidation } from '../validations/functional.validation.js';
+import validate from '../middleware/validate.middleware.js';
 
 router.get('/', authorize('SUPER_ADMIN', 'ADMIN'), paymentsController.getAllPayments);
 router.get('/my', authorize('STUDENT'), paymentsController.getMyPayments);
@@ -15,4 +15,4 @@ router.put('/:id', authorize('SUPER_ADMIN', 'ADMIN'), [...functionalIdValidation
 router.put('/:id/pay', authorize('SUPER_ADMIN', 'ADMIN'), functionalIdValidation, validate, paymentsController.markAsPaid);
 router.delete('/:id', authorize('SUPER_ADMIN', 'ADMIN'), functionalIdValidation, validate, paymentsController.deletePayment);
 
-module.exports = router;
+export default router;

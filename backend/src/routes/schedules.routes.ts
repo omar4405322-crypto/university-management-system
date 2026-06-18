@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const schedulesController = require('../controllers/schedules.controller');
-const { authorize } = require('../middleware/auth.middleware');
+import * as schedulesController from '../controllers/schedules.controller.js';
+import { authorize } from '../middleware/auth.middleware.js';
 
 router.get('/', schedulesController.getAllSchedules);
 router.get('/week', schedulesController.getWeeklyTimetable);
@@ -10,4 +10,4 @@ router.post('/', authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_
 router.put('/:id', authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), schedulesController.updateSchedule);
 router.delete('/:id', authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), schedulesController.deleteSchedule);
 
-module.exports = router;
+export default router;

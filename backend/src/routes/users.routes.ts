@@ -1,6 +1,5 @@
-const express = require('express');
-const { 
-  getProfile, 
+import express from 'express';
+import { getProfile, 
   updateProfile, 
   updatePassword, 
   updateProfilePicture,
@@ -9,13 +8,12 @@ const {
   disable2FA,
   getAllUsers,
   createAdmin,
-  deleteUser
-} = require('../controllers/user.controller');
-const { protect, authorize } = require('../middleware/auth.middleware');
-const upload = require('../middleware/upload.middleware');
-const { userUpdateValidation, adminIdValidation } = require('../validations/admin.validation');
-const { body } = require('express-validator');
-const validate = require('../middleware/validate.middleware');
+  deleteUser } from '../controllers/user.controller.js';
+import { protect, authorize } from '../middleware/auth.middleware.js';
+import upload from '../middleware/upload.middleware.js';
+import { userUpdateValidation, adminIdValidation } from '../validations/admin.validation.js';
+import { body } from 'express-validator';
+import validate from '../middleware/validate.middleware.js';
 
 const router = express.Router();
 
@@ -57,4 +55,4 @@ router.post('/admins', authorize('SUPER_ADMIN'), [
 
 router.delete('/:id', authorize('SUPER_ADMIN'), adminIdValidation, validate, deleteUser);
 
-module.exports = router;
+export default router;

@@ -1,10 +1,10 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const doctorsController = require('../controllers/doctors.controller');
-const { resetDoctorPassword } = require('../controllers/doctors.controller');
-const { authorize } = require('../middleware/auth.middleware');
-const { doctorValidation, idParamValidation } = require('../validations/academic.validation');
-const validate = require('../middleware/validate.middleware');
+import * as doctorsController from '../controllers/doctors.controller.js';
+import { resetDoctorPassword } from '../controllers/doctors.controller.js';
+import { authorize } from '../middleware/auth.middleware.js';
+import { doctorValidation, idParamValidation } from '../validations/academic.validation.js';
+import validate from '../middleware/validate.middleware.js';
 
 // All doctor routes are restricted
 router.use(authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'));
@@ -21,4 +21,4 @@ router.patch(
 );
 router.delete('/:id', idParamValidation, validate, doctorsController.deleteDoctor);
 
-module.exports = router;
+export default router;

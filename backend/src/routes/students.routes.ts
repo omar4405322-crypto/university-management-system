@@ -1,10 +1,10 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const studentsController = require('../controllers/students.controller');
-const { resetStudentPassword } = require('../controllers/students.controller');
-const { authorize } = require('../middleware/auth.middleware');
-const { studentValidation, idParamValidation } = require('../validations/academic.validation');
-const validate = require('../middleware/validate.middleware');
+import * as studentsController from '../controllers/students.controller.js';
+import { resetStudentPassword } from '../controllers/students.controller.js';
+import { authorize } from '../middleware/auth.middleware.js';
+import { studentValidation, idParamValidation } from '../validations/academic.validation.js';
+import validate from '../middleware/validate.middleware.js';
 
 // All student routes are ADMIN/SUPER_ADMIN only
 router.use(authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'));
@@ -21,4 +21,4 @@ router.patch(
 );
 router.delete('/:id', idParamValidation, validate, studentsController.deleteStudent);
 
-module.exports = router;
+export default router;

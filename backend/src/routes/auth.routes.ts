@@ -1,8 +1,8 @@
-const express = require('express');
-const { register, login, refresh, logout, getMe, getRequests, approveRequest, rejectRequest } = require('../controllers/auth.controller');
-const { protect, authorize } = require('../middleware/auth.middleware');
-const { registerValidation, loginValidation, requestIdValidation } = require('../validations/auth.validation');
-const validate = require('../middleware/validate.middleware');
+import express from 'express';
+import { register, login, refresh, logout, getMe, getRequests, approveRequest, rejectRequest } from '../controllers/auth.controller.js';
+import { protect, authorize } from '../middleware/auth.middleware.js';
+import { registerValidation, loginValidation, requestIdValidation } from '../validations/auth.validation.js';
+import validate from '../middleware/validate.middleware.js';
 
 const router = express.Router();
 
@@ -17,4 +17,4 @@ router.get('/requests', protect, authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMI
 router.put('/requests/:id/approve', protect, authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), requestIdValidation, validate, approveRequest);
 router.put('/requests/:id/reject', protect, authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), requestIdValidation, validate, rejectRequest);
 
-module.exports = router;
+export default router;
