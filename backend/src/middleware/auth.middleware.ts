@@ -1,13 +1,23 @@
-const { verifyToken } = require('../utils/jwt.utils');
-const prisma = require('../utils/prismaClient');
-const catchAsync = require('../utils/catchAsync');
-const { redis } = require('../utils/redis.utils');
+import { Request, Response, NextFunction } from 'express';
+import { verifyToken } from '../utils/jwt.utils.js';
+import prisma from '../utils/prismaClient.js';
+import catchAsync from '../utils/catchAsync.js';
+import { redis } from '../utils/redis.utils.js';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+      cookies?: any;
+    }
+  }
+}
 
 /**
  * Protect routes - ensures user is authenticated
  */
-const protect = catchAsync(async (req, res, next) => {
-  let token;
+const protect = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  let token: string | undefined;
   if (req.cookies?.auth_token) { 
     token = req.cookies.auth_token; 
   } else if (req.headers.authorization?.startsWith('Bearer')) { 
@@ -76,8 +86,8 @@ const protect = catchAsync(async (req, res, next) => {
 /**
  * Authorize roles - ensures user has required permissions
  */
-const authorize = (...roles) => {
-  return (req, res, next) => {
+const authorize = (...roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(500).json({
         success: false,
@@ -105,4 +115,4 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { protect, authorize };
+export { protect, authorize };
