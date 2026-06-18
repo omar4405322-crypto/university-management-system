@@ -1,6 +1,6 @@
-const { body, param } = require('express-validator');
+import {  body, param  } from 'express-validator';
 
-const studentValidation = [
+export const studentValidation = [
   body('firstName').notEmpty().withMessage('First name is required').trim(),
   body('lastName').notEmpty().withMessage('Last name is required').trim(),
   body('studentId').notEmpty().withMessage('Student ID is required').trim(),
@@ -13,7 +13,7 @@ const studentValidation = [
   body('birthDate').optional().isISO8601().withMessage('Invalid birth date format')
 ];
 
-const courseValidation = [
+export const courseValidation = [
   body('courseCode').notEmpty().withMessage('Course code is required').trim(),
   body('name').notEmpty().withMessage('Course name is required').trim(),
   body('credits').isInt({ min: 1, max: 10 }).withMessage('Credits must be between 1 and 10'),
@@ -25,7 +25,7 @@ const courseValidation = [
   body('semester').optional().isInt({ min: 1, max: 3 })
 ];
 
-const doctorValidation = [
+export const doctorValidation = [
   body('firstName').notEmpty().withMessage('First name is required').trim(),
   body('lastName').notEmpty().withMessage('Last name is required').trim(),
   body('doctorId').notEmpty().withMessage('Doctor ID is required').trim(),
@@ -37,13 +37,8 @@ const doctorValidation = [
   body('gender').optional().isIn(['Male', 'Female', 'Other']).withMessage('Invalid gender')
 ];
 
-const idParamValidation = [
+export const idParamValidation = [
   param('id').isInt().withMessage('Invalid ID format')
 ];
 
-module.exports = {
-  studentValidation,
-  courseValidation,
-  doctorValidation,
-  idParamValidation
-};
+

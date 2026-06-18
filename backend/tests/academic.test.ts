@@ -1,9 +1,9 @@
-const request = require('supertest');
-const app = require('../src/app').default || require('../src/app');
-const { PrismaClient } = require('@prisma/client');
+import request from 'supertest';
+import app from '../src/app.js';
+import {  PrismaClient  } from '@prisma/client';
 const prisma = new PrismaClient();
-const bcrypt = require('bcryptjs');
-const { generateToken } = require('../src/utils/jwt.utils');
+import bcrypt from 'bcryptjs';
+import {  generateToken  } from '../src/utils/jwt.utils';
 
 describe('Academic CRUD API', () => {
   let adminToken;

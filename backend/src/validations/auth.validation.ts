@@ -1,6 +1,6 @@
-const { body, param } = require('express-validator');
+import {  body, param  } from 'express-validator';
 
-const registerValidation = [
+export const registerValidation = [
   body('email')
     .isEmail().withMessage('Please provide a valid email address')
     .normalizeEmail(),
@@ -30,7 +30,7 @@ const registerValidation = [
     .isInt().withMessage('Department ID must be an integer')
 ];
 
-const loginValidation = [
+export const loginValidation = [
   body('email')
     .isEmail().withMessage('Please provide a valid email address')
     .normalizeEmail(),
@@ -38,13 +38,9 @@ const loginValidation = [
     .notEmpty().withMessage('Password is required')
 ];
 
-const requestIdValidation = [
+export const requestIdValidation = [
   param('id')
     .isInt().withMessage('Invalid request ID')
 ];
 
-module.exports = {
-  registerValidation,
-  loginValidation,
-  requestIdValidation
-};
+
