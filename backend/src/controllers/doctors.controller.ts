@@ -182,7 +182,7 @@ export const createDoctor = catchAsync(async (req: Request, res: Response, next:
         doctorId,
         phone,
         specialty,
-        departmentId: departmentId ? parseInt(departmentId as string) : null,
+        departmentId: (departmentId !== undefined && departmentId !== '') ? parseInt(departmentId as string) : null,
       },
       include: {
         user: {
@@ -250,7 +250,7 @@ export const updateDoctor = catchAsync(async (req: Request, res: Response, next:
       lastName,
       phone,
       specialty,
-      departmentId: departmentId ? parseInt(departmentId as string) : undefined,
+      departmentId: (departmentId !== undefined && departmentId !== '') ? parseInt(departmentId as string) : undefined,
     },
     include: {
       user: {
