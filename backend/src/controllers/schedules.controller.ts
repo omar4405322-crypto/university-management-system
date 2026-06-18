@@ -23,8 +23,8 @@ export const getAllSchedules = catchAsync(async (req: Request, res: Response, ne
     }
 
     // Calculate year and semester if not provided
-    let filterYear = year ? parseInt(year as string) : null;
-    let filterSemester = semester ? parseInt(semester as string) : null;
+    let filterYear = year !== undefined ? parseInt(year as string) : null;
+    let filterSemester = semester !== undefined ? parseInt(semester as string) : null;
 
     if (!filterYear) {
       const enrolledDate = new Date(student.enrolledAt);
@@ -53,10 +53,10 @@ export const getAllSchedules = catchAsync(async (req: Request, res: Response, ne
         where.course = { department: { collegeId: parseInt(collegeId as string) } };
       }
 
-      if (year) {
+      if (year !== undefined) {
         where.course = { ...where.course, year: parseInt(year as string) };
       }
-      if (semester) {
+      if (semester !== undefined) {
         where.course = { ...where.course, semester: parseInt(semester as string) };
       }
 
@@ -112,8 +112,8 @@ export const getWeeklyTimetable = catchAsync(async (req: Request, res: Response,
       return next(new NotFoundError('Student profile not found'));
     }
 
-    let filterYear = year ? parseInt(year as string) : null;
-    let filterSemester = semester ? parseInt(semester as string) : null;
+    let filterYear = year !== undefined ? parseInt(year as string) : null;
+    let filterSemester = semester !== undefined ? parseInt(semester as string) : null;
 
     if (!filterYear) {
       const enrolledDate = new Date(student.enrolledAt);
@@ -141,10 +141,10 @@ export const getWeeklyTimetable = catchAsync(async (req: Request, res: Response,
       where.course = { department: { collegeId: parseInt(collegeId as string) } };
     }
 
-    if (year) {
+    if (year !== undefined) {
       where.course = { ...where.course, year: parseInt(year as string) };
     }
-    if (semester) {
+    if (semester !== undefined) {
       where.course = { ...where.course, semester: parseInt(semester as string) };
     }
 
