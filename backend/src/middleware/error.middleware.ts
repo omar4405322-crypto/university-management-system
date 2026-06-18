@@ -1,9 +1,17 @@
-const logger = require('../utils/logger');
+import { Request, Response, NextFunction } from 'express';
+import logger from '../utils/logger.js';
+import { 
+  AppError, 
+  ConflictError, 
+  NotFoundError, 
+  ValidationError, 
+  AuthenticationError 
+} from '../utils/appError.js';
 
 /**
  * Global Error Handler Middleware
  */
-const globalErrorHandler = (err, req, res, next) => {
+const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
   // Always log to console for immediate visibility during debugging
   console.error('Global error:', err?.message, err?.stack);
   err.statusCode = err.statusCode || 500;
@@ -17,9 +25,9 @@ const globalErrorHandler = (err, req, res, next) => {
 
     // Handle specific Prisma errors
     if (err.code === 'P2002') error = handlePrismaUniqueConstraintError(err);
-    if (err.code === 'P2025') error = handlePrismaNotFoundError(err);
+    if (err.code === 'P2025') error = handlePrismaNotFoundError();
     if (err.code === 'P2003') error = handlePrismaForeignKeyError(err);
-    if (err.code === 'P1001') error = handlePrismaConnectionError(err);
+    if (err.code === 'P1001') error = handlePrismaConnectionError();
     if (err.name === 'JsonWebTokenError') error = handleJWTError();
     if (err.name === 'TokenExpiredError') error = handleJWTExpiredError();
 
@@ -27,32 +35,32 @@ const globalErrorHandler = (err, req, res, next) => {
   }
 };
 
-const handlePrismaUniqueConstraintError = (err) => {
+const handlePrismaUniqueConstraintError = (err: any) => {
   const field = err.meta?.target?.[0] || 'field';
   const message = `Duplicate value for ${field}. Please use another value!`;
-  return new (require('../utils/appError').ConflictError)(message);
+  return new ConflictError(message);
 };
 
 const handlePrismaNotFoundError = () => {
-  return new (require('../utils/appError').NotFoundError)('The requested resource was not found.');
+  return new NotFoundError('The requested resource was not found.');
 };
 
-const handlePrismaForeignKeyError = (err) => {
+const handlePrismaForeignKeyError = (err: any) => {
   const message = `Invalid reference: The related record for ${err.meta?.field_name || 'a field'} does not exist.`;
-  return new (require('../utils/appError').ValidationError)(message);
+  return new ValidationError(message);
 };
 
 const handlePrismaConnectionError = () => {
-  return new (require('../utils/appError').AppError)('Database connection failed. Please try again later.', 503);
+  return new AppError('Database connection failed. Please try again later.', 503);
 };
 
 const handleJWTError = () => 
-  new (require('../utils/appError').AuthenticationError)('Invalid security token. Please login again.');
+  new AuthenticationError('Invalid security token. Please login again.');
 
 const handleJWTExpiredError = () => 
-  new (require('../utils/appError').AuthenticationError)('Your session has expired! Please login again.');
+  new AuthenticationError('Your session has expired! Please login again.');
 
-const sendErrorDev = (err, req, res) => {
+const sendErrorDev = (err: any, req: Request, res: Response) => {
   logger.error(`[DEV ERROR] ${err.message}`, { stack: err.stack, path: req.originalUrl });
 
   res.status(err.statusCode).json({
@@ -64,7 +72,7 @@ const sendErrorDev = (err, req, res) => {
   });
 };
 
-const sendErrorProd = (err, req, res) => {
+const sendErrorProd = (err: any, req: Request, res: Response) => {
   // Operational, trusted error: send message to client
   if (err.isOperational) {
     logger.warn(`[OP ERROR] ${err.message}`, { path: req.originalUrl });
@@ -88,4 +96,4 @@ const sendErrorProd = (err, req, res) => {
   }
 };
 
-module.exports = globalErrorHandler;
+export default globalErrorHandler;
