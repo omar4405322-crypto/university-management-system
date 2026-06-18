@@ -1,13 +1,14 @@
-const prisma = require('../utils/prismaClient.js');
-const { ConflictError, NotFoundError } = require('../utils/appError.js');
+import prisma from '../utils/prismaClient.js';
+import { ConflictError, NotFoundError } from '../utils/appError.js';
+import { Prisma } from '@prisma/client';
 
 class TimetableService {
   static async checkRoomConflict(
-    room,
-    day,
-    startTime,
-    endTime,
-    excludeId
+    room: string,
+    day: string,
+    startTime: string,
+    endTime: string,
+    excludeId?: number
   ) {
     const conflict = await prisma.schedule.findFirst({
       where: {
@@ -24,7 +25,7 @@ class TimetableService {
     return conflict !== null;
   }
 
-  static async createTimetable(data) {
+  static async createTimetable(data: any) {
     const {
       collegeId,
       departmentId,
@@ -94,11 +95,11 @@ class TimetableService {
     });
   }
 
-  static async syncSlotsToSchedule(timetableId) {
+  static async syncSlotsToSchedule(timetableId: number) {
     const timetable = await prisma.timetable.findUnique({ where: { id: timetableId } });
     if (!timetable?.scheduleData) return;
 
-    const slots = timetable.scheduleData.slots ?? [];
+    const slots = (timetable.scheduleData as any).slots ?? [];
 
     for (const slot of slots) {
       if (!slot.courseName) continue;
@@ -129,7 +130,7 @@ class TimetableService {
     }
   }
 
-  static async getGridByDepartment(departmentId) {
+  static async getGridByDepartment(departmentId: number) {
     return prisma.timetable.findMany({
       where: { departmentId, status: 'PUBLISHED' },
       include: {
@@ -141,4 +142,4 @@ class TimetableService {
   }
 }
 
-module.exports = { TimetableService };
+export { TimetableService };
