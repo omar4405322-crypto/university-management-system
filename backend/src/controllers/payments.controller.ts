@@ -180,7 +180,7 @@ export const updatePayment = catchAsync(async (req: Request, res: Response, next
   const payment = await prisma.payment.update({
     where: { id: parseInt(req.params.id as string) },
     data: {
-      amount: amount ? parseFloat(amount as string) : undefined,
+      amount: amount !== undefined ? parseFloat(amount as string) : undefined,
       type,
       description,
       dueDate: dueDate ? new Date(dueDate as string) : undefined,
