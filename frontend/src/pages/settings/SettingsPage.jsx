@@ -189,7 +189,7 @@ const SettingsPage = () => {
             className="w-full justify-start gap-3 text-error border-error/20 hover:bg-error/5 hover:border-error/30 text-xs font-black uppercase tracking-widest"
             onClick={logout}
           >
-            <LogOut size={16} /> {t('nav.logout')}
+            <LogOut size={16} className="rtl:-scale-x-100" /> {t('nav.logout')}
           </Button>
         </div>
 

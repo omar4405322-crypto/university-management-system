@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 const catchAsync = require('../utils/catchAsync');
 const { NotFoundError } = require('../utils/appError');
 const { invalidateCache } = require('../utils/redis.utils');
@@ -186,6 +187,7 @@ exports.updatePayment = catchAsync(async (req, res, next) => {
     },
   });
 
+  auditLog('UPDATE_PAYMENT', 'Payment', req.params.id, req);
   res.json({ success: true, data: payment });
 });
 
@@ -198,6 +200,7 @@ exports.markAsPaid = catchAsync(async (req, res, next) => {
     },
   });
 
+  auditLog('MARK_PAYMENT_PAID', 'Payment', req.params.id, req);
   res.json({ success: true, data: payment });
 });
 
@@ -208,5 +211,6 @@ exports.deletePayment = catchAsync(async (req, res, next) => {
   
   await invalidateCache('dashboard:*');
   
+  auditLog('DELETE_PAYMENT', 'Payment', req.params.id, req);
   res.json({ success: true, message: 'Payment deleted' });
 });

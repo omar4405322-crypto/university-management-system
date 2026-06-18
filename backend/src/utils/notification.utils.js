@@ -36,32 +36,35 @@ const notifyRole = async ({ role, title, message, type = 'info' }) => {
 /**
  * Creates notifications for all students enrolled in a specific course
  */
-const notifyStudentsInCourse = async ({ courseId, title, message, type = 'info' }) => {
-  try {
-    const course = await prisma.course.findUnique({
-      where: { id: parseInt(courseId) },
-      include: {
-        students: {
-          select: { userId: true }
-        }
-      }
-    });
+const notifyStudentsInCourse = async({ courseId, title, message, type = 'info' }) => {
+try {
+const course = await prisma.course.findUnique({
+where: { id: parseInt(courseId) },
+include: {
+enrollments: {
+where: { status: 'ENROLLED' },
+select: { student: { select: { userId: true } } }
 
-    if (!course || !course.students.length) return;
+}
+}
+});
 
-    const notifications = course.students.map(student => ({
-      userId: student.userId,
-      title,
-      message,
-      type
-    }));
+if (!course || !course.enrollments.length) return;
 
-    return await prisma.notification.createMany({
-      data: notifications
-    });
-  } catch (error) {
-    console.error('Error notifying students in course:', error);
-  }
+const notifications = course.enrollments.map(({ student }) => ({
+userId: student.userId,
+title,
+message,
+type
+}));
+return await prisma.notification.createMany({
+data: notifications
+});
+
+} catch (error) {
+console.error('Error notifying students in course:', error);
+
+}
 };
 
 /**

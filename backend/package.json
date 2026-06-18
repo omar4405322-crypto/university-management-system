@@ -3,6 +3,10 @@
   "version": "1.2.1",
   "description": "",
   "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0 <21.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "build": "prisma generate && tsc",
@@ -13,23 +17,10 @@
     "test": "dotenv -e .env.test -- jest --detectOpenHandles --runInBand",
     "test:ci": "jest --detectOpenHandles --runInBand --forceExit",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --detectOpenHandles --runInBand"
-  },
-
-  "jest": {
-    "testEnvironment": "node",
-    "globalSetup": "./tests/setup.js",
-    "globalTeardown": "./tests/teardown.js",
-    "coverageDirectory": "coverage",
-    "collectCoverageFrom": [
-      "src/**/*.js",
-      "!src/server.js",
-      "!src/utils/logger.js"
-    ],
-    "testMatch": [
-      "**/tests/**/*.test.js"
-    ],
-    "verbose": true
+    "test:coverage": "jest --coverage --detectOpenHandles --runInBand",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write src"
   },
   "keywords": [],
   "author": "",
@@ -37,6 +28,7 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.4.1",
+    "@sentry/node": "^10.58.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.7",
@@ -60,9 +52,21 @@
     "winston": "^3.19.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/express": "^5.0.6",
+    "@typescript-eslint/eslint-plugin": "^8.61.1",
+    "@typescript-eslint/parser": "^8.61.1",
     "dotenv-cli": "^11.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.6",
     "jest": "^30.4.2",
     "nodemon": "^3.1.14",
-    "supertest": "^7.2.2"
+    "prettier": "^3.8.4",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
   }
 }

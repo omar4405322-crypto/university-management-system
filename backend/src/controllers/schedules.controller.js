@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 const { getScopeWhere } = require('../utils/scope.utils');
 
 exports.getAllSchedules = async (req, res) => {
@@ -312,6 +313,7 @@ exports.deleteSchedule = async (req, res) => {
     }
 
     await prisma.schedule.delete({ where: { id: parseInt(req.params.id) } });
+    auditLog('DELETE_SCHEDULE', 'Schedule', req.params.id, req);
     res.json({ success: true, message: 'Schedule deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

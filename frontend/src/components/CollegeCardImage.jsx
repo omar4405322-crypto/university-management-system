@@ -33,7 +33,7 @@ const CollegeCardImage = ({ name, image, collegeId = 0 }) => {
     <div
       className={`absolute inset-0 ${
         useLogoFallback
-          ? 'flex items-center justify-center bg-gray-50 dark:bg-slate-100'
+          ? 'flex items-center justify-center bg-gray-50 dark:bg-slate-800'
           : ''
       }`}
     >

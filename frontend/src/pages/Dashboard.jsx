@@ -575,7 +575,7 @@ import { CAMPUS_HERO_1 } from '../constants/universityAssets';
                         {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : ''}
                       </p>
                     </div>
-                    <ChevronRight size={16} className="text-brand-text-muted shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight size={16} className="rtl:-scale-x-100 text-brand-text-muted shrink-0 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 ))}
               </div>

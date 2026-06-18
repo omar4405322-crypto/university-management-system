@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
@@ -19,6 +20,7 @@ exports.setup2FA = catchAsync(async (req, res, next) => {
   }); 
   
   const qrCodeUrl = await generateQRCodeURL(secret.otpauth_url); 
+  auditLog('SETUP_2FA', 'User', req.user.id, req);
   res.json({ success: true, data: { qrCodeUrl, manualEntryKey: secret.base32 } }); 
 }); 
 
@@ -60,6 +62,7 @@ exports.disable2FA = catchAsync(async (req, res, next) => {
     where: { id: req.user.id }, 
     data: { twoFactorEnabled: false, twoFactorSecret: null } 
   }); 
+  auditLog('DISABLE_2FA', 'User', req.user.id, req);
   res.json({ success: true, message: '2FA disabled successfully' }); 
 }); 
 
@@ -81,7 +84,7 @@ exports.getProfile = catchAsync(async (req, res, next) => {
             college: true,
           },
         },
-        courses: true,
+        enrollments: { include: { course: true } },
         payments: true,
       },
     });
@@ -96,7 +99,7 @@ exports.getProfile = catchAsync(async (req, res, next) => {
         },
         courses: {
           include: {
-            students: true,
+            enrollments: { include: { student: true } },
           },
         },
       },
@@ -353,6 +356,7 @@ exports.createAdmin = catchAsync(async (req, res, next) => {
     },
   });
 
+  auditLog('CREATE_ADMIN', 'User', admin ? admin.id : null, req);
   res.status(201).json({ success: true, data: admin });
 });
 
@@ -365,5 +369,6 @@ exports.deleteUser = catchAsync(async (req, res, next) => {
 
   await prisma.user.delete({ where: { id: parseInt(id) } });
 
+  auditLog('DELETE_USER', 'User', req.params.id, req);
   res.json({ success: true, message: 'User deleted successfully' });
 });

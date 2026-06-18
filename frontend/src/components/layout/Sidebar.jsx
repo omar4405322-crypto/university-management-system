@@ -134,6 +134,10 @@ const Sidebar = ({ isOpen, onClose }) => {
         { title: 'nav.departments', path: '/departments', icon: Layers, roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'] },
         { title: 'nav.courses', path: '/courses', icon: BookOpen, roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'] },
         { title: 'nav.schedule', path: '/schedule', icon: Calendar, roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'] },
+        { title: 'nav.mySchedule', path: '/schedules/doctor', icon: Calendar, roles: ['DOCTOR'] },
+        { title: 'nav.mySchedule', path: '/schedules/student', icon: Calendar, roles: ['STUDENT'] },
+        { title: 'nav.schedulesManagement', path: '/schedules-management', icon: Calendar, roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'] },
+        { title: 'nav.timetableGrid', path: '/schedules/timetable', icon: Calendar, roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'] },
         { title: 'nav.exams', path: '/exams', icon: FileText, roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'] },
         { title: 'timetables.title', path: '/timetables-management', icon: Calendar, roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] },
         { title: 'nav.quizzes', path: '/quizzes', icon: CheckSquare, roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'] },
@@ -216,8 +220,8 @@ const Sidebar = ({ isOpen, onClose }) => {
               }}
             />
             <div className="flex min-w-0 flex-col">
-              <span className="text-xs font-black uppercase leading-tight tracking-widest text-white">University</span>
-              <span className="text-[10px] font-bold uppercase leading-tight tracking-tighter text-brand-primary-500">Management System</span>
+              <span className="text-xs font-black uppercase leading-tight tracking-widest text-white">{t('common.university', 'University')}</span>
+              <span className="text-[10px] font-bold uppercase leading-tight tracking-tighter text-brand-primary-500">{t('common.managementSystem', 'Management System')}</span>
             </div>
           </div>
 
@@ -278,7 +282,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   title={t('nav.logout')}
                   aria-label={t('nav.logout')}
                 >
-                  <LogOut size={18} />
+                  <LogOut size={18} className="rtl:-scale-x-100" />
                 </button>
               )}
             </div>
@@ -299,7 +303,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           ].join(' ')}
           aria-label={isCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
         >
-          <ChevronLeft size={14} />
+          <ChevronLeft size={14} className="rtl:-scale-x-100" />
         </button>
       </aside>
     </>

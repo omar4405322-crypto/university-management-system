@@ -137,7 +137,7 @@ const Header = ({ onMenuClick }) => {
                     }}
                     className="label-stat text-brand-primary-500 hover:text-brand-primary-600 transition-colors flex items-center justify-center gap-2 mx-auto"
                   >
-                    {t('header.viewAllNotifications')} <ChevronRight size={14} />
+                    {t('header.viewAllNotifications')} <ChevronRight size={14} className="rtl:-scale-x-100" />
                   </button>
                 </div>
               )}
@@ -192,7 +192,7 @@ const Header = ({ onMenuClick }) => {
                 className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-error hover:bg-error hover:text-white rounded-2xl transition-all group"
               >
                 <div className="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                  <LogOut size={18} />
+                  <LogOut size={18} className="rtl:-scale-x-100" />
                 </div>
                 <span className="label-stat">{t('nav.logout')}</span>
               </button>

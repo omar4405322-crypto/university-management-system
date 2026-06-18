@@ -188,7 +188,7 @@ const TakeExam = () => {
                 onClick={() => navigate(`/exams/${id}`)}
                 className="p-3 text-brand-text-sub hover:text-brand-green hover:bg-brand-green/10 rounded-2xl transition-all duration-300"
               >
-                <ChevronLeft size={24} />
+                <ChevronLeft size={24} className="rtl:-scale-x-100" />
               </button>
               <div>
                 <div className="flex items-center gap-3">
@@ -351,7 +351,7 @@ const TakeExam = () => {
                 disabled={currentQuestionIndex === 0}
                 className="rounded-2xl px-6 h-12 gap-2"
               >
-                <ChevronLeft size={20} /> {t('common.previous')}
+                <ChevronLeft size={20} className="rtl:-scale-x-100" /> {t('common.previous')}
               </Button>
 
               {currentQuestionIndex === (exam?.questions?.length || 1) - 1 ? (
@@ -359,14 +359,14 @@ const TakeExam = () => {
                   onClick={() => setShowEmergencyExitConfirm(true)}
                   className="rounded-2xl px-8 h-12 shadow-xl shadow-brand-primary-500/20 gap-2 bg-brand-primary-500 hover:bg-brand-primary-600 font-black"
                 >
-                  <Send size={20} /> {t('exams.finishAndSubmit')}
+                  <Send size={20} className="rtl:-scale-x-100" /> {t('exams.finishAndSubmit')}
                 </Button>
               ) : (
                 <Button 
                   onClick={nextQuestion} 
                   className="rounded-2xl px-8 h-12 gap-2"
                 >
-                  {t('common.next')} <ChevronRight size={20} />
+                  {t('common.next')} <ChevronRight size={20} className="rtl:-scale-x-100" />
                 </Button>
               )}
             </div>

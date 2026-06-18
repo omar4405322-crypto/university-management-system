@@ -46,7 +46,7 @@ const StudentDetails = () => {
             onClick={() => navigate('/students')}
             className="text-brand-accent-blue hover:underline flex items-center justify-center gap-2 mx-auto font-medium"
           >
-            <ArrowLeft size={18} /> {t('students.backToList')}
+            <ArrowLeft size={18} className="rtl:-scale-x-100" /> {t('students.backToList')}
           </button>
         </div>
       </div>
@@ -59,7 +59,7 @@ const StudentDetails = () => {
         onClick={() => navigate('/students')}
         className="flex items-center gap-2 text-brand-text-secondary dark:text-brand-text-muted hover:text-info dark:hover:text-info transition-colors font-medium"
       >
-        <ArrowLeft size={20} /> {t('students.backToList')}
+        <ArrowLeft size={20} className="rtl:-scale-x-100" /> {t('students.backToList')}
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-5 xl:gap-6">

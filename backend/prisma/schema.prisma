@@ -2,9 +2,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// DATABASE_URL is used by Prisma at runtime (goes through PgBouncer, connection_limit=1)
+// DIRECT_URL is used by prisma migrate only (direct connection, no pooler)
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -162,7 +165,7 @@ model Student {
   payments     Payment[]
   quizSubmissions QuizSubmission[]
   taskSubmissions TaskSubmission[]
-  courses      Course[]
+  enrollments  Enrollment[]
   attendance   Attendance[]
   successMetrics StudentSuccessMetric?
 
@@ -281,7 +284,7 @@ model Course {
   exams        Exam[]
   quizzes      Quiz[]
   tasks        Task[]
-  students     Student[]
+  enrollments  Enrollment[]
   attendance   Attendance[]
   createdAt    DateTime @default(now())
 
@@ -438,4 +441,28 @@ enum AdminRole {
   REGISTRAR
   FINANCE
   ACADEMIC_DEAN
+}
+
+model Enrollment {
+  id           Int      @id @default(autoincrement())
+  studentId    Int
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId     Int
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  semester     Int
+  academicYear Int
+  finalGrade   Float?
+  status       EnrollmentStatus @default(ENROLLED)
+  enrolledAt   DateTime @default(now())
+
+  @@unique([studentId, courseId, semester, academicYear])
+  @@index([studentId])
+  @@index([courseId])
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  COMPLETED
+  WITHDRAWN
+  FAILED
 }

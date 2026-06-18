@@ -9,7 +9,7 @@ const degreeAuditService = {
   checkEligibility: async (studentId: number) => {
     const response = await api.get(`/degree-audit/${studentId}/eligible`);
     return response.data;
-  }
+  },
 };
 
 export default degreeAuditService;

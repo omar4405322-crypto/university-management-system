@@ -75,7 +75,7 @@ exports.getQuizzes = catchAsync(async (req, res, next) => {
     const student = await prisma.student.findUnique({ where: { userId: req.user.id } });
     if (student) {
       where.course = {
-        students: { some: { id: student.id } }
+        enrollments: { some: { studentId: student.id, status: 'ENROLLED' } }
       };
     }
   }

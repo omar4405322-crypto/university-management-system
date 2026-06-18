@@ -7,7 +7,7 @@ const cookieParser = require('cookie-parser');
 
 // Error Handling imports
 const globalErrorHandler = require('./middleware/error.middleware');
-const { NotFoundError } = require('./utils/appError');
+const { NotFoundError, AuthorizationError } = require('./utils/appError');
 
 // Route imports
 const authRoutes = require('./routes/auth.routes');
@@ -28,6 +28,7 @@ const analyticsRoutes = require('./routes/analytics.routes');
 const attendanceRoutes = require('./routes/attendance.routes');
 const timetableRoutes = require('./routes/timetable.routes');
 const searchRoutes = require('./routes/search.routes');
+const enrollmentRoutes = require('./routes/enrollment.routes').default || require('./routes/enrollment.routes');
 const { protect } = require('./middleware/auth.middleware');
 
 const swaggerUi = require('swagger-ui-express');
@@ -65,32 +66,30 @@ app.use(helmet({
 }));
 
 // 2. CORS CONFIGURATION
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
-  : [
-      'http://localhost:5173', 
-      'http://localhost:3000', 
-      'http://localhost:3001',
-      'https://capable-bienenstitch-1fc9d2.netlify.app'
-    ];
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:3001',
+].filter(Boolean);
 
-app.use(cors({ 
+app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-
-    const isAllowed = allowedOrigins.includes(origin) || 
-                     origin.match(/https:\/\/university-management-system.*\.vercel\.app$/);
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS Policy: Origin not allowed'), false);
+    // In production: reject requests with no Origin header
+    if (!origin) {
+      if (process.env.NODE_ENV === 'production') {
+        return callback(new AuthorizationError('CORS policy: missing Origin header'), false);
+      }
+      // In development: allow no-origin (Postman, local tools)
+      return callback(null, true);
     }
+    const isVercelPreview = /https:\/\/university-management-system.*\.vercel\.app$/.test(origin);
+    if (allowedOrigins.includes(origin) || isVercelPreview) {
+      return callback(null, true);
+    }
+    return callback(new AuthorizationError(`CORS policy: origin ${origin} not allowed`), false);
   },
-  credentials: true, 
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], 
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'] 
+  credentials: true,
 }));
 
 // 3. RATE LIMITING
@@ -161,8 +160,9 @@ app.use('/api/users', protect, usersRoutes);
 app.use('/api/notifications', protect, notificationRoutes);
 app.use('/api/analytics', protect, analyticsRoutes);
 app.use('/api/attendance', protect, attendanceRoutes);
-app.use('/api/timetables', protect, timetableRoutes);
+app.use('/api/timetable', protect, timetableRoutes);
 app.use('/api/search', protect, searchRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
 
 // Health check & Root
 app.get('/', (req, res) => {

@@ -1,5 +1,6 @@
 // FIXED: Student active status via bio flag + stats/toggle endpoints - Phase 2
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 const catchAsync = require('../utils/catchAsync');
 const { AppError, NotFoundError } = require('../utils/appError');
 const bcrypt = require('bcryptjs');
@@ -143,6 +144,7 @@ exports.toggleStudentStatus = catchAsync(async (req, res, next) => {
     },
   });
 
+  auditLog('TOGGLE_STUDENT_STATUS', 'Student', req.params.id, req);
   res.json({
     success: true,
     data: mapStudentStatus(updated),
@@ -295,7 +297,9 @@ exports.deleteStudent = catchAsync(async (req, res, next) => {
     // Delete in order: many-to-many first, then direct relations, then student, then user 
     await tx.student.update({ 
       where: { id: parseInt(id) }, 
-      data: { courses: { set: [] } } 
+      data: { 
+        enrollments: { deleteMany: {} } 
+      }
     }); // Clear M2M 
     
     await tx.attendance.deleteMany({ where: { studentId: parseInt(id) } }); 
@@ -316,6 +320,7 @@ exports.deleteStudent = catchAsync(async (req, res, next) => {
 
   await invalidateCache('dashboard:*');
 
+  auditLog('DELETE_STUDENT', 'Student', req.params.id, req);
   res.json({
     success: true,
     message: 'Student and associated user account deleted'
@@ -352,6 +357,7 @@ exports.resetStudentPassword = catchAsync(async (req, res, next) => {
     }
   });
 
+  auditLog('RESET_STUDENT_PASSWORD', 'Student', req.params.id, req);
   res.json({
     success: true,
     message: 'Password reset successfully',

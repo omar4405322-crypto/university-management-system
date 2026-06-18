@@ -199,7 +199,7 @@ const AnalyticsDashboard = () => {
         <Card variant="elevated" noPadding className="group overflow-hidden">
           <div className="p-6 space-y-4">
             <div className="flex justify-between items-center">
-              <div className="p-3 rounded-xl bg-rose-50 text-error group-hover:bg-error group-hover:text-white transition-all duration-300">
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-error group-hover:bg-error group-hover:text-white transition-all duration-300">
                 <TrendingUp size={24} />
               </div>
               <Badge variant="danger" className="font-black">{t('analytics.decline')}</Badge>

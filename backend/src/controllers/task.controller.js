@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { auditLog } = require('../utils/audit.utils');
 const { notifyStudentsInCourse } = require('../utils/notification.utils');
 const { getScopeWhere } = require('../utils/scope.utils');
 
@@ -65,7 +66,7 @@ exports.getTasks = async (req, res) => {
       const student = await prisma.student.findUnique({ where: { userId: req.user.id } });
       if (student) {
         where.course = {
-          students: { some: { id: student.id } }
+          enrollments: { some: { studentId: student.id, status: 'ENROLLED' } }
         };
       }
     }
@@ -144,6 +145,7 @@ exports.gradeSubmission = async (req, res) => {
       data: { score: parseFloat(score) }
     });
 
+    auditLog('UPDATE_GRADE', 'TaskSubmission', req.params.id, req);
     res.json({ success: true, data: submission });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

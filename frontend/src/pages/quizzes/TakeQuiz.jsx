@@ -244,7 +244,7 @@ const TakeQuiz = () => {
             disabled={currentQuestionIndex === 0}
             className="flex items-center px-6 py-2 rounded-xl font-bold text-brand-text-secondary hover:bg-brand-border disabled:opacity-30 transition-colors"
           >
-            <ChevronLeft size={20} className="mr-1" /> Previous
+            <ChevronLeft size={20} className="rtl:-scale-x-100 mr-1" /> Previous
           </button>
           
           {isLastQuestion ? (
@@ -259,7 +259,7 @@ const TakeQuiz = () => {
             >
               {submitting ? 'Submitting...' : (
                 <span className="flex items-center">
-                  Submit Quiz <Send size={18} className="ml-2" />
+                  Submit Quiz <Send size={18} className="rtl:-scale-x-100 ml-2" />
                 </span>
               )}
             </button>
@@ -268,7 +268,7 @@ const TakeQuiz = () => {
               onClick={() => setCurrentQuestionIndex(prev => Math.min(quiz.questions.length - 1, prev + 1))}
               className="flex items-center px-8 py-3 bg-brand-primary-500 text-white rounded-xl font-bold hover:bg-brand-primary-600 shadow-lg shadow-brand-primary-500/20 transition-all"
             >
-              Next <ChevronRight size={20} className="ml-1" />
+              Next <ChevronRight size={20} className="rtl:-scale-x-100 ml-1" />
             </button>
           )}
         </div>

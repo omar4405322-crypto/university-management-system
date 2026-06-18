@@ -264,7 +264,7 @@ const LandingPage = () => {
               className="group flex items-center gap-3 px-8 py-4 bg-brand-green hover:bg-brand-green-dark text-brand-navy font-black rounded-2xl shadow-xl shadow-brand-green/20 transition-all duration-300 transform hover:-translate-y-1"
             >
               <span>ابدأ التسجيل الآن</span>
-              <ArrowLeft size={18} className="transition-transform group-hover:-translate-x-1" />
+              <ArrowLeft size={18} className="rtl:-scale-x-100 transition-transform group-hover:-translate-x-1" />
             </Link>
             <a 
               href="#about" 
@@ -348,7 +348,7 @@ const LandingPage = () => {
                   className="inline-flex items-center gap-3 text-brand-navy font-black text-sm group"
                 >
                   <span className="border-b-2 border-brand-green pb-1">اعرف المزيد عن الجامعة</span>
-                  <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
+                  <ArrowLeft size={16} className="rtl:-scale-x-100 transition-transform group-hover:-translate-x-1" />
                 </Link>
               </div>
             </div>
@@ -377,7 +377,7 @@ const LandingPage = () => {
                 <div className="mt-auto pt-6 border-t border-brand-border flex items-center justify-between">
                   <span className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted">{college.students}</span>
                   <div className="w-10 h-10 rounded-xl bg-brand-primary-50 text-brand-green flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-x-4 group-hover:translate-x-0">
-                    <ArrowLeft size={18} />
+                    <ArrowLeft size={18} className="rtl:-scale-x-100" />
                   </div>
                 </div>
               </div>
@@ -493,7 +493,7 @@ const LandingPage = () => {
                   className="inline-flex items-center gap-4 px-10 py-5 bg-brand-navy text-white font-black rounded-2xl shadow-2xl hover:bg-brand-navy-600 transition-all duration-300 transform hover:-translate-y-1"
                 >
                   <span className="text-lg">سجّل دخولك الآن</span>
-                  <ArrowLeft size={20} />
+                  <ArrowLeft size={20} className="rtl:-scale-x-100" />
                 </Link>
               </div>
             </div>

@@ -74,7 +74,7 @@ const DepartmentDetails = () => {
         <AlertCircle size={40} className="text-brand-text-muted mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-brand-text-main">{t('departments.notFound', 'Department not found')}</h2>
         <Button variant="outline" className="mt-6" onClick={() => navigate('/departments')}>
-          <ArrowLeft size={18} className="mr-2" /> {t('common.back')}
+          <ArrowLeft size={18} className="rtl:-scale-x-100 mr-2" /> {t('common.back')}
         </Button>
       </div>
     );
@@ -111,7 +111,7 @@ const DepartmentDetails = () => {
             onClick={() => navigate('/departments')}
             className="p-3 text-brand-text-sub hover:text-brand-green hover:bg-brand-green/10 rounded-2xl transition-all"
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft size={24} className="rtl:-scale-x-100" />
           </button>
           <div>
             <h1 className="text-3xl font-black text-brand-text-main">{department.name}</h1>

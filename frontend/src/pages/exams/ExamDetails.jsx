@@ -67,7 +67,7 @@ const ExamDetails = () => {
         </div>
         <h2 className="text-2xl font-bold text-brand-text-main">{error || 'Exam not found'}</h2>
         <Button variant="outline" className="mt-6 border-brand-border" onClick={() => navigate('/exams')}>
-          <ArrowLeft size={18} className="mr-2" /> Back to Schedule
+          <ArrowLeft size={18} className="rtl:-scale-x-100 mr-2" /> Back to Schedule
         </Button>
       </div>
     );
@@ -84,7 +84,7 @@ const ExamDetails = () => {
             onClick={() => navigate('/exams')}
             className="p-3 text-brand-text-sub hover:text-brand-green hover:bg-brand-green/10 rounded-2xl transition-all duration-300 group"
           >
-            <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
+            <ArrowLeft size={24} className="rtl:-scale-x-100 group-hover:-translate-x-1 transition-transform" />
           </button>
           <div>
             <div className="flex items-center gap-3">
