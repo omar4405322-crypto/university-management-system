@@ -1,7 +1,7 @@
-const speakeasy = require('speakeasy'); 
-const QRCode = require('qrcode'); 
+import speakeasy from 'speakeasy'; 
+import QRCode from 'qrcode'; 
  
-const generateTOTPSecret = (userEmail) => { 
+export const generateTOTPSecret = (userEmail: string): speakeasy.GeneratedSecret => { 
   return speakeasy.generateSecret({ 
     name: `Smart University (${userEmail})`, 
     issuer: 'Smart University Platform', 
@@ -9,7 +9,7 @@ const generateTOTPSecret = (userEmail) => {
   }); 
 }; 
  
-const verifyTOTP = (secret, token) => { 
+export const verifyTOTP = (secret: string, token: string): boolean => { 
   return speakeasy.totp.verify({ 
     secret, 
     encoding: 'base32', 
@@ -18,8 +18,6 @@ const verifyTOTP = (secret, token) => {
   }); 
 }; 
  
-const generateQRCodeURL = async (otpAuthUrl) => { 
+export const generateQRCodeURL = async (otpAuthUrl: string): Promise<string> => { 
   return QRCode.toDataURL(otpAuthUrl); 
 }; 
- 
-module.exports = { generateTOTPSecret, verifyTOTP, generateQRCodeURL }; 
