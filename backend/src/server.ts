@@ -1,7 +1,8 @@
-// redeployed: 2026-06-06
-require('dotenv').config();
-const crypto = require('crypto');
-const pkg = require('../package.json');
+import dotenv from 'dotenv';
+dotenv.config();
+
+import crypto from 'crypto';
+import pkg from '../package.json';
 
 console.log(`🚀 [BOOT] Starting Smart University API v${pkg.version}`);
 
@@ -60,13 +61,13 @@ if (missingOptional.length > 0) {
   console.warn('Production features like Cloudinary storage and Redis caching will be disabled.');
 }
 
-const app = require('./app');
-const http = require('http');
-const { initSocket } = require('./utils/socket');
-const { startRiskDetectionJob } = require('./utils/cron');
-const logger = require('./utils/logger');
+import app from './app.js';
+import http from 'http';
+import { initSocket } from './utils/socket.js';
+import { startRiskDetectionJob } from './utils/cron.js';
+import logger from './utils/logger.js';
 
-const server = http.createServer(app);
+const server: http.Server = http.createServer(app);
 
 // Initialize Socket.io
 initSocket(server);
@@ -74,14 +75,14 @@ initSocket(server);
 // Start scheduled jobs
 startRiskDetectionJob();
 
-const PORT = process.env.PORT || 5000;
+const PORT: number = Number(process.env.PORT) || 5000;
 
 server.listen(PORT, '0.0.0.0', () => {
   logger.info(`[SERVER] Running on http://localhost:${PORT}`);
   logger.info(`[ENV] NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
 });
 
-process.on('unhandledRejection', (err) => {
+process.on('unhandledRejection', (err: Error) => {
   logger.error(`[FATAL] Unhandled Rejection: ${err.message}`, { stack: err.stack });
   server.close(() => process.exit(1));
 });
