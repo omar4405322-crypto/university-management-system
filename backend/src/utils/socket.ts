@@ -1,14 +1,19 @@
-const { Server } = require('socket.io');
-const { verifyToken } = require('./jwt.utils');
-const logger = require('./logger');
+import { Server, Socket } from 'socket.io';
+import http from 'http';
+import { verifyToken } from './jwt.utils.js';
+import logger from './logger.js';
 
-let io;
+interface AuthenticatedSocket extends Socket {
+  user?: any;
+}
+
+let io: Server | undefined;
 
 /**
  * Initialize Socket.io server
- * @param {Object} server - HTTP server instance
+ * @param {http.Server} server - HTTP server instance
  */
-const initSocket = (server) => {
+export const initSocket = (server: http.Server): Server => {
   io = new Server(server, {
     cors: {
       origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:5173'],
@@ -18,7 +23,7 @@ const initSocket = (server) => {
   });
 
   // Authentication Middleware for Sockets
-  io.use((socket, next) => {
+  io.use((socket: AuthenticatedSocket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) {
       return next(new Error('Authentication error: No token provided'));
@@ -33,7 +38,9 @@ const initSocket = (server) => {
     }
   });
 
-  io.on('connection', (socket) => {
+  io.on('connection', (socket: AuthenticatedSocket) => {
+    if (!socket.user) return; // safety check
+    
     logger.info(`[SOCKET] User connected: ${socket.user.id}`);
     
     // Join a private room for targeted notifications
@@ -55,7 +62,7 @@ const initSocket = (server) => {
 /**
  * Get Socket.io instance
  */
-const getIO = () => {
+export const getIO = (): Server => {
   if (!io) {
     throw new Error('Socket.io not initialized!');
   }
@@ -65,7 +72,7 @@ const getIO = () => {
 /**
  * Send notification to a specific user
  */
-const sendToUser = (userId, event, data) => {
+export const sendToUser = (userId: string | number, event: string, data: any): void => {
   if (io) {
     io.to(`user_${userId}`).emit(event, data);
   }
@@ -74,15 +81,8 @@ const sendToUser = (userId, event, data) => {
 /**
  * Broadcast to a specific role
  */
-const broadcastToRole = (role, event, data) => {
+export const broadcastToRole = (role: string, event: string, data: any): void => {
   if (io) {
     io.to(`role_${role}`).emit(event, data);
   }
-};
-
-module.exports = {
-  initSocket,
-  getIO,
-  sendToUser,
-  broadcastToRole,
 };
