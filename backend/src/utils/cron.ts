@@ -53,7 +53,7 @@ export const startRiskDetectionJob = (): void => {
           const assignmentCompletionRate = totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 100;
 
           // 4. Determine Risk Level
-          let predictedRisk = 'LOW';
+          let predictedRisk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW';
           if (attendanceRate < 50 || averageQuizScore < 40) {
             predictedRisk = 'CRITICAL';
           } else if (attendanceRate < 65 || averageQuizScore < 55) {
