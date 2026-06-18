@@ -175,8 +175,8 @@ export const updateTimetable = catchAsync(async (req: Request, res: Response, ne
       scheduleData,
       fileUrl,
       status,
-      academicYear: academicYear ? parseInt(academicYear as string) : undefined,
-      semester: semester ? parseInt(semester as string) : undefined
+      academicYear: academicYear !== undefined ? parseInt(academicYear as string) : undefined,
+      semester: semester !== undefined ? parseInt(semester as string) : undefined
     }
   });
 
