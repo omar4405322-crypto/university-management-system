@@ -1,10 +1,10 @@
-const winston = require('winston');
-const path = require('path');
+import winston from 'winston';
+import path from 'path';
 
 /**
  * Enterprise-grade logging configuration
  */
-const logger = winston.createLogger({
+const logger: winston.Logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   format: winston.format.combine(
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -44,4 +44,4 @@ logger.add(new winston.transports.Console({
       )
 }));
 
-module.exports = logger;
+export = logger;
