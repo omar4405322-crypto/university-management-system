@@ -1,9 +1,9 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const examsController = require('../controllers/exams.controller');
-const { authorize } = require('../middleware/auth.middleware');
-const { body, param } = require('express-validator');
-const validate = require('../middleware/validate.middleware');
+import * as examsController from '../controllers/exams.controller.js';
+import { authorize } from '../middleware/auth.middleware.js';
+import { body, param } from 'express-validator';
+import validate from '../middleware/validate.middleware.js';
 
 router.get('/', examsController.getAllExams);
 router.get('/upcoming', examsController.getUpcomingExams);
@@ -36,4 +36,4 @@ router.delete('/:id', authorize('SUPER_ADMIN', 'ADMIN'), [
   param('id').isInt().withMessage('Invalid exam ID')
 ], validate, examsController.deleteExam);
 
-module.exports = router;
+export default router;

@@ -1,11 +1,9 @@
-const express = require('express');
-const { protect, authorize } = require('../middleware/auth.middleware.js');
-const {
-  enrollStudent,
+import express from 'express';
+import { protect, authorize } from '../middleware/auth.middleware.js';
+import { enrollStudent,
   withdrawStudent,
   getEnrollments,
-  updateGrade
-} = require('../controllers/enrollment.controller.js');
+  updateGrade } from '../controllers/enrollment.controller.js';
 
 const router = express.Router();
 
@@ -36,4 +34,4 @@ router.patch(
   updateGrade
 );
 
-module.exports = router;
+export default router;
