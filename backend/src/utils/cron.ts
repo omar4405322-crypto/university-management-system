@@ -24,9 +24,13 @@ export const startRiskDetectionJob = (): void => {
             attendance: { select: { status: true } },
             quizSubmissions: { select: { score: true } },
             taskSubmissions: { select: { taskId: true } },
-            courses: {
+            enrollments: {
               include: {
-                tasks: { select: { id: true } }
+                course: {
+                  include: {
+                    tasks: { select: { id: true } }
+                  }
+                }
               }
             }
           },
@@ -46,7 +50,7 @@ export const startRiskDetectionJob = (): void => {
           const averageQuizScore = quizScores.length > 0 ? (quizScores.reduce((a, b) => a + b, 0) / quizScores.length) : 100;
 
           // 3. Calculate Assignment Completion Rate
-          const allAssignedTasks = student.courses.reduce((acc: any[], course: any) => acc.concat(course.tasks), [] as { id: number }[]);
+          const allAssignedTasks = student.enrollments.reduce((acc: any[], enr: any) => acc.concat(enr.course.tasks), [] as { id: number }[]);
           const totalAssignments = allAssignedTasks.length;
           const submittedTaskIds = new Set(student.taskSubmissions.map((s: any) => s.taskId));
           const completedAssignments = allAssignedTasks.filter((t: any) => submittedTaskIds.has(t.id)).length;
