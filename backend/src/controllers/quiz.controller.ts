@@ -185,9 +185,8 @@ export const getQuizResults = catchAsync(async (req: Request, res: Response, nex
   const quiz = await prisma.quiz.findUnique({
     where: { id: parseInt(id as string) },
     include: {
-      submissions: {
-        include: { student: true }
-      }
+      submissions: { include: { student: true } },
+      course: { include: { department: true } }
     }
   });
 
@@ -196,9 +195,8 @@ export const getQuizResults = catchAsync(async (req: Request, res: Response, nex
   // Enforce scope for results
   const courseScope3: any = getScopeWhere(req.user!, 'course');
   if (courseScope3 && Object.keys(courseScope3).length) {
-    if (courseScope3.department && quiz.submissions.some((s: any) => s.quiz?.course?.department?.collegeId !== courseScope3.department.collegeId)) return next(new AuthorizationError('Access denied'));
-    // For departmentId check, we need to ensure quiz.course.departmentId matches
-    if (courseScope3.departmentId && quiz.submissions.some((s: any) => s.quiz?.course?.departmentId !== courseScope3.departmentId)) return next(new AuthorizationError('Access denied'));
+    if (courseScope3.department && quiz.course?.department?.collegeId !== courseScope3.department.collegeId) return next(new AuthorizationError('Access denied'));
+    if (courseScope3.departmentId && quiz.course?.departmentId !== courseScope3.departmentId) return next(new AuthorizationError('Access denied'));
   }
 
   res.json({ success: true, data: quiz.submissions });
