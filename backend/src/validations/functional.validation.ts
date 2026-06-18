@@ -1,6 +1,6 @@
-const { body, param } = require('express-validator');
+import {  body, param  } from 'express-validator';
 
-const quizValidation = [
+export const quizValidation = [
   body('title').notEmpty().withMessage('Quiz title is required').trim(),
   body('courseId').isInt().withMessage('Course ID must be an integer'),
   body('duration').isInt({ min: 1 }).withMessage('Duration must be at least 1 minute'),
@@ -14,7 +14,7 @@ const quizValidation = [
   body('questions.*.points').optional().isInt({ min: 1 })
 ];
 
-const taskValidation = [
+export const taskValidation = [
   body('title').notEmpty().withMessage('Task title is required').trim(),
   body('description').notEmpty().withMessage('Description is required'),
   body('courseId').isInt().withMessage('Course ID must be an integer'),
@@ -22,7 +22,7 @@ const taskValidation = [
   body('maxScore').optional().isInt({ min: 1 })
 ];
 
-const paymentValidation = [
+export const paymentValidation = [
   body('studentId').isInt().withMessage('Student ID is required'),
   body('amount').isFloat({ min: 0.01 }).withMessage('Amount must be greater than 0'),
   body('type').isIn(['TUITION', 'REGISTRATION', 'LIBRARY', 'OTHER']).withMessage('Invalid payment type'),
@@ -30,7 +30,7 @@ const paymentValidation = [
   body('dueDate').optional().isISO8601()
 ];
 
-const attendanceValidation = [
+export const attendanceValidation = [
   body('courseId').isInt().withMessage('Course ID is required'),
   body('date').optional().isISO8601(),
   body('records').isArray().withMessage('Records must be an array'),
@@ -38,14 +38,8 @@ const attendanceValidation = [
   body('records.*.status').isIn(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']).withMessage('Invalid status')
 ];
 
-const functionalIdValidation = [
+export const functionalIdValidation = [
   param('id').isInt().withMessage('Invalid ID format')
 ];
 
-module.exports = {
-  quizValidation,
-  taskValidation,
-  paymentValidation,
-  attendanceValidation,
-  functionalIdValidation
-};
+
