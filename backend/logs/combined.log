@@ -4661,3 +4661,30 @@
 {"action":"DELETE_STUDENT","ip":"::ffff:127.0.0.1","level":"warn","message":"AUDIT","performedBy":2335,"performedByRole":"SUPER_ADMIN","resourceId":"1150","resourceType":"Student","service":"university-management-system","timestamp":"2026-06-18T04:10:17.770Z"}
 {"action":"MARK_PAYMENT_PAID","ip":"::ffff:127.0.0.1","level":"info","message":"AUDIT","performedBy":2344,"performedByRole":"SUPER_ADMIN","resourceId":"105","resourceType":"Payment","service":"university-management-system","timestamp":"2026-06-18T04:10:21.563Z"}
 {"action":"DELETE_PAYMENT","ip":"::ffff:127.0.0.1","level":"warn","message":"AUDIT","performedBy":2344,"performedByRole":"SUPER_ADMIN","resourceId":"107","resourceType":"Payment","service":"university-management-system","timestamp":"2026-06-18T04:10:21.611Z"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-18 07:12:29"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-18 07:12:29"}
+{"level":"info","message":"[SERVER] Running on http://localhost:5002","service":"university-management-system","timestamp":"2026-06-18 07:14:04"}
+{"level":"info","message":"[ENV] NODE_ENV: development","service":"university-management-system","timestamp":"2026-06-18 07:14:04"}
+{"action":"TOGGLE_STUDENT_STATUS","ip":"::ffff:127.0.0.1","level":"info","message":"AUDIT","performedBy":2350,"performedByRole":"SUPER_ADMIN","resourceId":"1158","resourceType":"Student","service":"university-management-system","timestamp":"2026-06-18T04:14:22.263Z"}
+{"action":"DELETE_STUDENT","ip":"::ffff:127.0.0.1","level":"warn","message":"AUDIT","performedBy":2350,"performedByRole":"SUPER_ADMIN","resourceId":"1158","resourceType":"Student","service":"university-management-system","timestamp":"2026-06-18T04:14:22.324Z"}
+{"level":"info","message":"[AUTH] Login attempt for email: test-1781756063610-46870@university.test","service":"university-management-system","timestamp":"2026-06-18 07:14:23"}
+{"level":"debug","message":"[AUTH] User search result: Found","service":"university-management-system","timestamp":"2026-06-18 07:14:23"}
+{"level":"info","message":"[AUTH] Generating tokens for user: 2354","service":"university-management-system","timestamp":"2026-06-18 07:14:23"}
+{"level":"info","message":"[AUTH] Setting cookies and sending response for: test-1781756063610-46870@university.test","service":"university-management-system","timestamp":"2026-06-18 07:14:23"}
+{"level":"info","message":"[AUTH] Login attempt for email: test-1781756063904-37478@university.test","service":"university-management-system","timestamp":"2026-06-18 07:14:23"}
+{"level":"debug","message":"[AUTH] User search result: Found","service":"university-management-system","timestamp":"2026-06-18 07:14:24"}
+{"level":"warn","message":"[AUTH] Invalid login attempt for: test-1781756063904-37478@university.test","service":"university-management-system","timestamp":"2026-06-18 07:14:24"}
+{"level":"warn","message":"[OP ERROR] Invalid email or password","path":"/api/auth/login","service":"university-management-system","timestamp":"2026-06-18 07:14:24"}
+{"level":"info","message":"[AUTH] Login attempt for email: nonexistent@university.test","service":"university-management-system","timestamp":"2026-06-18 07:14:24"}
+{"level":"debug","message":"[AUTH] User search result: Not Found","service":"university-management-system","timestamp":"2026-06-18 07:14:24"}
+{"level":"warn","message":"[AUTH] Invalid login attempt for: nonexistent@university.test","service":"university-management-system","timestamp":"2026-06-18 07:14:24"}
+{"level":"warn","message":"[OP ERROR] Invalid email or password","path":"/api/auth/login","service":"university-management-system","timestamp":"2026-06-18 07:14:24"}
+{"level":"warn","message":"[OP ERROR] Invalid or expired refresh token","path":"/api/auth/refresh","service":"university-management-system","timestamp":"2026-06-18 07:14:24"}
+{"action":"MARK_PAYMENT_PAID","ip":"::ffff:127.0.0.1","level":"info","message":"AUDIT","performedBy":2360,"performedByRole":"SUPER_ADMIN","resourceId":"108","resourceType":"Payment","service":"university-management-system","timestamp":"2026-06-18T04:14:26.567Z"}
+{"action":"DELETE_PAYMENT","ip":"::ffff:127.0.0.1","level":"warn","message":"AUDIT","performedBy":2360,"performedByRole":"SUPER_ADMIN","resourceId":"110","resourceType":"Payment","service":"university-management-system","timestamp":"2026-06-18T04:14:26.613Z"}
+{"action":"DELETE_TIMETABLE","ip":"::ffff:127.0.0.1","level":"warn","message":"AUDIT","performedBy":2373,"performedByRole":"SUPER_ADMIN","resourceId":"119","resourceType":"Timetable","service":"university-management-system","timestamp":"2026-06-18T04:14:29.283Z"}
+{"level":"warn","message":"[OP ERROR] Student is already enrolled in this course for this semester","path":"/api/enrollments","service":"university-management-system","timestamp":"2026-06-18 07:14:31"}
+{"level":"warn","message":"[OP ERROR] Course has reached maximum enrollment capacity","path":"/api/enrollments","service":"university-management-system","timestamp":"2026-06-18 07:14:31"}
+{"action":"UPDATE_GRADE","changes":{"finalGrade":{"from":null,"to":85}},"ip":"::ffff:127.0.0.1","level":"info","message":"AUDIT","performedBy":2386,"performedByRole":"SUPER_ADMIN","resourceId":343,"resourceType":"Enrollment","service":"university-management-system","timestamp":"2026-06-18T04:14:32.152Z"}
+{"action":"UPDATE_GRADE","changes":{"finalGrade":{"from":null,"to":45}},"ip":"::ffff:127.0.0.1","level":"info","message":"AUDIT","performedBy":2388,"performedByRole":"SUPER_ADMIN","resourceId":344,"resourceType":"Enrollment","service":"university-management-system","timestamp":"2026-06-18T04:14:32.377Z"}
+{"level":"warn","message":"[OP ERROR] Grade must be between 0 and 100","path":"/api/enrollments/345/grade","service":"university-management-system","timestamp":"2026-06-18 07:14:32"}
