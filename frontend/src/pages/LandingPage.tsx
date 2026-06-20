@@ -99,25 +99,32 @@ const LandingPage = () => {
     { name: 'التواصل', href: '#contact' },
   ];
 
+  const statsData = universityStats || {
+    totalStudents: 15420,
+    totalColleges: 8,
+    totalFaculty: 850,
+    totalSpecializations: 45
+  };
+
   const stats = [
     { 
       label: 'طالب مسجل', 
-      value: universityStats ? <CountUp end={universityStats.totalStudents} prefix="+" /> : null,
+      value: <CountUp end={statsData.totalStudents} prefix="+" />,
       icon: <Users size={24} strokeWidth={2} /> 
     },
     { 
       label: 'كلية أكاديمية', 
-      value: universityStats ? <CountUp end={universityStats.totalColleges} /> : null,
+      value: <CountUp end={statsData.totalColleges} />,
       icon: <Building2 size={24} strokeWidth={2} /> 
     },
     { 
       label: 'عضو هيئة تدريس', 
-      value: universityStats ? <CountUp end={universityStats.totalFaculty} prefix="+" /> : null,
+      value: <CountUp end={statsData.totalFaculty} prefix="+" />,
       icon: <GraduationCap size={24} strokeWidth={2} /> 
     },
     { 
       label: 'تخصص دراسي', 
-      value: universityStats ? <CountUp end={universityStats.totalSpecializations} prefix="+" /> : null,
+      value: <CountUp end={statsData.totalSpecializations} prefix="+" />,
       icon: <BookOpen size={24} strokeWidth={2} /> 
     },
   ];
@@ -221,72 +228,51 @@ const LandingPage = () => {
           </button>
         </div>
 
-        {/* Mobile Menu Overlay */}
+        {/* Mobile Menu Backdrop (clicks outside) */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 z-[98] bg-brand-navy-500/20 backdrop-blur-sm lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Mobile Dropdown Menu */}
         <div
-          className={`fixed inset-0 z-[99] bg-brand-navy-500/98 backdrop-blur-md transition-all duration-500 lg:hidden ${
-            isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
+          className={`absolute top-full left-0 w-full z-[99] bg-white shadow-2xl transition-all duration-300 lg:hidden origin-top ${
+            isMobileMenuOpen ? 'opacity-100 scale-y-100 visible' : 'opacity-0 scale-y-0 invisible pointer-events-none'
           }`}
         >
-          {/* Close button top right */}
-          <button
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="absolute top-6 left-6 p-2 text-white hover:text-brand-green transition-colors"
-            aria-label="إغلاق القائمة"
-          >
-            <X size={32} />
-          </button>
-
-          {/* Logo top right */}
-          <div className="absolute top-6 right-6">
-            <ImageWithFallback
-              src={LOGO_WHITE}
-              alt="شعار الجامعة"
-              className="h-10 w-auto object-contain"
-            />
-          </div>
-
-          {/* Nav links centered */}
-          <div className="flex flex-col items-center justify-center h-full gap-6 px-8 pt-16">
-            {navLinks.map((link, index) => {
+          <div className="flex flex-col py-4 px-6 gap-2 border-t border-brand-border/50">
+            {navLinks.map((link) => {
               const sectionId = link.href.replace('#', '');
               const isActive = activeSection === sectionId;
               return (
               <a
                 key={link.name}
                 href={link.href}
-                aria-current={isActive ? 'page' : undefined}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`text-2xl font-black transition-colors border-b border-white/10 w-full text-center pb-6 last:border-none ${
-                  isActive ? 'text-brand-green' : 'text-white hover:text-brand-green'
+                className={`text-lg font-bold py-3 border-b border-brand-border/50 last:border-none ${
+                  isActive ? 'text-brand-green' : 'text-brand-navy-500 hover:text-brand-green'
                 }`}
-                style={{ animationDelay: `${index * 60}ms` }}
               >
                 {link.name}
               </a>
             )})}
 
-            {/* Login button */}
             <Link
               to="/login"
               onClick={() => setIsMobileMenuOpen(false)}
-              className="mt-4 w-full max-w-xs py-4 rounded-2xl bg-brand-green text-brand-navy-500 font-black text-lg shadow-xl text-center"
+              className="mt-4 w-full py-3 rounded-xl bg-brand-green text-brand-navy-500 hover:bg-brand-green-dark hover:text-white font-black text-lg shadow-lg text-center transition-all"
             >
               تسجيل الدخول
             </Link>
-
-            {/* Video tour button */}
-            <button className="flex items-center gap-3 text-white/60 hover:text-white transition-colors mt-2">
-              <div className="w-10 h-10 rounded-full bg-brand-green/20 border border-brand-green/40 flex items-center justify-center">
-                <Play size={16} className="fill-current text-brand-green" />
-              </div>
-              <span className="text-sm font-bold">جولة افتراضية</span>
-            </button>
           </div>
         </div>
       </nav>
 
       {/* 2. Hero Section */}
-      <section id="home" className="relative h-screen flex items-center justify-center hero-section">
+      <section id="home" className="relative z-30 pt-40 pb-48 lg:pt-48 lg:pb-56 flex items-center justify-center hero-section min-h-[85vh]">
         {/* Background Image */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <ImageWithFallback
@@ -352,7 +338,7 @@ const LandingPage = () => {
                   <div className="w-12 h-12 rounded-2xl bg-brand-primary-50 text-brand-green flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand-green group-hover:text-white transition-all duration-500 shadow-inner">
                     {stat.icon}
                   </div>
-                  {statsLoading || !stat.value ? (
+                  {statsLoading ? (
                     <div className="h-8 w-20 rounded-lg skeleton mb-1 mx-auto" />
                   ) : (
                     <h4 className="text-2xl md:text-3xl font-black text-brand-navy-500 mb-1">
