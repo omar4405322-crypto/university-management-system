@@ -5,7 +5,7 @@ export interface UserScope {
   [key: string]: any;
 }
 
-export type EntityType = 
+export type EntityType =
   | 'department'
   | 'course'
   | 'schedule'
@@ -15,7 +15,10 @@ export type EntityType =
   | 'timetable'
   | string;
 
-export const getScopeWhere = (user: UserScope | undefined | null, entity?: EntityType): Record<string, any> => {
+export const getScopeWhere = (
+  user: UserScope | undefined | null,
+  entity?: EntityType
+): Record<string, any> => {
   // Returns a Prisma where filter appropriate for the entity based on user scope
   if (!user) return { id: -1 };
 
@@ -27,7 +30,8 @@ export const getScopeWhere = (user: UserScope | undefined | null, entity?: Entit
     // Most entities are related via department.collegeId; for department entity itself we filter by collegeId
     if (entity === 'department') return { collegeId: user.managedCollegeId };
     if (entity === 'course') return { department: { collegeId: user.managedCollegeId } };
-    if (entity === 'schedule') return { course: { department: { collegeId: user.managedCollegeId } } };
+    if (entity === 'schedule')
+      return { course: { department: { collegeId: user.managedCollegeId } } };
     if (entity === 'exam') return { course: { department: { collegeId: user.managedCollegeId } } };
     if (entity === 'student') return { department: { collegeId: user.managedCollegeId } };
     if (entity === 'doctor') return { department: { collegeId: user.managedCollegeId } };
@@ -52,7 +56,8 @@ export const getScopeWhere = (user: UserScope | undefined | null, entity?: Entit
   if (user.role === 'ADMIN' && user.managedCollegeId) {
     if (entity === 'department') return { collegeId: user.managedCollegeId };
     if (entity === 'course') return { department: { collegeId: user.managedCollegeId } };
-    if (entity === 'schedule') return { course: { department: { collegeId: user.managedCollegeId } } };
+    if (entity === 'schedule')
+      return { course: { department: { collegeId: user.managedCollegeId } } };
     if (entity === 'exam') return { course: { department: { collegeId: user.managedCollegeId } } };
     if (entity === 'student') return { department: { collegeId: user.managedCollegeId } };
     if (entity === 'doctor') return { department: { collegeId: user.managedCollegeId } };

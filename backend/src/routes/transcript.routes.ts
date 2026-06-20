@@ -1,6 +1,6 @@
 import express from 'express';
-import { protect } from '../middleware/auth.middleware.js';
-import { getTranscript } from '../controllers/transcript.controller.js';
+import { protect } from '../middleware/auth.middleware';
+import { getTranscript } from '../controllers/transcript.controller';
 
 const router = express.Router();
 

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { auditLog } from '../utils/audit.utils.js';
-import catchAsync from '../utils/catchAsync.js';
-import * as collegeService from '../services/college.service.js';
+import { auditLog } from '../utils/audit.utils';
+import catchAsync from '../utils/catchAsync';
+import * as collegeService from '../services/college.service';
 
 export const getAllColleges = catchAsync(async (req: Request, res: Response) => {
   const data = await collegeService.getAllColleges();
@@ -40,9 +40,9 @@ export const assignAdmin = catchAsync(async (req: Request, res: Response) => {
   const { adminId } = req.body;
   const data = await collegeService.assignAdmin(collegeId, adminId);
   auditLog('ASSIGN_COLLEGE_ADMIN', 'College', req.params.id as string, req);
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: 'Admin assigned to college successfully',
-    data
+    data,
   });
 });

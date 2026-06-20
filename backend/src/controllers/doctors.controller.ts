@@ -1,48 +1,48 @@
 // FIXED: Live stats endpoint for doctors dashboard cards - Phase 2
 import { Request, Response, NextFunction } from 'express';
-import prisma from '../utils/prismaClient.js';
-import { auditLog } from '../utils/audit.utils.js';
+import prisma from '../utils/prismaClient';
+import { auditLog } from '../utils/audit.utils';
 import bcrypt from 'bcryptjs';
 
-import catchAsync from '../utils/catchAsync.js';
-import { AppError, NotFoundError, AuthorizationError } from '../utils/appError.js';
+import catchAsync from '../utils/catchAsync';
+import { AppError, NotFoundError, AuthorizationError } from '../utils/appError';
 
-import { getScopeWhere } from '../utils/scope.utils.js';
+import { getScopeWhere } from '../utils/scope.utils';
 
-export const getDoctorStats = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const scopeWhere: any = getScopeWhere(req.user!);
-  const courseWhere: any = {};
-  if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
-    courseWhere.department = { collegeId: req.user!.managedCollegeId };
-  } else if (req.user!.role === 'COLLEGE_ADMIN') {
-    courseWhere.department = { collegeId: req.user!.collegeId };
-  } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
-    courseWhere.departmentId = req.user!.departmentId;
+export const getDoctorStats = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const scopeWhere: any = getScopeWhere(req.user!);
+    const courseWhere: any = {};
+    if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
+      courseWhere.department = { collegeId: req.user!.managedCollegeId };
+    } else if (req.user!.role === 'COLLEGE_ADMIN') {
+      courseWhere.department = { collegeId: req.user!.collegeId };
+    } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
+      courseWhere.departmentId = req.user!.departmentId;
+    }
+
+    const [totalFaculty, activeProfessors, totalCourses, researchProjects] = await Promise.all([
+      prisma.doctor.count({ where: scopeWhere }),
+      prisma.doctor.count({
+        where: { ...scopeWhere, courses: { some: {} } },
+      }),
+      prisma.course.count({ where: courseWhere }),
+      prisma.task.count({
+        where: Object.keys(scopeWhere).length ? { doctor: scopeWhere } : {},
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        totalFaculty,
+        activeProfessors,
+        totalCourses,
+        researchProjects,
+      },
+    });
   }
-
-  const [totalFaculty, activeProfessors, totalCourses, researchProjects] = await Promise.all([
-    prisma.doctor.count({ where: scopeWhere }),
-    prisma.doctor.count({
-      where: { ...scopeWhere, courses: { some: {} } },
-    }),
-    prisma.course.count({ where: courseWhere }),
-    prisma.task.count({
-      where: Object.keys(scopeWhere).length
-        ? { doctor: scopeWhere }
-        : {},
-    }),
-  ]);
-
-  res.json({
-    success: true,
-    data: {
-      totalFaculty,
-      activeProfessors,
-      totalCourses,
-      researchProjects,
-    },
-  });
-});
+);
 
 export const getAllDoctors = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { search = '', page = 1, limit = 10 } = req.query as Record<string, string>;
@@ -75,7 +75,7 @@ export const getAllDoctors = catchAsync(async (req: Request, res: Response, next
           },
         },
         department: {
-          include: { college: true }
+          include: { college: true },
         },
         _count: {
           select: { courses: true },
@@ -110,7 +110,7 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
         },
       },
       department: {
-        include: { college: true }
+        include: { college: true },
       },
       courses: true,
     },
@@ -137,7 +137,9 @@ export const createDoctor = catchAsync(async (req: Request, res: Response, next:
   // Enforce scope
   if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
     if (departmentId) {
-      const dept = await prisma.department.findUnique({ where: { id: parseInt(departmentId as string) } });
+      const dept = await prisma.department.findUnique({
+        where: { id: parseInt(departmentId as string) },
+      });
       if (!dept || dept.collegeId !== req.user!.managedCollegeId) {
         return next(new AuthorizationError('Invalid department for your college'));
       }
@@ -146,7 +148,9 @@ export const createDoctor = catchAsync(async (req: Request, res: Response, next:
     departmentId = req.user!.departmentId;
   } else if (req.user!.role === 'COLLEGE_ADMIN') {
     if (departmentId) {
-      const dept = await prisma.department.findUnique({ where: { id: parseInt(departmentId as string) } });
+      const dept = await prisma.department.findUnique({
+        where: { id: parseInt(departmentId as string) },
+      });
       if (!dept || dept.collegeId !== req.user!.collegeId) {
         return next(new AuthorizationError('Invalid department for your college'));
       }
@@ -182,7 +186,10 @@ export const createDoctor = catchAsync(async (req: Request, res: Response, next:
         doctorId,
         phone,
         specialty,
-        departmentId: (departmentId !== undefined && departmentId !== '') ? parseInt(departmentId as string) : null,
+        departmentId:
+          departmentId !== undefined && departmentId !== ''
+            ? parseInt(departmentId as string)
+            : null,
       },
       include: {
         user: {
@@ -191,7 +198,7 @@ export const createDoctor = catchAsync(async (req: Request, res: Response, next:
             role: true,
           },
         },
-        department: true
+        department: true,
       },
     });
 
@@ -208,7 +215,7 @@ export const updateDoctor = catchAsync(async (req: Request, res: Response, next:
   // Find doctor first to check scope
   const doctor = await prisma.doctor.findUnique({
     where: { id },
-    include: { department: true }
+    include: { department: true },
   });
 
   if (!doctor) {
@@ -220,23 +227,36 @@ export const updateDoctor = catchAsync(async (req: Request, res: Response, next:
     if (doctor.department?.collegeId !== req.user!.managedCollegeId) {
       return next(new AuthorizationError('Access denied'));
     }
-  } else if (req.user!.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user!.collegeId) {
+  } else if (
+    req.user!.role === 'COLLEGE_ADMIN' &&
+    doctor.department?.collegeId !== req.user!.collegeId
+  ) {
     return next(new AuthorizationError('Access denied'));
-  } else if (req.user!.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user!.departmentId) {
+  } else if (
+    req.user!.role === 'DEPARTMENT_ADMIN' &&
+    doctor.departmentId !== req.user!.departmentId
+  ) {
     return next(new AuthorizationError('Access denied'));
   }
 
   // If changing department, check scope for new department
   if (departmentId) {
     if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
-      const newDept = await prisma.department.findUnique({ where: { id: parseInt(departmentId as string) } });
+      const newDept = await prisma.department.findUnique({
+        where: { id: parseInt(departmentId as string) },
+      });
       if (!newDept || newDept.collegeId !== req.user!.managedCollegeId) {
         return next(new AuthorizationError('Invalid department for your college'));
       }
-    } else if (req.user!.role === 'DEPARTMENT_ADMIN' && parseInt(departmentId as string) !== req.user!.departmentId) {
+    } else if (
+      req.user!.role === 'DEPARTMENT_ADMIN' &&
+      parseInt(departmentId as string) !== req.user!.departmentId
+    ) {
       return next(new AuthorizationError('Cannot move doctor to another department'));
     } else if (req.user!.role === 'COLLEGE_ADMIN') {
-      const newDept = await prisma.department.findUnique({ where: { id: parseInt(departmentId as string) } });
+      const newDept = await prisma.department.findUnique({
+        where: { id: parseInt(departmentId as string) },
+      });
       if (!newDept || newDept.collegeId !== req.user!.collegeId) {
         return next(new AuthorizationError('Invalid department for your college'));
       }
@@ -250,7 +270,10 @@ export const updateDoctor = catchAsync(async (req: Request, res: Response, next:
       lastName,
       phone,
       specialty,
-      departmentId: (departmentId !== undefined && departmentId !== '') ? parseInt(departmentId as string) : undefined,
+      departmentId:
+        departmentId !== undefined && departmentId !== ''
+          ? parseInt(departmentId as string)
+          : undefined,
     },
     include: {
       user: {
@@ -259,7 +282,7 @@ export const updateDoctor = catchAsync(async (req: Request, res: Response, next:
           role: true,
         },
       },
-      department: true
+      department: true,
     },
   });
 
@@ -270,7 +293,7 @@ export const deleteDoctor = catchAsync(async (req: Request, res: Response, next:
   const id = parseInt(req.params.id as string);
   const doctor = await prisma.doctor.findUnique({
     where: { id },
-    include: { department: true }
+    include: { department: true },
   });
 
   if (!doctor) {
@@ -282,9 +305,15 @@ export const deleteDoctor = catchAsync(async (req: Request, res: Response, next:
     if (doctor.department?.collegeId !== req.user!.managedCollegeId) {
       return next(new AuthorizationError('Access denied'));
     }
-  } else if (req.user!.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user!.collegeId) {
+  } else if (
+    req.user!.role === 'COLLEGE_ADMIN' &&
+    doctor.department?.collegeId !== req.user!.collegeId
+  ) {
     return next(new AuthorizationError('Access denied'));
-  } else if (req.user!.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user!.departmentId) {
+  } else if (
+    req.user!.role === 'DEPARTMENT_ADMIN' &&
+    doctor.departmentId !== req.user!.departmentId
+  ) {
     return next(new AuthorizationError('Access denied'));
   }
 
@@ -294,7 +323,7 @@ export const deleteDoctor = catchAsync(async (req: Request, res: Response, next:
       where: { doctorId: doctor.id },
       data: { doctorId: null },
     });
-    
+
     await tx.doctor.delete({ where: { id: doctor.id } });
     await tx.user.delete({ where: { id: doctor.userId } });
   });
@@ -303,33 +332,35 @@ export const deleteDoctor = catchAsync(async (req: Request, res: Response, next:
   res.json({ success: true, message: 'Doctor deleted' });
 });
 
-export const resetDoctorPassword = catchAsync(async (req: Request, res: Response, next: NextFunction) => { 
-  const { id } = req.params; 
-  const { newPassword } = req.body; 
+export const resetDoctorPassword = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { newPassword } = req.body;
 
-  if (!newPassword || newPassword.length < 6) { 
-    return next(new AppError('Password must be at least 6 characters', 400)); 
-  } 
+    if (!newPassword || newPassword.length < 6) {
+      return next(new AppError('Password must be at least 6 characters', 400));
+    }
 
-  const doctor = await prisma.doctor.findUnique({ 
-    where: { id: parseInt(id as string) }, 
-    include: { user: true } 
-  }); 
+    const doctor = await prisma.doctor.findUnique({
+      where: { id: parseInt(id as string) },
+      include: { user: true },
+    });
 
-  if (!doctor) { 
-    return next(new NotFoundError('Doctor not found')); 
-  } 
+    if (!doctor) {
+      return next(new NotFoundError('Doctor not found'));
+    }
 
-  const hashedPassword = await bcrypt.hash(newPassword, 10); 
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-  await prisma.user.update({ 
-    where: { id: doctor.userId }, 
-    data: { password: hashedPassword } 
-  }); 
+    await prisma.user.update({
+      where: { id: doctor.userId },
+      data: { password: hashedPassword },
+    });
 
-  auditLog('RESET_DOCTOR_PASSWORD', 'Doctor', req.params.id as string, req);
-  res.json({ 
-    success: true, 
-    message: `Password reset successfully for ${doctor.firstName} ${doctor.lastName}` 
-  }); 
-});
+    auditLog('RESET_DOCTOR_PASSWORD', 'Doctor', req.params.id as string, req);
+    res.json({
+      success: true,
+      message: `Password reset successfully for ${doctor.firstName} ${doctor.lastName}`,
+    });
+  }
+);

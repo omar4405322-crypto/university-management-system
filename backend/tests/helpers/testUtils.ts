@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
 // @ts-ignore
-import prisma from '../../src/utils/prismaClient.js';
+import prisma from '../../src/utils/prismaClient';
 // @ts-ignore
-import { generateAccessToken } from '../../src/utils/jwt.utils.js';
+import { generateAccessToken } from '../../src/utils/jwt.utils';
 
 jest.mock('../../src/utils/redis.utils', () => ({
   redis: {

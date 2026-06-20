@@ -1,0 +1,116 @@
+// @ts-nocheck
+import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
+import departmentService from '../../services/department.service';
+import Modal from '../../components/ui/Modal';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import { useTranslation } from 'react-i18next';
+import { School, GraduationCap, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Select } from '../../components/ui/Select';
+
+const schema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  nameAr: z.string().optional(),
+  collegeId: z.coerce.number().min(1, 'College is required'),
+});
+
+type FormData = z.infer<typeof schema>;
+
+const EditDepartmentModal = ({ isOpen, onClose, department, colleges, onSuccess }) => {
+  const { t } = useTranslation();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<any>({
+        resolver: zodResolver(schema) as unknown as Record<string, unknown>,
+  });
+
+  useEffect(() => {
+    if (department && isOpen) {
+      reset({
+        name: department.name || '',
+        nameAr: department.nameAr || '',
+        collegeId: department.collegeId || '',
+      });
+    }
+  }, [department, isOpen, reset]);
+
+  const onSubmit = async (data: FormData) => {
+    try {
+      const result = await departmentService.updateDepartment(department.id, data);
+      if (result.success) {
+        onSuccess();
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || t('departments.updateError'));
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t('departments.editDept')}
+      subtitle={t('departments.editDesc')}
+    >
+      <form
+                onSubmit={handleSubmit((data: Record<string, unknown>) => onSubmit(data))}
+        className="form-section"
+      >
+
+        <div className="space-y-5">
+          <div className="space-y-1.5">
+            <Select
+              {...register('collegeId')}
+              
+             label={<><School size={14} className="text-brand-text-muted" /> {t('colleges.parentCollege')}{' '}
+              <span className="text-rose-500">*</span></>} error={errors.collegeId?.message}>
+              <option value="">{t('auth.selectCollege')}</option>
+              {colleges.map((college) => (
+                <option key={college.id} value={college.id}>
+                  {college.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <GraduationCap size={14} className="text-brand-text-muted" />{' '}
+              {t('departments.nameAr')}
+            </label>
+            <Input
+              {...register('nameAr')}
+              placeholder="e.g. قسم علوم الحاسب"
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic text-right"
+              dir="rtl"
+            />
+            {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
+          </div>
+        </div>
+
+        <div className="mt-8 flex justify-end gap-3 border-t border-brand-border pt-6">
+          <Button type="button" variant="ghost" onClick={onClose} disabled={isSubmitting}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" disabled={isSubmitting} className="min-w-[140px]">
+            {isSubmitting ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              t('common.saveChanges')
+            )}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+export default EditDepartmentModal;

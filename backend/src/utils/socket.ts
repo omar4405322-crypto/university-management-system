@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import http from 'http';
-import { verifyToken } from './jwt.utils.js';
-import logger from './logger.js';
+import { verifyToken } from './jwt.utils';
+import logger from './logger';
 
 interface AuthenticatedSocket extends Socket {
   user?: any;
@@ -16,7 +16,9 @@ let io: Server | undefined;
 export const initSocket = (server: http.Server): Server => {
   io = new Server(server, {
     cors: {
-      origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:5173'],
+      origin: process.env.ALLOWED_ORIGINS
+        ? process.env.ALLOWED_ORIGINS.split(',')
+        : ['http://localhost:5173'],
       credentials: true,
       methods: ['GET', 'POST'],
     },
@@ -40,9 +42,9 @@ export const initSocket = (server: http.Server): Server => {
 
   io.on('connection', (socket: AuthenticatedSocket) => {
     if (!socket.user) return; // safety check
-    
+
     logger.info(`[SOCKET] User connected: ${socket.user.id}`);
-    
+
     // Join a private room for targeted notifications
     socket.join(`user_${socket.user.id}`);
 

@@ -11,7 +11,7 @@ export default async () => {
       env: { ...process.env }, 
       stdio: 'inherit' 
     }); 
-  } catch (e) { 
+  } catch (e: any) { 
     console.error('Migration failed:', e.message); 
     throw e; 
   } 

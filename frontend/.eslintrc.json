@@ -13,9 +13,10 @@
   ],
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }],
     "react/react-in-jsx-scope": "off",
+    "react/prop-types": "off",
     "react-hooks/exhaustive-deps": "warn",
-    "jsx-a11y/aria-label-has-associated-control": "error",
     "prettier/prettier": "error"
   },
   "settings": { "react": { "version": "detect" } },

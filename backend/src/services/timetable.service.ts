@@ -1,5 +1,5 @@
-import prisma from '../utils/prismaClient.js';
-import { ConflictError, NotFoundError } from '../utils/appError.js';
+import prisma from '../utils/prismaClient';
+import { ConflictError, NotFoundError } from '../utils/appError';
 import { Prisma } from '@prisma/client';
 
 class TimetableService {

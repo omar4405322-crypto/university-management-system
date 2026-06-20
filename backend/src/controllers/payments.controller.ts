@@ -1,73 +1,79 @@
 import { Request, Response, NextFunction } from 'express';
-import prisma from '../utils/prismaClient.js';
-import { auditLog } from '../utils/audit.utils.js';
-import catchAsync from '../utils/catchAsync.js';
-import { NotFoundError } from '../utils/appError.js';
-import { invalidateCache } from '../utils/redis.utils.js';
+import prisma from '../utils/prismaClient';
+import { auditLog } from '../utils/audit.utils';
+import catchAsync from '../utils/catchAsync';
+import { NotFoundError } from '../utils/appError';
+import { invalidateCache } from '../utils/redis.utils';
 
-export const getAllPayments = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { 
-    status, 
-    type, 
-    studentId, 
-    search, 
-    page = '1', 
-    limit = '20', 
-    sortBy = 'createdAt', 
-    sortOrder = 'desc' 
-  } = req.query as Record<string, string>;
+export const getAllPayments = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const {
+      status,
+      type,
+      studentId,
+      search,
+      page = '1',
+      limit = '20',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = req.query as Record<string, string>;
 
-  const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
-  const take = parseInt(limit as string);
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const take = parseInt(limit as string);
 
-  // Sorting whitelist
-  const PAYMENT_SORT_FIELDS = ['createdAt', 'amount', 'status', 'type', 'paidAt']; 
-  const safeSortBy = PAYMENT_SORT_FIELDS.includes(sortBy as string) ? (sortBy as string) : 'createdAt'; 
-  const safeSortOrder = ['asc', 'desc'].includes(sortOrder as string) ? (sortOrder as string) : 'desc'; 
+    // Sorting whitelist
+    const PAYMENT_SORT_FIELDS = ['createdAt', 'amount', 'status', 'type', 'paidAt'];
+    const safeSortBy = PAYMENT_SORT_FIELDS.includes(sortBy as string)
+      ? (sortBy as string)
+      : 'createdAt';
+    const safeSortOrder = ['asc', 'desc'].includes(sortOrder as string)
+      ? (sortOrder as string)
+      : 'desc';
 
-  const where: any = {};
-  if (status) where.status = status;
-  if (type) where.type = type;
-  if (studentId) where.studentId = parseInt(studentId as string);
-  if (search) {
-    where.student = {
-      OR: [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-      ],
-    };
-  }
+    const where: any = {};
+    if (status) where.status = status;
+    if (type) where.type = type;
+    if (studentId) where.studentId = parseInt(studentId as string);
+    if (search) {
+      where.student = {
+        OR: [
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+    }
 
-  const [payments, total] = await Promise.all([
-    prisma.payment.findMany({
-      where,
-      include: {
-        student: {
-          select: {
-            firstName: true,
-            lastName: true,
-            studentId: true,
+    const [payments, total] = await Promise.all([
+      prisma.payment.findMany({
+        where,
+        include: {
+          student: {
+            select: {
+              firstName: true,
+              lastName: true,
+              studentId: true,
+            },
           },
         },
-      },
-      skip,
-      take,
-      orderBy: { [safeSortBy]: safeSortOrder },
-    }),
-    prisma.payment.count({ where })
-  ]);
+        skip,
+        take,
+        orderBy: { [safeSortBy]: safeSortOrder },
+      }),
+      prisma.payment.count({ where }),
+    ]);
 
-  res.json({ 
-    success: true, 
-    data: payments,
-    pagination: {
-      total,
-      page: parseInt(page as string),
-      limit: parseInt(limit as string),
-      totalPages: Math.ceil(total / parseInt(limit as string))
-    }
-  });
-});
+    res.json({
+      success: true,
+      data: payments,
+      pagination: {
+        total,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+        totalPages: Math.ceil(total / parseInt(limit as string)),
+      },
+    });
+  }
+);
 
 export const getMyPayments = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const student = await prisma.student.findUnique({
@@ -88,19 +94,20 @@ export const getMyPayments = catchAsync(async (req: Request, res: Response, next
 
 // FIXED: Finance stats include activePlans count and monthly revenue from real payments - Phase 2
 export const getStats = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const [paidSum, pendingSum, overdueSum, byType, recentPayments, activePlans, totalPayments] = await Promise.all([
-    prisma.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
-    prisma.payment.aggregate({ where: { status: 'PENDING' }, _sum: { amount: true } }),
-    prisma.payment.aggregate({ where: { status: 'OVERDUE' }, _sum: { amount: true } }),
-    prisma.payment.groupBy({ by: ['type'], _count: { _all: true } }),
-    prisma.payment.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      include: { student: { select: { firstName: true, lastName: true } } },
-    }),
-    prisma.payment.count({ where: { status: { in: ['PENDING', 'OVERDUE'] } } }),
-    prisma.payment.count(),
-  ]);
+  const [paidSum, pendingSum, overdueSum, byType, recentPayments, activePlans, totalPayments] =
+    await Promise.all([
+      prisma.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
+      prisma.payment.aggregate({ where: { status: 'PENDING' }, _sum: { amount: true } }),
+      prisma.payment.aggregate({ where: { status: 'OVERDUE' }, _sum: { amount: true } }),
+      prisma.payment.groupBy({ by: ['type'], _count: { _all: true } }),
+      prisma.payment.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { student: { select: { firstName: true, lastName: true } } },
+      }),
+      prisma.payment.count({ where: { status: { in: ['PENDING', 'OVERDUE'] } } }),
+      prisma.payment.count(),
+    ]);
 
   const paidWithDates = await prisma.payment.findMany({
     where: { status: 'PAID', paidAt: { not: null } },
@@ -119,7 +126,20 @@ export const getStats = catchAsync(async (req: Request, res: Response, next: Nex
     .slice(-6)
     .map(([key, amount]) => {
       const [, month] = key.split('-');
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthNames = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       return { name: monthNames[parseInt(month, 10) - 1] || key, amount };
     });
 
@@ -140,22 +160,24 @@ export const getStats = catchAsync(async (req: Request, res: Response, next: Nex
   res.json({ success: true, data: stats });
 });
 
-export const getPaymentById = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const payment = await prisma.payment.findUnique({
-    where: { id: parseInt(req.params.id as string) },
-    include: {
-      student: {
-        select: { firstName: true, lastName: true, studentId: true },
+export const getPaymentById = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const payment = await prisma.payment.findUnique({
+      where: { id: parseInt(req.params.id as string) },
+      include: {
+        student: {
+          select: { firstName: true, lastName: true, studentId: true },
+        },
       },
-    },
-  });
+    });
 
-  if (!payment) {
-    return next(new NotFoundError('Payment not found'));
+    if (!payment) {
+      return next(new NotFoundError('Payment not found'));
+    }
+
+    res.json({ success: true, data: payment });
   }
-
-  res.json({ success: true, data: payment });
-});
+);
 
 export const createPayment = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { studentId, amount, type, description, dueDate } = req.body;
@@ -209,9 +231,9 @@ export const deletePayment = catchAsync(async (req: Request, res: Response, next
   await prisma.payment.delete({
     where: { id: parseInt(req.params.id as string) },
   });
-  
+
   await invalidateCache('dashboard:*');
-  
+
   auditLog('DELETE_PAYMENT', 'Payment', req.params.id as string, req);
   res.json({ success: true, message: 'Payment deleted' });
 });

@@ -9,59 +9,59 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 // @ts-ignore
 import cookieParser from 'cookie-parser';
-import prisma from './utils/prismaClient.js';
+import prisma from './utils/prismaClient';
 
 // Error Handling imports
-import globalErrorHandler from './middleware/error.middleware.js';
-import { NotFoundError } from './utils/appError.js';
+import globalErrorHandler from './middleware/error.middleware';
+import { NotFoundError } from './utils/appError';
 
 // Route imports
 // @ts-ignore
-import authRoutes from './routes/auth.routes.js';
+import authRoutes from './routes/auth.routes';
 // @ts-ignore
-import studentsRoutes from './routes/students.routes.js';
+import studentsRoutes from './routes/students.routes';
 // @ts-ignore
-import coursesRoutes from './routes/courses.routes.js';
+import coursesRoutes from './routes/courses.routes';
 // @ts-ignore
-import doctorsRoutes from './routes/doctors.routes.js';
+import doctorsRoutes from './routes/doctors.routes';
 // @ts-ignore
-import schedulesRoutes from './routes/schedules.routes.js';
+import schedulesRoutes from './routes/schedules.routes';
 // @ts-ignore
-import examsRoutes from './routes/exams.routes.js';
+import examsRoutes from './routes/exams.routes';
 // @ts-ignore
-import paymentsRoutes from './routes/payments.routes.js';
+import paymentsRoutes from './routes/payments.routes';
 // @ts-ignore
-import dashboardRoutes from './routes/dashboard.routes.js';
+import dashboardRoutes from './routes/dashboard.routes';
 // @ts-ignore
-import enrollmentRoutes from './routes/enrollment.routes.js';
+import enrollmentRoutes from './routes/enrollment.routes';
 // @ts-ignore
-import transcriptRoutes from './routes/transcript.routes.js';
+import transcriptRoutes from './routes/transcript.routes';
 // @ts-ignore
-import collegeRoutes from './routes/college.routes.js';
+import collegeRoutes from './routes/college.routes';
 // @ts-ignore
-import departmentRoutes from './routes/department.routes.js';
+import departmentRoutes from './routes/department.routes';
 // @ts-ignore
-import quizRoutes from './routes/quiz.routes.js';
+import quizRoutes from './routes/quiz.routes';
 // @ts-ignore
-import taskRoutes from './routes/task.routes.js';
+import taskRoutes from './routes/task.routes';
 // @ts-ignore
-import usersRoutes from './routes/users.routes.js';
+import usersRoutes from './routes/users.routes';
 // @ts-ignore
-import notificationRoutes from './routes/notification.routes.js';
+import notificationRoutes from './routes/notification.routes';
 // @ts-ignore
-import analyticsRoutes from './routes/analytics.routes.js';
+import analyticsRoutes from './routes/analytics.routes';
 // @ts-ignore
-import attendanceRoutes from './routes/attendance.routes.js';
+import attendanceRoutes from './routes/attendance.routes';
 // @ts-ignore
-import timetableRoutes from './routes/timetable.routes.js';
+import timetableRoutes from './routes/timetable.routes';
 // @ts-ignore
-import searchRoutes from './routes/search.routes.js';
+import searchRoutes from './routes/search.routes';
 // @ts-ignore
-import { protect } from './middleware/auth.middleware.js';
+import { protect } from './middleware/auth.middleware';
 
 // @ts-ignore
 import swaggerUi from 'swagger-ui-express';
-import swaggerSpec from './utils/swagger.js';
+import swaggerSpec from './utils/swagger';
 
 const app: Application = express();
 app.set('trust proxy', 1);

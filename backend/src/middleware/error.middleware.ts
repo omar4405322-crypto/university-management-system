@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
-import logger from '../utils/logger.js';
-import { 
-  AppError, 
-  ConflictError, 
-  NotFoundError, 
-  ValidationError, 
-  AuthenticationError 
-} from '../utils/appError.js';
+import logger from '../utils/logger';
+import {
+  AppError,
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+  AuthenticationError,
+} from '../utils/appError';
 
 /**
  * Global Error Handler Middleware
@@ -54,10 +54,9 @@ const handlePrismaConnectionError = () => {
   return new AppError('Database connection failed. Please try again later.', 503);
 };
 
-const handleJWTError = () => 
-  new AuthenticationError('Invalid security token. Please login again.');
+const handleJWTError = () => new AuthenticationError('Invalid security token. Please login again.');
 
-const handleJWTExpiredError = () => 
+const handleJWTExpiredError = () =>
   new AuthenticationError('Your session has expired! Please login again.');
 
 const sendErrorDev = (err: any, req: Request, res: Response) => {
@@ -68,7 +67,7 @@ const sendErrorDev = (err: any, req: Request, res: Response) => {
     status: err.status,
     error: err,
     message: err.message,
-    stack: err.stack
+    stack: err.stack,
   });
 };
 
@@ -76,14 +75,14 @@ const sendErrorProd = (err: any, req: Request, res: Response) => {
   // Operational, trusted error: send message to client
   if (err.isOperational) {
     logger.warn(`[OP ERROR] ${err.message}`, { path: req.originalUrl });
-    
+
     res.status(err.statusCode).json({
       success: false,
       status: err.status,
       message: err.message,
-      errors: err.errors || undefined
+      errors: err.errors || undefined,
     });
-  } 
+  }
   // Programming or other unknown error: don't leak error details
   else {
     logger.error(`[CRITICAL ERROR] ${err.message}`, { stack: err.stack, path: req.originalUrl });
@@ -91,7 +90,7 @@ const sendErrorProd = (err: any, req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       status: 'error',
-      message: 'Something went very wrong!'
+      message: 'Something went very wrong!',
     });
   }
 };

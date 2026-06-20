@@ -1,7 +1,7 @@
 import cron from 'node-cron';
-import prisma from './prismaClient.js';
-import logger from './logger.js';
-import { createNotification } from './notification.utils.js';
+import prisma from './prismaClient';
+import logger from './logger';
+import { createNotification } from './notification.utils';
 
 /**
  * AI Risk Detection Job
@@ -10,7 +10,7 @@ import { createNotification } from './notification.utils.js';
 export const startRiskDetectionJob = (): void => {
   cron.schedule('0 2 * * *', async () => {
     logger.info('[CRON] Starting AI Risk Detection job');
-    
+
     try {
       const BATCH_SIZE = 50;
       let cursor: number | null = null;
@@ -28,13 +28,13 @@ export const startRiskDetectionJob = (): void => {
               include: {
                 course: {
                   include: {
-                    tasks: { select: { id: true } }
-                  }
-                }
-              }
-            }
+                    tasks: { select: { id: true } },
+                  },
+                },
+              },
+            },
           },
-          orderBy: { id: 'asc' }
+          orderBy: { id: 'asc' },
         });
 
         if (batch.length === 0) break;
@@ -42,19 +42,30 @@ export const startRiskDetectionJob = (): void => {
         for (const student of batch) {
           // 1. Calculate Attendance Rate
           const totalClasses = student.attendance.length;
-          const presentClasses = student.attendance.filter((a: any) => a.status === 'PRESENT' || a.status === 'LATE').length;
+          const presentClasses = student.attendance.filter(
+            (a: any) => a.status === 'PRESENT' || a.status === 'LATE'
+          ).length;
           const attendanceRate = totalClasses > 0 ? (presentClasses / totalClasses) * 100 : 100;
 
           // 2. Calculate Average Quiz Score
-          const quizScores = student.quizSubmissions.map((s: any) => s.score).filter((s: any) => s !== null) as number[];
-          const averageQuizScore = quizScores.length > 0 ? (quizScores.reduce((a, b) => a + b, 0) / quizScores.length) : 100;
+          const quizScores = student.quizSubmissions
+            .map((s: any) => s.score)
+            .filter((s: any) => s !== null) as number[];
+          const averageQuizScore =
+            quizScores.length > 0 ? quizScores.reduce((a, b) => a + b, 0) / quizScores.length : 100;
 
           // 3. Calculate Assignment Completion Rate
-          const allAssignedTasks = student.enrollments.reduce((acc: any[], enr: any) => acc.concat(enr.course.tasks), [] as { id: number }[]);
+          const allAssignedTasks = student.enrollments.reduce(
+            (acc: any[], enr: any) => acc.concat(enr.course.tasks),
+            [] as { id: number }[]
+          );
           const totalAssignments = allAssignedTasks.length;
           const submittedTaskIds = new Set(student.taskSubmissions.map((s: any) => s.taskId));
-          const completedAssignments = allAssignedTasks.filter((t: any) => submittedTaskIds.has(t.id)).length;
-          const assignmentCompletionRate = totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 100;
+          const completedAssignments = allAssignedTasks.filter((t: any) =>
+            submittedTaskIds.has(t.id)
+          ).length;
+          const assignmentCompletionRate =
+            totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 100;
 
           // 4. Determine Risk Level
           let predictedRisk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW';
@@ -74,7 +85,7 @@ export const startRiskDetectionJob = (): void => {
               averageQuizScore,
               assignmentCompletionRate,
               predictedRisk,
-              lastCalculated: new Date()
+              lastCalculated: new Date(),
             },
             create: {
               studentId: student.id,
@@ -82,8 +93,8 @@ export const startRiskDetectionJob = (): void => {
               averageQuizScore,
               assignmentCompletionRate,
               predictedRisk,
-              lastCalculated: new Date()
-            }
+              lastCalculated: new Date(),
+            },
           });
 
           // 6. Send Notifications for At-Risk Students
@@ -97,10 +108,10 @@ export const startRiskDetectionJob = (): void => {
 
             // Notify Department Admin
             const deptAdmin = await prisma.user.findFirst({
-              where: { 
+              where: {
                 role: 'DEPARTMENT_ADMIN',
-                departmentId: student.departmentId
-              }
+                departmentId: student.departmentId,
+              },
             });
 
             if (deptAdmin) {
@@ -117,7 +128,7 @@ export const startRiskDetectionJob = (): void => {
         cursor = batch[batch.length - 1].id;
 
         // Small delay between batches to avoid DB lock contention
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       logger.info(`[CRON] AI Risk Detection completed for ${processedCount} students`);

@@ -1,5 +1,5 @@
-import prisma from '../utils/prismaClient.js';
-import { ConflictError, NotFoundError } from '../utils/appError.js';
+import prisma from '../utils/prismaClient';
+import { ConflictError, NotFoundError } from '../utils/appError';
 
 class EnrollmentService {
   static async enrollStudent(
@@ -41,7 +41,7 @@ class EnrollmentService {
             },
           },
         });
-        
+
         if (!course) {
           throw new NotFoundError('Course not found');
         }
@@ -79,7 +79,7 @@ class EnrollmentService {
           },
         },
       });
-      
+
       if (!course) {
         throw new NotFoundError('Course not found');
       }

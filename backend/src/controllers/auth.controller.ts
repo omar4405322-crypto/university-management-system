@@ -1,12 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
-import prisma from '../utils/prismaClient.js';
+import prisma from '../utils/prismaClient';
 import bcrypt from 'bcryptjs';
-import { generateAccessToken, generateRefreshToken } from '../utils/jwt.utils.js';
-import { notifyAdminsOfNewRequest, createNotification } from '../utils/notification.utils.js';
-import catchAsync from '../utils/catchAsync.js';
-import { AppError, AuthenticationError, ConflictError, NotFoundError, AuthorizationError } from '../utils/appError.js';
-import logger from '../utils/logger.js';
-import { verifyTOTP } from '../utils/twoFactor.utils.js';
+import { generateAccessToken, generateRefreshToken } from '../utils/jwt.utils';
+import { notifyAdminsOfNewRequest, createNotification } from '../utils/notification.utils';
+import catchAsync from '../utils/catchAsync';
+import {
+  AppError,
+  AuthenticationError,
+  ConflictError,
+  NotFoundError,
+  AuthorizationError,
+} from '../utils/appError';
+import logger from '../utils/logger';
+import { verifyTOTP } from '../utils/twoFactor.utils';
 
 export interface RegisterRequestBody {
   email: string;
@@ -32,20 +38,35 @@ export interface RejectRequestBody {
 
 // Helper to set cookies
 const setAuthCookies = (res: Response, accessToken: string, refreshToken: string): void => {
-  res.cookie('refresh_token', refreshToken, { 
-    httpOnly: true, 
-    secure: process.env.NODE_ENV === 'production', 
-    sameSite: 'strict', 
+  res.cookie('refresh_token', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    path: '/api/auth/refresh' // Only send to refresh endpoint
+    path: '/api/auth/refresh', // Only send to refresh endpoint
   });
 };
 
 export const register = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { email, password, role: requestedRole, firstName, lastName, departmentId, studentId, year, phone } = req.body as RegisterRequestBody;
+  const {
+    email,
+    password,
+    role: requestedRole,
+    firstName,
+    lastName,
+    departmentId,
+    studentId,
+    year,
+    phone,
+  } = req.body as RegisterRequestBody;
   const role = 'STUDENT';
   if (requestedRole && requestedRole !== 'STUDENT') {
-    return next(new AppError('Only student registration is available. Faculty accounts are created by administrators.', 400));
+    return next(
+      new AppError(
+        'Only student registration is available. Faculty accounts are created by administrators.',
+        400
+      )
+    );
   }
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -78,7 +99,7 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
       year: role === 'STUDENT' ? (year ? parseInt(year as string) : 1) : null,
       departmentId: departmentId ? parseInt(departmentId as string) : null,
       phone: phone?.trim() || null,
-    }
+    },
   });
 
   if (request.departmentId) {
@@ -86,7 +107,7 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
       role: request.role,
       firstName: request.firstName,
       lastName: request.lastName,
-      departmentId: request.departmentId
+      departmentId: request.departmentId,
     });
   }
 
@@ -98,7 +119,9 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
 });
 
 export const login = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
+  const email = String(req.body.email || '')
+    .trim()
+    .toLowerCase();
   const { password } = req.body as LoginRequestBody;
 
   logger.info(`[AUTH] Login attempt for email: ${email}`);
@@ -117,10 +140,10 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
 
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { 
-      student: true, 
+    include: {
+      student: true,
       doctor: true,
-      managedCollege: { select: { id: true, name: true, nameAr: true } }
+      managedCollege: { select: { id: true, name: true, nameAr: true } },
     },
   });
 
@@ -131,22 +154,22 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
     return next(new AuthenticationError('Invalid email or password'));
   }
 
-  if (user.twoFactorEnabled) { 
+  if (user.twoFactorEnabled) {
     logger.info(`[AUTH] 2FA required for: ${email}`);
     const { totpToken } = req.body;
-    if (!totpToken) { 
-      return res.status(200).json({ 
-        success: true, 
-        requires2FA: true, 
-        message: 'Please enter your 2FA code', 
-      }); 
-    } 
-    const isValid = verifyTOTP(user.twoFactorSecret as string, totpToken); 
+    if (!totpToken) {
+      return res.status(200).json({
+        success: true,
+        requires2FA: true,
+        message: 'Please enter your 2FA code',
+      });
+    }
+    const isValid = verifyTOTP(user.twoFactorSecret as string, totpToken);
     if (!isValid) {
       logger.warn(`[AUTH] Invalid 2FA token for: ${email}`);
-      return next(new AuthenticationError('Invalid 2FA code')); 
+      return next(new AuthenticationError('Invalid 2FA code'));
     }
-  } 
+  }
 
   logger.info(`[AUTH] Generating tokens for user: ${user.id}`);
   const accessToken = generateAccessToken(user.id, user.tokenVersion);
@@ -182,7 +205,7 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
 
   const tokenDoc = await prisma.refreshToken.findUnique({
     where: { token: refresh_token },
-    include: { user: true }
+    include: { user: true },
   });
 
   if (!tokenDoc || tokenDoc.expiresAt < new Date()) {
@@ -191,31 +214,31 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
   }
 
   const accessToken = generateAccessToken(tokenDoc.user.id, tokenDoc.user.tokenVersion);
-  
+
   res.json({
     success: true,
-    data: { accessToken }
+    data: { accessToken },
   });
 });
 
-export const logout = catchAsync(async (req: Request, res: Response, next: NextFunction) => { 
+export const logout = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { refresh_token } = req.cookies;
   if (refresh_token) {
     await prisma.refreshToken.deleteMany({ where: { token: refresh_token } });
   }
 
-  res.clearCookie('refresh_token', { path: '/api/auth/refresh' }); 
-  res.json({ success: true, message: 'Logged out successfully' }); 
-}); 
+  res.clearCookie('refresh_token', { path: '/api/auth/refresh' });
+  res.json({ success: true, message: 'Logged out successfully' });
+});
 
 export const getMe = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    include: { 
-      student: true, 
+    include: {
+      student: true,
       doctor: true,
-      managedCollege: { select: { id: true, name: true, nameAr: true } }
-    }
+      managedCollege: { select: { id: true, name: true, nameAr: true } },
+    },
   });
 
   if (!user) {
@@ -237,7 +260,7 @@ export const getMe = catchAsync(async (req: Request, res: Response, next: NextFu
 export const getRequests = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { user } = req;
   const { status } = req.query;
-  let where: any = {};
+  const where: any = {};
   if (status && status !== 'ALL') {
     where.status = status;
   }
@@ -245,11 +268,11 @@ export const getRequests = catchAsync(async (req: Request, res: Response, next: 
   if (user!.role === 'COLLEGE_ADMIN') {
     const admin = await prisma.user.findUnique({
       where: { id: user!.id },
-      include: { doctor: true }
+      include: { doctor: true },
     });
     if (admin?.doctor && admin.doctor.departmentId) {
       const dept = await prisma.department.findUnique({
-        where: { id: admin.doctor.departmentId }
+        where: { id: admin.doctor.departmentId },
       });
       if (dept) {
         where.department = { collegeId: dept.collegeId };
@@ -262,7 +285,7 @@ export const getRequests = catchAsync(async (req: Request, res: Response, next: 
   } else if (user!.role === 'DEPARTMENT_ADMIN') {
     const admin = await prisma.user.findUnique({
       where: { id: user!.id },
-      include: { doctor: true }
+      include: { doctor: true },
     });
     if (admin?.doctor) {
       where.departmentId = admin.doctor.departmentId;
@@ -274,72 +297,74 @@ export const getRequests = catchAsync(async (req: Request, res: Response, next: 
   const requests = await prisma.registrationRequest.findMany({
     where,
     include: { department: { include: { college: true } } },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
   });
 
   res.json({ success: true, data: requests });
 });
 
-export const approveRequest = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.params;
+export const approveRequest = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
 
-  const request = await prisma.registrationRequest.findUnique({
-    where: { id: parseInt(id as string) }
-  });
-
-  if (!request) {
-    return next(new NotFoundError('Request not found'));
-  }
-
-  const result = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.create({
-      data: {
-        email: request.email,
-        password: request.password,
-        role: request.role as any,
-        departmentId: request.departmentId
-      }
+    const request = await prisma.registrationRequest.findUnique({
+      where: { id: parseInt(id as string) },
     });
 
-    if (request.role === 'STUDENT') {
-      await tx.student.create({
-        data: {
-          userId: user.id,
-          firstName: request.firstName,
-          lastName: request.lastName,
-          studentId: request.studentId as string,
-          year: request.year || 1,
-          departmentId: request.departmentId,
-          phone: request.phone || null,
-        }
-      });
-    } else if (request.role === 'DOCTOR') {
-      await tx.doctor.create({
-        data: {
-          userId: user.id,
-          firstName: request.firstName,
-          lastName: request.lastName,
-          departmentId: request.departmentId
-        }
-      });
+    if (!request) {
+      return next(new NotFoundError('Request not found'));
     }
 
-    await tx.registrationRequest.update({
-      where: { id: parseInt(id as string) },
-      data: { status: 'APPROVED' }
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: request.email,
+          password: request.password,
+          role: request.role as any,
+          departmentId: request.departmentId,
+        },
+      });
+
+      if (request.role === 'STUDENT') {
+        await tx.student.create({
+          data: {
+            userId: user.id,
+            firstName: request.firstName,
+            lastName: request.lastName,
+            studentId: request.studentId as string,
+            year: request.year || 1,
+            departmentId: request.departmentId,
+            phone: request.phone || null,
+          },
+        });
+      } else if (request.role === 'DOCTOR') {
+        await tx.doctor.create({
+          data: {
+            userId: user.id,
+            firstName: request.firstName,
+            lastName: request.lastName,
+            departmentId: request.departmentId,
+          },
+        });
+      }
+
+      await tx.registrationRequest.update({
+        where: { id: parseInt(id as string) },
+        data: { status: 'APPROVED' },
+      });
+
+      return user;
     });
 
-    return user;
-  });
+    await createNotification({
+      userId: result.id,
+      title: 'Registration Approved',
+      message: 'Your registration request has been accepted.',
+    });
 
-  await createNotification({
-    userId: result.id,
-    title: 'Registration Approved',
-    message: 'Your registration request has been accepted.',
-  });
-
-  res.json({ success: true, message: 'Request approved successfully' });
-});
+    res.json({ success: true, message: 'Request approved successfully' });
+  }
+);
 
 export const rejectRequest = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
@@ -347,7 +372,7 @@ export const rejectRequest = catchAsync(async (req: Request, res: Response, next
 
   await prisma.registrationRequest.update({
     where: { id: parseInt(id as string) },
-    data: { status: 'REJECTED', rejectionReason: reason }
+    data: { status: 'REJECTED', rejectionReason: reason },
   });
 
   res.json({ success: true, message: 'Request rejected' });

@@ -1,10 +1,10 @@
 // FIXED: Exam fields align with DB (room, no title/location column) - schema sync
 import { Request, Response, NextFunction } from 'express';
-import prisma from '../utils/prismaClient.js';
-import { auditLog } from '../utils/audit.utils.js';
-import catchAsync from '../utils/catchAsync.js';
-import { NotFoundError, AuthorizationError } from '../utils/appError.js';
-import { getScopeWhere } from '../utils/scope.utils.js';
+import prisma from '../utils/prismaClient';
+import { auditLog } from '../utils/audit.utils';
+import catchAsync from '../utils/catchAsync';
+import { NotFoundError, AuthorizationError } from '../utils/appError';
+import { getScopeWhere } from '../utils/scope.utils';
 
 export const getAllExams = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { type, upcoming } = req.query;
@@ -37,27 +37,29 @@ export const getAllExams = catchAsync(async (req: Request, res: Response, next: 
   res.json({ success: true, data: exams });
 });
 
-export const getUpcomingExams = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  // Apply centralized scope
-  const examScope: any = getScopeWhere(req.user!, 'exam');
-  const exams = await prisma.exam.findMany({
-    where: {
-      ...(examScope && Object.keys(examScope).length ? examScope : {}),
-      date: { gte: new Date() },
-    },
-    include: {
-      course: {
-        select: {
-          name: true,
-          courseCode: true,
+export const getUpcomingExams = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    // Apply centralized scope
+    const examScope: any = getScopeWhere(req.user!, 'exam');
+    const exams = await prisma.exam.findMany({
+      where: {
+        ...(examScope && Object.keys(examScope).length ? examScope : {}),
+        date: { gte: new Date() },
+      },
+      include: {
+        course: {
+          select: {
+            name: true,
+            courseCode: true,
+          },
         },
       },
-    },
-    orderBy: { date: 'asc' },
-  });
+      orderBy: { date: 'asc' },
+    });
 
-  res.json({ success: true, data: exams });
-});
+    res.json({ success: true, data: exams });
+  }
+);
 
 export const createExam = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { courseId, type, date, startTime, endTime, room, location } = req.body;
@@ -65,7 +67,7 @@ export const createExam = catchAsync(async (req: Request, res: Response, next: N
   // Check if course belongs to admin's scope
   const course = await prisma.course.findUnique({
     where: { id: parseInt(courseId as string) },
-    include: { department: true }
+    include: { department: true },
   });
 
   if (!course) {
@@ -75,7 +77,10 @@ export const createExam = catchAsync(async (req: Request, res: Response, next: N
   // Enforce scope via helper
   const courseScope: any = getScopeWhere(req.user!, 'course');
   if (courseScope && Object.keys(courseScope).length) {
-    if (courseScope.department && course.department?.collegeId !== courseScope.department.collegeId) {
+    if (
+      courseScope.department &&
+      course.department?.collegeId !== courseScope.department.collegeId
+    ) {
       return next(new AuthorizationError('Access denied'));
     }
     if (courseScope.departmentId && course.departmentId !== courseScope.departmentId) {
@@ -111,7 +116,7 @@ export const updateExam = catchAsync(async (req: Request, res: Response, next: N
 
   const exam = await prisma.exam.findUnique({
     where: { id },
-    include: { course: { include: { department: true } } }
+    include: { course: { include: { department: true } } },
   });
 
   if (!exam) {
@@ -121,8 +126,13 @@ export const updateExam = catchAsync(async (req: Request, res: Response, next: N
   // Enforce scope via helper
   const examCourseScope: any = getScopeWhere(req.user!, 'course');
   if (examCourseScope && Object.keys(examCourseScope).length) {
-    if (examCourseScope.department && exam.course?.department?.collegeId !== examCourseScope.department.collegeId) return next(new AuthorizationError('Access denied'));
-    if (examCourseScope.departmentId && exam.course?.departmentId !== examCourseScope.departmentId) return next(new AuthorizationError('Access denied'));
+    if (
+      examCourseScope.department &&
+      exam.course?.department?.collegeId !== examCourseScope.department.collegeId
+    )
+      return next(new AuthorizationError('Access denied'));
+    if (examCourseScope.departmentId && exam.course?.departmentId !== examCourseScope.departmentId)
+      return next(new AuthorizationError('Access denied'));
   }
 
   const updatedExam = await prisma.exam.update({
@@ -143,7 +153,7 @@ export const deleteExam = catchAsync(async (req: Request, res: Response, next: N
   const id = parseInt(req.params.id as string);
   const exam = await prisma.exam.findUnique({
     where: { id },
-    include: { course: { include: { department: true } } }
+    include: { course: { include: { department: true } } },
   });
 
   if (!exam) {
@@ -153,8 +163,13 @@ export const deleteExam = catchAsync(async (req: Request, res: Response, next: N
   // Enforce scope via helper
   const examCourseScope: any = getScopeWhere(req.user!, 'course');
   if (examCourseScope && Object.keys(examCourseScope).length) {
-    if (examCourseScope.department && exam.course?.department?.collegeId !== examCourseScope.department.collegeId) return next(new AuthorizationError('Access denied'));
-    if (examCourseScope.departmentId && exam.course?.departmentId !== examCourseScope.departmentId) return next(new AuthorizationError('Access denied'));
+    if (
+      examCourseScope.department &&
+      exam.course?.department?.collegeId !== examCourseScope.department.collegeId
+    )
+      return next(new AuthorizationError('Access denied'));
+    if (examCourseScope.departmentId && exam.course?.departmentId !== examCourseScope.departmentId)
+      return next(new AuthorizationError('Access denied'));
   }
 
   await prisma.exam.delete({
@@ -176,9 +191,9 @@ export const getExamById = catchAsync(async (req: Request, res: Response, next: 
           department: {
             select: {
               name: true,
-              college: { select: { name: true } }
-            }
-          }
+              college: { select: { name: true } },
+            },
+          },
         },
       },
     },
@@ -191,7 +206,10 @@ export const getExamById = catchAsync(async (req: Request, res: Response, next: 
   // Enforce scope on read
   const courseScope: any = getScopeWhere(req.user!, 'course');
   if (courseScope && Object.keys(courseScope).length) {
-    if (courseScope.department && exam.course?.department?.collegeId !== courseScope.department.collegeId) {
+    if (
+      courseScope.department &&
+      exam.course?.department?.collegeId !== courseScope.department.collegeId
+    ) {
       return next(new AuthorizationError('Access denied'));
     }
     if (courseScope.departmentId && exam.course?.departmentId !== courseScope.departmentId) {

@@ -3,7 +3,7 @@ export default {
   darkMode: 'class',
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+    "./src/**/*.{js,jsx,ts,tsx}",
   ],
   theme: {
     extend: {
@@ -53,8 +53,8 @@ export default {
           },
           text: {
             primary: '#132231',
-            secondary: '#64748b',
-            muted: '#94a3b8',
+            secondary: '#374151',
+            muted: '#4B5563',
           }
         },
         // Semantic Aliases

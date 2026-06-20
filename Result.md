@@ -1,9 +1,10 @@
 # Migration Result Log
 
 ## Completed Files
-| File | tsc | Tests | Runtime | Commit |
+| File | TypeScript Build | Test Suite | Runtime Live Check | Notes |
 |------|-----|-------|---------|--------|
 | auth.controller.ts | PASS | 60/60 | PENDING | PENDING |
+| src/routes/*.ts (Batch of 20) | PASS | 60/60 | PENDING | Converted require to import, fixed middleware bindings. |
 
 ## Potential Pre-Existing Issues (FIXED)
 ### Issue #1 — getRequests (Fallback Bug)
