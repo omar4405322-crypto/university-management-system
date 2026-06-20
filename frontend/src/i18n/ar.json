@@ -4,6 +4,12 @@
     "PAGE": "صفحة",
     "RESET": "إعادة تعيين"
   },
+  "validation": {
+    "emailRequired": "البريد الإلكتروني مطلوب",
+    "emailInvalid": "الرجاء إدخال بريد إلكتروني صحيح",
+    "passwordRequired": "كلمة المرور مطلوبة",
+    "passwordMin": "كلمة المرور يجب أن تكون 8 أحرف على الأقل"
+  },
   "COURSES": {
     "COURSENAME": "اسم المقرر",
     "INSTRUCTOR": "المحاضر",

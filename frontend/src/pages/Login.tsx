@@ -22,13 +22,13 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
 // ── Zod schema ──────────────────────────────────────────────────────────────
-const loginSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
+const getLoginSchema = (t: any) => z.object({
+  email: z.string().min(1, { message: t('validation.emailRequired') }).email({ message: t('validation.emailInvalid') }),
+  password: z.string().min(1, { message: t('validation.passwordRequired') }).min(8, { message: t('validation.passwordMin') }),
   totpToken: z.string().optional(),
 });
 
-type LoginFormData = z.infer<typeof loginSchema>;
+type LoginFormData = z.infer<ReturnType<typeof getLoginSchema>>;
 
 // ── Component ────────────────────────────────────────────────────────────────
 const Login = () => {
@@ -54,7 +54,7 @@ const Login = () => {
     formState: { errors, isSubmitting },
     watch,
   } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(getLoginSchema(t)),
     defaultValues: { email: '', password: '', totpToken: '' },
   });
 

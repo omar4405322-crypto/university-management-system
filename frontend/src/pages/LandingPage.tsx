@@ -78,7 +78,7 @@ const LandingPage = () => {
           }
         });
       },
-      { threshold: 0.3 }
+      { threshold: 0.1, rootMargin: '-20% 0px -60% 0px' }
     );
     sections.forEach((section) => observer.observe(section));
     
@@ -188,6 +188,7 @@ const LandingPage = () => {
                 <li key={link.name}>
                   <a
                     href={link.href}
+                    aria-current={isActive ? 'page' : undefined}
                     className={`text-sm font-bold tracking-tight transition-all relative ${
                       isActive 
                         ? 'text-brand-green after:absolute after:-bottom-2 after:left-0 after:w-full after:h-0.5 after:bg-brand-green after:rounded-full' 
@@ -246,17 +247,23 @@ const LandingPage = () => {
 
           {/* Nav links centered */}
           <div className="flex flex-col items-center justify-center h-full gap-6 px-8 pt-16">
-            {navLinks.map((link, index) => (
+            {navLinks.map((link, index) => {
+              const sectionId = link.href.replace('#', '');
+              const isActive = activeSection === sectionId;
+              return (
               <a
                 key={link.name}
                 href={link.href}
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="text-2xl font-black text-white hover:text-brand-green transition-colors border-b border-white/10 w-full text-center pb-6 last:border-none"
+                className={`text-2xl font-black transition-colors border-b border-white/10 w-full text-center pb-6 last:border-none ${
+                  isActive ? 'text-brand-green' : 'text-white hover:text-brand-green'
+                }`}
                 style={{ animationDelay: `${index * 60}ms` }}
               >
                 {link.name}
               </a>
-            ))}
+            )})}
 
             {/* Login button */}
             <Link
