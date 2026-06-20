@@ -13,7 +13,7 @@ export const CountUp: React.FC<CountUpProps> = ({
   duration = 2000, 
   prefix = '', 
   suffix = '', 
-  locale = 'ar-EG' 
+  locale = 'en-US' 
 }) => {
   const [count, setCount] = useState(0);
 
