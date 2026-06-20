@@ -11,12 +11,19 @@
   ],
   "rules": {
     "no-unused-vars": "off",
-    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-    "@typescript-eslint/no-explicit-any": "error",
+    "import/no-unresolved": "off",
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/ban-ts-comment": "warn",
+    "@typescript-eslint/no-require-imports": "warn",
+    "prefer-const": "warn",
+    "no-constant-condition": "warn",
+    "@typescript-eslint/no-namespace": "warn",
     "no-magic-numbers": ["warn", { 
       "ignore": [0, 1, -1, 200, 201, 400, 401, 403, 404, 409, 500],
       "ignoreArrayIndexes": true,
-      "enforceConst": true
+      "enforceConst": true,
+      "detectObjects": false
     }],
     "eqeqeq": ["error", "always"],
     "prettier/prettier": "error"

@@ -7,16 +7,16 @@ import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
 let storage: multer.StorageEngine;
 
-const isCloudinaryConfigured = 
-  process.env.CLOUDINARY_CLOUD_NAME && 
-  process.env.CLOUDINARY_API_KEY && 
+const isCloudinaryConfigured =
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
   process.env.CLOUDINARY_API_SECRET;
 
 if (isCloudinaryConfigured) {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
+    api_secret: process.env.CLOUDINARY_API_SECRET,
   });
 
   storage = new CloudinaryStorage({
@@ -24,7 +24,7 @@ if (isCloudinaryConfigured) {
     params: {
       folder: 'university-management/profiles',
       allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-      transformation: [{ width: 500, height: 500, crop: 'limit' }]
+      transformation: [{ width: 500, height: 500, crop: 'limit' }],
     } as any,
   });
 } else {
@@ -41,7 +41,7 @@ if (isCloudinaryConfigured) {
     filename: (req, file, cb) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
+    },
   });
 }
 
@@ -57,9 +57,9 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 2 * 1024 * 1024 // 2MB
+    fileSize: 2 * 1024 * 1024, // 2MB
   },
-  fileFilter: fileFilter
+  fileFilter: fileFilter,
 });
 
 export = upload;

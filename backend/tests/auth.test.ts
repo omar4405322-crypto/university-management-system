@@ -1,10 +1,10 @@
 import request from 'supertest';
 // @ts-ignore
-import app from '../src/app.js';
-import prisma from '../src/utils/prismaClient.js';
+import app from '../src/app';
+import prisma from '../src/utils/prismaClient';
 import { getAuthToken, createTestUser, cleanupTestData } from './helpers/testUtils';
 // @ts-ignore
-import { redis } from '../src/utils/redis.utils.js';
+import { redis } from '../src/utils/redis.utils';
 
 jest.mock('../src/utils/redis.utils.js', () => ({
   redis: {

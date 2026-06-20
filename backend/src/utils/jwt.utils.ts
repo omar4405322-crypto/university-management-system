@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
-import { AuthenticationError } from './appError.js';
-import prisma from './prismaClient.js';
+import { AuthenticationError } from './appError';
+import prisma from './prismaClient';
 import crypto from 'crypto';
 
 export interface TokenPayload {
@@ -11,17 +11,13 @@ export interface TokenPayload {
 /**
  * Generate a short-lived access token
  */
-export const generateAccessToken = (userId: number, tokenVersion: number = 0): string => { 
-  return jwt.sign( 
-    { id: userId, tokenVersion }, 
-    process.env.JWT_SECRET as string, 
-    { 
-      expiresIn: '15m', 
-      issuer: 'Smart University Platform', 
-      audience: 'University Users' 
-    } 
-  ); 
-}; 
+export const generateAccessToken = (userId: number, tokenVersion: number = 0): string => {
+  return jwt.sign({ id: userId, tokenVersion }, process.env.JWT_SECRET as string, {
+    expiresIn: '15m',
+    issuer: 'Smart University Platform',
+    audience: 'University Users',
+  });
+};
 
 // Keep original name for compatibility if needed
 export const generateToken = generateAccessToken;
@@ -38,8 +34,8 @@ export const generateRefreshToken = async (userId: number): Promise<string> => {
     data: {
       token,
       userId,
-      expiresAt
-    }
+      expiresAt,
+    },
   });
 
   return token;
@@ -52,7 +48,7 @@ export const verifyToken = (token: string): TokenPayload => {
   try {
     return jwt.verify(token, process.env.JWT_SECRET as string, {
       issuer: 'Smart University Platform',
-      audience: 'University Users'
+      audience: 'University Users',
     }) as TokenPayload;
   } catch (error: any) {
     if (error?.name === 'TokenExpiredError') {

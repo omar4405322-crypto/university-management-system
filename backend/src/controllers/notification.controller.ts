@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import prisma from '../utils/prismaClient.js';
-import { auditLog } from '../utils/audit.utils.js';
-import catchAsync from '../utils/catchAsync.js';
-import { NotFoundError } from '../utils/appError.js';
+import prisma from '../utils/prismaClient';
+import { auditLog } from '../utils/audit.utils';
+import catchAsync from '../utils/catchAsync';
+import { NotFoundError } from '../utils/appError';
 
 // @desc    Get all notifications for current user
 // @route   GET /api/notifications

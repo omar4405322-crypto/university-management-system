@@ -1,6 +1,6 @@
 import request from 'supertest';
-import app from '../src/app.js';
-import prisma from '../src/utils/prismaClient.js';
+import app from '../src/app';
+import prisma from '../src/utils/prismaClient';
 import { getAuthToken, cleanupTestData } from './helpers/testUtils';
 
 describe('Schedules & Timetable Tests', () => {

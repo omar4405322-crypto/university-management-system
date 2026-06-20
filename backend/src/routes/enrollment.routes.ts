@@ -1,24 +1,17 @@
 import express from 'express';
-import { protect, authorize } from '../middleware/auth.middleware.js';
-import { enrollStudent,
+import { protect, authorize } from '../middleware/auth.middleware';
+import {
+  enrollStudent,
   withdrawStudent,
   getEnrollments,
-  updateGrade } from '../controllers/enrollment.controller.js';
+  updateGrade,
+} from '../controllers/enrollment.controller';
 
 const router = express.Router();
 
-router.post(
-  '/',
-  protect,
-  authorize('COLLEGE_ADMIN', 'SUPER_ADMIN', 'DEPT_HEAD'),
-  enrollStudent
-);
+router.post('/', protect, authorize('COLLEGE_ADMIN', 'SUPER_ADMIN', 'DEPT_HEAD'), enrollStudent);
 
-router.get(
-  '/',
-  protect,
-  getEnrollments
-);
+router.get('/', protect, getEnrollments);
 
 router.delete(
   '/:id',

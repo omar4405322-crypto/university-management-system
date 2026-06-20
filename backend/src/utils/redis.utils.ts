@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import logger from './logger.js';
+import logger from './logger';
 
 let redis: Redis | null = null;
 
@@ -9,9 +9,9 @@ if (process.env.REDIS_URL && process.env.NODE_ENV?.trim() !== 'test') {
     retryStrategy(times: number) {
       if (times > 3) return null;
       return Math.min(times * 50, 2000);
-    }
+    },
   });
-  
+
   redis.on('connect', () => logger.info('[REDIS] Connected to instance'));
   redis.on('error', (err: Error) => logger.error(`[REDIS] Error: ${err.message}`));
 }
@@ -19,7 +19,11 @@ if (process.env.REDIS_URL && process.env.NODE_ENV?.trim() !== 'test') {
 /**
  * Cache data with a TTL
  */
-export const setCache = async (key: string, value: any, ttlSeconds: number = 300): Promise<void> => {
+export const setCache = async (
+  key: string,
+  value: any,
+  ttlSeconds: number = 300
+): Promise<void> => {
   if (!redis) return;
   try {
     await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);

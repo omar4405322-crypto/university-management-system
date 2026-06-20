@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -114,19 +114,13 @@ const SidebarGroup = ({ group, isCollapsed }) => {
 };
 
 const Sidebar = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { isSidebarCollapsed: isCollapsed, toggleSidebar } = useTheme();
 
   const navigationConfig = useMemo(() => [
-    {
-      title: '',
-      flat: true,
-      items: [
-        { title: 'nav.dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'] }
-      ]
-    },
     {
       title: 'nav.academic',
       items: [
@@ -209,7 +203,13 @@ const Sidebar = ({ isOpen, onClose }) => {
         md:translate-x-0
       `}>
         <div className="flex h-20 items-center justify-between border-b border-white/10 bg-black/10 px-4">
-          <div className={`flex min-w-0 flex-1 items-center gap-3 ${isCollapsed ? 'hidden' : 'flex'}`}>
+          <Link
+            to="/dashboard"
+            onClick={(e) => {
+              navigate('/dashboard');
+            }}
+            className={`flex min-w-0 flex-1 items-center gap-3 hover:opacity-80 transition-opacity ${isCollapsed ? 'hidden' : 'flex'}`}
+          >
             <img
               src={UNIVERSITY_LOGO_PNG}
               alt=""
@@ -223,18 +223,24 @@ const Sidebar = ({ isOpen, onClose }) => {
               <span className="text-xs font-black uppercase leading-tight tracking-widest text-white">{t('common.university', 'University')}</span>
               <span className="text-[10px] font-bold uppercase leading-tight tracking-tighter text-brand-primary-500">{t('common.managementSystem', 'Management System')}</span>
             </div>
-          </div>
+          </Link>
 
           {isCollapsed && (
-            <img
-              src={UNIVERSITY_LOGO_PNG}
-              alt="University"
-              className="mx-auto h-9 w-9 object-contain"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = UNIVERSITY_LOGO;
-              }}
-            />
+            <Link 
+              to="/dashboard" 
+              onClick={(e) => navigate('/dashboard')}
+              className="mx-auto block hover:opacity-80 transition-opacity"
+            >
+              <img
+                src={UNIVERSITY_LOGO_PNG}
+                alt="University"
+                className="h-9 w-9 object-contain"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = UNIVERSITY_LOGO;
+                }}
+              />
+            </Link>
           )}
 
           <button 
@@ -247,7 +253,29 @@ const Sidebar = ({ isOpen, onClose }) => {
         </div>
 
         <div className="flex flex-col h-[calc(100%-5rem)]">
-          <div className="flex-1 overflow-y-auto py-8 px-4 custom-scrollbar space-y-8">
+          {/* ALWAYS VISIBLE HOME BUTTON (Right below logo area) */}
+          <div className="px-4 py-2 border-b border-white/5 shrink-0">
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) => `
+                group flex items-center gap-3 rounded-2xl transition-all duration-300 px-4 py-3 text-sm
+                ${isActive
+                  ? 'bg-brand-primary-500 text-white shadow-elevated shadow-brand-primary-500/20'
+                  : 'text-brand-text-secondary hover:bg-brand-primary-500/10 hover:text-brand-primary-500 dark:text-slate-400 dark:hover:text-brand-primary-400'
+                }
+                ${isCollapsed ? 'justify-center px-2' : ''}
+              `}
+            >
+              {({ isActive }) => (
+                <>
+                  <LayoutDashboard size={20} className={`shrink-0 transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-brand-text-muted group-hover:text-brand-primary-500 group-hover:scale-110'}`} />
+                  {!isCollapsed && <span className={`font-black uppercase tracking-widest transition-all ${isActive ? 'translate-x-1 rtl:-translate-x-1' : ''}`}>{t('nav.dashboard', 'الرئيسية')}</span>}
+                </>
+              )}
+            </NavLink>
+          </div>
+
+          <div className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar space-y-8">
             {filteredNav.map((group, idx) => {
               if (group.flat) {
                 return (

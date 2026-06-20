@@ -1,11 +1,11 @@
 import request from 'supertest';
 import express from 'express';
-import { protect, authorize } from '../src/middleware/auth.middleware.js';
-import auditLog from '../src/middleware/audit.middleware.js';
-import { generateAccessToken } from '../src/utils/jwt.utils.js';
+import { protect, authorize } from '../src/middleware/auth.middleware';
+import auditLog from '../src/middleware/audit.middleware';
+import { generateAccessToken } from '../src/utils/jwt.utils';
 // @ts-ignore
-import { redis } from '../src/utils/redis.utils.js';
-import prisma from '../src/utils/prismaClient.js';
+import { redis } from '../src/utils/redis.utils';
+import prisma from '../src/utils/prismaClient';
 import { createTestUser, cleanupTestData } from './helpers/testUtils';
 
 jest.mock('../src/utils/redis.utils.js', () => ({

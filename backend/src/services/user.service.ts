@@ -1,4 +1,4 @@
-import prisma from '../utils/prismaClient.js';
+import prisma from '../utils/prismaClient';
 import { Prisma } from '@prisma/client';
 
 const userProfileInclude = {

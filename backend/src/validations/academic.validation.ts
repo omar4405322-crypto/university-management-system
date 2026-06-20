@@ -1,4 +1,4 @@
-import {  body, param  } from 'express-validator';
+import { body, param } from 'express-validator';
 
 export const studentValidation = [
   body('firstName').notEmpty().withMessage('First name is required').trim(),
@@ -10,7 +10,7 @@ export const studentValidation = [
   body('phone').optional().trim(),
   body('address').optional().trim(),
   body('gender').optional().isIn(['Male', 'Female', 'Other']).withMessage('Invalid gender'),
-  body('birthDate').optional().isISO8601().withMessage('Invalid birth date format')
+  body('birthDate').optional().isISO8601().withMessage('Invalid birth date format'),
 ];
 
 export const courseValidation = [
@@ -22,7 +22,7 @@ export const courseValidation = [
   body('description').optional().trim(),
   body('maxStudents').optional().isInt({ min: 1 }).withMessage('Max students must be at least 1'),
   body('year').optional().isInt({ min: 1, max: 7 }),
-  body('semester').optional().isInt({ min: 1, max: 3 })
+  body('semester').optional().isInt({ min: 1, max: 3 }),
 ];
 
 export const doctorValidation = [
@@ -34,11 +34,7 @@ export const doctorValidation = [
   body('specialty').optional().trim(),
   body('phone').optional().trim(),
   body('address').optional().trim(),
-  body('gender').optional().isIn(['Male', 'Female', 'Other']).withMessage('Invalid gender')
+  body('gender').optional().isIn(['Male', 'Female', 'Other']).withMessage('Invalid gender'),
 ];
 
-export const idParamValidation = [
-  param('id').isInt().withMessage('Invalid ID format')
-];
-
-
+export const idParamValidation = [param('id').isInt().withMessage('Invalid ID format')];

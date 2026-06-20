@@ -1,0 +1,25 @@
+import React, { InputHTMLAttributes } from 'react';
+
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  label?: React.ReactNode;
+  error?: React.ReactNode;
+}
+
+const Input: React.FC<InputProps> = ({ label, error, className = '', ...props }) => {
+  return (
+    <div className="form-field">
+      {label && <label className="label-stat text-brand-text-secondary ms-1">{label}</label>}
+      <input
+        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border dark:border-slate-700 rounded-xl text-sm text-brand-text-primary dark:text-brand-text-main transition-all duration-200
+          focus:outline-none focus:ring-4 focus:ring-brand-primary-500/10 focus:border-brand-primary-500
+          placeholder:text-brand-text-muted dark:placeholder:text-brand-text-muted
+          disabled:bg-surface-subtle disabled:text-brand-text-muted disabled:cursor-not-allowed
+          ${error ? 'border-error ring-error/10' : 'border-brand-border hover:border-brand-text-muted'} ${className}`}
+        {...props}
+      />
+      {error && <p className="text-xs text-error font-medium mt-1.5 ms-1">{error}</p>}
+    </div>
+  );
+};
+
+export default Input;

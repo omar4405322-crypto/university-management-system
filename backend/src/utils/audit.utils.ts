@@ -1,4 +1,4 @@
-import logger from './logger.js';
+import logger from './logger';
 
 export interface AuditLogEntry {
   action: string;
@@ -15,19 +15,19 @@ export function auditLog(
   action: string,
   resourceType: string,
   resourceId: number | string | null | undefined,
-  req: { 
-    user?: { 
-      id?: number | string; 
-      role?: string; 
+  req: {
+    user?: {
+      id?: number | string;
+      role?: string;
       [key: string]: any;
-    }; 
-    ip?: string; 
+    };
+    ip?: string;
     [key: string]: any;
   },
   changes?: any
 ): void {
   const level: 'warn' | 'info' = action.startsWith('DELETE') ? 'warn' : 'info';
-  
+
   const entry: AuditLogEntry = {
     action,
     resourceType,

@@ -8,7 +8,7 @@ export class AppError extends Error {
 
   constructor(message: string, statusCode: number) {
     super(message);
-    
+
     // Restore prototype chain for built-in Error subclasses in TS
     Object.setPrototypeOf(this, new.target.prototype);
 

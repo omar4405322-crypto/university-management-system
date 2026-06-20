@@ -147,7 +147,7 @@ const Login = () => {
             to="/"
             className="absolute top-12 right-12 flex items-center gap-2 text-white/70 hover:text-white font-bold text-sm transition-all group"
           >
-            <ArrowRight size={18} className="rtl:-scale-x-100 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight size={18} strokeWidth={2} className="rtl:-scale-x-100 group-hover:translate-x-1 transition-transform" />
             العودة للرئيسية
           </Link>
 
@@ -174,7 +174,7 @@ const Login = () => {
                   key={i}
                   className="flex items-center gap-3 px-5 py-3 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md"
                 >
-                  <CheckCircle2 size={18} className="text-brand-green shrink-0" />
+                  <CheckCircle2 size={18} strokeWidth={2} className="text-brand-green shrink-0" />
                   <span className="text-white text-sm font-bold">{feature}</span>
                 </div>
               ),
@@ -204,7 +204,7 @@ const Login = () => {
             {/* API-level error banner */}
             {apiError && (
               <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 rounded-2xl text-rose-600 text-sm font-medium flex items-center gap-3 animate-in fade-in zoom-in-95">
-                <AlertCircle size={20} className="shrink-0" />
+                <AlertCircle size={20} strokeWidth={2} className="shrink-0" />
                 <span>{apiError}</span>
               </div>
             )}
@@ -221,6 +221,7 @@ const Login = () => {
                       <Mail
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-green transition-colors"
                         size={18}
+                        strokeWidth={2}
                       />
                       <input
                         {...register('email')}
@@ -253,6 +254,7 @@ const Login = () => {
                       <Lock
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-green transition-colors"
                         size={18}
+                        strokeWidth={2}
                       />
                       <input
                         {...register('password')}
@@ -265,9 +267,9 @@ const Login = () => {
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
                         className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text-primary transition-colors"
-                        aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                        aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                       >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {showPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
                       </button>
                     </div>
                     {errors.password && (
@@ -295,6 +297,7 @@ const Login = () => {
                       <Lock
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-primary-500 transition-colors"
                         size={18}
+                        strokeWidth={2}
                       />
                       <input
                         {...register('totpToken')}
@@ -323,10 +326,10 @@ const Login = () => {
                 className="w-full h-14 bg-brand-green hover:bg-brand-green-dark text-white font-black rounded-2xl shadow-xl shadow-brand-green/20 transition-all active:scale-[0.98]"
               >
                 {isSubmitting ? (
-                  <Loader2 className="animate-spin" size={24} />
+                  <Loader2 className="animate-spin" size={24} strokeWidth={2} />
                 ) : (
                   <div className="flex items-center justify-center gap-3">
-                    {show2FA ? <CheckCircle2 size={20} /> : <LogIn size={20} />}
+                    {show2FA ? <CheckCircle2 size={20} strokeWidth={2} /> : <LogIn size={20} strokeWidth={2} />}
                     {show2FA ? 'Verify Code' : t('auth.login')}
                   </div>
                 )}
@@ -353,7 +356,7 @@ const Login = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <div className="bg-brand-bg-card rounded-3xl border border-brand-border shadow-2xl p-8 max-w-sm w-full animate-in fade-in zoom-in-95 duration-200">
             <div className="w-14 h-14 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/20 flex items-center justify-center mx-auto mb-5">
-              <Mail size={28} className="text-brand-primary-500" />
+              <Mail size={28} strokeWidth={2} className="text-brand-primary-500" />
             </div>
             <h3 className="text-xl font-black text-center text-brand-text-primary dark:text-brand-text-main mb-2">
               {t('auth.forgotPasswordTitle')}
@@ -408,7 +411,7 @@ const Login = () => {
                     className="flex-1 rounded-2xl"
                   >
                     {forgotLoading ? (
-                      <Loader2 className="animate-spin" size={18} />
+                      <Loader2 className="animate-spin" size={18} strokeWidth={2} />
                     ) : (
                       t('auth.sendRequest') || 'إرسال طلب'
                     )}

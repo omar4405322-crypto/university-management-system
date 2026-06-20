@@ -1,71 +1,72 @@
-import prisma from '../utils/prismaClient.js';
-import { auditLog } from '../utils/audit.utils.js';
+import prisma from '../utils/prismaClient';
+import { auditLog } from '../utils/audit.utils';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
-import catchAsync from '../utils/catchAsync.js';
-import { NotFoundError, AuthenticationError, AppError } from '../utils/appError.js';
+import catchAsync from '../utils/catchAsync';
+import { NotFoundError, AuthenticationError, AppError } from '../utils/appError';
 import { Request, Response, NextFunction } from 'express';
+import { generateTOTPSecret, generateQRCodeURL, verifyTOTP } from '../utils/twoFactor.utils';
 
-// 1. setup2FA — Generates secret and returns QR code for scanning: 
-export const setup2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => { 
-  const { generateTOTPSecret, generateQRCodeURL } = await import('../utils/twoFactor.utils.js'); 
-  const user = await prisma.user.findUnique({ where: { id: req.user!.id } }); 
-  if (user!.twoFactorEnabled) return next(new AppError('2FA is already enabled', 400)); 
+// 1. setup2FA — Generates secret and returns QR code for scanning:
+export const setup2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   
-  const secret = generateTOTPSecret(user!.email); 
-  // Store secret temporarily (not enabling yet until verified) 
-  await prisma.user.update({ 
-    where: { id: req.user!.id }, 
-    data: { twoFactorSecret: secret.base32 } 
-  }); 
-  
-  const qrCodeUrl = await generateQRCodeURL(secret.otpauth_url!); 
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (user!.twoFactorEnabled) return next(new AppError('2FA is already enabled', 400));
+
+  const secret = generateTOTPSecret(user!.email);
+  // Store secret temporarily (not enabling yet until verified)
+  await prisma.user.update({
+    where: { id: req.user!.id },
+    data: { twoFactorSecret: secret.base32 },
+  });
+
+  const qrCodeUrl = await generateQRCodeURL(secret.otpauth_url!);
   auditLog('SETUP_2FA', 'User', req.user!.id.toString(), req);
-  res.json({ success: true, data: { qrCodeUrl, manualEntryKey: secret.base32 } }); 
-}); 
+  res.json({ success: true, data: { qrCodeUrl, manualEntryKey: secret.base32 } });
+});
 
-// 2. enable2FA — Verifies the first TOTP code and enables 2FA: 
-export const enable2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => { 
-  const { verifyTOTP } = await import('../utils/twoFactor.utils.js'); 
-  const { token } = req.body; 
-  const user = await prisma.user.findUnique({ where: { id: req.user!.id } }); 
+// 2. enable2FA — Verifies the first TOTP code and enables 2FA:
+export const enable2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   
-  if (!user!.twoFactorSecret) return next(new AppError('Run 2FA setup first', 400)); 
-  if (user!.twoFactorEnabled) return next(new AppError('2FA is already enabled', 400)); 
-  if (!token) return next(new AppError('Verification code is required', 400)); 
-  
-  const isValid = verifyTOTP(user!.twoFactorSecret, token); 
-  if (!isValid) return next(new AppError('Invalid verification code', 400)); 
-  
-  await prisma.user.update({ 
-    where: { id: req.user!.id }, 
-    data: { twoFactorEnabled: true } 
-  }); 
-  res.json({ success: true, message: '2FA enabled successfully' }); 
-}); 
+  const { token } = req.body;
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
 
-// 3. disable2FA — Verifies password + TOTP before disabling: 
-export const disable2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => { 
-  const { verifyTOTP } = await import('../utils/twoFactor.utils.js'); 
-  const { token, password } = req.body; 
-  const user = await prisma.user.findUnique({ where: { id: req.user!.id } }); 
+  if (!user!.twoFactorSecret) return next(new AppError('Run 2FA setup first', 400));
+  if (user!.twoFactorEnabled) return next(new AppError('2FA is already enabled', 400));
+  if (!token) return next(new AppError('Verification code is required', 400));
+
+  const isValid = verifyTOTP(user!.twoFactorSecret, token);
+  if (!isValid) return next(new AppError('Invalid verification code', 400));
+
+  await prisma.user.update({
+    where: { id: req.user!.id },
+    data: { twoFactorEnabled: true },
+  });
+  res.json({ success: true, message: '2FA enabled successfully' });
+});
+
+// 3. disable2FA — Verifies password + TOTP before disabling:
+export const disable2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   
-  if (!user!.twoFactorEnabled) return next(new AppError('2FA is not enabled', 400)); 
-  
-  const passwordMatch = await bcrypt.compare(password, user!.password); 
-  if (!passwordMatch) return next(new AppError('Incorrect password', 401)); 
-  
-  const isValid = verifyTOTP(user!.twoFactorSecret!, token); 
-  if (!isValid) return next(new AppError('Invalid verification code', 400)); 
-  
-  await prisma.user.update({ 
-    where: { id: req.user!.id }, 
-    data: { twoFactorEnabled: false, twoFactorSecret: null } 
-  }); 
+  const { token, password } = req.body;
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+
+  if (!user!.twoFactorEnabled) return next(new AppError('2FA is not enabled', 400));
+
+  const passwordMatch = await bcrypt.compare(password, user!.password);
+  if (!passwordMatch) return next(new AppError('Incorrect password', 401));
+
+  const isValid = verifyTOTP(user!.twoFactorSecret!, token);
+  if (!isValid) return next(new AppError('Invalid verification code', 400));
+
+  await prisma.user.update({
+    where: { id: req.user!.id },
+    data: { twoFactorEnabled: false, twoFactorSecret: null },
+  });
   auditLog('DISABLE_2FA', 'User', req.user!.id.toString(), req);
-  res.json({ success: true, message: '2FA disabled successfully' }); 
-}); 
+  res.json({ success: true, message: '2FA disabled successfully' });
+});
 
 // @desc    Get current user profile
 // @route   GET /api/users/profile
@@ -165,19 +166,27 @@ export const updateProfile = catchAsync(async (req: Request, res: Response, next
       where: { userId },
       data: updateData,
     });
-  } else { 
-    // Admin roles — update directly on User model (limited fields) 
-    updatedProfile = await prisma.user.findUnique({ 
-      where: { id: userId }, 
-      select: { id: true, email: true, role: true, adminRole: true, createdAt: true, profilePicture: true } 
-    }); 
-    // Return current data with a helpful message 
-    return res.json({ 
-      success: true, 
-      data: updatedProfile, 
-      message: 'Admin profile data shown. To update name details, use the doctor profile associated with this account if applicable.' 
-    }); 
-  } 
+  } else {
+    // Admin roles — update directly on User model (limited fields)
+    updatedProfile = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        adminRole: true,
+        createdAt: true,
+        profilePicture: true,
+      },
+    });
+    // Return current data with a helpful message
+    return res.json({
+      success: true,
+      data: updatedProfile,
+      message:
+        'Admin profile data shown. To update name details, use the doctor profile associated with this account if applicable.',
+    });
+  }
 
   res.json({
     success: true,
@@ -188,93 +197,97 @@ export const updateProfile = catchAsync(async (req: Request, res: Response, next
 // @desc    Update password
 // @route   PUT /api/users/profile/password
 // @access  Private
-export const updatePassword = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const userId = req.user!.id;
-  const { currentPassword, newPassword } = req.body;
+export const updatePassword = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user!.id;
+    const { currentPassword, newPassword } = req.body;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-  });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
 
-  if (!user) {
-    return next(new NotFoundError('User not found'));
+    if (!user) {
+      return next(new NotFoundError('User not found'));
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return next(new AuthenticationError('Incorrect current password'));
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+        tokenVersion: { increment: 1 },
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Password updated successfully',
+    });
   }
-
-  const isMatch = await bcrypt.compare(currentPassword, user.password);
-  if (!isMatch) {
-    return next(new AuthenticationError('Incorrect current password'));
-  }
-
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      password: hashedPassword,
-      tokenVersion: { increment: 1 }, 
-    },
-  });
-
-  res.json({
-    success: true,
-    message: 'Password updated successfully',
-  });
-});
+);
 
 // @desc    Update profile picture
 // @route   PUT /api/users/profile/picture
 // @access  Private
-export const updateProfilePicture = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const userId = req.user!.id;
-  
-  if (!req.file) {
-    return next(new AppError('Please upload a profile picture', 400));
-  }
+export const updateProfilePicture = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user!.id;
 
-  // Handle both Cloudinary URL and local disk storage
-  let profilePictureUrl: string;
-  if (req.file.path.startsWith('http')) {
-    // Cloudinary
-    profilePictureUrl = req.file.path;
-  } else {
-    // Disk storage - store relative path
-    profilePictureUrl = `/uploads/profiles/${req.file.filename}`;
-  }
+    if (!req.file) {
+      return next(new AppError('Please upload a profile picture', 400));
+    }
 
-  // Get old profile picture to delete it if it's local
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { profilePicture: true }
-  });
+    // Handle both Cloudinary URL and local disk storage
+    let profilePictureUrl: string;
+    if (req.file.path.startsWith('http')) {
+      // Cloudinary
+      profilePictureUrl = req.file.path;
+    } else {
+      // Disk storage - store relative path
+      profilePictureUrl = `/uploads/profiles/${req.file.filename}`;
+    }
 
-  // Update user in DB
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      profilePicture: profilePictureUrl,
-    },
-  });
+    // Get old profile picture to delete it if it's local
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { profilePicture: true },
+    });
 
-  // Delete old local profile picture if it exists
-  if (user && user.profilePicture && user.profilePicture.startsWith('/uploads/')) {
-    const oldPath = path.join(process.cwd(), user.profilePicture);
-    if (fs.existsSync(oldPath)) {
-      try {
-        fs.unlinkSync(oldPath);
-      } catch (err: any) {
-        console.error('Failed to delete old profile picture:', err.message);
+    // Update user in DB
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        profilePicture: profilePictureUrl,
+      },
+    });
+
+    // Delete old local profile picture if it exists
+    if (user && user.profilePicture && user.profilePicture.startsWith('/uploads/')) {
+      const oldPath = path.join(process.cwd(), user.profilePicture);
+      if (fs.existsSync(oldPath)) {
+        try {
+          fs.unlinkSync(oldPath);
+        } catch (err: any) {
+          console.error('Failed to delete old profile picture:', err.message);
+        }
       }
     }
-  }
 
-  res.json({
-    success: true,
-    data: {
-      profilePicture: profilePictureUrl
-    }
-  });
-});
+    res.json({
+      success: true,
+      data: {
+        profilePicture: profilePictureUrl,
+      },
+    });
+  }
+);
 
 export const getAllUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const users = await prisma.user.findMany({
@@ -296,7 +309,7 @@ export const getAllUsers = catchAsync(async (req: Request, res: Response, next: 
       if (user.managedCollegeId) {
         const college = await prisma.college.findUnique({
           where: { id: user.managedCollegeId },
-          select: { id: true, name: true }
+          select: { id: true, name: true },
         });
         return { ...user, managedCollege: college };
       }
@@ -308,7 +321,17 @@ export const getAllUsers = catchAsync(async (req: Request, res: Response, next: 
 });
 
 export const createAdmin = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { email, password, role, collegeId, departmentId, managedCollegeId, managedDepartmentId, firstName, lastName } = req.body;
+  const {
+    email,
+    password,
+    role,
+    collegeId,
+    departmentId,
+    managedCollegeId,
+    managedDepartmentId,
+    firstName,
+    lastName,
+  } = req.body;
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
@@ -324,8 +347,14 @@ export const createAdmin = catchAsync(async (req: Request, res: Response, next: 
     role,
     collegeId: collegeId ? parseInt(collegeId as string) : null,
     departmentId: departmentId ? parseInt(departmentId as string) : null,
-    managedCollegeId: (role === 'COLLEGE_ADMIN' || role === 'ADMIN') && managedCollegeId ? parseInt(managedCollegeId as string) : null,
-    managedDepartmentId: role === 'DEPARTMENT_ADMIN' && managedDepartmentId ? parseInt(managedDepartmentId as string) : null,
+    managedCollegeId:
+      (role === 'COLLEGE_ADMIN' || role === 'ADMIN') && managedCollegeId
+        ? parseInt(managedCollegeId as string)
+        : null,
+    managedDepartmentId:
+      role === 'DEPARTMENT_ADMIN' && managedDepartmentId
+        ? parseInt(managedDepartmentId as string)
+        : null,
   };
 
   // If COLLEGE_ADMIN or DEPARTMENT_ADMIN, also create Doctor profile
@@ -334,7 +363,10 @@ export const createAdmin = catchAsync(async (req: Request, res: Response, next: 
       create: {
         firstName,
         lastName,
-        departmentId: (role === 'DEPARTMENT_ADMIN' && managedDepartmentId) ? parseInt(managedDepartmentId as string) : null,
+        departmentId:
+          role === 'DEPARTMENT_ADMIN' && managedDepartmentId
+            ? parseInt(managedDepartmentId as string)
+            : null,
       },
     };
   }

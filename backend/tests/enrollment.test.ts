@@ -9,8 +9,8 @@ jest.mock('../src/utils/redis.utils', () => ({
 }));
 
 import request from 'supertest';
-import app from '../src/app.js';
-import prisma from '../src/utils/prismaClient.js';
+import app from '../src/app';
+import prisma from '../src/utils/prismaClient';
 import { getAuthToken, cleanupTestData, createTestUser } from './helpers/testUtils';
 
 describe('Enrollment Controller Tests', () => {

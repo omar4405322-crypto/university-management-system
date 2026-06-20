@@ -1,13 +1,13 @@
 // FIXED: Dashboard queries match Exam schema (room column in DB)
 import { Request, Response, NextFunction } from 'express';
-import prisma from '../utils/prismaClient.js';
-import { getCache, setCache } from '../utils/redis.utils.js';
-import catchAsync from '../utils/catchAsync.js';
-import { getScopeWhere } from '../utils/scope.utils.js';
-import { AppError, NotFoundError } from '../utils/appError.js';
+import prisma from '../utils/prismaClient';
+import { getCache, setCache } from '../utils/redis.utils';
+import catchAsync from '../utils/catchAsync';
+import { getScopeWhere } from '../utils/scope.utils';
+import { AppError, NotFoundError } from '../utils/appError';
 
 const getTodayDayOfWeek = () => {
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   return days[new Date().getDay()];
 };
 
@@ -39,7 +39,12 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
   }
 
   // Safe college count (avoid passing null id)
-  const collegeWhere: any = req.user!.role === 'SUPER_ADMIN' ? {} : (req.user!.managedCollegeId ? { id: req.user!.managedCollegeId } : {});
+  const collegeWhere: any =
+    req.user!.role === 'SUPER_ADMIN'
+      ? {}
+      : req.user!.managedCollegeId
+        ? { id: req.user!.managedCollegeId }
+        : {};
   const totalColleges = await prisma.college.count({ where: collegeWhere });
 
   const [
@@ -57,7 +62,7 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
     upcomingExams,
     todaySchedule,
     enrollmentByYear,
-    collegesWithStudents
+    collegesWithStudents,
   ] = await Promise.all([
     prisma.student.count({ where: studentScope }),
     prisma.doctor.count({ where: doctorScope }),
@@ -69,8 +74,8 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
     prisma.studentSuccessMetric.count({
       where: {
         predictedRisk: { in: ['HIGH', 'CRITICAL'] },
-        student: studentScope
-      }
+        student: studentScope,
+      },
     }),
     prisma.payment.groupBy({
       where: paymentScope,
@@ -81,38 +86,38 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
       where: studentScope,
       take: 5,
       orderBy: { enrolledAt: 'desc' },
-      select: { firstName: true, lastName: true, studentId: true, enrolledAt: true }
+      select: { firstName: true, lastName: true, studentId: true, enrolledAt: true },
     }),
     prisma.payment.findMany({
       where: paymentScope,
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: {
-        student: { select: { firstName: true, lastName: true } }
-      }
+        student: { select: { firstName: true, lastName: true } },
+      },
     }),
     prisma.exam.findMany({
-      where: { 
+      where: {
         course: examScope.course,
-        date: { gte: new Date() } 
+        date: { gte: new Date() },
       },
       take: 3,
       orderBy: { date: 'asc' },
-      include: { course: { select: { name: true } } }
+      include: { course: { select: { name: true } } },
     }),
     prisma.schedule.findMany({
-      where: { 
+      where: {
         dayOfWeek: today,
-        course: scheduleScope.course
+        course: scheduleScope.course,
       },
       include: {
         course: {
           select: {
             name: true,
-            doctor: { select: { firstName: true, lastName: true } }
-          }
-        }
-      }
+            doctor: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
     }),
     prisma.student.groupBy({
       by: ['enrolledAt'],
@@ -120,16 +125,21 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
       where: studentScope,
     }),
     prisma.college.findMany({
-      where: req.user!.role === 'SUPER_ADMIN' ? {} : (req.user!.managedCollegeId ? { id: req.user!.managedCollegeId } : {}),
+      where:
+        req.user!.role === 'SUPER_ADMIN'
+          ? {}
+          : req.user!.managedCollegeId
+            ? { id: req.user!.managedCollegeId }
+            : {},
       select: {
         name: true,
         departments: {
           select: {
-            _count: { select: { students: true } }
-          }
-        }
-      }
-    })
+            _count: { select: { students: true } },
+          },
+        },
+      },
+    }),
   ]);
 
   // Process enrollment by year
@@ -141,32 +151,39 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
 
   const enrollmentData = Object.keys(enrollmentTrends)
     .sort()
-    .map(year => ({
+    .map((year) => ({
       name: year,
-      students: enrollmentTrends[year]
+      students: enrollmentTrends[year],
     }));
 
   const growthData = enrollmentData.map((row) => ({
     name: row.name,
-    value: row.students
+    value: row.students,
   }));
 
   const collegeDistribution = collegesWithStudents.map((college: any) => ({
     name: college.name,
-    students: college.departments.reduce(
-      (sum: number, dept: any) => sum + dept._count.students,
-      0
-    )
+    students: college.departments.reduce((sum: number, dept: any) => sum + dept._count.students, 0),
   }));
 
   const finance = {
-    totalCollected: financeStats.find(s => s.status === 'PAID')?._sum.amount || 0,
-    totalPending: financeStats.find(s => s.status === 'PENDING')?._sum.amount || 0,
-    totalOverdue: financeStats.find(s => s.status === 'OVERDUE')?._sum.amount || 0,
+    totalCollected: financeStats.find((s) => s.status === 'PAID')?._sum.amount || 0,
+    totalPending: financeStats.find((s) => s.status === 'PENDING')?._sum.amount || 0,
+    totalOverdue: financeStats.find((s) => s.status === 'OVERDUE')?._sum.amount || 0,
   };
 
   const responseData = {
-    counts: { totalStudents, totalDoctors, totalCourses, totalDepartments, totalPayments, totalColleges, totalAdmins, totalSuperAdmins, totalAtRiskStudents },
+    counts: {
+      totalStudents,
+      totalDoctors,
+      totalCourses,
+      totalDepartments,
+      totalPayments,
+      totalColleges,
+      totalAdmins,
+      totalSuperAdmins,
+      totalAtRiskStudents,
+    },
     finance,
     recentStudents,
     enrollmentData,
@@ -175,240 +192,256 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
     financeOverview: [
       { name: 'PAID', value: finance.totalCollected },
       { name: 'PENDING', value: finance.totalPending },
-      { name: 'OVERDUE', value: finance.totalOverdue }
+      { name: 'OVERDUE', value: finance.totalOverdue },
     ].filter((item) => item.value > 0),
     recentPayments: recentPayments.map((p: any) => ({
       amount: p.amount,
       type: p.type,
       status: p.status,
-      studentName: `${p.student.firstName} ${p.student.lastName}`
+      studentName: `${p.student.firstName} ${p.student.lastName}`,
     })),
     upcomingExams: upcomingExams.map((e: any) => ({
       courseName: e.course.name,
       type: e.type,
       date: e.date,
-      room: e.room
+      room: e.room,
     })),
     todaySchedule: todaySchedule.map((s: any) => ({
       courseName: s.course.name,
       startTime: s.startTime,
       endTime: s.endTime,
       room: s.room,
-      doctorName: s.course.doctor ? `Dr. ${s.course.doctor.firstName} ${s.course.doctor.lastName}` : 'TBA'
-    }))
+      doctorName: s.course.doctor
+        ? `Dr. ${s.course.doctor.firstName} ${s.course.doctor.lastName}`
+        : 'TBA',
+    })),
   };
 
   await setCache(cacheKey, responseData, 300); // 5 min TTL
 
   res.json({
     success: true,
-    data: responseData
+    data: responseData,
   });
 });
 
-export const getStudentStats = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const today = getTodayDayOfWeek();
-  const student = await prisma.student.findUnique({
-    where: { userId: req.user!.id },
-    include: { 
-      department: { include: { college: true } },
-      successMetrics: true
-    }
-  });
-
-  if (!student) {
-    return next(new NotFoundError('Student profile not found'));
-  }
-
-  // Year detection
-  const enrolledDate = new Date(student.enrolledAt);
-  const now = new Date();
-  const yearsDiff = now.getFullYear() - enrolledDate.getFullYear();
-  const studentYear = Math.max(1, yearsDiff + 1);
-
-  // Semester detection
-  const month = now.getMonth() + 1; // 1-12
-  let semester = 1; // Default to Fall
-  if (month >= 2 && month <= 6) semester = 2; // Spring
-  else if (month >= 7 && month <= 8) semester = 3; // Summer
-
-  const [paymentStats, upcomingExams, todaySchedule, curriculumCourses, upcomingQuizzes, pendingTasks] = await Promise.all([
-    prisma.payment.groupBy({
-      where: { studentId: student.id },
-      by: ['status'],
-      _sum: { amount: true },
-      _count: { _all: true }
-    }),
-    prisma.exam.findMany({
-      take: 3,
-      where: { 
-        date: { gte: new Date() },
-        course: {
-          enrollments: {
-            some: { studentId: student.id, status: 'ENROLLED' }
-          }
-        }
-      },
-      orderBy: { date: 'asc' },
-      include: { course: { select: { name: true } } }
-    }),
-    prisma.schedule.findMany({
-      where: { 
-        dayOfWeek: today,
-        course: {
-          enrollments: {
-            some: { studentId: student.id, status: 'ENROLLED' }
-          }
-        }
-      },
+export const getStudentStats = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const today = getTodayDayOfWeek();
+    const student = await prisma.student.findUnique({
+      where: { userId: req.user!.id },
       include: {
-        course: {
-          select: {
-            name: true,
-            doctor: { select: { firstName: true, lastName: true } }
-          }
-        }
-      }
-    }),
-    prisma.course.findMany({
-      where: {
-        departmentId: student.departmentId,
-        year: studentYear,
-        semester: semester
-      }
-    }),
-    prisma.quiz.findMany({
-      take: 3,
-      where: {
-        course: {
-          enrollments: {
-            some: { studentId: student.id, status: 'ENROLLED' }
-          }
-        },
-        endTime: { gte: new Date() }
+        department: { include: { college: true } },
+        successMetrics: true,
       },
-      include: { course: true }
-    }),
-    prisma.task.findMany({
-      take: 3,
-      where: {
-        course: {
-          enrollments: {
-            some: { studentId: student.id, status: 'ENROLLED' }
-          }
-        },
-        dueDate: { gte: new Date() }
-      },
-      include: { course: true }
-    })
-  ]);
+    });
 
-  const myPayments = {
-    pending: {
-      count: paymentStats.find(s => s.status === 'PENDING')?._count._all || 0,
-      amount: paymentStats.find(s => s.status === 'PENDING')?._sum.amount || 0
-    },
-    paid: {
-      count: paymentStats.find(s => s.status === 'PAID')?._count._all || 0,
-      amount: paymentStats.find(s => s.status === 'PAID')?._sum.amount || 0
-    },
-    overdue: {
-      count: paymentStats.find(s => s.status === 'OVERDUE')?._count._all || 0,
-      amount: paymentStats.find(s => s.status === 'OVERDUE')?._sum.amount || 0
+    if (!student) {
+      return next(new NotFoundError('Student profile not found'));
     }
-  };
 
-  res.json({
-    success: true,
-    data: {
-      profile: {
-        firstName: student.firstName,
-        lastName: student.lastName,
-        studentId: student.studentId,
-        enrolledAt: student.enrolledAt,
-        department: student.department ? student.department.name : 'N/A',
-        college: student.department?.college ? student.department.college.name : 'N/A',
-        year: studentYear,
-        semester: semester,
-        successMetrics: student.successMetrics
-      },
-      curriculum: curriculumCourses,
-      myPayments,
-      upcomingExams: upcomingExams.map((e: any) => ({
-        courseName: e.course.name,
-        type: e.type,
-        date: e.date,
-        room: e.room
-      })),
-      todaySchedule: todaySchedule.map((s: any) => ({
-        courseName: s.course.name,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        room: s.room,
-        doctorName: s.course.doctor ? `Dr. ${s.course.doctor.firstName} ${s.course.doctor.lastName}` : 'TBA'
-      })),
+    // Year detection
+    const enrolledDate = new Date(student.enrolledAt);
+    const now = new Date();
+    const yearsDiff = now.getFullYear() - enrolledDate.getFullYear();
+    const studentYear = Math.max(1, yearsDiff + 1);
+
+    // Semester detection
+    const month = now.getMonth() + 1; // 1-12
+    let semester = 1; // Default to Fall
+    if (month >= 2 && month <= 6)
+      semester = 2; // Spring
+    else if (month >= 7 && month <= 8) semester = 3; // Summer
+
+    const [
+      paymentStats,
+      upcomingExams,
+      todaySchedule,
+      curriculumCourses,
       upcomingQuizzes,
-      pendingTasks
-    }
-  });
-});
+      pendingTasks,
+    ] = await Promise.all([
+      prisma.payment.groupBy({
+        where: { studentId: student.id },
+        by: ['status'],
+        _sum: { amount: true },
+        _count: { _all: true },
+      }),
+      prisma.exam.findMany({
+        take: 3,
+        where: {
+          date: { gte: new Date() },
+          course: {
+            enrollments: {
+              some: { studentId: student.id, status: 'ENROLLED' },
+            },
+          },
+        },
+        orderBy: { date: 'asc' },
+        include: { course: { select: { name: true } } },
+      }),
+      prisma.schedule.findMany({
+        where: {
+          dayOfWeek: today,
+          course: {
+            enrollments: {
+              some: { studentId: student.id, status: 'ENROLLED' },
+            },
+          },
+        },
+        include: {
+          course: {
+            select: {
+              name: true,
+              doctor: { select: { firstName: true, lastName: true } },
+            },
+          },
+        },
+      }),
+      prisma.course.findMany({
+        where: {
+          departmentId: student.departmentId,
+          year: studentYear,
+          semester: semester,
+        },
+      }),
+      prisma.quiz.findMany({
+        take: 3,
+        where: {
+          course: {
+            enrollments: {
+              some: { studentId: student.id, status: 'ENROLLED' },
+            },
+          },
+          endTime: { gte: new Date() },
+        },
+        include: { course: true },
+      }),
+      prisma.task.findMany({
+        take: 3,
+        where: {
+          course: {
+            enrollments: {
+              some: { studentId: student.id, status: 'ENROLLED' },
+            },
+          },
+          dueDate: { gte: new Date() },
+        },
+        include: { course: true },
+      }),
+    ]);
 
-export const getDoctorStats = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const today = getTodayDayOfWeek();
-  const doctor = await prisma.doctor.findUnique({
-    where: { userId: req.user!.id },
-    select: { id: true, firstName: true, lastName: true, doctorId: true, specialty: true }
-  });
+    const myPayments = {
+      pending: {
+        count: paymentStats.find((s) => s.status === 'PENDING')?._count._all || 0,
+        amount: paymentStats.find((s) => s.status === 'PENDING')?._sum.amount || 0,
+      },
+      paid: {
+        count: paymentStats.find((s) => s.status === 'PAID')?._count._all || 0,
+        amount: paymentStats.find((s) => s.status === 'PAID')?._sum.amount || 0,
+      },
+      overdue: {
+        count: paymentStats.find((s) => s.status === 'OVERDUE')?._count._all || 0,
+        amount: paymentStats.find((s) => s.status === 'OVERDUE')?._sum.amount || 0,
+      },
+    };
 
-  if (!doctor) {
-    return next(new NotFoundError('Doctor profile not found'));
+    res.json({
+      success: true,
+      data: {
+        profile: {
+          firstName: student.firstName,
+          lastName: student.lastName,
+          studentId: student.studentId,
+          enrolledAt: student.enrolledAt,
+          department: student.department ? student.department.name : 'N/A',
+          college: student.department?.college ? student.department.college.name : 'N/A',
+          year: studentYear,
+          semester: semester,
+          successMetrics: student.successMetrics,
+        },
+        curriculum: curriculumCourses,
+        myPayments,
+        upcomingExams: upcomingExams.map((e: any) => ({
+          courseName: e.course.name,
+          type: e.type,
+          date: e.date,
+          room: e.room,
+        })),
+        todaySchedule: todaySchedule.map((s: any) => ({
+          courseName: s.course.name,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          room: s.room,
+          doctorName: s.course.doctor
+            ? `Dr. ${s.course.doctor.firstName} ${s.course.doctor.lastName}`
+            : 'TBA',
+        })),
+        upcomingQuizzes,
+        pendingTasks,
+      },
+    });
   }
+);
 
-  const [myCourses, todaySchedule, upcomingExams] = await Promise.all([
-    prisma.course.findMany({
-      where: { doctorId: doctor.id },
-      select: { courseCode: true, name: true, credits: true, maxStudents: true }
-    }),
-    prisma.schedule.findMany({
-      where: {
-        dayOfWeek: today,
-        course: { doctorId: doctor.id }
-      },
-      include: { course: { select: { name: true } } }
-    }),
-    prisma.exam.findMany({
-      take: 3,
-      where: {
-        date: { gte: new Date() },
-        course: { doctorId: doctor.id }
-      },
-      orderBy: { date: 'asc' },
-      include: { course: { select: { name: true } } }
-    })
-  ]);
+export const getDoctorStats = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const today = getTodayDayOfWeek();
+    const doctor = await prisma.doctor.findUnique({
+      where: { userId: req.user!.id },
+      select: { id: true, firstName: true, lastName: true, doctorId: true, specialty: true },
+    });
 
-  res.json({
-    success: true,
-    data: {
-      profile: {
-        firstName: doctor.firstName,
-        lastName: doctor.lastName,
-        doctorId: doctor.doctorId,
-        specialty: doctor.specialty
-      },
-      myCourses,
-      todaySchedule: todaySchedule.map((s: any) => ({
-        courseName: s.course.name,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        room: s.room
-      })),
-      upcomingExams: upcomingExams.map((e: any) => ({
-        courseName: e.course.name,
-        type: e.type,
-        date: e.date,
-        room: e.room
-      }))
+    if (!doctor) {
+      return next(new NotFoundError('Doctor profile not found'));
     }
-  });
-});
+
+    const [myCourses, todaySchedule, upcomingExams] = await Promise.all([
+      prisma.course.findMany({
+        where: { doctorId: doctor.id },
+        select: { courseCode: true, name: true, credits: true, maxStudents: true },
+      }),
+      prisma.schedule.findMany({
+        where: {
+          dayOfWeek: today,
+          course: { doctorId: doctor.id },
+        },
+        include: { course: { select: { name: true } } },
+      }),
+      prisma.exam.findMany({
+        take: 3,
+        where: {
+          date: { gte: new Date() },
+          course: { doctorId: doctor.id },
+        },
+        orderBy: { date: 'asc' },
+        include: { course: { select: { name: true } } },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        profile: {
+          firstName: doctor.firstName,
+          lastName: doctor.lastName,
+          doctorId: doctor.doctorId,
+          specialty: doctor.specialty,
+        },
+        myCourses,
+        todaySchedule: todaySchedule.map((s: any) => ({
+          courseName: s.course.name,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          room: s.room,
+        })),
+        upcomingExams: upcomingExams.map((e: any) => ({
+          courseName: e.course.name,
+          type: e.type,
+          date: e.date,
+          room: e.room,
+        })),
+      },
+    });
+  }
+);

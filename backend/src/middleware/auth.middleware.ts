@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt.utils.js';
-import prisma from '../utils/prismaClient.js';
-import catchAsync from '../utils/catchAsync.js';
-import { redis } from '../utils/redis.utils.js';
+import { verifyToken } from '../utils/jwt.utils';
+import prisma from '../utils/prismaClient';
+import catchAsync from '../utils/catchAsync';
+import { redis } from '../utils/redis.utils';
 
 declare global {
   namespace Express {
@@ -18,10 +18,10 @@ declare global {
  */
 const protect = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   let token: string | undefined;
-  if (req.cookies?.auth_token) { 
-    token = req.cookies.auth_token; 
-  } else if (req.headers.authorization?.startsWith('Bearer')) { 
-    token = req.headers.authorization.split(' ')[1]; 
+  if (req.cookies?.auth_token) {
+    token = req.cookies.auth_token;
+  } else if (req.headers.authorization?.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
   }
 
   if (!token) {
@@ -59,7 +59,16 @@ const protect = catchAsync(async (req: Request, res: Response, next: NextFunctio
       tokenVersion: true,
       profilePicture: true,
       createdAt: true,
-      student: { select: { id: true, firstName: true, lastName: true, studentId: true, year: true, departmentId: true } },
+      student: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          studentId: true,
+          year: true,
+          departmentId: true,
+        },
+      },
       doctor: { select: { id: true, firstName: true, lastName: true, doctorId: true } },
     },
   });
@@ -71,12 +80,12 @@ const protect = catchAsync(async (req: Request, res: Response, next: NextFunctio
     });
   }
 
-  if (decoded.tokenVersion !== user.tokenVersion) { 
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Session invalidated. Please login again.', 
-    }); 
-  } 
+  if (decoded.tokenVersion !== user.tokenVersion) {
+    return res.status(401).json({
+      success: false,
+      message: 'Session invalidated. Please login again.',
+    });
+  }
 
   // Attach user (including managedCollegeId) to request for downstream scope checks
   req.user = user;
@@ -103,7 +112,7 @@ const authorize = (...roles: string[]) => {
       return next();
     }
 
-    const allowed = roles.map(r => r.toString().toUpperCase());
+    const allowed = roles.map((r) => r.toString().toUpperCase());
     if (!allowed.includes(userRole)) {
       return res.status(403).json({
         success: false,
