@@ -58,6 +58,7 @@ const LandingPage = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState("home");
   const { stats: universityStats, isLoading: statsLoading } = useUniversityStats();
 
   useEffect(() => {
@@ -66,16 +67,30 @@ const LandingPage = () => {
     };
     window.addEventListener('scroll', handleScroll);
     
+    const sections = document.querySelectorAll('section[id], footer[id]');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+    sections.forEach((section) => observer.observe(section));
+    
     // Simulate data loading
     setIsLoading(false);
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      sections.forEach((section) => observer.unobserve(section));
     };
   }, []);
 
   const navLinks = [
-    { name: 'الرئيسية', href: '#' },
+    { name: 'الرئيسية', href: '#home' },
     { name: 'عن الجامعة', href: '#about' },
     { name: 'الكليات', href: '#colleges' },
     { name: 'التخصصات', href: '#specialties' },
@@ -203,22 +218,27 @@ const LandingPage = () => {
           {/* Desktop Nav Links (Left in RTL) */}
           <div className="hidden lg:flex items-center gap-10">
             <ul className="flex items-center gap-8">
-              {navLinks.map((link) => (
+              {navLinks.map((link) => {
+                const sectionId = link.href.replace('#', '');
+                const isActive = activeSection === sectionId;
+                return (
                 <li key={link.name}>
                   <a
                     href={link.href}
-                    className={`text-sm font-bold tracking-tight transition-colors hover:text-brand-green ${
-                      isScrolled ? 'text-brand-navy-500' : 'text-white'
+                    className={`text-sm font-bold tracking-tight transition-all relative ${
+                      isActive 
+                        ? 'text-brand-green after:absolute after:-bottom-2 after:left-0 after:w-full after:h-0.5 after:bg-brand-green after:rounded-full' 
+                        : isScrolled ? 'text-brand-navy-500 hover:text-brand-green' : 'text-white hover:text-brand-green'
                     }`}
                   >
                     {link.name}
                   </a>
                 </li>
-              ))}
+              )})}
             </ul>
             <Link
               to="/login"
-              className="login-btn"
+              className="px-6 py-2.5 bg-brand-green hover:bg-brand-green-dark text-white font-black rounded-xl shadow-lg shadow-brand-green/20 transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-brand-green/30"
             >
               تسجيل الدخول
             </Link>
@@ -296,7 +316,7 @@ const LandingPage = () => {
       </nav>
 
       {/* 2. Hero Section */}
-      <section className="relative h-screen flex items-center justify-center hero-section">
+      <section id="home" className="relative h-screen flex items-center justify-center hero-section">
         {/* Background Image */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <ImageWithFallback
@@ -468,9 +488,10 @@ const LandingPage = () => {
                ))
             ) : (
               colleges.map((college, i) => (
-                <div
+                <a
+                  href={`#colleges-${i}`}
                   key={i}
-                  className="group relative bg-white p-10 rounded-[2.5rem] border border-brand-border shadow-soft transition-all duration-500 hover:border-brand-green hover:shadow-2xl hover:shadow-brand-navy-500/5 text-right flex flex-col"
+                  className="group relative bg-white p-10 rounded-[2.5rem] border border-brand-border shadow-soft transition-all duration-500 hover:border-brand-green hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-navy-500/10 text-right flex flex-col focus:outline-none focus:ring-4 focus:ring-brand-green/30 cursor-pointer block"
                 >
                   <div className="text-5xl mb-6 transform transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6">
                     {college.icon}
@@ -485,11 +506,16 @@ const LandingPage = () => {
                     <span className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted">
                       {college.students}
                     </span>
-                    <div className="w-10 h-10 rounded-xl bg-brand-primary-50 text-brand-green flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-x-4 group-hover:translate-x-0">
-                      <ArrowLeft size={18} className="rtl:-scale-x-100" />
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-black text-brand-green opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        اعرف المزيد
+                      </span>
+                      <div className="w-10 h-10 rounded-xl bg-brand-primary-50 text-brand-green flex items-center justify-center group-hover:bg-brand-green group-hover:text-white transition-all duration-500 transform translate-x-4 group-hover:translate-x-0">
+                        <ArrowLeft size={18} className="rtl:-scale-x-100" />
+                      </div>
                     </div>
                   </div>
-                </div>
+                </a>
               ))
             )}
           </div>
@@ -497,7 +523,7 @@ const LandingPage = () => {
       </section>
 
       {/* 5. Why Choose Us Section */}
-      <section className="py-24 md:py-32 bg-brand-navy-500 relative overflow-hidden">
+      <section id="specialties" className="py-24 md:py-32 bg-brand-navy-500 relative overflow-hidden">
         {/* Abstract shapes */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-brand-green/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-brand-brand-green-dark/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
@@ -626,7 +652,7 @@ const LandingPage = () => {
       </section>
 
       {/* 8. Footer */}
-      <footer className="bg-brand-navy-500 pt-24 pb-12 text-white">
+      <footer id="contact" className="bg-brand-navy-500 pt-24 pb-12 text-white">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 pb-20 border-b border-white/10">
             {/* Brand Col */}
@@ -788,25 +814,7 @@ const LandingPage = () => {
           opacity: 1;
         }
 
-        /* 7. Login Button */
-        .login-btn {
-          background: var(--color-brand-navy-500, #1a2744);
-          color: #ffffff;
-          border: none;
-          border-radius: 8px;
-          padding: 10px 20px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: background 0.2s, transform 0.15s;
-          text-align: center;
-        }
-        .login-btn:hover {
-          background: var(--color-brand-navy-600, #0f1a33);
-          transform: translateY(-1px);
-        }
-        .login-btn:active {
-          transform: translateY(0);
-        }
+
 
         /* 8. Skeleton Loading */
         .skeleton {

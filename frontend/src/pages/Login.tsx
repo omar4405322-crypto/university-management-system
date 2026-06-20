@@ -228,7 +228,11 @@ const Login = () => {
                         type="email"
                         placeholder={t('auth.emailPlaceholder')}
                         autoComplete="email"
-                        className="w-full h-12 pr-12 pl-4 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green transition-all"
+                        className={`w-full h-12 pr-12 pl-4 rounded-xl border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:ring-2 transition-all ${
+                          errors.email
+                            ? 'border-rose-500 focus:ring-rose-500/20 focus:border-rose-500'
+                            : 'border-brand-border focus:ring-brand-green/20 focus:border-brand-green'
+                        }`}
                       />
                     </div>
                     {errors.email && (
@@ -261,13 +265,17 @@ const Login = () => {
                         type={showPassword ? 'text' : 'password'}
                         placeholder={t('auth.passwordPlaceholder')}
                         autoComplete="current-password"
-                        className="w-full h-12 pr-12 pl-12 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green transition-all"
+                        className={`w-full h-12 pr-12 pl-12 rounded-xl border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:ring-2 transition-all ${
+                          errors.password
+                            ? 'border-rose-500 focus:ring-rose-500/20 focus:border-rose-500'
+                            : 'border-brand-border focus:ring-brand-green/20 focus:border-brand-green'
+                        }`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
                         className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted hover:text-brand-text-primary transition-colors"
-                        aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                        aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                       >
                         {showPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
                       </button>
@@ -305,7 +313,11 @@ const Login = () => {
                         autoFocus
                         placeholder="000000"
                         maxLength={6}
-                        className="w-full h-12 pr-12 pl-4 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm text-center font-mono tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all"
+                        className={`w-full h-12 pr-12 pl-4 rounded-xl border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm text-center font-mono tracking-[0.5em] focus:outline-none focus:ring-2 transition-all ${
+                          errors.totpToken
+                            ? 'border-rose-500 focus:ring-rose-500/20 focus:border-rose-500'
+                            : 'border-brand-border focus:ring-brand-primary-500/20 focus:border-brand-primary-500'
+                        }`}
                       />
                     </div>
                   </div>
@@ -323,7 +335,7 @@ const Login = () => {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-14 bg-brand-green hover:bg-brand-green-dark text-white font-black rounded-2xl shadow-xl shadow-brand-green/20 transition-all active:scale-[0.98]"
+                className="w-full h-14 bg-brand-green hover:bg-brand-green-dark text-white font-black rounded-2xl shadow-xl shadow-brand-green/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100"
               >
                 {isSubmitting ? (
                   <Loader2 className="animate-spin" size={24} strokeWidth={2} />
