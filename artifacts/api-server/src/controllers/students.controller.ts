@@ -14,6 +14,20 @@ const mapStudentStatus = (student: any) => ({
   status: student.isActive ? 'active' : 'inactive',
 });
 
+function assertStudentScope(
+  student: { departmentId: number | null; department?: { collegeId: number } | null },
+  user: { role: string; managedCollegeId?: number | null; managedDepartmentId?: number | null }
+): boolean {
+  if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return true;
+  if (user.role === 'COLLEGE_ADMIN') {
+    return student.department?.collegeId === user.managedCollegeId;
+  }
+  if (user.role === 'DEPARTMENT_ADMIN') {
+    return student.departmentId === user.managedDepartmentId;
+  }
+  return false;
+}
+
 /**
  * @desc    Get all students with advanced filtering, sorting and pagination
  * @route   GET /api/students
@@ -131,10 +145,17 @@ export const getAllStudents = catchAsync(
 export const toggleStudentStatus = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const id = parseInt(req.params.id as string, 10);
-    const student = await prisma.student.findUnique({ where: { id } });
+    const student = await prisma.student.findUnique({
+      where: { id },
+      include: { department: { select: { collegeId: true } } },
+    });
 
     if (!student) {
       return next(new NotFoundError('Student not found'));
+    }
+
+    if (!assertStudentScope(student, req.user!)) {
+      return res.status(403).json({ message: 'Access denied: student belongs to a different scope' });
     }
 
     const makeInactive = student.isActive;
@@ -194,6 +215,10 @@ export const getStudentById = catchAsync(
 
     if (!student) {
       return next(new NotFoundError('Student record not found'));
+    }
+
+    if (!assertStudentScope(student, req.user!)) {
+      return res.status(403).json({ message: 'Access denied: student belongs to a different scope' });
     }
 
     res.json({
@@ -257,11 +282,15 @@ export const updateStudent = catchAsync(async (req: Request, res: Response, next
 
   const student = await prisma.student.findUnique({
     where: { id: parseInt(id as string) },
-    select: { userId: true },
+    select: { userId: true, departmentId: true, department: { select: { collegeId: true } } },
   });
 
   if (!student) {
     return next(new NotFoundError('Student not found'));
+  }
+
+  if (!assertStudentScope(student, req.user!)) {
+    return res.status(403).json({ message: 'Access denied: student belongs to a different scope' });
   }
 
   const updatedStudent = await prisma.$transaction(async (tx: any) => {
@@ -304,11 +333,15 @@ export const deleteStudent = catchAsync(async (req: Request, res: Response, next
 
   const student = await prisma.student.findUnique({
     where: { id: parseInt(id as string) },
-    select: { userId: true },
+    select: { userId: true, departmentId: true, department: { select: { collegeId: true } } },
   });
 
   if (!student) {
     return next(new NotFoundError('Student not found'));
+  }
+
+  if (!assertStudentScope(student, req.user!)) {
+    return res.status(403).json({ message: 'Access denied: student belongs to a different scope' });
   }
 
   await prisma.$transaction(async (tx: any) => {

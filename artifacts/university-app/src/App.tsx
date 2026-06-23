@@ -126,7 +126,7 @@ const AppContent = () => {
                       <Route
                         path="students"
                         element={
-                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
+                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
                             <div className="animate-page">
                               <LazyRoute>
                                 <StudentsList />
@@ -138,7 +138,7 @@ const AppContent = () => {
                       <Route
                         path="students/:id"
                         element={
-                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
+                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
                             <div className="animate-page">
                               <LazyRoute>
                                 <StudentDetails />
@@ -166,7 +166,7 @@ const AppContent = () => {
                       <Route
                         path="doctors"
                         element={
-                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
+                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
                             <div className="animate-page">
                               <DoctorsList />
                             </div>

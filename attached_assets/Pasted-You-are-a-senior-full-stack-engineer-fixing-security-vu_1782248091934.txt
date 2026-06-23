@@ -1,0 +1,217 @@
+You are a senior full-stack engineer fixing security vulnerabilities in a University Management System (UMS).
+These are authorization/IDOR bugs — a user of one role/scope can access or modify data that belongs to another scope.
+
+Do not change anything outside the files mentioned. Match the existing code style.
+
+Tech stack: Node.js + Express 5 + Prisma 6 + PostgreSQL + TypeScript (backend)
+            React 19 + Vite + TypeScript (frontend)
+
+═══════════════════════════════════════════════════
+FIX 1 — IDOR: Registration Approve/Reject Scope Check
+═══════════════════════════════════════════════════
+
+File: backend/src/controllers/auth.controller.ts
+Functions: approveRegistration (around line 301) and rejectRegistration (around line 364)
+
+PROBLEM:
+A COLLEGE_ADMIN can approve or reject ANY registration request — even ones
+belonging to a different college. The controller looks up the request by ID
+but never checks if the request's collegeId matches the admin's managed college.
+
+FIX for approveRegistration:
+After fetching the registration request by ID, add a scope check:
+
+  const request = await prisma.registrationRequest.findUnique({
+    where: { id: requestId },
+    include: { college: true }
+  });
+
+  if (!request) {
+    return res.status(404).json({ message: 'Registration request not found' });
+  }
+
+  // Scope check — COLLEGE_ADMIN can only approve requests for their college
+  if (
+    req.user.role === 'COLLEGE_ADMIN' &&
+    req.user.managedCollegeId !== request.collegeId
+  ) {
+    return res.status(403).json({ message: 'Access denied: request belongs to a different college' });
+  }
+
+  // DEPARTMENT_ADMIN can only approve requests for their department
+  if (
+    req.user.role === 'DEPARTMENT_ADMIN' &&
+    req.user.managedDepartmentId !== request.departmentId
+  ) {
+    return res.status(403).json({ message: 'Access denied: request belongs to a different department' });
+  }
+
+Apply the EXACT same scope check logic to rejectRegistration.
+
+SUPER_ADMIN bypasses all scope checks (no restriction needed for them).
+
+═══════════════════════════════════════════════════
+FIX 2 — IDOR: Student Detail / Update / Delete Scope
+═══════════════════════════════════════════════════
+
+File: backend/src/controllers/students.controller.ts
+Functions: getStudentById (line ~131), updateStudent (line ~166), deleteStudent, toggleStudentStatus
+
+PROBLEM:
+These functions look up a student by ID but never verify the requesting admin
+actually manages the college/department that student belongs to.
+A COLLEGE_ADMIN from College A can view/edit/delete students from College B.
+
+FIX — create a reusable scope-check helper at the top of the file:
+
+  async function assertStudentScope(
+    student: { collegeId: number | null; departmentId: number | null },
+    user: { role: string; managedCollegeId?: number | null; managedDepartmentId?: number | null }
+  ): Promise<boolean> {
+    if (user.role === 'SUPER_ADMIN') return true;
+    if (user.role === 'COLLEGE_ADMIN') {
+      return student.collegeId === user.managedCollegeId;
+    }
+    if (user.role === 'DEPARTMENT_ADMIN') {
+      return student.departmentId === user.managedDepartmentId;
+    }
+    return false;
+  }
+
+Then in getStudentById, updateStudent, deleteStudent, and toggleStudentStatus,
+AFTER fetching the student, add:
+
+  const allowed = await assertStudentScope(student, req.user);
+  if (!allowed) {
+    return res.status(403).json({ message: 'Access denied: student belongs to a different scope' });
+  }
+
+Make sure the initial student fetch includes collegeId and departmentId
+so the scope check has the data it needs.
+
+═══════════════════════════════════════════════════
+FIX 3 — DEPARTMENT_ADMIN Route Permission Gap
+═══════════════════════════════════════════════════
+
+PROBLEM:
+The sidebar shows /students and /doctors links to DEPARTMENT_ADMIN users,
+but the ProtectedRoute for those routes does NOT include DEPARTMENT_ADMIN
+in allowedRoles — so they land on an "Unauthorized" page.
+
+Choose ONE of these two approaches (pick whichever makes more product sense):
+
+OPTION A — Add DEPARTMENT_ADMIN to the routes (recommended):
+File: frontend/src/App.tsx
+
+Find the ProtectedRoute for /students and add DEPARTMENT_ADMIN:
+  allowedRoles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}
+
+Find the ProtectedRoute for /doctors and add DEPARTMENT_ADMIN:
+  allowedRoles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}
+
+Then in the backend students and doctors controllers, the existing scope
+logic already uses managedDepartmentId — so department admins will
+automatically only see their department's students/doctors.
+
+OPTION B — Hide sidebar links from DEPARTMENT_ADMIN:
+File: frontend/src/components/layout/Sidebar.tsx
+
+Find the nav items for /students and /doctors.
+Add a role check so they only appear for SUPER_ADMIN and COLLEGE_ADMIN.
+This prevents DEPARTMENT_ADMIN from seeing links they can't access.
+
+Implement OPTION A (it's better UX — department admins should see their students).
+
+═══════════════════════════════════════════════════
+FIX 4 — parseInt NaN Guard in Register Controller
+═══════════════════════════════════════════════════
+
+File: backend/src/controllers/auth.controller.ts
+Function: register()
+
+PROBLEM:
+  const deptId = parseInt(departmentId);
+If departmentId is an invalid string (e.g. "abc" or undefined), this produces
+NaN, which is passed to Prisma and causes an unhandled crash.
+
+FIX — add a guard immediately after the parseInt call:
+
+  const deptId = parseInt(departmentId, 10);
+  if (departmentId !== undefined && isNaN(deptId)) {
+    return res.status(400).json({ message: 'Invalid departmentId: must be a number' });
+  }
+
+Apply the same pattern to collegeId if it also uses parseInt in the same function.
+
+═══════════════════════════════════════════════════
+FIX 5 — Socket.IO: Add tokenVersion Check
+═══════════════════════════════════════════════════
+
+File: backend/src/socket/ (wherever the Socket.IO auth handshake is defined)
+
+PROBLEM:
+The Socket.IO handshake verifies the JWT signature but does NOT check
+tokenVersion. A user who has been force-logged-out (tokenVersion incremented)
+can maintain an active socket connection indefinitely.
+
+FIX — in the socket auth middleware, after verifying the JWT:
+
+  socket.use(async (packet, next) => {
+    try {
+      const token = socket.handshake.auth?.token;
+      if (!token) return next(new Error('No token'));
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+
+      // tokenVersion check — same logic as HTTP auth middleware
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { tokenVersion: true, isActive: true }
+      });
+
+      if (!user || !user.isActive) return next(new Error('User not found or inactive'));
+      if (user.tokenVersion !== decoded.tokenVersion) {
+        return next(new Error('Token invalidated — please log in again'));
+      }
+
+      socket.data.user = decoded;
+      next();
+    } catch (err) {
+      next(new Error('Invalid token'));
+    }
+  });
+
+If the socket auth is done differently (e.g. in the 'connection' event handler),
+adapt the same tokenVersion check to whatever pattern is already used.
+
+═══════════════════════════════════════════════════
+FIX 6 — Rate Limiter: Fix Double Apply + Enrollment Limit
+═══════════════════════════════════════════════════
+
+File: backend/src/app.ts
+
+### 6a. Remove duplicate authLimiter:
+authLimiter is applied twice (around line 160 AND line 191).
+Find the duplicate and remove ONE of them. Keep only the first application.
+
+### 6b. Fix enrollmentLimiter — it's currently 5,000 req/15min (no protection):
+Find the enrollmentLimiter definition and change it to:
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 100,                    // max 100 enrollment attempts per IP per 15 min
+
+═══════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════
+
+After all fixes confirm:
+[ ] COLLEGE_ADMIN cannot approve/reject registration requests from another college
+[ ] DEPARTMENT_ADMIN cannot approve/reject requests from another department
+[ ] COLLEGE_ADMIN cannot view/edit/delete students outside their college
+[ ] DEPARTMENT_ADMIN can access /students and /doctors routes (OPTION A applied)
+[ ] register() returns 400 for invalid non-numeric departmentId/collegeId
+[ ] Socket.IO auth checks tokenVersion before allowing connection
+[ ] authLimiter appears only ONCE in app.ts
+[ ] enrollmentLimiter max is 100 (not 5,000)
+[ ] backend npx tsc --noEmit still passes after all changes
+
+Do not change anything outside the files mentioned above.
