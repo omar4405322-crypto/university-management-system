@@ -1,0 +1,85 @@
+You are a senior full-stack engineer. Fix the IDOR vulnerability in the doctors controller.
+
+This is the same pattern already fixed in students.controller.ts in the previous session —
+apply the exact same approach for consistency.
+
+═══════════════════════════════════════════════════
+FIX — IDOR: Doctor Detail / Update / Delete Scope
+═══════════════════════════════════════════════════
+
+File: backend/src/controllers/doctors.controller.ts
+
+PROBLEM:
+getDoctorById, updateDoctor, deleteDoctor, and any toggleDoctorStatus function
+fetch a doctor by ID but never verify the requesting admin manages the
+college/department that doctor belongs to.
+A COLLEGE_ADMIN from College A can view/edit/delete doctors from College B.
+
+STEP 1 — Read students.controller.ts first.
+Copy the exact shape of assertStudentScope() that was added there —
+use it as the template for the doctor version.
+
+STEP 2 — Add this helper near the top of doctors.controller.ts
+(after imports, before the first exported function):
+
+  async function assertDoctorScope(
+    doctor: { collegeId?: number | null; departmentId?: number | null },
+    user: { role: string; managedCollegeId?: number | null; managedDepartmentId?: number | null }
+  ): Promise<boolean> {
+    if (user.role === 'SUPER_ADMIN') return true;
+    if (user.role === 'COLLEGE_ADMIN') {
+      return doctor.collegeId === user.managedCollegeId;
+    }
+    if (user.role === 'DEPARTMENT_ADMIN') {
+      return doctor.departmentId === user.managedDepartmentId;
+    }
+    return false;
+  }
+
+STEP 3 — In each of these functions:
+  - getDoctorById
+  - updateDoctor
+  - deleteDoctor
+  - toggleDoctorStatus (if it exists)
+
+After fetching the doctor by ID, add the scope check:
+
+  const allowed = await assertDoctorScope(doctor, req.user);
+  if (!allowed) {
+    return res.status(403).json({
+      message: 'Access denied: doctor belongs to a different scope'
+    });
+  }
+
+Make sure the initial Prisma query includes collegeId and departmentId
+(or the department relation that carries collegeId) so the check has
+the data it needs. Check the Doctor model in schema.prisma first to
+confirm the exact field names.
+
+STEP 4 — Also check: does the getDoctors (list) function scope
+its query based on the admin's college/department?
+If it returns ALL doctors regardless of role, add a where clause:
+
+  const where: any = {};
+  if (req.user.role === 'COLLEGE_ADMIN') {
+    where.collegeId = req.user.managedCollegeId;
+  } else if (req.user.role === 'DEPARTMENT_ADMIN') {
+    where.departmentId = req.user.managedDepartmentId;
+  }
+  // SUPER_ADMIN: no filter — sees all
+
+  const doctors = await prisma.doctor.findMany({ where, ... });
+
+═══════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════
+
+[ ] assertDoctorScope() helper exists in doctors.controller.ts
+[ ] getDoctorById returns 403 for out-of-scope requests
+[ ] updateDoctor returns 403 for out-of-scope requests
+[ ] deleteDoctor returns 403 for out-of-scope requests
+[ ] getDoctors list is scoped per admin role (COLLEGE_ADMIN sees only their college)
+[ ] backend npx tsc --noEmit passes with no new errors
+[ ] API server restarts cleanly
+
+Do not touch any other file outside doctors.controller.ts.
