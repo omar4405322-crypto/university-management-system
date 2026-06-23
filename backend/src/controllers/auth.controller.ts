@@ -272,32 +272,17 @@ export const getRequests = catchAsync(async (req: Request, res: Response, next: 
   }
 
   if (user!.role === 'COLLEGE_ADMIN') {
-    const admin = await prisma.user.findUnique({
-      where: { id: user!.id },
-      include: { doctor: true },
-    });
-    if (admin?.doctor && admin.doctor.departmentId) {
-      const dept = await prisma.department.findUnique({
-        where: { id: admin.doctor.departmentId },
-      });
-      if (dept) {
-        where.department = { collegeId: dept.collegeId };
-      } else {
-        return next(new AuthorizationError('College admin department not found'));
-      }
-    } else {
-      return next(new AuthorizationError('College admin profile not configured correctly'));
+    const collegeId = user!.managedCollegeId ?? user!.collegeId;
+    if (!collegeId) {
+      return next(new AuthorizationError('College admin not configured'));
     }
+    where.department = { collegeId };
   } else if (user!.role === 'DEPARTMENT_ADMIN') {
-    const admin = await prisma.user.findUnique({
-      where: { id: user!.id },
-      include: { doctor: true },
-    });
-    if (admin?.doctor) {
-      where.departmentId = admin.doctor.departmentId;
-    } else {
-      return next(new AuthorizationError('Department admin profile not configured correctly'));
+    const departmentId = user!.managedDepartmentId ?? user!.departmentId;
+    if (!departmentId) {
+      return next(new AuthorizationError('Department admin not configured'));
     }
+    where.departmentId = departmentId;
   }
 
   const requests = await prisma.registrationRequest.findMany({
