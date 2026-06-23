@@ -96,12 +96,18 @@ app.use(
   })
 );
 
+const envOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+  : [];
+
 const allowedOrigins = [
+  ...envOrigins,
   process.env.FRONTEND_URL,
+  // Hardcoded localhost fallbacks so local dev works without .env
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:3001',
-].filter(Boolean);
+].filter((v, i, arr) => Boolean(v) && arr.indexOf(v) === i) as string[];
 
 app.use(
   cors({
