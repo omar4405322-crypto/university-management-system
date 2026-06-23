@@ -213,7 +213,13 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
     return next(new AuthenticationError('Invalid or expired refresh token'));
   }
 
+  // Rotate: delete old token and issue a new one atomically
+  await prisma.refreshToken.delete({ where: { id: tokenDoc.id } });
+  const newRefreshToken = await generateRefreshToken(tokenDoc.user.id);
+
   const accessToken = generateAccessToken(tokenDoc.user.id, tokenDoc.user.tokenVersion);
+
+  setAuthCookies(res, accessToken, newRefreshToken);
 
   res.json({
     success: true,
