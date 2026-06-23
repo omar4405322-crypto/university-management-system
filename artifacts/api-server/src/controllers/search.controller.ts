@@ -43,12 +43,6 @@ export const globalSearch = catchAsync(async (req: Request, res: Response) => {
     courseWhere.department = { collegeId: req.user!.managedCollegeId };
     collegeWhere.id = req.user!.managedCollegeId;
     departmentWhere.collegeId = req.user!.managedCollegeId;
-  } else if (req.user!.role === 'COLLEGE_ADMIN' && req.user!.collegeId) {
-    studentWhere.department = { collegeId: req.user!.collegeId };
-    doctorWhere.department = { collegeId: req.user!.collegeId };
-    courseWhere.department = { collegeId: req.user!.collegeId };
-    collegeWhere.id = req.user!.collegeId;
-    departmentWhere.collegeId = req.user!.collegeId;
   }
 
   const [students, doctors, courses, colleges, departments] = await Promise.all([

@@ -1,0 +1,70 @@
+You are a senior full-stack engineer. Fix the remaining IDOR vulnerabilities.
+
+═══════════════════════════════════════════════════
+FIX 1 — resetDoctorPassword Scope Check
+═══════════════════════════════════════════════════
+
+File: backend/src/controllers/doctors.controller.ts
+Function: resetDoctorPassword
+
+Add the same assertDoctorScope() check that was just added to
+getDoctorById / updateDoctor / deleteDoctor:
+
+After fetching the doctor by ID, before resetting the password:
+
+  const allowed = await assertDoctorScope(doctor, req.user);
+  if (!allowed) {
+    return res.status(403).json({
+      message: 'Access denied: doctor belongs to a different scope'
+    });
+  }
+
+Make sure the doctor fetch includes: department: { select: { collegeId: true } }
+so the scope check has the data it needs.
+
+═══════════════════════════════════════════════════
+FIX 2 — Sweep: Check All Other Controllers for Same Bug
+═══════════════════════════════════════════════════
+
+The same wrong-field pattern (req.user.collegeId / req.user.departmentId
+instead of req.user.managedCollegeId / req.user.managedDepartmentId)
+may exist in other controllers.
+
+Search ALL files under backend/src/controllers/ for:
+  req.user.collegeId
+  req.user.departmentId
+  req.user!.collegeId
+  req.user!.departmentId
+
+For each occurrence found:
+1. Read the surrounding context — is this a scope/authorization check?
+2. If YES → replace with managedCollegeId / managedDepartmentId accordingly.
+3. If NO (e.g. it's checking the user's OWN college membership, not admin scope)
+   → leave it untouched and note it in your summary.
+
+Apply fixes to every controller where the wrong field is used for
+authorization/scoping decisions.
+
+═══════════════════════════════════════════════════
+FIX 3 — resetStudentPassword Scope Check (if it exists)
+═══════════════════════════════════════════════════
+
+File: backend/src/controllers/students.controller.ts
+Function: resetStudentPassword (or resetPassword)
+
+If this function exists, check whether it already uses assertStudentScope().
+If NOT → add the same check as Fix 1 above but using assertStudentScope().
+
+═══════════════════════════════════════════════════
+VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════
+
+[ ] resetDoctorPassword returns 403 for out-of-scope admin
+[ ] resetStudentPassword (if exists) returns 403 for out-of-scope admin
+[ ] Zero occurrences of req.user.collegeId / req.user.departmentId
+    used for AUTHORIZATION decisions across all controllers
+[ ] backend npx tsc --noEmit passes clean
+[ ] API server restarts cleanly
+
+Provide a summary of every file touched and every occurrence found
+in the sweep (fixed or intentionally left).
