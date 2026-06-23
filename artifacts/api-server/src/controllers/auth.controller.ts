@@ -233,6 +233,14 @@ export const logout = catchAsync(async (req: Request, res: Response, next: NextF
     await prisma.refreshToken.deleteMany({ where: { token: refresh_token } });
   }
 
+  // Increment tokenVersion to invalidate all access tokens for this user
+  if (req.user?.id) {
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { tokenVersion: { increment: 1 } },
+    });
+  }
+
   res.clearCookie('refresh_token', { path: '/api/auth/refresh' });
   res.json({ success: true, message: 'Logged out successfully' });
 });

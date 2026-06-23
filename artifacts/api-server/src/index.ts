@@ -2,14 +2,9 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import crypto from 'crypto';
-
-const isProduction = process.env.NODE_ENV === 'production';
-
-if (!isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
-  const tempSecret = crypto.randomBytes(32).toString('hex');
-  process.env.JWT_SECRET = tempSecret;
-  console.warn('⚠️ [DEV] No strong JWT_SECRET found. Generated a temporary one for this session.');
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  console.error('FATAL: JWT_SECRET environment variable is not set or too short (min 32 chars). Exiting.');
+  process.exit(1);
 }
 
 const REQUIRED_ENV_VARS = ['DATABASE_URL'];

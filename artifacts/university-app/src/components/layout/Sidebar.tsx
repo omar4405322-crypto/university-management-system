@@ -24,7 +24,7 @@ import {
   CheckSquare,
   Activity,
   ChevronLeft,
-    _ChevronRight,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';

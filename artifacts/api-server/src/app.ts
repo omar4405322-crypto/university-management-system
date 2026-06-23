@@ -109,6 +109,7 @@ const envOrigins = process.env.ALLOWED_ORIGINS
 const allowedOrigins = [
   ...envOrigins,
   process.env.FRONTEND_URL,
+  process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : undefined,
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:3001',
@@ -120,15 +121,22 @@ app.use(
       origin: string | undefined,
       callback: (err: Error | null, allow?: boolean) => void
     ) {
+      // Allow server-to-server requests with no origin
       if (!origin) {
         return callback(null, true);
       }
+      // Allow any localhost port (dev only)
+      const isLocalhost = /^https?:\/\/localhost(:\d+)?$/.test(origin);
       const isVercelPreview = /https:\/\/university-management-system.*\.vercel\.app$/.test(origin);
-      const isReplitOrigin = /https?:\/\/.*\.replit\.app$/.test(origin) || /https?:\/\/.*\.repl\.co$/.test(origin) || /https?:\/\/.*\.replit\.dev$/.test(origin);
-      if (allowedOrigins.includes(origin) || isVercelPreview || isReplitOrigin) {
+      // Match any *.replit.dev, *.replit.app, *.repl.co subdomain
+      const isReplitOrigin =
+        /https?:\/\/[^/]*\.replit\.app(:\d+)?$/.test(origin) ||
+        /https?:\/\/[^/]*\.repl\.co(:\d+)?$/.test(origin) ||
+        /https?:\/\/[^/]*\.replit\.dev(:\d+)?$/.test(origin);
+      if (allowedOrigins.includes(origin) || isLocalhost || isVercelPreview || isReplitOrigin) {
         return callback(null, true);
       }
-      return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
   })
