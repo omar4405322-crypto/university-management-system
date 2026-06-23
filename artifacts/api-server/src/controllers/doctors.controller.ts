@@ -9,6 +9,20 @@ import { AppError, NotFoundError, AuthorizationError } from '../utils/appError';
 
 import { getScopeWhere } from '../utils/scope.utils';
 
+function assertDoctorScope(
+  doctor: { departmentId?: number | null; department?: { collegeId: number } | null },
+  user: { role: string; managedCollegeId?: number | null; managedDepartmentId?: number | null }
+): boolean {
+  if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return true;
+  if (user.role === 'COLLEGE_ADMIN') {
+    return doctor.department?.collegeId === user.managedCollegeId;
+  }
+  if (user.role === 'DEPARTMENT_ADMIN') {
+    return doctor.departmentId === user.managedDepartmentId;
+  }
+  return false;
+}
+
 export const getDoctorStats = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const scopeWhere: any = getScopeWhere(req.user!);
@@ -120,12 +134,8 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
     return next(new NotFoundError('Doctor not found'));
   }
 
-  // Enforce scope
-  if (req.user!.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user!.collegeId) {
-    return next(new AuthorizationError('Access denied'));
-  }
-  if (req.user!.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user!.departmentId) {
-    return next(new AuthorizationError('Access denied'));
+  if (!assertDoctorScope(doctor, req.user!)) {
+    return res.status(403).json({ message: 'Access denied: doctor belongs to a different scope' });
   }
 
   res.json({ success: true, data: doctor });
@@ -222,21 +232,8 @@ export const updateDoctor = catchAsync(async (req: Request, res: Response, next:
     return next(new NotFoundError('Doctor not found'));
   }
 
-  // Enforce scope
-  if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
-    if (doctor.department?.collegeId !== req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Access denied'));
-    }
-  } else if (
-    req.user!.role === 'COLLEGE_ADMIN' &&
-    doctor.department?.collegeId !== req.user!.collegeId
-  ) {
-    return next(new AuthorizationError('Access denied'));
-  } else if (
-    req.user!.role === 'DEPARTMENT_ADMIN' &&
-    doctor.departmentId !== req.user!.departmentId
-  ) {
-    return next(new AuthorizationError('Access denied'));
+  if (!assertDoctorScope(doctor, req.user!)) {
+    return res.status(403).json({ message: 'Access denied: doctor belongs to a different scope' });
   }
 
   // If changing department, check scope for new department
@@ -300,21 +297,8 @@ export const deleteDoctor = catchAsync(async (req: Request, res: Response, next:
     return next(new NotFoundError('Doctor not found'));
   }
 
-  // Enforce scope
-  if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
-    if (doctor.department?.collegeId !== req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Access denied'));
-    }
-  } else if (
-    req.user!.role === 'COLLEGE_ADMIN' &&
-    doctor.department?.collegeId !== req.user!.collegeId
-  ) {
-    return next(new AuthorizationError('Access denied'));
-  } else if (
-    req.user!.role === 'DEPARTMENT_ADMIN' &&
-    doctor.departmentId !== req.user!.departmentId
-  ) {
-    return next(new AuthorizationError('Access denied'));
+  if (!assertDoctorScope(doctor, req.user!)) {
+    return res.status(403).json({ message: 'Access denied: doctor belongs to a different scope' });
   }
 
   await prisma.$transaction(async (tx: any) => {
