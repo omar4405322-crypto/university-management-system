@@ -44,6 +44,7 @@ import departmentRoutes from './routes/department.routes';
 import quizRoutes from './routes/quiz.routes';
 // @ts-ignore
 import taskRoutes from './routes/task.routes';
+import examSessionRoutes from './routes/examSession.routes';
 // @ts-ignore
 import usersRoutes from './routes/users.routes';
 // @ts-ignore
@@ -56,6 +57,8 @@ import attendanceRoutes from './routes/attendance.routes';
 import timetableRoutes from './routes/timetable.routes';
 // @ts-ignore
 import searchRoutes from './routes/search.routes';
+// @ts-ignore
+import teachingAssistantsRoutes from './routes/teaching-assistants.routes';
 // @ts-ignore
 import { protect } from './middleware/auth.middleware';
 
@@ -205,12 +208,14 @@ app.use('/api/colleges', protect, collegeRoutes);
 app.use('/api/departments', protect, departmentRoutes);
 app.use('/api/quizzes', protect, quizRoutes);
 app.use('/api/tasks', protect, taskRoutes);
+app.use('/api/exam-sessions', examSessionRoutes);
 app.use('/api/users', protect, usersRoutes);
 app.use('/api/notifications', protect, notificationRoutes);
 app.use('/api/analytics', protect, analyticsRoutes);
 app.use('/api/attendance', protect, attendanceRoutes);
 app.use('/api/timetable', protect, timetableRoutes);
 app.use('/api/search', protect, searchRoutes);
+app.use('/api/teaching-assistants', protect, teachingAssistantsRoutes);
 if (process.env.NODE_ENV !== 'production') {
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }
