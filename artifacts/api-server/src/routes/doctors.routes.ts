@@ -1,10 +1,19 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 const router = express.Router();
 import * as doctorsController from '../controllers/doctors.controller';
 import { resetDoctorPassword } from '../controllers/doctors.controller';
 import { authorize } from '../middleware/auth.middleware';
 import { doctorValidation, idParamValidation } from '../validations/academic.validation';
 import validate from '../middleware/validate.middleware';
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, message: 'Too many password reset attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // All doctor routes are restricted
 router.use(authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'));
@@ -19,7 +28,7 @@ router.put(
   validate,
   doctorsController.updateDoctor
 );
-router.patch('/:id/reset-password', authorize('SUPER_ADMIN', 'ADMIN'), resetDoctorPassword);
+router.patch('/:id/reset-password', passwordResetLimiter, authorize('SUPER_ADMIN', 'ADMIN'), resetDoctorPassword);
 router.delete('/:id', idParamValidation, validate, doctorsController.deleteDoctor);
 
 export default router;
