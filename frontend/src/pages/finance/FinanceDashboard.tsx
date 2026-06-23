@@ -36,10 +36,11 @@ import {
   Search,
     _ChevronRight,
   Download,
-  TrendingUp,
   CreditCard,
   History,
   LayoutDashboard,
+  Edit,
+  Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Select } from '../../components/ui/Select';
@@ -60,6 +61,8 @@ const FinanceDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { showToast } = useToast();
   const [confirmPaymentId, setConfirmPaymentId] = useState(null);
+  const [editPayment, setEditPayment] = useState(null);
+  const [paymentToDelete, setPaymentToDelete] = useState(null);
 
   const [filters, setFilters] = useState({
     status: 'ALL',
@@ -105,6 +108,18 @@ const FinanceDashboard = () => {
     fetchData();
   }, [filters.status, filters.type, debouncedSearch]);
 
+  const isDark = document.documentElement.classList.contains('dark');
+  const chartColors = {
+    grid: isDark ? '#334155' : '#E2E8F0',
+    tick: isDark ? '#94A3B8' : '#64748B',
+    tooltip: {
+      bg: isDark ? '#1E293B' : '#FFFFFF',
+      border: isDark ? '#334155' : '#E2E8F0',
+      text: isDark ? '#F1F5F9' : '#132231',
+    },
+    pie: ['#8BB83C', '#132231', '#F59E0B', '#10B981'],
+  };
+
   const handleMarkAsPaid = async () => {
     if (!confirmPaymentId) return;
     try {
@@ -119,11 +134,25 @@ const FinanceDashboard = () => {
     }
   };
 
+  const handleDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    try {
+      const result = await paymentsService.deletePayment(paymentToDelete);
+      if (result.success) {
+        showToast(t('finance.deleteSuccess', 'Payment deleted successfully'), 'success');
+        setPaymentToDelete(null);
+        fetchData();
+      }
+    } catch (_err: any) {
+      showToast(t('finance.deleteError', 'Error deleting payment'), 'error');
+    }
+  };
+
 
   const chartData = stats
     ? Object.entries(stats.paymentsByType || {}).map(([name, value]) => ({ name, value }))
     : [];
-  const COLORS = ['#8BB83C', '#132231', '#F59E0B', '#10B981'];
+  const COLORS = chartColors.pie;
 
   const monthlyData = stats?.monthlyRevenue?.length ? stats.monthlyRevenue : [];
   const hasPayments = (stats?.totalPayments ?? payments.length) > 0;
@@ -162,9 +191,12 @@ const FinanceDashboard = () => {
           isAdmin
             ? {
                 label: t('finance.addPayment'),
-                onClick: () => setIsModalOpen(true),
+                onClick: () => {
+                  setEditPayment(null);
+                  setIsModalOpen(true);
+                },
               }
-            : null
+            : undefined
         }
       />
 
@@ -211,7 +243,10 @@ const FinanceDashboard = () => {
               'Create a payment plan to start tracking tuition and fees.'
             )}
           </p>
-          <Button className="mt-6" onClick={() => setIsModalOpen(true)}>
+          <Button className="mt-6" onClick={() => {
+            setEditPayment(null);
+            setIsModalOpen(true);
+          }}>
             <Plus size={18} className="mr-2" /> {t('finance.addPayment')}
           </Button>
         </Card>
@@ -301,24 +336,24 @@ const FinanceDashboard = () => {
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.grid} />
                       <XAxis
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 10, fontWeight: 900, fill: '#94A3B8' }}
+                        tick={{ fontSize: 10, fontWeight: 900, fill: chartColors.tick }}
                         dy={10}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 10, fontWeight: 900, fill: '#94A3B8' }}
+                        tick={{ fontSize: 10, fontWeight: 900, fill: chartColors.tick }}
                       />
                       <Tooltip
                                                 content={<ChartTooltip active={false} payload={[]} label={''} />}
                         cursor={{ fill: 'var(--surface-subtle)' }}
                       />
-                      <Bar dataKey="amount" fill="#8BB83C" radius={[12, 12, 0, 0]} barSize={40} />
+                      <Bar dataKey="amount" fill="var(--brand-green)" radius={[12, 12, 0, 0]} barSize={40} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -529,6 +564,25 @@ const FinanceDashboard = () => {
                                 },
                               ]
                             : []),
+                          ...(isAdmin
+                            ? [
+                                {
+                                  label: t('common.edit', 'Edit'),
+                                  icon: Edit,
+                                  variant: 'default',
+                                  onClick: () => {
+                                    setEditPayment(payment);
+                                    setIsModalOpen(true);
+                                  },
+                                },
+                                {
+                                  label: t('common.delete', 'Delete'),
+                                  icon: Trash2,
+                                  variant: 'danger',
+                                  onClick: () => setPaymentToDelete(payment.id),
+                                },
+                              ]
+                            : []),
                           ...(!isAdmin && payment.status !== 'PAID'
                             ? [
                                 {
@@ -558,12 +612,17 @@ const FinanceDashboard = () => {
 
       <AddPaymentModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditPayment(null);
+        }}
         onSuccess={() => {
           setIsModalOpen(false);
+          setEditPayment(null);
           fetchData();
-          showToast(t('finance.createSuccess'), 'success');
+          showToast(editPayment ? t('finance.updateSuccess', 'Payment updated successfully') : t('finance.createSuccess', 'Payment created successfully'), 'success');
         }}
+        payment={editPayment}
       />
 
       <ConfirmDeleteModal
@@ -572,6 +631,14 @@ const FinanceDashboard = () => {
         onConfirm={handleMarkAsPaid}
         title={t('finance.markAsPaidConfirm')}
         confirmLabel={t('finance.markPaid')}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={!!paymentToDelete}
+        onClose={() => setPaymentToDelete(null)}
+        onConfirm={handleDeletePayment}
+        title={t('finance.deleteConfirm', 'Delete Payment')}
+        confirmLabel={t('common.delete', 'Delete')}
       />
     </div>
   );
