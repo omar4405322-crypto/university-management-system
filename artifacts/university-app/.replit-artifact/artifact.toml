@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "University Management System"
+version = "1.0.0"
+id = "artifacts/university-app"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22006
+
+[services.development]
+run = "pnpm --filter @workspace/university-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/university-app", "run", "build" ]
+publicDir = "artifacts/university-app/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22006"
+BASE_PATH = "/"
