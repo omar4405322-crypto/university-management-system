@@ -1,0 +1,23 @@
+{
+  "name": "university-management-system",
+  "version": "1.0.0",
+  "description": "A full-stack university management system built with React, Node.js, and PostgreSQL.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright test --reporter=html && playwright show-report"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/omar4405322-crypto/university-management-system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/omar4405322-crypto/university-management-system/issues"
+  },
+  "homepage": "https://github.com/omar4405322-crypto/university-management-system#readme"
+}
