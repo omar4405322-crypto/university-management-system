@@ -222,7 +222,7 @@ const Login = () => {
                         type="email"
                         placeholder={t('auth.emailPlaceholder')}
                         autoComplete="email"
-                        className={`w-full h-[52px] pr-12 pl-4 rounded-[10px] border-[1.5px] bg-white text-[15px] focus:outline-none focus:ring-[3px] transition-all duration-200 ${
+                        className={`w-full h-[52px] pr-12 pl-4 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-[15px] focus:outline-none focus:ring-[3px] transition-all duration-200 ${
                           errors.email
                             ? 'border-rose-500 focus:ring-rose-500/15 focus:border-rose-500'
                             : 'border-[var(--brand-border)] focus:ring-[var(--brand-green)]/15 focus:border-brand-green'
@@ -259,7 +259,7 @@ const Login = () => {
                         type={showPassword ? 'text' : 'password'}
                         placeholder={t('auth.passwordPlaceholder')}
                         autoComplete="current-password"
-                        className={`w-full h-[52px] pr-12 pl-12 rounded-[10px] border-[1.5px] bg-white text-[15px] focus:outline-none focus:ring-[3px] transition-all duration-200 ${
+                        className={`w-full h-[52px] pr-12 pl-12 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-[15px] focus:outline-none focus:ring-[3px] transition-all duration-200 ${
                           errors.password
                             ? 'border-rose-500 focus:ring-rose-500/15 focus:border-rose-500'
                             : 'border-[var(--brand-border)] focus:ring-[var(--brand-green)]/15 focus:border-brand-green'
@@ -307,7 +307,7 @@ const Login = () => {
                         autoFocus
                         placeholder="000000"
                         maxLength={6}
-                        className={`w-full h-[52px] pr-12 pl-4 rounded-[10px] border-[1.5px] bg-white text-sm text-center font-mono tracking-[0.5em] focus:outline-none focus:ring-[3px] transition-all ${
+                        className={`w-full h-[52px] pr-12 pl-4 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-sm text-center font-mono tracking-[0.5em] focus:outline-none focus:ring-[3px] transition-all ${
                           errors.totpToken
                             ? 'border-rose-500 focus:ring-rose-500/15 focus:border-rose-500'
                             : 'border-[var(--brand-border)] focus:ring-[var(--brand-green)]/15 focus:border-brand-green'
@@ -347,7 +347,7 @@ const Login = () => {
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200"></div>
               </div>
-              <span className="relative px-3 bg-white text-sm text-gray-400">أو</span>
+              <span className="relative px-3 bg-[var(--brand-bg-card)] text-sm text-gray-400">أو</span>
             </div>
 
             <div className="text-center">
