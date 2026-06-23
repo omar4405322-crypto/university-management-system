@@ -51,6 +51,9 @@ const Register = () => {
   // UI-only state
   const [colleges, setColleges] = useState<Array<{ id: number; name: string }>>([]);
   const [departments, setDepartments] = useState<Array<{ id: number; name: string }>>([]);
+  const [collegesLoading, setCollegesLoading] = useState(true);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+  const [dataError, setDataError] = useState('');
   const [apiError, setApiError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -91,53 +94,82 @@ const Register = () => {
   // ── Data Fetching ─────────────────────────────────────────────────────────
   useEffect(() => {
     const controller = new AbortController();
+    let active = true;
 
     const fetchColleges = async () => {
+      setCollegesLoading(true);
+      setDataError('');
+
       try {
         const result = await collegeService.getColleges({ signal: controller.signal });
+        if (!active) return;
+
         if (result.success) {
           setColleges(result.data || []);
+        } else if (!controller.signal.aborted) {
+          setDataError(result.message || t('auth.collegesLoadError', 'Unable to load colleges. Please try again.'));
         }
       } catch (err: unknown) {
         const e = err as { __isCanceled?: boolean };
-        if (!e.__isCanceled) {
+        if (active && !e.__isCanceled) {
           console.error('Error fetching colleges:', err);
+          setDataError(t('auth.collegesLoadError', 'Unable to load colleges. Please try again.'));
         }
+      } finally {
+        if (active) setCollegesLoading(false);
       }
     };
     fetchColleges();
 
-    return () => controller.abort();
-  }, []);
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [t]);
 
   useEffect(() => {
     if (!selectedCollegeId) {
       setDepartments([]);
+      setDepartmentsLoading(false);
       return;
     }
 
     const controller = new AbortController();
+    let active = true;
 
     const fetchDepartments = async () => {
+      setDepartmentsLoading(true);
+      setDataError('');
+
       try {
         const result = await departmentService.getDepartments(
           { collegeId: selectedCollegeId },
           { signal: controller.signal }
         );
+        if (!active) return;
+
         if (result.success) {
           setDepartments(result.data || []);
+        } else if (!controller.signal.aborted) {
+          setDataError(result.message || t('auth.departmentsLoadError', 'Unable to load departments. Please try again.'));
         }
       } catch (err: unknown) {
         const e = err as { __isCanceled?: boolean };
-        if (!e.__isCanceled) {
+        if (active && !e.__isCanceled) {
           console.error('Error fetching departments:', err);
+          setDataError(t('auth.departmentsLoadError', 'Unable to load departments. Please try again.'));
         }
+      } finally {
+        if (active) setDepartmentsLoading(false);
       }
     };
     fetchDepartments();
 
-    return () => controller.abort();
-  }, [selectedCollegeId]);
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [selectedCollegeId, t]);
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const onSubmit = async (data: RegisterFormData) => {
@@ -212,6 +244,13 @@ const Register = () => {
               <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 rounded-2xl text-rose-600 text-sm font-medium flex items-center gap-3">
                 <AlertCircle size={20} className="shrink-0" />
                 <span>{apiError}</span>
+              </div>
+            )}
+
+            {dataError && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 rounded-2xl text-amber-700 dark:text-amber-200 text-sm font-medium flex items-center gap-3">
+                <AlertCircle size={20} className="shrink-0" />
+                <span>{dataError}</span>
               </div>
             )}
 
@@ -323,9 +362,12 @@ const Register = () => {
                   <School className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
                   <select
                     {...register('collegeId')}
+                    disabled={collegesLoading}
                     className={`w-full h-12 pl-12 pr-12 bg-brand-bg-page/30 border ${errors.collegeId ? 'border-red-500' : 'border-brand-border'} rounded-xl font-bold appearance-none cursor-pointer`}
                   >
-                    <option value="">{t('auth.selectCollege')}</option>
+                    <option value="">
+                      {collegesLoading ? t('auth.loadingColleges', 'Loading colleges...') : t('auth.selectCollege')}
+                    </option>
                     {colleges.map((college) => (
                       <option key={college.id} value={college.id}>
                         {college.name}
@@ -344,10 +386,12 @@ const Register = () => {
                   <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
                   <select
                     {...register('departmentId')}
-                    disabled={!selectedCollegeId}
+                    disabled={!selectedCollegeId || departmentsLoading}
                     className={`w-full h-12 pl-12 pr-12 bg-brand-bg-page/30 border ${errors.departmentId ? 'border-red-500' : 'border-brand-border'} rounded-xl font-bold appearance-none cursor-pointer disabled:opacity-50`}
                   >
-                    <option value="">{t('auth.selectDept')}</option>
+                    <option value="">
+                      {departmentsLoading ? t('auth.loadingDepartments', 'Loading departments...') : t('auth.selectDept')}
+                    </option>
                     {departments.map((dept) => (
                       <option key={dept.id} value={dept.id}>
                         {dept.name}
