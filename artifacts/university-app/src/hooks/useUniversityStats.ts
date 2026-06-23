@@ -22,15 +22,21 @@ export const useUniversityStats = (): UseUniversityStatsReturn => {
     const fetchStats = async () => {
       try {
         setIsLoading(true);
-        // Replace this URL with your actual backend endpoint
-        const response = await fetch('/api/university/stats');
-        
+        const response = await fetch('/api/dashboard/stats');
+
         if (!response.ok) {
           throw new Error('Failed to fetch stats');
         }
-        
+
         const data = await response.json();
-        setStats(data);
+        // Map the dashboard stats shape to what the landing page expects
+        const s = data?.data ?? data;
+        setStats({
+          totalStudents: s.totalStudents ?? s.students ?? 0,
+          totalColleges: s.totalColleges ?? s.colleges ?? 0,
+          totalFaculty: s.totalDoctors ?? s.faculty ?? s.doctors ?? 0,
+          totalSpecializations: s.totalDepartments ?? s.departments ?? s.specializations ?? 0,
+        });
       } catch (err: any) {
         setError(err instanceof Error ? err.message : 'Unknown error');
         // Fallback to null — cards will show skeleton

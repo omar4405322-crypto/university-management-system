@@ -192,7 +192,7 @@ enum RiskLevel {
 model Attendance {
   id        Int      @id @default(autoincrement())
   studentId Int
-  student   Student  @relation(fields: [studentId], references: [id])
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   courseId  Int
   course    Course   @relation(fields: [courseId], references: [id])
   date      DateTime @default(now())
@@ -200,6 +200,7 @@ model Attendance {
   remarks   String?
   createdAt DateTime @default(now())
 
+  @@unique([studentId, courseId, date])
   @@index([courseId, date])
   @@index([studentId, courseId])
 }
@@ -214,7 +215,7 @@ enum AttendanceStatus {
 model Payment {
   id            Int           @id @default(autoincrement())
   studentId     Int
-  student       Student       @relation(fields: [studentId], references: [id])
+  student       Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   amount        Float
   type          PaymentType
   status        PaymentStatus @default(PENDING)
@@ -241,6 +242,8 @@ enum PaymentStatus {
   CANCELLED
 }
 
+// NOTE: doctor_id_seq must exist before running prisma db push.
+// Run: pnpm run db:push (which calls db:setup automatically)
 model Doctor {
   id           Int      @id @default(autoincrement())
   userId       Int      @unique
@@ -328,7 +331,7 @@ model QuizSubmission {
   quizId    Int
   quiz      Quiz     @relation(fields: [quizId], references: [id])
   studentId Int
-  student   Student  @relation(fields: [studentId], references: [id])
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   answers   Json     // { questionId: "A", ... }
   score     Float?
   submittedAt DateTime @default(now())
@@ -357,7 +360,7 @@ model TaskSubmission {
   taskId      Int
   task        Task     @relation(fields: [taskId], references: [id])
   studentId   Int
-  student     Student  @relation(fields: [studentId], references: [id])
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   fileUrl     String?
   notes       String?
   score       Float?

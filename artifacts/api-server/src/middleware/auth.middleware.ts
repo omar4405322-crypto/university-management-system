@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt.utils';
 import prisma from '../utils/prismaClient';
 import catchAsync from '../utils/catchAsync';
-import { redis } from '../utils/redis.utils';
 
 declare global {
   namespace Express {
@@ -33,16 +32,6 @@ const protect = catchAsync(async (req: Request, res: Response, next: NextFunctio
 
   // Verify token
   const decoded = verifyToken(token);
-
-  if (redis) {
-    const isBlacklisted = await redis.get(`blacklist:${token}`);
-    if (isBlacklisted) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token has been invalidated',
-      });
-    }
-  }
 
   // Check if user still exists
   const user = await prisma.user.findUnique({

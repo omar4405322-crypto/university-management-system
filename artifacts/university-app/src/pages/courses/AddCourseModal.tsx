@@ -186,5 +186,3 @@ const AddCourseModal = ({ isOpen, onClose, onSuccess }) => {
 };
 
 export default AddCourseModal;
-
-export default AddCourseModal;

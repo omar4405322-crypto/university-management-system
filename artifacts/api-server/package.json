@@ -10,7 +10,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:push": "prisma db push"
+    "prisma:push": "prisma db push",
+    "db:setup": "psql $DATABASE_URL -f prisma/setup-sequences.sql",
+    "db:push": "pnpm run db:setup && prisma db push"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
