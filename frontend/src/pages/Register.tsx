@@ -55,8 +55,14 @@ const Register = () => {
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { register: registerAuth } = useAuth();
+  const { register: registerAuth, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   // ── React Hook Form setup ──────────────────────────────────────────────────
   const {
