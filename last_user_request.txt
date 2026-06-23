@@ -1,0 +1,111 @@
+<USER_REQUEST>
+ARCHITECTURAL UNIFICATION - Phase 1 of 3
+Unify the two schedule systems. All changes must be backward compatible.
+
+## OVERVIEW
+We have two systems:
+- Schedule model (relational) → feeds WeeklySchedule (what students/doctors see)
+- Timetable model (JSON) → visual grid but students NEVER see it
+
+Goal: Make TimetableGrid save to Schedule table directly,
+so students automatically see what admins plan on the grid.
+
+## STEP 1 - Update Timetable Controller (Backend)
+File: backend/src/controllers/timetable.controller.ts
+
+When a timetable is saved (createTimetable OR updateTimetable),
+after saving the Timetable record, also sync to Schedule table:
+
+Add this helper function BEFORE the exports:
+
+```typescript
+async function syncTimetableToSchedules(timetable: any) {
+  const slots = (timetable.scheduleData as any)?.slots || [];
+  if (!slots.length) return;
+
+  // Delete old schedules for this timetable's scope
+  // We identify them by courses in this department/year/semester
+  const deptCourses = await prisma.course.findMany({
+    where: {
+      departmentId: timetable.departmentId,
+      year: timetable.academicYear,
+      semester: timetable.semester,
+    },
+    select: { id: true, name: true, courseCode: true }
+  });
+
+  if (!deptCourses.length) return;
+
+  const courseIds = deptCourses.map((c: any) => c.id);
+
+  // Delete existing schedules for these courses
+  await prisma.schedule.deleteMany({
+    where: { courseId: { in: courseIds } }
+  });
+
+  // Map course names to IDs
+  const courseMap = new Map(
+    deptCourses.map((c: any) => [c.name.toLowerCase(), c.id])
+  );
+
+  // Create new Schedule records from slots
+  const scheduleData = [];
+  for (const slot of slots) {
+    // Find courseId by matching name
+    const courseName = (slot.courseName || '').toLowerCase();
+    let courseId = null;
+    
+    for (const [name, id] of courseMap.entries()) {
+      if (name.includes(courseName) || courseName.includes(name)) {
+        courseId = id;
+        break;
+      }
+    }
+
+    if (!courseId) continue; // Skip if cou
+<truncated 1094 bytes>
+ section:
+1. الجدول الدراسي → /schedule (view only - for all users)
+2. إدارة الجداول الدراسية → /timetables-management (admin management + publish)
+3. مخطط الجداول → /schedules/timetable (visual grid planner)
+
+The order should be:
+الكليات
+الأقسام
+المقررات الدراسية
+الجدول الدراسي
+إدارة الجداول الدراسية
+مخطط الجداول
+الامتحانات
+الاختبارات
+
+## STEP 3 - Remove SchedulesList from Router
+File: frontend/src/App.jsx
+
+Find and REMOVE:
+- The import of SchedulesList
+- The route for /schedules-management
+
+## STEP 4 - Verify builds
+Run npm run build in frontend
+Run npx tsc --noEmit in backend
+
+Report all changes made and any errors found.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-21T21:52:04+03:00.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\omar4\Desktop\University management system\backend\src\controllers\user.controller.ts (LANGUAGE_TYPESCRIPT)
+- c:\Users\omar4\Desktop\University management system\backend\src\services\enrollment.service.ts (LANGUAGE_TYPESCRIPT)
+- c:\Users\omar4\Desktop\University management system\backend\src\utils\appError.ts (LANGUAGE_TYPESCRIPT)
+- c:\Users\omar4\Desktop\University management system\backend\src\controllers\exams.controller.ts (LANGUAGE_TYPESCRIPT)
+- c:\Users\omar4\Desktop\University management system\backend\src\controllers\courses.controller.ts (LANGUAGE_TYPESCRIPT)
+Browser State:
+  Page 3E060F21E65AE8A683F3E7F3D0EC36C5 (6th of October University of Technology | Management System) - http://localhost:3001/courses [ACTIVE]
+    Viewport: 1540x788, Page Height: 1124
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from Gemini 3.5 Flash (High) to Gemini 3.1 Pro (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>

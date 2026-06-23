@@ -4,7 +4,7 @@ import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError } from '../utils/appError';
 
-// @desc    Get all notifications for current user
+// @desc    Get latest 20 notifications for current user
 // @route   GET /api/notifications
 // @access  Private
 export const getNotifications = catchAsync(async (req: Request, res: Response) => {
@@ -13,6 +13,7 @@ export const getNotifications = catchAsync(async (req: Request, res: Response) =
   const notifications = await prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
+    take: 20,
   });
 
   res.json({
@@ -21,8 +22,28 @@ export const getNotifications = catchAsync(async (req: Request, res: Response) =
   });
 });
 
+// @desc    Get current user's unread notifications count
+// @route   GET /api/notifications/unread-count
+// @access  Private
+export const getUnreadCount = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+
+  const count = await prisma.notification.count({
+    where: {
+      userId,
+      isRead: false,
+    },
+  });
+
+  res.json({
+    success: true,
+    count,
+    data: { count },
+  });
+});
+
 // @desc    Mark notification as read
-// @route   PUT /api/notifications/:id/read
+// @route   PATCH /api/notifications/:id/read
 // @access  Private
 export const markAsRead = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user!.id;
@@ -51,7 +72,7 @@ export const markAsRead = catchAsync(async (req: Request, res: Response) => {
 });
 
 // @desc    Mark all notifications as read
-// @route   PUT /api/notifications/read-all
+// @route   PATCH /api/notifications/read-all
 // @access  Private
 export const markAllAsRead = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user!.id;
@@ -96,5 +117,22 @@ export const deleteNotification = catchAsync(async (req: Request, res: Response)
   res.json({
     success: true,
     message: 'Notification deleted',
+  });
+});
+
+// @desc    Delete all notifications for current user
+// @route   DELETE /api/notifications
+// @access  Private
+export const deleteAllNotifications = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+
+  await prisma.notification.deleteMany({
+    where: { userId },
+  });
+
+  auditLog('DELETE_ALL_NOTIFICATIONS', 'Notification', 'all', req);
+  res.json({
+    success: true,
+    message: 'All notifications deleted',
   });
 });

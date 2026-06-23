@@ -33,7 +33,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, action 
             variant="primary"
             size="lg"
             disabled={action.disabled}
-            className={`shadow-overlay shadow-brand-brand-green-dark/20 hover:shadow-brand-brand-green-dark/30 px-8 py-3.5 ${action.className || ''}`}
+            className={`shadow-overlay shadow-brand-green-dark/20 hover:shadow-brand-green-dark/30 px-8 py-3.5 ${action.className || ''}`}
           >
             {action.icon !== null && (
               <Icon

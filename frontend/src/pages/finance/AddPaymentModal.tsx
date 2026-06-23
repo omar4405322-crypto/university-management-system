@@ -20,9 +20,9 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const AddPaymentModal = ({ isOpen, onClose, onSuccess }) => {
+const AddPaymentModal = ({ isOpen, onClose, onSuccess, payment }) => {
   const { t } = useTranslation();
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<any>({
     resolver: zodResolver(schema),
     defaultValues: {
       studentId: '',
@@ -40,16 +40,26 @@ const AddPaymentModal = ({ isOpen, onClose, onSuccess }) => {
   useEffect(() => {
     if (isOpen) {
       fetchStudents();
-      reset({
-        studentId: '',
-        type: 'TUITION',
-        amount: undefined,
-        dueDate: '',
-        description: ''
-      });
+      if (payment) {
+        reset({
+          studentId: payment.studentId?.toString() || '',
+          type: payment.type || 'TUITION',
+          amount: payment.amount,
+          dueDate: payment.dueDate ? new Date(payment.dueDate).toISOString().split('T')[0] : '',
+          description: payment.description || ''
+        });
+      } else {
+        reset({
+          studentId: '',
+          type: 'TUITION',
+          amount: undefined,
+          dueDate: '',
+          description: ''
+        });
+      }
       setError('');
     }
-  }, [isOpen, reset]);
+  }, [isOpen, reset, payment]);
 
   const fetchStudents = async () => {
     try {
@@ -70,18 +80,26 @@ const AddPaymentModal = ({ isOpen, onClose, onSuccess }) => {
   const onSubmit = async (data: FormData) => {
     setError('');
     try {
-      const result = await paymentsService.createPayment({
+      const payload = {
         ...data,
         amount: Number(data.amount)
-      });
+      };
+      
+      let result;
+      if (payment) {
+        result = await paymentsService.updatePayment(payment.id, payload);
+      } else {
+        result = await paymentsService.createPayment(payload);
+      }
+
       if (result.success) {
         onSuccess();
         onClose();
       } else {
-        setError(result.message || t('finance.createError'));
+        setError(result.message || (payment ? t('finance.updateError') : t('finance.createError')));
       }
-    } catch (err) {
-      setError(err.response?.data?.message || t('finance.createError'));
+    } catch (err: any) {
+      setError(err.response?.data?.message || (payment ? t('finance.updateError') : t('finance.createError')));
     }
   };
 
@@ -89,8 +107,8 @@ const AddPaymentModal = ({ isOpen, onClose, onSuccess }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={t('finance.addNewPayment')}
-      subtitle={t('finance.addPaymentDesc')}
+      title={payment ? t('finance.updatePayment', 'Update Payment') : t('finance.addNewPayment')}
+      subtitle={payment ? t('finance.updatePaymentDesc', 'Modify the payment details below') : t('finance.addPaymentDesc')}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="form-section">
         {error && (
@@ -201,7 +219,7 @@ const AddPaymentModal = ({ isOpen, onClose, onSuccess }) => {
             disabled={isSubmitting}
             className="min-w-[140px]"
           >
-            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : t('finance.createPayment')}
+            {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (payment ? t('finance.updatePayment', 'Update Payment') : t('finance.createPayment'))}
           </Button>
         </div>
       </form>

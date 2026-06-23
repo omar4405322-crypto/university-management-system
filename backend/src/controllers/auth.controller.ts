@@ -86,6 +86,10 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
     return next(new ConflictError('Registration request already pending'));
   }
 
+  if (!password || password.trim().length < 8) {
+    return next(new AppError('Password must be at least 8 characters long', 400));
+  }
+
   const hashedPassword = await bcrypt.hash(password as string, 10);
 
   const request = await prisma.registrationRequest.create({

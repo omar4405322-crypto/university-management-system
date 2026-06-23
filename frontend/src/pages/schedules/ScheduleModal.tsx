@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { X, Clock, MapPin, BookOpen, Calendar, AlertCircle } from 'lucide-react';
+import { X, Clock, MapPin, BookOpen, Calendar, AlertCircle, Users } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import schedulesService from '../../services/schedules.service';
 
@@ -12,12 +12,22 @@ const schema = z.object({
   dayOfWeek: z.string().min(1, 'Day of week is required'),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
-  room: z.string().optional()
+  room: z.string().optional(),
+  assistantId: z.string().optional()
 });
 
 type FormData = z.infer<typeof schema>;
 
-const ScheduleModal = ({ isOpen, onClose, schedule, courses, onSuccess }) => {
+interface ScheduleModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  schedule: any;
+  courses: any[];
+  teachingAssistants?: any[];
+  onSuccess: () => void;
+}
+
+const ScheduleModal = ({ isOpen, onClose, schedule, courses, teachingAssistants = [], onSuccess }: ScheduleModalProps) => {
   const { t } = useTranslation();
   const [error, setError] = useState(null);
 
@@ -26,9 +36,10 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses, onSuccess }) => {
     defaultValues: {
       courseId: '',
       dayOfWeek: 'Monday',
-      startTime: '08:00',
-      endTime: '10:00',
-      room: ''
+      startTime: '09:00',
+      endTime: '10:30',
+      room: '',
+      assistantId: ''
     }
   });
 
@@ -41,15 +52,17 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses, onSuccess }) => {
         dayOfWeek: schedule.dayOfWeek,
         startTime: schedule.startTime,
         endTime: schedule.endTime,
-        room: schedule.room || ''
+        room: schedule.room || '',
+        assistantId: schedule.assistantId ? String(schedule.assistantId) : ''
       });
     } else {
       reset({
         courseId: '',
         dayOfWeek: 'Monday',
-        startTime: '08:00',
-        endTime: '10:00',
-        room: ''
+        startTime: '09:00',
+        endTime: '10:30',
+        room: '',
+        assistantId: ''
       });
     }
     setError(null);
@@ -168,6 +181,24 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses, onSuccess }) => {
               {...register('room')}
             />
             {errors.room && <p className="text-rose-500 text-xs mt-1">{errors.room.message}</p>}
+          </div>
+
+          <div className="space-y-1.5 pt-2">
+            <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2">
+              <Users size={14} className="text-brand-text-muted" /> {t('timetables.assistant', 'المعيد (Optional)')}
+            </label>
+            <select
+              className="w-full px-4 py-2 rounded-xl border border-brand-border focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all bg-brand-bg-card"
+              {...register('assistantId')}
+            >
+              <option value="">{t('timetables.selectAssistant', 'Select an assistant (Optional)')}</option>
+              {teachingAssistants.map(ta => (
+                <option key={ta.id} value={ta.id}>
+                  {ta.user?.email || 'Unknown'} - {ta.specialization || ''}
+                </option>
+              ))}
+            </select>
+            {errors.assistantId && <p className="text-rose-500 text-xs mt-1">{errors.assistantId.message}</p>}
           </div>
 
           <div className="flex items-center gap-3 pt-4">

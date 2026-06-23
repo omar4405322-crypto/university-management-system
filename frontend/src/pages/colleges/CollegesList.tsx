@@ -31,7 +31,8 @@ import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
 
 const CollegesList = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [colleges, setColleges] = useState([]);
@@ -120,7 +121,7 @@ const CollegesList = () => {
 
       {loading ? (
         <div className="flex flex-col justify-center items-center h-96 gap-4">
-          <Loader2 className="animate-spin text-brand-brand-green-dark" size={48} />
+          <Loader2 className="animate-spin text-brand-green-dark" size={48} />
           <p className="text-caption">{t('common.loading')}</p>
         </div>
       ) : !Array.isArray(visibleColleges) || visibleColleges.length === 0 ? (
@@ -145,7 +146,7 @@ const CollegesList = () => {
               <div className="relative h-64 w-full overflow-hidden">
                 <CollegeCardImage
                   name={college.name}
-                  image={college.image}
+                  image={college.logoUrl || college.image}
                   collegeId={college.id}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-brand-navy-900/90 via-brand-navy-900/20 to-transparent z-10" />
@@ -155,7 +156,7 @@ const CollegesList = () => {
                     <>
                       <button
                         onClick={() => handleEdit(college)}
-                        className="w-10 h-10 rounded-xl bg-white/10 p-2.5 text-white backdrop-blur-xl hover:bg-brand-brand-green-dark transition-all duration-300 shadow-xl border border-white/10 flex items-center justify-center"
+                        className="w-10 h-10 rounded-xl bg-white/10 p-2.5 text-white backdrop-blur-xl hover:bg-brand-green-dark transition-all duration-300 shadow-xl border border-white/10 flex items-center justify-center"
                         title={t('common.edit')}
                       >
                         <Edit2 size={18} />
@@ -173,20 +174,20 @@ const CollegesList = () => {
 
                 <div className="absolute bottom-6 right-6 left-6 z-20">
                   <Badge
-                    variant="success"
-                    className="mb-3 px-3 py-1 text-[10px] font-black tracking-widest uppercase bg-brand-brand-green-dark/90 text-white border-none shadow-lg"
+                    variant={college.status === 'INACTIVE' ? 'warning' : 'success'}
+                    className="mb-3 px-3 py-1 text-[10px] font-black tracking-widest uppercase bg-brand-green-dark/90 text-white border-none shadow-lg"
                   >
-                    {t('colleges.active')}
+                    {college.status === 'INACTIVE' ? t('colleges.inactive') : t('colleges.active')}
                   </Badge>
                   <h3 className="text-3xl font-black text-white tracking-tight drop-shadow-lg uppercase leading-tight">
-                    {college.name}
+                    {isRTL ? (college.nameAr || college.name) : college.name}
                   </h3>
                 </div>
               </div>
 
               <div className="p-8">
-                <p className="text-sm font-bold text-brand-text-secondary line-clamp-2 min-h-[3rem] leading-relaxed">
-                  {college.description}
+                <p className="text-sm font-bold text-brand-text-secondary line-clamp-2 min-h-[3rem] leading-relaxed" dir="auto">
+                  {isRTL ? (college.descriptionAr || college.description) : college.description}
                 </p>
 
                 <div className="mt-8 grid grid-cols-2 gap-6 border-t border-brand-border dark:border-brand-border pt-6">
@@ -199,9 +200,9 @@ const CollegesList = () => {
                   <div className="space-y-1">
                     <p className="label-stat">{t('profile.status')}</p>
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-brand-brand-green-dark animate-pulse" />
-                      <p className="text-[10px] font-black text-brand-brand-green-dark uppercase tracking-widest">
-                        {t('colleges.operational')}
+                      <div className="w-2 h-2 rounded-full bg-brand-green-dark animate-pulse" />
+                      <p className="text-[10px] font-black text-brand-green-dark uppercase tracking-widest">
+                        {college.status === 'INACTIVE' ? t('colleges.inactive') : t('colleges.active')}
                       </p>
                     </div>
                   </div>
@@ -217,7 +218,13 @@ const CollegesList = () => {
                       <span className="text-lg">👤</span>
                       <div className="flex-1">
                         <p className="font-bold text-sm text-brand-text-main">
-                          {college.assignedAdmin.name || college.assignedAdmin.email}
+                          {/* BUG 1 FIX: derive display name from email prefix when name is null */}
+                          {college.assignedAdmin.name
+                            ? college.assignedAdmin.name
+                            : college.assignedAdmin.email
+                                .split('@')[0]
+                                .replace(/[._-]/g, ' ')
+                                .replace(/\b\w/g, (c) => c.toUpperCase())}
                         </p>
                         <p className="text-xs text-brand-text-secondary">
                           {college.assignedAdmin.email}
@@ -225,7 +232,7 @@ const CollegesList = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-warning">
+                    <div className="flex items-center gap-2 text-error">
                       <AlertCircle size={16} />
                       <span className="text-sm font-semibold">
                         {t('colleges.noAdminAssigned') || 'No admin assigned'}
@@ -237,7 +244,7 @@ const CollegesList = () => {
                 <div className="mt-8 flex items-center gap-3">
                   <Button
                     variant="primary"
-                    className="flex-1 text-[10px] font-black uppercase tracking-widest py-3.5 shadow-lg shadow-brand-brand-green-dark/20"
+                    className="flex-1 text-[10px] font-black uppercase tracking-widest py-3.5 shadow-lg shadow-brand-green-dark/20"
                     onClick={() => navigate(`/departments?collegeId=${college.id}`)}
                   >
                     {t('colleges.manageDepts')}

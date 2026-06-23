@@ -13,6 +13,7 @@ import * as z from 'zod';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
+  nameAr: z.string().optional(),
   courseCode: z.string().min(1, 'Course code is required'),
   description: z.string().optional(),
   credits: z.coerce.number().min(1, 'Min 1').max(10, 'Max 10'),
@@ -27,11 +28,13 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormData>({ 
     resolver: zodResolver(schema),
     defaultValues: {
       name: '',
+      nameAr: '',
       courseCode: '',
       description: '',
       credits: 3,
@@ -66,6 +69,7 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
       if (course) {
         reset({
           name: course.name || '',
+          nameAr: course.nameAr || '',
           courseCode: course.courseCode || '',
           description: course.description || '',
           credits: course.credits || 3,
@@ -79,6 +83,7 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
       } else {
         reset({
           name: '',
+          nameAr: '',
           courseCode: '',
           description: '',
           credits: 3,
@@ -185,6 +190,18 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
               {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
             </div>
 
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
+                <BookOpen size={14} className="text-brand-text-muted" /> {t('courses.nameAr', 'Arabic Name')}
+              </label>
+              <Input
+                {...register('nameAr')}
+                placeholder="اسم المقرر بالعربية"
+                dir="rtl"
+              />
+              {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
                 <Hash size={14} className="text-brand-text-muted" /> Course Code <span className="text-error">*</span>
@@ -219,7 +236,7 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
               >
                 <option value="">Select College</option>
                 {colleges.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>{isRTL ? (c.nameAr || c.name) : c.name}</option>
                 ))}
               </select>
               {errors.collegeId && <p className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>}
@@ -236,7 +253,7 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }) => {
               >
                 <option value="">Select Department</option>
                 {departments.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option key={d.id} value={d.id}>{isRTL ? (d.nameAr || d.name) : d.name}</option>
                 ))}
               </select>
               {errors.departmentId && <p className="text-rose-500 text-xs mt-1">{errors.departmentId.message}</p>}

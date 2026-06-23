@@ -28,7 +28,7 @@ const Card: React.FC<CardProps> = ({
 
   return (
     <div
-      className={`${variants[variant]} overflow-hidden ${borderLeft ? 'border-r-4 border-r-brand-brand-green-dark rtl:border-l-4 rtl:border-l-brand-brand-green-dark rtl:border-r-0' : ''} ${className}`}
+      className={`${variants[variant]} overflow-hidden ${borderLeft ? 'border-r-4 border-r-brand-green-dark rtl:border-l-4 rtl:border-l-brand-green-dark rtl:border-r-0' : ''} ${className}`}
       {...props}
     >
       {(title || subtitle) && (

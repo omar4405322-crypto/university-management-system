@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyRound, Eye, EyeOff, X } from 'lucide-react';
@@ -6,7 +5,7 @@ import Button from './Button';
 import api from '../../services/api';
 
 const ResetPasswordModal = ({ isOpen, onClose, person, type }) => {
-    const { _t } = useTranslation();
+  const { t } = useTranslation();
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,10 +29,10 @@ const ResetPasswordModal = ({ isOpen, onClose, person, type }) => {
           : `/doctors/${person.id}/reset-password`;
 
       const res = await api.patch(endpoint, { newPassword });
-      setSuccess(res.data.message || 'Password reset successfully');
+      setSuccess(res.data.message || t('common.success', 'Password reset successfully'));
       setNewPassword('');
     } catch (err: any) {
-      setError(err.message || 'Failed to reset password');
+      setError(err.message || t('common.error', 'Failed to reset password'));
     } finally {
       setLoading(false);
     }
@@ -51,7 +50,7 @@ const ResetPasswordModal = ({ isOpen, onClose, person, type }) => {
       <div className="bg-brand-bg-page border border-brand-border rounded-2xl shadow-elevated w-full max-w-md mx-4 p-6 space-y-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-brand-primary-50 text-brand-brand-green-dark">
+            <div className="p-2.5 rounded-xl bg-brand-primary-50 text-brand-green-dark">
               <KeyRound size={20} />
             </div>
             <div>
@@ -85,7 +84,7 @@ const ResetPasswordModal = ({ isOpen, onClose, person, type }) => {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Enter new password..."
-              className="w-full px-4 py-3 pr-11 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:border-brand-brand-green-dark transition-colors"
+              className="w-full px-4 py-3 pr-11 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:border-brand-green-dark transition-colors"
             />
             <button
               type="button"

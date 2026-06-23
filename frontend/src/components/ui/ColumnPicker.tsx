@@ -37,7 +37,7 @@ const ColumnPicker: React.FC<ColumnPickerProps> = ({ columns, visibleColumns, on
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 p-2 rounded-xl text-brand-text-secondary hover:text-brand-brand-green-dark hover:bg-surface-subtle transition-colors"
+        className="flex items-center gap-2 p-2 rounded-xl text-brand-text-secondary hover:text-brand-green-dark hover:bg-surface-subtle transition-colors"
         title="Manage Columns"
       >
         <Columns3 size={18} />
@@ -65,7 +65,7 @@ const ColumnPicker: React.FC<ColumnPickerProps> = ({ columns, visibleColumns, on
                     <div
                       className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
                         isVisible
-                          ? 'bg-brand-brand-green-dark border-brand-brand-green-dark text-white'
+                          ? 'bg-brand-green-dark border-brand-green-dark text-white'
                           : 'border-brand-border dark:border-slate-600'
                       }`}
                     >

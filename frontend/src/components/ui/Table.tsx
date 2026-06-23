@@ -68,7 +68,7 @@ export const TableRow: React.FC<TableRowProps> = ({
   <tr
     className={`group transition-all duration-150 ${
       isSelected
-        ? 'bg-brand-brand-green-dark/10 dark:bg-brand-brand-green-dark/20'
+        ? 'bg-brand-green-dark/10 dark:bg-brand-green-dark/20'
         : 'hover:bg-gray-100 even:bg-gray-50 dark:even:bg-white/[0.02]'
     } ${className}`}
     {...props}

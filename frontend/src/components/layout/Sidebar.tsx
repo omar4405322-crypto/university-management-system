@@ -24,15 +24,15 @@ import {
   CheckSquare,
   Activity,
   ChevronLeft,
-    _ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { UNIVERSITY_LOGO, UNIVERSITY_LOGO_PNG } from '../../constants/universityAssets';
 
-const SidebarItem: React.FC<any> = ({ item, isCollapsed, isChild = false }) => {
+const SidebarItem: React.FC<any> = ({ item, isCollapsed, isChild = false, badgeCount = 0 }) => {
   const { t } = useTranslation();
   return (
     <NavLink
@@ -42,8 +42,8 @@ const SidebarItem: React.FC<any> = ({ item, isCollapsed, isChild = false }) => {
         ${isChild ? 'px-4 py-2 text-xs' : 'px-4 py-3 text-sm'}
         ${
           isActive
-            ? 'bg-brand-brand-green-dark text-white shadow-elevated shadow-brand-brand-green-dark/20'
-            : 'text-brand-text-secondary hover:bg-brand-brand-green-dark/10 hover:text-brand-brand-green-dark dark:text-slate-400 dark:hover:text-brand-brand-green'
+            ? 'bg-brand-green-dark text-white shadow-elevated shadow-brand-green-dark/20'
+            : 'text-brand-text-secondary hover:bg-brand-green-dark/10 hover:text-brand-green-dark dark:text-slate-400 dark:hover:text-brand-green'
         }
         ${isCollapsed ? 'justify-center px-2' : ''}
       `}
@@ -52,7 +52,7 @@ const SidebarItem: React.FC<any> = ({ item, isCollapsed, isChild = false }) => {
         <>
           <item.icon
             size={isChild ? 16 : 20}
-            className={`shrink-0 transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-brand-text-muted group-hover:text-brand-brand-green-dark group-hover:scale-110'}`}
+            className={`shrink-0 transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-brand-text-muted group-hover:text-brand-green-dark group-hover:scale-110'}`}
           />
           {!isCollapsed && (
             <span
@@ -61,7 +61,12 @@ const SidebarItem: React.FC<any> = ({ item, isCollapsed, isChild = false }) => {
               {t(item.title)}
             </span>
           )}
-          {isActive && !isCollapsed && !isChild && (
+          {badgeCount > 0 && !isCollapsed && (
+            <span className="ml-auto rtl:mr-auto bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center animate-pulse">
+              {badgeCount}
+            </span>
+          )}
+          {isActive && !isCollapsed && !isChild && badgeCount === 0 && (
             <div className="ml-auto rtl:mr-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           )}
         </>
@@ -77,7 +82,7 @@ const groupIcons = {
   'nav.system': Settings,
 };
 
-const SidebarGroup: React.FC<any> = ({ group, isCollapsed }) => {
+const SidebarGroup: React.FC<any> = ({ group, isCollapsed, pendingRequestsCount = 0 }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(true);
   const location = useLocation();
@@ -92,7 +97,12 @@ const SidebarGroup: React.FC<any> = ({ group, isCollapsed }) => {
     return (
       <div className="py-2 space-y-1">
         {group.items.map((item) => (
-          <SidebarItem key={item.path} item={item} isCollapsed={true} />
+          <SidebarItem 
+            key={item.path} 
+            item={item} 
+            isCollapsed={true} 
+            badgeCount={item.path === '/registration-requests' ? pendingRequestsCount : 0}
+          />
         ))}
       </div>
     );
@@ -102,13 +112,13 @@ const SidebarGroup: React.FC<any> = ({ group, isCollapsed }) => {
     <div className="space-y-2">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-2.5 label-stat text-brand-text-muted hover:text-brand-brand-green-dark transition-colors group"
+        className="w-full flex items-center justify-between px-4 py-2.5 label-stat text-brand-text-muted hover:text-brand-green-dark transition-colors group"
       >
         <div className="flex items-center gap-3">
           {GroupIcon && (
             <GroupIcon
               size={14}
-              className="text-brand-text-muted group-hover:text-brand-brand-green-dark transition-colors"
+              className="text-brand-text-muted group-hover:text-brand-green-dark transition-colors"
             />
           )}
           <span>{t(group.title)}</span>
@@ -121,7 +131,12 @@ const SidebarGroup: React.FC<any> = ({ group, isCollapsed }) => {
       {isOpen && (
         <div className="space-y-1 animate-in slide-in-from-top-2 duration-300">
           {group.items.map((item) => (
-            <SidebarItem key={item.path} item={item} isCollapsed={false} />
+            <SidebarItem 
+              key={item.path} 
+              item={item} 
+              isCollapsed={false} 
+              badgeCount={item.path === '/registration-requests' ? pendingRequestsCount : 0}
+            />
           ))}
         </div>
       )}
@@ -132,6 +147,7 @@ const SidebarGroup: React.FC<any> = ({ group, isCollapsed }) => {
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { pendingRequestsCount } = useNotifications();
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { isSidebarCollapsed: isCollapsed, toggleSidebar } = useTheme();
@@ -172,10 +188,10 @@ const Sidebar = ({ isOpen, onClose }) => {
             roles: ['STUDENT'],
           },
           {
-            title: 'nav.schedulesManagement',
-            path: '/schedules-management',
+            title: 'timetables.title',
+            path: '/timetables-management',
             icon: Calendar,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'],
+            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
           },
           {
             title: 'nav.timetableGrid',
@@ -188,12 +204,6 @@ const Sidebar = ({ isOpen, onClose }) => {
             path: '/exams',
             icon: FileText,
             roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
-          },
-          {
-            title: 'timetables.title',
-            path: '/timetables-management',
-            icon: Calendar,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
           },
           {
             title: 'nav.quizzes',
@@ -215,6 +225,12 @@ const Sidebar = ({ isOpen, onClose }) => {
           {
             title: 'nav.doctors',
             path: '/doctors',
+            icon: Users,
+            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+          },
+          {
+            title: 'nav.teachingAssistants',
+            path: '/teaching-assistants',
             icon: Users,
             roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
           },
@@ -248,6 +264,12 @@ const Sidebar = ({ isOpen, onClose }) => {
             roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
           },
           {
+            title: 'nav.notifications',
+            path: '/notifications',
+            icon: Bell,
+            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'DOCTOR', 'STUDENT'],
+          },
+          {
             title: 'nav.finance',
             path: '/finance',
             icon: DollarSign,
@@ -258,12 +280,6 @@ const Sidebar = ({ isOpen, onClose }) => {
       {
         title: 'nav.system',
         items: [
-          {
-            title: 'nav.notifications',
-            path: '/notifications',
-            icon: Bell,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
-          },
           {
             title: 'nav.analytics',
             path: '/analytics',
@@ -351,7 +367,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               <span className="text-xs font-black uppercase leading-tight tracking-widest text-white">
                 {t('common.university', 'University')}
               </span>
-              <span className="text-[10px] font-bold uppercase leading-tight tracking-tighter text-brand-brand-green-dark">
+              <span className="text-[10px] font-bold uppercase leading-tight tracking-tighter text-brand-green-dark">
                 {t('common.managementSystem', 'Management System')}
               </span>
             </div>
@@ -392,15 +408,15 @@ const Sidebar = ({ isOpen, onClose }) => {
               className={({ isActive }) => `
                 group flex items-center gap-3 rounded-2xl transition-all duration-300 px-4 py-3 text-sm
                 ${isActive
-                  ? 'bg-brand-brand-green-dark text-white shadow-elevated shadow-brand-brand-green-dark/20'
-                  : 'text-brand-text-secondary hover:bg-brand-brand-green-dark/10 hover:text-brand-brand-green-dark dark:text-slate-400 dark:hover:text-brand-brand-green'
+                  ? 'bg-brand-green-dark text-white shadow-elevated shadow-brand-green-dark/20'
+                  : 'text-brand-text-secondary hover:bg-brand-green-dark/10 hover:text-brand-green-dark dark:text-slate-400 dark:hover:text-brand-green'
                 }
                 ${isCollapsed ? 'justify-center px-2' : ''}
               `}
             >
               {({ isActive }) => (
                 <>
-                  <LayoutDashboard size={20} className={`shrink-0 transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-brand-text-muted group-hover:text-brand-brand-green-dark group-hover:scale-110'}`} />
+                  <LayoutDashboard size={20} className={`shrink-0 transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-brand-text-muted group-hover:text-brand-green-dark group-hover:scale-110'}`} />
                   {!isCollapsed && <span className={`font-black uppercase tracking-widest transition-all ${isActive ? 'translate-x-1 rtl:-translate-x-1' : ''}`}>{t('nav.dashboard', 'الرئيسية')}</span>}
                 </>
               )}
@@ -413,18 +429,23 @@ const Sidebar = ({ isOpen, onClose }) => {
                 return (
                   <div key={idx} className="space-y-1">
                     {group.items.map((item) => (
-                      <SidebarItem key={item.path} item={item} isCollapsed={isCollapsed} />
+                      <SidebarItem 
+                        key={item.path} 
+                        item={item} 
+                        isCollapsed={isCollapsed} 
+                        badgeCount={item.path === '/registration-requests' ? pendingRequestsCount : 0}
+                      />
                     ))}
                   </div>
                 );
               }
-              return <SidebarGroup key={idx} group={group} isCollapsed={isCollapsed} />;
+              return <SidebarGroup key={idx} group={group} isCollapsed={isCollapsed} pendingRequestsCount={pendingRequestsCount} />;
             })}
           </div>
 
           <div className="p-6 border-t border-white/5 bg-black/10 backdrop-blur-md">
             <div className={`flex items-center gap-4 ${isCollapsed ? 'justify-center' : 'px-2'}`}>
-              <div className="w-11 h-11 rounded-2xl bg-brand-brand-green-dark text-white flex items-center justify-center font-black shadow-lg shadow-brand-brand-green-dark/30 ring-2 ring-white/10">
+              <div className="w-11 h-11 rounded-2xl bg-brand-green-dark text-white flex items-center justify-center font-black shadow-lg shadow-brand-green-dark/30 ring-2 ring-white/10">
                 {initials}
               </div>
               {!isCollapsed && (
@@ -432,7 +453,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   <p className="text-sm font-black text-white truncate uppercase tracking-wider">
                     {fullName}
                   </p>
-                  <p className="label-stat text-brand-brand-green-dark mt-1 opacity-80">
+                  <p className="label-stat text-brand-green-dark mt-1 opacity-80">
                     {user?.role.replace('_', ' ')}
                   </p>
                 </div>

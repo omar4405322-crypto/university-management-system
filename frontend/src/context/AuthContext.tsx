@@ -1,4 +1,3 @@
-// FIXED: Session init vs login loading; parse standardized API errors - login fix
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import api, { setAccessToken } from '../services/api';
 

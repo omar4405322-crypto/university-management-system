@@ -290,7 +290,19 @@ export const updateProfilePicture = catchAsync(
 );
 
 export const getAllUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { role } = req.query;
+  const where: any = {};
+  
+  if (role) {
+    if (typeof role === 'string' && role.includes(',')) {
+      where.role = { in: role.split(',') };
+    } else {
+      where.role = role;
+    }
+  }
+
   const users = await prisma.user.findMany({
+    where,
     select: {
       id: true,
       email: true,
@@ -299,6 +311,12 @@ export const getAllUsers = catchAsync(async (req: Request, res: Response, next: 
       managedCollegeId: true,
       createdAt: true,
       profilePicture: true,
+      doctor: {
+        select: {
+          firstName: true,
+          lastName: true,
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -306,14 +324,21 @@ export const getAllUsers = catchAsync(async (req: Request, res: Response, next: 
   // Fetch college info for COLLEGE_ADMIN users
   const usersWithColleges = await Promise.all(
     users.map(async (user: any) => {
+      const name = user.doctor
+        ? `${user.doctor.firstName} ${user.doctor.lastName}`.trim()
+        : null;
+      
+      // Clean up the nested doctor object to keep data clean
+      const { doctor, ...userWithoutDoctor } = user;
+
       if (user.managedCollegeId) {
         const college = await prisma.college.findUnique({
           where: { id: user.managedCollegeId },
           select: { id: true, name: true },
         });
-        return { ...user, managedCollege: college };
+        return { ...userWithoutDoctor, name, managedCollege: college };
       }
-      return { ...user, managedCollege: null };
+      return { ...userWithoutDoctor, name, managedCollege: null };
     })
   );
 

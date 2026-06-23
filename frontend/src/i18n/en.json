@@ -2,7 +2,14 @@
   "COMMON": {
     "OF": "of",
     "PAGE": "Page",
-    "RESET": "Reset"
+    "RESET": "Reset",
+    "NAME": "Name"
+  },
+  "filter": {
+    "college": "College",
+    "department": "Department",
+    "all_colleges": "All Colleges",
+    "all_departments": "All Departments"
   },
   "COURSES": {
     "COURSENAME": "Course Name",
@@ -235,6 +242,13 @@
   "colleges": {
     "about": "About College",
     "active": "Active",
+    "inactive": "Inactive",
+    "status": "Status",
+    "logoUrl": "College Logo",
+    "uploadImage": "Upload Image",
+    "logoUrlFallback": "Or enter image URL directly (fallback)",
+    "unassigned": "Unassigned",
+    "thisCollege": "This College",
     "addCollege": "Add New College",
     "addDesc": "Create a new university college",
     "addNew": "Add New College",
@@ -246,6 +260,7 @@
     "deleteSuccess": "College deleted successfully",
     "descPlaceholder": "Enter college description...",
     "description": "Description",
+    "descriptionAr": "Description (Arabic)",
     "editDesc": "Update college information and branding",
     "editTitle": "Edit College",
     "enterName": "Please enter college name",
@@ -287,6 +302,8 @@
   "common": {
     "actions": "Actions",
     "add": "Add",
+    "change": "Change",
+    "name": "Name",
     "all": "All",
     "am": "AM",
     "approve": "Approve",
@@ -364,6 +381,7 @@
     "managementSystem": "Management System"
   },
   "courses": {
+    "nameAr": "Arabic Name",
     "course": "Course",
     "selectCourse": "Select a course",
     "addCourse": "Add Course",
@@ -532,8 +550,8 @@
     "editDesc": "Update department information and college assignment",
     "fillRequired": "Please fill all required fields",
     "manageCurriculum": "Manage Curriculum",
-    "nameAr": "Department Name (Arabic)",
-    "nameEn": "Department Name (English)",
+    "nameAr": "Name (AR)",
+    "nameEn": "Name (EN)",
     "noDepts": "No departments found matching your criteria.",
     "noDeptsDesc": "Try adjusting your search or filters to find what you're looking for.",
     "schedules": "Schedules",
@@ -647,6 +665,21 @@
     "addFirstDoctor": "Add first professor",
     "noSearchResults": "No matches found",
     "noSearchResultsDesc": "Try a different search term or clear filters."
+  },
+  "teachingAssistants": {
+    "title": "Teaching Assistants Management",
+    "subtitle": "View and manage university teaching assistants and their assignments.",
+    "addTeachingAssistant": "Add Teaching Assistant",
+    "addFirstTeachingAssistant": "Add first teaching assistant",
+    "noTeachingAssistants": "No teaching assistants found",
+    "noTeachingAssistantsDesc": "No teaching assistants have been added yet.",
+    "searchPlaceholder": "Search by name or email...",
+    "allFaculty": "All Teaching Assistants",
+    "onLeave": "On Leave",
+    "totalCourses": "Total Courses",
+    "activeProfessors": "Active Teaching Assistants",
+    "totalFaculty": "Total Teaching Assistants",
+    "researchProjects": "Assigned Departments"
   },
   "search": {
     "placeholder": "Search students, faculty, courses…",
@@ -765,7 +798,9 @@
     "dashboard": "Dashboard",
     "departments": "Departments",
     "doctors": "Doctors",
+    "teachingAssistants": "Teaching Assistants",
     "exams": "Exams",
+    "examSessions": "Online Exams",
     "finance": "Finance",
     "logout": "Logout",
     "notifications": "Notifications",
@@ -900,6 +935,8 @@
     "SUPER_ADMIN": "Super Admin"
   },
   "schedule": {
+    "subtitle": "View and manage weekly schedules",
+    "swipeHint": "Swipe to see other days",
     "mySchedule": "My Schedule",
     "academicYear": "Academic Year",
     "semester1": "Semester 1",
@@ -946,6 +983,8 @@
     "emailAddress": "Email Address",
     "emailPlaceholder": "alice@university.edu",
     "enrolledDate": "Enrolled Date",
+    "exportSuccess": "Student list exported successfully",
+    "exportError": "Failed to export student list",
     "enrolledSince": "Enrolled Since",
     "errorFetching": "Error fetching student details",
     "fillRequired": "Please fill all required fields",
@@ -1005,6 +1044,11 @@
     "fetchError": "Error fetching tasks"
   },
   "timetables": {
+    "year": "Year",
+    "semester1": "Semester 1",
+    "semester2": "Semester 2",
+    "semester3": "Summer Semester",
+    "semesterLabel": "Semester",
     "status": "Status",
     "actions": "Actions",
     "publish": "Publish",

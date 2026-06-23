@@ -4,6 +4,68 @@ import { auditLog } from '../utils/audit.utils';
 import { getScopeWhere } from '../utils/scope.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError, AuthorizationError, AppError } from '../utils/appError';
+import { getIO } from '../utils/socket';
+
+async function syncTimetableToSchedules(timetable: any) {
+  const slots = (timetable.scheduleData as any)?.slots || [];
+  if (!slots.length) return;
+
+  // Delete old schedules for this timetable's scope
+  const deptCourses = await prisma.course.findMany({
+    where: {
+      departmentId: timetable.departmentId,
+      year: timetable.academicYear,
+      semester: timetable.semester,
+    },
+    select: { id: true, name: true, nameAr: true, courseCode: true }
+  });
+
+  if (!deptCourses.length) return;
+
+  const courseIds = deptCourses.map((c: any) => c.id);
+
+  await prisma.schedule.deleteMany({
+    where: { courseId: { in: courseIds } }
+  });
+
+  const courseMap = new Map(
+    deptCourses.map((c: any) => [c.name.toLowerCase(), c.id])
+  );
+
+  const scheduleData = [];
+  for (const slot of slots) {
+    const courseName = (slot.courseName || '').toLowerCase();
+    let courseId = null;
+    
+    for (const [name, id] of courseMap.entries()) {
+      if (name.includes(courseName) || courseName.includes(name)) {
+        courseId = id;
+        break;
+      }
+    }
+
+    if (!courseId) continue;
+
+    scheduleData.push({
+      courseId,
+      departmentId: timetable.departmentId,
+      dayOfWeek: slot.day || 0,
+      startTime: slot.startTime || '09:00',
+      endTime: slot.endTime || '10:30',
+      type: slot.type || 'LECTURE',
+      location: slot.location || 'TBA',
+      doctorName: slot.doctorName || 'TBA',
+      academicYear: timetable.academicYear,
+      semester: timetable.semester
+    });
+  }
+
+  if (scheduleData.length) {
+    await prisma.schedule.createMany({
+      data: scheduleData
+    });
+  }
+}
 
 /**
  * @desc    Get all timetables (Admin) or matching timetable (Student)
@@ -61,8 +123,8 @@ export const getTimetables = catchAsync(async (req: Request, res: Response, next
   const timetables = await prisma.timetable.findMany({
     where,
     include: {
-      college: { select: { name: true } },
-      department: { select: { name: true } },
+      college: { select: { name: true, nameAr: true } },
+      department: { select: { name: true, nameAr: true } },
     },
     orderBy: { updatedAt: 'desc' },
   });
@@ -172,6 +234,18 @@ export const createTimetable = catchAsync(
       },
     });
 
+    await syncTimetableToSchedules(timetable);
+
+    // Emit real-time update event (only if Socket.io is initialized)
+    const io = getIO();
+    if (io) {
+      io.emit('timetable:updated', {
+        departmentId: timetable.departmentId,
+        year: timetable.academicYear,
+        semester: timetable.semester,
+      });
+    }
+
     res.status(201).json({ success: true, data: timetable });
   }
 );
@@ -210,6 +284,18 @@ export const updateTimetable = catchAsync(
       },
     });
 
+    await syncTimetableToSchedules(timetable);
+
+    // Emit real-time update event (only if Socket.io is initialized)
+    const io = getIO();
+    if (io) {
+      io.emit('timetable:updated', {
+        departmentId: timetable.departmentId,
+        year: timetable.academicYear,
+        semester: timetable.semester,
+      });
+    }
+
     res.json({ success: true, data: timetable });
   }
 );
@@ -243,20 +329,50 @@ export const deleteTimetable = catchAsync(
 
 export const publishTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const timetable = await prisma.timetable.update({
-      where: { id: parseInt(req.params.id as string) },
+    const id = parseInt(req.params.id as string);
+
+    // Fetch the timetable first
+    const timetable = await prisma.timetable.findUnique({ where: { id } });
+    if (!timetable) throw new NotFoundError('Timetable not found');
+
+    // Scope check for non-super admins
+    if (req.user!.role !== 'SUPER_ADMIN' && req.user!.role !== 'ADMIN') {
+      const scopeWhere = getScopeWhere(req.user!, 'timetable');
+      const allowed = await prisma.timetable.findFirst({
+        where: { id, ...scopeWhere }
+      });
+      if (!allowed) throw new AuthorizationError('Access denied: outside your scope');
+    }
+
+    const updated = await prisma.timetable.update({
+      where: { id },
       data: { status: 'PUBLISHED' },
     });
-    res.json({ success: true, data: timetable });
+    res.json({ success: true, data: updated });
   }
 );
 
 export const unpublishTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const timetable = await prisma.timetable.update({
-      where: { id: parseInt(req.params.id as string) },
+    const id = parseInt(req.params.id as string);
+
+    // Fetch the timetable first
+    const timetable = await prisma.timetable.findUnique({ where: { id } });
+    if (!timetable) throw new NotFoundError('Timetable not found');
+
+    // Scope check for non-super admins
+    if (req.user!.role !== 'SUPER_ADMIN' && req.user!.role !== 'ADMIN') {
+      const scopeWhere = getScopeWhere(req.user!, 'timetable');
+      const allowed = await prisma.timetable.findFirst({
+        where: { id, ...scopeWhere }
+      });
+      if (!allowed) throw new AuthorizationError('Access denied: outside your scope');
+    }
+
+    const updated = await prisma.timetable.update({
+      where: { id },
       data: { status: 'DRAFT' },
     });
-    res.json({ success: true, data: timetable });
+    res.json({ success: true, data: updated });
   }
 );

@@ -18,7 +18,7 @@ const Badge: React.FC<BadgeProps> = ({ children, variant = 'info', className = '
     neutral:
       'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600',
     primary:
-      'bg-brand-primary-50 text-brand-primary-700 border-brand-primary-100 dark:bg-brand-brand-green-dark/10 dark:text-brand-brand-green dark:border-brand-brand-green-dark/20',
+      'bg-brand-primary-50 text-brand-primary-700 border-brand-primary-100 dark:bg-brand-green-dark/10 dark:text-brand-green dark:border-brand-green-dark/20',
   };
 
   return (

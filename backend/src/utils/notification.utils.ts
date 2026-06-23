@@ -1,10 +1,11 @@
 import prisma from './prismaClient';
-import { Role } from '@prisma/client';
+import { Role, NotificationType } from '@prisma/client';
 
 export interface BaseNotificationParams {
   title: string;
   message: string;
-  type?: string;
+  type?: NotificationType;
+  link?: string;
 }
 
 export interface CreateNotificationParams extends BaseNotificationParams {
@@ -18,7 +19,8 @@ export const createNotification = async ({
   userId,
   title,
   message,
-  type = 'info',
+  type = 'GENERAL',
+  link,
 }: CreateNotificationParams) => {
   try {
     return await prisma.notification.create({
@@ -27,6 +29,7 @@ export const createNotification = async ({
         title,
         message,
         type,
+        link,
       },
     });
   } catch (error) {
@@ -38,7 +41,7 @@ export interface NotifyRoleParams extends BaseNotificationParams {
   role: Role | any;
 }
 
-export const notifyRole = async ({ role, title, message, type = 'info' }: NotifyRoleParams) => {
+export const notifyRole = async ({ role, title, message, type = 'GENERAL', link }: NotifyRoleParams) => {
   try {
     const users = await prisma.user.findMany({
       where: { role },
@@ -47,7 +50,7 @@ export const notifyRole = async ({ role, title, message, type = 'info' }: Notify
 
     return await Promise.all(
       users.map((user: { id: number }) =>
-        createNotification({ userId: user.id, title, message, type })
+        createNotification({ userId: user.id, title, message, type, link })
       )
     );
   } catch (error) {
@@ -66,7 +69,8 @@ export const notifyStudentsInCourse = async ({
   courseId,
   title,
   message,
-  type = 'info',
+  type = 'GENERAL',
+  link,
 }: NotifyStudentsParams) => {
   try {
     const parsedCourseId = typeof courseId === 'string' ? parseInt(courseId, 10) : courseId;
@@ -88,6 +92,7 @@ export const notifyStudentsInCourse = async ({
         title,
         message,
         type,
+        link,
       })
     );
 
@@ -128,14 +133,21 @@ export const notifyAdminsOfNewRequest = async ({
     // Find all potential admins to notify
     const admins = await prisma.user.findMany({
       where: {
-        role: { in: ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] },
+        role: { in: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] },
       },
-      select: { id: true, role: true, collegeId: true, departmentId: true },
+      select: {
+        id: true,
+        role: true,
+        collegeId: true,
+        departmentId: true,
+        managedCollegeId: true,
+        managedDepartmentId: true,
+      },
     });
 
     const title = 'New Registration Request';
     const message = `New ${role.toLowerCase()} request: ${firstName} ${lastName} for ${department.name}.`;
-    const notifications: { userId: number; title: string; message: string; type: string }[] = [];
+    const notifications: { userId: number; title: string; message: string; type: NotificationType }[] = [];
 
     admins.forEach(
       (admin: {
@@ -143,15 +155,23 @@ export const notifyAdminsOfNewRequest = async ({
         role: string;
         collegeId: number | null;
         departmentId: number | null;
+        managedCollegeId: number | null;
+        managedDepartmentId: number | null;
       }) => {
         let shouldNotify = false;
 
-        if (admin.role === 'SUPER_ADMIN') {
+        if (admin.role === 'SUPER_ADMIN' || admin.role === 'ADMIN') {
           shouldNotify = true;
-        } else if (admin.role === 'COLLEGE_ADMIN' && admin.collegeId === department.collegeId) {
-          shouldNotify = true;
-        } else if (admin.role === 'DEPARTMENT_ADMIN' && admin.departmentId === parsedDeptId) {
-          shouldNotify = true;
+        } else if (admin.role === 'COLLEGE_ADMIN') {
+          const colId = admin.managedCollegeId ?? admin.collegeId;
+          if (colId === department.collegeId) {
+            shouldNotify = true;
+          }
+        } else if (admin.role === 'DEPARTMENT_ADMIN') {
+          const deptId = admin.managedDepartmentId ?? admin.departmentId;
+          if (deptId === parsedDeptId) {
+            shouldNotify = true;
+          }
         }
 
         if (shouldNotify) {
@@ -159,7 +179,7 @@ export const notifyAdminsOfNewRequest = async ({
             userId: admin.id,
             title,
             message,
-            type: 'info',
+            type: 'GENERAL',
           });
         }
       }

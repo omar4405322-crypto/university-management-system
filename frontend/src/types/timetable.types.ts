@@ -8,6 +8,7 @@ export interface SlotEntry {
   doctorName: string;
   room: string;
   sessionType: SessionType;
+  assistantName?: string;
   /** The parent timetable id — needed when saving back. */
   timetableId: number | null;
 }
@@ -31,6 +32,7 @@ export interface TimetableDocument {
       instructor: string;
       room: string;
       sessionType?: SessionType;
+      assistantName?: string;
     }>;
   } | null;
 }
@@ -45,6 +47,7 @@ export interface Department {
 export interface Course {
   id: number;
   name: string;
+  nameAr?: string | null;
   courseCode: string;
   doctor?: {
     id: number;
@@ -60,6 +63,14 @@ export interface Doctor {
   department?: {
     id: number;
     collegeId: number;
+  } | null;
+}
+
+export interface TeachingAssistant {
+  id: number;
+  specialization?: string | null;
+  user?: {
+    email?: string | null;
   } | null;
 }
 

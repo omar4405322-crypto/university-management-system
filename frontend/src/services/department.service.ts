@@ -8,6 +8,14 @@ const departmentService = {
     options: Record<string, unknown> = {}
   ): Promise<ApiResponse<any>> => apiRequest(() => api.get('/departments', { params, ...options })),
 
+  getDepartmentsByCollege: async (collegeId: string | number) => {
+    const url = `/departments?collegeId=${collegeId}`;
+    console.log(`[DEBUG] Calling URL: GET /api${url}`);
+    const response = await api.get(url);
+    console.log(`[DEBUG] Response from ${url}:`, response.data);
+    return { success: true, data: response.data?.data || response.data };
+  },
+
   getDepartmentById: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/departments/${id}`)),
 
   createDepartment: (data?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post('/departments', data)),

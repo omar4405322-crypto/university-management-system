@@ -39,9 +39,27 @@ export async function getAuthToken(role: string = 'STUDENT') {
   return { user, token };
 }
 
+export async function createTestDepartment() {
+  const college = await prisma.college.create({
+    data: {
+      name: 'Test College',
+      nameAr: 'كلية الاختبار',
+    },
+  });
+
+  return prisma.department.create({
+    data: {
+      name: 'Test Department',
+      nameAr: 'قسم الاختبار',
+      collegeId: college.id,
+    },
+  });
+}
+
 export async function cleanupTestData() {
   await prisma.enrollment.deleteMany({ where: { student: { user: { email: { contains: 'university.test' } } } } });
   await prisma.student.deleteMany({ where: { user: { email: { contains: 'university.test' } } } });
   await prisma.doctor.deleteMany({ where: { user: { email: { contains: 'university.test' } } } });
+  await prisma.registrationRequest.deleteMany({ where: { email: { contains: 'university.test' } } });
   await prisma.user.deleteMany({ where: { email: { contains: 'university.test' } } });
 }

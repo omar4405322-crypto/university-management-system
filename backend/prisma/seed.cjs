@@ -149,12 +149,12 @@ async function main() {
   // 3. Super Admin
   await prisma.user.upsert({
     where: { email: 'superadmin@university.com' },
-    update: { role: 'SUPER_ADMIN', adminRole: null, twoFactorEnabled: true },
+    update: { role: 'SUPER_ADMIN', adminRole: null, twoFactorEnabled: false },
     create: {
       email: 'superadmin@university.com',
       password: superAdminPassword,
       role: 'SUPER_ADMIN',
-      twoFactorEnabled: true,
+      twoFactorEnabled: false,
     }
   });
 

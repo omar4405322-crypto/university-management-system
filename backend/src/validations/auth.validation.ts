@@ -11,8 +11,8 @@ export const registerValidation = [
     .withMessage('Password must contain at least one uppercase letter'),
   body('role')
     .optional()
-    .isIn(['STUDENT', 'DOCTOR', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN'])
-    .withMessage('Invalid user role'),
+    .isIn(['STUDENT'])
+    .withMessage('Only student registration is allowed via this form'),
   body('firstName').notEmpty().withMessage('First name is required').trim().isLength({ max: 50 }),
   body('lastName').notEmpty().withMessage('Last name is required').trim().isLength({ max: 50 }),
   // Conditional validation for students

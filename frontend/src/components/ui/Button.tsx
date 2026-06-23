@@ -22,10 +22,10 @@ const Button: React.FC<ButtonProps> = ({
   };
 
   const variants = {
-    primary: 'btn-primary focus:ring-brand-brand-green-dark/40',
+    primary: 'btn-primary focus:ring-brand-green-dark/40',
     secondary: 'btn-secondary focus:ring-brand-navy-500/30',
-    outline: 'btn-outline focus:ring-brand-brand-green-dark/20',
-    ghost: 'btn-ghost focus:ring-brand-brand-green-dark/20',
+    outline: 'btn-outline focus:ring-brand-green-dark/20',
+    ghost: 'btn-ghost focus:ring-brand-green-dark/20',
     danger: 'btn-danger focus:ring-error/30',
     success: 'btn-success focus:ring-success/30',
   };

@@ -26,11 +26,13 @@ const schema = z.object({
   departmentId: z.coerce.number().min(1, 'Department is required'),
 });
 
-type FormData = z.infer<typeof schema>;
+type FormInput = z.input<typeof schema>;
+type FormOutput = z.output<typeof schema>;
 
 const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
-  const { t } = useTranslation();
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormInput>({
     resolver: zodResolver(schema),
     defaultValues: {
       firstName: '',
@@ -95,16 +97,17 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
     setValue('studentId', `${year}${suffix}`);
   };
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: FormInput) => {
     try {
-      const { collegeId, ...payload } = data;
+      const validData = schema.parse(data);
+      const { collegeId, ...payload } = validData;
       const result = await studentsService.createStudent(payload);
       if (result.success) {
         onSuccess();
       } else {
         showToast(result.message || t('students.createError'), 'error');
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || t('students.createError'), 'error');
     }
   };
@@ -252,7 +255,7 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
             >
               <option value="">{t('auth.selectCollege')}</option>
               {colleges.map(college => (
-                <option key={college.id} value={college.id}>{college.name}</option>
+                <option key={college.id} value={college.id}>{isRTL ? (college.nameAr || college.name) : college.name}</option>
               ))}
             </select>
             {errors.collegeId && <p className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>}
@@ -269,7 +272,7 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
             >
               <option value="">{t('auth.selectDept')}</option>
               {departments.map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
+                <option key={dept.id} value={dept.id}>{isRTL ? (dept.nameAr || dept.name) : dept.name}</option>
               ))}
             </select>
             {errors.departmentId && <p className="text-rose-500 text-xs mt-1">{errors.departmentId.message}</p>}

@@ -16,7 +16,7 @@ export const getAllDepartments = catchAsync(async (req: Request, res: Response) 
   }
 
   // Scope support via helper
-  const scopeWhere = getScopeWhere(req.user, 'department');
+  const scopeWhere = req.user ? getScopeWhere(req.user, 'department') : {};
 
   const where: any = { ...scopeWhere };
   // For non-COLLEGE_ADMIN or when no collegeId provided, apply query filter

@@ -98,7 +98,7 @@ const protect = catchAsync(async (req: Request, res: Response, next: NextFunctio
 const authorize = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(500).json({
+      return res.status(401).json({
         success: false,
         message: 'Authorization check failed. User not authenticated.',
       });

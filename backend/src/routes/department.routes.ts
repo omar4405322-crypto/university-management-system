@@ -12,7 +12,7 @@ import validate from '../middleware/validate.middleware';
 
 const router = express.Router();
 
-router.get('/', protect, getAllDepartments);
+router.get('/', getAllDepartments);
 router.get('/:id', protect, adminIdValidation, validate, getDepartmentById);
 
 // Admin only routes

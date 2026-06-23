@@ -2,7 +2,14 @@
   "COMMON": {
     "OF": "من",
     "PAGE": "صفحة",
-    "RESET": "إعادة تعيين"
+    "RESET": "إعادة تعيين",
+    "NAME": "الاسم"
+  },
+  "filter": {
+    "college": "الكلية",
+    "department": "القسم",
+    "all_colleges": "جميع الكليات",
+    "all_departments": "جميع الأقسام"
   },
   "validation": {
     "emailRequired": "البريد الإلكتروني مطلوب",
@@ -240,6 +247,13 @@
   "colleges": {
     "about": "حول الكلية",
     "active": "نشطة",
+    "inactive": "غير نشطة",
+    "status": "الحالة",
+    "logoUrl": "شعار الكلية",
+    "uploadImage": "رفع صورة",
+    "logoUrlFallback": "أو أدخل رابط الصورة مباشرة (خيار احتياطي)",
+    "unassigned": "غير معين",
+    "thisCollege": "هذه الكلية",
     "addCollege": "إضافة كلية جديدة",
     "addDesc": "إنشاء كلية جامعية جديدة",
     "addNew": "إضافة كلية جديدة",
@@ -251,6 +265,7 @@
     "deleteSuccess": "تم حذف الكلية بنجاح",
     "descPlaceholder": "أدخل وصف الكلية...",
     "description": "الوصف",
+    "descriptionAr": "الوصف (بالعربية)",
     "editDesc": "تحديث معلومات الكلية والعلامة التجارية",
     "editTitle": "تعديل الكلية",
     "enterName": "يرجى إدخال اسم الكلية",
@@ -292,6 +307,8 @@
   "common": {
     "actions": "الإجراءات",
     "add": "إضافة",
+    "change": "تغيير",
+    "name": "الاسم",
     "all": "الكل",
     "am": "صباحاً",
     "approve": "موافقة",
@@ -369,6 +386,7 @@
     "managementSystem": "نظام الإدارة"
   },
   "courses": {
+    "nameAr": "الاسم بالعربية",
     "course": "المقرر",
     "selectCourse": "اختر مقرراً",
     "addCourse": "إضافة مقرر",
@@ -537,8 +555,8 @@
     "editDesc": "تحديث معلومات القسم وتعيين الكلية",
     "fillRequired": "يرجى ملء جميع الحقول المطلوبة",
     "manageCurriculum": "إدارة المناهج",
-    "nameAr": "اسم القسم (بالعربية)",
-    "nameEn": "اسم القسم (بالانجليزية)",
+    "nameAr": "الاسم (AR)",
+    "nameEn": "الاسم (EN)",
     "noDepts": "لم يتم العثور على أقسام تطابق معاييرك.",
     "noDeptsDesc": "حاول ضبط البحث أو الفلاتر للعثور على ما تبحث عنه.",
     "schedules": "الجداول",
@@ -652,6 +670,21 @@
     "addFirstDoctor": "إضافة أول عضو هيئة تدريس",
     "noSearchResults": "لا توجد نتائج",
     "noSearchResultsDesc": "جرّب كلمة بحث أخرى أو امسح الفلاتر."
+  },
+  "teachingAssistants": {
+    "title": "إدارة المعيدين",
+    "subtitle": "عرض وإدارة المعيدين الأكاديميين",
+    "addTeachingAssistant": "إضافة معيد",
+    "addFirstTeachingAssistant": "إضافة أول معيد",
+    "noTeachingAssistants": "لا يوجد معيدون",
+    "noTeachingAssistantsDesc": "لم يتم إضافة أي معيدين بعد",
+    "searchPlaceholder": "ابحث بالاسم أو البريد الإلكتروني...",
+    "allFaculty": "جميع المعيدين",
+    "onLeave": "في إجازة",
+    "totalCourses": "إجمالي المقررات",
+    "activeProfessors": "المعيدون النشطون",
+    "totalFaculty": "إجمالي المعيدين",
+    "researchProjects": "الأقسام المسندة"
   },
   "search": {
     "placeholder": "ابحث عن طلاب، دكاترة، مقررات…",
@@ -770,7 +803,9 @@
     "dashboard": "لوحة التحكم",
     "departments": "الأقسام",
     "doctors": "الدكاترة",
+    "teachingAssistants": "المعيدون",
     "exams": "الامتحانات",
+    "examSessions": "الامتحانات الإلكترونية",
     "finance": "الماليات",
     "logout": "تسجيل الخروج",
     "notifications": "الإشعارات",
@@ -905,6 +940,8 @@
     "SUPER_ADMIN": "مدير عام"
   },
   "schedule": {
+    "subtitle": "عرض وإدارة الجداول الدراسية الأسبوعية",
+    "swipeHint": "مرر لرؤية الأيام الأخرى",
     "mySchedule": "جدولي الأسبوعي",
     "academicYear": "العام الدراسي",
     "semester1": "الفصل الأول",
@@ -951,6 +988,8 @@
     "emailAddress": "البريد الإلكتروني",
     "emailPlaceholder": "alice@university.edu",
     "enrolledDate": "تاريخ التسجيل",
+    "exportSuccess": "تم تصدير ملف الطلاب بنجاح",
+    "exportError": "فشل تصدير ملف الطلاب",
     "enrolledSince": "ملتحق منذ",
     "errorFetching": "خطأ في جلب تفاصيل الطالب",
     "fillRequired": "يرجى ملء جميع الحقول المطلوبة",
@@ -1010,6 +1049,11 @@
     "fetchError": "خطأ في تحميل المهام"
   },
   "timetables": {
+    "year": "السنة",
+    "semester1": "الفصل الأول",
+    "semester2": "الفصل الثاني",
+    "semester3": "الفصل الصيفي",
+    "semesterLabel": "الفصل الدراسي",
     "status": "الحالة",
     "actions": "الإجراءات",
     "publish": "نشر",

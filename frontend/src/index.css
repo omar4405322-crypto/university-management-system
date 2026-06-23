@@ -11,26 +11,26 @@
   /* Brand Color Tokens */
   /* Valid prefixes: brand-primary-*, brand-navy-*, brand-text-*, brand-bg-*, brand-border-*, brand-accent-* */
   /* Do NOT use brand-brand-* (double prefix) - this is invalid */
-  /* Brand Primary (Lime Green) */
+  /* Brand Primary (Lime Green) - Official: #99C23C */
   --color-brand-primary-50: #f4f8ec;
   --color-brand-primary-100: #e9f1d9;
   --color-brand-primary-200: #d3e3b3;
   --color-brand-primary-300: #b4d16e;
   --color-brand-primary-400: #9fc550;
-  --color-brand-primary-500: #8BB83C;
+  --color-brand-primary-500: #99C23C;
   --color-brand-primary-600: #6f9330;
   --color-brand-primary-700: #5e7d25;
   --color-brand-primary-800: #4c651e;
   --color-brand-primary-900: #3d5218;
   --color-brand-primary-950: #222d0d;
 
-  /* Brand Navy */
+  /* Brand Navy - Official: #122237 */
   --color-brand-navy-50: #f1f5f9;
   --color-brand-navy-100: #e2e8f0;
   --color-brand-navy-200: #cbd5e1;
   --color-brand-navy-300: #94a3b8;
   --color-brand-navy-400: #64748b;
-  --color-brand-navy-500: #132231;
+  --color-brand-navy-500: #122237;
   --color-brand-navy-600: #0f1d2a;
   --color-brand-navy-700: #0a1520;
   --color-brand-navy-800: #060d14;
@@ -57,19 +57,19 @@
   --color-surface-overlay: var(--brand-bg-card);
   --color-surface-subtle: var(--surface-subtle);
 
-  /* Flat brand aliases */
-  --color-brand-green: #8BB83C;
+  /* Flat brand aliases - Official Brand Palette */
+  --color-brand-green: #99C23C;
   --color-brand-green-dark: #5e7d25;
-  --color-brand-navy: #132231;
+  --color-brand-navy: #122237;
 
-  /* Brand Accent */
-  --color-brand-accent-yellow: #D6BA34;
+  /* Brand Accent - Official: #D2D441 */
+  --color-brand-accent-yellow: #D2D441;
   --color-brand-accent-rose: #EF4444;
   --color-brand-accent-blue: #3B82F6;
   --color-brand-accent-emerald: #10B981;
   --color-brand-accent-amber: #F59E0B;
-  --color-brand-yellow: #D6BA34;
-  --color-brand-gray: #64748b;
+  --color-brand-yellow: #D2D441;
+  --color-brand-gray: #7E8B96;
 
   /* Semantic colors */
   --color-success: #10B981;
@@ -108,21 +108,33 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --brand-green:         #8BB83C;
+  /* Official Brand Palette (Source of Truth) */
+  --brand-lime:          #99C23C;  /* Primary background */
+  --brand-lime-soft:     #B6DD62;  /* Lighter tint for large surfaces */
+  --brand-navy:          #122237;  /* Primary text/elements */
+  --brand-gray:          #7E8B96;  /* Borders/frames/overlay */
+  --brand-gray-soft:     rgba(126, 139, 150, 0.45);  /* Softer border */
+  --brand-yellow:        #D2D441;  /* Accent */
+
+  /* Legacy aliases - mapped to official palette */
+  --brand-green:         var(--brand-lime);
   --brand-green-light:   #b4d16e;
   --brand-green-dark:    #5e7d25;
-  --brand-navy:          #132231;
   --brand-navy-light:    #1e3a52;
   --brand-navy-dark:     #0a1520;
 
+  /* Surface colors */
   --brand-bg-page:       #F8FAFC;
   --brand-bg-card:       #FFFFFF;
   --brand-bg-elevated:   #FFFFFF;
-  --brand-sidebar:       #132231;
-  --brand-border:        #E2E8F0;
+  --brand-bg-soft:       var(--brand-lime-soft);
+  --brand-sidebar:       var(--brand-navy);
+  --brand-border:        var(--brand-gray);
+  --brand-border-soft:   var(--brand-gray-soft);
   --surface-subtle:      #F1F5F9;
 
-  --brand-text-main:     #132231;
+  /* Text colors */
+  --brand-text-main:     var(--brand-navy);
   --brand-text-sub:      #64748B;
   --brand-text-muted:    #94A3B8;
 
@@ -135,19 +147,31 @@
 }
 
 .dark {
+  /* Official Brand Palette (Dark Mode) */
+  --brand-lime:          #99C23C;
+  --brand-lime-soft:     #B6DD62;
+  --brand-navy:          #122237;
+  --brand-gray:          #7E8B96;
+  --brand-gray-soft:     rgba(126, 139, 150, 0.45);
+  --brand-yellow:        #D2D441;
+
+  /* Surface colors (dark mode) */
   --brand-bg-page:       #0f172a;
   --brand-bg-card:       #1e293b;
   --brand-bg-elevated:   #334155;
-  --brand-sidebar:       #0f172a;
-  --brand-border:        #334155;
+  --brand-bg-soft:       var(--brand-lime-soft);
+  --brand-sidebar:       var(--brand-navy);
+  --brand-border:        var(--brand-gray);
+  --brand-border-soft:   var(--brand-gray-soft);
   --surface-subtle:      #1e293b;
 
+  /* Text colors (dark mode) */
   --brand-text-main:     #f8fafc;
   --brand-text-sub:      #94a3b8;
   --brand-text-muted:    #64748b;
 
-  --brand-green:         #8BB83C;
-  --brand-green-glow:    rgba(139, 184, 60, 0.1);
+  --brand-green:         var(--brand-lime);
+  --brand-green-glow:    rgba(153, 194, 60, 0.1);
 
   --kpi-icon-hover:      #94a3b8;
 }
@@ -274,17 +298,17 @@
 
   /* Elevated card — highest visual weight (use for KPIs, featured content) */
   .card-elevated {
-    @apply bg-brand-bg-card rounded-2xl border border-brand-border shadow-card transition-all duration-300;
+    @apply bg-brand-bg-card rounded-2xl border border-brand-border/50 shadow-soft transition-all duration-300;
   }
 
   /* Default card — standard content container */
   .card-default {
-    @apply bg-brand-bg-card rounded-2xl border border-brand-border shadow-sm transition-all duration-300;
+    @apply bg-brand-bg-card rounded-2xl border border-brand-border/50 shadow-sm transition-all duration-300;
   }
 
   /* Subtle card — minimal visual weight (use for secondary content) */
   .card-subtle {
-    @apply bg-surface-subtle rounded-2xl border border-brand-border transition-all duration-300;
+    @apply bg-surface-subtle rounded-2xl border border-brand-border/50 transition-all duration-300;
   }
 
   /* Card hover lift */
@@ -306,12 +330,12 @@
 
   /* Tertiary/outline action — minimal weight */
   .btn-outline {
-    @apply border border-brand-border bg-brand-bg-card text-brand-text-primary hover:bg-surface-subtle hover:border-brand-text-muted active:scale-[0.97];
+    @apply border border-brand-border/50 bg-brand-bg-card text-brand-text-primary hover:bg-surface-subtle hover:border-brand-text-muted active:scale-[0.97] transition-all duration-200;
   }
 
   /* Ghost — lowest visual weight */
   .btn-ghost {
-    @apply text-brand-text-secondary hover:text-brand-text-primary hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.97];
+    @apply text-brand-text-secondary hover:text-brand-text-primary hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.97] transition-all duration-200;
   }
 
   /* Danger — destructive action */

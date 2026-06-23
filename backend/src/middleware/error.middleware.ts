@@ -12,8 +12,19 @@ import {
  * Global Error Handler Middleware
  */
 const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-  // Always log to console for immediate visibility during debugging
-  console.error('Global error:', err?.message, err?.stack);
+  // Log error appropriately based on environment
+  if (process.env.NODE_ENV === 'production') {
+    // In production, use Winston logger only (no console.error)
+    logger.error(`[ERROR] ${err?.message}`, { 
+      stack: err?.stack, 
+      path: req.originalUrl,
+      statusCode: err?.statusCode 
+    });
+  } else {
+    // In development/test, log to console for immediate visibility
+    console.error('Global error:', err?.message, err?.stack);
+  }
+  
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 

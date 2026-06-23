@@ -24,7 +24,10 @@ export const getAllColleges = async () => {
               email: admin.email,
               name: admin.doctor
                 ? `${admin.doctor.firstName} ${admin.doctor.lastName}`.trim()
-                : null,
+                : admin.email
+                    .split('@')[0]
+                    .replace(/[._-]/g, ' ')
+                    .replace(/\b\w/g, (c) => c.toUpperCase()),
             }
           : null,
       };
@@ -76,7 +79,12 @@ export const getCollegeById = async (collegeId: number, user: any) => {
       ? {
           id: admin.id,
           email: admin.email,
-          name: admin.doctor ? `${admin.doctor.firstName} ${admin.doctor.lastName}`.trim() : null,
+          name: admin.doctor
+            ? `${admin.doctor.firstName} ${admin.doctor.lastName}`.trim()
+            : admin.email
+                .split('@')[0]
+                .replace(/[._-]/g, ' ')
+                .replace(/\b\w/g, (c) => c.toUpperCase()),
         }
       : null,
     _count: {
@@ -91,6 +99,9 @@ export const createCollege = async (data: {
   name: string;
   nameAr?: string;
   description?: string;
+  descriptionAr?: string;
+  status?: string;
+  logoUrl?: string;
 }) => {
   return await prisma.college.create({
     data,
@@ -99,7 +110,14 @@ export const createCollege = async (data: {
 
 export const updateCollege = async (
   collegeId: number,
-  data: { name: string; nameAr?: string; description?: string }
+  data: {
+    name: string;
+    nameAr?: string;
+    description?: string;
+    descriptionAr?: string;
+    status?: string;
+    logoUrl?: string;
+  }
 ) => {
   return await prisma.college.update({
     where: { id: collegeId },
@@ -147,14 +165,18 @@ export const deleteCollege = async (collegeId: number) => {
   });
 };
 
-export const assignAdmin = async (collegeId: number, adminId: string | number) => {
-  if (!adminId) {
-    throw new ValidationError('Admin ID is required');
-  }
-
+export const assignAdmin = async (collegeId: number, adminId: string | number | null | undefined) => {
   const college = await prisma.college.findUnique({ where: { id: collegeId } });
   if (!college) {
     throw new NotFoundError('College not found');
+  }
+
+  if (!adminId || adminId === 'clear' || adminId === '0' || adminId === 0) {
+    await prisma.user.updateMany({
+      where: { managedCollegeId: collegeId },
+      data: { managedCollegeId: null },
+    });
+    return null;
   }
 
   const parsedAdminId = typeof adminId === 'string' ? parseInt(adminId) : adminId;
@@ -171,6 +193,12 @@ export const assignAdmin = async (collegeId: number, adminId: string | number) =
     throw new ValidationError('Only COLLEGE_ADMIN users can be assigned to colleges');
   }
 
+  // Clear managedCollegeId for any users currently assigned to this college
+  await prisma.user.updateMany({
+    where: { managedCollegeId: collegeId },
+    data: { managedCollegeId: null },
+  });
+
   await prisma.user.update({
     where: { id: parsedAdminId },
     data: { managedCollegeId: collegeId },
@@ -186,6 +214,9 @@ export const assignAdmin = async (collegeId: number, adminId: string | number) =
     email: updatedAdmin!.email,
     name: updatedAdmin!.doctor
       ? `${updatedAdmin!.doctor.firstName} ${updatedAdmin!.doctor.lastName}`.trim()
-      : null,
+      : updatedAdmin!.email
+          .split('@')[0]
+          .replace(/[._-]/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase()),
   };
 };

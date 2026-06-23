@@ -13,7 +13,7 @@ import validate from '../middleware/validate.middleware';
 
 const router = express.Router();
 
-router.get('/', protect, getAllColleges);
+router.get('/', getAllColleges);
 router.get('/:id', protect, adminIdValidation, validate, getCollegeById);
 
 // Admin only routes

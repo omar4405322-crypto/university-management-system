@@ -3,6 +3,8 @@ import departmentService from '../services/department.service';
 import coursesService from '../services/courses.service';
 import doctorsService from '../services/doctors.service';
 import timetableService from '../services/timetable.service';
+import schedulesService from '../services/schedules.service';
+import teachingAssistantsService from '../services/teachingAssistants.service';
 import type {
   TimetableFilters,
   SlotsMap,
@@ -11,12 +13,25 @@ import type {
   Doctor,
 } from '../types/timetable.types';
 
+export interface TeachingAssistant {
+  id: number;
+  userId: number;
+  departmentId: number | null;
+  specialization: string | null;
+  user: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+  };
+}
+
 interface UseTimetableDataReturn {
   slots: SlotsMap;
   setSlots: React.Dispatch<React.SetStateAction<SlotsMap>>;
   departments: Department[];
   courses: Course[];
   doctors: Doctor[];
+  teachingAssistants: TeachingAssistant[];
   timetableId: number | null;
   loadingDepts: boolean;
   loadingSlots: boolean;
@@ -41,6 +56,7 @@ export function useTimetableData(
   const [departments, setDepartments] = useState<Department[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [teachingAssistants, setTeachingAssistants] = useState<TeachingAssistant[]>([]);
   const [timetableId, setTimetableId] = useState<number | null>(null);
   const [loadingDepts, setLoadingDepts] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -75,57 +91,77 @@ export function useTimetableData(
 
   // ── Timetable slots (whenever dept/year/sem filters change) ────────────────
   useEffect(() => {
-    if (!filters.departmentId || !filters.academicYear || !filters.semester) return;
+    if (!filters.departmentId || !filters.academicYear || !filters.semester) {
+      setSlots({});
+      setTimetableId(null);
+      return;
+    }
 
     const controller = new AbortController();
     setLoadingSlots(true);
     setError(null);
 
-    timetableService
-      .getTimetables({
+    Promise.all([
+      timetableService.getTimetables({
         departmentId: filters.departmentId,
         academicYear: filters.academicYear,
         semester: filters.semester,
-      })
+      }),
+      schedulesService.getSchedules({
+        departmentId: filters.departmentId,
+        year: filters.academicYear,
+        semester: filters.semester,
+      }),
+    ])
       .then(
-        (res: {
-          data?: {
-            timetables?: Array<{
-              id: number;
-              scheduleData: {
-                slots: Array<{
-                  day: string;
-                  startTime: string;
-                  endTime: string;
-                  courseName: string;
-                  instructor: string;
-                  room: string;
-                  sessionType?: string;
-                }>;
-              } | null;
-            }>;
-          } | null;
-        }) => {
+        ([timetableRes, schedulesRes]: [any, any]) => {
           if (controller.signal.aborted) return;
-          const timetable = res.data?.timetables?.[0];
+
+          const mapped: SlotsMap = {};
+          let tId: number | null = null;
+
+          // 1. Populate from timetable draft
+          const timetable = timetableRes.data?.timetables?.[0];
           if (timetable?.scheduleData?.slots) {
-            const mapped: SlotsMap = {};
-            timetable.scheduleData.slots.forEach((slot) => {
+            tId = timetable.id;
+            timetable.scheduleData.slots.forEach((slot: any) => {
               const key = `${slot.day}_${slot.startTime}-${slot.endTime}`;
               mapped[key] = {
                 courseName: slot.courseName,
                 doctorName: slot.instructor,
                 room: slot.room,
                 sessionType: (slot.sessionType as 'LECTURE' | 'LAB' | 'SEMINAR') ?? 'LECTURE',
+                assistantName: slot.assistantName,
                 timetableId: timetable.id,
               };
             });
-            setSlots(mapped);
-            setTimetableId(timetable.id);
-          } else {
-            setSlots({});
-            setTimetableId(null);
           }
+
+          // 2. Populate / overwrite from existing schedules in database
+          const schedules = schedulesRes.success && Array.isArray(schedulesRes.data)
+            ? schedulesRes.data
+            : (schedulesRes.data?.schedules ?? schedulesRes.data ?? []);
+
+          if (Array.isArray(schedules)) {
+            schedules.forEach((schedule: any) => {
+              if (schedule.dayOfWeek && schedule.startTime && schedule.endTime) {
+                const key = `${schedule.dayOfWeek}_${schedule.startTime}-${schedule.endTime}`;
+                mapped[key] = {
+                  courseName: schedule.course?.name || '',
+                  doctorName: schedule.course?.doctor 
+                    ? `${schedule.course.doctor.firstName} ${schedule.course.doctor.lastName}`.trim()
+                    : '',
+                  room: schedule.room || '',
+                  sessionType: schedule.sessionType || 'LECTURE',
+                  assistantName: schedule.assistant?.user?.email?.split('@')[0] || schedule.assistant?.specialization || '',
+                  timetableId: tId,
+                };
+              }
+            });
+          }
+
+          setSlots(mapped);
+          setTimetableId(tId);
         }
       )
       .catch((err: unknown) => {
@@ -151,9 +187,11 @@ export function useTimetableData(
     Promise.all([
       coursesService.getCourses({ departmentId: filters.departmentId }),
       doctorsService.getDoctors({ limit: 1000 }),
+      teachingAssistantsService.getTeachingAssistants()
     ])
       .then(
-        ([coursesRes, doctorsRes]: [
+        ([coursesRes, doctorsRes, tasRes]: [
+          { success: boolean; data?: unknown },
           { success: boolean; data?: unknown },
           { success: boolean; data?: unknown },
         ]) => {
@@ -178,6 +216,16 @@ export function useTimetableData(
                 []);
             setDoctors(arr);
           }
+          if (tasRes.success) {
+            const raw = tasRes.data;
+            const arr: TeachingAssistant[] = Array.isArray(raw)
+              ? (raw as TeachingAssistant[])
+              : ((raw as { teachingAssistants?: TeachingAssistant[] })?.teachingAssistants ??
+                (raw as { data?: { teachingAssistants?: TeachingAssistant[] } })?.data?.teachingAssistants ??
+                (raw as { data?: TeachingAssistant[] })?.data ??
+                []);
+            setTeachingAssistants(arr);
+          }
         }
       )
       .catch((err: unknown) => {
@@ -196,6 +244,7 @@ export function useTimetableData(
     departments,
     courses,
     doctors,
+    teachingAssistants,
     timetableId,
     loadingDepts,
     loadingSlots,

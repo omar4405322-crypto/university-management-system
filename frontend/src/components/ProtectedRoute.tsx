@@ -1,4 +1,3 @@
-// FIXED: Avoid indefinite blank spinner when session has token but no user - Phase 1
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';

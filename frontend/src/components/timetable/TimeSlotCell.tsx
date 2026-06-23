@@ -99,6 +99,16 @@ const TimeSlotCell = memo(function TimeSlotCell({
         </span>
       </p>
 
+      {/* Teaching Assistant */}
+      {entry.assistantName && (
+        <p className="font-bold text-brand-text-sub flex items-center gap-1.5">
+          <Users size={12} className="text-brand-text-muted shrink-0" />
+          <span className="opacity-75 truncate">
+            {entry.assistantName} - {t('timetables.assistant', 'المعيد')}
+          </span>
+        </p>
+      )}
+
       {/* Room */}
       <p className="font-bold text-brand-text-muted flex items-center gap-1.5">
         <MapPin size={12} className="shrink-0" />

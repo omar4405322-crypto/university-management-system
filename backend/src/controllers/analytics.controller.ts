@@ -2,6 +2,36 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import catchAsync from '../utils/catchAsync';
 
+export const getUniversityStats = catchAsync(async (req: Request, res: Response) => {
+  const [
+    totalStudents,
+    totalDoctors,
+    totalCourses,
+    totalColleges,
+    totalDepartments,
+    totalTeachingAssistants,
+  ] = await Promise.all([
+    prisma.student.count(),
+    prisma.doctor.count(),
+    prisma.course.count(),
+    prisma.college.count(),
+    prisma.department.count(),
+    prisma.teachingAssistant.count(),
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      totalStudents,
+      totalDoctors,
+      totalCourses,
+      totalColleges,
+      totalDepartments,
+      totalTeachingAssistants,
+    },
+  });
+});
+
 export const getGeneralAnalytics = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { departmentId, startDate, endDate } = req.query;

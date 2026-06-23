@@ -61,7 +61,7 @@ export const recordAttendance = catchAsync(
               userId: attendance.student.userId,
               title: `Attendance Alert: ${attendance.status}`,
               message: `You were marked ${attendance.status.toLowerCase()} for ${attendance.course.name} on ${attendanceDate.toLocaleDateString()}.`,
-              type: attendance.status === 'ABSENT' ? 'error' : 'warning',
+              type: 'GENERAL',
             });
           } catch (err: any) {
             const logger = require('../utils/logger.js').default || require('../utils/logger.js');

@@ -38,8 +38,9 @@ import { useToast } from '../../context/ToastContext';
 const CollegeDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  const isRTL = i18n.language?.startsWith('ar');
   const [college, setCollege] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAddDeptModalOpen, setIsAddDeptModalOpen] = useState(false);
@@ -116,7 +117,7 @@ const CollegeDetails = () => {
 
   const breadcrumbItems = [
     { label: t('nav.colleges'), link: '/colleges' },
-    { label: college.name },
+    { label: isRTL ? (college.nameAr || college.name) : college.name },
   ];
 
   return (
@@ -137,16 +138,28 @@ const CollegeDetails = () => {
               className="rtl:-scale-x-100 group-hover:-translate-x-1 transition-transform"
             />
           </button>
+          {college.logoUrl && (
+            <img
+              src={college.logoUrl}
+              alt={college.name}
+              className="w-16 h-16 object-contain rounded-2xl border border-brand-border bg-white p-1"
+            />
+          )}
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-black text-brand-text-main">{college.name}</h1>
-              <Badge variant="success" className="px-3 py-1 font-bold">
-                {t('colleges.active')}
+              <Badge variant={college.status === 'inactive' ? 'danger' : 'success'} className="px-3 py-1 font-bold">
+                {college.status === 'inactive' ? t('colleges.inactive') : t('colleges.active')}
               </Badge>
             </div>
             {college.nameAr && (
               <p className="text-xl text-brand-text-sub mt-1 font-arabic" dir="rtl">
                 {college.nameAr}
+              </p>
+            )}
+            {(college.descriptionAr || college.description) && (
+              <p className="text-sm text-brand-text-secondary mt-2 max-w-2xl" dir="auto">
+                {isRTL ? (college.descriptionAr || college.description) : college.description}
               </p>
             )}
           </div>
@@ -156,7 +169,7 @@ const CollegeDetails = () => {
             <Button
               variant="outline"
               className="flex items-center gap-2 border-brand-border hover:bg-brand-navy-500/5 text-brand-text-main font-bold"
-              onClick={() => navigate(`/schedules-management?collegeId=${college.id}`)}
+              onClick={() => navigate(`/timetables-management?collegeId=${college.id}`)}
             >
               <Calendar size={18} className="text-brand-green" /> {t('nav.schedule')}
             </Button>
@@ -187,8 +200,8 @@ const CollegeDetails = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="flex items-center gap-5 border-l-4 border-brand-navy-500/30 hover:translate-y-[-4px] transition-all duration-300">
-          <div className="p-4 bg-brand-navy-500/10 text-brand-navy-500 rounded-2xl">
+        <Card className="flex items-center gap-5 border-l-4 border-brand-gray/30 hover:translate-y-[-4px] transition-all duration-300">
+          <div className="p-4 bg-brand-gray/10 text-brand-gray rounded-2xl">
             <Layers size={28} strokeWidth={2.5} />
           </div>
           <div>
@@ -230,11 +243,11 @@ const CollegeDetails = () => {
 
       {/* Assigned Admin Section */}
       {user?.role === 'SUPER_ADMIN' && (
-        <Card className="mt-6 border-l-4 border-brand-brand-green-dark/50">
+        <Card className="mt-6 border-l-4 border-brand-green-dark/50">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <h3 className="text-lg font-black text-brand-text-main mb-4 flex items-center gap-2">
-                <UserPlus size={20} className="text-brand-brand-green-dark" />
+                <UserPlus size={20} className="text-brand-green-dark" />
                 {t('colleges.assignedAdmin') || 'Assigned Admin'}
               </h3>
               {college.assignedAdmin ? (
@@ -286,92 +299,89 @@ const CollegeDetails = () => {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-5 xl:gap-6">
-        <div className="lg:col-span-1"></div>
-        <div className="lg:col-span-2 xl:col-span-3">
-          <Card className="border-l-0" title={t('nav.departments')} noPadding>
-            <div className="h-auto">
-              {college.departments?.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-96 text-center p-8">
-                  <div className="h-20 w-20 rounded-full bg-brand-navy-500/5 flex items-center justify-center mb-4 border border-brand-border">
-                    <Layers size={40} className="text-brand-text-muted" />
-                  </div>
-                  <p className="text-lg font-black text-brand-text-main">
-                    {t('departments.noDepts')}
-                  </p>
-                  <p className="text-sm text-brand-text-sub max-w-xs mx-auto mt-1 font-bold">
-                    {t('departments.noDeptsDesc')}
-                  </p>
-                  {canManage && (
-                    <Button
-                      onClick={() => setIsAddDeptModalOpen(true)}
-                      className="mt-6 flex items-center gap-2"
-                    >
-                      <Plus size={18} /> {t('departments.addDept')}
-                    </Button>
-                  )}
+      <div className="w-full mt-6">
+        <Card title={t('nav.departments')} noPadding className="w-full">
+          <div className="h-auto">
+            {college.departments?.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-96 text-center p-8">
+                <div className="h-20 w-20 rounded-full bg-brand-navy-500/5 flex items-center justify-center mb-4 border border-brand-border">
+                  <Layers size={40} className="text-brand-text-muted" />
                 </div>
-              ) : (
-                <Table
-                  headers={[
-                    t('departments.nameEn'),
-                    t('departments.nameAr'),
-                    t('courses.title'),
-                    t('nav.students'),
-                    t('common.actions'),
-                  ]}
-                  className="w-full"
-                >
-                  {college.departments.map((dept, _idx) => (
-                    <TableRow
-                      key={dept.id}
-                      className="cursor-pointer"
-                      onClick={() => navigate(`/departments/${dept.id}`)}
-                    >
-                      <TableCell className="font-black text-brand-text-main">{dept.name}</TableCell>
-                      <TableCell className="font-arabic text-brand-text-sub" dir="rtl">
-                        {dept.nameAr || '--'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="info" className="font-black px-3">
-                          {dept._count?.courses || 0}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 font-bold text-brand-text-main">
-                          <Users size={14} className="text-brand-green" />
-                          {dept._count?.students || 0}
-                        </div>
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <ActionMenu
-                          actions={[
-                            {
-                              label: 'View Department',
-                              icon: ExternalLink,
-                              variant: 'view',
-                              onClick: () => navigate(`/departments/${dept.id}`),
-                            },
-                            ...(canManage
-                              ? [
-                                  {
-                                    label: 'Delete',
-                                    icon: Trash2,
-                                    variant: 'delete',
-                                    onClick: () => handleDeleteDept(dept.id),
-                                  },
-                                ]
-                              : []),
-                          ]}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </Table>
-              )}
-            </div>
-          </Card>
-        </div>
+                <p className="text-lg font-black text-brand-text-main">
+                  {t('departments.noDepts')}
+                </p>
+                <p className="text-sm text-brand-text-sub max-w-xs mx-auto mt-1 font-bold">
+                  {t('departments.noDeptsDesc')}
+                </p>
+                {canManage && (
+                  <Button
+                    onClick={() => setIsAddDeptModalOpen(true)}
+                    className="mt-6 flex items-center gap-2"
+                  >
+                    <Plus size={18} /> {t('departments.addDept')}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <Table
+                headers={[
+                  t('departments.nameEn'),
+                  t('departments.nameAr'),
+                  t('courses.title'),
+                  t('nav.students'),
+                  t('common.actions'),
+                ]}
+                className="w-full"
+              >
+                {college.departments.map((dept, _idx) => (
+                  <TableRow
+                    key={dept.id}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/departments/${dept.id}`)}
+                  >
+                    <TableCell className="w-[30%] font-black text-brand-text-main">{dept.name}</TableCell>
+                    <TableCell className="w-[30%] font-arabic text-brand-text-sub" dir="rtl">
+                      {dept.nameAr || '--'}
+                    </TableCell>
+                    <TableCell className="w-[15%]">
+                      <Badge variant="info" className="font-black px-3">
+                        {dept._count?.courses || 0}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="w-[15%]">
+                      <div className="flex items-center gap-1.5 font-bold text-brand-text-main">
+                        <Users size={14} className="text-brand-green" />
+                        {dept._count?.students || 0}
+                      </div>
+                    </TableCell>
+                    <TableCell className="w-[10%]" onClick={(e) => e.stopPropagation()}>
+                      <ActionMenu
+                        actions={[
+                          {
+                            label: 'View Department',
+                            icon: ExternalLink,
+                            variant: 'view',
+                            onClick: () => navigate(`/departments/${dept.id}`),
+                          },
+                          ...(canManage
+                            ? [
+                                {
+                                  label: 'Delete',
+                                  icon: Trash2,
+                                  variant: 'delete',
+                                  onClick: () => handleDeleteDept(dept.id),
+                                },
+                              ]
+                            : []),
+                        ]}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </Table>
+            )}
+          </div>
+        </Card>
       </div>
 
       <EditCollegeModal

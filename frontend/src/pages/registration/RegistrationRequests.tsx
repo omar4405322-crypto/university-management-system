@@ -1,11 +1,10 @@
-// FIXED: Proper empty state icon (no stray imagery); show phone in details - Phase 6
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Card from '../../components/ui/Card';
 import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import FilterBar from '../../components/ui/FilterBar';
-import { ClipboardList, Eye, Check, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { ClipboardList, Eye, Check, X, AlertCircle, CheckCircle, Search } from 'lucide-react';
 import registrationService from '../../services/registration.service';
 import { useTranslation } from 'react-i18next';
 import Modal from '../../components/ui/Modal';
@@ -13,18 +12,25 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 const RegistrationRequests = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [statusFilter, setStatusFilter] = useState('PENDING');
+  const [allDepartments, setAllDepartments] = useState<any[]>([]);
   const { showToast } = useToast();
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchRequests();
+    fetchDepartments();
   }, []);
 
   const fetchRequests = async () => {
@@ -33,12 +39,35 @@ const RegistrationRequests = () => {
       const result = await registrationService.getRequests();
       if (result.success) {
         setRequests(result.data);
+        console.log('request sample:', result.data[0]);
       }
     } catch (error: any) {
       logger.error('Error fetching requests:', error);
       showToast(t('common.errorFetching'), 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await api.get('/departments');
+      const data = response.data?.data || response.data;
+      const allDepts = Array.isArray(data) ? data : [];
+      
+      console.log('current user:', user);
+      console.log('first department:', allDepts[0]);
+
+      // Filter to only show departments in the current user's college
+      const filtered = allDepts.filter((dept: any) => {
+        if (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') return true;
+        return dept.collegeId === user?.managedCollegeId || 
+               dept.collegeId === user?.collegeId;
+      });
+      
+      setAllDepartments(filtered);
+    } catch (error) {
+      console.error('Failed to fetch departments:', error);
     }
   };
 
@@ -74,12 +103,36 @@ const RegistrationRequests = () => {
     setIsDetailsModalOpen(true);
   };
 
-  const filteredRequests = requests.filter(
-    (req) =>
-      req.firstName.toLowerCase().includes(search.toLowerCase()) ||
-      req.lastName.toLowerCase().includes(search.toLowerCase()) ||
-      req.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredRequests = requests.filter((req: any) => {
+    // 1. Status Filter
+    if (statusFilter !== 'ALL' && req.status !== statusFilter) {
+      return false;
+    }
+
+    // 2. Department Filter
+    if (selectedDepartment && req.department?.name !== selectedDepartment) {
+      return false;
+    }
+
+    // 3. Search Query Filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const fullName = `${req.firstName} ${req.lastName}`.toLowerCase();
+      const email = (req.email || '').toLowerCase();
+      const reqId = String(req.id).toLowerCase();
+
+      const matchesSearch =
+        fullName.includes(query) ||
+        email.includes(query) ||
+        reqId.includes(query);
+
+      if (!matchesSearch) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   return (
     <div className="section-gap">
@@ -89,29 +142,58 @@ const RegistrationRequests = () => {
       <PageHeader title={t('registration.title')} subtitle={t('registration.subtitle')} />
 
       <Card noPadding className="border-l-0">
-        <FilterBar
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder={t('registration.searchPlaceholder')}
-        >
-          <Badge variant="neutral" className="cursor-pointer">
-            {t('common.all')} ({requests.length})
-          </Badge>
-          <Badge variant="warning" className="cursor-pointer">
-            {t('common.pending')} ({requests.filter((r) => r.status === 'PENDING').length})
-          </Badge>
-          <Badge variant="success" className="cursor-pointer">
-            {t('common.approved')} ({requests.filter((r) => r.status === 'APPROVED').length})
-          </Badge>
-          <Badge variant="danger" className="cursor-pointer">
-            {t('common.rejected')} ({requests.filter((r) => r.status === 'REJECTED').length})
-          </Badge>
+        <FilterBar showSearch={false}>
+          <span onClick={() => setStatusFilter('ALL')}>
+            <Badge variant={statusFilter === 'ALL' ? 'primary' : 'neutral'} className="cursor-pointer">
+              {t('common.all')} ({requests.length})
+            </Badge>
+          </span>
+          <span onClick={() => setStatusFilter('PENDING')}>
+            <Badge variant={statusFilter === 'PENDING' ? 'primary' : 'warning'} className="cursor-pointer">
+              {t('common.pending')} ({requests.filter((r: any) => r.status === 'PENDING').length})
+            </Badge>
+          </span>
+          <span onClick={() => setStatusFilter('APPROVED')}>
+            <Badge variant={statusFilter === 'APPROVED' ? 'primary' : 'success'} className="cursor-pointer">
+              {t('common.approved')} ({requests.filter((r: any) => r.status === 'APPROVED').length})
+            </Badge>
+          </span>
+          <span onClick={() => setStatusFilter('REJECTED')}>
+            <Badge variant={statusFilter === 'REJECTED' ? 'primary' : 'danger'} className="cursor-pointer">
+              {t('common.rejected')} ({requests.filter((r: any) => r.status === 'REJECTED').length})
+            </Badge>
+          </span>
         </FilterBar>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-6 py-4 border-b border-brand-border bg-surface-subtle/30">
+          <div className="relative">
+            <Search size={16} className="absolute right-3 rtl:right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('البحث بالاسم أو البريد الإلكتروني أو رقم الطلب...')}
+              className="w-full pr-10 rtl:pr-10 pl-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500 dark:bg-slate-800 dark:border-slate-700"
+            />
+          </div>
+          <select
+            value={selectedDepartment}
+            onChange={(e) => setSelectedDepartment(e.target.value)}
+            className="px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500 dark:bg-slate-800 dark:border-slate-700 w-full"
+          >
+            <option value="">{t('كل الأقسام')}</option>
+            {allDepartments.map((dept: any) => (
+              <option key={dept.id} value={dept.name}>
+                {dept.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="min-h-[400px]">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-3">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-brand-brand-green-dark/20 border-t-brand-brand-green-dark"></div>
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-brand-green-dark/20 border-t-brand-green-dark"></div>
               <p className="text-sm text-brand-text-muted font-medium">{t('common.loading')}</p>
             </div>
           ) : filteredRequests.length === 0 ? (

@@ -158,7 +158,6 @@ const DoctorsList = () => {
 
   const handleEdit = (doctor) => {
     setSelectedDoctor(doctor);
-    setIsEditModalOpen(true);
   };
 
   return (
@@ -196,7 +195,7 @@ const DoctorsList = () => {
                   stat.color === 'navy'
                     ? 'bg-brand-navy-50 text-brand-navy-500 group-hover:bg-brand-navy-500 group-hover:text-white'
                     : stat.color === 'green'
-                      ? 'bg-brand-primary-50 text-brand-brand-green-dark group-hover:bg-brand-brand-green-dark group-hover:text-white'
+                      ? 'bg-brand-primary-50 text-brand-green-dark group-hover:bg-brand-green-dark group-hover:text-white'
                       : 'bg-brand-accent-yellow/10 text-brand-accent-yellow group-hover:bg-brand-accent-yellow group-hover:text-white'
                 }`}
               >
@@ -244,7 +243,7 @@ const DoctorsList = () => {
         <div className="min-h-[400px]">
                     {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
-              <Loader2 className="animate-spin text-brand-brand-green-dark" size={40} />
+              <Loader2 className="animate-spin text-brand-green-dark" size={40} />
               <p className="label-stat">{t('doctors.loading')}</p>
             </div>
           ) : !Array.isArray(doctors) || doctors.length === 0 ? (
@@ -273,7 +272,7 @@ const DoctorsList = () => {
               >
                 {(Array.isArray(doctors) ? doctors : []).map((doctor) => (
                   <TableRow key={doctor.id}>
-                    <TableCell className="font-black text-brand-navy-500 dark:text-brand-brand-green tracking-widest text-xs uppercase hidden md:table-cell">
+                    <TableCell className="font-black text-brand-navy-500 dark:text-brand-green tracking-widest text-xs uppercase hidden md:table-cell">
                       {doctor.doctorId}
                     </TableCell>
                     <TableCell>
@@ -284,7 +283,7 @@ const DoctorsList = () => {
                           size="table"
                           className="shadow-inner ring-1 ring-brand-primary-100/50 dark:ring-brand-primary-900/20 group-hover:scale-110 transition-transform"
                         />
-                        <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-brand-green-dark transition-colors">
+                        <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-green-dark transition-colors">
                           {doctor.firstName} {doctor.lastName}
                         </span>
                       </div>
@@ -293,7 +292,7 @@ const DoctorsList = () => {
                       {doctor.user?.email}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <span className="inline-flex items-center px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-brand-green-dark border border-brand-primary-100/50 dark:border-brand-primary-900/20">
+                      <span className="inline-flex items-center px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-green-dark border border-brand-primary-100/50 dark:border-brand-primary-900/20">
                         {doctor.specialty || t('students.notProvided')}
                       </span>
                     </TableCell>
@@ -381,23 +380,19 @@ const DoctorsList = () => {
         }}
       />
 
-      {isEditModalOpen && (
-        <EditDoctorModal
-          isOpen={isEditModalOpen}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setSelectedDoctor(null);
-          }}
-          doctor={selectedDoctor}
-          onSuccess={() => {
-            setIsEditModalOpen(false);
-            setSelectedDoctor(null);
-            showToast(t('doctors.updateSuccess'), 'success');
-            fetchDoctors();
-            fetchStats();
-          }}
-        />
-      )}
+      <EditDoctorModal
+        isOpen={!!selectedDoctor}
+        onClose={() => {
+          setSelectedDoctor(null);
+        }}
+        doctor={selectedDoctor}
+        onSuccess={() => {
+          setSelectedDoctor(null);
+          showToast(t('doctors.updateSuccess'), 'success');
+          fetchDoctors();
+          fetchStats();
+        }}
+      />
 
       <ResetPasswordModal
         isOpen={!!resetPasswordDoctor}

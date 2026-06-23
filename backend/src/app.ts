@@ -1,13 +1,13 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import * as Sentry from '@sentry/node';
-// @ts-ignore
+// @ts-ignore - Missing type definitions (installing @types causes peer dep conflicts)
 import cors from 'cors';
-// @ts-ignore
+// @ts-ignore - Missing type definitions (installing @types causes peer dep conflicts)
 import helmet from 'helmet';
-// @ts-ignore
+// @ts-ignore - Missing type definitions (installing @types causes peer dep conflicts)
 import rateLimit from 'express-rate-limit';
 import path from 'path';
-// @ts-ignore
+// @ts-ignore - Missing type definitions (installing @types causes peer dep conflicts)
 import cookieParser from 'cookie-parser';
 import prisma from './utils/prismaClient';
 
@@ -16,53 +16,32 @@ import globalErrorHandler from './middleware/error.middleware';
 import { NotFoundError } from './utils/appError';
 
 // Route imports
-// @ts-ignore
 import authRoutes from './routes/auth.routes';
-// @ts-ignore
 import studentsRoutes from './routes/students.routes';
-// @ts-ignore
 import coursesRoutes from './routes/courses.routes';
-// @ts-ignore
 import doctorsRoutes from './routes/doctors.routes';
-// @ts-ignore
 import schedulesRoutes from './routes/schedules.routes';
-// @ts-ignore
 import examsRoutes from './routes/exams.routes';
-// @ts-ignore
 import paymentsRoutes from './routes/payments.routes';
-// @ts-ignore
 import dashboardRoutes from './routes/dashboard.routes';
-// @ts-ignore
 import enrollmentRoutes from './routes/enrollment.routes';
-// @ts-ignore
 import transcriptRoutes from './routes/transcript.routes';
-// @ts-ignore
 import collegeRoutes from './routes/college.routes';
-// @ts-ignore
 import departmentRoutes from './routes/department.routes';
-// @ts-ignore
 import quizRoutes from './routes/quiz.routes';
-// @ts-ignore
 import taskRoutes from './routes/task.routes';
 import examSessionRoutes from './routes/examSession.routes';
-// @ts-ignore
 import usersRoutes from './routes/users.routes';
-// @ts-ignore
 import notificationRoutes from './routes/notification.routes';
-// @ts-ignore
 import analyticsRoutes from './routes/analytics.routes';
-// @ts-ignore
 import attendanceRoutes from './routes/attendance.routes';
-// @ts-ignore
 import timetableRoutes from './routes/timetable.routes';
-// @ts-ignore
 import searchRoutes from './routes/search.routes';
-// @ts-ignore
 import teachingAssistantsRoutes from './routes/teaching-assistants.routes';
-// @ts-ignore
 import { protect } from './middleware/auth.middleware';
+import { getUniversityStats } from './controllers/analytics.controller';
 
-// @ts-ignore
+// @ts-ignore - swagger-ui-express types may be incomplete
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './utils/swagger';
 
@@ -212,6 +191,7 @@ app.use('/api/exam-sessions', examSessionRoutes);
 app.use('/api/users', protect, usersRoutes);
 app.use('/api/notifications', protect, notificationRoutes);
 app.use('/api/analytics', protect, analyticsRoutes);
+app.get('/api/university/stats', protect, getUniversityStats);
 app.use('/api/attendance', protect, attendanceRoutes);
 app.use('/api/timetable', protect, timetableRoutes);
 app.use('/api/search', protect, searchRoutes);

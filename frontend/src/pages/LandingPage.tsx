@@ -23,6 +23,10 @@ import {
   BarChart2,
   PenTool,
   Zap,
+  Layers,
+  Award,
+  LayoutGrid,
+  UserCheck,
 } from 'lucide-react';
 
 // Assets
@@ -56,6 +60,98 @@ const ImageWithFallback = ({ src, alt, className, ...props }) => {
   );
 };
 
+interface AnimatedCounterCardProps {
+  icon: React.ReactNode;
+  end: number;
+  prefix?: string;
+  label: string;
+  duration?: number;
+}
+
+const AnimatedCounterCard: React.FC<AnimatedCounterCardProps> = ({
+  icon,
+  end,
+  prefix = '',
+  label,
+  duration = 2000,
+}) => {
+  const [count, setCount] = useState(0);
+  const [hasStarted, setHasStarted] = useState(false);
+  const cardRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          setHasStarted(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    let startTime: number | null = null;
+    let animationFrameId: number;
+
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const t = Math.min(progress / duration, 1);
+
+      // easeOut timing: t * (2 - t)
+      const easeOut = t * (2 - t);
+      setCount(Math.floor(end * easeOut));
+
+      if (t < 1) {
+        animationFrameId = requestAnimationFrame(animate);
+      } else {
+        setCount(end);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [hasStarted, end, duration]);
+
+  // Convert count to Arabic-Indic numerals
+  const formattedCount = count.toLocaleString('ar-EG', { useGrouping: false });
+
+  return (
+    <div
+      ref={cardRef}
+      className="bg-white p-6 md:p-8 rounded-[12px] border border-brand-border flex flex-col items-center text-center shadow-sm hover:-translate-y-1 hover:shadow-soft transition-all duration-300 min-h-[160px] w-full"
+    >
+      <div className="w-14 h-14 rounded-full bg-brand-green/10 text-brand-green flex items-center justify-center mb-4 transition-all duration-300">
+        {React.cloneElement(icon as React.ReactElement, {
+          size: 36,
+          strokeWidth: 1.5,
+          className: "text-brand-green",
+          style: { filter: 'drop-shadow(0px 2px 4px rgba(22, 163, 74, 0.3))' }
+        })}
+      </div>
+      <h4 className="text-3xl md:text-4xl font-black text-brand-navy-500 mb-2 flex items-center justify-center gap-0.5" dir="ltr">
+        {prefix && <span className="text-brand-green font-black">{prefix}</span>}
+        <span className="font-black">{formattedCount}</span>
+      </h4>
+      <p className="text-sm font-bold text-brand-text-secondary">
+        {label}
+      </p>
+    </div>
+  );
+};
+
 const LandingPage = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -68,7 +164,7 @@ const LandingPage = () => {
       setIsScrolled(window.scrollY > 80);
     };
     window.addEventListener('scroll', handleScroll);
-    
+
     const sections = document.querySelectorAll('section[id], footer[id]');
     const observer = new IntersectionObserver(
       (entries) => {
@@ -81,10 +177,10 @@ const LandingPage = () => {
       { threshold: 0.1, rootMargin: '-20% 0px -60% 0px' }
     );
     sections.forEach((section) => observer.observe(section));
-    
+
     // Simulate data loading
     setIsLoading(false);
-    
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
       sections.forEach((section) => observer.unobserve(section));
@@ -107,25 +203,27 @@ const LandingPage = () => {
   };
 
   const stats = [
-    { 
-      label: 'طالب مسجل', 
-      value: <CountUp end={statsData.totalStudents} prefix="+" />,
-      icon: <Users size={24} strokeWidth={2} /> 
+    {
+      icon: <UserCheck />,
+      end: 3000,
+      prefix: '+',
+      label: 'طالب',
     },
-    { 
-      label: 'كلية أكاديمية', 
-      value: <CountUp end={statsData.totalColleges} />,
-      icon: <Building2 size={24} strokeWidth={2} /> 
+    {
+      icon: <LayoutGrid />,
+      end: 4,
+      label: 'كليات',
     },
-    { 
-      label: 'عضو هيئة تدريس', 
-      value: <CountUp end={statsData.totalFaculty} prefix="+" />,
-      icon: <GraduationCap size={24} strokeWidth={2} /> 
+    {
+      icon: <Award />,
+      end: 5000,
+      prefix: '+',
+      label: 'خريج',
     },
-    { 
-      label: 'تخصص دراسي', 
-      value: <CountUp end={statsData.totalSpecializations} prefix="+" />,
-      icon: <BookOpen size={24} strokeWidth={2} /> 
+    {
+      icon: <Layers />,
+      end: 12,
+      label: 'تخصصاً',
     },
   ];
 
@@ -159,11 +257,10 @@ const LandingPage = () => {
     >
       {/* 1. Navbar */}
       <nav
-        className={`fixed top-0 w-full z-[100] transition-all duration-500 ${
-          isScrolled
-            ? 'bg-white/95 backdrop-blur-md shadow-[0_2px_20px_rgba(0,0,0,0.08)] py-3'
-            : 'bg-transparent py-6'
-        }`}
+        className={`fixed top-0 w-full z-[100] transition-all duration-500 ${isScrolled
+          ? 'bg-white/95 backdrop-blur-md shadow-[0_2px_20px_rgba(0,0,0,0.08)] py-3'
+          : 'bg-transparent py-6'
+          }`}
       >
         <div className="container mx-auto px-6 flex items-center justify-between">
           {/* Logo and Video (Right in RTL) */}
@@ -192,20 +289,20 @@ const LandingPage = () => {
                 const sectionId = link.href.replace('#', '');
                 const isActive = activeSection === sectionId;
                 return (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`text-sm font-bold tracking-tight transition-all relative ${
-                      isActive 
-                        ? 'text-brand-green after:absolute after:-bottom-2 after:left-0 after:w-full after:h-0.5 after:bg-brand-green after:rounded-full' 
+                  <li key={link.name}>
+                    <a
+                      href={link.href}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`text-sm font-bold tracking-tight transition-all relative ${isActive
+                        ? 'text-brand-green after:absolute after:-bottom-2 after:left-0 after:w-full after:h-0.5 after:bg-brand-green after:rounded-full'
                         : isScrolled ? 'text-brand-navy-500 hover:text-brand-green' : 'text-white hover:text-brand-green'
-                    }`}
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              )})}
+                        }`}
+                    >
+                      {link.name}
+                    </a>
+                  </li>
+                )
+              })}
             </ul>
             <Link
               to="/login"
@@ -218,11 +315,10 @@ const LandingPage = () => {
           {/* Mobile Hamburger */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className={`lg:hidden p-2 z-[101] relative rounded-xl transition-colors ${
-              isScrolled
-                ? 'text-brand-navy-500 hover:bg-brand-primary-50'
-                : 'text-white hover:bg-white/10'
-            }`}
+            className={`lg:hidden p-2 z-[101] relative rounded-xl transition-colors ${isScrolled
+              ? 'text-brand-navy-500 hover:bg-brand-primary-50'
+              : 'text-white hover:bg-white/10'
+              }`}
           >
             {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
           </button>
@@ -230,7 +326,7 @@ const LandingPage = () => {
 
         {/* Mobile Menu Backdrop (clicks outside) */}
         {isMobileMenuOpen && (
-          <div 
+          <div
             className="fixed inset-0 z-[98] bg-brand-navy-500/20 backdrop-blur-sm lg:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
             aria-hidden="true"
@@ -239,26 +335,25 @@ const LandingPage = () => {
 
         {/* Mobile Dropdown Menu */}
         <div
-          className={`absolute top-full left-0 w-full z-[99] bg-white shadow-2xl transition-all duration-300 lg:hidden origin-top ${
-            isMobileMenuOpen ? 'opacity-100 scale-y-100 visible' : 'opacity-0 scale-y-0 invisible pointer-events-none'
-          }`}
+          className={`absolute top-full left-0 w-full z-[99] bg-white shadow-2xl transition-all duration-300 lg:hidden origin-top ${isMobileMenuOpen ? 'opacity-100 scale-y-100 visible' : 'opacity-0 scale-y-0 invisible pointer-events-none'
+            }`}
         >
           <div className="flex flex-col py-4 px-6 gap-2 border-t border-brand-border/50">
             {navLinks.map((link) => {
               const sectionId = link.href.replace('#', '');
               const isActive = activeSection === sectionId;
               return (
-              <a
-                key={link.name}
-                href={link.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`text-lg font-bold py-3 border-b border-brand-border/50 last:border-none ${
-                  isActive ? 'text-brand-green' : 'text-brand-navy-500 hover:text-brand-green'
-                }`}
-              >
-                {link.name}
-              </a>
-            )})}
+                <a
+                  key={link.name}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`text-lg font-bold py-3 border-b border-brand-border/50 last:border-none ${isActive ? 'text-brand-green' : 'text-brand-navy-500 hover:text-brand-green'
+                    }`}
+                >
+                  {link.name}
+                </a>
+              )
+            })}
 
             <Link
               to="/login"
@@ -272,7 +367,7 @@ const LandingPage = () => {
       </nav>
 
       {/* 2. Hero Section */}
-      <section id="home" className="relative z-30 pt-40 pb-48 lg:pt-48 lg:pb-56 flex items-center justify-center hero-section min-h-[85vh]">
+      <section id="home" className="relative pt-40 pb-16 md:pb-20 lg:pt-48 flex items-center justify-center hero-section min-h-[85vh]">
         {/* Background Image */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <ImageWithFallback
@@ -322,41 +417,30 @@ const LandingPage = () => {
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-48 left-1/2 -translate-x-1/2 animate-bounce opacity-50">
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 animate-bounce opacity-50">
           <ChevronDown className="text-white" size={32} />
         </div>
+      </section>
 
-        {/* Stats Bar (Overlapping) */}
-        <div className="absolute bottom-0 left-0 w-full translate-y-1/2 z-20">
-          <div className="container mx-auto px-6">
-            <div className="stats-cards-row grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-              {stats.map((stat, i) => (
-                <div
-                  key={i}
-                  className="bg-white/95 backdrop-blur-md p-8 md:p-10 rounded-[2rem] shadow-2xl shadow-brand-navy-500/10 border border-brand-border flex flex-col items-center text-center group hover:-translate-y-2 transition-all duration-500 ring-1 ring-brand-navy-500/5 min-h-[140px]"
-                >
-                  <div className="w-12 h-12 rounded-2xl bg-brand-primary-50 text-brand-green flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand-green group-hover:text-white transition-all duration-500 shadow-inner">
-                    {stat.icon}
-                  </div>
-                  {statsLoading ? (
-                    <div className="h-8 w-20 rounded-lg skeleton mb-1 mx-auto" />
-                  ) : (
-                    <h4 className="text-2xl md:text-3xl font-black text-brand-navy-500 mb-1">
-                      {stat.value}
-                    </h4>
-                  )}
-                  <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-brand-text-muted">
-                    {stat.label}
-                  </p>
-                </div>
-              ))}
-            </div>
+      {/* Stats Section */}
+      <section id="stats" className="bg-brand-bg-page pt-0 pb-0 relative z-10">
+        <div className="container mx-auto px-6">
+          <div className="stats-cards-row -mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 relative z-20">
+            {stats.map((stat, i) => (
+              <AnimatedCounterCard
+                key={i}
+                icon={stat.icon}
+                end={stat.end}
+                prefix={stat.prefix}
+                label={stat.label}
+              />
+            ))}
           </div>
         </div>
       </section>
 
       {/* 3. About Section */}
-      <section id="about" className="pt-32 pb-24 lg:pt-40 lg:pb-32 bg-brand-bg-page relative overflow-hidden">
+      <section id="about" className="pt-20 pb-16 lg:pb-20 bg-brand-bg-page relative overflow-hidden">
         <div className="container mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             {/* Image (Left) */}
@@ -426,10 +510,10 @@ const LandingPage = () => {
       <CollegesSection isLoading={isLoading} />
 
       {/* 5. Why Choose Us Section */}
-      <section id="specialties" className="py-24 md:py-32 bg-brand-navy-500 relative overflow-hidden">
+      <section id="specialties" className="py-16 md:py-20 bg-brand-navy-500 relative overflow-hidden">
         {/* Abstract shapes */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-brand-green/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-brand-brand-green-dark/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-brand-green-dark/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
 
         <div className="container mx-auto px-6 relative z-10">
           <div className="grid lg:grid-cols-2 gap-20 items-center">
@@ -447,7 +531,7 @@ const LandingPage = () => {
               <div className="grid sm:grid-cols-2 gap-8">
                 {features.map((feature, i) => (
                   <div key={i} className="space-y-4 group">
-                    <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 text-brand-green flex items-center justify-center group-hover:bg-brand-green group-hover:text-brand-navy-500 transition-all duration-500">
+                    <div className="w-14 h-14 rounded-xl bg-brand-green/10 text-brand-green flex items-center justify-center group-hover:bg-brand-green group-hover:text-white transition-all duration-500">
                       {feature.icon}
                     </div>
                     <h4 className="text-lg font-black text-white">{feature.title}</h4>
@@ -474,7 +558,7 @@ const LandingPage = () => {
       </section>
 
       {/* 6. Campus Gallery */}
-      <section className="py-24 lg:py-32 bg-brand-bg-page">
+      <section className="py-16 lg:py-20 bg-brand-bg-page">
         <div className="container mx-auto px-6 space-y-16">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="space-y-4 text-right">

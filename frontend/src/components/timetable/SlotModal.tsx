@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { BookOpen, User, MapPin, Plus } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
-import type { Course, Doctor, SlotDialog, SlotEntry } from '../../types/timetable.types';
+import type { Course, Doctor, SlotDialog, SlotEntry, TeachingAssistant } from '../../types/timetable.types';
 
 type SessionType = 'LECTURE' | 'LAB' | 'SEMINAR';
 
@@ -12,6 +12,7 @@ export interface SlotFormValues {
   doctorName: string;
   room: string;
   sessionType: SessionType;
+  assistantName?: string;
 }
 
 interface SlotModalProps {
@@ -21,6 +22,7 @@ interface SlotModalProps {
   form: SlotFormValues;
   courses: Course[];
   doctors: Doctor[];
+  teachingAssistants: TeachingAssistant[];
   loadingCourses: boolean;
   collegeId: number | string | null | undefined;
   isRTL: boolean;
@@ -46,6 +48,7 @@ export default function SlotModal({
   form,
   courses,
   doctors,
+  teachingAssistants,
   loadingCourses,
   collegeId,
   isRTL,
@@ -101,7 +104,7 @@ export default function SlotModal({
             </option>
             {courses.map((c) => (
               <option key={c.id} value={c.name}>
-                {c.name} — {c.courseCode}
+                {isRTL ? (c.nameAr ?? c.name) : c.name} — {c.courseCode}
               </option>
             ))}
           </select>
@@ -149,6 +152,36 @@ export default function SlotModal({
                 })}
               </select>
             )}
+          </div>
+        </div>
+
+        {/* Teaching Assistant */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest ml-1 flex items-center gap-1">
+            <User size={11} />
+            {t('timetables.assistant', 'Teaching Assistant')} ({t('common.optional', 'Optional')})
+          </label>
+          <div className="relative">
+            <User
+              size={16}
+              className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none`}
+            />
+            <select
+              className={`${FIELD_CLASS} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
+              value={form.assistantName || ''}
+              onChange={(e) => onChange({ ...form, assistantName: e.target.value })}
+              aria-label={t('timetables.selectAssistant', 'Select Assistant')}
+            >
+              <option value="">{t('timetables.selectAssistant', 'Select Assistant')}</option>
+              {teachingAssistants?.map((ta) => {
+                const taName = ta.user?.email?.split('@')[0] || ta.specialization || '';
+                return (
+                  <option key={ta.id} value={taName}>
+                    {taName}
+                  </option>
+                );
+              })}
+            </select>
           </div>
         </div>
 

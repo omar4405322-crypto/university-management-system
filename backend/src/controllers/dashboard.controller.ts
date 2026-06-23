@@ -396,7 +396,7 @@ export const getDoctorStats = catchAsync(
       return next(new NotFoundError('Doctor profile not found'));
     }
 
-    const [myCourses, todaySchedule, upcomingExams] = await Promise.all([
+    const [myCourses, todaySchedule, upcomingExams, activeExamSessions, pendingGrading] = await Promise.all([
       prisma.course.findMany({
         where: { doctorId: doctor.id },
         select: { courseCode: true, name: true, credits: true, maxStudents: true },
@@ -417,6 +417,15 @@ export const getDoctorStats = catchAsync(
         orderBy: { date: 'asc' },
         include: { course: { select: { name: true } } },
       }),
+      prisma.examSession.count({
+        where: { doctorId: doctor.id, status: 'ACTIVE' }
+      }),
+      prisma.examSubmission.count({
+        where: {
+          examSession: { doctorId: doctor.id },
+          status: 'SUBMITTED'
+        }
+      })
     ]);
 
     res.json({
@@ -441,6 +450,8 @@ export const getDoctorStats = catchAsync(
           date: e.date,
           room: e.room,
         })),
+        activeExamSessions,
+        pendingGrading,
       },
     });
   }

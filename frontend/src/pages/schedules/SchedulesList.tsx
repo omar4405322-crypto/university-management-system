@@ -19,6 +19,7 @@ import schedulesService from '../../services/schedules.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import coursesService from '../../services/courses.service';
+import teachingAssistantsService from '../../services/teachingAssistants.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
@@ -40,6 +41,7 @@ const SchedulesList = () => {
   const [colleges, setColleges] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [teachingAssistants, setTeachingAssistants] = useState([]);
 
   // Filters
   const [selectedCollege, setSelectedCollege] = useState('');
@@ -54,7 +56,7 @@ const SchedulesList = () => {
   const { showToast } = useToast();
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-    const canManage = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
+    const canManage = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'].includes(user?.role);
 
   useEffect(() => {
     const collegeId = searchParams.get('collegeId');
@@ -89,9 +91,10 @@ const SchedulesList = () => {
 
   const fetchInitialData = async () => {
     try {
-      const [collegesRes, coursesRes] = await Promise.all([
+      const [collegesRes, coursesRes, taRes] = await Promise.all([
         collegeService.getColleges(),
         coursesService.getCourses(),
+        teachingAssistantsService.getTeachingAssistants()
       ]);
 
       if (collegesRes.success) {
@@ -111,6 +114,15 @@ const SchedulesList = () => {
             coursesRes.data?.data ||
             [];
         setCourses(arr);
+      }
+      if (taRes.success) {
+        const arr = Array.isArray(taRes.data)
+          ? taRes.data
+          : taRes.data?.data?.teachingAssistants ||
+            taRes.data?.teachingAssistants ||
+            taRes.data?.data ||
+            [];
+        setTeachingAssistants(arr);
       }
     } catch (error: any) {
       logger.error('Error fetching initial data:', error);
@@ -291,7 +303,7 @@ const SchedulesList = () => {
         <div className="min-h-[400px]">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
-              <Loader2 className="animate-spin text-brand-brand-green-dark" size={40} />
+              <Loader2 className="animate-spin text-brand-green-dark" size={40} />
               <p className="label-stat">{t('common.loading', 'Loading schedules...')}</p>
             </div>
           ) : error ? (
@@ -306,7 +318,7 @@ const SchedulesList = () => {
               <button
                 type="button"
                 onClick={fetchSchedules}
-                className="px-6 py-3 rounded-2xl bg-brand-brand-green-dark text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+                className="px-6 py-3 rounded-2xl bg-brand-green-dark text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
               >
                 {t('common.retry', 'Retry')}
               </button>
@@ -332,7 +344,7 @@ const SchedulesList = () => {
                     setEditingSchedule(null);
                     setIsModalOpen(true);
                   }}
-                  className="mt-6 px-6 py-3 rounded-2xl bg-brand-brand-green-dark text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+                  className="mt-6 px-6 py-3 rounded-2xl bg-brand-green-dark text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
                 >
                   {t('SCHEDULES.CREATE', 'Create Schedule')}
                 </button>
@@ -352,14 +364,14 @@ const SchedulesList = () => {
                 <TableRow key={schedule.id}>
                   <TableCell>
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-brand-green-dark font-black shadow-inner">
+                      <div className="w-10 h-10 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-green-dark font-black shadow-inner">
                         <BookOpen size={20} />
                       </div>
                       <div className="flex flex-col">
                         <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight">
                           {schedule.course.name}
                         </span>
-                        <span className="text-[10px] font-black uppercase text-brand-brand-green-dark tracking-wider">
+                        <span className="text-[10px] font-black uppercase text-brand-green-dark tracking-wider">
                           {schedule.course.courseCode}
                         </span>
                       </div>
@@ -433,6 +445,7 @@ const SchedulesList = () => {
         onClose={() => setIsModalOpen(false)}
         schedule={editingSchedule}
         courses={courses}
+        teachingAssistants={teachingAssistants}
         onSuccess={() => {
           setIsModalOpen(false);
           fetchSchedules();

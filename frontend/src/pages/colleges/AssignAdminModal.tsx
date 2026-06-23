@@ -28,12 +28,14 @@ const AssignAdminModal = ({ isOpen, onClose, collegeId, collegeName, onSuccess }
 	try {
 	  setFetching(true);
 	  const result = await usersService.getUsers({ role: 'COLLEGE_ADMIN' });
+	  console.log('AssignAdminModal available admins API response:', result);
 	  if (result.success) {
-		// Filter admins who don't have an assigned college or filter by preference
-		const availableAdmins = (result.data || []).filter(
-		  admin => !admin.managedCollegeId || admin.managedCollegeId === collegeId
+		// Show ALL college admins — super admin can reassign anyone.
+		// Status label in the dropdown shows current assignment clearly.
+		const allAdmins = (result.data || []).filter(
+		  (admin: any) => admin.role === 'COLLEGE_ADMIN'
 		);
-		setAdmins(availableAdmins);
+		setAdmins(allAdmins);
 	  }
 	} catch (error: any) {
 	  logger.error('Error fetching admins:', error);
@@ -78,7 +80,7 @@ const AssignAdminModal = ({ isOpen, onClose, collegeId, collegeName, onSuccess }
 
 	  {fetching ? (
 		<div className="flex justify-center py-8">
-		  <Loader2 size={32} className="animate-spin text-brand-brand-green-dark" />
+		  <Loader2 size={32} className="animate-spin text-brand-green-dark" />
 		</div>
 	  ) : admins.length === 0 ? (
 		<div className="text-center py-8">
@@ -94,11 +96,19 @@ const AssignAdminModal = ({ isOpen, onClose, collegeId, collegeName, onSuccess }
 			className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm dark:text-white focus:ring-2 focus:ring-blue-500/20 outline-none"
 		  >
 			<option value="">{t('common.select')} {t('colleges.admin')}</option>
-			{admins.map((admin) => (
-			  <option key={admin.id} value={admin.id}>
-				{admin.email} {admin.managedCollege ? `(${admin.managedCollege.name})` : '(Unassigned)'}
-			  </option>
-			))}
+			{admins.map((admin: any) => {
+			  const adminName = admin.name || admin.email.split('@')[0].split('.').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+			  const statusLabel = !admin.managedCollegeId
+			    ? (t('colleges.unassigned') || 'Unassigned')
+			    : Number(admin.managedCollegeId) === Number(collegeId)
+			      ? (t('colleges.thisCollege') || 'This College')
+			      : (admin.managedCollege?.name || 'Assigned');
+			  return (
+				<option key={admin.id} value={admin.id}>
+				  {adminName} — {admin.email} ({statusLabel})
+				</option>
+			  );
+			})}
 		  </select>
 
 		  <div className="flex gap-3 pt-4">

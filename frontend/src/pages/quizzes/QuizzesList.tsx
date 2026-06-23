@@ -20,6 +20,7 @@ import Button from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import QuizSubmissionsModal from './QuizSubmissionsModal';
+import AddQuizQuestionModal from './modals/AddQuizQuestionModal';
 import { useToast } from '../../context/ToastContext';
 
 const QuizzesList = () => {
@@ -33,6 +34,7 @@ const QuizzesList = () => {
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
   const [submissionsQuiz, setSubmissionsQuiz] = useState(null);
+  const [addQuestionQuiz, setAddQuestionQuiz] = useState(null);
 
   const fetchQuizzes = async () => {
     try {
@@ -59,7 +61,7 @@ const QuizzesList = () => {
         title={t('quizzes.title')}
         subtitle={isDoctor ? t('quizzes.subtitleDoctor') : t('quizzes.subtitleStudent')}
         action={
-          isDoctor
+          (isDoctor || user?.role === 'SUPER_ADMIN')
             ? {
                 label: t('quizzes.createQuiz'),
                 onClick: () => navigate('/quizzes/create'),
@@ -73,7 +75,7 @@ const QuizzesList = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {loading ? (
           <div className="col-span-full flex flex-col items-center justify-center py-24 gap-4">
-            <Loader2 className="animate-spin text-brand-brand-green-dark" size={48} />
+            <Loader2 className="animate-spin text-brand-green-dark" size={48} />
             <p className="label-stat">Syncing assessments...</p>
           </div>
         ) : quizzes.length === 0 ? (
@@ -83,7 +85,7 @@ const QuizzesList = () => {
               title={t('quizzes.noQuizzes')}
               subtitle={isDoctor ? t('quizzes.subtitleDoctor') : t('quizzes.subtitleStudent')}
                             action={
-                isDoctor
+                (isDoctor || user?.role === 'SUPER_ADMIN')
                   ? {
                       label: t('quizzes.createQuiz'),
                       onClick: () => navigate('/quizzes/create'),
@@ -108,14 +110,14 @@ const QuizzesList = () => {
                     {quiz.course?.courseCode}
                   </Badge>
                   <div className="flex items-center gap-2 p-2 rounded-xl bg-surface-subtle dark:bg-slate-800/50">
-                    <Clock size={14} className="text-brand-brand-green-dark" />
+                    <Clock size={14} className="text-brand-green-dark" />
                     <span className="text-[10px] font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">
                       {quiz.duration} {t('quizzes.minutes')}
                     </span>
                   </div>
                 </div>
 
-                <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tight mb-3 group-hover:text-brand-brand-green-dark transition-colors">
+                <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tight mb-3 group-hover:text-brand-green-dark transition-colors">
                   {quiz.title}
                 </h3>
                 <p className="text-sm font-bold text-brand-text-secondary mb-8 line-clamp-2 leading-relaxed opacity-80">
@@ -124,7 +126,7 @@ const QuizzesList = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface-subtle dark:bg-slate-800/50">
-                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center text-brand-brand-green-dark">
+                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center text-brand-green-dark">
                       <HelpCircle size={16} />
                     </div>
                     <div>
@@ -152,24 +154,34 @@ const QuizzesList = () => {
                 </div>
               </div>
 
-              <div className="px-8 py-5 bg-surface-subtle dark:bg-slate-800/30 border-t border-brand-border dark:border-brand-border mt-auto">
+              <div className="px-8 py-5 bg-surface-subtle dark:bg-slate-800/30 border-t border-brand-border dark:border-brand-border mt-auto flex gap-3">
                 {isStudent ? (
                   <Button
                     onClick={() => navigate(`/quizzes/${quiz.id}/take`)}
-                    className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 shadow-lg shadow-brand-brand-green-dark/20"
+                    className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 shadow-lg shadow-brand-green-dark/20"
                   >
                     <FileText size={16} />
                     {t('quizzes.takeQuiz')}
                   </Button>
                 ) : (
-                  <Button
-                    variant="outline"
-                    className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 border-slate-200"
-                    onClick={() => setSubmissionsQuiz(quiz)}
-                  >
-                    <CheckCircle size={16} />
-                    {t('quizzes.viewSubmissions')}
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      className="flex-1 text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 border-slate-200"
+                      onClick={() => setAddQuestionQuiz(quiz)}
+                    >
+                      <HelpCircle size={16} />
+                      Add Question
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 border-slate-200"
+                      onClick={() => setSubmissionsQuiz(quiz)}
+                    >
+                      <CheckCircle size={16} />
+                      {t('quizzes.viewSubmissions')}
+                    </Button>
+                  </>
                 )}
               </div>
             </Card>
@@ -181,6 +193,13 @@ const QuizzesList = () => {
         isOpen={Boolean(submissionsQuiz)}
         onClose={() => setSubmissionsQuiz(null)}
         quiz={submissionsQuiz}
+      />
+
+      <AddQuizQuestionModal
+        quizId={addQuestionQuiz?.id}
+        isOpen={Boolean(addQuestionQuiz)}
+        onClose={() => setAddQuestionQuiz(null)}
+        onQuestionAdded={fetchQuizzes}
       />
     </div>
   );

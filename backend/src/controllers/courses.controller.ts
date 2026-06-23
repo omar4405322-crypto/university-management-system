@@ -17,6 +17,7 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
     limit = '10',
     sortBy = 'createdAt',
     sortOrder = 'desc',
+    collegeId,
     departmentId,
     year,
     semester,
@@ -39,7 +40,6 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
 
   const where: any = {
     ...scopeWhere,
-    ...(departmentId && { departmentId: parseInt(departmentId as string) }),
     ...(year && { year: parseInt(year as string) }),
     ...(semester && { semester: parseInt(semester as string) }),
     ...(search && {
@@ -50,11 +50,21 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
     }),
   };
 
+  if (collegeId) {
+    where.department = {
+      collegeId: parseInt(collegeId as string, 10)
+    };
+  }
+
+  if (departmentId) {
+    where.departmentId = parseInt(departmentId as string, 10);
+  }
+
   const [courses, total] = await Promise.all([
     prisma.course.findMany({
       where,
       include: {
-        department: { select: { name: true } },
+        department: { select: { name: true, nameAr: true, collegeId: true } },
         doctor: { select: { firstName: true, lastName: true } },
         _count: { select: { enrollments: true } },
       },
@@ -195,6 +205,7 @@ export const createCourse = catchAsync(async (req: Request, res: Response, next:
   const newCourse = await prisma.course.create({
     data: {
       ...courseData,
+      nameAr: courseData.nameAr || null,
       credits: parseInt(courseData.credits as string),
       departmentId: parseInt(courseData.departmentId as string),
       doctorId: courseData.doctorId ? parseInt(courseData.doctorId as string) : undefined,
@@ -243,6 +254,7 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
     where: { id: parseInt(id as string) },
     data: {
       ...updateData,
+      nameAr: updateData.nameAr !== undefined ? updateData.nameAr : undefined,
       credits:
         updateData.credits !== undefined ? parseInt(updateData.credits as string) : undefined,
       departmentId:
@@ -250,7 +262,11 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
           ? parseInt(updateData.departmentId as string)
           : undefined,
       doctorId:
-        updateData.doctorId !== undefined ? parseInt(updateData.doctorId as string) : undefined,
+        updateData.doctorId === null
+          ? null
+          : updateData.doctorId !== undefined && updateData.doctorId !== ''
+            ? parseInt(updateData.doctorId as string)
+            : undefined,
       maxStudents:
         updateData.maxStudents !== undefined
           ? parseInt(updateData.maxStudents as string)

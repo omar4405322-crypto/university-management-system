@@ -208,13 +208,13 @@ const GlobalSearch = () => {
                           key={item.id}
                           onClick={() => go(item.path)}
                           onMouseEnter={() => setSelectedIndex(globalIdx)}
-                          className={`w-full text-start px-3 py-3 rounded-2xl flex items-center justify-between transition-colors ${isSelected ? 'bg-brand-brand-green-dark/10 text-brand-primary-600' : 'hover:bg-surface-subtle text-brand-text-primary dark:text-brand-text-main'}`}
+                          className={`w-full text-start px-3 py-3 rounded-2xl flex items-center justify-between transition-colors ${isSelected ? 'bg-brand-green-dark/10 text-brand-primary-600' : 'hover:bg-surface-subtle text-brand-text-primary dark:text-brand-text-main'}`}
                         >
                           <div className="flex flex-col gap-0.5">
                             <span className={`text-sm font-bold ${isSelected ? 'text-brand-primary-600' : ''}`}>{item.title}</span>
                             {item.meta && <span className="text-xs text-brand-text-muted font-medium">{item.meta}</span>}
                           </div>
-                          {isSelected && <span className="text-xs font-bold text-brand-brand-green-dark opacity-60 px-2 py-1 bg-brand-brand-green-dark/10 rounded-lg">Enter ↵</span>}
+                          {isSelected && <span className="text-xs font-bold text-brand-green-dark opacity-60 px-2 py-1 bg-brand-green-dark/10 rounded-lg">Enter ↵</span>}
                         </button>
                       );
                     })}
@@ -242,9 +242,9 @@ const GlobalSearch = () => {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="hidden md:flex items-center justify-between w-64 lg:w-80 h-10 px-4 rounded-xl border border-brand-border bg-surface-subtle hover:bg-brand-bg-card hover:border-brand-brand-green-dark/50 transition-all group"
+        className="hidden md:flex items-center justify-between w-64 lg:w-80 h-10 px-4 rounded-xl border border-brand-border bg-surface-subtle hover:bg-brand-bg-card hover:border-brand-green-dark/50 transition-all group"
       >
-        <div className="flex items-center gap-2 text-brand-text-muted group-hover:text-brand-brand-green-dark transition-colors">
+        <div className="flex items-center gap-2 text-brand-text-muted group-hover:text-brand-green-dark transition-colors">
           <Search size={16} />
           <span className="text-sm">{t('search.placeholder')}...</span>
         </div>

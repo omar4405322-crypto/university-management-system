@@ -6,7 +6,7 @@ const Checkbox: React.FC<CheckboxProps> = ({ className = '', ...props }) => {
   return (
     <input
       type="checkbox"
-      className={`h-4 w-4 rounded border-brand-border text-brand-brand-green-dark focus:ring-brand-brand-green-dark/20 focus:ring-offset-0 bg-surface-subtle cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`h-4 w-4 rounded border-brand-border text-brand-green-dark focus:ring-brand-green-dark/20 focus:ring-offset-0 bg-surface-subtle cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       {...props}
     />
   );

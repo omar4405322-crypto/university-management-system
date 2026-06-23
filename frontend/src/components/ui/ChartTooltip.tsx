@@ -1,14 +1,20 @@
-// @ts-nocheck
 import React from 'react';
+
+interface ChartTooltipPayloadEntry {
+  name?: string;
+  value?: number | string;
+  color?: string;
+  fill?: string;
+}
 
 export const ChartTooltip = ({
   active,
   payload,
   label,
 }: {
-  active?: Record<string, unknown>;
-  payload?: Record<string, unknown>;
-  label?: Record<string, unknown>;
+  active?: boolean;
+  payload?: ChartTooltipPayloadEntry[];
+  label?: string;
 }) => {
   if (!active || !payload?.length) return null;
   return (

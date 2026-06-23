@@ -16,9 +16,9 @@ export const getDoctorStats = catchAsync(
     if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
       courseWhere.department = { collegeId: req.user!.managedCollegeId };
     } else if (req.user!.role === 'COLLEGE_ADMIN') {
-      courseWhere.department = { collegeId: req.user!.collegeId };
+      courseWhere.department = { collegeId: req.user!.managedCollegeId ?? req.user!.collegeId };
     } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
-      courseWhere.departmentId = req.user!.departmentId;
+      courseWhere.departmentId = req.user!.managedDepartmentId ?? req.user!.departmentId;
     }
 
     const [totalFaculty, activeProfessors, totalCourses, researchProjects] = await Promise.all([
@@ -112,7 +112,13 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
       department: {
         include: { college: true },
       },
-      courses: true,
+      courses: {
+        include: {
+          _count: {
+            select: { enrollments: true },
+          },
+        },
+      },
     },
   });
 
@@ -121,10 +127,10 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
   }
 
   // Enforce scope
-  if (req.user!.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user!.collegeId) {
+  if (req.user!.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== (req.user!.managedCollegeId ?? req.user!.collegeId)) {
     return next(new AuthorizationError('Access denied'));
   }
-  if (req.user!.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user!.departmentId) {
+  if (req.user!.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== (req.user!.managedDepartmentId ?? req.user!.departmentId)) {
     return next(new AuthorizationError('Access denied'));
   }
 
@@ -145,13 +151,13 @@ export const createDoctor = catchAsync(async (req: Request, res: Response, next:
       }
     }
   } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
-    departmentId = req.user!.departmentId;
+    departmentId = req.user!.managedDepartmentId ?? req.user!.departmentId;
   } else if (req.user!.role === 'COLLEGE_ADMIN') {
     if (departmentId) {
       const dept = await prisma.department.findUnique({
         where: { id: parseInt(departmentId as string) },
       });
-      if (!dept || dept.collegeId !== req.user!.collegeId) {
+      if (!dept || dept.collegeId !== (req.user!.managedCollegeId ?? req.user!.collegeId)) {
         return next(new AuthorizationError('Invalid department for your college'));
       }
     }
@@ -229,12 +235,12 @@ export const updateDoctor = catchAsync(async (req: Request, res: Response, next:
     }
   } else if (
     req.user!.role === 'COLLEGE_ADMIN' &&
-    doctor.department?.collegeId !== req.user!.collegeId
+    doctor.department?.collegeId !== (req.user!.managedCollegeId ?? req.user!.collegeId)
   ) {
     return next(new AuthorizationError('Access denied'));
   } else if (
     req.user!.role === 'DEPARTMENT_ADMIN' &&
-    doctor.departmentId !== req.user!.departmentId
+    doctor.departmentId !== (req.user!.managedDepartmentId ?? req.user!.departmentId)
   ) {
     return next(new AuthorizationError('Access denied'));
   }
@@ -257,7 +263,7 @@ export const updateDoctor = catchAsync(async (req: Request, res: Response, next:
       const newDept = await prisma.department.findUnique({
         where: { id: parseInt(departmentId as string) },
       });
-      if (!newDept || newDept.collegeId !== req.user!.collegeId) {
+      if (!newDept || newDept.collegeId !== (req.user!.managedCollegeId ?? req.user!.collegeId)) {
         return next(new AuthorizationError('Invalid department for your college'));
       }
     }
@@ -307,12 +313,12 @@ export const deleteDoctor = catchAsync(async (req: Request, res: Response, next:
     }
   } else if (
     req.user!.role === 'COLLEGE_ADMIN' &&
-    doctor.department?.collegeId !== req.user!.collegeId
+    doctor.department?.collegeId !== (req.user!.managedCollegeId ?? req.user!.collegeId)
   ) {
     return next(new AuthorizationError('Access denied'));
   } else if (
     req.user!.role === 'DEPARTMENT_ADMIN' &&
-    doctor.departmentId !== req.user!.departmentId
+    doctor.departmentId !== (req.user!.managedDepartmentId ?? req.user!.departmentId)
   ) {
     return next(new AuthorizationError('Access denied'));
   }
@@ -337,8 +343,8 @@ export const resetDoctorPassword = catchAsync(
     const { id } = req.params;
     const { newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 6) {
-      return next(new AppError('Password must be at least 6 characters', 400));
+    if (!newPassword || newPassword.trim().length < 8) {
+      return next(new AppError('Password must be at least 8 characters long', 400));
     }
 
     const doctor = await prisma.doctor.findUnique({

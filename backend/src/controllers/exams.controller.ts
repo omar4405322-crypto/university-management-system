@@ -21,6 +21,14 @@ export const getAllExams = catchAsync(async (req: Request, res: Response, next: 
     where.date = { gte: new Date() };
   }
 
+  const courseId = req.query.courseId ? Number(req.query.courseId) : undefined;
+
+  where = {
+    ...where,
+    ...(courseId ? { courseId } : {}),
+    examSession: null  // only exams without an online session
+  };
+
   const exams = await prisma.exam.findMany({
     where,
     include: {
@@ -191,9 +199,17 @@ export const getExamById = catchAsync(async (req: Request, res: Response, next: 
           department: {
             select: {
               name: true,
-              college: { select: { name: true } },
+              nameAr: true,
+              college: { select: { name: true, nameAr: true } },
             },
           },
+        },
+      },
+      examSession: {
+        select: {
+          id: true,
+          title: true,
+          status: true,
         },
       },
     },

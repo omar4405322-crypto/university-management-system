@@ -1,9 +1,8 @@
-// @ts-nocheck
-import axios, { AxiosError } from 'axios';
-import type { ApiResponse } from '@/types/models';
+import axios, { AxiosError, AxiosResponse } from 'axios';
+import type { ApiResponse } from '../types/models';
 
 export async function apiRequest<T>(
-  fn: () => Promise<{ data: ApiResponse<T> }>
+  fn: () => Promise<AxiosResponse<ApiResponse<T>>>
 ): Promise<ApiResponse<T>> {
   try {
     const res = await fn();
@@ -18,7 +17,7 @@ export async function apiRequest<T>(
 
     return {
       success: false,
-      data: null as unknown as T,
+      data: null as T,
       message,
     };
   }

@@ -38,3 +38,11 @@ export const doctorValidation = [
 ];
 
 export const idParamValidation = [param('id').isInt().withMessage('Invalid ID format')];
+
+export const teachingAssistantValidation = [
+  body('firstName').notEmpty().withMessage('First name is required').trim(),
+  body('lastName').notEmpty().withMessage('Last name is required').trim(),
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('departmentId').isInt().withMessage('Department ID must be an integer'),
+  body('specialization').optional().trim(),
+];

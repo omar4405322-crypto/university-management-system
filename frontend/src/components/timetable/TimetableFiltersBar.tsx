@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Printer } from 'lucide-react';
 import type { Department, TimetableFilters } from '../../types/timetable.types';
+import { useAuth } from '../../context/AuthContext';
+import collegeService from '../../services/college.service';
+import departmentService from '../../services/department.service';
 
 const YEARS = ['1', '2', '3', '4', '5'] as const;
 const SEMS = ['1', '2'] as const;
@@ -15,6 +18,7 @@ interface TimetableFiltersBarProps {
   loadingSlots: boolean;
   onChange: (next: TimetableFilters) => void;
   onSave: () => void;
+  extraActions?: React.ReactNode;
 }
 
 const SELECT_CLASS =
@@ -34,23 +38,77 @@ export default function TimetableFiltersBar({
   loadingSlots,
   onChange,
   onSave,
+  extraActions,
 }: TimetableFiltersBarProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+
+  const [colleges, setColleges] = useState<any[]>([]);
+  const [localDepartments, setLocalDepartments] = useState<Department[]>([]);
+  const [selectedCollege, setSelectedCollege] = useState('');
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      collegeService.getColleges().then(res => {
+        if (res.success) setColleges(res.data);
+      });
+    }
+  }, [isSuperAdmin]);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      if (selectedCollege) {
+        departmentService.getDepartmentsByCollege(selectedCollege).then(res => {
+          if (res.success) setLocalDepartments(res.data);
+        });
+      } else {
+        setLocalDepartments([]);
+      }
+    }
+  }, [selectedCollege, isSuperAdmin]);
+
+  const activeDepartments = isSuperAdmin ? localDepartments : departments;
 
   const update = (field: keyof TimetableFilters, value: string) => {
     onChange({ ...filters, [field]: value });
+  };
+
+  const handleCollegeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCollege(e.target.value);
+    onChange({ ...filters, departmentId: '' });
   };
 
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 flex-wrap">
       {/* ── Selects ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-4 flex-wrap flex-1">
+        {/* College (SUPER_ADMIN only) */}
+        {isSuperAdmin && (
+          <select
+            className={`w-full md:w-48 ${SELECT_CLASS}`}
+            value={selectedCollege}
+            onChange={handleCollegeChange}
+            aria-label={t('auth.college', 'Select College')}
+          >
+            <option value="">
+              {t('colleges.allColleges', 'Select College')}
+            </option>
+            {colleges.map((c) => (
+              <option key={c.id} value={String(c.id)}>
+                {isRTL ? (c.nameAr || c.name) : c.name}
+              </option>
+            ))}
+          </select>
+        )}
+
         {/* Department */}
         <select
           className={`w-full md:w-56 ${SELECT_CLASS}`}
           value={filters.departmentId}
           onChange={(e) => update('departmentId', e.target.value)}
-          disabled={isDeptAdminLocked}
+          disabled={isDeptAdminLocked || (isSuperAdmin && !selectedCollege)}
           aria-label={t('timetables.selectDept', 'Select Department')}
         >
           <option value="">
@@ -58,9 +116,9 @@ export default function TimetableFiltersBar({
               ? t('common.loading', 'Loading...')
               : t('timetables.selectDept', 'Select Department')}
           </option>
-          {departments.map((d) => (
+          {activeDepartments.map((d) => (
             <option key={d.id} value={String(d.id)}>
-              {d.name}
+              {isRTL ? (d.nameAr || d.name) : d.name}
             </option>
           ))}
         </select>
@@ -96,6 +154,8 @@ export default function TimetableFiltersBar({
 
       {/* ── Actions ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
+        {extraActions}
+
         <button
           onClick={() => window.print()}
           aria-label={t('common.print', 'Print')}

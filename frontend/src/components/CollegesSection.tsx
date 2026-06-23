@@ -46,7 +46,7 @@ interface CollegesSectionProps {
 
 export const CollegesSection: React.FC<CollegesSectionProps> = ({ isLoading = false }) => {
   return (
-    <section id="colleges" className="py-24 bg-white">
+    <section id="colleges" className="py-16 lg:py-20 bg-white">
       <div className="container mx-auto px-6 text-center space-y-16">
         <div className="max-w-3xl mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-700">
           <span className="text-xs font-black uppercase tracking-widest text-brand-navy-500">
@@ -73,7 +73,7 @@ export const CollegesSection: React.FC<CollegesSectionProps> = ({ isLoading = fa
                 className="group relative bg-white p-10 rounded-[2.5rem] border border-brand-border shadow-soft transition-all duration-500 hover:border-brand-green hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-navy-500/10 text-right flex flex-col focus:outline-none focus:ring-4 focus:ring-brand-green/30 cursor-pointer block"
                 style={{ animationDelay: `${i * 100}ms` }}
               >
-                <div className="text-5xl mb-6 transform transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6 text-brand-navy-500">
+                <div className="w-16 h-16 rounded-2xl bg-brand-primary-50 text-brand-navy-500 flex items-center justify-center mb-6 transform transition-all duration-500 group-hover:scale-110 group-hover:-rotate-6 group-hover:bg-brand-green group-hover:text-white">
                   {college.icon}
                 </div>
                 <h3 className="text-xl font-black text-brand-navy-500 mb-4 group-hover:text-brand-green transition-colors">

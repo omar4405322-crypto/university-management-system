@@ -9,6 +9,10 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
 import coursesService from '../../services/courses.service';
+import enrollmentService from '../../services/enrollment.service';
+import EnrollmentsTable from '../../components/ui/enrollments/EnrollmentsTable';
+import EnrollmentModal from '../../components/ui/enrollments/EnrollmentModal';
+import { useAuth } from '../../context/AuthContext';
 import { logger } from '../../lib/logger';
 
 interface CourseDetailsProps {
@@ -21,10 +25,23 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
   const actualId = courseId || id;
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const { user } = useAuth();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
 
   const isRTL = i18n.language === 'ar';
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role as string);
+
+  const fetchEnrollments = async () => {
+    try {
+      const res = await enrollmentService.getEnrollments({ courseId: Number(actualId) });
+      if (res.success) setEnrollments(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -39,13 +56,16 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
         setLoading(false);
       }
     };
-    if (actualId) load();
+    if (actualId) {
+      load();
+      fetchEnrollments();
+    }
   }, [actualId]);
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <Loader2 className="animate-spin text-brand-brand-green-dark" size={48} />
+        <Loader2 className="animate-spin text-brand-green-dark" size={48} />
         <p className="text-sm font-bold text-brand-text-muted">{t('common.loading')}</p>
       </div>
     );
@@ -115,7 +135,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <Card className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-brand-primary-50 text-brand-brand-green-dark">
+          <div className="p-3 rounded-2xl bg-brand-primary-50 text-brand-green-dark">
             <Users size={24} />
           </div>
           <div>
@@ -145,7 +165,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
         </Card>
       </div>
 
-      <Card title={t('courses.description')}>
+      <Card title={t('courses.description')} className="mb-6">
         {course.description ? (
           <p className="text-brand-text-sub font-medium leading-relaxed">{course.description}</p>
         ) : (
@@ -156,6 +176,31 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           </p>
         )}
       </Card>
+
+      <Card 
+        title={t('enrollment.enrolledStudents', 'Enrolled Students')} 
+        action={isAdmin ? (
+          <Button onClick={() => setIsEnrollModalOpen(true)} size="sm">
+            {t('enrollment.enrollStudent', 'Enroll Student')}
+          </Button>
+        ) : null}
+      >
+        <EnrollmentsTable 
+          enrollments={enrollments} 
+          entityType="course" 
+          onUpdate={fetchEnrollments} 
+        />
+      </Card>
+
+      <EnrollmentModal
+        isOpen={isEnrollModalOpen}
+        onClose={() => setIsEnrollModalOpen(false)}
+        onSuccess={() => {
+          setIsEnrollModalOpen(false);
+          fetchEnrollments();
+        }}
+        fixedCourseId={Number(actualId)}
+      />
     </div>
   );
 };

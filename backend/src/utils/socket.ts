@@ -62,13 +62,17 @@ export const initSocket = (server: http.Server): Server => {
 };
 
 /**
- * Get Socket.io instance
+ * Get Socket.io instance (returns undefined if not initialized)
  */
-export const getIO = (): Server => {
-  if (!io) {
-    throw new Error('Socket.io not initialized!');
-  }
+export const getIO = (): Server | undefined => {
   return io;
+};
+
+/**
+ * Check if Socket.io is initialized and ready
+ */
+export const isSocketInitialized = (): boolean => {
+  return io !== undefined;
 };
 
 /**

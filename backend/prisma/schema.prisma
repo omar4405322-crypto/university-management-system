@@ -36,6 +36,7 @@ model User {
   createdAt        DateTime       @default(now())
   doctor           Doctor?
   student          Student?
+  teachingAssistant TeachingAssistant?
   notifications    Notification[]
   auditLogs        AuditLog[]
   refreshTokens    RefreshToken[]
@@ -75,16 +76,26 @@ model AuditLog {
 }
 
 model Notification {
-  id        Int      @id @default(autoincrement())
+  id        Int              @id @default(autoincrement())
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(GENERAL)
   title     String
   message   String
-  type      String   @default("info") // info, success, warning, error
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
 
   @@index([userId, isRead])
+}
+
+enum NotificationType {
+  EXAM_PUBLISHED
+  EXAM_ACTIVATED
+  QUIZ_PUBLISHED
+  SUBMISSION_GRADED
+  EXAM_REMINDER
+  GENERAL
 }
 
 model College {
@@ -92,6 +103,9 @@ model College {
   name          String
   nameAr        String?
   description   String?
+  descriptionAr String?
+  status        String       @default("active")
+  logoUrl       String?
   departments   Department[]
   admins        User[]
   // Back relation for scoped ADMIN users who manage a single college
@@ -109,6 +123,7 @@ model Department {
   courses     Course[]
   students    Student[]
   doctors     Doctor[]
+  teachingAssistants TeachingAssistant[]
   admins      User[]
   // Back relation for scoped DEPARTMENT_ADMIN users who manage a single department
   managedAdmins User[]       @relation("ManagedDepartment")
@@ -146,28 +161,29 @@ enum RequestStatus {
 }
 
 model Student {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @unique
-  firstName    String
-  lastName     String
-  studentId    String   @unique
-  year         Int      @default(1)
-  phone        String?
-  address      String?
-  bio          String?
-  isActive     Boolean  @default(true)
-  gender       String?
-  birthDate    DateTime?
-  enrolledAt   DateTime @default(now())
-  departmentId Int?
-  department   Department? @relation(fields: [departmentId], references: [id])
-  user         User     @relation(fields: [userId], references: [id])
-  payments     Payment[]
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  firstName       String
+  lastName        String
+  studentId       String   @unique
+  year            Int      @default(1)
+  phone           String?
+  address         String?
+  bio             String?
+  isActive        Boolean  @default(true)
+  gender          String?
+  birthDate       DateTime?
+  enrolledAt      DateTime @default(now())
+  departmentId    Int?
+  department      Department?      @relation(fields: [departmentId], references: [id])
+  user            User             @relation(fields: [userId], references: [id])
+  payments        Payment[]
   quizSubmissions QuizSubmission[]
   taskSubmissions TaskSubmission[]
-  enrollments  Enrollment[]
-  attendance   Attendance[]
-  successMetrics StudentSuccessMetric?
+  enrollments     Enrollment[]
+  attendance      Attendance[]
+  successMetrics  StudentSuccessMetric?
+  examSubmissions ExamSubmission[]
 
   @@index([studentId])
   @@index([departmentId, year])
@@ -245,48 +261,63 @@ enum PaymentStatus {
 }
 
 model Doctor {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @unique
-  user         User     @relation(fields: [userId], references: [id])
-  firstName    String
-  lastName     String
-  doctorId     String         @unique @default(dbgenerated("'DOC-' || lpad(nextval('doctor_id_seq'::regclass)::text, 5, '0')"))
-  phone        String?
-  address      String?
-  bio          String?
-  gender       String?
-  birthDate    DateTime?
-  specialty    String?
-  departmentId Int?
-  department   Department? @relation(fields: [departmentId], references: [id])
-  courses      Course[]
-  quizzes      Quiz[]
-  tasks        Task[]
+  id            Int           @id @default(autoincrement())
+  userId        Int           @unique
+  user          User          @relation(fields: [userId], references: [id])
+  firstName     String
+  lastName      String
+  doctorId      String        @unique @default(dbgenerated("'DOC-' || lpad(nextval('doctor_id_seq'::regclass)::text, 5, '0')"))
+  phone         String?
+  address       String?
+  bio           String?
+  gender        String?
+  birthDate     DateTime?
+  specialty     String?
+  departmentId  Int?
+  department    Department?   @relation(fields: [departmentId], references: [id])
+  courses       Course[]
+  quizzes       Quiz[]
+  tasks         Task[]
+  examSessions  ExamSession[]
 
   @@index([doctorId])
   @@index([departmentId])
 }
 
-model Course {
-  id           Int      @id @default(autoincrement())
-  courseCode   String   @unique
-  name         String
-  description  String?
-  credits      Int      @default(3)
-  maxStudents  Int      @default(30)
-  year         Int      @default(1)
-  semester     Int      @default(1)
+model TeachingAssistant {
+  id           Int        @id @default(autoincrement())
+  userId       Int        @unique
+  user         User       @relation(fields: [userId], references: [id])
   departmentId Int?
   department   Department? @relation(fields: [departmentId], references: [id])
-  doctorId     Int?
-  doctor       Doctor?  @relation(fields: [doctorId], references: [id])
-  schedules    Schedule[]
-  exams        Exam[]
-  quizzes      Quiz[]
-  tasks        Task[]
-  enrollments  Enrollment[]
-  attendance   Attendance[]
-  createdAt    DateTime @default(now())
+  specialization String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  schedules    Schedule[] @relation("ScheduleAssistant")
+}
+
+model Course {
+  id            Int           @id @default(autoincrement())
+  courseCode    String        @unique
+  name          String
+  nameAr        String?
+  description   String?
+  credits       Int           @default(3)
+  maxStudents   Int           @default(30)
+  year          Int           @default(1)
+  semester      Int           @default(1)
+  departmentId  Int?
+  department    Department?   @relation(fields: [departmentId], references: [id])
+  doctorId      Int?
+  doctor        Doctor?       @relation(fields: [doctorId], references: [id])
+  schedules     Schedule[]
+  exams         Exam[]
+  quizzes       Quiz[]
+  tasks         Task[]
+  enrollments   Enrollment[]
+  attendance    Attendance[]
+  examSessions  ExamSession[]
+  createdAt     DateTime      @default(now())
 
   @@index([courseCode])
   @@index([departmentId])
@@ -312,31 +343,70 @@ model Quiz {
 }
 
 model Question {
-  id       Int      @id @default(autoincrement())
-  quizId   Int
-  quiz     Quiz     @relation(fields: [quizId], references: [id])
-  text     String
-  optionA  String
-  optionB  String
-  optionC  String
-  optionD  String
-  correct  String   // "A", "B", "C", or "D"
-  points   Int      @default(1)
+  id               Int          @id @default(autoincrement())
+  quizId           Int
+  quiz             Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  type             QuestionType @default(MCQ)
+  text             String
+  textAr           String?      // Arabic version of question
+  points           Int          @default(1)
+  orderIndex       Int          @default(0)
+
+  // MCQ fields
+  optionA          String?
+  optionB          String?
+  optionC          String?
+  optionD          String?
+  correctAnswer    String?      // "A", "B", "C", "D", or "TRUE"/"FALSE"
+
+  // Legacy field (kept for backward compatibility)
+  correct          String?      // deprecated — use correctAnswer
+
+  // Essay / File fields
+  maxWords         Int?
+  allowedFileTypes String?      // e.g. "pdf,docx"
+
+  quizAnswers      QuizAnswer[]
 
   @@index([quizId])
 }
 
 model QuizSubmission {
-  id        Int      @id @default(autoincrement())
-  quizId    Int
-  quiz      Quiz     @relation(fields: [quizId], references: [id])
-  studentId Int
-  student   Student  @relation(fields: [studentId], references: [id])
-  answers   Json     // { questionId: "A", ... }
-  score     Float?
-  submittedAt DateTime @default(now())
+  id           Int          @id @default(autoincrement())
+  quizId       Int
+  quiz         Quiz         @relation(fields: [quizId], references: [id])
+  studentId    Int
+  student      Student      @relation(fields: [studentId], references: [id])
+  answers      Json         // legacy snapshot kept for backward compat
+  score        Float?
+  needsGrading Boolean      @default(false) // true when Essay/File questions present
+  feedback     String?      // doctor's overall feedback
+  submittedAt  DateTime     @default(now())
+  gradedAt     DateTime?
+  quizAnswers  QuizAnswer[]
 
   @@index([quizId, studentId])
+}
+
+// Per-question answer record for manual grading
+model QuizAnswer {
+  id           Int             @id @default(autoincrement())
+  submissionId Int
+  submission   QuizSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  questionId   Int
+  question     Question        @relation(fields: [questionId], references: [id])
+
+  selectedOption String?   // "A"/"B"/"C"/"D" or "TRUE"/"FALSE"
+  essayText      String?   // Written answer
+  fileUrl        String?   // Uploaded file URL
+
+  score          Float?
+  feedback       String?   // Per-question feedback from doctor
+  isCorrect      Boolean?
+  gradedAt       DateTime?
+
+  @@unique([submissionId, questionId])
+  @@index([submissionId])
 }
 
 model Task {
@@ -377,6 +447,8 @@ model Schedule {
   startTime String   // "09:00"
   endTime   String   // "11:00"
   room      String?
+  assistantId Int?
+  assistant TeachingAssistant? @relation("ScheduleAssistant", fields: [assistantId], references: [id])
   createdAt DateTime @default(now())
 
   @@index([courseId])
@@ -408,15 +480,16 @@ enum TimetableStatus {
 }
 
 model Exam {
-  id        Int      @id @default(autoincrement())
-  courseId  Int
-  course    Course   @relation(fields: [courseId], references: [id])
-  type      ExamType @default(MIDTERM)
-  date      DateTime
-  startTime String
-  endTime   String
-  room      String?
-  createdAt DateTime @default(now())
+  id          Int          @id @default(autoincrement())
+  courseId    Int
+  course      Course       @relation(fields: [courseId], references: [id])
+  type        ExamType     @default(MIDTERM)
+  date        DateTime
+  startTime   String
+  endTime     String
+  room        String?
+  createdAt   DateTime     @default(now())
+  examSession ExamSession?
 
   @@index([courseId, date])
 }
@@ -430,6 +503,7 @@ enum ExamType {
 enum Role {
   STUDENT
   DOCTOR
+  TEACHING_ASSISTANT
   ADMIN
   COLLEGE_ADMIN
   DEPARTMENT_ADMIN
@@ -465,4 +539,156 @@ enum EnrollmentStatus {
   COMPLETED
   WITHDRAWN
   FAILED
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Online Exam System
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum QuestionType {
+  MCQ         // Multiple choice (A/B/C/D)
+  TRUE_FALSE  // True or False
+  ESSAY       // Written answer
+  FILE_UPLOAD // Student uploads a file
+}
+
+enum ExamSessionStatus {
+  DRAFT     // Not published yet
+  PUBLISHED // Visible to students
+  ACTIVE    // Currently open for submissions
+  CLOSED    // No more submissions
+  GRADED    // All submissions graded
+}
+
+enum SubmissionStatus {
+  IN_PROGRESS // Student started but not submitted
+  SUBMITTED   // Student submitted
+  GRADED      // Doctor graded this submission
+  LATE        // Submitted after deadline
+}
+
+enum ViolationType {
+  TAB_SWITCH      // User switched to another tab/window
+  WINDOW_BLUR     // Browser window lost focus
+  COPY_ATTEMPT    // User tried to copy text
+  PASTE_ATTEMPT   // User tried to paste
+  RIGHT_CLICK     // User right-clicked
+  DEVTOOLS_OPEN   // DevTools detected
+  FULLSCREEN_EXIT // User exited fullscreen
+  FOCUS_LOST      // Page visibility changed to hidden
+}
+
+// ExamSession — links an Exam schedule entry to an actual online exam
+model ExamSession {
+  id               Int               @id @default(autoincrement())
+  examId           Int               @unique  // Links to existing Exam schedule
+  exam             Exam              @relation(fields: [examId], references: [id], onDelete: Cascade)
+  courseId         Int
+  course           Course            @relation(fields: [courseId], references: [id])
+  doctorId         Int
+  doctor           Doctor            @relation(fields: [doctorId], references: [id])
+  title            String
+  instructions     String?
+  durationMinutes  Int               // Time limit in minutes
+  totalPoints      Int               @default(100)
+  passingScore     Float             @default(50)
+  shuffleQuestions Boolean           @default(false)
+  showResultsAfter Boolean           @default(true) // Show results to student after submission
+  allowedAttempts  Int               @default(1)
+  status           ExamSessionStatus @default(DRAFT)
+  opensAt          DateTime?         // When students can start
+  closesAt         DateTime?         // Hard deadline
+  questions        ExamQuestion[]
+  submissions      ExamSubmission[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([courseId])
+  @@index([doctorId])
+  @@index([status])
+}
+
+// ExamQuestion — supports MCQ, True/False, Essay, File Upload
+model ExamQuestion {
+  id               Int          @id @default(autoincrement())
+  examSessionId    Int
+  examSession      ExamSession  @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  type             QuestionType
+  text             String       // Question body (supports Arabic)
+  textAr           String?      // Arabic version of question
+  points           Int          @default(1)
+  orderIndex       Int          @default(0) // Question order
+
+  // MCQ fields (only used when type = MCQ)
+  optionA          String?
+  optionB          String?
+  optionC          String?
+  optionD          String?
+  correctAnswer    String?      // "A", "B", "C", "D", or "TRUE"/"FALSE"
+
+  // Essay / File fields
+  maxWords         Int?         // Max words for essay
+  allowedFileTypes String?      // e.g. "pdf,docx" for file upload questions
+
+  answers          ExamAnswer[]
+
+  @@index([examSessionId, orderIndex])
+}
+
+// ExamSubmission — one per student per ExamSession
+model ExamSubmission {
+  id            Int              @id @default(autoincrement())
+  examSessionId Int
+  examSession   ExamSession      @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  studentId     Int
+  student       Student          @relation(fields: [studentId], references: [id])
+  status        SubmissionStatus @default(IN_PROGRESS)
+  startedAt     DateTime         @default(now())
+  submittedAt   DateTime?
+  totalScore    Float?           // Set after grading
+  feedback      String?          // Doctor's overall feedback
+  violationCount Int             @default(0)  // incremented on each violation
+  answers       ExamAnswer[]
+  violations    ExamViolation[]
+
+  @@unique([examSessionId, studentId]) // One submission per student per exam
+  @@index([examSessionId])
+  @@index([studentId])
+}
+
+// ExamAnswer — student's answer to each question
+model ExamAnswer {
+  id             Int            @id @default(autoincrement())
+  submissionId   Int
+  submission     ExamSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  questionId     Int
+  question       ExamQuestion   @relation(fields: [questionId], references: [id])
+
+  // The answer content (only one will be filled based on question type)
+  selectedOption String?        // "A", "B", "C", "D", "TRUE", "FALSE" for MCQ/TF
+  essayText      String?        // Written answer for ESSAY type
+  fileUrl        String?        // Cloudinary URL for FILE_UPLOAD type
+  fileKey        String?        // Cloudinary public_id for deletion
+
+  // Grading (auto for MCQ/TF, manual for Essay/File)
+  score          Float?
+  feedback       String?        // Per-question feedback from doctor
+  isCorrect      Boolean?       // Auto-set for MCQ/TF
+  gradedAt       DateTime?
+
+  @@unique([submissionId, questionId])
+  @@index([submissionId])
+}
+
+// ExamViolation — anti-cheat log for each detected integrity issue
+model ExamViolation {
+  id            Int            @id @default(autoincrement())
+  submissionId  Int
+  submission    ExamSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  type          ViolationType
+  detectedAt    DateTime       @default(now())
+  metadata      Json?          // extra info: { tabUrl, count, etc. }
+
+  @@index([submissionId])
+  @@index([type])
 }

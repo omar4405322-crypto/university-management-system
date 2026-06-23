@@ -1,11 +1,15 @@
-// @ts-nocheck
 // FIXED: Reusable breadcrumb navigation - Phase 6
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
-const Breadcrumbs = ({ items = [] }) => {
+interface BreadcrumbItem {
+  label: string;
+  link?: string;
+}
+
+const Breadcrumbs = ({ items = [] }: { items: BreadcrumbItem[] }) => {
   const { isRTL } = useLanguage();
 
   if (!items.length) return null;
@@ -27,7 +31,7 @@ const Breadcrumbs = ({ items = [] }) => {
                             {item.link && !isLast ? (
                 <Link
                                     to={item.link}
-                  className="text-brand-primary-600 hover:text-brand-brand-green-dark transition-colors"
+                  className="text-brand-primary-600 hover:text-brand-green-dark transition-colors"
                 >
                                     {item.label}
                 </Link>

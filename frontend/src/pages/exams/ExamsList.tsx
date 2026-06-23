@@ -5,13 +5,14 @@ import coursesService from '../../services/courses.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
-import { Plus, Search, Calendar, Clock, MapPin, Filter, Trash2, Eye, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Plus, Search, Calendar, Clock, MapPin, Filter, Trash2, Edit2, Eye, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import Input from '../../components/ui/Input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -73,7 +74,7 @@ const AddExamModal = ({ isOpen, onClose, onSuccess }) => {
         onSuccess();
         onClose();
       }
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || t('exams.createError'));
     }
   };
@@ -167,13 +168,14 @@ const ExamsList = () => {
   const { scopeParams } = useScope();
   const navigate = useNavigate();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role as string);
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filter, setFilter] = useState('ALL');
   const [upcomingOnly, setUpcomingOnly] = useState(false);
   const [toast, setToast] = useState(null);
+  const [examToDelete, setExamToDelete] = useState(null);
 
   const fetchExams = async () => {
     try {
@@ -195,17 +197,17 @@ const ExamsList = () => {
     fetchExams();
   }, [filter, upcomingOnly, scopeParams]);
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this exam?')) {
-      try {
-        const result = await examsService.deleteExam(id);
-        if (result.success) {
-          showToast('Exam deleted successfully', 'success');
-          fetchExams();
-        }
-      } catch (err) {
-        showToast('Error deleting exam', 'error');
+  const handleDelete = async () => {
+    if (!examToDelete) return;
+    try {
+      const result = await examsService.deleteExam(examToDelete);
+      if (result.success) {
+        showToast('Exam deleted successfully', 'success');
+        setExamToDelete(null);
+        fetchExams();
       }
+    } catch (err) {
+      showToast('Error deleting exam', 'error');
     }
   };
 
@@ -342,10 +344,16 @@ const ExamsList = () => {
                     <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase tracking-widest" onClick={() => navigate(`/exams/${exam.id}`)}>
                       View Details
                     </Button>
-                    {isSuperAdmin && (
+                    {isAdmin && (
                       <div className="flex gap-1">
                         <button 
-                          onClick={() => handleDelete(exam.id)}
+                          onClick={() => navigate(`/exams/${exam.id}/edit`)}
+                          className="p-2 rounded-lg text-brand-text-muted hover:text-brand-green hover:bg-brand-green/10 transition-all"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button 
+                          onClick={() => setExamToDelete(exam.id)}
                           className="p-2 rounded-lg text-brand-text-muted hover:text-error hover:bg-rose-50 dark:bg-rose-900/20 dark:hover:bg-rose-900/10 transition-all"
                         >
                           <Trash2 size={16} />
@@ -364,6 +372,14 @@ const ExamsList = () => {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onSuccess={fetchExams} 
+      />
+
+      <ConfirmDeleteModal
+        isOpen={!!examToDelete}
+        onClose={() => setExamToDelete(null)}
+        onConfirm={handleDelete}
+        title="Delete Exam"
+        confirmLabel="Delete Exam"
       />
     </div>
   );

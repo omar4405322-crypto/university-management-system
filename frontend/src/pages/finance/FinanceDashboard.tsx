@@ -115,9 +115,9 @@ const FinanceDashboard = () => {
     tooltip: {
       bg: isDark ? '#1E293B' : '#FFFFFF',
       border: isDark ? '#334155' : '#E2E8F0',
-      text: isDark ? '#F1F5F9' : '#132231',
+      text: isDark ? '#F1F5F9' : '#122237',
     },
-    pie: ['#8BB83C', '#132231', '#F59E0B', '#10B981'],
+    pie: ['#99C23C', '#122237', '#D2D441', '#10B981'],
   };
 
   const handleMarkAsPaid = async () => {
@@ -261,7 +261,7 @@ const FinanceDashboard = () => {
                   <p className="text-caption text-brand-text-secondary">
                     {t('finance.totalCollected')}
                   </p>
-                  <div className="rounded-xl p-3 bg-brand-primary-50 text-brand-brand-green-dark group-hover:bg-brand-brand-green-dark group-hover:text-white transition-all duration-300">
+                  <div className="rounded-xl p-3 bg-brand-primary-50 text-brand-green-dark group-hover:bg-brand-green-dark group-hover:text-white transition-all duration-300">
                     <TrendingUp size={24} />
                   </div>
                 </div>
@@ -453,7 +453,7 @@ const FinanceDashboard = () => {
                 <div className="h-10 w-px bg-brand-border"></div>
                 <div className="text-end">
                   <p className="text-caption text-brand-text-muted">{t('finance.paidSoFar')}</p>
-                  <p className="text-xl font-black text-brand-brand-green-dark">
+                  <p className="text-xl font-black text-brand-green-dark">
                     ${studentStats.totalPaid.toLocaleString()}
                   </p>
                 </div>
@@ -499,7 +499,7 @@ const FinanceDashboard = () => {
                     {isAdmin && (
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-brand-navy-500/10 flex items-center justify-center text-brand-navy-500 font-bold text-xs border border-brand-navy-500/10 shrink-0">
+                          <div className="h-9 w-9 rounded-full bg-brand-gray/10 flex items-center justify-center text-brand-gray font-bold text-xs border border-brand-gray/20 shrink-0">
                             {payment.student?.firstName?.[0]}
                             {payment.student?.lastName?.[0]}
                           </div>

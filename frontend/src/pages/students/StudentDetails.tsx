@@ -6,6 +6,11 @@ import { ArrowLeft, User, Mail, Shield, Calendar } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import LoadingState from '../../components/ui/LoadingState';
+import Button from '../../components/ui/Button';
+import enrollmentService from '../../services/enrollment.service';
+import EnrollmentsTable from '../../components/ui/enrollments/EnrollmentsTable';
+import EnrollmentModal from '../../components/ui/enrollments/EnrollmentModal';
+import { useAuth } from '../../context/AuthContext';
 
 interface StudentDetailsProps {
   studentId?: string;
@@ -17,9 +22,23 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
   const actualId = studentId || id;
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role as string);
+
+  const fetchEnrollments = async () => {
+    try {
+      const res = await enrollmentService.getEnrollments({ studentId: Number(actualId) });
+      if (res.success) setEnrollments(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const fetchStudent = async () => {
@@ -36,7 +55,10 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
       }
     };
 
-    fetchStudent();
+    if (actualId) {
+      fetchStudent();
+      fetchEnrollments();
+    }
   }, [actualId, t]);
 
   if (loading) {
@@ -153,6 +175,33 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
           </div>
         </Card>
       </div>
+
+      <div className="mt-6">
+        <Card 
+          title={t('enrollment.enrolledCourses', 'Enrolled Courses')} 
+          action={isAdmin ? (
+            <Button onClick={() => setIsEnrollModalOpen(true)} size="sm">
+              {t('enrollment.enrollInCourse', 'Enroll in Course')}
+            </Button>
+          ) : null}
+        >
+          <EnrollmentsTable 
+            enrollments={enrollments} 
+            entityType="student" 
+            onUpdate={fetchEnrollments} 
+          />
+        </Card>
+      </div>
+
+      <EnrollmentModal
+        isOpen={isEnrollModalOpen}
+        onClose={() => setIsEnrollModalOpen(false)}
+        onSuccess={() => {
+          setIsEnrollModalOpen(false);
+          fetchEnrollments();
+        }}
+        fixedStudentId={Number(actualId)}
+      />
     </div>
   );
 };

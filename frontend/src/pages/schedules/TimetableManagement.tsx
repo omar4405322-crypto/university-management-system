@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Calendar,
   Edit2,
@@ -42,6 +42,7 @@ const TimetableManagement = () => {
   const { scopeParams, isCollegeAdmin } = useScope();
   const isRTL = i18n.language?.startsWith('ar');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // State
   const [loading, setLoading] = useState(true);
@@ -50,8 +51,8 @@ const TimetableManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [_colleges, setColleges] = useState([]);
-  const [_departments, setDepartments] = useState([]);
+  const [colleges, setColleges] = useState([]);
+  const [departments, setDepartments] = useState([]);
 
   // Filters & Views
   const [selectedCollege, setSelectedCollege] = useState('');
@@ -74,22 +75,29 @@ const TimetableManagement = () => {
 
   const fetchInitialData = async () => {
     try {
-      const collegesRes = await collegeService.getColleges();
-      if (collegesRes.success) {
-        setColleges(Array.isArray(collegesRes.data) ? collegesRes.data : []);
+      if (isSuperAdmin) {
+        const collegesRes = await collegeService.getColleges();
+        if (collegesRes.success) {
+          setColleges(Array.isArray(collegesRes.data) ? collegesRes.data : []);
+        }
+      } else if (user?.role === 'ADMIN') {
+        const result = await departmentService.getDepartments();
+        if (result.success) {
+          setDepartments(Array.isArray(result.data) ? result.data : []);
+        }
       }
     } catch (err: any) {
-      logger.error('Error fetching colleges:', err);
+      logger.error('Error fetching initial data:', err);
     }
   };
 
   const fetchDepartments = async (collegeId) => {
-    if (!collegeId) {
+    if (!collegeId && isSuperAdmin) {
       setDepartments([]);
       return;
     }
     try {
-      const result = await departmentService.getDepartments({ collegeId });
+      const result = await departmentService.getDepartments(collegeId ? { collegeId } : {});
       if (result.success) {
         setDepartments(Array.isArray(result.data) ? result.data : []);
       }
@@ -144,8 +152,18 @@ const TimetableManagement = () => {
     ]
   );
 
+  // Read collegeId from URL query params and pre-select the college filter
   useEffect(() => {
-    fetchInitialData();
+    const collegeIdFromUrl = searchParams.get('collegeId');
+    const init = async () => {
+      await fetchInitialData();
+      if (collegeIdFromUrl) {
+        setSelectedCollege(collegeIdFromUrl);
+        fetchDepartments(collegeIdFromUrl);
+      }
+    };
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -153,7 +171,7 @@ const TimetableManagement = () => {
     setCurrentPage(1);
   }, [selectedCollege, selectedDept, selectedYear, selectedSemester, scopeParams, isCollegeAdmin]);
 
-  const _handleCollegeChange = (e) => {
+  const handleCollegeChange = (e) => {
     const val = e.target.value;
     setSelectedCollege(val);
     setSelectedDept('');
@@ -293,15 +311,53 @@ const TimetableManagement = () => {
             </button>
           </div>
 
-          {/* SEARCH & TOGGLE */}
-          <div className="flex items-center gap-3 flex-1 md:justify-end">
+          {/* SEARCH & FILTERS & TOGGLE */}
+          <div className="flex flex-col md:flex-row items-center gap-3 flex-1 md:justify-end">
+            
+            {/* Filters */}
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              {isSuperAdmin && (
+                <select
+                  value={selectedCollege}
+                  onChange={handleCollegeChange}
+                  className="h-12 px-3 bg-white dark:bg-brand-bg-elevated border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green-dark/20 focus:border-brand-green-dark cursor-pointer transition-all shadow-sm w-full md:w-auto min-w-[140px]"
+                >
+                  <option value="">{t('filter.all_colleges', 'جميع الكليات')}</option>
+                  {colleges.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {isRTL ? (c.nameAr || c.name) : c.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {(isSuperAdmin || user?.role === 'ADMIN') && (
+                <select
+                  value={selectedDept}
+                  onChange={(e) => {
+                    setSelectedDept(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  disabled={isSuperAdmin && !selectedCollege}
+                  className="h-12 px-3 bg-white dark:bg-brand-bg-elevated border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green-dark/20 focus:border-brand-green-dark cursor-pointer transition-all shadow-sm w-full md:w-auto min-w-[140px] disabled:opacity-50"
+                >
+                  <option value="">{t('filter.all_departments', 'جميع الأقسام')}</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {isRTL ? (d.nameAr || d.name) : d.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
             <div className="w-full md:max-w-xs relative">
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('timetables.searchPlaceholder')}
-                className={`w-full h-12 ${isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'} bg-white border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-brand-green-dark/20 focus:border-brand-brand-green-dark transition-all shadow-sm`}
+                className={`w-full h-12 ${isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'} bg-white border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green-dark/20 focus:border-brand-green-dark transition-all shadow-sm`}
               />
               <div
                 className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} text-brand-text-muted`}
@@ -372,7 +428,7 @@ const TimetableManagement = () => {
                 canManage && (
                   <Button
                     variant="primary"
-                    className="mt-8 shadow-xl shadow-brand-brand-green-dark/20 px-8 rounded-2xl"
+                    className="mt-8 shadow-xl shadow-brand-green-dark/20 px-8 rounded-2xl"
                     onClick={() => {
                       setEditingTimetable(null);
                       setIsModalOpen(true);
@@ -637,7 +693,7 @@ const TimetableManagement = () => {
                     <ChevronLeft size={16} className="rtl:-scale-x-100" />
                   )}
                 </Button>
-                <span className="px-5 py-2.5 rounded-xl bg-brand-brand-green-dark text-white text-xs font-black shadow-md shadow-brand-brand-green-dark/20">
+                <span className="px-5 py-2.5 rounded-xl bg-brand-green-dark text-white text-xs font-black shadow-md shadow-brand-green-dark/20">
                   {currentPage}
                 </span>
                 <Button

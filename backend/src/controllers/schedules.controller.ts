@@ -67,7 +67,12 @@ export const getAllSchedules = catchAsync(
       // Apply role scoping via helper (for COLLEGE_ADMIN / DEPARTMENT_ADMIN)
       const scheduleScope: any = getScopeWhere(user!, 'schedule');
       if (scheduleScope && Object.keys(scheduleScope).length) {
-        where = { ...where, ...scheduleScope };
+        if (where.course && scheduleScope.course) {
+          where.course = { ...where.course, ...scheduleScope.course };
+          where = { ...where, ...scheduleScope, course: where.course };
+        } else {
+          where = { ...where, ...scheduleScope };
+        }
       }
     }
 
@@ -89,6 +94,11 @@ export const getAllSchedules = catchAsync(
             },
           },
         },
+        assistant: {
+          include: {
+            user: true,
+          },
+        },
       },
       orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
     });
@@ -99,7 +109,7 @@ export const getAllSchedules = catchAsync(
 
 export const getWeeklyTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { departmentId, collegeId, courseId, year, semester } = req.query as Record<
+    const { departmentId, collegeId, courseId, year, semester, doctorId } = req.query as Record<
       string,
       string
     >;
@@ -138,6 +148,16 @@ export const getWeeklyTimetable = catchAsync(
         year: filterYear,
         semester: filterSemester,
       };
+    } else if (user!.role === 'DOCTOR') {
+      const doctor = await prisma.doctor.findUnique({
+        where: { userId: user!.id },
+      });
+
+      if (!doctor) {
+        return next(new NotFoundError('Doctor profile not found'));
+      }
+
+      where.course = { doctorId: doctor.id };
     } else {
       if (courseId) {
         where.courseId = parseInt(courseId as string);
@@ -145,6 +165,10 @@ export const getWeeklyTimetable = catchAsync(
         where.course = { departmentId: parseInt(departmentId as string) };
       } else if (collegeId) {
         where.course = { department: { collegeId: parseInt(collegeId as string) } };
+      }
+
+      if (doctorId) {
+        where.course = { ...where.course, doctorId: parseInt(doctorId as string) };
       }
 
       if (year !== undefined) {
@@ -157,7 +181,12 @@ export const getWeeklyTimetable = catchAsync(
       // Apply role scoping via helper
       const scheduleScope: any = getScopeWhere(user!, 'schedule');
       if (scheduleScope && Object.keys(scheduleScope).length) {
-        where = { ...where, ...scheduleScope };
+        if (where.course && scheduleScope.course) {
+          where.course = { ...where.course, ...scheduleScope.course };
+          where = { ...where, ...scheduleScope, course: where.course };
+        } else {
+          where = { ...where, ...scheduleScope };
+        }
       }
     }
 
@@ -179,6 +208,11 @@ export const getWeeklyTimetable = catchAsync(
             },
           },
         },
+        assistant: {
+          include: {
+            user: true,
+          },
+        },
       },
     });
 
@@ -196,7 +230,7 @@ export const getWeeklyTimetable = catchAsync(
 
 export const createSchedule = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { courseId, dayOfWeek, startTime, endTime, room } = req.body;
+    const { courseId, dayOfWeek, startTime, endTime, room, assistantId } = req.body;
 
     // Validate course exists and is within user's scope
     const course = await prisma.course.findUnique({
@@ -237,6 +271,43 @@ export const createSchedule = catchAsync(
       return next(new AppError(`Time conflict in room ${room} on ${dayOfWeek}`, 400));
     }
 
+    if (course.doctorId) {
+      const doctorConflict = await prisma.schedule.findFirst({
+        where: {
+          dayOfWeek,
+          course: { doctorId: course.doctorId },
+          OR: [
+            { AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }] },
+            { AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }] },
+          ],
+        },
+      });
+
+      if (doctorConflict) {
+        return next(new AppError('هذا الدكتور لديه محاضرة أخرى في نفس الوقت', 400));
+      }
+    }
+
+    if (course.year && course.departmentId) {
+      const yearConflict = await prisma.schedule.findFirst({
+        where: {
+          dayOfWeek,
+          course: {
+            year: course.year,
+            departmentId: course.departmentId,
+          },
+          OR: [
+            { AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }] },
+            { AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }] },
+          ],
+        },
+      });
+
+      if (yearConflict) {
+        return next(new AppError('طلاب هذا المستوى لديهم محاضرة أخرى في نفس الوقت', 400));
+      }
+    }
+
     const schedule = await prisma.schedule.create({
       data: {
         courseId: parseInt(courseId as string),
@@ -244,11 +315,13 @@ export const createSchedule = catchAsync(
         startTime,
         endTime,
         room,
+        assistantId: assistantId ? parseInt(assistantId as string) : null,
       },
       include: {
         course: {
           select: {
             name: true,
+            nameAr: true,
             courseCode: true,
           },
         },
@@ -261,7 +334,7 @@ export const createSchedule = catchAsync(
 
 export const updateSchedule = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { dayOfWeek, startTime, endTime, room } = req.body;
+    const { dayOfWeek, startTime, endTime, room, assistantId } = req.body;
 
     const existing = await prisma.schedule.findUnique({
       where: { id: parseInt(req.params.id as string) },
@@ -290,6 +363,7 @@ export const updateSchedule = catchAsync(
         startTime,
         endTime,
         room,
+        assistantId: assistantId !== undefined ? (assistantId ? parseInt(assistantId as string) : null) : undefined,
       },
     });
 

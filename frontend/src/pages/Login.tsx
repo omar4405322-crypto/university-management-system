@@ -134,7 +134,7 @@ const Login = () => {
     <div 
       className="min-h-screen w-full relative overflow-hidden font-arabic bg-cover bg-center select-none" 
       style={{
-        backgroundImage: "url('/assets/university/campus-entrance.png')",
+        backgroundImage: "url('/assets/university/campus-hero-1.png')",
       }}
       dir="rtl"
     >

@@ -1,7 +1,7 @@
 // @ts-nocheck
 // FIXED: Router-level error boundary to prevent blank pages on render errors - Phase 1
 import React, { Component, ReactNode } from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Home } from 'lucide-react';
 import Button from './ui/Button';
 import { logger } from '../lib/logger';
 
@@ -66,8 +66,8 @@ class ErrorBoundary extends Component<Props, State> {
               <Button onClick={this.handleRetry} className="flex items-center gap-2">
                 <RefreshCw size={18} /> Try again
               </Button>
-              <Button variant="outline" onClick={() => window.history.back()}>
-                Go back
+              <Button variant="outline" onClick={() => window.location.href = '/dashboard'} className="flex items-center gap-2">
+                <Home size={18} /> Go to Dashboard
               </Button>
             </div>
           </div>

@@ -19,6 +19,8 @@ export const setAccessToken = (t: string | null): void => {
 
 let isRefreshing = false;
 let failedQueue: any[] = [];
+let _refreshRetryCount = 0;
+const MAX_REFRESH_RETRIES = 3;
 
 const processQueue = (error: any, token: string | null = null): void => {
   failedQueue.forEach((prom) => {
@@ -50,12 +52,13 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // Handle 401 Unauthorized (expired access token)
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && _refreshRetryCount < MAX_REFRESH_RETRIES) {
       // If the failing request was already a refresh attempt, don't retry
       if (originalRequest.url?.includes('/auth/refresh')) {
         localStorage.removeItem('user');
         setAccessToken(null);
-        if (!window.location.pathname.includes('/login') && !(window as any).__isRedirecting) {
+        const publicRoutes = ['/login', '/register', '/'];
+        if (!publicRoutes.includes(window.location.pathname) && !(window as any).__isRedirecting) {
           (window as any).__isRedirecting = true;
           window.location.href = '/login?expired=true';
         }
@@ -77,6 +80,7 @@ api.interceptors.response.use(
 
       originalRequest._retry = true;
       isRefreshing = true;
+      _refreshRetryCount++;
 
       try {
         // Try to refresh the token using a separate axios instance to avoid interceptor loops
@@ -91,8 +95,9 @@ api.interceptors.response.use(
 
         const { accessToken } = response.data.data;
 
-        // Save new token in memory
+        // Save new token in memory and reset retry counter on success
         setAccessToken(accessToken);
+        _refreshRetryCount = 0;
         processQueue(null, accessToken);
 
         // Update header and retry
@@ -107,7 +112,8 @@ api.interceptors.response.use(
 
         // Only redirect if we are not already on the login page
         // and only do it once to avoid ERR_ABORTED in console
-        if (!window.location.pathname.includes('/login') && !(window as any).__isRedirecting) {
+        const publicRoutes = ['/login', '/register', '/'];
+        if (!publicRoutes.includes(window.location.pathname) && !(window as any).__isRedirecting) {
           (window as any).__isRedirecting = true;
           window.location.href = '/login?expired=true';
         }

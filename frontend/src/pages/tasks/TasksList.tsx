@@ -9,6 +9,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
+import TaskSubmissionsModal from './TaskSubmissionsModal';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,7 +31,8 @@ type CreateFormData = z.infer<typeof createSchema>;
 type SubmitFormData = z.infer<typeof submitSchema>;
 
 const TasksList = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
   const { user } = useAuth();
   const isDoctor = user?.role === 'DOCTOR';
   const isStudent = user?.role === 'STUDENT';
@@ -41,6 +43,7 @@ const TasksList = () => {
   const [toast, setToast] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -111,8 +114,8 @@ const TasksList = () => {
 
   useEffect(() => {
     fetchTasks();
-    if (isDoctor) fetchCourses();
-  }, [isDoctor]);
+    if (isDoctor || user?.role === 'SUPER_ADMIN') fetchCourses();
+  }, [isDoctor, user?.role]);
 
   const showToast = (message, type) => {
     setToast({ message, type });
@@ -164,11 +167,11 @@ const TasksList = () => {
       {/* FIXED: Move action button next to title */}
       <PageHeader 
         title={t('tasks.title')}
-        subtitle={isDoctor ? t('tasks.subtitleDoctor') : t('tasks.subtitleStudent')}
-        action={isDoctor ? {
+        subtitle={isDoctor || user?.role === 'SUPER_ADMIN' ? t('tasks.subtitleDoctor') : t('tasks.subtitleStudent')}
+        action={(isDoctor || user?.role === 'SUPER_ADMIN') ? {
           label: t('tasks.createTask'),
           onClick: () => setShowCreateModal(true)
-        } : null}
+        } : undefined}
       />
 
       {/* Create Task Modal */}
@@ -209,7 +212,7 @@ const TasksList = () => {
                   >
                     <option value="">{t('courses.assignedDoctor')}</option>
                     {courses.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                      <option key={c.id} value={c.id}>{isRTL ? (c.nameAr || c.name) : c.name}</option>
                     ))}
                   </select>
                   {errorsCreate.courseId && <p className="text-rose-500 text-xs mt-1">{errorsCreate.courseId.message}</p>}
@@ -324,11 +327,11 @@ const TasksList = () => {
             <EmptyState 
               icon={<ClipboardList size={48} />}
               title={t('tasks.noTasks', 'No Assignments')}
-              subtitle={isDoctor ? t('tasks.subtitleDoctor') : t('tasks.subtitleStudent')}
-              action={isDoctor ? {
+              subtitle={isDoctor || user?.role === 'SUPER_ADMIN' ? t('tasks.subtitleDoctor') : t('tasks.subtitleStudent')}
+              action={(isDoctor || user?.role === 'SUPER_ADMIN') ? {
                 label: t('tasks.createTask'),
                 onClick: () => setShowCreateModal(true)
-              } : null}
+              } : undefined}
             />
           </div>
         ) : (
@@ -392,6 +395,10 @@ const TasksList = () => {
                   <Button 
                     variant="outline"
                     className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 border-slate-200"
+                    onClick={() => {
+                      setSelectedTask(task);
+                      setShowSubmissionsModal(true);
+                    }}
                   >
                     <CheckCircle size={16} />
                     {t('tasks.viewSubmissions')}
@@ -402,6 +409,15 @@ const TasksList = () => {
           ))
         )}
       </div>
+
+      <TaskSubmissionsModal
+        isOpen={showSubmissionsModal}
+        onClose={() => {
+          setShowSubmissionsModal(false);
+          setSelectedTask(null);
+        }}
+        task={selectedTask}
+      />
     </div>
   );
 };

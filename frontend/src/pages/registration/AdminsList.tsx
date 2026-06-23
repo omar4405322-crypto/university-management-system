@@ -21,7 +21,7 @@ import { z } from 'zod';
 const schema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(1, "Password is required"),
-  role: z.enum(['SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']),
+  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']),
   managedCollegeId: z.string().optional(),
   managedDepartmentId: z.string().optional()
 });
@@ -129,6 +129,7 @@ const AdminModal = ({ isOpen, onClose, onSuccess, colleges }) => {
             <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('admins.roleType')}</label>
             <select {...register('role', { onChange: () => { setValue('managedCollegeId', ''); setValue('managedDepartmentId', ''); } })} className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 outline-none dark:text-white">
               <option value="SUPER_ADMIN">{t('admins.roleSuperAdmin')}</option>
+              <option value="ADMIN">{t('admins.roleAdmin', 'General Admin')}</option>
               <option value="COLLEGE_ADMIN">{t('admins.roleCollegeAdmin')}</option>
               <option value="DEPARTMENT_ADMIN">{t('admins.roleDeptAdmin')}</option>
             </select>

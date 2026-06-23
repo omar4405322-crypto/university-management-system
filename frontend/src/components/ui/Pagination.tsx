@@ -1,25 +1,34 @@
-// @ts-nocheck
 // FIXED: RTL-aware prev/next chevrons - Phase 6
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
 
-const Pagination = ({ page, totalPages, onPageChange, total, pageSize }) => {
+interface PaginationProps {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  total?: number;
+  pageSize: number;
+  onPageSizeChange?: (size: number) => void;
+  pageSizeOptions?: number[];
+}
+
+const Pagination = ({ page, totalPages, onPageChange, total, pageSize, onPageSizeChange, pageSizeOptions = [10, 20, 50, 100] }: PaginationProps) => {
   const { isRTL } = useLanguage();
   const { t } = useTranslation();
   const PrevIcon = isRTL ? ChevronRight : ChevronLeft;
   const NextIcon = isRTL ? ChevronLeft : ChevronRight;
   if (totalPages <= 0) return null;
 
-  const getPageNumbers = () => {
-    const pages = [];
+  const getPageNumbers = (): Array<number | string> => {
+    const pages: Array<number | string> = [];
     const maxVisible = 5;
     
     if (totalPages <= maxVisible + 2) {
-            for (let i = 1; i <= totalPages; i++) pages.push(i);
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
-            pages.push(1);
+      pages.push(1);
       let start = Math.max(2, page - 1);
       let end = Math.min(totalPages - 1, page + 1);
       
@@ -30,16 +39,16 @@ const Pagination = ({ page, totalPages, onPageChange, total, pageSize }) => {
         start = Math.max(2, totalPages - maxVisible + 1);
       }
       
-            if (start > 2) pages.push('...');
-            for (let i = start; i <= end; i++) pages.push(i);
-            if (end < totalPages - 1) pages.push('...');
-            pages.push(totalPages);
+      if (start > 2) pages.push('...');
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (end < totalPages - 1) pages.push('...');
+      pages.push(totalPages);
     }
     return pages;
   };
 
-  const from = total ? (page - 1) * pageSize + 1 : 0;
-  const to = total ? Math.min(page * pageSize, total) : 0;
+  const from = total ?? 0 ? (page - 1) * pageSize + 1 : 0;
+  const to = total ?? 0 ? Math.min(page * pageSize, total ?? 0) : 0;
 
   return (
     <div className="flex flex-col gap-3 px-6 py-3 border-t border-brand-border bg-brand-bg-card sm:flex-row sm:items-center sm:justify-between">
@@ -72,6 +81,24 @@ const Pagination = ({ page, totalPages, onPageChange, total, pageSize }) => {
         </button>
       </div>
 
+      {/* Page size selector */}
+      {onPageSizeChange && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-brand-text-muted">{t('common.show', 'Show')}:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            className="h-8 px-2 bg-brand-bg-card border border-brand-border rounded-lg text-xs font-bold text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 cursor-pointer"
+          >
+            {pageSizeOptions.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Desktop: full page number buttons */}
       <div className="hidden sm:flex items-center gap-1.5">
         <button
@@ -89,10 +116,10 @@ const Pagination = ({ page, totalPages, onPageChange, total, pageSize }) => {
             ) : (
               <button
                 key={p}
-                onClick={() => onPageChange(p)}
+                onClick={() => onPageChange(p as number)}
                 className={`flex items-center justify-center h-9 w-9 rounded-xl text-xs font-bold transition-all duration-150 ${
                   p === page
-                    ? 'bg-brand-brand-green-dark text-white shadow-sm shadow-brand-brand-green-dark/20'
+                    ? 'bg-brand-green-dark text-white shadow-sm shadow-brand-green-dark/20'
                     : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-surface-subtle'
                 }`}
               >

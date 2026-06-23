@@ -7,10 +7,24 @@ import { getScopeWhere } from '../utils/scope.utils';
 export const createTask = async (req: Request, res: Response) => {
   try {
     const { title, description, courseId, dueDate, maxScore } = req.body;
-    const doctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
 
-    if (!doctor)
-      return res.status(403).json({ success: false, message: 'Only doctors can create tasks' });
+    let finalDoctorId: number;
+
+    if (req.user!.role === 'SUPER_ADMIN') {
+      const courseCheck = await prisma.course.findUnique({
+        where: { id: parseInt(courseId as string) }
+      });
+      if (!courseCheck) return res.status(404).json({ success: false, message: 'Course not found' });
+      if (!courseCheck.doctorId) {
+        return res.status(400).json({ success: false, message: 'This course has no assigned doctor. Please assign a doctor to the course first, or select a different course.' });
+      }
+      finalDoctorId = courseCheck.doctorId;
+    } else {
+      const doctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
+      if (!doctor)
+        return res.status(403).json({ success: false, message: 'Only doctors can create tasks' });
+      finalDoctorId = doctor.id;
+    }
 
     // Ensure course is within doctor's/admin's scope
     const course = await prisma.course.findUnique({
@@ -34,12 +48,12 @@ export const createTask = async (req: Request, res: Response) => {
         title,
         description,
         courseId: parseInt(courseId as string),
-        doctorId: doctor.id,
+        doctorId: finalDoctorId,
         dueDate: new Date(dueDate as string),
         maxScore: parseInt(maxScore as string) || 100,
       },
       include: {
-        course: { select: { name: true } },
+        course: { select: { name: true, nameAr: true } },
       },
     });
 
@@ -48,7 +62,7 @@ export const createTask = async (req: Request, res: Response) => {
       courseId: task.courseId,
       title: 'New Assignment Posted',
       message: `A new assignment "${task.title}" has been posted for course ${task.course.name}.`,
-      type: 'info',
+      type: 'GENERAL',
     });
 
     res.status(201).json({ success: true, data: task });
@@ -91,7 +105,7 @@ export const getTasks = async (req: Request, res: Response) => {
     const tasks = await prisma.task.findMany({
       where,
       include: {
-        course: { select: { name: true, courseCode: true } },
+        course: { select: { name: true, nameAr: true, courseCode: true } },
         doctor: { select: { firstName: true, lastName: true } },
         _count: { select: { submissions: true } },
       },

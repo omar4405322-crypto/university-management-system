@@ -1,11 +1,10 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-// In CommonJS, __dirname is natively available
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
-let storage: multer.StorageEngine;
+// ─── Cloudinary configuration (shared) ───────────────────────────────────────
 
 const isCloudinaryConfigured =
   process.env.CLOUDINARY_CLOUD_NAME &&
@@ -18,9 +17,15 @@ if (isCloudinaryConfigured) {
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
+}
 
-  storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
+// ─── Profile upload (images only, 2 MB) ──────────────────────────────────────
+
+let profileStorage: multer.StorageEngine;
+
+if (isCloudinaryConfigured) {
+  profileStorage = new CloudinaryStorage({
+    cloudinary,
     params: {
       folder: 'university-management/profiles',
       allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
@@ -28,24 +33,23 @@ if (isCloudinaryConfigured) {
     } as any,
   });
 } else {
-  // Fallback to local disk storage
   const uploadDir = path.join(__dirname, '../../uploads/profiles');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-  storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
+  profileStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadDir),
+    filename: (_req, file, cb) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     },
   });
 }
 
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const profileFileFilter = (
+  _req: any,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback,
+) => {
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
@@ -55,11 +59,39 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
 };
 
 const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB
-  },
-  fileFilter: fileFilter,
+  storage: profileStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+  fileFilter: profileFileFilter,
 });
 
-export = upload;
+// ─── Exam file upload (PDF, DOCX, images — up to 20 MB) ──────────────────────
+
+let examStorage: multer.StorageEngine;
+
+if (isCloudinaryConfigured) {
+  examStorage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+      folder: 'university-management/exam-submissions',
+      allowed_formats: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+      resource_type: 'auto',
+    } as any,
+  });
+} else {
+  const examUploadDir = path.join(__dirname, '../../uploads/exam-submissions');
+  if (!fs.existsSync(examUploadDir)) fs.mkdirSync(examUploadDir, { recursive: true });
+
+  examStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, examUploadDir),
+    filename: (_req, file, cb) =>
+      cb(null, `${Date.now()}-${file.originalname}`),
+  });
+}
+
+export const uploadExamFile = multer({
+  storage: examStorage,
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
+});
+
+// ─── Default export (backwards-compatible with existing routes) ───────────────
+export default upload;

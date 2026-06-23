@@ -1,6 +1,6 @@
 // FIXED: Exam create uses room field (matches database schema)
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,13 +51,15 @@ type FormData = z.infer<typeof schema>;
 
 const CreateExam = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { id } = useParams();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [courses, setCourses] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       courseId: '',
@@ -72,7 +74,32 @@ const CreateExam = () => {
 
   useEffect(() => {
     fetchCourses();
-  }, []);
+    if (id) {
+      fetchExamDetails();
+    }
+  }, [id]);
+
+  const fetchExamDetails = async () => {
+    try {
+      const result = await examsService.getExamById(id as string);
+      if (result.success && result.data) {
+        const exam = result.data;
+        const d = new Date(exam.date);
+        reset({
+          courseId: exam.courseId?.toString() || '',
+          type: exam.type,
+          date: d.toISOString().split('T')[0],
+          startTime: exam.startTime,
+          endTime: exam.endTime,
+          durationMinutes: exam.duration || 120,
+          room: exam.room || ''
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setError(t('exams.loadError', 'Could not load exam details.'));
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -98,15 +125,22 @@ const CreateExam = () => {
         endTime: data.endTime,
         room: data.room ? data.room.trim() : 'TBA',
       };
-      const result = await examsService.createExam(payload);
+      
+      let result;
+      if (id) {
+        result = await examsService.updateExam(id, payload);
+      } else {
+        result = await examsService.createExam(payload);
+      }
+      
       if (result.success) {
         setSuccess(true);
         setTimeout(() => navigate('/exams'), 2000);
       } else {
-        setError(result.message || t('exams.createError', 'Error creating exam'));
+        setError(result.message || (id ? t('exams.updateError', 'Error updating exam') : t('exams.createError', 'Error creating exam')));
       }
-    } catch (err) {
-      setError(err.message || t('exams.createError', 'Error creating exam schedule'));
+    } catch (err: any) {
+      setError(err.message || (id ? t('exams.updateError', 'Error updating exam schedule') : t('exams.createError', 'Error creating exam schedule')));
     }
   };
 
@@ -122,10 +156,10 @@ const CreateExam = () => {
         </button>
         <div>
           <h1 className="text-3xl font-black text-brand-text-main tracking-tight">
-            {t('exams.createTitle', 'Schedule New Exam')}
+            {id ? t('exams.editTitle', 'Update Exam Schedule') : t('exams.createTitle', 'Schedule New Exam')}
           </h1>
           <p className="text-brand-text-sub font-bold mt-1 uppercase tracking-wider">
-            {t('exams.createSubtitle', 'Define the academic assessment parameters')}
+            {id ? t('exams.editSubtitle', 'Modify the academic assessment parameters') : t('exams.createSubtitle', 'Define the academic assessment parameters')}
           </p>
         </div>
       </div>
@@ -133,7 +167,7 @@ const CreateExam = () => {
       {success && (
         <div className="p-4 rounded-2xl bg-brand-green text-white flex items-center gap-3">
           <CheckCircle2 size={24} />
-          <p className="font-bold">{t('exams.createSuccess', 'Exam scheduled successfully! Redirecting...')}</p>
+          <p className="font-bold">{id ? t('exams.updateSuccess', 'Exam updated successfully! Redirecting...') : t('exams.createSuccess', 'Exam scheduled successfully! Redirecting...')}</p>
         </div>
       )}
 
@@ -159,7 +193,7 @@ const CreateExam = () => {
                 >
                   <option value="">{coursesLoading ? t('common.loading') : t('exams.chooseCourse', 'Choose a course')}</option>
                   {courses.map((c) => (
-                    <option key={c.id} value={c.id}>{c.courseCode} - {c.name}</option>
+                    <option key={c.id} value={c.id}>{c.courseCode} - {isRTL ? (c.nameAr || c.name) : c.name}</option>
                   ))}
                 </select>
                 {errors.courseId && <p className="text-rose-500 text-xs mt-1">{errors.courseId.message}</p>}
@@ -273,7 +307,7 @@ const CreateExam = () => {
           >
             {isSubmitting ? <Loader2 className="animate-spin mx-auto" size={24} /> : (
               <span className="flex items-center justify-center gap-2">
-                <Save size={20} /> {t('exams.saveExam', 'Save Exam Schedule')}
+                <Save size={20} /> {id ? t('exams.updateExam', 'Update Exam Schedule') : t('exams.saveExam', 'Save Exam Schedule')}
               </span>
             )}
           </Button>

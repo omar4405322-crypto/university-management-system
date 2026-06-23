@@ -72,7 +72,7 @@ export const getAllStudents = catchAsync(
             },
           },
           department: {
-            select: { name: true, college: { select: { name: true } } },
+            select: { name: true, nameAr: true, college: { select: { name: true, nameAr: true } } },
           },
         },
         skip,
@@ -145,7 +145,7 @@ export const toggleStudentStatus = catchAsync(
       },
       include: {
         user: { select: { email: true, profilePicture: true } },
-        department: { select: { name: true, college: { select: { name: true } } } },
+        department: { select: { name: true, nameAr: true, college: { select: { name: true, nameAr: true } } } },
       },
     });
 
@@ -181,7 +181,7 @@ export const getStudentById = catchAsync(
         enrollments: {
           select: {
             course: {
-              select: { id: true, name: true, courseCode: true },
+              select: { id: true, name: true, nameAr: true, courseCode: true },
             },
           },
         },
@@ -320,6 +320,13 @@ export const deleteStudent = catchAsync(async (req: Request, res: Response, next
       },
     }); // Clear M2M
 
+    await tx.examAnswer.deleteMany({
+      where: { submission: { studentId: parseInt(id as string) } },
+    });
+    await tx.examViolation.deleteMany({
+      where: { submission: { studentId: parseInt(id as string) } },
+    });
+    await tx.examSubmission.deleteMany({ where: { studentId: parseInt(id as string) } });
     await tx.attendance.deleteMany({ where: { studentId: parseInt(id as string) } });
     await tx.payment.deleteMany({ where: { studentId: parseInt(id as string) } });
     await tx.quizSubmission.deleteMany({ where: { studentId: parseInt(id as string) } });

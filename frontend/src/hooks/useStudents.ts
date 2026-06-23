@@ -15,6 +15,7 @@ export function useStudents({ initialPage = 1, limit = 10, initialSearch = '' }:
   const [search, setSearch] = useState(initialSearch);
   const [page, setPage] = useState(initialPage);
   const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState<any>({ total: 0, active: 0, pending: 0, inactive: 0 });
   const debouncedSearch = useDebounce(search, 400);
 
   const fetchData = useCallback(async (extraParams: Record<string, unknown> = {}) => {
@@ -27,6 +28,9 @@ export function useStudents({ initialPage = 1, limit = 10, initialSearch = '' }:
         const arr = Array.isArray(res.data) ? res.data : (res.data?.data || res.data?.students || res.data?.courses || res.data?.departments || res.data?.doctors || []);
         setData(arr);
         setTotal(res.pagination?.total ?? res.data?.pagination?.total ?? res.data?.total ?? 0);
+        if (res.data?.stats) {
+          setStats(res.data.stats);
+        }
       } else {
         setError(res.message ?? 'Failed to load data');
       }
@@ -50,6 +54,7 @@ export function useStudents({ initialPage = 1, limit = 10, initialSearch = '' }:
     page,
     setPage,
     total,
+    stats,
     refetch: fetchData,
   };
 }

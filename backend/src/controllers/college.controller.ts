@@ -16,15 +16,15 @@ export const getCollegeById = catchAsync(async (req: Request, res: Response) => 
 });
 
 export const createCollege = catchAsync(async (req: Request, res: Response) => {
-  const { name, nameAr, description } = req.body;
-  const data = await collegeService.createCollege({ name, nameAr, description });
+  const { name, nameAr, description, descriptionAr, status, logoUrl } = req.body;
+  const data = await collegeService.createCollege({ name, nameAr, description, descriptionAr, status, logoUrl });
   res.status(201).json({ success: true, data });
 });
 
 export const updateCollege = catchAsync(async (req: Request, res: Response) => {
   const collegeId = parseInt(req.params.id as string);
-  const { name, nameAr, description } = req.body;
-  const data = await collegeService.updateCollege(collegeId, { name, nameAr, description });
+  const { name, nameAr, description, descriptionAr, status, logoUrl } = req.body;
+  const data = await collegeService.updateCollege(collegeId, { name, nameAr, description, descriptionAr, status, logoUrl });
   res.json({ success: true, data });
 });
 

@@ -33,7 +33,6 @@ const AddCourseModal = ({ isOpen, onClose, onSuccess }) => {
       maxStudents: 30,
     }
   });
-  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -184,7 +183,5 @@ const AddCourseModal = ({ isOpen, onClose, onSuccess }) => {
     </Modal>
   );
 };
-
-export default AddCourseModal;
 
 export default AddCourseModal;
