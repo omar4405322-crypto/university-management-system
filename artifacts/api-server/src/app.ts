@@ -167,7 +167,26 @@ const apiLimiter = rateLimit({
 
 app.use('/api/auth', authLimiter);
 
-// 4. HEALTH CHECK
+// 4. HEALTH CHECK (both /api/health and /api/healthz for deployment compatibility)
+const healthHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    await (prisma as any).$queryRaw`SELECT 1`;
+    res.status(200).json({
+      success: true,
+      message: 'Server and Database are healthy',
+      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed',
+      error: err instanceof Error ? err.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+    });
+  }
+};
+app.get('/api/healthz', healthHandler);
 app.get('/api/health', async (req: Request, res: Response): Promise<void> => {
   try {
     await (prisma as any).$queryRaw`SELECT 1`;
