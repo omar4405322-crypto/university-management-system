@@ -153,7 +153,7 @@ const authLimiter = rateLimit({
 
 const enrollmentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5000,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -164,8 +164,6 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
-app.use('/api/auth', authLimiter);
 
 // 4. HEALTH CHECK (both /api/health and /api/healthz for deployment compatibility)
 const healthHandler = async (req: Request, res: Response): Promise<void> => {

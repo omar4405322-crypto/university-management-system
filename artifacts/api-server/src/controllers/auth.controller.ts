@@ -88,6 +88,14 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
 
   const hashedPassword = await bcrypt.hash(password as string, 10);
 
+  const parsedDeptId =
+    departmentId !== undefined && departmentId !== ''
+      ? parseInt(departmentId as string, 10)
+      : null;
+  if (parsedDeptId !== null && isNaN(parsedDeptId)) {
+    return res.status(400).json({ message: 'Invalid departmentId: must be a number' });
+  }
+
   const request = await prisma.registrationRequest.create({
     data: {
       email,
@@ -96,8 +104,8 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
       firstName,
       lastName,
       studentId: role === 'STUDENT' ? studentId : null,
-      year: role === 'STUDENT' ? (year ? parseInt(year as string) : 1) : null,
-      departmentId: departmentId ? parseInt(departmentId as string) : null,
+      year: role === 'STUDENT' ? (year ? parseInt(year as string, 10) : 1) : null,
+      departmentId: parsedDeptId,
       phone: phone?.trim() || null,
     },
   });
@@ -308,10 +316,24 @@ export const approveRequest = catchAsync(
 
     const request = await prisma.registrationRequest.findUnique({
       where: { id: parseInt(id as string) },
+      include: { department: { select: { collegeId: true } } },
     });
 
     if (!request) {
       return next(new NotFoundError('Request not found'));
+    }
+
+    if (
+      req.user!.role === 'COLLEGE_ADMIN' &&
+      req.user!.managedCollegeId !== request.department?.collegeId
+    ) {
+      return res.status(403).json({ message: 'Access denied: request belongs to a different college' });
+    }
+    if (
+      req.user!.role === 'DEPARTMENT_ADMIN' &&
+      req.user!.managedDepartmentId !== request.departmentId
+    ) {
+      return res.status(403).json({ message: 'Access denied: request belongs to a different department' });
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -368,6 +390,28 @@ export const approveRequest = catchAsync(
 export const rejectRequest = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const { reason } = req.body as RejectRequestBody;
+
+  const request = await prisma.registrationRequest.findUnique({
+    where: { id: parseInt(id as string) },
+    include: { department: { select: { collegeId: true } } },
+  });
+
+  if (!request) {
+    return next(new NotFoundError('Request not found'));
+  }
+
+  if (
+    req.user!.role === 'COLLEGE_ADMIN' &&
+    req.user!.managedCollegeId !== request.department?.collegeId
+  ) {
+    return res.status(403).json({ message: 'Access denied: request belongs to a different college' });
+  }
+  if (
+    req.user!.role === 'DEPARTMENT_ADMIN' &&
+    req.user!.managedDepartmentId !== request.departmentId
+  ) {
+    return res.status(403).json({ message: 'Access denied: request belongs to a different department' });
+  }
 
   await prisma.registrationRequest.update({
     where: { id: parseInt(id as string) },

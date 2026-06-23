@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import http from 'http';
 import { verifyToken } from './jwt.utils';
 import logger from './logger';
+import prisma from './prismaClient';
 
 interface AuthenticatedSocket extends Socket {
   user?: any;
@@ -25,14 +26,27 @@ export const initSocket = (server: http.Server): Server => {
   });
 
   // Authentication Middleware for Sockets
-  io.use((socket: AuthenticatedSocket, next) => {
+  io.use(async (socket: AuthenticatedSocket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) {
       return next(new Error('Authentication error: No token provided'));
     }
 
     try {
-      const decoded = verifyToken(token);
+      const decoded = verifyToken(token) as any;
+
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { tokenVersion: true },
+      });
+
+      if (!user) {
+        return next(new Error('Authentication error: User not found'));
+      }
+      if (user.tokenVersion !== decoded.tokenVersion) {
+        return next(new Error('Authentication error: Token invalidated — please log in again'));
+      }
+
       socket.user = decoded;
       next();
     } catch (err) {
