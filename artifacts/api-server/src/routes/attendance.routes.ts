@@ -1,0 +1,33 @@
+import express from 'express';
+const router = express.Router();
+import * as attendanceController from '../controllers/attendance.controller';
+import { protect, authorize } from '../middleware/auth.middleware';
+import { attendanceValidation } from '../validations/functional.validation';
+import { param } from 'express-validator';
+import validate from '../middleware/validate.middleware';
+
+router.post(
+  '/',
+  protect,
+  authorize('SUPER_ADMIN', 'ADMIN', 'DOCTOR'),
+  attendanceValidation,
+  validate,
+  attendanceController.recordAttendance
+);
+router.get(
+  '/course/:courseId',
+  protect,
+  authorize('SUPER_ADMIN', 'ADMIN', 'DOCTOR'),
+  [param('courseId').isInt().withMessage('Invalid course ID')],
+  validate,
+  attendanceController.getCourseAttendance
+);
+router.get(
+  '/student/:studentId',
+  protect,
+  [param('studentId').isInt().withMessage('Invalid student ID')],
+  validate,
+  attendanceController.getStudentAttendance
+);
+
+export default router;
