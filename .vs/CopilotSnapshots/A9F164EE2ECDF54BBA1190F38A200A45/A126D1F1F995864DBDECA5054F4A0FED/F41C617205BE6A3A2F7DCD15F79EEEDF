@@ -1,0 +1,10 @@
+﻿SELECT setval(
+  pg_get_serial_sequence('"Department"', 'id'),
+  COALESCE((SELECT MAX(id) FROM "Department"), 0) + 1,
+  false
+);
+SELECT setval(pg_get_serial_sequence('"College"', 'id'), COALESCE((SELECT MAX(id) FROM "College"), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('"User"', 'id'), COALESCE((SELECT MAX(id) FROM "User"), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('"Course"', 'id'), COALESCE((SELECT MAX(id) FROM "Course"), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('"Student"', 'id'), COALESCE((SELECT MAX(id) FROM "Student"), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('"Doctor"', 'id'), COALESCE((SELECT MAX(id) FROM "Doctor"), 0) + 1, false);

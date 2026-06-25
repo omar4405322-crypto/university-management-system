@@ -1,0 +1,187 @@
+﻿const prisma = require('../utils/prismaClient');
+
+/**
+ * @desc    Get all timetables (Admin) or matching timetable (Student)
+ * @route   GET /api/timetables
+ * @access  Private
+ */
+exports.getTimetables = async (req, res) => {
+  try {
+    const { user } = req;
+    const { collegeId, departmentId, academicYear, semester, status } = req.query;
+
+    let where = {};
+
+    if (user.role === 'STUDENT') {
+      const student = await prisma.student.findUnique({
+        where: { userId: user.id },
+        select: { 
+          departmentId: true, 
+          year: true,
+          department: {
+            select: { collegeId: true }
+          }
+        }
+      });
+
+      if (!student) {
+        return res.status(404).json({ success: false, message: 'Student profile not found' });
+      }
+
+      // Automatically match student profile
+      where = {
+        departmentId: student.departmentId,
+        collegeId: student.department.collegeId,
+        academicYear: student.year,
+        status: 'PUBLISHED'
+      };
+
+    } else {
+      // Admins/Doctors
+      if (collegeId) where.collegeId = parseInt(collegeId);
+      if (departmentId) where.departmentId = parseInt(departmentId);
+      if (academicYear) where.academicYear = parseInt(academicYear);
+      if (semester) where.semester = parseInt(semester);
+      if (status) where.status = status;
+    }
+
+    const timetables = await prisma.timetable.findMany({
+      where,
+      include: {
+        college: { select: { name: true } },
+        department: { select: { name: true } }
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    res.json({ success: true, data: timetables });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Get a single timetable by ID
+ * @route   GET /api/timetables/:id
+ * @access  Private
+ */
+exports.getTimetableById = async (req, res) => {
+  try {
+    const timetable = await prisma.timetable.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: {
+        college: true,
+        department: true
+      }
+    });
+
+    if (!timetable) {
+      return res.status(404).json({ success: false, message: 'Timetable not found' });
+    }
+
+    res.json({ success: true, data: timetable });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Create a new timetable
+ * @route   POST /api/timetables
+ * @access  Private (Admin)
+ */
+exports.createTimetable = async (req, res) => {
+  try {
+    const { collegeId, departmentId, academicYear, semester, title, description, scheduleData, fileUrl, status } = req.body;
+
+    // Validation
+    if (!collegeId || !departmentId || !academicYear || !semester || !title) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Faculty, Department, Academic Year, Semester, and Title are required' 
+      });
+    }
+
+    // Check for duplicates (handled by unique constraint in DB, but better to check)
+    const existing = await prisma.timetable.findUnique({
+      where: {
+        collegeId_departmentId_academicYear_semester: {
+          collegeId: parseInt(collegeId),
+          departmentId: parseInt(departmentId),
+          academicYear: parseInt(academicYear),
+          semester: parseInt(semester)
+        }
+      }
+    });
+
+    if (existing) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'A timetable for this Faculty, Department, Year, and Semester combination already exists.' 
+      });
+    }
+
+    const timetable = await prisma.timetable.create({
+      data: {
+        collegeId: parseInt(collegeId),
+        departmentId: parseInt(departmentId),
+        academicYear: parseInt(academicYear),
+        semester: parseInt(semester),
+        title,
+        description,
+        scheduleData: scheduleData || {},
+        fileUrl,
+        status: status || 'DRAFT'
+      }
+    });
+
+    res.status(201).json({ success: true, data: timetable });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Update a timetable
+ * @route   PUT /api/timetables/:id
+ * @access  Private (Admin)
+ */
+exports.updateTimetable = async (req, res) => {
+  try {
+    const { title, description, scheduleData, fileUrl, status, academicYear, semester } = req.body;
+    const id = parseInt(req.params.id);
+
+    const timetable = await prisma.timetable.update({
+      where: { id },
+      data: {
+        title,
+        description,
+        scheduleData,
+        fileUrl,
+        status,
+        academicYear: academicYear ? parseInt(academicYear) : undefined,
+        semester: semester ? parseInt(semester) : undefined
+      }
+    });
+
+    res.json({ success: true, data: timetable });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Delete a timetable
+ * @route   DELETE /api/timetables/:id
+ * @access  Private (Admin)
+ */
+exports.deleteTimetable = async (req, res) => {
+  try {
+    await prisma.timetable.delete({
+      where: { id: parseInt(req.params.id) }
+    });
+    res.json({ success: true, message: 'Timetable deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

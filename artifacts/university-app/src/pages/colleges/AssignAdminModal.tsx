@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import { useTranslation } from 'react-i18next';
@@ -78,7 +78,7 @@ const AssignAdminModal = ({ isOpen, onClose, collegeId, collegeName, onSuccess }
 
 	  {fetching ? (
 		<div className="flex justify-center py-8">
-		  <Loader2 size={32} className="animate-spin text-brand-brand-green-dark" />
+		  <Loader2 size={32} className="animate-spin text-brand-primary-600" />
 		</div>
 	  ) : admins.length === 0 ? (
 		<div className="text-center py-8">

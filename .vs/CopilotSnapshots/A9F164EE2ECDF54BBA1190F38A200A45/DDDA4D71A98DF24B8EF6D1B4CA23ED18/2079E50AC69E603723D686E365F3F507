@@ -1,0 +1,337 @@
+﻿import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Card from '../../components/ui/Card';
+import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
+import Badge from '../../components/ui/Badge';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import { 
+  Users, 
+  Search, 
+  Plus, 
+  Download, 
+  Eye, 
+  Edit2, 
+  Trash2, 
+  UserX, 
+  UserCheck,
+  Filter,
+  KeyRound
+} from 'lucide-react';
+import studentService from '../../services/students.service';
+import { useTranslation } from 'react-i18next';
+import AddStudentModal from './AddStudentModal';
+import EditStudentModal from './EditStudentModal';
+import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import FilterBar from '../../components/ui/FilterBar';
+import Pagination from '../../components/ui/Pagination';
+import ErrorState from '../../components/ui/ErrorState';
+import { EmptyState } from '../../components/ui/EmptyState';
+
+const StudentsList = () => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [totalPages, setTotalPages] = useState(1);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [resetPasswordStudent, setResetPasswordStudent] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    // Apply scope params when fetching
+    const scope = require('../../hooks/useScope').default ? require('../../hooks/useScope').default() : null;
+    fetchStudents(scope?.scopeParams);
+  }, [page, search]);
+
+  const fetchStudents = async (extraParams = {}) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const params = {
+        page,
+        limit: 10,
+        search: search.trim(),
+        ...extraParams
+      };
+      const response = await studentService.getStudents(params);
+      
+      console.log('Students API response:', JSON.stringify(response, null, 2));
+
+      if (response.success) {
+        const studentsArray = Array.isArray(response.data) 
+          ? response.data 
+          : Array.isArray(response.data?.students) 
+            ? response.data.students 
+            : Array.isArray(response.data?.data) 
+              ? response.data.data 
+              : [];
+        setStudents(studentsArray);
+        setTotalPages(response.data?.pagination?.totalPages || response.data?.totalPages || response.pagination?.pages || 1);
+      }
+    } catch (err) {
+      setError(t('common.errorFetching'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const blob = await studentService.exportStudents();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `students_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showToast(t('students.exportSuccess'), 'success');
+    } catch (err) {
+      showToast(t('students.exportError'), 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleToggleStatus = async (student) => {
+    try {
+      const result = await studentService.updateStudent(student.id, {
+        isActive: !student.isActive
+      });
+      if (result.success) {
+        showToast(
+          student.isActive ? t('students.deactivated') : t('students.activated'),
+          'success'
+        );
+        fetchStudents();
+      }
+    } catch (err) {
+      showToast(t('common.error'), 'error');
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      setDeleteLoading(true);
+      const result = await studentService.deleteStudent(deleteTarget.id);
+      if (result.success) {
+        showToast(t('students.deleteSuccess'), 'success');
+        setDeleteTarget(null);
+        fetchStudents();
+      }
+    } catch (err) {
+      showToast(t('common.error'), 'error');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const showToast = (message, type) => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const filteredStudents = (Array.isArray(students) ? students : []).filter(s => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'active') return s.isActive;
+    if (statusFilter === 'inactive') return !s.isActive;
+    if (statusFilter === 'pending') return false;
+    return true;
+  });
+
+  return (
+    <div className="section-gap animate-in fade-in duration-700">
+      {toast && (
+        <div className={`fixed top-20 right-4 z-50 p-4 rounded-xl shadow-xl text-white animate-in slide-in-from-top-4 ${toast.type === 'error' ? 'bg-rose-500' : 'bg-brand-primary-500'}`}>
+          <p className="font-bold">{toast.message}</p>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-black text-brand-text-primary tracking-tight">
+            {t('students.title')}
+          </h1>
+          <p className="text-brand-text-muted font-bold mt-1 uppercase tracking-widest text-xs">
+            {t('students.subtitle')}
+          </p>
+        </div>
+        <Button onClick={() => setShowAddModal(true)} className="shadow-xl shadow-brand-primary-500/20 h-12 px-6">
+          <Plus size={18} className="mr-2" /> {t('students.addStudent')}
+        </Button>
+      </div>
+
+      <Card noPadding className="border-l-0 overflow-hidden shadow-soft">
+        <FilterBar>
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted" size={18} />
+            <Input
+              placeholder={t('students.searchPlaceholder')}
+              className="pl-11 h-11 bg-brand-bg-page/50 border-transparent focus:bg-white"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={exporting}
+            className="h-11 px-5 border-brand-border hover:bg-brand-bg-page"
+          >
+            <Download size={14} />
+            {exporting ? t('common.loading') : t('common.exportCsv')}
+          </Button>
+          <button onClick={() => setStatusFilter('all')}>
+            <Badge variant={statusFilter === 'all' ? 'primary' : 'outline'} className="cursor-pointer px-3 py-1">{t('students.allStudents')}</Badge>
+          </button>
+          <button onClick={() => setStatusFilter('active')}>
+            <Badge variant={statusFilter === 'active' ? 'success' : 'outline'} className="cursor-pointer px-3 py-1">{t('students.active')}</Badge>
+          </button>
+          <button onClick={() => setStatusFilter('pending')}>
+            <Badge variant={statusFilter === 'pending' ? 'warning' : 'outline'} className="cursor-pointer px-3 py-1">{t('students.pending')}</Badge>
+          </button>
+          <button onClick={() => setStatusFilter('inactive')}>
+            <Badge variant={statusFilter === 'inactive' ? 'danger' : 'outline'} className="cursor-pointer px-3 py-1">{t('students.inactive')}</Badge>
+          </button>
+        </FilterBar>
+
+        <div className="min-h-[400px]">
+          {error ? (
+            <div className="p-8">
+              <ErrorState message={error} onRetry={fetchStudents} />
+            </div>
+          ) : !Array.isArray(students) || students.length === 0 ? (
+            <EmptyState
+              icon={<Users size={40} />}
+              title={search ? t('students.noSearchResults') : t('students.noStudents')}
+              subtitle={search ? t('students.noSearchResultsDesc') : t('students.noStudentsDesc')}
+              action={
+                search
+                  ? { label: t('common.clearSearch'), onClick: () => setSearch('') }
+                  : { label: t('students.addFirstStudent'), onClick: () => setShowAddModal(true) }
+              }
+            />
+          ) : filteredStudents.length === 0 ? (
+            <EmptyState
+              icon={<Users size={40} />}
+              title={t('students.noStudentsWithFilter') || 'لا يوجد طلاب بهذا الفلتر'}
+              subtitle={t('students.noStudentsWithFilterDesc') || 'حاول تغيير الفلتر لعرض المزيد من النتائج'}
+              action={{ label: t('common.clearFilter') || 'مسح الفلتر', onClick: () => setStatusFilter('all') }}
+            />
+          ) : (
+            <>
+              <Table headers={[t('students.studentId'), t('students.fullName'), t('auth.email'), t('students.phone'), t('students.enrolledDate'), t('profile.status'), t('common.actions')]}>
+                  {filteredStudents.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-400 tracking-widest text-xs uppercase hidden md:table-cell">{student.studentId}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-4">
+                          <div className="w-11 h-11 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-primary-500 font-black shadow-inner ring-1 ring-brand-primary-100/50 dark:ring-brand-primary-900/20 group-hover:scale-110 transition-transform">
+                            {student.firstName[0]}{student.lastName[0]}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-primary-500 transition-colors">{student.firstName} {student.lastName}</span>
+                            <span className="text-[10px] font-black uppercase text-brand-text-muted tracking-wider">{t(`STUDENTS.YEAR${student.year}`, `Year ${student.year}`)}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-brand-text-secondary font-bold text-xs hidden md:table-cell">{student.user?.email}</TableCell>
+                      <TableCell className="text-brand-text-secondary font-bold text-xs hidden md:table-cell">
+                        {student.phone?.trim() ? student.phone : t('students.phoneNotSpecified')}
+                      </TableCell>
+                      <TableCell className="text-brand-text-secondary font-bold text-xs hidden md:table-cell">
+                        {new Date(student.enrolledAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={student.isActive ? 'success' : 'neutral'}>
+                          {student.isActive ? t('students.active') : t('students.inactive')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                      <ActionMenu actions={[
+                        { label: t('common.view'), icon: Eye, variant: 'view', onClick: () => navigate(`/students/${student.id}`) },
+                        { label: t('common.edit'), icon: Edit2, variant: 'edit', onClick: () => setEditingStudent(student) },
+                        { label: 'Reset Password', icon: KeyRound, variant: 'edit', onClick: () => setResetPasswordStudent(student) },
+                        {
+                          label: student.isActive ? t('students.deactivate') : t('students.activate'),
+                          icon: student.isActive ? UserX : UserCheck,
+                          variant: student.isActive ? 'delete' : 'edit',
+                          onClick: () => handleToggleStatus(student),
+                        },
+                        {
+                          label: t('common.delete'),
+                          icon: Trash2,
+                          variant: 'delete',
+                          onClick: () => setDeleteTarget({
+                            id: student.id,
+                            name: `${student.firstName} ${student.lastName}`,
+                          }),
+                        },
+                      ]} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </Table>
+
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </>
+          )}
+        </div>
+      </Card>
+
+      {/* Modals */}
+      {showAddModal && (
+        <AddStudentModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
+            setShowAddModal(false);
+            showToast(t('students.addSuccess'), 'success');
+            fetchStudents();
+          }}
+        />
+      )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteTarget)}
+        itemName={deleteTarget?.name}
+        onClose={() => !deleteLoading && setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        loading={deleteLoading}
+      />
+
+      {editingStudent && (
+        <EditStudentModal 
+          student={editingStudent}
+          onClose={() => setEditingStudent(null)} 
+          onSuccess={() => {
+            setEditingStudent(null);
+            showToast(t('students.updateSuccess'), 'success');
+            fetchStudents();
+          }}
+        />
+      )}
+
+      <ResetPasswordModal 
+        isOpen={!!resetPasswordStudent} 
+        onClose={() => setResetPasswordStudent(null)} 
+        person={resetPasswordStudent} 
+        type="student" 
+      />
+    </div>
+  );
+};
+
+export default StudentsList;

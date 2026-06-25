@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 // FIXED: 2FA warning banner, enable action for super admins, prompt query param - Phase 3
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
@@ -235,7 +235,7 @@ const Profile = () => {
           <Card className="overflow-hidden">
             <div className="relative px-6 pt-8 pb-6 text-center">
               <div className="relative mx-auto h-28 w-28">
-                <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-brand-brand-green to-brand-primary-600 text-4xl font-black text-white ring-4 ring-brand-primary-100 shadow-xl overflow-hidden">
+                <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-brand-primary-500 to-brand-primary-600 text-4xl font-black text-white ring-4 ring-brand-primary-100 shadow-xl overflow-hidden">
                   {user?.profilePicture ? (
                     <img
                       src={user.profilePicture}
@@ -248,7 +248,7 @@ const Profile = () => {
                 </div>
                 <button
                   onClick={() => setIsPicModalOpen(true)}
-                  className="absolute bottom-1 right-1 rounded-full bg-brand-bg-card dark:bg-slate-700 p-1.5 shadow-lg border border-brand-border text-brand-text-sub hover:text-brand-brand-green-dark transition-colors"
+                  className="absolute bottom-1 right-1 rounded-full bg-brand-bg-card dark:bg-slate-700 p-1.5 shadow-lg border border-brand-border text-brand-text-sub hover:text-brand-primary-600 transition-colors"
                   title={t('profile.uploadPic')}
                 >
                   <Camera size={15} />
@@ -262,7 +262,7 @@ const Profile = () => {
               {fullProfile && (
                 <div className="mt-3 space-y-0.5">
                   {(fullProfile.studentId || fullProfile.doctorId) && (
-                    <p className="text-xs font-bold text-brand-brand-green-dark">
+                    <p className="text-xs font-bold text-brand-primary-600">
                       {fullProfile.studentId || fullProfile.doctorId}
                     </p>
                   )}
@@ -305,13 +305,13 @@ const Profile = () => {
                 <p className="text-xs font-black text-brand-text-muted uppercase tracking-widest">
                   {t('profile.profileCompletion')}
                 </p>
-                <span className="text-sm font-black text-brand-brand-green-dark">
+                <span className="text-sm font-black text-brand-primary-600">
                   {user?.profileCompletion || 85}%
                 </span>
               </div>
               <div className="h-2 w-full rounded-full bg-brand-bg-page overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-brand-brand-green to-brand-brand-green-dark shadow-sm"
+                  className="h-full rounded-full bg-gradient-to-r from-brand-primary-500 to-brand-primary-600 shadow-sm"
                   style={{ width: `${user?.profileCompletion || 85}%` }}
                 ></div>
               </div>
@@ -331,7 +331,7 @@ const Profile = () => {
             <Card>
               <div className="space-y-4">
                 <p className="text-xs font-black text-brand-text-muted uppercase tracking-widest flex items-center gap-2">
-                  <Building2 size={14} className="text-brand-brand-green-dark" /> {t('profile.college')}
+                  <Building2 size={14} className="text-brand-primary-600" /> {t('profile.college')}
                 </p>
                 <p className="text-sm font-bold text-brand-text-primary">
                   {fullProfile.department.college?.name || fullProfile.department.name}
@@ -416,7 +416,7 @@ const Profile = () => {
             <Card>
               <div className="px-6 py-5 border-b border-brand-border">
                 <h2 className="text-lg font-black text-brand-text-primary tracking-tight m-0 flex items-center gap-2">
-                  <Award size={20} className="text-brand-brand-green-dark" /> {t('profile.academicInfo')}
+                  <Award size={20} className="text-brand-primary-600" /> {t('profile.academicInfo')}
                 </h2>
                 <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
                   {t('profile.academicSubtitle')}
@@ -476,7 +476,7 @@ const Profile = () => {
           <Card>
             <div className="px-6 py-5 border-b border-brand-border">
               <h2 className="text-lg font-black text-brand-text-primary tracking-tight m-0 flex items-center gap-2">
-                <Shield size={20} className="text-brand-brand-green-dark" /> {t('profile.security')}
+                <Shield size={20} className="text-brand-primary-600" /> {t('profile.security')}
               </h2>
               <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
                 {t('profile.securitySubtitle')}
@@ -593,7 +593,7 @@ const Profile = () => {
               </div>
             ) : (
               <>
-                <div className="h-20 w-20 rounded-full bg-brand-primary-50 flex items-center justify-center text-brand-brand-green-dark mb-4">
+                <div className="h-20 w-20 rounded-full bg-brand-primary-50 flex items-center justify-center text-brand-primary-600 mb-4">
                   <Camera size={40} />
                 </div>
                 <p className="text-sm font-bold text-brand-text-primary mb-1">
@@ -603,7 +603,7 @@ const Profile = () => {
                   PNG, JPG or WebP (max. 5MB)
                 </p>
                 <label className="cursor-pointer">
-                  <span className="bg-brand-brand-green-dark text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-brand-primary-600 transition-all inline-block shadow-lg shadow-brand-brand-green-dark/20">
+                  <span className="bg-brand-primary-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-brand-primary-600 transition-all inline-block shadow-lg shadow-brand-primary-600/20">
                     {t('profile.browseFiles')}
                   </span>
                   <input

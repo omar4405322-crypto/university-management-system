@@ -1,0 +1,282 @@
+﻿import { Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
+import { AuthRequest } from '../types';
+import * as authService from '../services/auth.service';
+import prisma from '../utils/prismaClient';
+import bcrypt from 'bcryptjs';
+import { generateAccessToken, generateRefreshToken } from '../utils/jwt.utils';
+import { notifyAdminsOfNewRequest, createNotification } from '../utils/notification.utils';
+import catchAsync from '../utils/catchAsync';
+import { AppError, AuthenticationError, ConflictError, NotFoundError } from '../utils/appError';
+import logger from '../utils/logger';
+import { verifyTOTP } from '../utils/twoFactor.utils';
+
+const setAuthCookies = (res: Response, _accessToken: string, refreshToken: string) => {
+  res.cookie('refresh_token', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: '/api/auth/refresh',
+  });
+};
+
+export const register = catchAsync(async (req, res, next) => {
+  const { email, password, role: requestedRole, firstName, lastName, departmentId, collegeId, studentId, year, phone } = req.body;
+
+  // Validation
+  if (!email || !password || !firstName || !lastName) {
+    return res.status(400).json({ message: 'Missing required fields: email, password, firstName, and lastName are required' });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: 'Invalid email address' });
+  }
+
+  if (password.length < 8) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters' });
+  }
+
+  const role = 'STUDENT';
+  if (requestedRole && requestedRole !== 'STUDENT') {
+    return next(new AppError('Only student registration is available. Faculty accounts are created by administrators.', 400));
+  }
+
+  const existingUser = await authService.findUserByEmail(email);
+  if (existingUser) {
+    return next(new ConflictError('Email already registered'));
+  }
+
+  if (role === 'STUDENT' && studentId) {
+    const existingStudent = await authService.findStudentByStudentId(studentId);
+    if (existingStudent) {
+      return next(new ConflictError('Student ID already exists'));
+    }
+  }
+
+  const existingRequest = await authService.findRegistrationRequestByEmail(email);
+  if (existingRequest) {
+    return next(new ConflictError('Registration request already pending'));
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  if (departmentId && collegeId) { 
+    const dept = await prisma.department.findFirst({ 
+      where: { id: departmentId, collegeId: collegeId }, 
+    }); 
+    if (!dept) { 
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Department does not belong to the selected college', 
+      }); 
+    } 
+  } 
+
+  const request = await authService.createRegistrationRequest({
+    email,
+    password: hashedPassword,
+    role,
+    firstName,
+    lastName,
+    studentId: role === 'STUDENT' ? studentId : null,
+    year: role === 'STUDENT' ? (year ? parseInt(year) : 1) : null,
+    departmentId: departmentId ? parseInt(departmentId) : null,
+    phone: phone?.trim() || null,
+  });
+
+  if (request.departmentId) {
+    await notifyAdminsOfNewRequest({
+      role: request.role,
+      firstName: request.firstName,
+      lastName: request.lastName,
+      departmentId: request.departmentId,
+    });
+  }
+
+  res.status(201).json({
+    success: true,
+    message: 'Your application is under review. You will be notified upon acceptance.',
+    data: { status: 'PENDING', requestId: request.id },
+  });
+});
+
+export const login = catchAsync(async (req, res, next) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const { password } = req.body;
+
+  logger.info(`[AUTH] Login attempt for email: ${email}`);
+
+  const registrationRequest = await authService.findRegistrationRequestByEmail(email);
+
+  if (registrationRequest?.status === 'PENDING') {
+    return next(new AuthenticationError('Your application is under review.'));
+  }
+
+  if (registrationRequest?.status === 'REJECTED') {
+    return next(new AuthenticationError('Your registration request was rejected.'));
+  }
+
+  const user = await authService.findUserByEmailWithProfiles(email);
+
+  logger.debug(`[AUTH] User search result: ${user ? 'Found' : 'Not Found'}`);
+
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    logger.warn(`[AUTH] Invalid login attempt for: ${email}`);
+    return next(new AuthenticationError('Invalid email or password'));
+  }
+
+  if (user.twoFactorEnabled) {
+    logger.info(`[AUTH] 2FA required for: ${email}`);
+    const { totpToken } = req.body;
+    if (!totpToken) {
+      res.status(200).json({
+        success: true,
+        requires2FA: true,
+        message: 'Please enter your 2FA code',
+      });
+      return;
+    }
+    if (!user.twoFactorSecret) {
+      return next(new AuthenticationError('2FA is not enabled for this user'));
+    }
+    const isValid = verifyTOTP(user.twoFactorSecret, totpToken);
+    if (!isValid) {
+      logger.warn(`[AUTH] Invalid 2FA token for: ${email}`);
+      return next(new AuthenticationError('Invalid 2FA code'));
+    }
+  }
+
+  logger.info(`[AUTH] Generating tokens for user: ${user.id}`);
+  const accessToken = generateAccessToken(user.id, user.tokenVersion);
+  const refreshToken = await generateRefreshToken(user.id);
+
+  logger.info(`[AUTH] Setting cookies and sending response for: ${email}`);
+  setAuthCookies(res, accessToken, refreshToken);
+
+  res.json({
+    success: true,
+    data: {
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        twoFactorEnabled: user.twoFactorEnabled,
+        profile: user.student || user.doctor || null,
+      },
+    },
+  });
+});
+
+export const refresh = catchAsync(async (req, res, next) => {
+  const { refresh_token } = req.cookies;
+
+  if (!refresh_token) {
+    return next(new AuthenticationError('Refresh token missing'));
+  }
+
+  const tokenDoc = await authService.findRefreshTokenByToken(refresh_token);
+
+  if (!tokenDoc || tokenDoc.expiresAt < new Date()) {
+    if (tokenDoc) await authService.deleteRefreshTokenById(tokenDoc.id);
+    return next(new AuthenticationError('Invalid or expired refresh token'));
+  }
+
+  const accessToken = generateAccessToken(tokenDoc.user.id, tokenDoc.user.tokenVersion);
+
+  res.json({
+    success: true,
+    data: { accessToken },
+  });
+});
+
+export const logout = catchAsync(async (req, res, _next) => {
+  const { refresh_token } = req.cookies;
+  if (refresh_token) {
+    await authService.deleteRefreshTokensByToken(refresh_token);
+  }
+
+  res.clearCookie('refresh_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/api/auth/refresh',
+  });
+  res.status(200).json({ success: true, message: 'Logged out successfully' });
+});
+
+export const getMe = catchAsync(async (req, res, next) => {
+  const user = await authService.findUserByIdWithProfiles(req.user.id);
+
+  if (!user) {
+    return next(new NotFoundError('User no longer exists'));
+  }
+
+  const { password: _password, twoFactorSecret: _secret, ...safeUser } = user;
+
+  res.json({
+    success: true,
+    data: {
+      ...safeUser,
+      twoFactorEnabled: user.twoFactorEnabled,
+    },
+  });
+});
+
+export const getRequests = catchAsync(async (req, res, next) => {
+  const { user } = req;
+  const { status } = req.query;
+  const where = {} as any;
+  if (status && status !== 'ALL') {
+    where.status = String(status);
+  }
+
+  if (user.role === 'COLLEGE_ADMIN') {
+    if (!req.user.collegeId) {
+      return next(new AppError('Admin not assigned to a college', 403));
+    }
+    where.department = { collegeId: req.user.collegeId };
+  }
+
+  if (user.role === 'DEPARTMENT_ADMIN') {
+    if (!req.user.departmentId) {
+      return next(new AppError('Admin not assigned to a department', 403));
+    }
+    where.departmentId = req.user.departmentId;
+  }
+
+  const requests = await authService.findRegistrationRequests(where);
+
+  res.json({ success: true, data: requests });
+});
+
+export const approveRequest = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const request = await authService.findRegistrationRequestById(parseInt(String(id)));
+
+  if (!request) {
+    return next(new NotFoundError('Request not found'));
+  }
+
+  const result = await authService.approveRegistrationRequest(parseInt(String(id)), request);
+
+  await createNotification({
+    userId: result.id,
+    title: 'Registration Approved',
+    message: 'Your registration request has been accepted.',
+  });
+
+  res.json({ success: true, message: 'Request approved successfully' });
+});
+
+export const rejectRequest = catchAsync(async (req, res, _next) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  await authService.rejectRegistrationRequest(parseInt(String(id)), reason);
+
+  res.json({ success: true, message: 'Request rejected' });
+});

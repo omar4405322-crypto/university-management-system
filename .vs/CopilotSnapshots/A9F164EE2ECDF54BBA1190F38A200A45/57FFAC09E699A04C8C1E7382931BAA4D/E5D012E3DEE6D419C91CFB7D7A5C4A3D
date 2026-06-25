@@ -1,0 +1,15 @@
+﻿const prisma = require('../src/utils/prismaClient');
+
+(async () => {
+  try {
+	const user = await prisma.user.update({
+	  where: { email: 'superadmin@university.com' },
+	  data: { twoFactorEnabled: false, twoFactorSecret: null }
+	});
+	console.log('Updated super 2FA:', { id: user.id, email: user.email, twoFactorEnabled: user.twoFactorEnabled });
+	process.exit(0);
+  } catch (err) {
+	console.error('ERR', err);
+	process.exit(1);
+  }
+})();

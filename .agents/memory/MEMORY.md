@@ -1,5 +1,0 @@
-- [CORS Replit dev domains](cors-replit.md) — Vite PORT varies ($PORT), so allow all localhost:* and use [^/]* regex for replit.dev subdomains
-- [JWT secret gate](jwt-secret.md) — process.exit(1) on startup if JWT_SECRET missing/short; secret set permanently via setEnvVars
-- [Auth tokenVersion logout](auth-token-version.md) — Redis removed; logout increments tokenVersion in DB; protect middleware validates it
-- [Prisma v6 cascades](prisma-cascades.md) — Attendance/Payment/QuizSubmission/TaskSubmission need explicit onDelete:Cascade; doctor_id_seq must pre-exist
-- [useUniversityStats endpoint](university-stats.md) — hook calls /api/dashboard/stats (not /api/university/stats which doesn't exist)

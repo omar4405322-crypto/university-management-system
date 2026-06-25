@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import {
@@ -159,7 +159,7 @@ const TakeExam = () => {
   if (loading)
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-120px)] gap-4">
-        <Loader2 className="animate-spin text-brand-brand-green-dark" size={48} />
+        <Loader2 className="animate-spin text-brand-primary-600" size={48} />
         <p className="text-sm font-black uppercase tracking-widest text-brand-text-muted">
           {t('common.loading')}
         </p>
@@ -170,7 +170,7 @@ const TakeExam = () => {
     return (
       <div className="max-w-3xl mx-auto py-20 px-6 text-center animate-in zoom-in duration-500">
         <div className="w-20 h-20 rounded-3xl bg-brand-primary-50 dark:bg-brand-primary-900/20 flex items-center justify-center mx-auto mb-8 shadow-xl">
-          <CheckCircle2 size={40} className="text-brand-brand-green-dark" />
+          <CheckCircle2 size={40} className="text-brand-primary-600" />
         </div>
         <h2 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main mb-3">
           {t('exams.submittedTitle')}
@@ -180,7 +180,7 @@ const TakeExam = () => {
         </p>
         <Button
           onClick={() => navigate('/exams')}
-          className="rounded-2xl px-8 h-12 shadow-xl shadow-brand-brand-green-dark/20"
+          className="rounded-2xl px-8 h-12 shadow-xl shadow-brand-primary-600/20"
         >
           {t('exams.backToExams')}
         </Button>
@@ -336,7 +336,7 @@ const TakeExam = () => {
               </div>
               <div className="w-32 h-2 rounded-full bg-brand-bg-page border border-brand-border overflow-hidden">
                 <div
-                  className="h-full bg-brand-brand-green-dark transition-all duration-500"
+                  className="h-full bg-brand-primary-600 transition-all duration-500"
                   style={{
                     width: `${((currentQuestionIndex + 1) / (exam?.questions?.length || 1)) * 100}%`,
                   }}
@@ -365,15 +365,15 @@ const TakeExam = () => {
                     onClick={() => handleAnswerSelect(currentQuestion.id, idx)}
                     className={`flex items-center gap-5 p-6 rounded-3xl border-2 text-start transition-all duration-300 group ${
                       answers[currentQuestion.id] === idx
-                        ? 'border-brand-brand-green-dark bg-brand-brand-green-dark/5 shadow-lg shadow-brand-brand-green-dark/10'
-                        : 'border-brand-border bg-brand-bg-page/50 hover:border-brand-brand-green-dark/30 hover:bg-brand-bg-page'
+                        ? 'border-brand-primary-600 bg-brand-primary-600/5 shadow-lg shadow-brand-primary-600/10'
+                        : 'border-brand-border bg-brand-bg-page/50 hover:border-brand-primary-600/30 hover:bg-brand-bg-page'
                     }`}
                   >
                     <div
                       className={`w-8 h-8 rounded-xl flex items-center justify-center font-black transition-all ${
                         answers[currentQuestion.id] === idx
-                          ? 'bg-brand-brand-green-dark text-white shadow-lg'
-                          : 'bg-brand-bg-page border border-brand-border text-brand-text-muted group-hover:text-brand-brand-green-dark'
+                          ? 'bg-brand-primary-600 text-white shadow-lg'
+                          : 'bg-brand-bg-page border border-brand-border text-brand-text-muted group-hover:text-brand-primary-600'
                       }`}
                     >
                       {String.fromCharCode(65 + idx)}
@@ -405,7 +405,7 @@ const TakeExam = () => {
               {currentQuestionIndex === (exam?.questions?.length || 1) - 1 ? (
                 <Button
                   onClick={() => setShowEmergencyExitConfirm(true)}
-                  className="rounded-2xl px-8 h-12 shadow-xl shadow-brand-brand-green-dark/20 gap-2 bg-brand-brand-green-dark hover:bg-brand-primary-600 font-black"
+                  className="rounded-2xl px-8 h-12 shadow-xl shadow-brand-primary-600/20 gap-2 bg-brand-primary-600 hover:bg-brand-primary-600 font-black"
                 >
                   <Send size={20} className="rtl:-scale-x-100" /> {t('exams.finishAndSubmit')}
                 </Button>

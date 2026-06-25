@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../../components/ui/Card';
 import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
 import Badge from '../../components/ui/Badge';
@@ -32,6 +32,7 @@ import CourseModal from './CourseModal';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
+import useScope from '../../hooks/useScope';
 
 const CoursesList = () => {
   const { t } = useTranslation();
@@ -58,43 +59,13 @@ const CoursesList = () => {
     }
   };
 
-  const fetchFilteredCourses = useCallback(async () => {
-    try {
-            setLoading(true);
-            setError(null);
-      const params = {
-        search,
-        collegeId: selectedCollege || scope?.effectiveCollegeId || undefined,
-        departmentId: selectedDept || scope?.effectiveDepartmentId || undefined,
-        page,
-        limit: 10
-      };
-            const res = await coursesService.getCourses(params);
-      if (res.success) {
-        const coursesArray = Array.isArray(res.data) 
-          ? res.data 
-          : Array.isArray(res.data?.courses) 
-            ? res.data.courses 
-            : Array.isArray(res.data?.data) 
-              ? res.data.data 
-              : [];
-        // Internal state is managed by useCourses, refetch logic handles updates
-                setTotalPages(res.data?.pagination?.totalPages || res.data?.totalPages || 1);
-      }
-    } catch (err: any) {
-      logger.error('Error filtering courses:', err);
-            setError(err.message || 'Failed to load courses.');
-    } finally {
-            setLoading(false);
-    }
-  }, [search, selectedCollege, selectedDept, page]);
 
   useEffect(() => {
     fetchInitialData();
   }, []);
 
   // Apply scope defaults for admins
-    const scope = require('../../hooks/useScope').default ? require('../../hooks/useScope').default() : null;
+  const scope = useScope();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -166,10 +137,10 @@ const CoursesList = () => {
         <Card noPadding className="md:col-span-1 h-fit border-none shadow-soft overflow-hidden">
           <div className="p-6 bg-surface-subtle dark:bg-slate-800/30 border-b border-brand-border dark:border-brand-border flex items-center justify-between">
             <h3 className="font-black text-brand-text-primary dark:text-brand-text-main flex items-center gap-2 uppercase tracking-widest text-xs">
-              <Filter size={16} className="text-brand-brand-green-dark" /> 
+              <Filter size={16} className="text-brand-primary-600" /> 
               {t('students.filters')}
             </h3>
-            <button onClick={resetFilters} className="text-[10px] font-black text-brand-brand-green-dark hover:opacity-70 transition-opacity uppercase tracking-widest">
+            <button onClick={resetFilters} className="text-[10px] font-black text-brand-primary-600 hover:opacity-70 transition-opacity uppercase tracking-widest">
               {t('COMMON.RESET')}
             </button>
           </div>
@@ -178,7 +149,7 @@ const CoursesList = () => {
             <div className="space-y-1.5">
               <label className="label-stat ml-1">{t('COURSES.SEARCHCOURSE')}</label>
               <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted h-4 w-4 group-focus-within:text-brand-brand-green-dark transition-colors" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted h-4 w-4 group-focus-within:text-brand-primary-600 transition-colors" />
                 <Input 
                   placeholder={t('COURSES.SEARCHPLACEHOLDER')} 
                   className="pl-10 h-10 bg-surface-subtle dark:bg-surface-subtle border-none font-bold text-sm"
@@ -193,7 +164,7 @@ const CoursesList = () => {
               <select 
                 value={selectedCollege}
                 onChange={handleCollegeChange}
-                className="w-full h-10 px-4 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-xs font-black uppercase tracking-widest text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-brand-green-dark/20 transition-all appearance-none cursor-pointer"
+                className="w-full h-10 px-4 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-xs font-black uppercase tracking-widest text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-primary-600/20 transition-all appearance-none cursor-pointer"
               >
                 <option value="">{t('colleges.allColleges')}</option>
                 {Array.isArray(colleges) && colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -206,7 +177,7 @@ const CoursesList = () => {
                 value={selectedDept}
                 onChange={(e) => { setSelectedDept(e.target.value); setPage(1); }}
                 disabled={!selectedCollege}
-                className="w-full h-10 px-4 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-xs font-black uppercase tracking-widest text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-brand-green-dark/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
+                className="w-full h-10 px-4 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-xs font-black uppercase tracking-widest text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-primary-600/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
               >
                 <option value="">{t('departments.allDepartments')}</option>
                 {Array.isArray(departments) && departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -242,7 +213,7 @@ const CoursesList = () => {
                     <Table headers={[t('courses.courseCode'), t('courses.courseName'), t('auth.department'), t('courses.instructor'), t('courses.students'), t('common.actions')]}>
                       {(Array.isArray(courses) ? courses : []).map((course) => (
                         <TableRow key={course.id} className="hover:bg-surface-subtle dark:hover:bg-slate-800/50 transition-colors">
-                          <TableCell className="font-black text-brand-navy-500 dark:text-brand-brand-green tracking-widest text-xs uppercase">{course.courseCode}</TableCell>
+                          <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-500 tracking-widest text-xs uppercase">{course.courseCode}</TableCell>
                           <TableCell className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight">
                             <TruncatedText text={course.name} />
                           </TableCell>
@@ -252,7 +223,7 @@ const CoursesList = () => {
                           <TableCell>
                             {course.doctor ? (
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-brand-green-dark flex items-center justify-center text-[10px] font-black shadow-inner">
+                                <div className="w-8 h-8 rounded-lg bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-primary-600 flex items-center justify-center text-[10px] font-black shadow-inner">
                                   {course.doctor.firstName[0]}
                                 </div>
                                 <span className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main">{course.doctor.firstName} {course.doctor.lastName}</span>

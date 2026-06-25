@@ -181,7 +181,7 @@ export default function AdminDashboard() {
       <div className="relative overflow-hidden rounded-[2rem] shadow-elevated" style={{ minHeight: '180px' }}>
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${CAMPUS_HERO_1}), linear-gradient(135deg, var(--color-brand-navy-500) 0%, var(--color-brand-teal) 100%)` }}
+          style={{ backgroundImage: `url(${CAMPUS_HERO_1}), linear-gradient(135deg, var(--color-brand-navy-500) 0%, var(--color-brand-navy-700) 100%)` }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/25 rtl:bg-gradient-to-l" />
         <div className="relative z-10 flex flex-col gap-6 p-6 md:flex-row md:items-end md:justify-between md:p-8">
@@ -191,14 +191,14 @@ export default function AdminDashboard() {
             </h1>
             {user?.role === 'COLLEGE_ADMIN' && getCollegeName() && (
               <div className="flex items-center gap-2 mt-2">
-                <Building2 size={16} className="text-brand-brand-green" />
+                <Building2 size={16} className="text-brand-primary-400" />
                 <span className="text-sm font-bold text-white/90 bg-white/10 px-3 py-1 rounded-full">
                   {getCollegeName()}
                 </span>
               </div>
             )}
             <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-white/85">
-              <Shield size={16} className="text-brand-brand-green shrink-0" />
+              <Shield size={16} className="text-brand-primary-400 shrink-0" />
               <span>{user?.role.replace('_', ' ')}</span>
               <span className="text-white/40">|</span>
               <span>
@@ -220,7 +220,7 @@ export default function AdminDashboard() {
             <Button
               variant="primary"
               size="md"
-              className="shadow-overlay shadow-brand-brand-green-dark/30 font-bold text-xs uppercase tracking-widest"
+              className="shadow-overlay shadow-brand-primary-500/30 font-bold text-xs uppercase tracking-widest"
               onClick={() => navigate('/settings')}
             >
               <Zap size={16} /> {t('dashboard.quickActions')}
@@ -249,7 +249,7 @@ export default function AdminDashboard() {
                 <div
                   className={`p-2.5 rounded-2xl transition-colors duration-300 ${
                     kpi.color === 'green'
-                      ? 'bg-brand-primary-50 text-brand-brand-green-dark group-hover:bg-[var(--kpi-icon-hover)] group-hover:text-white'
+                      ? 'bg-brand-primary-50 text-brand-primary-600 group-hover:bg-[var(--kpi-icon-hover)] group-hover:text-white'
                       : kpi.color === 'navy'
                         ? 'bg-brand-navy-50 text-brand-navy-500 group-hover:bg-[var(--kpi-icon-hover)] group-hover:text-white'
                         : 'bg-brand-accent-yellow/10 text-brand-accent-yellow group-hover:bg-[var(--kpi-icon-hover)] group-hover:text-white'
@@ -257,7 +257,7 @@ export default function AdminDashboard() {
                 >
                   <kpi.icon size={18} />
                 </div>
-                {kpi.trend === 'up' && <ArrowUpRight size={14} className="text-brand-brand-green-dark" />}
+                {kpi.trend === 'up' && <ArrowUpRight size={14} className="text-brand-primary-600" />}
                 {kpi.trend === 'down' && <ArrowDownRight size={14} className="text-error" />}
               </div>
               <div className="space-y-0.5">
@@ -272,12 +272,12 @@ export default function AdminDashboard() {
                     <div className="flex items-center gap-1">
                       <span
                         className={`text-[10px] font-bold ${
-                          kpi.trend === 'up' ? 'text-brand-brand-green-dark' : kpi.trend === 'down' ? 'text-error' : 'text-brand-text-muted'
+                          kpi.trend === 'up' ? 'text-brand-primary-600' : kpi.trend === 'down' ? 'text-error' : 'text-brand-text-muted'
                         }`}
                       >
                         {kpi.change}
                       </span>
-                      {kpi.trend === 'up' && <ArrowUpRight size={12} className="text-brand-brand-green-dark" />}
+                      {kpi.trend === 'up' && <ArrowUpRight size={12} className="text-brand-primary-600" />}
                       {kpi.trend === 'down' && <ArrowDownRight size={12} className="text-error" />}
                     </div>
                   )}
@@ -373,11 +373,11 @@ export default function AdminDashboard() {
                 ) : (
                   stats.recentActivity.slice(0, 4).map((activity: any) => (
                     <div key={activity.id} className="p-5 flex items-center gap-4 hover:bg-surface-subtle/60 transition-colors group cursor-pointer">
-                      <div className="w-11 h-11 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-brand-green-dark flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <div className="w-11 h-11 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-primary-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                         <CheckCircle2 size={18} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main truncate group-hover:text-brand-brand-green-dark transition-colors">
+                        <p className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main truncate group-hover:text-brand-primary-600 transition-colors">
                           {activity.description || t('dashboard.newStudentRegistration')}
                         </p>
                         <p className="text-caption mt-0.5">
@@ -399,8 +399,8 @@ export default function AdminDashboard() {
             <Card title={t('dashboard.systemStatus')} variant="default" noPadding>
               <div className="p-6 flex flex-col items-center justify-center gap-4 min-h-[160px]">
                 <div className="p-4 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 border border-brand-primary-100 dark:border-brand-primary-900/20 flex items-center gap-3 w-full">
-                  <div className="w-2.5 h-2.5 rounded-full bg-brand-brand-green-dark animate-ping shrink-0" />
-                  <p className="text-xs font-black text-brand-brand-green-dark uppercase tracking-widest">{t('dashboard.allSystemsOperational')}</p>
+                  <div className="w-2.5 h-2.5 rounded-full bg-brand-primary-600 animate-ping shrink-0" />
+                  <p className="text-xs font-black text-brand-primary-600 uppercase tracking-widest">{t('dashboard.allSystemsOperational')}</p>
                 </div>
                 <p className="text-xs text-brand-text-muted text-center font-medium">
                   {t('dashboard.systemStatusNote') || 'Detailed metrics available to system administrators.'}
@@ -420,7 +420,7 @@ export default function AdminDashboard() {
               <div className="p-6 rounded-2xl bg-surface-subtle border border-brand-border space-y-5">
                 <div className="flex justify-between items-center gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Target size={16} className="text-brand-brand-green-dark shrink-0" />
+                    <Target size={16} className="text-brand-primary-600 shrink-0" />
                     <span className="text-[10px] font-black uppercase tracking-wider text-brand-text-secondary">{t('dashboard.quotaUsage')}</span>
                   </div>
                   <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main whitespace-nowrap">
@@ -428,13 +428,13 @@ export default function AdminDashboard() {
                   </span>
                 </div>
                 <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-brand-brand-green-dark rounded-full shadow-lg transition-all duration-500" style={{ width: `${subscriptionUsagePercent}%` }} />
+                  <div className="h-full bg-brand-primary-600 rounded-full shadow-lg transition-all duration-500" style={{ width: `${subscriptionUsagePercent}%` }} />
                 </div>
                 <p className="text-[10px] font-bold text-brand-text-muted">
                   {subscriptionUsagePercent}% {t('dashboard.quotaUsage')} · {totalStudentsCount.toLocaleString()} {t('dashboard.totalStudents').toLowerCase()}
                 </p>
               </div>
-              <Button variant="primary" className="w-full font-black uppercase tracking-[0.2em] py-5 shadow-overlay shadow-brand-brand-green-dark/20" onClick={() => navigate('/settings')}>
+              <Button variant="primary" className="w-full font-black uppercase tracking-[0.2em] py-5 shadow-overlay shadow-brand-primary-500/20" onClick={() => navigate('/settings')}>
                 {t('dashboard.manageSubscription')}
               </Button>
             </div>
@@ -452,12 +452,12 @@ export default function AdminDashboard() {
                   const d = new Date(event.date);
                   return (
                     <div key={event.id} className="flex gap-4 group cursor-pointer">
-                      <div className="flex flex-col items-center justify-center w-14 h-16 rounded-xl bg-surface-subtle border border-brand-border group-hover:bg-brand-brand-green-dark group-hover:border-brand-brand-green-dark transition-all duration-300">
+                      <div className="flex flex-col items-center justify-center w-14 h-16 rounded-xl bg-surface-subtle border border-brand-border group-hover:bg-brand-primary-600 group-hover:border-brand-primary-600 transition-all duration-300">
                         <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-none group-hover:text-white transition-colors">{d.getDate()}</span>
                         <span className="text-[9px] font-black uppercase text-brand-text-secondary group-hover:text-white/80 transition-colors">{d.toLocaleString('default', { month: 'short' })}</span>
                       </div>
                       <div className="flex-1 pt-1">
-                        <h5 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight group-hover:text-brand-brand-green-dark transition-colors">{event.title}</h5>
+                        <h5 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight group-hover:text-brand-primary-600 transition-colors">{event.title}</h5>
                         <p className="text-caption mt-1">{event.location || ''}</p>
                       </div>
                     </div>

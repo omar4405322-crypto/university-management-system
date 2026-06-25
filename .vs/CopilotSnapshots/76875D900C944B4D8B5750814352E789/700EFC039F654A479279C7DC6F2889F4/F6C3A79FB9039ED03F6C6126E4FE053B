@@ -1,0 +1,209 @@
+﻿import dotenv from 'dotenv';
+import path from 'path';
+import crypto from 'crypto';
+
+n// Ensure test env is loaded and Prisma uses the test database before importing app/prisma clients
+dotenv.config({ path: path.resolve(__dirname, '../../../.env.test') });
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+
+import { describe, expect, test, beforeAll, afterAll, afterEach } from '@jest/globals';
+import request from 'supertest';
+import app from '../app';
+import prisma from '../utils/prismaClient';
+import bcrypt from 'bcryptjs';
+import speakeasy from 'speakeasy';
+
+describe('Auth Flow E2E', () => {
+  const uniqueSuffix = crypto.randomBytes(6).toString('hex');
+  const testEmail = `student-${Date.now()}-${uniqueSuffix}@e2e-test.com`;
+  const testUser = {
+    email: testEmail,
+    password: 'Password123!',
+    firstName: 'Test',
+    lastName: 'Student',
+    role: 'STUDENT',
+    studentId: `STU-${Date.now()}-${uniqueSuffix}`,
+    year: 1,
+    collegeId: 1,
+    departmentId: 1
+  };
+
+  let accessToken: string;
+  let refreshToken: string;
+
+  beforeAll(async () => {
+    // Ensure college and department exist
+    await prisma.student.deleteMany({ where: { department: { collegeId: 1 } } });
+    await prisma.department.deleteMany({ where: { collegeId: 1 } });
+    await prisma.college.deleteMany({ where: { id: 1 } });
+
+    await prisma.college.create({
+      data: { id: 1, name: 'Test College' }
+    });
+    await prisma.department.create({
+      data: { id: 1, name: 'Test Dept', collegeId: 1 }
+    });
+  });
+
+  afterAll(async () => {
+    const users = await prisma.user.findMany({ where: { email: { contains: '@e2e-test.com' } } });
+    const userIds = users.map(u => u.id);
+    await prisma.student.deleteMany({ where: { userId: { in: userIds } } });
+    await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+    await prisma.registrationRequest.deleteMany({ where: { email: { contains: '@e2e-test.com' } } });
+    await prisma.$disconnect();
+  });
+
+  // Step 1: Register new student → 201
+  test('Step 1: Register new student', async () => {
+    const response = await request(app)
+      .post('/api/auth/register')
+      .send(testUser);
+
+    if (response.status !== 201) {
+      console.log('Registration failed body:', JSON.stringify(response.body, null, 2));
+    }
+
+    expect(response.status).toBe(201);
+    expect(response.body.success).toBe(true);
+    
+    // Check if registration request or user was created depending on system logic
+    // Usually registration goes to PENDING, so we might need to approve it
+    const regRequest = await prisma.registrationRequest.findUnique({ where: { email: testUser.email } });
+    if (regRequest) {
+      await prisma.registrationRequest.update({
+        where: { id: regRequest.id },
+        data: { status: 'APPROVED' }
+      });
+      
+      // Simulate the approval process that creates the user
+      const hashedPassword = await bcrypt.hash(testUser.password, 10);
+      await prisma.user.create({
+        data: {
+          email: testUser.email,
+          password: hashedPassword,
+          role: 'STUDENT',
+          student: {
+            create: {
+              firstName: testUser.firstName,
+              lastName: testUser.lastName,
+              studentId: testUser.studentId,
+              departmentId: testUser.departmentId
+            }
+          }
+        }
+      });
+    }
+  });
+
+  // Step 2: Login → get accessToken + refreshToken (HttpOnly cookie)
+  test('Step 2: Login', async () => {
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: testUser.email,
+        password: testUser.password
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toHaveProperty('accessToken');
+    expect(response.get('Set-Cookie')).toBeDefined();
+    
+    accessToken = response.body.data.accessToken;
+    const cookies = response.get('Set-Cookie') as string[];
+    refreshToken = cookies.find((c: string) => c.startsWith('refresh_token'))?.split(';')[0].split('=')[1] || '';
+  });
+
+  // Step 3: Access protected route with valid token → 200
+  test('Step 3: Access protected route', async () => {
+    const response = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.email).toBe(testUser.email);
+  });
+
+  // Step 4: Trigger 2FA → verify TOTP code → get new tokens
+  test('Step 4: 2FA Flow', async () => {
+    // 1. Enable 2FA
+    const secret = speakeasy.generateSecret();
+    await prisma.user.update({
+      where: { email: testUser.email },
+      data: { 
+        twoFactorEnabled: true,
+        twoFactorSecret: secret.base32
+      }
+    });
+
+    // 2. Login again - should require 2FA
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: testUser.email,
+        password: testUser.password
+      });
+
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body.requires2FA).toBe(true);
+
+    // 3. Verify TOTP
+    const token = speakeasy.totp({
+      secret: secret.base32,
+      encoding: 'base32'
+    });
+
+    const verifyRes = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: testUser.email,
+        password: testUser.password,
+        totpToken: token
+      });
+
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.data).toHaveProperty('accessToken');
+    accessToken = verifyRes.body.data.accessToken;
+  });
+
+  // Step 5: Use refreshToken to get new accessToken → 200
+  test('Step 5: Refresh Token', async () => {
+    const response = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', [`refresh_token=${refreshToken}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toHaveProperty('accessToken');
+    accessToken = response.body.data.accessToken;
+  });
+
+  // Step 6: Logout → refreshToken invalidated
+  test('Step 6: Logout', async () => {
+    const response = await request(app)
+      .post('/api/auth/logout')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('Cookie', [`refresh_token=${refreshToken}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.get('Set-Cookie')[0]).toContain('refresh_token=;');
+  });
+
+  // Step 7: Try using old refreshToken after logout → 401
+  test('Step 7: Old refresh token fails', async () => {
+    const response = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', [`refresh_token=${refreshToken}`]);
+
+    expect(response.status).toBe(401);
+  });
+
+  // Step 8: Try accessing protected route with expired token → 401
+  test('Step 8: Expired access token fails', async () => {
+    // We can't easily "expire" a token in real-time, but we can use a malformed one
+    const response = await request(app)
+      .get('/api/users/me')
+      .set('Authorization', 'Bearer invalid-token');
+
+    expect(response.status).toBe(401);
+  });
+});

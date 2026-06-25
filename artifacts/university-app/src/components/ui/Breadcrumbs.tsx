@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 // FIXED: Reusable breadcrumb navigation - Phase 6
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -27,7 +27,7 @@ const Breadcrumbs = ({ items = [] }) => {
                             {item.link && !isLast ? (
                 <Link
                                     to={item.link}
-                  className="text-brand-primary-600 hover:text-brand-brand-green-dark transition-colors"
+                  className="text-brand-primary-600 hover:text-brand-primary-600 transition-colors"
                 >
                                     {item.label}
                 </Link>

@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 // FIXED [Phase 7]: Empty state + delete confirmation modal
 import React, { useState, useEffect } from 'react';
 import Card from '../../components/ui/Card';
@@ -120,7 +120,7 @@ const CollegesList = () => {
 
       {loading ? (
         <div className="flex flex-col justify-center items-center h-96 gap-4">
-          <Loader2 className="animate-spin text-brand-brand-green-dark" size={48} />
+          <Loader2 className="animate-spin text-brand-primary-600" size={48} />
           <p className="text-caption">{t('common.loading')}</p>
         </div>
       ) : !Array.isArray(visibleColleges) || visibleColleges.length === 0 ? (
@@ -155,7 +155,7 @@ const CollegesList = () => {
                     <>
                       <button
                         onClick={() => handleEdit(college)}
-                        className="w-10 h-10 rounded-xl bg-white/10 p-2.5 text-white backdrop-blur-xl hover:bg-brand-brand-green-dark transition-all duration-300 shadow-xl border border-white/10 flex items-center justify-center"
+                        className="w-10 h-10 rounded-xl bg-white/10 p-2.5 text-white backdrop-blur-xl hover:bg-brand-primary-600 transition-all duration-300 shadow-xl border border-white/10 flex items-center justify-center"
                         title={t('common.edit')}
                       >
                         <Edit2 size={18} />
@@ -174,7 +174,7 @@ const CollegesList = () => {
                 <div className="absolute bottom-6 right-6 left-6 z-20">
                   <Badge
                     variant="success"
-                    className="mb-3 px-3 py-1 text-[10px] font-black tracking-widest uppercase bg-brand-brand-green-dark/90 text-white border-none shadow-lg"
+                    className="mb-3 px-3 py-1 text-[10px] font-black tracking-widest uppercase bg-brand-primary-600/90 text-white border-none shadow-lg"
                   >
                     {t('colleges.active')}
                   </Badge>
@@ -199,8 +199,8 @@ const CollegesList = () => {
                   <div className="space-y-1">
                     <p className="label-stat">{t('profile.status')}</p>
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-brand-brand-green-dark animate-pulse" />
-                      <p className="text-[10px] font-black text-brand-brand-green-dark uppercase tracking-widest">
+                      <div className="w-2 h-2 rounded-full bg-brand-primary-600 animate-pulse" />
+                      <p className="text-[10px] font-black text-brand-primary-600 uppercase tracking-widest">
                         {t('colleges.operational')}
                       </p>
                     </div>
@@ -237,7 +237,7 @@ const CollegesList = () => {
                 <div className="mt-8 flex items-center gap-3">
                   <Button
                     variant="primary"
-                    className="flex-1 text-[10px] font-black uppercase tracking-widest py-3.5 shadow-lg shadow-brand-brand-green-dark/20"
+                    className="flex-1 text-[10px] font-black uppercase tracking-widest py-3.5 shadow-lg shadow-brand-primary-600/20"
                     onClick={() => navigate(`/departments?collegeId=${college.id}`)}
                   >
                     {t('colleges.manageDepts')}

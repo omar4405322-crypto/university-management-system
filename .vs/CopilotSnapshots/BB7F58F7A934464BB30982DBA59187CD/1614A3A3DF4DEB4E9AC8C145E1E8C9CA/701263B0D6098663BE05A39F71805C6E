@@ -1,0 +1,12 @@
+﻿# API Configuration
+# Base URL for the backend API used by the frontend (Vite).
+# Use VITE_BACKEND_URL for the backend server (preferred). The app will fall back to '/api' when unset to use the Vite proxy in dev.
+# Legacy: VITE_API_URL may still be present but VITE_BACKEND_URL is used by the code.
+VITE_API_URL=http://localhost:5002/api
+VITE_SENTRY_DSN=
+
+VITE_BACKEND_URL=http://localhost:5000
+
+# Other Configuration
+VITE_APP_NAME=Smart University Platform
+VITE_APP_VERSION=1.0.0

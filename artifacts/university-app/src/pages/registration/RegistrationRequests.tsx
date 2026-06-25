@@ -1,4 +1,4 @@
-// FIXED: Proper empty state icon (no stray imagery); show phone in details - Phase 6
+﻿// FIXED: Proper empty state icon (no stray imagery); show phone in details - Phase 6
 import React, { useState, useEffect } from 'react';
 import Card from '../../components/ui/Card';
 import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
@@ -111,7 +111,7 @@ const RegistrationRequests = () => {
         <div className="min-h-[400px]">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-3">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-brand-brand-green-dark/20 border-t-brand-brand-green-dark"></div>
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-brand-primary-600/20 border-t-brand-primary-600"></div>
               <p className="text-sm text-brand-text-muted font-medium">{t('common.loading')}</p>
             </div>
           ) : filteredRequests.length === 0 ? (

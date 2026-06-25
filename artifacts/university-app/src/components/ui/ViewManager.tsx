@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Save, Plus, Trash2, CheckCircle, LayoutTemplate } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SavedView } from '../../hooks/useSavedViews';
@@ -58,7 +58,7 @@ const ViewManager: React.FC<ViewManagerProps> = ({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 text-sm font-bold bg-surface-subtle dark:bg-slate-800 rounded-xl hover:bg-brand-primary-50 dark:hover:bg-brand-primary-900/20 text-brand-text-secondary hover:text-brand-brand-green-dark transition-colors"
+        className="flex items-center gap-2 px-3 py-2 text-sm font-bold bg-surface-subtle dark:bg-slate-800 rounded-xl hover:bg-brand-primary-50 dark:hover:bg-brand-primary-900/20 text-brand-text-secondary hover:text-brand-primary-600 transition-colors"
       >
         <LayoutTemplate size={16} />
         {activeView?.name || 'View'}
@@ -85,7 +85,7 @@ const ViewManager: React.FC<ViewManagerProps> = ({
                 <div
                   key={view.id}
                   className={`flex items-center justify-between px-3 py-2 hover:bg-surface-subtle dark:hover:bg-slate-700/50 cursor-pointer group ${
-                    view.id === activeViewId ? 'text-brand-brand-green-dark bg-brand-primary-50/50 dark:bg-brand-primary-900/10' : 'text-brand-text-secondary'
+                    view.id === activeViewId ? 'text-brand-primary-600 bg-brand-primary-50/50 dark:bg-brand-primary-900/10' : 'text-brand-text-secondary'
                   }`}
                   onClick={() => {
                     onSelectView(view.id);
@@ -100,7 +100,7 @@ const ViewManager: React.FC<ViewManagerProps> = ({
                           e.stopPropagation();
                           onSetDefault(view.id);
                         }}
-                        className="p-1 text-brand-text-muted hover:text-brand-brand-green-dark"
+                        className="p-1 text-brand-text-muted hover:text-brand-primary-600"
                         title="Set as Default"
                       >
                         <CheckCircle size={14} />
@@ -140,13 +140,13 @@ const ViewManager: React.FC<ViewManagerProps> = ({
               ) : (
                 <div className="flex flex-col gap-1">
                   <button
-                    className="flex items-center gap-2 px-2 py-1.5 text-xs font-bold text-brand-text-secondary hover:text-brand-brand-green-dark rounded-lg hover:bg-brand-primary-50 dark:hover:bg-brand-primary-900/20 transition-colors w-full"
+                    className="flex items-center gap-2 px-2 py-1.5 text-xs font-bold text-brand-text-secondary hover:text-brand-primary-600 rounded-lg hover:bg-brand-primary-50 dark:hover:bg-brand-primary-900/20 transition-colors w-full"
                     onClick={() => setIsCreating(true)}
                   >
                     <Plus size={14} /> Save as New View
                   </button>
                   <button
-                    className="flex items-center gap-2 px-2 py-1.5 text-xs font-bold text-brand-text-secondary hover:text-brand-brand-green-dark rounded-lg hover:bg-brand-primary-50 dark:hover:bg-brand-primary-900/20 transition-colors w-full"
+                    className="flex items-center gap-2 px-2 py-1.5 text-xs font-bold text-brand-text-secondary hover:text-brand-primary-600 rounded-lg hover:bg-brand-primary-50 dark:hover:bg-brand-primary-900/20 transition-colors w-full"
                     onClick={handleUpdateCurrent}
                   >
                     <Save size={14} /> Update "{activeView?.name}"

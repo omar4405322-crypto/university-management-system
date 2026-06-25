@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 // FIXED: Phase 4 — Arabic i18n for stats, charts, and page header
 import React, { useState, useEffect } from 'react';
 import {
@@ -174,7 +174,7 @@ const AnalyticsDashboard = () => {
         <Card variant="elevated" noPadding className="group overflow-hidden">
           <div className="p-6 space-y-4">
             <div className="flex justify-between items-center">
-              <div className="p-3 rounded-xl bg-brand-primary-50 text-brand-brand-green-dark group-hover:bg-brand-brand-green-dark group-hover:text-white transition-all duration-300">
+              <div className="p-3 rounded-xl bg-brand-primary-50 text-brand-primary-600 group-hover:bg-brand-primary-600 group-hover:text-white transition-all duration-300">
                 <Users size={24} />
               </div>
               <Badge variant="success" className="font-black">
@@ -394,10 +394,10 @@ const AnalyticsDashboard = () => {
             {data?.departmentStats?.slice(0, 5).map((dept, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-5 rounded-2xl bg-surface-subtle dark:bg-slate-800/50 border border-brand-border dark:border-slate-800 group hover:border-brand-brand-green-dark/30 transition-all duration-300"
+                className="flex items-center justify-between p-5 rounded-2xl bg-surface-subtle dark:bg-slate-800/50 border border-brand-border dark:border-slate-800 group hover:border-brand-primary-600/30 transition-all duration-300"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-700 flex items-center justify-center text-brand-navy-500 dark:text-brand-text-main group-hover:bg-brand-brand-green-dark group-hover:text-white transition-all duration-500 shadow-sm">
+                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-700 flex items-center justify-center text-brand-navy-500 dark:text-brand-text-main group-hover:bg-brand-primary-600 group-hover:text-white transition-all duration-500 shadow-sm">
                     <Building2 size={20} />
                   </div>
                   <div>

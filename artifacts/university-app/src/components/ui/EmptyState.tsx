@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import Button from './Button';
 
 export function EmptyState({
@@ -14,7 +14,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center animate-in fade-in zoom-in duration-500 bg-brand-bg-card/30 rounded-[2rem] border-2 border-dashed border-brand-border">
-      <div className="w-20 h-20 bg-brand-primary-50 text-brand-brand-green-dark rounded-3xl flex items-center justify-center mb-6 shadow-inner">
+      <div className="w-20 h-20 bg-brand-primary-50 text-brand-primary-600 rounded-3xl flex items-center justify-center mb-6 shadow-inner">
         {icon}
       </div>
 
@@ -29,7 +29,7 @@ export function EmptyState({
       {action && (
         <Button
           onClick={action.onClick}
-          className="shadow-xl shadow-brand-brand-green-dark/20 font-black uppercase tracking-widest text-xs px-8"
+          className="shadow-xl shadow-brand-primary-600/20 font-black uppercase tracking-widest text-xs px-8"
         >
           {action.label}
         </Button>

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // FIXED: Router-level error boundary to prevent blank pages on render errors - Phase 1
 import React, { Component, ReactNode } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
@@ -17,19 +16,17 @@ interface State {
 }
 
 class ErrorBoundary extends Component<Props, State> {
-  public props!: Props;
-  public setState!: Record<string, unknown>;
   public state: State = { hasError: false, error: null };
 
   constructor(props: Props) {
     super(props);
   }
 
-  static getDerivedStateFromError(error: Record<string, unknown>) {
+  static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Record<string, unknown>, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     logger.error('ErrorBoundary caught:', error, errorInfo);
   }
 
