@@ -10,7 +10,7 @@ const ProtectedRoute = ({
   children,
   allowedRoles,
 }: {
-  children: Record<string, unknown>;
+  children: React.ReactNode;
   allowedRoles?: string[];
 }) => {
   const { user, token, loading } = useAuth();
@@ -50,7 +50,7 @@ const ProtectedRoute = ({
     return <Navigate to="/unauthorized" replace />;
   }
 
-  return children;
+  return <>{children}</>;
 };
 
 export default ProtectedRoute;

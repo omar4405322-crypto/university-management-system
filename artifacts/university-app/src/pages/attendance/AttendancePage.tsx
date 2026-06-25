@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 // FIXED: Course dropdown, full roster API, date filter, bulk save - Phase 5
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -213,12 +213,12 @@ const AttendancePage = () => {
         <div className="lg:col-span-1 space-y-4">
           <Card className="p-5 space-y-4">
             <h3 className="text-sm font-black text-brand-text-primary uppercase tracking-widest flex items-center gap-2">
-              <BookOpen size={16} className="text-brand-brand-green-dark" />
+              <BookOpen size={16} className="text-brand-primary-600" />
               {t('attendance.selectCourse')}
             </h3>
             {coursesLoading ? (
               <div className="flex justify-center py-4">
-                <Loader2 className="animate-spin text-brand-brand-green-dark" size={24} />
+                <Loader2 className="animate-spin text-brand-primary-600" size={24} />
               </div>
             ) : (
               <Select
@@ -272,7 +272,7 @@ const AttendancePage = () => {
           {saving && (
             <div className="absolute inset-0 z-20 bg-brand-bg-page/40 backdrop-blur-[1px] flex items-center justify-center rounded-3xl animate-in fade-in duration-300">
               <div className="bg-brand-bg-card dark:bg-brand-bg-elevated p-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-brand-border">
-                <Loader2 className="animate-spin text-brand-brand-green-dark" size={24} />
+                <Loader2 className="animate-spin text-brand-primary-600" size={24} />
                 <span className="font-bold text-brand-text-main">{t('common.loading')}</span>
               </div>
             </div>

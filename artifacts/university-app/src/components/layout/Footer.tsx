@@ -1,4 +1,4 @@
-// FIXED: Footer quick links to internal routes; removed placeholder social icons - Phase 5
+﻿// FIXED: Footer quick links to internal routes; removed placeholder social icons - Phase 5
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -73,7 +73,7 @@ const Footer = () => {
           </div>
 
           <div className="space-y-6">
-            <div className="flex items-center gap-2 border-b border-brand-brand-green-dark/30 pb-2 inline-block w-fit">
+            <div className="flex items-center gap-2 border-b border-brand-primary-600/30 pb-2 inline-block w-fit">
               <h3 className="text-lg font-bold">{t('footer.quickLinks')}</h3>
             </div>
             <ul className="space-y-3 text-sm text-slate-400">
@@ -81,7 +81,7 @@ const Footer = () => {
                 <li key={key}>
                   <Link
                     to={to}
-                    className="hover:text-brand-brand-green-dark transition-colors underline decoration-white/10 hover:decoration-brand-brand-green-dark"
+                    className="hover:text-brand-primary-600 transition-colors underline decoration-white/10 hover:decoration-brand-primary-600"
                   >
                     {t(`footer.${key}`)}
                   </Link>
@@ -91,28 +91,28 @@ const Footer = () => {
           </div>
 
           <div className="space-y-6">
-            <h3 className="text-lg font-bold border-b border-brand-brand-green-dark/30 pb-2 inline-block">
+            <h3 className="text-lg font-bold border-b border-brand-primary-600/30 pb-2 inline-block">
               {t('footer.contactUs')}
             </h3>
             <ul className="space-y-4 text-sm text-slate-400">
               <li className="flex items-start gap-3">
-                <MapPin size={18} className="text-brand-brand-green-dark shrink-0 mt-0.5" />
+                <MapPin size={18} className="text-brand-primary-600 shrink-0 mt-0.5" />
                 <span>{t('footer.address')}</span>
               </li>
               <li className="flex items-center gap-3">
-                <Phone size={18} className="text-brand-brand-green-dark shrink-0" />
+                <Phone size={18} className="text-brand-primary-600 shrink-0" />
                 <a
                   href="tel:+20212345678"
-                  className="hover:text-brand-brand-green-dark transition-colors"
+                  className="hover:text-brand-primary-600 transition-colors"
                 >
                   +20 (2) 1234-5678
                 </a>
               </li>
               <li className="flex items-center gap-3">
-                <Mail size={18} className="text-brand-brand-green-dark shrink-0" />
+                <Mail size={18} className="text-brand-primary-600 shrink-0" />
                 <a
                   href="mailto:info@sout.edu.eg"
-                  className="hover:text-brand-brand-green-dark transition-colors"
+                  className="hover:text-brand-primary-600 transition-colors"
                 >
                   info@sout.edu.eg
                 </a>
@@ -121,13 +121,13 @@ const Footer = () => {
           </div>
 
           <div className="space-y-6">
-            <h3 className="text-lg font-bold border-b border-brand-brand-green-dark/30 pb-2 inline-block">
+            <h3 className="text-lg font-bold border-b border-brand-primary-600/30 pb-2 inline-block">
               {t('footer.newsletter')}
             </h3>
             <p className="text-sm text-slate-400">{t('footer.newsletterDesc')}</p>
             <form className="flex flex-col gap-2" onSubmit={handleNewsletter}>
               {subscribed ? (
-                <p className="text-sm text-brand-brand-green font-semibold">
+                <p className="text-sm text-brand-primary-500 font-semibold">
                   {t('footer.subscribeSuccess') ||
                     "✔ Got it! We'll reach out when the newsletter launches."}
                 </p>
@@ -139,11 +139,11 @@ const Footer = () => {
                       value={newsletterEmail}
                       onChange={(e) => setNewsletterEmail(e.target.value)}
                       placeholder={t('footer.emailPlaceholder')}
-                      className="bg-slate-800/50 border border-white/10 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-brand-brand-green-dark text-white placeholder:text-slate-500"
+                      className="bg-slate-800/50 border border-white/10 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-brand-primary-600 text-white placeholder:text-slate-500"
                     />
                     <button
                       type="submit"
-                      className="bg-brand-brand-green-dark text-white px-4 py-2 rounded-lg hover:bg-brand-primary-600 transition-colors text-xs font-black uppercase tracking-widest"
+                      className="bg-brand-primary-600 text-white px-4 py-2 rounded-lg hover:bg-brand-primary-600 transition-colors text-xs font-black uppercase tracking-widest"
                     >
                       {t('footer.subscribe')}
                     </button>

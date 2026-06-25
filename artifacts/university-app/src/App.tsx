@@ -17,28 +17,29 @@ import ErrorBoundary from './components/ErrorBoundary';
 import RouteFallback from './components/RouteFallback';
 import NotFoundPage from './components/NotFoundPage';
 import AppShell from './components/layout/AppShell';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import LandingPage from './pages/LandingPage';
-import DashboardContainer from './pages/dashboard/DashboardContainer';
-import CoursesList from './pages/courses/CoursesList';
-import CourseDetails from './pages/courses/CourseDetails';
-import DoctorsList from './pages/doctors/DoctorsList';
-import WeeklySchedule from './pages/schedules/WeeklySchedule';
-import DoctorSchedule from './pages/schedules/DoctorSchedule';
-import StudentSchedule from './pages/schedules/StudentSchedule';
-import ExamsList from './pages/exams/ExamsList';
-import ExamDetails from './pages/exams/ExamDetails';
-import TakeExam from './pages/exams/TakeExam';
-import CollegesList from './pages/colleges/CollegesList';
-import CollegeDetails from './pages/colleges/CollegeDetails';
-import DepartmentsList from './pages/departments/DepartmentsList';
-import RegistrationRequests from './pages/registration/RegistrationRequests';
-import NotificationsPage from './pages/notifications/NotificationsPage';
-import CreateQuiz from './pages/quizzes/CreateQuiz';
-import TakeQuiz from './pages/quizzes/TakeQuiz';
-import TasksList from './pages/tasks/TasksList';
-import Profile from './pages/profile/Profile';
+// PERF: All page-level components are now lazy-loaded — excluded from initial bundle
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const DashboardContainer = lazy(() => import('./pages/dashboard/DashboardContainer'));
+const CoursesList = lazy(() => import('./pages/courses/CoursesList'));
+const CourseDetails = lazy(() => import('./pages/courses/CourseDetails'));
+const DoctorsList = lazy(() => import('./pages/doctors/DoctorsList'));
+const WeeklySchedule = lazy(() => import('./pages/schedules/WeeklySchedule'));
+const DoctorSchedule = lazy(() => import('./pages/schedules/DoctorSchedule'));
+const StudentSchedule = lazy(() => import('./pages/schedules/StudentSchedule'));
+const ExamsList = lazy(() => import('./pages/exams/ExamsList'));
+const ExamDetails = lazy(() => import('./pages/exams/ExamDetails'));
+const TakeExam = lazy(() => import('./pages/exams/TakeExam'));
+const CollegesList = lazy(() => import('./pages/colleges/CollegesList'));
+const CollegeDetails = lazy(() => import('./pages/colleges/CollegeDetails'));
+const DepartmentsList = lazy(() => import('./pages/departments/DepartmentsList'));
+const RegistrationRequests = lazy(() => import('./pages/registration/RegistrationRequests'));
+const NotificationsPage = lazy(() => import('./pages/notifications/NotificationsPage'));
+const CreateQuiz = lazy(() => import('./pages/quizzes/CreateQuiz'));
+const TakeQuiz = lazy(() => import('./pages/quizzes/TakeQuiz'));
+const TasksList = lazy(() => import('./pages/tasks/TasksList'));
+const Profile = lazy(() => import('./pages/profile/Profile'));
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from './context/LanguageContext';
 import { ShieldOff } from 'lucide-react';
@@ -101,6 +102,8 @@ const AppContent = () => {
       className="min-h-screen bg-brand-bg-page text-brand-text-main transition-colors duration-300"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
+      {/* PERF: Single top-level Suspense catches all newly lazy-loaded pages */}
+      <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
         <Route path="/login" element={<Login />} />
@@ -506,6 +509,7 @@ const AppContent = () => {
           }
         />
       </Routes>
+      </Suspense>
     </div>
   );
 };

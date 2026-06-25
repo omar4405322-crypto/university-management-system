@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -301,7 +301,7 @@ const TimetableManagement = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('timetables.searchPlaceholder')}
-                className={`w-full h-12 ${isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'} bg-white border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-brand-green-dark/20 focus:border-brand-brand-green-dark transition-all shadow-sm`}
+                className={`w-full h-12 ${isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'} bg-white border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 focus:border-brand-primary-600 transition-all shadow-sm`}
               />
               <div
                 className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} text-brand-text-muted`}
@@ -372,7 +372,7 @@ const TimetableManagement = () => {
                 canManage && (
                   <Button
                     variant="primary"
-                    className="mt-8 shadow-xl shadow-brand-brand-green-dark/20 px-8 rounded-2xl"
+                    className="mt-8 shadow-xl shadow-brand-primary-600/20 px-8 rounded-2xl"
                     onClick={() => {
                       setEditingTimetable(null);
                       setIsModalOpen(true);
@@ -637,7 +637,7 @@ const TimetableManagement = () => {
                     <ChevronLeft size={16} className="rtl:-scale-x-100" />
                   )}
                 </Button>
-                <span className="px-5 py-2.5 rounded-xl bg-brand-brand-green-dark text-white text-xs font-black shadow-md shadow-brand-brand-green-dark/20">
+                <span className="px-5 py-2.5 rounded-xl bg-brand-primary-600 text-white text-xs font-black shadow-md shadow-brand-primary-600/20">
                   {currentPage}
                 </span>
                 <Button

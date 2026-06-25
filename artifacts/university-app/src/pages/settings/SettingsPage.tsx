@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 // FIXED: Phase 4 — full i18n for tabs, labels, validation, and placeholders
 import React, { useState, useEffect } from 'react';
 import {
@@ -169,7 +169,7 @@ const SettingsPage = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
                     activeTab === tab.id
-                      ? 'bg-brand-brand-green-dark text-white shadow-sm shadow-brand-brand-green-dark/20'
+                      ? 'bg-brand-primary-600 text-white shadow-sm shadow-brand-primary-600/20'
                       : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-surface-subtle'
                   }`}
                 >
@@ -208,7 +208,7 @@ const SettingsPage = () => {
 
               <div className="p-6 bg-gradient-to-r from-brand-primary-50/50 to-transparent border-b border-brand-border">
                 <div className="flex items-center gap-5">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-brand-brand-green to-brand-primary-600 flex items-center justify-center text-white text-xl font-black shadow-lg shrink-0">
+                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-brand-primary-500 to-brand-primary-600 flex items-center justify-center text-white text-xl font-black shadow-lg shrink-0">
                     {user?.firstName?.[0]}
                     {user?.lastName?.[0]}
                   </div>
@@ -241,7 +241,7 @@ const SettingsPage = () => {
                           setIsDirty(true);
                           if (errors.firstName) setErrors({ ...errors, firstName: null });
                         }}
-                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-brand-green-dark/20 transition-all ${errors.firstName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.firstName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                         placeholder={t('settings.firstNamePlaceholder')}
                       />
                       {errors.firstName && (
@@ -261,7 +261,7 @@ const SettingsPage = () => {
                           setIsDirty(true);
                           if (errors.lastName) setErrors({ ...errors, lastName: null });
                         }}
-                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-brand-green-dark/20 transition-all ${errors.lastName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.lastName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                         placeholder={t('settings.lastNamePlaceholder')}
                       />
                       {errors.lastName && (
@@ -281,7 +281,7 @@ const SettingsPage = () => {
                           setIsDirty(true);
                           if (errors.phone) setErrors({ ...errors, phone: null });
                         }}
-                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-brand-green-dark/20 transition-all ${errors.phone ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.phone ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                         placeholder={t('settings.phonePlaceholder')}
                       />
                       {errors.phone && (
@@ -357,7 +357,7 @@ const SettingsPage = () => {
                           if (errors.currentPassword)
                             setErrors({ ...errors, currentPassword: null });
                         }}
-                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-brand-green-dark/20 transition-all ${errors.currentPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.currentPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                         placeholder={t('auth.passwordPlaceholder')}
                       />
                       {errors.currentPassword && (
@@ -379,7 +379,7 @@ const SettingsPage = () => {
                             setIsDirty(true);
                             if (errors.newPassword) setErrors({ ...errors, newPassword: null });
                           }}
-                          className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-brand-green-dark/20 transition-all ${errors.newPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                          className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.newPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                           placeholder={t('settings.minPasswordPlaceholder')}
                         />
                         {errors.newPassword && (
@@ -401,7 +401,7 @@ const SettingsPage = () => {
                             if (errors.confirmPassword)
                               setErrors({ ...errors, confirmPassword: null });
                           }}
-                          className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-brand-green-dark/20 transition-all ${errors.confirmPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
+                          className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.confirmPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
                           placeholder={t('settings.repeatPasswordPlaceholder')}
                         />
                         {errors.confirmPassword && (
@@ -532,7 +532,7 @@ const SettingsPage = () => {
                   </div>
                   <button
                     onClick={toggleTheme}
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-brand-green-dark/30 shrink-0 ${isDark ? 'bg-brand-brand-green-dark' : 'bg-slate-200'}`}
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary-600/30 shrink-0 ${isDark ? 'bg-brand-primary-600' : 'bg-slate-200'}`}
                   >
                     <span
                       className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${isDark ? 'translate-x-6' : 'translate-x-1'}`}
@@ -546,7 +546,7 @@ const SettingsPage = () => {
                 <div className="flex items-center justify-between p-4 rounded-xl border border-brand-border bg-brand-bg-page/30">
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center shadow-sm">
-                      <Globe size={18} className="text-brand-brand-green-dark" />
+                      <Globe size={18} className="text-brand-primary-600" />
                     </div>
                     <div>
                       <p className="text-sm font-bold text-brand-text-primary">

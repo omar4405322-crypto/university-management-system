@@ -31,6 +31,14 @@ const DepartmentDetails = React.lazy(() => import('./DepartmentDetails'));
 import Button from '../../components/ui/Button';
 import ViewManager from '../../components/ui/ViewManager';
 import { useSavedViews, SavedView } from '../../hooks/useSavedViews';
+import { useDepartments } from '../../hooks/useDepartments';
+import Input from '../../components/ui/Input';
+import Badge from '../../components/ui/Badge';
+import { useTranslation } from 'react-i18next';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import { Select } from '../../components/ui/Select';
+import { logger } from '../../lib/logger';
+import { useToast } from '../../context/ToastContext';
 
 const defaultView: SavedView = {
   id: 'default',
@@ -41,13 +49,7 @@ const defaultView: SavedView = {
   density: 'comfortable',
   pageSize: 10,
 };
-import Input from '../../components/ui/Input';
-import Badge from '../../components/ui/Badge';
-import { useTranslation } from 'react-i18next';
-import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
-import { Select } from '../../components/ui/Select';
-import { logger } from '../../lib/logger';
-import { useToast } from '../../context/ToastContext';
+
 
 const DepartmentsList = () => {
   const { t } = useTranslation();
@@ -64,7 +66,7 @@ const DepartmentsList = () => {
   const [colleges, setColleges] = useState([]);
   
   const { views, activeView, activeViewId, setActiveViewId, saveView, deleteView, setDefaultView, updateActiveView } = useSavedViews('departments_views', defaultView);
-    const { data: departments, loading: _loading, error, search, setSearch, page, setPage, total, refetch } = useDepartments({ initialSearch: activeView?.search || '', limit: activeView?.pageSize || 10 });
+    const { data: departments, loading, error, search, setSearch, page, setPage, total, refetch } = useDepartments({ initialSearch: activeView?.search || '', limit: activeView?.pageSize || 10 });
   const limit = activeView?.pageSize || 10;
   const totalPages = Math.ceil(total / limit);
   const totalRecords = total;
@@ -199,7 +201,7 @@ const DepartmentsList = () => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-brand-border dark:border-brand-border shadow-soft">
           <div className="relative flex-grow md:max-w-md w-full group">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-brand-green-dark transition-colors" />
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-primary-600 transition-colors" />
           <Input
             placeholder={t('departments.searchPlaceholder')}
             className="pl-11 h-11 w-full bg-surface-subtle dark:bg-surface-subtle border-none"
@@ -209,7 +211,7 @@ const DepartmentsList = () => {
         </div>
         {!isCollegeAdmin && (
           <div className="relative md:max-w-xs w-full group">
-            <Building className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-brand-green-dark transition-colors" />
+            <Building className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-text-muted group-focus-within:text-brand-primary-600 transition-colors" />
             <Select
               
               value={selectedCollegeId}
@@ -257,7 +259,7 @@ const DepartmentsList = () => {
               onClick={() => updateActiveView({ density: 'comfortable' })}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
                 activeView.density === 'comfortable'
-                  ? 'bg-brand-brand-green-dark text-white'
+                  ? 'bg-brand-primary-600 text-white'
                   : 'text-brand-text-secondary hover:bg-brand-bg-page/50'
               }`}
             >
@@ -267,7 +269,7 @@ const DepartmentsList = () => {
               onClick={() => updateActiveView({ density: 'compact' })}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
                 activeView.density === 'compact'
-                  ? 'bg-brand-brand-green-dark text-white'
+                  ? 'bg-brand-primary-600 text-white'
                   : 'text-brand-text-secondary hover:bg-brand-bg-page/50'
               }`}
             >
@@ -279,7 +281,7 @@ const DepartmentsList = () => {
 
             {loading ? (
         <div className="flex flex-col justify-center items-center h-96 gap-4">
-          <Loader2 className="animate-spin text-brand-brand-green-dark" size={48} />
+          <Loader2 className="animate-spin text-brand-primary-600" size={48} />
           <p className="text-caption">{t('common.loading')}</p>
         </div>
       ) : filteredDepartments.length === 0 ? (
@@ -307,7 +309,7 @@ const DepartmentsList = () => {
               key={dept.id}
               noPadding
               className={`group border-none shadow-soft hover:-translate-y-2 duration-500 overflow-hidden flex flex-col ${
-                isSelected ? 'ring-2 ring-brand-brand-green-dark bg-brand-brand-green-dark/5' : ''
+                isSelected ? 'ring-2 ring-brand-primary-600 bg-brand-primary-600/5' : ''
               } ${isCompact ? 'rounded-2xl' : 'rounded-[2rem]'}`}
             >
               <div className={`flex-grow relative ${isCompact ? 'p-5' : 'p-8'}`}>
@@ -315,7 +317,7 @@ const DepartmentsList = () => {
                   <Checkbox checked={isSelected} onChange={() => handleSelectOne(dept.id)} />
                 </div>
                 <div className={`flex justify-between items-start ${isCompact ? 'mb-4' : 'mb-6'}`}>
-                  <div className={`${isCompact ? 'w-10 h-10 ml-6' : 'w-14 h-14 ml-8'} rtl:mr-8 rtl:ml-0 bg-brand-primary-50 dark:bg-brand-primary-900/10 rounded-2xl flex items-center justify-center text-brand-brand-green-dark group-hover:scale-110 group-hover:bg-brand-brand-green-dark group-hover:text-white transition-all duration-500 shadow-inner`}>
+                  <div className={`${isCompact ? 'w-10 h-10 ml-6' : 'w-14 h-14 ml-8'} rtl:mr-8 rtl:ml-0 bg-brand-primary-50 dark:bg-brand-primary-900/10 rounded-2xl flex items-center justify-center text-brand-primary-600 group-hover:scale-110 group-hover:bg-brand-primary-600 group-hover:text-white transition-all duration-500 shadow-inner`}>
                     <Layers size={isCompact ? 20 : 28} />
                   </div>
                   {canManage && (
@@ -341,8 +343,8 @@ const DepartmentsList = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <p className="label-stat text-brand-brand-green-dark">{dept.college?.name}</p>
-                  <h3 className={`${isCompact ? 'text-xl' : 'text-2xl'} font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-brand-green-dark transition-colors duration-300`}>
+                  <p className="label-stat text-brand-primary-600">{dept.college?.name}</p>
+                  <h3 className={`${isCompact ? 'text-xl' : 'text-2xl'} font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-primary-600 transition-colors duration-300`}>
                     <TruncatedText text={dept.name} />
                   </h3>
                   {dept.nameAr && (
@@ -361,7 +363,7 @@ const DepartmentsList = () => {
                       {dept._count?.courses || 0}
                     </p>
                   </div>
-                  <div className={`${isCompact ? 'p-2' : 'p-4'} bg-surface-subtle dark:bg-slate-800/50 rounded-2xl text-center group-hover:bg-brand-brand-green-dark group-hover:text-white transition-colors duration-500`}>
+                  <div className={`${isCompact ? 'p-2' : 'p-4'} bg-surface-subtle dark:bg-slate-800/50 rounded-2xl text-center group-hover:bg-brand-primary-600 group-hover:text-white transition-colors duration-500`}>
                     <p className="label-stat mb-1 group-hover:text-brand-primary-100">
                       {t('students.title')}
                     </p>
@@ -374,14 +376,14 @@ const DepartmentsList = () => {
 
               <div className="px-8 py-5 bg-surface-subtle dark:bg-slate-800/30 border-t border-brand-border dark:border-brand-border mt-auto flex justify-between items-center">
                 <button
-                  className="text-brand-brand-green-dark font-black text-[11px] uppercase tracking-widest hover:text-brand-primary-600 flex items-center gap-2 transition-colors"
+                  className="text-brand-primary-600 font-black text-[11px] uppercase tracking-widest hover:text-brand-primary-600 flex items-center gap-2 transition-colors"
                   onClick={() => setActiveDrawerId(dept.id)}
                 >
                   {t('departments.manageCurriculum')}{' '}
                   <ExternalLink size={14} className="rtl:-scale-x-100" />
                 </button>
                 <button
-                  className="text-brand-navy-500 dark:text-brand-text-main font-black text-[11px] uppercase tracking-widest hover:text-brand-brand-green-dark flex items-center gap-2 transition-colors"
+                  className="text-brand-navy-500 dark:text-brand-text-main font-black text-[11px] uppercase tracking-widest hover:text-brand-primary-600 flex items-center gap-2 transition-colors"
                   onClick={() => navigate(`/schedules-management?departmentId=${dept.id}`)}
                 >
                   <Calendar size={14} />
@@ -444,7 +446,7 @@ const DepartmentsList = () => {
         width="max-w-4xl"
       >
         {activeDrawerId && (
-          <Suspense fallback={<div className="flex justify-center p-12"><Loader2 className="animate-spin text-brand-brand-green-dark" size={32} /></div>}>
+          <Suspense fallback={<div className="flex justify-center p-12"><Loader2 className="animate-spin text-brand-primary-600" size={32} /></div>}>
             <DepartmentDetails departmentId={activeDrawerId} isDrawerMode />
           </Suspense>
         )}

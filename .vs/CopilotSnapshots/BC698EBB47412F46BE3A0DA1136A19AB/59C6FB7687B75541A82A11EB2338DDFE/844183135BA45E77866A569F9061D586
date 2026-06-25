@@ -1,0 +1,29 @@
+﻿const { PrismaClient } = require('@prisma/client');
+
+async function re_enable_2fa() {
+  const prisma = new PrismaClient();
+
+  try {
+	// Check current status
+	const user = await prisma.user.findUnique({
+	  where: { email: 'superadmin@university.com' }
+	});
+
+	console.log('Before:', user?.twoFactorEnabled);
+
+	// Re-enable 2FA
+	const updated = await prisma.user.update({
+	  where: { email: 'superadmin@university.com' },
+	  data: { twoFactorEnabled: true }
+	});
+
+	console.log('After:', updated.twoFactorEnabled);
+	console.log('Done! 2FA re-enabled for superadmin');
+  } catch (error) {
+	console.error('Error:', error.message);
+  } finally {
+	await prisma.$disconnect();
+  }
+}
+
+re_enable_2fa();

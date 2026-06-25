@@ -1,8 +1,7 @@
 // @ts-nocheck
 // FIXED: Phase 7 — empty state, CSV export, delete confirm modal
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useDoctors } from '../../hooks/useDoctors';
-import { useDebounce } from '../../hooks/useDebounce';
 import doctorsService from '../../services/doctors.service';
 import AddDoctorModal from './AddDoctorModal';
 import EditDoctorModal from './EditDoctorModal';
@@ -44,11 +43,12 @@ const DoctorsList = () => {
   const { user } = useAuth();
     const { scopeParams, _isCollegeAdmin } = useScope();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const { data: doctors, loading: _loading, error, search, setSearch, page, setPage, total, refetch } = useDoctors();
+  const { data: doctors, loading, error, search, setSearch, page, setPage, total, refetch } = useDoctors();
   const limit = 10;
   const totalPages = Math.ceil(total / limit);
   const totalRecords = total;
   const fetchDoctors = refetch;
+  const debouncedSearch = search; // useDoctors already debounces internally
   
   
   
@@ -71,7 +71,7 @@ const DoctorsList = () => {
     { label: t('doctors.researchProjects'), value: '0', icon: Briefcase, color: 'yellow' },
   ]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const result = await doctorsService.getStats();
       if (result.success && result.data) {
@@ -106,7 +106,8 @@ const DoctorsList = () => {
     } catch (error: any) {
       logger.error('Error fetching doctor stats:', error);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
 
@@ -115,7 +116,7 @@ const DoctorsList = () => {
   }, []);
 
 
-  const handleExportCsv = async () => {
+  const handleExportCsv = useCallback(async () => {
     try {
       setExporting(true);
             const result = await doctorsService.getDoctors({ search: debouncedSearch, page: 1, limit: 5000 });
@@ -136,9 +137,9 @@ const DoctorsList = () => {
     } finally {
       setExporting(false);
     }
-  };
+  }, [debouncedSearch, t, showToast]);
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     try {
       setDeleteLoading(true);
@@ -154,12 +155,12 @@ const DoctorsList = () => {
     } finally {
       setDeleteLoading(false);
     }
-  };
+  }, [deleteTarget, fetchDoctors, fetchStats, t, showToast]);
 
-  const handleEdit = (doctor) => {
+  const handleEdit = useCallback((doctor) => {
     setSelectedDoctor(doctor);
     setIsEditModalOpen(true);
-  };
+  }, []);
 
   return (
     <div className="section-gap animate-page">
@@ -196,7 +197,7 @@ const DoctorsList = () => {
                   stat.color === 'navy'
                     ? 'bg-brand-navy-50 text-brand-navy-500 group-hover:bg-brand-navy-500 group-hover:text-white'
                     : stat.color === 'green'
-                      ? 'bg-brand-primary-50 text-brand-brand-green-dark group-hover:bg-brand-brand-green-dark group-hover:text-white'
+                      ? 'bg-brand-primary-50 text-brand-primary-600 group-hover:bg-brand-primary-600 group-hover:text-white'
                       : 'bg-brand-accent-yellow/10 text-brand-accent-yellow group-hover:bg-brand-accent-yellow group-hover:text-white'
                 }`}
               >
@@ -244,7 +245,7 @@ const DoctorsList = () => {
         <div className="min-h-[400px]">
                     {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
-              <Loader2 className="animate-spin text-brand-brand-green-dark" size={40} />
+              <Loader2 className="animate-spin text-brand-primary-600" size={40} />
               <p className="label-stat">{t('doctors.loading')}</p>
             </div>
           ) : !Array.isArray(doctors) || doctors.length === 0 ? (
@@ -273,7 +274,7 @@ const DoctorsList = () => {
               >
                 {(Array.isArray(doctors) ? doctors : []).map((doctor) => (
                   <TableRow key={doctor.id}>
-                    <TableCell className="font-black text-brand-navy-500 dark:text-brand-brand-green tracking-widest text-xs uppercase hidden md:table-cell">
+                    <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-500 tracking-widest text-xs uppercase hidden md:table-cell">
                       {doctor.doctorId}
                     </TableCell>
                     <TableCell>
@@ -284,7 +285,7 @@ const DoctorsList = () => {
                           size="table"
                           className="shadow-inner ring-1 ring-brand-primary-100/50 dark:ring-brand-primary-900/20 group-hover:scale-110 transition-transform"
                         />
-                        <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-brand-green-dark transition-colors">
+                        <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-primary-600 transition-colors">
                           {doctor.firstName} {doctor.lastName}
                         </span>
                       </div>
@@ -293,7 +294,7 @@ const DoctorsList = () => {
                       {doctor.user?.email}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <span className="inline-flex items-center px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-brand-green-dark border border-brand-primary-100/50 dark:border-brand-primary-900/20">
+                      <span className="inline-flex items-center px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-primary-600 border border-brand-primary-100/50 dark:border-brand-primary-900/20">
                         {doctor.specialty || t('students.notProvided')}
                       </span>
                     </TableCell>

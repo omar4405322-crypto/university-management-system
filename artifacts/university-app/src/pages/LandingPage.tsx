@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CollegesSection, colleges } from '../components/CollegesSection';
 import { CountUp } from '../components/ui/CountUp';
@@ -429,7 +429,7 @@ const LandingPage = () => {
       <section id="specialties" className="py-24 md:py-32 bg-brand-navy-500 relative overflow-hidden">
         {/* Abstract shapes */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-brand-green/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-brand-brand-green-dark/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-brand-primary-600/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
 
         <div className="container mx-auto px-6 relative z-10">
           <div className="grid lg:grid-cols-2 gap-20 items-center">

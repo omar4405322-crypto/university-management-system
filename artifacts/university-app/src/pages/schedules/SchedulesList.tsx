@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 // FIXED: Missing PageHeader import caused blank page; query-param scope header and safe filters - Phase 1
 import React, { useState, useEffect, useMemo } from 'react';
 import {
@@ -291,7 +291,7 @@ const SchedulesList = () => {
         <div className="min-h-[400px]">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
-              <Loader2 className="animate-spin text-brand-brand-green-dark" size={40} />
+              <Loader2 className="animate-spin text-brand-primary-600" size={40} />
               <p className="label-stat">{t('common.loading', 'Loading schedules...')}</p>
             </div>
           ) : error ? (
@@ -306,7 +306,7 @@ const SchedulesList = () => {
               <button
                 type="button"
                 onClick={fetchSchedules}
-                className="px-6 py-3 rounded-2xl bg-brand-brand-green-dark text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+                className="px-6 py-3 rounded-2xl bg-brand-primary-600 text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
               >
                 {t('common.retry', 'Retry')}
               </button>
@@ -332,7 +332,7 @@ const SchedulesList = () => {
                     setEditingSchedule(null);
                     setIsModalOpen(true);
                   }}
-                  className="mt-6 px-6 py-3 rounded-2xl bg-brand-brand-green-dark text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+                  className="mt-6 px-6 py-3 rounded-2xl bg-brand-primary-600 text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
                 >
                   {t('SCHEDULES.CREATE', 'Create Schedule')}
                 </button>
@@ -352,14 +352,14 @@ const SchedulesList = () => {
                 <TableRow key={schedule.id}>
                   <TableCell>
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-brand-green-dark font-black shadow-inner">
+                      <div className="w-10 h-10 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-primary-600 font-black shadow-inner">
                         <BookOpen size={20} />
                       </div>
                       <div className="flex flex-col">
                         <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight">
                           {schedule.course.name}
                         </span>
-                        <span className="text-[10px] font-black uppercase text-brand-brand-green-dark tracking-wider">
+                        <span className="text-[10px] font-black uppercase text-brand-primary-600 tracking-wider">
                           {schedule.course.courseCode}
                         </span>
                       </div>

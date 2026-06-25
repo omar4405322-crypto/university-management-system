@@ -1,0 +1,286 @@
+﻿import { Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
+import { AuthRequest, AuthUser } from '../types';
+import * as doctorService from '../services/doctor.service';
+import bcrypt from 'bcryptjs';
+import catchAsync from '../utils/catchAsync';
+import { AppError, NotFoundError } from '../utils/appError';
+
+const getScopeWhere = (user: AuthUser): Prisma.DoctorWhereInput => {
+  const scopeWhere: Prisma.DoctorWhereInput = {};
+  if (user.role === 'COLLEGE_ADMIN') {
+    scopeWhere.department = { collegeId: user.collegeId ?? undefined };
+  } else if (user.role === 'DEPARTMENT_ADMIN') {
+    scopeWhere.departmentId = user.departmentId ?? undefined;
+  }
+  return scopeWhere;
+};
+
+export const getDoctorStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const scopeWhere = getScopeWhere(req.user);
+    const courseWhere: Prisma.CourseWhereInput = {};
+    if (req.user.role === 'COLLEGE_ADMIN') {
+      courseWhere.department = { collegeId: req.user.collegeId ?? undefined };
+    } else if (req.user.role === 'DEPARTMENT_ADMIN') {
+      courseWhere.departmentId = req.user.departmentId ?? undefined;
+    }
+
+    const stats = await doctorService.getDoctorStats(scopeWhere, courseWhere);
+
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+export const getAllDoctors = async (req: AuthRequest, res: Response) => {
+  try {
+    const { search = '', page = '1', limit = '10' } = req.query as {
+      search?: string;
+      page?: string;
+      limit?: string;
+    };
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+
+    const scopeWhere = getScopeWhere(req.user);
+
+    const where: Prisma.DoctorWhereInput = {
+      ...scopeWhere,
+      ...(search
+        ? {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+              { doctorId: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const [doctors, total] = await doctorService.findManyWithPagination({ where, skip, take });
+
+    res.json({
+      success: true,
+      data: {
+        doctors,
+        total,
+        page: parseInt(page),
+        totalPages: Math.ceil(total / take),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+export const getDoctorById = async (req: AuthRequest, res: Response) => {
+  try {
+    const doctor = await doctorService.findDoctorById(parseInt(String(req.params.id)), {
+      user: {
+        select: {
+          email: true,
+          role: true,
+        },
+      },
+      department: {
+        include: { college: true },
+      },
+      courses: true,
+    });
+
+    if (!doctor) {
+      res.status(404).json({ success: false, message: 'Doctor not found' });
+      return;
+    }
+
+    if (req.user.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user.collegeId) {
+      res.status(403).json({ success: false, message: 'Access denied' });
+      return;
+    }
+    if (req.user.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user.departmentId) {
+      res.status(403).json({ success: false, message: 'Access denied' });
+      return;
+    }
+
+    res.json({ success: true, data: doctor });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+export const createDoctor = async (req: AuthRequest, res: Response) => {
+  let { email, password, firstName, lastName, doctorId, phone, specialty, departmentId } = req.body;
+
+  try {
+    if (req.user.role === 'DEPARTMENT_ADMIN') {
+      departmentId = req.user.departmentId;
+    } else if (req.user.role === 'COLLEGE_ADMIN') {
+      if (departmentId) {
+        const dept = await doctorService.findDepartmentById(parseInt(String(departmentId)));
+        if (!dept || dept.collegeId !== req.user.collegeId) {
+          res.status(403).json({ success: false, message: 'Invalid department for your college' });
+          return;
+        }
+      }
+    }
+
+    const existingUser = await doctorService.findUserByEmail(email);
+    if (existingUser) {
+      res.status(400).json({ success: false, message: 'Email already exists' });
+      return;
+    }
+
+    // Generate doctorId if not provided, format: DOC-XXXXX (5 digits)
+    if (!doctorId) {
+      doctorId = `DOC-${Math.floor(10000 + Math.random() * 90000)}`;
+    }
+
+    const existingDoctor = await doctorService.findDoctorByDoctorId(doctorId);
+    if (existingDoctor) {
+      res.status(400).json({ success: false, message: 'Doctor ID already exists' });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await doctorService.createDoctorWithUser({
+      email,
+      hashedPassword,
+      doctorData: {
+        firstName,
+        lastName,
+        doctorId,
+        phone,
+        specialty,
+        departmentId: departmentId ? parseInt(String(departmentId)) : null,
+      },
+    });
+
+    res.status(201).json({ success: true, data: result });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+export const updateDoctor = async (req: AuthRequest, res: Response) => {
+  const { firstName, lastName, phone, specialty, departmentId } = req.body;
+  const id = parseInt(String(req.params.id));
+
+  try {
+    const doctor = await doctorService.findDoctorById(id, { department: true });
+
+    if (!doctor) {
+      res.status(404).json({ success: false, message: 'Doctor not found' });
+      return;
+    }
+
+    if (req.user.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user.collegeId) {
+      res.status(403).json({ success: false, message: 'Access denied' });
+      return;
+    }
+    if (req.user.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user.departmentId) {
+      res.status(403).json({ success: false, message: 'Access denied' });
+      return;
+    }
+
+    if (departmentId) {
+      if (req.user.role === 'DEPARTMENT_ADMIN' && parseInt(String(departmentId)) !== req.user.departmentId) {
+        res.status(403).json({ success: false, message: 'Cannot move doctor to another department' });
+        return;
+      }
+      if (req.user.role === 'COLLEGE_ADMIN') {
+        const newDept = await doctorService.findDepartmentById(parseInt(String(departmentId)));
+        if (!newDept || newDept.collegeId !== req.user.collegeId) {
+          res.status(403).json({ success: false, message: 'Invalid department for your college' });
+          return;
+        }
+      }
+    }
+
+    const updatedDoctor = await doctorService.updateDoctor(
+      id,
+      {
+        firstName,
+        lastName,
+        phone,
+        specialty,
+        departmentId: departmentId ? parseInt(String(departmentId)) : undefined,
+      } as Prisma.DoctorUpdateInput,
+      {
+        user: {
+          select: {
+            email: true,
+            role: true,
+          },
+        },
+        department: true,
+      }
+    );
+
+    res.json({ success: true, data: updatedDoctor });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+export const deleteDoctor = async (req: AuthRequest, res: Response) => {
+  const id = parseInt(String(req.params.id));
+  try {
+    const doctor = await doctorService.findDoctorById(id, { department: true });
+
+    if (!doctor) {
+      res.status(404).json({ success: false, message: 'Doctor not found' });
+      return;
+    }
+
+    if (req.user.role === 'COLLEGE_ADMIN' && doctor.department?.collegeId !== req.user.collegeId) {
+      res.status(403).json({ success: false, message: 'Access denied' });
+      return;
+    }
+    if (req.user.role === 'DEPARTMENT_ADMIN' && doctor.departmentId !== req.user.departmentId) {
+      res.status(403).json({ success: false, message: 'Access denied' });
+      return;
+    }
+
+    await doctorService.deleteDoctorWithRelations(doctor.id, doctor.userId);
+
+    res.json({ success: true, message: 'Doctor deleted' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+export const resetDoctorPassword = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { newPassword } = req.body;
+
+  if (!newPassword || newPassword.length < 6) {
+    return next(new AppError('Password must be at least 6 characters', 400));
+  }
+
+  const doctor = await doctorService.findDoctorById(parseInt(String(id)), { user: true });
+
+  if (!doctor) {
+    return next(new NotFoundError('Doctor not found'));
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  await doctorService.updateUserPassword(doctor.userId, hashedPassword);
+
+  res.json({
+    success: true,
+    message: `Password reset successfully for ${doctor.firstName} ${doctor.lastName}`,
+  });
+});

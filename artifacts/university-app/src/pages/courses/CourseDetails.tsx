@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 // FIXED: Course detail page with breadcrumbs - Phase 6
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -45,7 +45,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <Loader2 className="animate-spin text-brand-brand-green-dark" size={48} />
+        <Loader2 className="animate-spin text-brand-primary-600" size={48} />
         <p className="text-sm font-bold text-brand-text-muted">{t('common.loading')}</p>
       </div>
     );
@@ -115,7 +115,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <Card className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-brand-primary-50 text-brand-brand-green-dark">
+          <div className="p-3 rounded-2xl bg-brand-primary-50 text-brand-primary-600">
             <Users size={24} />
           </div>
           <div>

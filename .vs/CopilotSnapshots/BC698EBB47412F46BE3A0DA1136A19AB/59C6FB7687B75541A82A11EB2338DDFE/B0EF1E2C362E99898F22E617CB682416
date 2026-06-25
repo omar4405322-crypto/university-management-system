@@ -1,0 +1,127 @@
+﻿const prisma = require('../utils/prismaClient');
+
+exports.getAllColleges = async (req, res) => {
+  try {
+    const colleges = await prisma.college.findMany({
+      include: {
+        _count: {
+          select: { departments: true }
+        }
+      }
+    });
+    res.json({ success: true, data: colleges });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getCollegeById = async (req, res) => {
+  try {
+    const college = await prisma.college.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { 
+        departments: {
+          include: {
+            _count: {
+              select: { students: true, doctors: true, courses: true }
+            }
+          }
+        }
+      }
+    });
+    
+    if (!college) return res.status(404).json({ success: false, message: 'College not found' });
+
+    // Calculate total students and doctors across all departments
+    const stats = college.departments.reduce((acc, dept) => {
+      acc.totalStudents += dept._count.students;
+      acc.totalDoctors += dept._count.doctors;
+      return acc;
+    }, { totalStudents: 0, totalDoctors: 0 });
+
+    res.json({ 
+      success: true, 
+      data: {
+        ...college,
+        _count: {
+          departments: college.departments.length,
+          students: stats.totalStudents,
+          doctors: stats.totalDoctors
+        }
+      } 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.createCollege = async (req, res) => {
+  try {
+    const { name, nameAr, description } = req.body;
+    const college = await prisma.college.create({
+      data: { name, nameAr, description }
+    });
+    res.status(201).json({ success: true, data: college });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateCollege = async (req, res) => {
+  try {
+    const { name, nameAr, description } = req.body;
+    const college = await prisma.college.update({
+      where: { id: parseInt(req.params.id) },
+      data: { name, nameAr, description }
+    });
+    res.json({ success: true, data: college });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.deleteCollege = async (req, res) => {
+  try {
+    const collegeId = parseInt(req.params.id);
+
+    // Use a transaction to ensure all related data is handled
+    await prisma.$transaction(async (tx) => {
+      // 1. Find all departments in this college
+      const departments = await tx.department.findMany({
+        where: { collegeId }
+      });
+      const deptIds = departments.map(d => d.id);
+
+      if (deptIds.length > 0) {
+        // 2. Disconnect/Cleanup relations for all departments in this college
+        // For simplicity in this logic, we'll nullify references or delete children
+        // In a real production app, you might want to prevent deletion if students/doctors exist
+        
+        // Nullify department references in other models
+        await tx.student.updateMany({ where: { departmentId: { in: deptIds } }, data: { departmentId: null } });
+        await tx.doctor.updateMany({ where: { departmentId: { in: deptIds } }, data: { departmentId: null } });
+        await tx.course.updateMany({ where: { departmentId: { in: deptIds } }, data: { departmentId: null } });
+        await tx.user.updateMany({ where: { departmentId: { in: deptIds } }, data: { departmentId: null } });
+        await tx.registrationRequest.deleteMany({ where: { departmentId: { in: deptIds } } });
+
+        // Delete all departments
+        await tx.department.deleteMany({ where: { collegeId } });
+      }
+
+      // 3. Nullify college references for admins
+      await tx.user.updateMany({
+        where: { collegeId },
+        data: { collegeId: null }
+      });
+
+      // 4. Finally delete the college
+      await tx.college.delete({
+        where: { id: collegeId }
+      });
+    });
+
+    res.json({ success: true, message: 'College and its departments deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

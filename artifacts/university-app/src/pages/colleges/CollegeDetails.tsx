@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 // FIXED: Department route + breadcrumbs - Phase 1 / Phase 6
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -230,11 +230,11 @@ const CollegeDetails = () => {
 
       {/* Assigned Admin Section */}
       {user?.role === 'SUPER_ADMIN' && (
-        <Card className="mt-6 border-l-4 border-brand-brand-green-dark/50">
+        <Card className="mt-6 border-l-4 border-brand-primary-600/50">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <h3 className="text-lg font-black text-brand-text-main mb-4 flex items-center gap-2">
-                <UserPlus size={20} className="text-brand-brand-green-dark" />
+                <UserPlus size={20} className="text-brand-primary-600" />
                 {t('colleges.assignedAdmin') || 'Assigned Admin'}
               </h3>
               {college.assignedAdmin ? (

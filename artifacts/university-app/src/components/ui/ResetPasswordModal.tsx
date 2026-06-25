@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyRound, Eye, EyeOff, X } from 'lucide-react';
@@ -51,7 +51,7 @@ const ResetPasswordModal = ({ isOpen, onClose, person, type }) => {
       <div className="bg-brand-bg-page border border-brand-border rounded-2xl shadow-elevated w-full max-w-md mx-4 p-6 space-y-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-brand-primary-50 text-brand-brand-green-dark">
+            <div className="p-2.5 rounded-xl bg-brand-primary-50 text-brand-primary-600">
               <KeyRound size={20} />
             </div>
             <div>
@@ -85,7 +85,7 @@ const ResetPasswordModal = ({ isOpen, onClose, person, type }) => {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Enter new password..."
-              className="w-full px-4 py-3 pr-11 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:border-brand-brand-green-dark transition-colors"
+              className="w-full px-4 py-3 pr-11 rounded-xl border border-brand-border bg-surface-subtle text-brand-text-primary dark:text-brand-text-main text-sm focus:outline-none focus:border-brand-primary-600 transition-colors"
             />
             <button
               type="button"

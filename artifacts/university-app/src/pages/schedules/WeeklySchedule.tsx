@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -120,7 +120,7 @@ const WeeklySchedule = () => {
           <h3 className="text-2xl font-black text-brand-text-main">{error}</h3>
           <button
             onClick={fetchTargetedTimetable}
-            className="mt-4 px-6 py-2.5 rounded-xl bg-brand-brand-green-dark text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+            className="mt-4 px-6 py-2.5 rounded-xl bg-brand-primary-600 text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
           >
             {t('common.retry', 'Retry')}
           </button>
@@ -216,8 +216,8 @@ const WeeklySchedule = () => {
             onClick={() => setSelectedDay(day)}
             className={`flex-shrink-0 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${
               selectedDay === day
-                ? 'bg-brand-brand-green-dark text-white shadow-brand-brand-green-dark/20'
-                : 'bg-surface-subtle text-brand-text-secondary hover:bg-brand-brand-green-dark/10'
+                ? 'bg-brand-primary-600 text-white shadow-brand-primary-600/20'
+                : 'bg-surface-subtle text-brand-text-secondary hover:bg-brand-primary-600/10'
             }`}
           >
             {t(`days.${day.toLowerCase()}`) || day.slice(0, 3)}
@@ -322,14 +322,14 @@ const WeeklySchedule = () => {
             .map((entry, idx) => (
               <Card
                 key={idx}
-                className="p-5 border-l-4 border-l-brand-brand-green-dark shadow-soft animate-in slide-in-from-bottom-2 duration-300"
+                className="p-5 border-l-4 border-l-brand-primary-600 shadow-soft animate-in slide-in-from-bottom-2 duration-300"
               >
                 <div className="flex justify-between items-start mb-4">
                   <Badge variant="info" className="text-[10px] font-black px-3 py-1">
                     {entry.startTime} - {entry.endTime}
                   </Badge>
                   <div className="flex items-center gap-1.5 text-[10px] font-black text-brand-text-muted bg-surface-subtle px-2 py-1 rounded-lg">
-                    <MapPin size={12} className="text-brand-brand-green-dark" />
+                    <MapPin size={12} className="text-brand-primary-600" />
                     {entry.room || t('common.tba', 'TBA')}
                   </div>
                 </div>

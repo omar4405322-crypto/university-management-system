@@ -34,7 +34,7 @@ import {
   CheckCircle,
   Plus,
   Search,
-    _ChevronRight,
+  TrendingUp,
   Download,
   CreditCard,
   History,
@@ -261,7 +261,7 @@ const FinanceDashboard = () => {
                   <p className="text-caption text-brand-text-secondary">
                     {t('finance.totalCollected')}
                   </p>
-                  <div className="rounded-xl p-3 bg-brand-primary-50 text-brand-brand-green-dark group-hover:bg-brand-brand-green-dark group-hover:text-white transition-all duration-300">
+                  <div className="rounded-xl p-3 bg-brand-primary-50 text-brand-primary-600 group-hover:bg-brand-primary-600 group-hover:text-white transition-all duration-300">
                     <TrendingUp size={24} />
                   </div>
                 </div>
@@ -453,7 +453,7 @@ const FinanceDashboard = () => {
                 <div className="h-10 w-px bg-brand-border"></div>
                 <div className="text-end">
                   <p className="text-caption text-brand-text-muted">{t('finance.paidSoFar')}</p>
-                  <p className="text-xl font-black text-brand-brand-green-dark">
+                  <p className="text-xl font-black text-brand-primary-600">
                     ${studentStats.totalPaid.toLocaleString()}
                   </p>
                 </div>

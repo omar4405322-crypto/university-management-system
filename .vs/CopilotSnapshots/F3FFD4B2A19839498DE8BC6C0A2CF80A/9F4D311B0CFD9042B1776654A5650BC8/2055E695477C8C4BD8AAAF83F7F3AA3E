@@ -1,0 +1,428 @@
+﻿generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int            @id @default(autoincrement())
+  email          String         @unique
+  password       String
+  role           Role           @default(STUDENT)
+  adminRole      AdminRole?
+  collegeId      Int?           // For COLLEGE_ADMIN
+  college        College?       @relation(fields: [collegeId], references: [id])
+  departmentId   Int?           // For DEPARTMENT_ADMIN
+  department     Department?    @relation(fields: [departmentId], references: [id])
+  profilePicture String?
+  twoFactorEnabled Boolean      @default(false)
+  twoFactorSecret  String?      // TOTP secret
+  tokenVersion  Int            @default(0)
+  createdAt      DateTime       @default(now())
+  doctor         Doctor?
+  student        Student?
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  refreshTokens  RefreshToken[]
+
+  @@index([role])
+  @@index([email])
+}
+
+model RefreshToken { 
+  id        Int      @id @default(autoincrement()) 
+  token     String   @unique 
+  userId    Int 
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade) 
+  expiresAt DateTime 
+  createdAt DateTime @default(now()) 
+  @@index([userId]) 
+} 
+
+model AuditLog {
+  id             Int      @id @default(autoincrement())
+  userId         Int?
+  user           User?    @relation(fields: [userId], references: [id])
+  userEmail      String?
+  userRole       String?
+  action         String   // e.g., "CREATE_STUDENT", "UPDATE_PAYMENT"
+  entity         String   // e.g., "Student", "Payment"
+  entityId       String?
+  details        Json?
+  ipAddress      String?
+  userAgent      String?
+  timestamp      DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([timestamp])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String   @default("info") // info, success, warning, error
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+}
+
+model College {
+  id          Int          @id @default(autoincrement())
+  name        String
+  nameAr      String?
+  description String?
+  departments Department[]
+  admins      User[]
+  timetables  Timetable[]
+  createdAt   DateTime     @default(now())
+}
+
+model Department {
+  id          Int      @id @default(autoincrement())
+  name        String
+  nameAr      String?
+  collegeId   Int
+  college     College  @relation(fields: [collegeId], references: [id])
+  courses     Course[]
+  students    Student[]
+  doctors     Doctor[]
+  admins      User[]
+  registrationRequests RegistrationRequest[]
+  timetables  Timetable[]
+  createdAt    DateTime @default(now())
+
+  @@index([collegeId])
+}
+
+model RegistrationRequest {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  password     String
+  role         Role
+  firstName    String
+  lastName     String
+  studentId    String?  // For students
+  year         Int?     // For students
+  phone        String?
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  status       RequestStatus @default(PENDING)
+  rejectionReason String?
+  createdAt    DateTime @default(now())
+
+  @@index([status])
+  @@index([email])
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Student {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique
+  firstName    String
+  lastName     String
+  studentId    String   @unique
+  year         Int      @default(1)
+  phone        String?
+  address      String?
+  bio          String?
+  isActive     Boolean  @default(true)
+  gender       String?
+  birthDate    DateTime?
+  enrolledAt   DateTime @default(now())
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
+  payments     Payment[]
+  quizSubmissions QuizSubmission[]
+  taskSubmissions TaskSubmission[]
+  courses      Course[]
+  attendance   Attendance[]
+  successMetrics StudentSuccessMetric?
+
+  @@index([studentId])
+  @@index([departmentId, year])
+  @@index([firstName, lastName])
+}
+
+model StudentSuccessMetric {
+  id                Int      @id @default(autoincrement())
+  studentId         Int      @unique
+  student           Student  @relation(fields: [studentId], references: [id])
+  attendanceRate    Float    @default(0)
+  averageQuizScore  Float    @default(0)
+  assignmentCompletionRate Float @default(0)
+  predictedRisk     RiskLevel @default(LOW)
+  lastCalculated    DateTime @default(now())
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Attendance {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id])
+  courseId  Int
+  course    Course   @relation(fields: [courseId], references: [id])
+  date      DateTime @default(now())
+  status    AttendanceStatus @default(PRESENT)
+  remarks   String?
+  createdAt DateTime @default(now())
+
+  @@index([courseId, date])
+  @@index([studentId, courseId])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  studentId     Int
+  student       Student       @relation(fields: [studentId], references: [id])
+  amount        Float
+  type          PaymentType
+  status        PaymentStatus @default(PENDING)
+  description   String?
+  dueDate       DateTime?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@index([studentId, status])
+  @@index([createdAt])
+}
+
+enum PaymentType {
+  TUITION
+  REGISTRATION
+  LIBRARY
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Doctor {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique
+  user         User     @relation(fields: [userId], references: [id])
+  firstName    String
+  lastName     String
+  doctorId     String         @unique @default(dbgenerated("'DOC-' || lpad(nextval('doctor_id_seq'::regclass)::text, 5, '0')"))
+  phone        String?
+  address      String?
+  bio          String?
+  gender       String?
+  birthDate    DateTime?
+  specialty    String?
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  courses      Course[]
+  quizzes      Quiz[]
+  tasks        Task[]
+
+  @@index([doctorId])
+  @@index([departmentId])
+}
+
+model Course {
+  id           Int      @id @default(autoincrement())
+  courseCode   String   @unique
+  name         String
+  description  String?
+  credits      Int      @default(3)
+  maxStudents  Int      @default(30)
+  year         Int      @default(1)
+  semester     Int      @default(1)
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  doctorId     Int?
+  doctor       Doctor?  @relation(fields: [doctorId], references: [id])
+  schedules    Schedule[]
+  exams        Exam[]
+  quizzes      Quiz[]
+  tasks        Task[]
+  students     Student[]
+  attendance   Attendance[]
+  createdAt    DateTime @default(now())
+
+  @@index([courseCode])
+  @@index([departmentId])
+  @@index([doctorId])
+}
+
+model Quiz {
+  id           Int          @id @default(autoincrement())
+  title        String
+  description  String?
+  courseId     Int
+  course       Course       @relation(fields: [courseId], references: [id])
+  doctorId     Int
+  doctor       Doctor       @relation(fields: [doctorId], references: [id])
+  duration     Int          // in minutes
+  startTime    DateTime?
+  endTime      DateTime?
+  questions    Question[]
+  submissions  QuizSubmission[]
+  createdAt    DateTime     @default(now())
+
+  @@index([courseId])
+}
+
+model Question {
+  id       Int      @id @default(autoincrement())
+  quizId   Int
+  quiz     Quiz     @relation(fields: [quizId], references: [id])
+  text     String
+  optionA  String
+  optionB  String
+  optionC  String
+  optionD  String
+  correct  String   // "A", "B", "C", or "D"
+  points   Int      @default(1)
+
+  @@index([quizId])
+}
+
+model QuizSubmission {
+  id        Int      @id @default(autoincrement())
+  quizId    Int
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id])
+  answers   Json     // { questionId: "A", ... }
+  score     Float?
+  submittedAt DateTime @default(now())
+
+  @@index([quizId, studentId])
+}
+
+model Task {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  courseId    Int
+  course      Course    @relation(fields: [courseId], references: [id])
+  doctorId    Int
+  doctor      Doctor    @relation(fields: [doctorId], references: [id])
+  dueDate     DateTime
+  maxScore    Int       @default(100)
+  submissions TaskSubmission[]
+  createdAt   DateTime  @default(now())
+
+  @@index([courseId])
+}
+
+model TaskSubmission {
+  id          Int      @id @default(autoincrement())
+  taskId      Int
+  task        Task     @relation(fields: [taskId], references: [id])
+  studentId   Int
+  student     Student  @relation(fields: [studentId], references: [id])
+  fileUrl     String?
+  notes       String?
+  score       Float?
+  submittedAt DateTime @default(now())
+
+  @@index([taskId, studentId])
+}
+
+model Schedule {
+  id        Int      @id @default(autoincrement())
+  courseId  Int
+  course    Course   @relation(fields: [courseId], references: [id])
+  dayOfWeek String   // "Sunday", "Monday", etc.
+  startTime String   // "09:00"
+  endTime   String   // "11:00"
+  room      String?
+  createdAt DateTime @default(now())
+
+  @@index([courseId])
+}
+
+model Timetable {
+  id           Int        @id @default(autoincrement())
+  collegeId    Int
+  college      College    @relation(fields: [collegeId], references: [id])
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id])
+  academicYear Int        // Study Level: 1, 2, 3, 4, etc.
+  semester     Int        // 1 or 2
+  title        String
+  description  String?
+  scheduleData Json?      // JSON for dynamic schedule slots
+  fileUrl      String?    // If they prefer uploading a PDF/Image
+  status       TimetableStatus @default(DRAFT)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([collegeId, departmentId, academicYear, semester])
+  @@index([collegeId, departmentId])
+}
+
+enum TimetableStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Exam {
+  id        Int      @id @default(autoincrement())
+  courseId  Int
+  course    Course   @relation(fields: [courseId], references: [id])
+  type      ExamType @default(MIDTERM)
+  date      DateTime
+  startTime String
+  endTime   String
+  room      String?
+  createdAt DateTime @default(now())
+
+  @@index([courseId, date])
+}
+
+enum ExamType {
+  MIDTERM
+  FINAL
+  QUIZ
+}
+
+enum Role {
+  STUDENT
+  DOCTOR
+  ADMIN
+  COLLEGE_ADMIN
+  DEPARTMENT_ADMIN
+  SUPER_ADMIN
+}
+
+enum AdminRole {
+  IT_SUPPORT
+  REGISTRAR
+  FINANCE
+  ACADEMIC_DEAN
+}

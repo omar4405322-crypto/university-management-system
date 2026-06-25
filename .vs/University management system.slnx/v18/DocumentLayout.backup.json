@@ -1,0 +1,958 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\omar4\\Desktop\\University management system\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\task.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\task.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\attendance.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\attendance.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\timetable.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\timetable.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\exams.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\exams.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\schedules.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\schedules.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\doctors.controller.ts||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\doctors.controller.ts||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\app.ts||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\app.ts||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\auth.controller.ts||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\auth.controller.ts||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\.env.example||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\.env.example||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\services\\api.ts||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\services\\api.ts||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\main.tsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\main.tsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\prisma\\schema.prisma||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\prisma\\schema.prisma||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\tmp\\list_no2fa_users.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\tmp\\list_no2fa_users.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\tmp\\list_no2fa_users2.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\tmp\\list_no2fa_users2.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\services\\college.service.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\services\\college.service.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\AddCollegeModal.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\colleges\\AddCollegeModal.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\EditCollegeModal.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\colleges\\EditCollegeModal.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\CollegesList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\colleges\\CollegesList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\ADD_COLLEGE_BUTTON_FIX.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:ADD_COLLEGE_BUTTON_FIX.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\TESTING_GUIDE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:TESTING_GUIDE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\RESOLUTION_SUMMARY.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:RESOLUTION_SUMMARY.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\ARCHITECTURE_DIAGRAM.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:ARCHITECTURE_DIAGRAM.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\QUICK_REFERENCE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:QUICK_REFERENCE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\ROLE_BASED_ACCESS_CONTROL.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:ROLE_BASED_ACCESS_CONTROL.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\RBAC_QUICK_REFERENCE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:RBAC_QUICK_REFERENCE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\IMPLEMENTATION_COMPLETE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:IMPLEMENTATION_COMPLETE.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\components\\ui\\TruncatedText.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\components\\ui\\TruncatedText.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\CollegeDetails.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\colleges\\CollegeDetails.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\middleware\\auth.middleware.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\middleware\\auth.middleware.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\user.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\user.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\students.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\students.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\prisma\\migrations\\20260612_add_managed_college\\migration.sql||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\prisma\\migrations\\20260612_add_managed_college\\migration.sql||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\registration\\AdminsList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\registration\\AdminsList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\department.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\department.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\routes\\department.routes.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\routes\\department.routes.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\courses.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\courses.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\doctors.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\doctors.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\quiz.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\quiz.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\routes\\users.routes.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\routes\\users.routes.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\departments\\DepartmentsList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\departments\\DepartmentsList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\courses\\CoursesList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\courses\\CoursesList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\students\\StudentsList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\students\\StudentsList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\doctors\\DoctorsList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\doctors\\DoctorsList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\schedules\\SchedulesList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\schedules\\SchedulesList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\exams\\ExamsList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\exams\\ExamsList.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\attendance\\AttendancePage.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\attendance\\AttendancePage.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\hooks\\useScope.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\hooks\\useScope.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\fix_sequences.sql||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\fix_sequences.sql||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\find_super.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\scripts\\find_super.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\find_super2.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\scripts\\find_super2.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\set_super_password.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\scripts\\set_super_password.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\disable_super_2fa.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\scripts\\disable_super_2fa.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\create_test_admins.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\create_test_admins.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\fix-2fa.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\fix-2fa.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\enable-2fa.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\enable-2fa.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\college.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\controllers\\college.controller.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\routes\\college.routes.js||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\src\\routes\\college.routes.js||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\AssignAdminModal.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\pages\\colleges\\AssignAdminModal.jsx||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 9,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d455e273-1acb-491f-b5c9-760a99044cf9}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 57,
+              "Title": "AssignAdminModal.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\AssignAdminModal.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\colleges\\AssignAdminModal.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\AssignAdminModal.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\colleges\\AssignAdminModal.jsx",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAI0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-14T18:38:35.699Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 56,
+              "Title": "college.routes.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\routes\\college.routes.js",
+              "RelativeDocumentMoniker": "backend\\src\\routes\\college.routes.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\routes\\college.routes.js",
+              "RelativeToolTip": "backend\\src\\routes\\college.routes.js",
+              "ViewState": "AgIAAAYAAAAAAAAAAIBJwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-14T18:37:48.381Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 55,
+              "Title": "college.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\college.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\college.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\college.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\college.controller.js",
+              "ViewState": "AgIAANQAAAAAAAAAAABRwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-14T18:37:24.526Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 54,
+              "Title": "enable-2fa.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\enable-2fa.js",
+              "RelativeDocumentMoniker": "backend\\enable-2fa.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\enable-2fa.js",
+              "RelativeToolTip": "backend\\enable-2fa.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-14T18:30:59.727Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 53,
+              "Title": "fix-2fa.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\fix-2fa.js",
+              "RelativeDocumentMoniker": "backend\\fix-2fa.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\fix-2fa.js",
+              "RelativeToolTip": "backend\\fix-2fa.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-14T18:30:40.621Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 52,
+              "Title": "create_test_admins.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\create_test_admins.js",
+              "RelativeDocumentMoniker": "backend\\create_test_admins.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\create_test_admins.js",
+              "RelativeToolTip": "backend\\create_test_admins.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-14T18:30:40.193Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "task.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\task.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\task.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\task.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\task.controller.js",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-13T23:19:23.467Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 48,
+              "Title": "find_super.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\find_super.js",
+              "RelativeDocumentMoniker": "backend\\scripts\\find_super.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\find_super.js",
+              "RelativeToolTip": "backend\\scripts\\find_super.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-13T23:41:28.079Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 49,
+              "Title": "find_super2.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\find_super2.js",
+              "RelativeDocumentMoniker": "backend\\scripts\\find_super2.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\find_super2.js",
+              "RelativeToolTip": "backend\\scripts\\find_super2.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-13T23:41:41.174Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 50,
+              "Title": "set_super_password.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\set_super_password.js",
+              "RelativeDocumentMoniker": "backend\\scripts\\set_super_password.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\set_super_password.js",
+              "RelativeToolTip": "backend\\scripts\\set_super_password.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-13T23:54:13.151Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 51,
+              "Title": "disable_super_2fa.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\disable_super_2fa.js",
+              "RelativeDocumentMoniker": "backend\\scripts\\disable_super_2fa.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\scripts\\disable_super_2fa.js",
+              "RelativeToolTip": "backend\\scripts\\disable_super_2fa.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-14T00:00:14.171Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 47,
+              "Title": "fix_sequences.sql",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\fix_sequences.sql",
+              "RelativeDocumentMoniker": "backend\\fix_sequences.sql",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\fix_sequences.sql",
+              "RelativeToolTip": "backend\\fix_sequences.sql",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000826|",
+              "WhenOpened": "2026-06-13T23:38:51.813Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "attendance.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\attendance.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\attendance.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\attendance.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\attendance.controller.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-13T23:18:48.674Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "timetable.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\timetable.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\timetable.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\timetable.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\timetable.controller.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-13T23:18:34.764Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "exams.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\exams.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\exams.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\exams.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\exams.controller.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-13T23:18:14.983Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "schedules.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\schedules.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\schedules.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\schedules.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\schedules.controller.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-13T23:18:00.042Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "doctors.controller.ts",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\doctors.controller.ts",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\doctors.controller.ts",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\doctors.controller.ts",
+              "RelativeToolTip": "backend\\src\\controllers\\doctors.controller.ts",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2026-06-12T13:42:49.483Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 46,
+              "Title": "useScope.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\hooks\\useScope.js",
+              "RelativeDocumentMoniker": "frontend\\src\\hooks\\useScope.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\hooks\\useScope.js",
+              "RelativeToolTip": "frontend\\src\\hooks\\useScope.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-13T23:23:34.734Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 45,
+              "Title": "AttendancePage.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\attendance\\AttendancePage.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\attendance\\AttendancePage.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\attendance\\AttendancePage.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\attendance\\AttendancePage.jsx",
+              "ViewState": "AgIAADcAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-13T23:23:34.607Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 44,
+              "Title": "ExamsList.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\exams\\ExamsList.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\exams\\ExamsList.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\exams\\ExamsList.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\exams\\ExamsList.jsx",
+              "ViewState": "AgIAAK8AAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-13T23:23:34.548Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 43,
+              "Title": "SchedulesList.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\schedules\\SchedulesList.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\schedules\\SchedulesList.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\schedules\\SchedulesList.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\schedules\\SchedulesList.jsx",
+              "ViewState": "AgIAAHQAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-13T23:23:34.488Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 42,
+              "Title": "DoctorsList.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\doctors\\DoctorsList.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\doctors\\DoctorsList.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\doctors\\DoctorsList.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\doctors\\DoctorsList.jsx",
+              "ViewState": "AgIAAE4AAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-13T23:23:34.43Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 41,
+              "Title": "StudentsList.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\students\\StudentsList.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\students\\StudentsList.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\students\\StudentsList.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\students\\StudentsList.jsx",
+              "ViewState": "AgIAADQAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-13T23:23:34.367Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 40,
+              "Title": "CoursesList.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\courses\\CoursesList.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\courses\\CoursesList.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\courses\\CoursesList.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\courses\\CoursesList.jsx",
+              "ViewState": "AgIAAGAAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-13T23:23:34.305Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 39,
+              "Title": "DepartmentsList.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\departments\\DepartmentsList.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\departments\\DepartmentsList.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\departments\\DepartmentsList.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\departments\\DepartmentsList.jsx",
+              "ViewState": "AgIAAE8AAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-13T23:23:34.195Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 38,
+              "Title": "users.routes.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\routes\\users.routes.js",
+              "RelativeDocumentMoniker": "backend\\src\\routes\\users.routes.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\routes\\users.routes.js",
+              "RelativeToolTip": "backend\\src\\routes\\users.routes.js",
+              "ViewState": "AgIAADYAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-13T23:23:34.015Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 37,
+              "Title": "quiz.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\quiz.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\quiz.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\quiz.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\quiz.controller.js",
+              "ViewState": "AgIAAAQAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-13T23:19:37.877Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "EditCollegeModal.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\EditCollegeModal.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\colleges\\EditCollegeModal.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\EditCollegeModal.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\colleges\\EditCollegeModal.jsx",
+              "ViewState": "AgIAAFMAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-12T19:16:25.628Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "CollegesList.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\CollegesList.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\colleges\\CollegesList.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\CollegesList.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\colleges\\CollegesList.jsx",
+              "ViewState": "AgIAAM8AAAAAAAAAAABRwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-12T19:16:33.36Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "ADD_COLLEGE_BUTTON_FIX.md",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\ADD_COLLEGE_BUTTON_FIX.md",
+              "RelativeDocumentMoniker": "ADD_COLLEGE_BUTTON_FIX.md",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\ADD_COLLEGE_BUTTON_FIX.md",
+              "RelativeToolTip": "ADD_COLLEGE_BUTTON_FIX.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAMsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-06-12T19:17:12.11Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "QUICK_REFERENCE.md",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\QUICK_REFERENCE.md",
+              "RelativeDocumentMoniker": "QUICK_REFERENCE.md",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\QUICK_REFERENCE.md",
+              "RelativeToolTip": "QUICK_REFERENCE.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAKEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-06-12T19:19:44.113Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "TruncatedText.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\components\\ui\\TruncatedText.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\components\\ui\\TruncatedText.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\components\\ui\\TruncatedText.jsx",
+              "RelativeToolTip": "frontend\\src\\components\\ui\\TruncatedText.jsx",
+              "ViewState": "AgIAAAgAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-12T19:30:27.801Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 36,
+              "Title": "doctors.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\doctors.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\doctors.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\doctors.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\doctors.controller.js",
+              "ViewState": "AgIAAAYAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-12T20:20:34.219Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 35,
+              "Title": "courses.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\courses.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\courses.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\courses.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\courses.controller.js",
+              "ViewState": "AgIAABoAAAAAAAAAAIBZwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-12T19:55:21.263Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 34,
+              "Title": "department.routes.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\routes\\department.routes.js",
+              "RelativeDocumentMoniker": "backend\\src\\routes\\department.routes.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\routes\\department.routes.js",
+              "RelativeToolTip": "backend\\src\\routes\\department.routes.js",
+              "ViewState": "AgIAABMAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-12T19:54:33.366Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 33,
+              "Title": "department.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\department.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\department.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\department.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\department.controller.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAABRwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-12T19:54:07.465Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 32,
+              "Title": "AdminsList.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\registration\\AdminsList.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\registration\\AdminsList.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\registration\\AdminsList.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\registration\\AdminsList.jsx",
+              "ViewState": "AgIAABYAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-12T19:50:31.003Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 31,
+              "Title": "migration.sql",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\prisma\\migrations\\20260612_add_managed_college\\migration.sql",
+              "RelativeDocumentMoniker": "backend\\prisma\\migrations\\20260612_add_managed_college\\migration.sql",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\prisma\\migrations\\20260612_add_managed_college\\migration.sql",
+              "RelativeToolTip": "backend\\prisma\\migrations\\20260612_add_managed_college\\migration.sql",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000826|",
+              "WhenOpened": "2026-06-12T19:50:05.661Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 30,
+              "Title": "students.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\students.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\students.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\students.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\students.controller.js",
+              "ViewState": "AgIAAAIAAAAAAAAAAIBZwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-12T19:49:54.139Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 29,
+              "Title": "user.controller.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\user.controller.js",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\user.controller.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\user.controller.js",
+              "RelativeToolTip": "backend\\src\\controllers\\user.controller.js",
+              "ViewState": "AgIAABcBAAAAAAAAAABRwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-12T19:49:54.072Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 28,
+              "Title": "auth.middleware.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\middleware\\auth.middleware.js",
+              "RelativeDocumentMoniker": "backend\\src\\middleware\\auth.middleware.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\middleware\\auth.middleware.js",
+              "RelativeToolTip": "backend\\src\\middleware\\auth.middleware.js",
+              "ViewState": "AgIAACIAAAAAAAAAAABRwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-12T19:49:54.005Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": "CollegeDetails.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\CollegeDetails.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\colleges\\CollegeDetails.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\CollegeDetails.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\colleges\\CollegeDetails.jsx",
+              "ViewState": "AgIAAE8BAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-12T19:44:33.229Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "IMPLEMENTATION_COMPLETE.md",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\IMPLEMENTATION_COMPLETE.md",
+              "RelativeDocumentMoniker": "IMPLEMENTATION_COMPLETE.md",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\IMPLEMENTATION_COMPLETE.md",
+              "RelativeToolTip": "IMPLEMENTATION_COMPLETE.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAD4BAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-06-12T19:27:30.269Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "RBAC_QUICK_REFERENCE.md",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\RBAC_QUICK_REFERENCE.md",
+              "RelativeDocumentMoniker": "RBAC_QUICK_REFERENCE.md",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\RBAC_QUICK_REFERENCE.md",
+              "RelativeToolTip": "RBAC_QUICK_REFERENCE.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAIcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-06-12T19:26:55.318Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "ROLE_BASED_ACCESS_CONTROL.md",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\ROLE_BASED_ACCESS_CONTROL.md",
+              "RelativeDocumentMoniker": "ROLE_BASED_ACCESS_CONTROL.md",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\ROLE_BASED_ACCESS_CONTROL.md",
+              "RelativeToolTip": "ROLE_BASED_ACCESS_CONTROL.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-06-12T19:26:43.124Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "AddCollegeModal.jsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\AddCollegeModal.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\pages\\colleges\\AddCollegeModal.jsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\pages\\colleges\\AddCollegeModal.jsx",
+              "RelativeToolTip": "frontend\\src\\pages\\colleges\\AddCollegeModal.jsx",
+              "ViewState": "AgIAAAAAAAAAAAAAAABBwAEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-06-12T19:16:02.495Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "ARCHITECTURE_DIAGRAM.md",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\ARCHITECTURE_DIAGRAM.md",
+              "RelativeDocumentMoniker": "ARCHITECTURE_DIAGRAM.md",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\ARCHITECTURE_DIAGRAM.md",
+              "RelativeToolTip": "ARCHITECTURE_DIAGRAM.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADMBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-06-12T19:18:54.025Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "RESOLUTION_SUMMARY.md",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\RESOLUTION_SUMMARY.md",
+              "RelativeDocumentMoniker": "RESOLUTION_SUMMARY.md",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\RESOLUTION_SUMMARY.md",
+              "RelativeToolTip": "RESOLUTION_SUMMARY.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-06-12T19:18:24.886Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "college.service.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\services\\college.service.js",
+              "RelativeDocumentMoniker": "frontend\\src\\services\\college.service.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\services\\college.service.js",
+              "RelativeToolTip": "frontend\\src\\services\\college.service.js",
+              "ViewState": "AgIAAC8AAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-12T19:15:43.585Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "TESTING_GUIDE.md",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\TESTING_GUIDE.md",
+              "RelativeDocumentMoniker": "TESTING_GUIDE.md",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\TESTING_GUIDE.md",
+              "RelativeToolTip": "TESTING_GUIDE.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAJQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-06-12T19:17:54.187Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "list_no2fa_users.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\tmp\\list_no2fa_users.js",
+              "RelativeDocumentMoniker": "backend\\tmp\\list_no2fa_users.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\tmp\\list_no2fa_users.js",
+              "RelativeToolTip": "backend\\tmp\\list_no2fa_users.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAxwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-12T14:58:55.763Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "list_no2fa_users2.js",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\tmp\\list_no2fa_users2.js",
+              "RelativeDocumentMoniker": "backend\\tmp\\list_no2fa_users2.js",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\tmp\\list_no2fa_users2.js",
+              "RelativeToolTip": "backend\\tmp\\list_no2fa_users2.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAxwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-06-12T14:59:13.243Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "schema.prisma",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\prisma\\schema.prisma",
+              "RelativeDocumentMoniker": "backend\\prisma\\schema.prisma",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\prisma\\schema.prisma",
+              "RelativeToolTip": "backend\\prisma\\schema.prisma",
+              "ViewState": "AgIAABsAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-06-12T13:37:52.115Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "main.tsx",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\main.tsx",
+              "RelativeDocumentMoniker": "frontend\\src\\main.tsx",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\main.tsx",
+              "RelativeToolTip": "frontend\\src\\main.tsx",
+              "ViewState": "AgIAAAMAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2026-06-12T13:33:26.014Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "app.ts",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\app.ts",
+              "RelativeDocumentMoniker": "backend\\src\\app.ts",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\app.ts",
+              "RelativeToolTip": "backend\\src\\app.ts",
+              "ViewState": "AgIAAJgAAAAAAAAAAAAawAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2026-06-12T13:33:25.827Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "auth.controller.ts",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\auth.controller.ts",
+              "RelativeDocumentMoniker": "backend\\src\\controllers\\auth.controller.ts",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\backend\\src\\controllers\\auth.controller.ts",
+              "RelativeToolTip": "backend\\src\\controllers\\auth.controller.ts",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAawAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2026-06-12T13:31:49.355Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": ".env.example",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\.env.example",
+              "RelativeDocumentMoniker": "frontend\\.env.example",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\.env.example",
+              "RelativeToolTip": "frontend\\.env.example",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-06-12T13:30:24.684Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "api.ts",
+              "DocumentMoniker": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\services\\api.ts",
+              "RelativeDocumentMoniker": "frontend\\src\\services\\api.ts",
+              "ToolTip": "C:\\Users\\omar4\\Desktop\\University management system\\frontend\\src\\services\\api.ts",
+              "RelativeToolTip": "frontend\\src\\services\\api.ts",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2026-06-12T13:30:23.261Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

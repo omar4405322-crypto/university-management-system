@@ -1,4 +1,4 @@
-// FIXED: Show quiz submissions with scores and answer preview - Phase 5
+﻿// FIXED: Show quiz submissions with scores and answer preview - Phase 5
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Eye, User, Calendar, Award } from 'lucide-react';
@@ -54,7 +54,7 @@ const QuizSubmissionsModal = ({ isOpen, onClose, quiz }) => {
     >
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Loader2 className="animate-spin text-brand-brand-green-dark" size={36} />
+          <Loader2 className="animate-spin text-brand-primary-600" size={36} />
           <p className="text-sm font-bold text-brand-text-muted">{t('common.loading')}</p>
         </div>
       ) : error ? (
@@ -89,7 +89,7 @@ const QuizSubmissionsModal = ({ isOpen, onClose, quiz }) => {
                   <tr key={sub.id} className="hover:bg-surface-subtle/50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 font-bold text-brand-text-main">
-                        <User size={14} className="text-brand-brand-green-dark" />
+                        <User size={14} className="text-brand-primary-600" />
                         {sub.student?.firstName} {sub.student?.lastName}
                         <span className="text-[10px] text-brand-text-muted">
                           ({sub.student?.studentId})

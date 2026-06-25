@@ -115,3 +115,4 @@ export {
   PaginationNext,
   PaginationEllipsis,
 }
+export default Pagination;

@@ -30,9 +30,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
-import { UNIVERSITY_LOGO, UNIVERSITY_LOGO_PNG } from '../../constants/universityAssets';
+import { UNIVERSITY_LOGO, UNIVERSITY_LOGO_PNG, UNIVERSITY_LOGO_WHITE } from '../../constants/universityAssets';
 
-const SidebarItem: React.FC<any> = ({ item, isCollapsed, isChild = false }) => {
+// PERF: React.memo prevents re-render when item's own props haven't changed
+const SidebarItem: React.FC<any> = React.memo(({ item, isCollapsed, isChild = false }) => {
   const { t } = useTranslation();
   return (
     <NavLink
@@ -42,8 +43,8 @@ const SidebarItem: React.FC<any> = ({ item, isCollapsed, isChild = false }) => {
         ${isChild ? 'px-4 py-2 text-xs' : 'px-4 py-3 text-sm'}
         ${
           isActive
-            ? 'bg-brand-brand-green-dark text-white shadow-elevated shadow-brand-brand-green-dark/20'
-            : 'text-brand-text-secondary hover:bg-brand-brand-green-dark/10 hover:text-brand-brand-green-dark dark:text-slate-400 dark:hover:text-brand-brand-green'
+            ? 'bg-brand-primary-600 text-white shadow-elevated shadow-brand-primary-600/20'
+            : 'text-slate-300 hover:bg-brand-primary-500/10 hover:text-brand-primary-400 dark:text-slate-400 dark:hover:text-brand-primary-400'
         }
         ${isCollapsed ? 'justify-center px-2' : ''}
       `}
@@ -52,7 +53,7 @@ const SidebarItem: React.FC<any> = ({ item, isCollapsed, isChild = false }) => {
         <>
           <item.icon
             size={isChild ? 16 : 20}
-            className={`shrink-0 transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-brand-text-muted group-hover:text-brand-brand-green-dark group-hover:scale-110'}`}
+            className={`shrink-0 transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-brand-primary-400 group-hover:scale-110'}`}
           />
           {!isCollapsed && (
             <span
@@ -68,7 +69,7 @@ const SidebarItem: React.FC<any> = ({ item, isCollapsed, isChild = false }) => {
       )}
     </NavLink>
   );
-};
+});
 
 const groupIcons = {
   'nav.academic': BookOpen,
@@ -77,7 +78,8 @@ const groupIcons = {
   'nav.system': Settings,
 };
 
-const SidebarGroup: React.FC<any> = ({ group, isCollapsed }) => {
+// PERF: React.memo prevents full group re-render when unrelated routes change
+const SidebarGroup: React.FC<any> = React.memo(({ group, isCollapsed }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(true);
   const location = useLocation();
@@ -102,13 +104,13 @@ const SidebarGroup: React.FC<any> = ({ group, isCollapsed }) => {
     <div className="space-y-2">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-2.5 label-stat text-brand-text-muted hover:text-brand-brand-green-dark transition-colors group"
+        className="w-full flex items-center justify-between px-4 py-2.5 label-stat text-slate-500 hover:text-brand-primary-400 transition-colors group"
       >
         <div className="flex items-center gap-3">
           {GroupIcon && (
             <GroupIcon
               size={14}
-              className="text-brand-text-muted group-hover:text-brand-brand-green-dark transition-colors"
+              className="text-slate-500 group-hover:text-brand-primary-400 transition-colors"
             />
           )}
           <span>{t(group.title)}</span>
@@ -127,7 +129,7 @@ const SidebarGroup: React.FC<any> = ({ group, isCollapsed }) => {
       )}
     </div>
   );
-};
+});
 
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -329,60 +331,78 @@ const Sidebar = ({ isOpen, onClose }) => {
         md:translate-x-0
       `}
       >
-        <div className="flex h-20 items-center justify-between border-b border-white/10 bg-black/10 px-4">
+        {/* ── Sidebar Header ── */}
+        <div className="flex h-20 items-center justify-between border-b border-white/10 px-4"
+          style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.25) 0%, rgba(255,255,255,0.03) 100%)' }}
+        >
+          {/* Expanded state: logo + Arabic name */}
           <Link
             to="/dashboard"
-            onClick={(e) => {
-              // Force navigation as backup in case standard Link is intercepted
-              navigate('/dashboard');
-            }}
-            className={`flex min-w-0 flex-1 items-center gap-3 hover:opacity-80 transition-opacity ${isCollapsed ? 'hidden' : 'flex'}`}
+            onClick={() => navigate('/dashboard')}
+            className={`flex min-w-0 flex-1 items-center gap-3 hover:opacity-90 transition-opacity duration-200 ${isCollapsed ? 'hidden' : 'flex'}`}
           >
-            <img
-              src={UNIVERSITY_LOGO_PNG}
-              alt=""
-              className="h-10 w-10 shrink-0 object-contain"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = UNIVERSITY_LOGO;
-              }}
-            />
-            <div className="flex min-w-0 flex-col">
-              <span className="text-xs font-black uppercase leading-tight tracking-widest text-white">
-                {t('common.university', 'University')}
+            {/* Logo badge */}
+            <div className="relative shrink-0">
+              <div className="absolute inset-0 rounded-2xl bg-brand-primary-500/20 blur-md" />
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20 shadow-lg backdrop-blur-sm">
+                <img
+                  src={UNIVERSITY_LOGO_WHITE}
+                  alt="جامعة 6 أكتوبر التكنولوجية"
+                  className="h-7 w-7 object-contain"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = UNIVERSITY_LOGO_PNG;
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Text identity */}
+            <div className="flex min-w-0 flex-col" dir="rtl">
+              <span className="truncate text-sm font-black leading-tight text-white"
+                style={{ letterSpacing: '0.01em' }}>
+                جامعة 6 أكتوبر التكنولوجية
               </span>
-              <span className="text-[10px] font-bold uppercase leading-tight tracking-tighter text-brand-brand-green-dark">
-                {t('common.managementSystem', 'Management System')}
+              <span className="text-[10px] font-bold leading-tight tracking-wide text-brand-primary-400 mt-0.5">
+                نظام الإدارة
               </span>
             </div>
           </Link>
 
+          {/* Collapsed state: logo only, centred */}
           {isCollapsed && (
-            <Link 
-              to="/dashboard" 
-              onClick={(e) => navigate('/dashboard')}
-              className="mx-auto block hover:opacity-80 transition-opacity"
+            <Link
+              to="/dashboard"
+              onClick={() => navigate('/dashboard')}
+              className="mx-auto block hover:opacity-90 transition-opacity duration-200"
             >
-              <img
-                src={UNIVERSITY_LOGO_PNG}
-                alt="University"
-                className="h-9 w-9 object-contain"
-                onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = UNIVERSITY_LOGO;
-                }}
-              />
+              <div className="relative">
+                <div className="absolute inset-0 rounded-xl bg-brand-primary-500/20 blur-sm" />
+                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 shadow-md">
+                  <img
+                    src={UNIVERSITY_LOGO_WHITE}
+                    alt="جامعة 6 أكتوبر التكنولوجية"
+                    className="h-6 w-6 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = UNIVERSITY_LOGO_PNG;
+                    }}
+                  />
+                </div>
+              </div>
             </Link>
           )}
 
+          {/* Mobile close button */}
           <button
             onClick={onClose}
-            className="rounded-xl p-2 text-white/70 hover:bg-white/10 md:hidden"
+            className="rounded-xl p-2 text-white/70 hover:bg-white/10 md:hidden transition-colors"
             aria-label={t('nav.closeSidebar')}
           >
             <X size={20} />
           </button>
         </div>
+
 
         <div className="flex flex-col h-[calc(100%-5rem)]">
           {/* ALWAYS VISIBLE HOME BUTTON (Right below logo area) */}
@@ -392,15 +412,15 @@ const Sidebar = ({ isOpen, onClose }) => {
               className={({ isActive }) => `
                 group flex items-center gap-3 rounded-2xl transition-all duration-300 px-4 py-3 text-sm
                 ${isActive
-                  ? 'bg-brand-brand-green-dark text-white shadow-elevated shadow-brand-brand-green-dark/20'
-                  : 'text-brand-text-secondary hover:bg-brand-brand-green-dark/10 hover:text-brand-brand-green-dark dark:text-slate-400 dark:hover:text-brand-brand-green'
+                  ? 'bg-brand-primary-600 text-white shadow-elevated shadow-brand-primary-600/20'
+                  : 'text-slate-300 hover:bg-brand-primary-500/10 hover:text-brand-primary-400 dark:text-slate-400 dark:hover:text-brand-primary-400'
                 }
                 ${isCollapsed ? 'justify-center px-2' : ''}
               `}
             >
               {({ isActive }) => (
                 <>
-                  <LayoutDashboard size={20} className={`shrink-0 transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-brand-text-muted group-hover:text-brand-brand-green-dark group-hover:scale-110'}`} />
+                  <LayoutDashboard size={20} className={`shrink-0 transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-brand-primary-400 group-hover:scale-110'}`} />
                   {!isCollapsed && <span className={`font-black uppercase tracking-widest transition-all ${isActive ? 'translate-x-1 rtl:-translate-x-1' : ''}`}>{t('nav.dashboard', 'الرئيسية')}</span>}
                 </>
               )}
@@ -424,7 +444,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
           <div className="p-6 border-t border-white/5 bg-black/10 backdrop-blur-md">
             <div className={`flex items-center gap-4 ${isCollapsed ? 'justify-center' : 'px-2'}`}>
-              <div className="w-11 h-11 rounded-2xl bg-brand-brand-green-dark text-white flex items-center justify-center font-black shadow-lg shadow-brand-brand-green-dark/30 ring-2 ring-white/10">
+              <div className="w-11 h-11 rounded-2xl bg-brand-primary-600 text-white flex items-center justify-center font-black shadow-lg shadow-brand-primary-600/30 ring-2 ring-white/10">
                 {initials}
               </div>
               {!isCollapsed && (
@@ -432,7 +452,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   <p className="text-sm font-black text-white truncate uppercase tracking-wider">
                     {fullName}
                   </p>
-                  <p className="label-stat text-brand-brand-green-dark mt-1 opacity-80">
+                  <p className="label-stat text-brand-primary-400 mt-1 opacity-80">
                     {user?.role.replace('_', ' ')}
                   </p>
                 </div>

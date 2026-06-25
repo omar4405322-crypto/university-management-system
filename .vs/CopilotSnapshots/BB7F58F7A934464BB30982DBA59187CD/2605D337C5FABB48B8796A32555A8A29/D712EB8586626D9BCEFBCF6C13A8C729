@@ -1,0 +1,45 @@
+﻿import React from 'react';
+import ReactDOM from 'react-dom/client';
+import * as Sentry from "@sentry/react";
+import { BrowserTracing } from "@sentry/tracing";
+import { Replay } from "@sentry/replay";
+import App from './App';
+import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
+import './index.css';
+import './i18n/index.js';
+// @ts-ignore
+import i18n from './i18n/index.js';
+
+if (import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.MODE,
+    integrations: [
+      new BrowserTracing(),
+      new Replay(),
+    ],
+    // Performance Monitoring
+    tracesSampleRate: 0.1,
+    // Session Replay
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+  });
+}
+
+const initLang = i18n.language?.startsWith('ar') ? 'ar' : 'en';
+document.documentElement.dir = initLang === 'ar' ? 'rtl' : 'ltr';
+document.documentElement.lang = initLang;
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <ThemeProvider>
+        <LanguageProvider>
+          <App />
+        </LanguageProvider>
+      </ThemeProvider>
+    </React.StrictMode>,
+  );
+}

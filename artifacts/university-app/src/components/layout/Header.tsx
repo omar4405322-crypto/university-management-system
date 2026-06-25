@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   Bell,
@@ -42,18 +42,20 @@ const Header = ({ onMenuClick }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
+  // PERF: stable logout handler — won't cause child re-renders on Header state changes
+  const handleLogout = useCallback(() => {
     logout();
     navigate('/login');
-  };
+  }, [logout, navigate]);
 
-  const getInitials = () => {
+  // PERF: derived value — only recomputed when user object changes
+  const initials = useMemo(() => {
     if (!user) return '?';
     if (user.firstName && user.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
     }
     return user.email.substring(0, 2).toUpperCase();
-  };
+  }, [user]);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-brand-border bg-brand-bg-card/90 px-4 backdrop-blur-xl md:px-8 transition-colors duration-300">
@@ -84,7 +86,7 @@ const Header = ({ onMenuClick }) => {
           >
             <Bell size={20} />
             {unreadCount > 0 && (
-              <span className="absolute right-2 rtl:right-auto rtl:left-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-brand-brand-green-dark text-[10px] font-black text-white ring-2 ring-brand-bg-card shadow-sm">
+              <span className="absolute right-2 rtl:right-auto rtl:left-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-brand-primary-600 text-[10px] font-black text-white ring-2 ring-brand-bg-card shadow-sm">
                 {unreadCount}
               </span>
             )}
@@ -101,8 +103,7 @@ const Header = ({ onMenuClick }) => {
                 {unreadCount > 0 && (
                   <button
                     onClick={() => markAllAsRead()}
-                    className="label-stat text-brand-brand-green-dark hover:text-brand-primary-600 transition-colors font-bold"
-                  >
+                    className="label-stat text-brand-primary-600 hover:text-brand-primary-700 transition-colors font-bold">
                     {t('header.markAllRead')}
                   </button>
                 )}
@@ -121,12 +122,12 @@ const Header = ({ onMenuClick }) => {
                   notifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`px-6 py-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer border-b border-brand-border last:border-0 ${!notification.isRead ? 'bg-brand-brand-green-dark/5' : ''}`}
+                      className={`px-6 py-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer border-b border-brand-border last:border-0 ${!notification.isRead ? 'bg-brand-primary-500/5' : ''}`}
                       onClick={() => markAsRead(notification.id)}
                     >
                       <div className="flex gap-4">
                         <div
-                          className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full shadow-sm ${!notification.isRead ? 'bg-brand-brand-green-dark animate-pulse' : 'bg-slate-200 dark:bg-slate-700'}`}
+                          className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full shadow-sm ${!notification.isRead ? 'bg-brand-primary-600 animate-pulse' : 'bg-slate-200 dark:bg-slate-700'}`}
                         />
                         <div>
                           <p className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight">
@@ -154,7 +155,7 @@ const Header = ({ onMenuClick }) => {
                       navigate('/notifications');
                       setIsNotificationsOpen(false);
                     }}
-                    className="label-stat text-brand-brand-green-dark hover:text-brand-primary-600 transition-colors flex items-center justify-center gap-2 mx-auto"
+                    className="label-stat text-brand-primary-600 hover:text-brand-primary-700 transition-colors flex items-center justify-center gap-2 mx-auto"
                   >
                     {t('header.viewAllNotifications')}{' '}
                     <ChevronRight size={14} className="rtl:-scale-x-100" />
@@ -168,9 +169,9 @@ const Header = ({ onMenuClick }) => {
         <div className="relative" ref={profileRef}>
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center gap-3 rounded-2xl border border-brand-border bg-slate-50 dark:bg-slate-800/30 p-1.5 pr-4 rtl:pl-4 rtl:pr-1.5 transition-all hover:border-brand-brand-green-dark/50 hover:bg-brand-bg-card shadow-sm"
+            className="flex items-center gap-3 rounded-2xl border border-brand-border bg-slate-50 dark:bg-slate-800/30 p-1.5 pr-4 rtl:pl-4 rtl:pr-1.5 transition-all hover:border-brand-primary-500/50 hover:bg-brand-bg-card shadow-sm"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-brand-green-dark font-black text-white shadow-lg shadow-brand-brand-green-dark/20 ring-2 ring-brand-bg-card transition-transform group-hover:scale-105">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-primary-600 font-black text-white shadow-lg shadow-brand-primary-600/20 ring-2 ring-brand-bg-card transition-transform group-hover:scale-105">
               {user?.profilePicture ? (
                 <img
                   src={user.profilePicture}
@@ -178,14 +179,14 @@ const Header = ({ onMenuClick }) => {
                   className="h-full w-full rounded-xl object-cover"
                 />
               ) : (
-                getInitials()
+                initials
               )}
             </div>
             <div className="flex flex-col items-end">
               <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main truncate max-w-[120px]">
                 {user?.firstName} {user?.lastName}
               </span>
-              <span className="text-[10px] font-black text-brand-brand-green-dark uppercase tracking-tighter">
+              <span className="text-[10px] font-black text-brand-primary-600 uppercase tracking-tighter">
                 {user?.role?.replace('_', ' ')}
               </span>
             </div>
@@ -210,7 +211,7 @@ const Header = ({ onMenuClick }) => {
                   navigate('/profile');
                   setIsProfileOpen(false);
                 }}
-                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text-primary dark:text-brand-text-main hover:bg-brand-brand-green-dark hover:text-white rounded-2xl transition-all group"
+                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text-primary dark:text-brand-text-main hover:bg-brand-primary-600 hover:text-white rounded-2xl transition-all group"
               >
                 <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-white/20 transition-colors">
                   <UserIcon
@@ -225,7 +226,7 @@ const Header = ({ onMenuClick }) => {
                   navigate('/settings');
                   setIsProfileOpen(false);
                 }}
-                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text-primary dark:text-brand-text-main hover:bg-brand-brand-green-dark hover:text-white rounded-2xl transition-all group"
+                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text-primary dark:text-brand-text-main hover:bg-brand-primary-600 hover:text-white rounded-2xl transition-all group"
               >
                 <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-white/20 transition-colors">
                   <Settings

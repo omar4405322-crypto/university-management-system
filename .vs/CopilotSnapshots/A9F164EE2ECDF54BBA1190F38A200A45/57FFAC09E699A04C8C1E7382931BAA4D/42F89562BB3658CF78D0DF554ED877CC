@@ -1,0 +1,18 @@
+﻿const prisma = require('../src/utils/prismaClient');
+const bcrypt = require('bcryptjs');
+
+(async () => {
+  try {
+	const password = process.argv[2] || 'SuperAdmin123!';
+	const hash = await bcrypt.hash(password, 10);
+	const user = await prisma.user.update({
+	  where: { email: 'superadmin@university.com' },
+	  data: { password: hash }
+	});
+	console.log('Updated user:', { id: user.id, email: user.email });
+	process.exit(0);
+  } catch (err) {
+	console.error('Error:', err);
+	process.exit(1);
+  }
+})();

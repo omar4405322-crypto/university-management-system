@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import quizService from '../../services/quiz.service';
@@ -135,7 +135,7 @@ const TakeQuiz = () => {
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-brand-green-dark"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary-600"></div>
       </div>
     );
 
@@ -167,7 +167,7 @@ const TakeQuiz = () => {
 
         <button
           onClick={() => navigate('/quizzes')}
-          className="px-8 py-3 bg-brand-brand-green-dark text-white rounded-xl font-bold hover:bg-brand-primary-600 transition-colors"
+          className="px-8 py-3 bg-brand-primary-600 text-white rounded-xl font-bold hover:bg-brand-primary-600 transition-colors"
         >
           Back to Quizzes
         </button>
@@ -214,7 +214,7 @@ const TakeQuiz = () => {
                 key={i}
                 className={`w-2 h-2 rounded-full ${
                   i === currentQuestionIndex
-                    ? 'bg-brand-brand-green-dark'
+                    ? 'bg-brand-primary-600'
                     : answers[quiz.questions[i].id]
                       ? 'bg-success'
                       : 'bg-brand-border'
@@ -244,7 +244,7 @@ const TakeQuiz = () => {
                   <span
                     className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-4 ${
                       isSelected
-                        ? 'bg-brand-brand-green-dark text-white'
+                        ? 'bg-brand-primary-600 text-white'
                         : 'bg-brand-bg-page text-brand-text-muted'
                     }`}
                   >
@@ -289,7 +289,7 @@ const TakeQuiz = () => {
               onClick={() =>
                 setCurrentQuestionIndex((prev) => Math.min(quiz.questions.length - 1, prev + 1))
               }
-              className="flex items-center px-8 py-3 bg-brand-brand-green-dark text-white rounded-xl font-bold hover:bg-brand-primary-600 shadow-lg shadow-brand-brand-green-dark/20 transition-all"
+              className="flex items-center px-8 py-3 bg-brand-primary-600 text-white rounded-xl font-bold hover:bg-brand-primary-600 shadow-lg shadow-brand-primary-600/20 transition-all"
             >
               Next <ChevronRight size={20} className="rtl:-scale-x-100 ml-1" />
             </button>

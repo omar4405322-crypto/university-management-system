@@ -108,6 +108,23 @@ const TableCaption = React.forwardRef<
 ))
 TableCaption.displayName = "TableCaption"
 
+interface ActionMenuProps {
+  children: React.ReactNode
+  className?: string
+}
+
+const ActionMenu = React.forwardRef<HTMLDivElement, ActionMenuProps>(
+  ({ children, className }, ref) => (
+    <div
+      ref={ref}
+      className={cn("flex items-center justify-end gap-2", className)}
+    >
+      {children}
+    </div>
+  )
+)
+ActionMenu.displayName = "ActionMenu"
+
 export {
   Table,
   TableHeader,
@@ -117,4 +134,7 @@ export {
   TableRow,
   TableCell,
   TableCaption,
+  ActionMenu,
 }
+
+export default Table;

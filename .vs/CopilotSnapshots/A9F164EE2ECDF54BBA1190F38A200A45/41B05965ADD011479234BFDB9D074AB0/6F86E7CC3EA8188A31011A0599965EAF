@@ -1,0 +1,317 @@
+﻿const prisma = require('../utils/prismaClient');
+const { getScopeWhere } = require('../utils/scope.utils');
+
+exports.getAllSchedules = async (req, res) => {
+  try {
+    const { courseId, departmentId, collegeId, year, semester } = req.query;
+    const { user } = req;
+
+    let where = {};
+    
+    // Role-based filtering
+    if (user.role === 'STUDENT') {
+      const student = await prisma.student.findUnique({
+        where: { userId: user.id },
+        select: { id: true, departmentId: true, enrolledAt: true }
+      });
+
+      if (!student) {
+        return res.status(404).json({ success: false, message: 'Student profile not found' });
+      }
+
+      // Calculate year and semester if not provided
+      let filterYear = year ? parseInt(year) : null;
+      let filterSemester = semester ? parseInt(semester) : null;
+
+      if (!filterYear) {
+        const enrolledDate = new Date(student.enrolledAt);
+        const now = new Date();
+        const yearsDiff = now.getFullYear() - enrolledDate.getFullYear();
+        filterYear = Math.max(1, yearsDiff + 1);
+      }
+
+      if (!filterSemester) {
+        const month = new Date().getMonth() + 1;
+        filterSemester = (month >= 2 && month <= 6) ? 2 : (month >= 7 && month <= 8) ? 3 : 1;
+      }
+
+      where.course = {
+        departmentId: student.departmentId,
+        year: filterYear,
+        semester: filterSemester
+      };
+    } else {
+       // For Admins and Doctors
+       if (courseId) {
+         where.courseId = parseInt(courseId);
+       } else if (departmentId) {
+         where.course = { departmentId: parseInt(departmentId) };
+       } else if (collegeId) {
+         where.course = { department: { collegeId: parseInt(collegeId) } };
+       }
+
+       if (year) {
+         where.course = { ...where.course, year: parseInt(year) };
+       }
+       if (semester) {
+         where.course = { ...where.course, semester: parseInt(semester) };
+       }
+
+       // Apply role scoping via helper (for COLLEGE_ADMIN / DEPARTMENT_ADMIN)
+       const courseScope = getScopeWhere(user, 'course');
+       if (courseScope && Object.keys(courseScope).length) {
+         if (courseScope.department) {
+           where.course = { ... (where.course || {}), ...courseScope.department };
+         } else if (courseScope.departmentId) {
+           where.course = { ... (where.course || {}), departmentId: courseScope.departmentId };
+         }
+       }
+     }
+
+    const schedules = await prisma.schedule.findMany({
+      where,
+      include: {
+        course: {
+          include: {
+            department: {
+              include: {
+                college: true
+              }
+            },
+            doctor: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { dayOfWeek: 'asc' },
+        { startTime: 'asc' },
+      ],
+    });
+
+    res.json({ success: true, data: schedules });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getWeeklyTimetable = async (req, res) => {
+  try {
+    const { departmentId, collegeId, courseId, year, semester } = req.query;
+    const { user } = req;
+
+    let where = {};
+    
+    // Role-based filtering
+    if (user.role === 'STUDENT') {
+      const student = await prisma.student.findUnique({
+        where: { userId: user.id },
+        select: { id: true, departmentId: true, enrolledAt: true }
+      });
+
+      if (!student) {
+        return res.status(404).json({ success: false, message: 'Student profile not found' });
+      }
+
+      let filterYear = year ? parseInt(year) : null;
+      let filterSemester = semester ? parseInt(semester) : null;
+
+      if (!filterYear) {
+        const enrolledDate = new Date(student.enrolledAt);
+        const now = new Date();
+        const yearsDiff = now.getFullYear() - enrolledDate.getFullYear();
+        filterYear = Math.max(1, yearsDiff + 1);
+      }
+
+      if (!filterSemester) {
+        const month = new Date().getMonth() + 1;
+        filterSemester = (month >= 2 && month <= 6) ? 2 : (month >= 7 && month <= 8) ? 3 : 1;
+      }
+
+      where.course = {
+        departmentId: student.departmentId,
+        year: filterYear,
+        semester: filterSemester
+      };
+    } else {
+      if (courseId) {
+        where.courseId = parseInt(courseId);
+      } else if (departmentId) {
+        where.course = { departmentId: parseInt(departmentId) };
+      } else if (collegeId) {
+        where.course = { department: { collegeId: parseInt(collegeId) } };
+      }
+
+      if (year) {
+        where.course = { ...where.course, year: parseInt(year) };
+      }
+      if (semester) {
+        where.course = { ...where.course, semester: parseInt(semester) };
+      }
+    }
+
+    const schedules = await prisma.schedule.findMany({
+      where,
+      include: {
+        course: {
+          include: {
+            department: {
+              include: {
+                college: true
+              }
+            },
+            doctor: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const timetable = days.reduce((acc, day) => {
+      acc[day] = schedules
+        .filter(s => s.dayOfWeek === day)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      return acc;
+    }, {});
+
+    res.json({ success: true, data: timetable });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.createSchedule = async (req, res) => {
+  const { courseId, dayOfWeek, startTime, endTime, room } = req.body;
+
+  try {
+    // Validate course exists and is within user's scope
+    const course = await prisma.course.findUnique({ where: { id: parseInt(courseId) }, include: { department: true } });
+    if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+    const courseScope = getScopeWhere(req.user, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      if (courseScope.department && course.department?.collegeId !== courseScope.department.collegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+      if (courseScope.departmentId && course.departmentId !== courseScope.departmentId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
+    // Validate: no time conflict for same room on same day
+    const conflict = await prisma.schedule.findFirst({
+      where: {
+        dayOfWeek,
+        room,
+        OR: [
+          {
+            AND: [
+              { startTime: { lte: startTime } },
+              { endTime: { gt: startTime } },
+            ],
+          },
+          {
+            AND: [
+              { startTime: { lt: endTime } },
+              { endTime: { gte: endTime } },
+            ],
+          },
+        ],
+      },
+    });
+
+    if (conflict) {
+      return res.status(400).json({
+        success: false,
+        message: `Time conflict in room ${room} on ${dayOfWeek}`,
+      });
+    }
+
+    const schedule = await prisma.schedule.create({
+      data: {
+        courseId: parseInt(courseId),
+        dayOfWeek,
+        startTime,
+        endTime,
+        room,
+      },
+      include: {
+        course: {
+          select: {
+            name: true,
+            courseCode: true,
+          },
+        },
+      },
+    });
+
+    res.status(201).json({ success: true, data: schedule });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateSchedule = async (req, res) => {
+  const { dayOfWeek, startTime, endTime, room } = req.body;
+
+  try {
+    const existing = await prisma.schedule.findUnique({ where: { id: parseInt(req.params.id) }, include: { course: { include: { department: true } } } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Schedule not found' });
+
+    // Enforce scope
+    const courseScope = getScopeWhere(req.user, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      if (courseScope.department && existing.course?.department?.collegeId !== courseScope.department.collegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+      if (courseScope.departmentId && existing.course?.departmentId !== courseScope.departmentId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
+    const schedule = await prisma.schedule.update({
+      where: { id: parseInt(req.params.id) },
+      data: {
+        dayOfWeek,
+        startTime,
+        endTime,
+        room,
+      },
+    });
+
+    res.json({ success: true, data: schedule });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.deleteSchedule = async (req, res) => {
+  try {
+    const existing = await prisma.schedule.findUnique({ where: { id: parseInt(req.params.id) }, include: { course: { include: { department: true } } } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Schedule not found' });
+
+    // Enforce scope
+    const courseScope = getScopeWhere(req.user, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      if (courseScope.department && existing.course?.department?.collegeId !== courseScope.department.collegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+      if (courseScope.departmentId && existing.course?.departmentId !== courseScope.departmentId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
+    await prisma.schedule.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ success: true, message: 'Schedule deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

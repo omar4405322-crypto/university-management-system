@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useStudents } from '../../hooks/useStudents';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useNavigate } from 'react-router-dom';
@@ -104,7 +104,7 @@ const StudentsList = () => {
 
 
 
-  const handleExport = async () => {
+  const handleExport = useCallback(async () => {
     try {
       setExporting(true);
             const blob = await (studentService as unknown as Record<string, unknown>).exportStudents();
@@ -121,9 +121,9 @@ const StudentsList = () => {
     } finally {
       setExporting(false);
     }
-  };
+  }, [showToast, t]);
 
-  const handleToggleStatus = async (student) => {
+  const handleToggleStatus = useCallback(async (student) => {
     try {
       const result = await studentService.updateStudent(student.id, {
         isActive: !student.isActive,
@@ -138,9 +138,9 @@ const StudentsList = () => {
     } catch (_err: any) {
       showToast(t('common.error'), 'error');
     }
-  };
+  }, [fetchStudents, showToast, t]);
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     try {
       setDeleteLoading(true);
@@ -155,18 +155,22 @@ const StudentsList = () => {
     } finally {
       setDeleteLoading(false);
     }
-  };
+  }, [deleteTarget, fetchStudents, showToast, t]);
 
 
-  const filteredStudents = (Array.isArray(students) ? students : []).filter((s) => {
-    if (statusFilter === 'all') return true;
-    if (statusFilter === 'active') return s.isActive;
-    if (statusFilter === 'inactive') return !s.isActive;
-    if (statusFilter === 'pending') return false;
-    return true;
-  });
+  // PERF: memoize expensive derived state — avoids recompute on every render
+  const filteredStudents = useMemo(() =>
+    (Array.isArray(students) ? students : []).filter((s) => {
+      if (statusFilter === 'all') return true;
+      if (statusFilter === 'active') return s.isActive;
+      if (statusFilter === 'inactive') return !s.isActive;
+      if (statusFilter === 'pending') return false;
+      return true;
+    }),
+    [students, statusFilter]
+  );
 
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSelectAll = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       const newIds = new Set(selectedIds);
       filteredStudents.forEach((s) => newIds.add(s.id));
@@ -175,29 +179,33 @@ const StudentsList = () => {
       const visibleIds = filteredStudents.map((s) => s.id);
       setSelectedIds(selectedIds.filter((id) => !visibleIds.includes(id)));
     }
-  };
+  }, [filteredStudents, selectedIds]);
 
-  const handleSelectOne = (id: string) => {
+  const handleSelectOne = useCallback((id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
-  };
+  }, []);
 
-  const handleBulkClear = () => setSelectedIds([]);
-  const handleBulkExport = () => {
+  const handleBulkClear = useCallback(() => setSelectedIds([]), []);
+  const handleBulkExport = useCallback(() => {
     showToast(t('common.exporting', 'Exporting selected...'), 'success');
-  };
-  const handleBulkDelete = () => {
+  }, [showToast, t]);
+  const handleBulkDelete = useCallback(() => {
     showToast(t('common.deleted', 'Deleted selected records'), 'success');
     setSelectedIds([]);
-  };
-  const handleBulkStatusChange = () => {
+  }, [showToast, t]);
+  const handleBulkStatusChange = useCallback(() => {
     showToast(t('common.statusChanged', 'Status changed for selected records'), 'success');
     setSelectedIds([]);
-  };
+  }, [showToast, t]);
 
-  const visibleIds = filteredStudents.map((s) => s.id);
-  const isAllVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+  // PERF: memoize visibleIds and selection state derived from filteredStudents
+  const visibleIds = useMemo(() => filteredStudents.map((s) => s.id), [filteredStudents]);
+  const isAllVisibleSelected = useMemo(
+    () => visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id)),
+    [visibleIds, selectedIds]
+  );
 
   return (
     <div className="section-gap animate-in fade-in duration-700">
@@ -214,7 +222,7 @@ const StudentsList = () => {
         </div>
         <Button
           onClick={() => setShowAddModal(true)}
-          className="shadow-xl shadow-brand-brand-green-dark/20 h-12 px-6"
+          className="shadow-xl shadow-brand-primary-600/20 h-12 px-6"
         >
           <Plus size={18} className="mr-2" /> {t('students.addStudent')}
         </Button>
@@ -324,19 +332,19 @@ const StudentsList = () => {
                       />
                     </TableCell>
                     {activeView.visibleColumns?.includes('studentId') && (
-                      <TableCell className="font-black text-brand-navy-500 dark:text-brand-brand-green tracking-widest text-xs uppercase hidden md:table-cell">
+                      <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-500 tracking-widest text-xs uppercase hidden md:table-cell">
                         {student.studentId}
                       </TableCell>
                     )}
                     {activeView.visibleColumns?.includes('fullName') && (
                       <TableCell>
                         <div className="flex items-center gap-4">
-                          <div className="w-11 h-11 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-brand-green-dark font-black shadow-inner ring-1 ring-brand-primary-100/50 dark:ring-brand-primary-900/20 group-hover:scale-110 transition-transform">
+                          <div className="w-11 h-11 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-primary-600 font-black shadow-inner ring-1 ring-brand-primary-100/50 dark:ring-brand-primary-900/20 group-hover:scale-110 transition-transform">
                             {student.firstName[0]}
                             {student.lastName[0]}
                           </div>
                           <div className="flex flex-col">
-                            <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-brand-green-dark transition-colors">
+                            <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-primary-600 transition-colors">
                               {student.firstName} {student.lastName}
                             </span>
                             <span className="text-[10px] font-black uppercase text-brand-text-muted tracking-wider">

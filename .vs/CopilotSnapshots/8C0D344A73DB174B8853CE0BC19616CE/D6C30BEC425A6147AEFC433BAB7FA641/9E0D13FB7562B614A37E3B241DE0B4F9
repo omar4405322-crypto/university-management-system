@@ -1,0 +1,50 @@
+﻿import api from './api';
+
+const collegeService = {
+  getColleges: async () => {
+    try {
+      const response = await api.get('/colleges');
+      return { success: true, data: response.data?.data || response.data };
+    } catch (error) {
+      return { success: false, message: error.message, data: [] };
+    }
+  },
+
+  getCollegeById: async (id) => {
+    try {
+      const response = await api.get(`/colleges/${id}`);
+      return { success: true, data: response.data?.data || response.data };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  },
+
+  createCollege: async (data) => {
+    try {
+      const response = await api.post('/colleges', data);
+      return { success: true, data: response.data?.data || response.data };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  },
+
+  updateCollege: async (id, data) => {
+    try {
+      const response = await api.put(`/colleges/${id}`, data);
+      return { success: true, data: response.data?.data || response.data };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  },
+
+  deleteCollege: async (id) => {
+    try {
+      const response = await api.delete(`/colleges/${id}`);
+      return { success: true, data: response.data?.data || response.data };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  },
+};
+
+export default collegeService;

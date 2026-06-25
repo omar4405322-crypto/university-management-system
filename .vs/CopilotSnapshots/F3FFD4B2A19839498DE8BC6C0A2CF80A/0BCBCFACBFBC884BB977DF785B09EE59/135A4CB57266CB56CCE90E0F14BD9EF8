@@ -1,0 +1,330 @@
+﻿const prisma = require('../utils/prismaClient');
+const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs');
+const catchAsync = require('../utils/catchAsync');
+const { NotFoundError, AuthenticationError, AppError } = require('../utils/appError');
+
+// 1. setup2FA — Generates secret and returns QR code for scanning: 
+exports.setup2FA = catchAsync(async (req, res, next) => { 
+  const { generateTOTPSecret, generateQRCodeURL } = require('../utils/twoFactor.utils'); 
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } }); 
+  if (user.twoFactorEnabled) return next(new AppError('2FA is already enabled', 400)); 
+  
+  const secret = generateTOTPSecret(user.email); 
+  // Store secret temporarily (not enabling yet until verified) 
+  await prisma.user.update({ 
+    where: { id: req.user.id }, 
+    data: { twoFactorSecret: secret.base32 } 
+  }); 
+  
+  const qrCodeUrl = await generateQRCodeURL(secret.otpauth_url); 
+  res.json({ success: true, data: { qrCodeUrl, manualEntryKey: secret.base32 } }); 
+}); 
+
+// 2. enable2FA — Verifies the first TOTP code and enables 2FA: 
+exports.enable2FA = catchAsync(async (req, res, next) => { 
+  const { verifyTOTP } = require('../utils/twoFactor.utils'); 
+  const { token } = req.body; 
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } }); 
+  
+  if (!user.twoFactorSecret) return next(new AppError('Run 2FA setup first', 400)); 
+  if (user.twoFactorEnabled) return next(new AppError('2FA is already enabled', 400)); 
+  if (!token) return next(new AppError('Verification code is required', 400)); 
+  
+  const isValid = verifyTOTP(user.twoFactorSecret, token); 
+  if (!isValid) return next(new AppError('Invalid verification code', 400)); 
+  
+  await prisma.user.update({ 
+    where: { id: req.user.id }, 
+    data: { twoFactorEnabled: true } 
+  }); 
+  res.json({ success: true, message: '2FA enabled successfully' }); 
+}); 
+
+// 3. disable2FA — Verifies password + TOTP before disabling: 
+exports.disable2FA = catchAsync(async (req, res, next) => { 
+  const { verifyTOTP } = require('../utils/twoFactor.utils'); 
+  const { token, password } = req.body; 
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } }); 
+  
+  if (!user.twoFactorEnabled) return next(new AppError('2FA is not enabled', 400)); 
+  
+  const passwordMatch = await bcrypt.compare(password, user.password); 
+  if (!passwordMatch) return next(new AppError('Incorrect password', 401)); 
+  
+  const isValid = verifyTOTP(user.twoFactorSecret, token); 
+  if (!isValid) return next(new AppError('Invalid verification code', 400)); 
+  
+  await prisma.user.update({ 
+    where: { id: req.user.id }, 
+    data: { twoFactorEnabled: false, twoFactorSecret: null } 
+  }); 
+  res.json({ success: true, message: '2FA disabled successfully' }); 
+}); 
+
+// @desc    Get current user profile
+// @route   GET /api/users/profile
+// @access  Private
+exports.getProfile = catchAsync(async (req, res, next) => {
+  const userId = req.user.id;
+  const role = req.user.role;
+
+  let profileData;
+
+  if (role === 'STUDENT') {
+    profileData = await prisma.student.findUnique({
+      where: { userId },
+      include: {
+        department: {
+          include: {
+            college: true,
+          },
+        },
+        courses: true,
+        payments: true,
+      },
+    });
+  } else if (role === 'DOCTOR') {
+    profileData = await prisma.doctor.findUnique({
+      where: { userId },
+      include: {
+        department: {
+          include: {
+            college: true,
+          },
+        },
+        courses: {
+          include: {
+            students: true,
+          },
+        },
+      },
+    });
+  } else {
+    // Admin roles
+    profileData = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        adminRole: true,
+        createdAt: true,
+      },
+    });
+
+    // Add common fields for admin if they exist in a different structure or just return user
+  }
+
+  if (!profileData) {
+    return next(new NotFoundError('Profile not found'));
+  }
+
+  res.json({
+    success: true,
+    data: {
+      ...profileData,
+      email: req.user.email, // Ensure email is included
+      profilePicture: req.user.profilePicture, // Include profile picture from user model
+    },
+  });
+});
+
+// @desc    Update user profile
+// @route   PUT /api/users/profile
+// @access  Private
+exports.updateProfile = catchAsync(async (req, res, next) => {
+  const userId = req.user.id;
+  const role = req.user.role;
+  const { firstName, lastName, phone, address, bio, gender, birthDate } = req.body;
+
+  let updatedProfile;
+
+  const updateData = {
+    firstName,
+    lastName,
+    phone,
+    address,
+    bio,
+    gender,
+    birthDate: birthDate ? new Date(birthDate) : undefined,
+  };
+
+  if (role === 'STUDENT') {
+    updatedProfile = await prisma.student.update({
+      where: { userId },
+      data: updateData,
+    });
+  } else if (['DOCTOR', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(role)) {
+    updatedProfile = await prisma.doctor.update({
+      where: { userId },
+      data: updateData,
+    });
+  } else { 
+    // Admin roles — update directly on User model (limited fields) 
+    updatedProfile = await prisma.user.findUnique({ 
+      where: { id: userId }, 
+      select: { id: true, email: true, role: true, adminRole: true, createdAt: true, profilePicture: true } 
+    }); 
+    // Return current data with a helpful message 
+    return res.json({ 
+      success: true, 
+      data: updatedProfile, 
+      message: 'Admin profile data shown. To update name details, use the doctor profile associated with this account if applicable.' 
+    }); 
+  } 
+
+  res.json({
+    success: true,
+    data: updatedProfile,
+  });
+});
+
+// @desc    Update password
+// @route   PUT /api/users/profile/password
+// @access  Private
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  const userId = req.user.id;
+  const { currentPassword, newPassword } = req.body;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    return next(new NotFoundError('User not found'));
+  }
+
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+  if (!isMatch) {
+    return next(new AuthenticationError('Incorrect current password'));
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      password: hashedPassword,
+      tokenVersion: { increment: 1 }, 
+    },
+  });
+
+  res.json({
+    success: true,
+    message: 'Password updated successfully',
+  });
+});
+
+// @desc    Update profile picture
+// @route   PUT /api/users/profile/picture
+// @access  Private
+exports.updateProfilePicture = catchAsync(async (req, res, next) => {
+  const userId = req.user.id;
+  
+  if (!req.file) {
+    return next(new AppError('Please upload a profile picture', 400));
+  }
+
+  // Handle both Cloudinary URL and local disk storage
+  let profilePictureUrl;
+  if (req.file.path.startsWith('http')) {
+    // Cloudinary
+    profilePictureUrl = req.file.path;
+  } else {
+    // Disk storage - store relative path
+    profilePictureUrl = `/uploads/profiles/${req.file.filename}`;
+  }
+
+  // Get old profile picture to delete it if it's local
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { profilePicture: true }
+  });
+
+  // Update user in DB
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      profilePicture: profilePictureUrl,
+    },
+  });
+
+  // Delete old local profile picture if it exists
+  if (user && user.profilePicture && user.profilePicture.startsWith('/uploads/')) {
+    const oldPath = path.join(__dirname, '../../', user.profilePicture);
+    if (fs.existsSync(oldPath)) {
+      try {
+        fs.unlinkSync(oldPath);
+      } catch (err) {
+        console.error('Failed to delete old profile picture:', err.message);
+      }
+    }
+  }
+
+  res.json({
+    success: true,
+    data: {
+      profilePicture: profilePictureUrl
+    }
+  });
+});
+
+exports.getAllUsers = catchAsync(async (req, res, next) => {
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      adminRole: true,
+      createdAt: true,
+      profilePicture: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  res.json({ success: true, data: users });
+});
+
+exports.createAdmin = catchAsync(async (req, res, next) => {
+  const { email, password, role, collegeId, departmentId } = req.body;
+
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    return next(new AppError('Email already registered', 400));
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const admin = await prisma.user.create({
+    data: {
+      email,
+      password: hashedPassword,
+      role,
+      collegeId: collegeId ? parseInt(collegeId) : null,
+      departmentId: departmentId ? parseInt(departmentId) : null,
+    },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      createdAt: true,
+    },
+  });
+
+  res.status(201).json({ success: true, data: admin });
+});
+
+exports.deleteUser = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  if (parseInt(id) === req.user.id) {
+    return next(new AppError('You cannot delete your own account', 400));
+  }
+
+  await prisma.user.delete({ where: { id: parseInt(id) } });
+
+  res.json({ success: true, message: 'User deleted successfully' });
+});
