@@ -257,14 +257,26 @@ async function main() {
     where: { departmentId: ictDept.id }
   });
 
-  await prisma.student.update({
-    where: { id: student.id },
-    data: {
-      courses: {
-        connect: ictCourses.map(c => ({ id: c.id }))
+  for (const c of ictCourses) {
+    await prisma.enrollment.upsert({
+      where: {
+        studentId_courseId_semester_academicYear: {
+          studentId: student.id,
+          courseId: c.id,
+          semester: 1,
+          academicYear: 1
+        }
+      },
+      update: {},
+      create: {
+        studentId: student.id,
+        courseId: c.id,
+        semester: 1,
+        academicYear: 1,
+        status: 'ENROLLED'
       }
-    }
-  });
+    });
+  }
 
   console.log('Seed data created successfully');
 }
