@@ -345,7 +345,7 @@ async function testF() {
   const baseSlot = await prisma.scheduleSlot.create({
     data: {
       courseSectionId: section.id, dayOfWeek: 'MONDAY',
-      startTime: '09:00', endTime: '10:00', room: 'ROOM101', sessionType: 'LECTURE'
+      startTime: '09:00', endTime: '10:00', room: 'ROOM101', slotType: 'LECTURE'
     }
   });
   console.log(`  Created base slot id=${baseSlot.id} Room=ROOM101 Monday 09:00-10:00`);
@@ -374,7 +374,7 @@ async function testF() {
   // or via a schedule creation call.
   const r1 = await api('POST', '/schedules', {
     courseSectionId: section2.id, dayOfWeek: 'MONDAY',
-    startTime: '09:00', endTime: '10:00', room: 'ROOM101', sessionType: 'LECTURE'
+    startTime: '09:00', endTime: '10:00', room: 'ROOM101', slotType: 'LECTURE'
   }, tokenAdmin);
   console.log(`  F1: New slot ROOM101 Mon 09-10 (room freed by override) → HTTP ${r1.status}: ${r1.data?.message || JSON.stringify(r1.data?.data?.id)}`);
   record('F1', 'Override frees Room101: new slot in Room101 succeeds',
@@ -389,7 +389,7 @@ async function testF() {
 
   const r2 = await api('POST', '/schedules', {
     courseSectionId: section3.id, dayOfWeek: 'MONDAY',
-    startTime: '09:00', endTime: '10:00', room: 'ROOM102', sessionType: 'LECTURE'
+    startTime: '09:00', endTime: '10:00', room: 'ROOM102', slotType: 'LECTURE'
   }, tokenAdmin);
   console.log(`  F2: New slot ROOM102 Mon 09-10 (override in ROOM102) → HTTP ${r2.status}: ${r2.data?.message}`);
   record('F2', 'Override occupies Room102: new slot in Room102 rejected with conflict',
@@ -415,11 +415,11 @@ async function testG() {
 
   const payload1 = {
     courseSectionId: section1.id, dayOfWeek: 'TUESDAY',
-    startTime: '11:00', endTime: '12:00', room: 'ROOMG99', sessionType: 'LECTURE'
+    startTime: '11:00', endTime: '12:00', room: 'ROOMG99', slotType: 'LECTURE'
   };
   const payload2 = {
     courseSectionId: section2.id, dayOfWeek: 'TUESDAY',
-    startTime: '11:00', endTime: '12:00', room: 'ROOMG99', sessionType: 'LECTURE'
+    startTime: '11:00', endTime: '12:00', room: 'ROOMG99', slotType: 'LECTURE'
   };
 
   // Fire both simultaneously
@@ -467,7 +467,7 @@ async function testH() {
   const r1 = await api('POST', '/requests', {
     type: 'NEW_SLOT',
     courseSectionId: section1.id,
-    proposedData: { dayOfWeek: 'WEDNESDAY', startTime: '10:00', endTime: '11:00', room: 'ROOMH1', sessionType: 'LECTURE' },
+    proposedData: { dayOfWeek: 'WEDNESDAY', startTime: '10:00', endTime: '11:00', room: 'ROOMH1', slotType: 'LECTURE' },
     reason: 'Testing new slot request'
   }, tokenDoc1);
   console.log(`  H1: Doctor creates request for own section → HTTP ${r1.status}: ${r1.data?.message || `id=${r1.data?.data?.id}`}`);
@@ -480,7 +480,7 @@ async function testH() {
   const r2 = await api('POST', '/requests', {
     type: 'NEW_SLOT',
     courseSectionId: section2.id,
-    proposedData: { dayOfWeek: 'WEDNESDAY', startTime: '10:00', endTime: '11:00', room: 'ROOMH2', sessionType: 'LECTURE' },
+    proposedData: { dayOfWeek: 'WEDNESDAY', startTime: '10:00', endTime: '11:00', room: 'ROOMH2', slotType: 'LECTURE' },
     reason: 'Testing unauthorized request'
   }, tokenDoc1);
   console.log(`  H2: Doctor creates request for other section → HTTP ${r2.status}: ${r2.data?.message}`);
@@ -580,7 +580,7 @@ async function testK() {
   const r1 = await api('POST', '/requests', {
     type: 'NEW_SLOT',
     courseSectionId: section.id,
-    proposedData: { dayOfWeek: 'FRIDAY', startTime: '10:00', endTime: '11:00', room: 'ROOMK', sessionType: 'LECTURE' },
+    proposedData: { dayOfWeek: 'FRIDAY', startTime: '10:00', endTime: '11:00', room: 'ROOMK', slotType: 'LECTURE' },
     reason: 'Testing preservation'
   }, tokenDoc);
 

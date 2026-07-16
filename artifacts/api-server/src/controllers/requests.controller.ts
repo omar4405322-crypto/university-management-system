@@ -117,7 +117,7 @@ export const approveRequest = catchAsync(async (req: Request, res: Response, nex
           endTime: data.endTime,
           room: data.room,
           teachingAssistantId: data.teachingAssistantId,
-          sessionType: data.sessionType || 'LECTURE',
+          slotType: data.slotType || 'LECTURE',
         }
       });
     } else if (changeReq.type === 'UPDATE_SLOT') {
@@ -143,7 +143,7 @@ export const approveRequest = catchAsync(async (req: Request, res: Response, nex
           endTime: data.endTime,
           room: data.room,
           teachingAssistantId: data.teachingAssistantId,
-          sessionType: data.sessionType,
+          slotType: data.slotType,
         }
       });
     } else if (changeReq.type === 'DELETE_SLOT') {

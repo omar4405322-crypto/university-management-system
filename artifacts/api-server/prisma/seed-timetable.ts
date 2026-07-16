@@ -111,22 +111,22 @@ async function main() {
   // 4. TIMETABLE RECORD (JSON structure for frontend)
   const scheduleSlots = [
     // Sunday
-    { day: "Sunday", startTime: "08:00", endTime: "10:00", courseName: "Introduction to Mechatronics", instructor: "Ahmed Hassan", room: "A101", sessionType: "LECTURE" },
-    { day: "Sunday", startTime: "10:00", endTime: "12:00", courseName: "Engineering Mathematics", instructor: "Sara Mohamed", room: "B201", sessionType: "LECTURE" },
-    { day: "Sunday", startTime: "12:00", endTime: "14:00", courseName: "Physics for Engineers", instructor: "Omar Ali", room: "A102", sessionType: "LECTURE" },
+    { day: "Sunday", startTime: "08:00", endTime: "10:00", courseName: "Introduction to Mechatronics", instructor: "Ahmed Hassan", room: "A101", slotType: "LECTURE" },
+    { day: "Sunday", startTime: "10:00", endTime: "12:00", courseName: "Engineering Mathematics", instructor: "Sara Mohamed", room: "B201", slotType: "LECTURE" },
+    { day: "Sunday", startTime: "12:00", endTime: "14:00", courseName: "Physics for Engineers", instructor: "Omar Ali", room: "A102", slotType: "LECTURE" },
     // Monday
-    { day: "Monday", startTime: "08:00", endTime: "10:00", courseName: "Programming Fundamentals", instructor: "Ahmed Hassan", room: "Lab1", sessionType: "LAB" },
-    { day: "Monday", startTime: "10:00", endTime: "12:00", courseName: "Technical Drawing", instructor: "Sara Mohamed", room: "C301", sessionType: "LAB" },
-    { day: "Monday", startTime: "14:00", endTime: "16:00", courseName: "Introduction to Mechatronics", instructor: "Omar Ali", room: "A101", sessionType: "SEMINAR" },
+    { day: "Monday", startTime: "08:00", endTime: "10:00", courseName: "Programming Fundamentals", instructor: "Ahmed Hassan", room: "Lab1", slotType: "LAB" },
+    { day: "Monday", startTime: "10:00", endTime: "12:00", courseName: "Technical Drawing", instructor: "Sara Mohamed", room: "C301", slotType: "LAB" },
+    { day: "Monday", startTime: "14:00", endTime: "16:00", courseName: "Introduction to Mechatronics", instructor: "Omar Ali", room: "A101", slotType: "SECTION" },
     // Tuesday
-    { day: "Tuesday", startTime: "08:00", endTime: "10:00", courseName: "Engineering Mathematics", instructor: "Ahmed Hassan", room: "B201", sessionType: "LECTURE" },
-    { day: "Tuesday", startTime: "10:00", endTime: "12:00", courseName: "Physics for Engineers", instructor: "Sara Mohamed", room: "A102", sessionType: "LECTURE" },
+    { day: "Tuesday", startTime: "08:00", endTime: "10:00", courseName: "Engineering Mathematics", instructor: "Ahmed Hassan", room: "B201", slotType: "LECTURE" },
+    { day: "Tuesday", startTime: "10:00", endTime: "12:00", courseName: "Physics for Engineers", instructor: "Sara Mohamed", room: "A102", slotType: "LECTURE" },
     // Wednesday
-    { day: "Wednesday", startTime: "08:00", endTime: "10:00", courseName: "Programming Fundamentals", instructor: "Omar Ali", room: "Lab1", sessionType: "LAB" },
-    { day: "Wednesday", startTime: "12:00", endTime: "14:00", courseName: "Technical Drawing", instructor: "Ahmed Hassan", room: "C301", sessionType: "LAB" },
+    { day: "Wednesday", startTime: "08:00", endTime: "10:00", courseName: "Programming Fundamentals", instructor: "Omar Ali", room: "Lab1", slotType: "LAB" },
+    { day: "Wednesday", startTime: "12:00", endTime: "14:00", courseName: "Technical Drawing", instructor: "Ahmed Hassan", room: "C301", slotType: "LAB" },
     // Thursday
-    { day: "Thursday", startTime: "08:00", endTime: "10:00", courseName: "Introduction to Mechatronics", instructor: "Sara Mohamed", room: "A101", sessionType: "LECTURE" },
-    { day: "Thursday", startTime: "14:00", endTime: "16:00", courseName: "Physics for Engineers", instructor: "Omar Ali", room: "A102", sessionType: "LECTURE" }
+    { day: "Thursday", startTime: "08:00", endTime: "10:00", courseName: "Introduction to Mechatronics", instructor: "Sara Mohamed", room: "A101", slotType: "LECTURE" },
+    { day: "Thursday", startTime: "14:00", endTime: "16:00", courseName: "Physics for Engineers", instructor: "Omar Ali", room: "A102", slotType: "LECTURE" }
   ];
 
   // Map to the course codes for actual DB Schedule records
