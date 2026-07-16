@@ -89,7 +89,7 @@ async function runTests() {
   const groupC = groups.find(g => g.name === 'C');
   const course = await prisma.course.create({ data: { name: 'CS101', courseCode: 'CS101', departmentId: dept.id } });
   await prisma.scheduleSlot.create({
-    data: { courseId: course.id, groupId: groupC!.id, dayOfWeek: 'Monday', startTime: '08:00', endTime: '10:00', slotType: 'SECTION', sessionType: 'LECTURE' }
+    data: { courseId: course.id, groupId: groupC!.id, dayOfWeek: 'Monday', startTime: '08:00', endTime: '10:00', slotType: 'SECTION', slotType: 'LECTURE' }
   });
   
   req = { params: { groupId: groupC!.id.toString() }, body: { numberOfSubgroups: 2 } };

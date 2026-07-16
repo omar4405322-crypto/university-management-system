@@ -317,7 +317,7 @@ async function main() {
           endTime: '11:00',
           room: lectureRoom,
           slotType: 'LECTURE',
-          sessionType: 'LECTURE'
+          slotType: 'LECTURE'
         }
       });
       slotsCount++;
@@ -340,7 +340,7 @@ async function main() {
           endTime: '14:00',
           room: labRoom,
           slotType: isLab ? 'LAB' : 'SECTION',
-          sessionType: isLab ? 'LAB' : 'TUTORIAL',
+          slotType: isLab ? 'LAB' : 'SECTION',
           teachingAssistantId: assignedTA.id
         }
       });

@@ -197,7 +197,7 @@ async function main() {
               endTime: '11:00',
               room: 'Hall A',
               slotType: 'LECTURE',
-              sessionType: 'LECTURE'
+              slotType: 'LECTURE'
             }
           });
           totalSlots++;
@@ -213,7 +213,7 @@ async function main() {
               endTime: '12:00',
               room: 'Lab 1',
               slotType: 'LAB',
-              sessionType: 'LAB',
+              slotType: 'LAB',
               teachingAssistantId: deptTAs[0].id
             }
           });
