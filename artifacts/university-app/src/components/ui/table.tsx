@@ -68,12 +68,13 @@ TableRow.displayName = "TableRow"
 
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
+  React.ThHTMLAttributes<HTMLTableCellElement> & { hideOnMobile?: boolean }
+>(({ className, hideOnMobile, ...props }, ref) => (
   <th
     ref={ref}
     className={cn(
       "h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      hideOnMobile && "hidden md:table-cell",
       className
     )}
     {...props}
@@ -83,12 +84,13 @@ TableHead.displayName = "TableHead"
 
 const TableCell = React.forwardRef<
   HTMLTableCellElement,
-  React.TdHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
+  React.TdHTMLAttributes<HTMLTableCellElement> & { hideOnMobile?: boolean }
+>(({ className, hideOnMobile, ...props }, ref) => (
   <td
     ref={ref}
     className={cn(
       "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      hideOnMobile && "hidden md:table-cell",
       className
     )}
     {...props}
@@ -109,17 +111,43 @@ const TableCaption = React.forwardRef<
 TableCaption.displayName = "TableCaption"
 
 interface ActionMenuProps {
-  children: React.ReactNode
+  children?: React.ReactNode
+  actions?: Array<{
+    label: string
+    icon: React.ComponentType<{ size?: number; className?: string }>
+    variant?: string
+    onClick: () => void
+  }>
   className?: string
 }
 
 const ActionMenu = React.forwardRef<HTMLDivElement, ActionMenuProps>(
-  ({ children, className }, ref) => (
+  ({ children, actions, className }, ref) => (
     <div
       ref={ref}
       className={cn("flex items-center justify-end gap-2", className)}
     >
       {children}
+      {actions &&
+        actions.map((act, index) => {
+          const Icon = act.icon;
+          let buttonClass = "p-2.5 rounded-xl text-brand-text-secondary hover:text-brand-primary-600 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/25 transition-all duration-200";
+          if (act.variant === 'delete') {
+            buttonClass = "p-2.5 rounded-xl text-brand-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/25 transition-all duration-200";
+          } else if (act.variant === 'edit') {
+            buttonClass = "p-2.5 rounded-xl text-brand-text-secondary hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/25 transition-all duration-200";
+          }
+          return (
+            <button
+              key={index}
+              onClick={act.onClick}
+              className={buttonClass}
+              title={act.label}
+            >
+              <Icon size={18} />
+            </button>
+          );
+        })}
     </div>
   )
 )

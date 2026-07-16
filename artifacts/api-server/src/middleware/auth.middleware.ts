@@ -24,10 +24,11 @@ const protect = catchAsync(async (req: Request, res: Response, next: NextFunctio
   }
 
   if (!token) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       message: 'Access denied. No security token provided.',
     });
+    return;
   }
 
   // Verify token
@@ -48,6 +49,7 @@ const protect = catchAsync(async (req: Request, res: Response, next: NextFunctio
       tokenVersion: true,
       profilePicture: true,
       createdAt: true,
+      isActive: true,
       student: {
         select: {
           id: true,
@@ -59,21 +61,32 @@ const protect = catchAsync(async (req: Request, res: Response, next: NextFunctio
         },
       },
       doctor: { select: { id: true, firstName: true, lastName: true, doctorId: true } },
+      teachingAssistant: { select: { id: true, employeeId: true } },
     },
   });
 
   if (!user) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       message: 'The user belonging to this token no longer exists.',
     });
+    return;
+  }
+
+  if (user.isActive === false) {
+    res.status(401).json({
+      success: false,
+      message: 'Your account has been deactivated. Please contact support.',
+    });
+    return;
   }
 
   if (decoded.tokenVersion !== user.tokenVersion) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       message: 'Session invalidated. Please login again.',
     });
+    return;
   }
 
   // Attach user (including managedCollegeId) to request for downstream scope checks

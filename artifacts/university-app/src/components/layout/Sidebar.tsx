@@ -31,20 +31,24 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { UNIVERSITY_LOGO, UNIVERSITY_LOGO_PNG, UNIVERSITY_LOGO_WHITE } from '../../constants/universityAssets';
+import { useNotifications } from '../../context/NotificationContext';
 
 // PERF: React.memo prevents re-render when item's own props haven't changed
 const SidebarItem: React.FC<any> = React.memo(({ item, isCollapsed, isChild = false }) => {
   const { t } = useTranslation();
+  const { pendingRequestsCount } = useNotifications();
+  const isRequestsItem = item.path === '/registration-requests';
+
   return (
     <NavLink
       to={item.path}
       className={({ isActive }) => `
-        group flex items-center gap-3 rounded-2xl transition-all duration-300
+        group flex items-center gap-3 rounded-2xl transition-all duration-150 w-full relative
         ${isChild ? 'px-4 py-2 text-xs' : 'px-4 py-3 text-sm'}
         ${
           isActive
             ? 'bg-brand-primary-600 text-white shadow-elevated shadow-brand-primary-600/20'
-            : 'text-slate-300 hover:bg-brand-primary-500/10 hover:text-brand-primary-400 dark:text-slate-400 dark:hover:text-brand-primary-400'
+            : 'text-slate-300 hover:bg-white/5 hover:text-white/90 dark:text-slate-400 dark:hover:text-white/90'
         }
         ${isCollapsed ? 'justify-center px-2' : ''}
       `}
@@ -53,7 +57,7 @@ const SidebarItem: React.FC<any> = React.memo(({ item, isCollapsed, isChild = fa
         <>
           <item.icon
             size={isChild ? 16 : 20}
-            className={`shrink-0 transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-brand-primary-400 group-hover:scale-110'}`}
+            className={`shrink-0 transition-all duration-150 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-white/90 group-hover:scale-110'}`}
           />
           {!isCollapsed && (
             <span
@@ -62,8 +66,17 @@ const SidebarItem: React.FC<any> = React.memo(({ item, isCollapsed, isChild = fa
               {t(item.title)}
             </span>
           )}
-          {isActive && !isCollapsed && !isChild && (
-            <div className="ml-auto rtl:mr-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+          
+          {isRequestsItem && pendingRequestsCount > 0 && (
+            <span className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-[10px] font-black rounded-full bg-red-500 text-white shadow-sm transition-all ${
+              isCollapsed ? 'absolute -top-1 -right-1 scale-90' : 'ms-auto'
+            }`}>
+              {pendingRequestsCount}
+            </span>
+          )}
+
+          {isActive && !isCollapsed && !isChild && !isRequestsItem && (
+            <div className="ms-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           )}
         </>
       )}
@@ -161,10 +174,16 @@ const Sidebar = ({ isOpen, onClose }) => {
             roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
           },
           {
+            title: 'common.groups', // Ensure 'common.groups' exists in translations or use a generic title
+            path: '/groups',
+            icon: Users,
+            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+          },
+          {
             title: 'nav.schedule',
             path: '/schedule',
             icon: Calendar,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
+            roles: ['SUPER_ADMIN', 'ADMIN'],
           },
           { title: 'nav.mySchedule', path: '/schedules/doctor', icon: Calendar, roles: ['DOCTOR'] },
           {
@@ -172,6 +191,12 @@ const Sidebar = ({ isOpen, onClose }) => {
             path: '/schedules/student',
             icon: Calendar,
             roles: ['STUDENT'],
+          },
+          {
+            title: 'schedule.taScheduleTitle',
+            path: '/schedules/ta',
+            icon: Calendar,
+            roles: ['TEACHING_ASSISTANT'],
           },
           {
             title: 'nav.schedulesManagement',
@@ -218,6 +243,12 @@ const Sidebar = ({ isOpen, onClose }) => {
             title: 'nav.doctors',
             path: '/doctors',
             icon: Users,
+            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+          },
+          {
+            title: 'teachingAssistants.title',
+            path: '/teaching-assistants',
+            icon: GraduationCap,
             roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
           },
           {
@@ -318,17 +349,17 @@ const Sidebar = ({ isOpen, onClose }) => {
   return (
     <>
       <div
-        className={`fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm transition-opacity md:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm transition-opacity lg:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={onClose}
       />
 
       <aside
         className={`
         fixed top-0 z-50 h-full border-white/10 bg-brand-sidebar dark:bg-slate-900 transition-all duration-300 shadow-elevated
-        ${isRTL ? 'right-0 border-l' : 'left-0 border-r'}
+        start-0 border-e
         ${isCollapsed ? 'w-20' : 'w-72'}
         ${isOpen ? 'translate-x-0' : isRTL ? 'translate-x-full' : '-translate-x-full'}
-        md:translate-x-0
+        lg:translate-x-0
       `}
       >
         {/* ── Sidebar Header ── */}
@@ -396,7 +427,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           {/* Mobile close button */}
           <button
             onClick={onClose}
-            className="rounded-xl p-2 text-white/70 hover:bg-white/10 md:hidden transition-colors"
+            className="rounded-xl p-2 text-white/70 hover:bg-white/10 lg:hidden transition-colors"
             aria-label={t('nav.closeSidebar')}
           >
             <X size={20} />
@@ -410,17 +441,17 @@ const Sidebar = ({ isOpen, onClose }) => {
             <NavLink
               to="/dashboard"
               className={({ isActive }) => `
-                group flex items-center gap-3 rounded-2xl transition-all duration-300 px-4 py-3 text-sm
+                group flex items-center gap-3 rounded-2xl transition-all duration-150 w-full px-4 py-3 text-sm
                 ${isActive
                   ? 'bg-brand-primary-600 text-white shadow-elevated shadow-brand-primary-600/20'
-                  : 'text-slate-300 hover:bg-brand-primary-500/10 hover:text-brand-primary-400 dark:text-slate-400 dark:hover:text-brand-primary-400'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white/90 dark:text-slate-400 dark:hover:text-white/90'
                 }
                 ${isCollapsed ? 'justify-center px-2' : ''}
               `}
             >
               {({ isActive }) => (
                 <>
-                  <LayoutDashboard size={20} className={`shrink-0 transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-brand-primary-400 group-hover:scale-110'}`} />
+                  <LayoutDashboard size={20} className={`shrink-0 transition-all duration-150 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-white/90 group-hover:scale-110'}`} />
                   {!isCollapsed && <span className={`font-black uppercase tracking-widest transition-all ${isActive ? 'translate-x-1 rtl:-translate-x-1' : ''}`}>{t('nav.dashboard', 'الرئيسية')}</span>}
                 </>
               )}
@@ -474,11 +505,11 @@ const Sidebar = ({ isOpen, onClose }) => {
         <button
           onClick={toggleSidebar}
           className={[
-            'hidden md:flex absolute top-24 h-6 w-6',
+            'hidden lg:flex absolute top-24 h-6 w-6',
             'items-center justify-center rounded-full',
             'border border-white/20 bg-brand-sidebar text-white',
             'shadow-md transition-all duration-300 z-30',
-            isRTL ? '-left-3' : '-right-3',
+            '-end-3',
             isRTL
               ? isCollapsed
                 ? 'rotate-180'

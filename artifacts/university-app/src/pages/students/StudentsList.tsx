@@ -4,10 +4,11 @@ import { useStudents } from '../../hooks/useStudents';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useNavigate } from 'react-router-dom';
 import Card from '../../components/ui/Card';
-import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
+import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody, ActionMenu } from '../../components/ui/Table';
+import { PageHeader } from '../../components/ui/PageHeader';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import {
   Users,
   Search,
@@ -54,7 +55,7 @@ const defaultView: SavedView = {
 };
 
 const StudentsList = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { scopeParams, isCollegeAdmin } = useScope();
@@ -90,6 +91,24 @@ const StudentsList = () => {
       pageSize: limit,
     });
   }, [search, statusFilter, limit]);
+
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.classList.add('bg-slate-50', 'dark:bg-slate-900');
+    }
+    return () => {
+      if (mainEl) {
+        mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
+      }
+    };
+  }, []);
+
+  const isRTL = i18n.language === 'ar';
+
+  const totalCount = Array.isArray(students) ? students.length : 0;
+  const activeCount = Array.isArray(students) ? students.filter(s => s.isActive).length : 0;
+  const suspendedCount = Array.isArray(students) ? students.filter(s => s.status === 'suspended').length : 0;
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -208,237 +227,312 @@ const StudentsList = () => {
   );
 
   return (
-    <div className="section-gap animate-in fade-in duration-700">
-      
+    <div className="pt-6 section-gap animate-in fade-in duration-700">
+      <PageHeader
+        title={t('students.title')}
+        subtitle={t('students.subtitle')}
+        action={{
+          label: t('students.addStudent'),
+          onClick: () => setShowAddModal(true),
+          icon: Plus,
+          className: "bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2"
+        }}
+      />
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-brand-text-primary tracking-tight">
-            {t('students.title')}
-          </h1>
-          <p className="text-brand-text-muted font-bold mt-1 uppercase tracking-widest text-xs">
-            {t('students.subtitle')}
-          </p>
+      {/* Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Card 1: Total */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-md transition-all text-start">
+          <div className="rounded-xl p-2.5 bg-brand-primary-500/10 text-brand-primary-500">
+            <Users size={24} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-2xl font-black text-brand-text-primary dark:text-white">
+              {totalCount}
+            </span>
+            <span className="text-sm text-brand-text-secondary dark:text-slate-400 font-bold">
+              {t('students.totalStudents')}
+            </span>
+          </div>
         </div>
-        <Button
-          onClick={() => setShowAddModal(true)}
-          className="shadow-xl shadow-brand-primary-600/20 h-12 px-6"
-        >
-          <Plus size={18} className="mr-2" /> {t('students.addStudent')}
-        </Button>
+
+        {/* Card 2: Active */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-md transition-all text-start">
+          <div className="rounded-xl p-2.5 bg-green-500/10 text-green-500">
+            <UserCheck size={24} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-2xl font-black text-brand-text-primary dark:text-white">
+              {activeCount}
+            </span>
+            <span className="text-sm text-brand-text-secondary dark:text-slate-400 font-bold">
+              {t('students.activeStudents')}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Suspended */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-md transition-all text-start">
+          <div className="rounded-xl p-2.5 bg-red-500/10 text-red-500">
+            <UserX size={24} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-2xl font-black text-brand-text-primary dark:text-white">
+              {suspendedCount}
+            </span>
+            <span className="text-sm text-brand-text-secondary dark:text-slate-400 font-bold">
+              {t('students.suspendedStudents')}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <Card noPadding className="border-l-0 overflow-hidden shadow-soft">
-        <FilterBar>
-          <div className="relative flex-1 max-w-md">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted"
-              size={18}
-            />
-            <Input
-              placeholder={t('students.searchPlaceholder')}
-              className="pl-11 h-11 bg-brand-bg-page/50 border-transparent focus:bg-white"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+      {/* Filter & Search Bar Card */}
+      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex overflow-x-auto pb-1.5 md:pb-0 custom-scrollbar gap-2 w-full md:w-auto" dir={isRTL ? 'rtl' : 'ltr'}>
+            {[
+              { id: 'all', label: t('students.filterAll') },
+              { id: 'active', label: t('students.filterActive') },
+              { id: 'suspended', label: t('students.filterSuspended') },
+              { id: 'inactive', label: t('students.filterInactive') },
+            ].map((tab) => {
+              const isActive = statusFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setStatusFilter(tab.id)}
+                  className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 text-sm font-medium rounded-xl transition-all ${
+                    isActive
+                      ? 'bg-brand-primary-500 text-white shadow-sm'
+                      : 'text-brand-text-secondary dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
-          <Button
-            variant="outline"
-            onClick={handleExport}
-            disabled={exporting}
-            className="h-11 px-5 border-brand-border hover:bg-brand-bg-page"
-          >
-            <Download size={14} />
-            {exporting ? t('common.loading') : t('common.exportCsv')}
-          </Button>
-          <button onClick={() => setStatusFilter('all')}>
-            <Badge
-              variant={statusFilter === 'all' ? 'primary' : 'outline'}
-              className="cursor-pointer px-3 py-1"
-            >
-              {t('students.allStudents')}
-            </Badge>
-            <Badge
-              variant={statusFilter === 'pending' ? 'warning' : 'outline'}
-              className="cursor-pointer px-3 py-1"
-            >
-              {t('students.pending')}
-            </Badge>
-          </button>
-          <button onClick={() => setStatusFilter('inactive')}>
-            <Badge
-              variant={statusFilter === 'inactive' ? 'danger' : 'outline'}
-              className="cursor-pointer px-3 py-1"
-            >
-              {t('students.inactive')}
-            </Badge>
-          </button>
-        </FilterBar>
 
-        <div className="min-h-[400px]">
-          {error ? (
-            <div className="p-8">
-              <ErrorState message={error} onRetry={fetchStudents} />
-            </div>
-          ) : !Array.isArray(students) || students.length === 0 ? (
-            <EmptyState
-              icon={<Users size={40} />}
-              title={search ? t('students.noSearchResults') : t('students.noStudents')}
-              subtitle={search ? t('students.noSearchResultsDesc') : t('students.noStudentsDesc')}
-              action={
-                search
-                  ? { label: t('common.clearSearch'), onClick: () => setSearch('') }
-                  : { label: t('students.addFirstStudent'), onClick: () => setShowAddModal(true) }
-              }
-            />
-          ) : filteredStudents.length === 0 ? (
-            <EmptyState
-              icon={<Users size={40} />}
-              title={t('students.noStudentsWithFilter')}
-              subtitle={
-                t('students.noStudentsWithFilterDesc')
-              }
-              action={{
-                label: t('common.clearFilter'),
-                onClick: () => setStatusFilter('all'),
-              }}
-            />
-          ) : (
-            <>
-              <Table
-                headers={[
-                  <Checkbox
-                    key="selectAll"
-                    checked={isAllVisibleSelected}
-                    onChange={handleSelectAll}
-                  />,
-                  ...(activeView.visibleColumns?.includes('studentId') ? [t('students.studentId')] : []),
-                  ...(activeView.visibleColumns?.includes('fullName') ? [t('students.fullName')] : []),
-                  ...(activeView.visibleColumns?.includes('email') ? [t('auth.email')] : []),
-                  ...(activeView.visibleColumns?.includes('phone') ? [t('students.phone')] : []),
-                  ...(activeView.visibleColumns?.includes('enrolledDate') ? [t('students.enrolledDate')] : []),
-                  ...(activeView.visibleColumns?.includes('status') ? [t('profile.status')] : []),
-                  t('common.actions'),
-                ]}
-              >
-                {filteredStudents.map((student) => {
-                  const isSelected = selectedIds.includes(student.id);
-                  return (
-                  <TableRow key={student.id} isSelected={isSelected}>
-                    <TableCell>
-                      <Checkbox
-                        checked={isSelected}
-                        onChange={() => handleSelectOne(student.id)}
-                      />
-                    </TableCell>
-                    {activeView.visibleColumns?.includes('studentId') && (
-                      <TableCell className="font-black text-brand-navy-500 dark:text-brand-primary-500 tracking-widest text-xs uppercase hidden md:table-cell">
-                        {student.studentId}
-                      </TableCell>
-                    )}
-                    {activeView.visibleColumns?.includes('fullName') && (
-                      <TableCell>
-                        <div className="flex items-center gap-4">
-                          <div className="w-11 h-11 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-primary-600 font-black shadow-inner ring-1 ring-brand-primary-100/50 dark:ring-brand-primary-900/20 group-hover:scale-110 transition-transform">
-                            {student.firstName[0]}
-                            {student.lastName[0]}
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight group-hover:text-brand-primary-600 transition-colors">
-                              {student.firstName} {student.lastName}
-                            </span>
-                            <span className="text-[10px] font-black uppercase text-brand-text-muted tracking-wider">
-                              {t(`STUDENTS.YEAR${student.year}`, `Year ${student.year}`)}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                    )}
-                    {activeView.visibleColumns?.includes('email') && (
-                      <TableCell className="text-brand-text-secondary font-bold text-xs hidden md:table-cell">
-                        {student.user?.email}
-                      </TableCell>
-                    )}
-                    {activeView.visibleColumns?.includes('phone') && (
-                      <TableCell className="text-brand-text-secondary font-bold text-xs hidden md:table-cell">
-                        {student.phone?.trim() ? student.phone : t('students.phoneNotSpecified')}
-                      </TableCell>
-                    )}
-                    {activeView.visibleColumns?.includes('enrolledDate') && (
-                      <TableCell className="text-brand-text-secondary font-bold text-xs hidden md:table-cell">
-                        {new Date(student.enrolledAt).toLocaleDateString()}
-                      </TableCell>
-                    )}
-                    {activeView.visibleColumns?.includes('status') && (
-                      <TableCell>
-                        <Badge variant={student.isActive ? 'success' : 'neutral'}>
-                          {student.isActive ? t('students.active') : t('students.inactive')}
-                        </Badge>
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      <ActionMenu
-                        actions={[
-                          {
-                            label: t('common.view'),
-                            icon: Eye,
-                            variant: 'view',
-                            onClick: () => setActiveDrawerId(student.id),
-                          },
-                          {
-                            label: t('common.edit'),
-                            icon: Edit2,
-                            variant: 'edit',
-                            onClick: () => setEditingStudent(student),
-                          },
-                          {
-                            label: 'Reset Password',
-                            icon: KeyRound,
-                            variant: 'edit',
-                            onClick: () => setResetPasswordStudent(student),
-                          },
-                          {
-                            label: student.isActive
-                              ? t('students.deactivate')
-                              : t('students.activate'),
-                            icon: student.isActive ? UserX : UserCheck,
-                            variant: student.isActive ? 'delete' : 'edit',
-                            onClick: () => handleToggleStatus(student),
-                          },
-                          ...(isSuperAdmin
-                            ? [
-                                {
-                                  label: t('common.delete'),
-                                  icon: Trash2,
-                                  variant: 'delete',
-                                  onClick: () =>
-                                    setDeleteTarget({
-                                      id: student.id,
-                                      name: `${student.firstName} ${student.lastName}`,
-                                    }),
-                                },
-                              ]
-                            : []),
-                        ]}
-                      />
-                    </TableCell>
-                  </TableRow>
-                  );
-                })}
-              </Table>
-
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-                total={totalRecords}
-                pageSize={limit}
-                                onPageChange={(newLimit) => updateActiveView({ pageSize: newLimit })}
+          <div className="flex flex-1 md:max-w-md items-center gap-3 w-full">
+            <div className="relative flex-1">
+              <Search
+                className="absolute start-3 top-1/2 -translate-y-1/2 text-brand-text-muted"
+                size={18}
               />
-            </>
-          )}
+              <input
+                type="text"
+                placeholder={t('students.searchPlaceholder')}
+                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl ps-10 pe-3 py-2 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-primary-500"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={exporting}
+              className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 transition-all shrink-0"
+            >
+              <Download size={14} />
+              <span className="hidden md:inline">
+                {exporting ? t('common.loading') : t('students.exportCsv')}
+              </span>
+            </Button>
+          </div>
         </div>
       </Card>
+
+      {/* Table Content / Empty States */}
+      <div className="min-h-0">
+        {error ? (
+          <div className="p-8">
+            <ErrorState message={error} onRetry={fetchStudents} />
+          </div>
+        ) : filteredStudents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="rounded-full bg-brand-primary-500/10 p-5 mb-4">
+              <Users className="w-10 h-10 text-brand-primary-500" />
+            </div>
+            <h3 className="text-lg font-bold text-brand-text-primary dark:text-white mb-1">
+              {t('students.noStudents')}
+            </h3>
+            <p className="text-sm text-brand-text-secondary dark:text-slate-400 mb-6">
+              {t('students.noStudentsDesc')}
+            </p>
+          </div>
+        ) : (
+          <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <Table className="w-full">
+                <TableHeader className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
+                  <TableRow>
+                    <TableHead className="w-12 text-center p-4">
+                      <Checkbox
+                        checked={isAllVisibleSelected}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            const newIds = new Set(selectedIds);
+                            filteredStudents.forEach((s) => newIds.add(s.id));
+                            setSelectedIds(Array.from(newIds));
+                          } else {
+                            const visibleIds = filteredStudents.map((s) => s.id);
+                            setSelectedIds(selectedIds.filter((id) => !visibleIds.includes(id)));
+                          }
+                        }}
+                      />
+                    </TableHead>
+                    <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {t('students.colStudent')}
+                    </TableHead>
+                    <TableHead hideOnMobile className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {t('students.colYear')}
+                    </TableHead>
+                    <TableHead hideOnMobile className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {t('students.colDepartment')}
+                    </TableHead>
+                    <TableHead hideOnMobile className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {t('students.colEmail')}
+                    </TableHead>
+                    <TableHead hideOnMobile className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {t('students.colEnrolledAt')}
+                    </TableHead>
+                    <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {t('students.colStatus')}
+                    </TableHead>
+                    <TableHead className="text-end p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 pe-6">
+                      {t('students.colActions')}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredStudents.map((student) => {
+                    const isSelected = selectedIds.includes(student.id);
+                    const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
+                    
+                    let statusClass = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+                    let statusLabel = t('students.statusActive');
+                    
+                    if (!student.isActive) {
+                      statusClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+                      statusLabel = t('students.statusInactive');
+                    } else if (student.status === 'suspended') {
+                      statusClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+                      statusLabel = t('students.statusSuspended');
+                    }
+
+                    return (
+                      <TableRow 
+                        key={student.id} 
+                        isSelected={isSelected}
+                        className="hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors"
+                      >
+                        <TableCell className="text-center p-4">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => handleSelectOne(student.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="p-4 text-start">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-brand-primary-500/10 flex items-center justify-center text-sm font-bold text-brand-primary-600 flex-shrink-0">
+                              {initials}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-brand-text-primary dark:text-white">
+                                {student.firstName} {student.lastName}
+                              </span>
+                              <span className="text-xs text-brand-text-secondary dark:text-slate-400">
+                                {student.studentId}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell hideOnMobile className="p-4 text-center font-medium">
+                          {t(`STUDENTS.YEAR${student.year}`, `Year ${student.year}`)}
+                        </TableCell>
+                        <TableCell hideOnMobile className="p-4 text-start font-medium">
+                          {isRTL ? (student.department?.nameAr || student.department?.name || '—') : (student.department?.name || '—')}
+                        </TableCell>
+                        <TableCell hideOnMobile className="p-4 text-start font-medium text-slate-500 dark:text-slate-400">
+                          {student.user?.email || '—'}
+                        </TableCell>
+                        <TableCell hideOnMobile className="p-4 text-center font-medium text-slate-500 dark:text-slate-400">
+                          {new Date(student.enrolledAt).toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </TableCell>
+                        <TableCell className="p-4 text-center">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${statusClass}`}>
+                            {statusLabel}
+                          </span>
+                        </TableCell>
+                        <TableCell className="p-4 text-end pe-6">
+                          <ActionMenu
+                            actions={[
+                              {
+                                label: t('common.view'),
+                                icon: Eye,
+                                variant: 'view',
+                                onClick: () => setActiveDrawerId(student.id),
+                              },
+                              {
+                                label: t('common.edit'),
+                                icon: Edit2,
+                                variant: 'edit',
+                                onClick: () => setEditingStudent(student),
+                              },
+                              {
+                                label: 'Reset Password',
+                                icon: KeyRound,
+                                variant: 'edit',
+                                onClick: () => setResetPasswordStudent(student),
+                              },
+                              {
+                                label: student.isActive
+                                  ? t('students.deactivate')
+                                  : t('students.activate'),
+                                icon: student.isActive ? UserX : UserCheck,
+                                variant: student.isActive ? 'delete' : 'edit',
+                                onClick: () => handleToggleStatus(student),
+                              },
+                              ...(isSuperAdmin
+                                ? [
+                                    {
+                                      label: t('common.delete'),
+                                      icon: Trash2,
+                                      variant: 'delete',
+                                      onClick: () =>
+                                        setDeleteTarget({
+                                          id: student.id,
+                                          name: `${student.firstName} ${student.lastName}`,
+                                        }),
+                                    },
+                                  ]
+                                : []),
+                            ]}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              total={totalRecords}
+              pageSize={limit}
+            />
+          </Card>
+        )}
+      </div>
 
       <BulkActionToolbar
         selectedCount={selectedIds.length}

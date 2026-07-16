@@ -1,5 +1,5 @@
 // ===== USER =====
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'DOCTOR' | 'STUDENT';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'COLLEGE_ADMIN' | 'DEPARTMENT_ADMIN' | 'TEACHING_ASSISTANT' | 'DOCTOR' | 'STUDENT';
 
 export interface User {
   id: string;

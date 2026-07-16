@@ -5,14 +5,14 @@ import * as z from 'zod';
 import departmentService from '../../services/department.service';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { School, GraduationCap, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 const schema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  nameAr: z.string().optional(),
-  collegeId: z.coerce.number().min(1, 'College is required'),
+  name: z.string().min(1, 'Name in English is required'),
+  nameAr: z.string().min(1, 'اسم القسم بالعربي مطلوب'),
+  collegeId: z.coerce.number().min(1, 'الكلية التابعة مطلوبة'),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -49,6 +49,7 @@ const AddDepartmentModal = ({ isOpen, onClose, colleges, onSuccess }) => {
       onClose={onClose}
       title={t('departments.addNew')}
       subtitle={t('departments.addDesc')}
+      size="sm"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="form-section">
         {toast && (
@@ -61,27 +62,24 @@ const AddDepartmentModal = ({ isOpen, onClose, colleges, onSuccess }) => {
         <div className="space-y-5">
           <div className="space-y-1.5">
             <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <School size={14} className="text-brand-text-muted" /> {t('colleges.parentCollege')} <span className="text-rose-500">*</span>
+              <GraduationCap size={14} className="text-brand-text-muted" /> اسم القسم (عربي) <span className="text-rose-500">*</span>
             </label>
-            <select
-              {...register('collegeId')}
-              className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer select-custom-arrow"
-            >
-              <option value="">{t('auth.selectCollege')}</option>
-              {colleges.map(college => (
-                <option key={college.id} value={college.id}>{college.name}</option>
-              ))}
-            </select>
-            {errors.collegeId && <p className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>}
+            <Input
+              {...register('nameAr')}
+              placeholder="أدخل اسم القسم بالعربية"
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic"
+              dir="rtl"
+            />
+            {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
           </div>
 
           <div className="space-y-1.5">
             <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <GraduationCap size={14} className="text-brand-text-muted" /> {t('departments.nameEn')} <span className="text-rose-500">*</span>
+              <GraduationCap size={14} className="text-brand-text-muted" /> Department Name (English) <span className="text-rose-500">*</span>
             </label>
             <Input
               {...register('name')}
-              placeholder="e.g. Computer Science"
+              placeholder="Enter department name in English"
               className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
             />
             {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
@@ -89,15 +87,18 @@ const AddDepartmentModal = ({ isOpen, onClose, colleges, onSuccess }) => {
 
           <div className="space-y-1.5">
             <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <GraduationCap size={14} className="text-brand-text-muted" /> {t('departments.nameAr')}
+              <School size={14} className="text-brand-text-muted" /> الكلية التابعة <span className="text-rose-500">*</span>
             </label>
-            <Input
-              {...register('nameAr')}
-              placeholder="e.g. قسم علوم الحاسب"
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic"
-              dir="rtl"
-            />
-            {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
+            <select
+              {...register('collegeId')}
+              className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer select-custom-arrow"
+            >
+              <option value="">اختر الكلية...</option>
+              {colleges.map(college => (
+                <option key={college.id} value={college.id}>{college.name}</option>
+              ))}
+            </select>
+            {errors.collegeId && <p className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>}
           </div>
         </div>
 
@@ -107,15 +108,16 @@ const AddDepartmentModal = ({ isOpen, onClose, colleges, onSuccess }) => {
             variant="ghost"
             onClick={onClose}
             disabled={loading}
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 font-bold px-6 min-h-10 rounded-xl"
           >
-            {t('common.cancel')}
+            إلغاء
           </Button>
           <Button
             type="submit"
             disabled={isSubmitting || loading}
-            className="min-w-[140px]"
+            className="min-w-[140px] bg-[#84cc16] hover:bg-[#65a30d] text-white font-bold rounded-xl border-none shadow-none px-6 min-h-10 transition-all duration-200"
           >
-            {loading ? <Loader2 className="animate-spin" size={20} /> : t('departments.addDept')}
+            {loading ? <Loader2 className="animate-spin" size={20} /> : 'إضافة'}
           </Button>
         </div>
       </form>

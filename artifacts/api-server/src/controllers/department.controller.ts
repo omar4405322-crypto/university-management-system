@@ -3,7 +3,7 @@ import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import { getScopeWhere } from '../utils/scope.utils';
 import catchAsync from '../utils/catchAsync';
-import { NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
+import { NotFoundError, AuthorizationError, ValidationError, AppError } from '../utils/appError';
 
 export const getAllDepartments = catchAsync(async (req: Request, res: Response) => {
   const { collegeId } = req.query;
@@ -142,7 +142,10 @@ export const deleteDepartment = catchAsync(async (req: Request, res: Response) =
   const departmentId = parseInt(req.params.id as string);
 
   // Fetch and scope check
-  const existing = await prisma.department.findUnique({ where: { id: departmentId } });
+  const existing = await prisma.department.findUnique({
+    where: { id: departmentId },
+    include: { studentGroups: true },
+  });
   if (!existing) {
     throw new NotFoundError('Department not found');
   }
@@ -150,6 +153,13 @@ export const deleteDepartment = catchAsync(async (req: Request, res: Response) =
     if (existing.collegeId !== req.user.managedCollegeId) {
       throw new AuthorizationError('Access denied');
     }
+  }
+
+  if (existing.studentGroups && existing.studentGroups.length > 0) {
+    const groupNames = existing.studentGroups.map((g: any) => g.name).join(', ');
+    throw new AppError(
+      `Cannot delete department: It is referenced by ${existing.studentGroups.length} active student group(s) (${groupNames}). Please reassign or delete them first.`, 400
+    );
   }
 
   await prisma.$transaction(async (tx) => {

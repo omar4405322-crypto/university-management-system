@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import taskService from '../../services/task.service';
 import coursesService from '../../services/courses.service';

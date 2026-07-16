@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import prisma from '../utils/prismaClient';
 import bcrypt from 'bcryptjs';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.utils';
@@ -41,9 +42,9 @@ const setAuthCookies = (res: Response, accessToken: string, refreshToken: string
   res.cookie('refresh_token', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    path: '/api/auth/refresh', // Only send to refresh endpoint
+    path: '/',
   });
 };
 
@@ -162,7 +163,13 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
     return next(new AuthenticationError('Invalid email or password'));
   }
 
-  if (user.twoFactorEnabled) {
+  if (user.isActive === false) {
+    logger.warn(`[AUTH] Login attempt for deactivated user: ${email}`);
+    return next(new AuthenticationError('Your account has been deactivated. Please contact support.'));
+  }
+
+  const require2FA = process.env.REQUIRE_2FA !== 'false';
+  if (require2FA && user.twoFactorEnabled) {
     logger.info(`[AUTH] 2FA required for: ${email}`);
     const { totpToken } = req.body;
     if (!totpToken) {
@@ -204,6 +211,29 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
   });
 });
 
+// Map to track recently rotated refresh tokens to avoid multi-tab logout races
+const rotatedTokens = new Map<string, { userId: number; tokenVersion: number; rotatedAt: number }>();
+
+// Periodically clean up expired keys (keep for 30s)
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of rotatedTokens.entries()) {
+    if (now - data.rotatedAt > 30000) {
+      rotatedTokens.delete(token);
+    }
+  }
+}, 30000);
+
+class ConcurrentRotationError extends Error {
+  public userId: number;
+  public tokenVersion: number;
+  constructor(userId: number, tokenVersion: number) {
+    super('Concurrent rotation');
+    this.userId = userId;
+    this.tokenVersion = tokenVersion;
+  }
+}
+
 export const refresh = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { refresh_token } = req.cookies;
 
@@ -211,28 +241,110 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
     return next(new AuthenticationError('Refresh token missing'));
   }
 
-  const tokenDoc = await prisma.refreshToken.findUnique({
-    where: { token: refresh_token },
-    include: { user: true },
-  });
-
-  if (!tokenDoc || tokenDoc.expiresAt < new Date()) {
-    if (tokenDoc) await prisma.refreshToken.delete({ where: { id: tokenDoc.id } });
-    return next(new AuthenticationError('Invalid or expired refresh token'));
+  // Check if the token was rotated recently (within 15 seconds) by a concurrent request
+  const rotatedInfo = rotatedTokens.get(refresh_token);
+  if (rotatedInfo && Date.now() - rotatedInfo.rotatedAt < 15000) {
+    logger.info(`[AUTH] Recently rotated token used (within 15s) for user: ${rotatedInfo.userId}. Returning fresh access token.`);
+    const accessToken = generateAccessToken(rotatedInfo.userId, rotatedInfo.tokenVersion);
+    return res.json({
+      success: true,
+      data: { accessToken },
+    });
   }
 
-  // Rotate: delete old token and issue a new one atomically
-  await prisma.refreshToken.delete({ where: { id: tokenDoc.id } });
-  const newRefreshToken = await generateRefreshToken(tokenDoc.user.id);
+  let userId: number | undefined;
+  let tokenVersion: number | undefined;
 
-  const accessToken = generateAccessToken(tokenDoc.user.id, tokenDoc.user.tokenVersion);
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const tokenDoc = await tx.refreshToken.findUnique({
+        where: { token: refresh_token },
+        include: { user: true },
+      });
 
-  setAuthCookies(res, accessToken, newRefreshToken);
+      if (!tokenDoc) {
+        const doubleCheckRotated = rotatedTokens.get(refresh_token);
+        if (doubleCheckRotated && Date.now() - doubleCheckRotated.rotatedAt < 15000) {
+          throw new ConcurrentRotationError(doubleCheckRotated.userId, doubleCheckRotated.tokenVersion);
+        }
+        throw new AuthenticationError('Invalid or expired refresh token');
+      }
 
-  res.json({
-    success: true,
-    data: { accessToken },
-  });
+      if (tokenDoc.expiresAt < new Date()) {
+        await tx.refreshToken.delete({ where: { id: tokenDoc.id } });
+        throw new AuthenticationError('Invalid or expired refresh token');
+      }
+
+      userId = tokenDoc.user.id;
+      tokenVersion = tokenDoc.user.tokenVersion;
+
+      // Delete the old token
+      await tx.refreshToken.delete({ where: { id: tokenDoc.id } });
+
+      // Generate new refresh token
+      const newRefreshToken = crypto.randomBytes(40).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+      
+      await tx.refreshToken.create({
+        data: {
+          token: newRefreshToken,
+          userId: tokenDoc.user.id,
+          expiresAt,
+        },
+      });
+
+      const accessToken = generateAccessToken(tokenDoc.user.id, tokenDoc.user.tokenVersion);
+
+      return { accessToken, newRefreshToken };
+    });
+
+    // Successfully rotated - add to rotatedTokens map for concurrent protection
+    if (userId !== undefined) {
+      rotatedTokens.set(refresh_token, {
+        userId,
+        tokenVersion: tokenVersion || 0,
+        rotatedAt: Date.now(),
+      });
+    }
+
+    setAuthCookies(res, result.accessToken, result.newRefreshToken);
+
+    return res.json({
+      success: true,
+      data: { accessToken: result.accessToken },
+    });
+  } catch (error: any) {
+    if (error instanceof ConcurrentRotationError) {
+      logger.info(`[AUTH] Concurrent refresh lookup detected for user: ${error.userId}. Returning fresh access token.`);
+      const accessToken = generateAccessToken(error.userId, error.tokenVersion);
+      return res.json({
+        success: true,
+        data: { accessToken },
+      });
+    }
+
+    // If the record was not found during deletion (P2025), it means a concurrent request
+    // already deleted and rotated this token.
+    if (error.code === 'P2025' && userId !== undefined) {
+      logger.info(`[AUTH] Concurrent refresh deletion detected for user: ${userId}. Returning fresh access token.`);
+      
+      rotatedTokens.set(refresh_token, {
+        userId,
+        tokenVersion: tokenVersion || 0,
+        rotatedAt: Date.now(),
+      });
+
+      const accessToken = generateAccessToken(userId, tokenVersion || 0);
+      return res.json({
+        success: true,
+        data: { accessToken },
+      });
+    }
+
+    // Otherwise, propagate the error (e.g. 401 AuthenticationError)
+    return next(error);
+  }
 });
 
 export const logout = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -249,7 +361,7 @@ export const logout = catchAsync(async (req: Request, res: Response, next: NextF
     });
   }
 
-  res.clearCookie('refresh_token', { path: '/api/auth/refresh' });
+  res.clearCookie('refresh_token', { path: '/' });
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
@@ -389,7 +501,7 @@ export const approveRequest = catchAsync(
 
 export const rejectRequest = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
-  const { reason } = req.body as RejectRequestBody;
+  const { reason } = (req.body || {}) as RejectRequestBody;
 
   const request = await prisma.registrationRequest.findUnique({
     where: { id: parseInt(id as string) },

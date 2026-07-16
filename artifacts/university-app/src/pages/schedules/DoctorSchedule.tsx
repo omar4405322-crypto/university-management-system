@@ -7,6 +7,15 @@ import schedulesService from '../../services/schedules.service';
 import { Select } from '../../components/ui/Select';
 import { logger } from '../../lib/logger';
 
+const getSessionBadgeColor = (type: string) => {
+  switch (type) {
+    case 'LECTURE': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
+    case 'LAB': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
+    case 'SECTION': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800';
+    default: return 'bg-slate-100 text-slate-700 dark:bg-slate-800/40 dark:text-slate-300';
+  }
+};
+
 const DAYS_EN = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
 
 const DAYS_AR = {
@@ -151,6 +160,7 @@ const DoctorSchedule = () => {
                 <option value="">{t('schedule.allSemesters')}</option>
                 <option value="1">{t('schedule.semester1')}</option>
                 <option value="2">{t('schedule.semester2')}</option>
+                <option value="3">{t('schedule.semester3', 'Summer Semester')}</option>
               </Select>
               <div className="pointer-events-none absolute inset-y-0 right-3 rtl:right-auto rtl:left-3 flex items-center">
                 <svg
@@ -228,14 +238,41 @@ const DoctorSchedule = () => {
                   {entries.map((entry, i) => (
                     <div
                       key={i}
-                      className="bg-white dark:bg-slate-800 rounded-xl p-3 flex flex-col md:flex-row md:items-center gap-2 shadow-sm"
+                      className={`bg-white dark:bg-slate-800 rounded-xl p-3 flex flex-col md:flex-row md:items-center gap-2 shadow-sm border-s-4 ${
+                        entry.isTemporarilyModified ? 'border-s-amber-500' : 'border-s-transparent'
+                      }`}
                     >
-                      <span className="text-blue-600 dark:text-blue-400 font-bold text-sm min-w-[120px]">
-                        {entry.startTime} - {entry.endTime}
-                      </span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 flex-1">
-                        {entry.course?.name || entry.courseName}
-                      </span>
+                      <div className="flex flex-col gap-1 min-w-[120px]">
+                        <span className="text-blue-600 dark:text-blue-400 font-bold text-sm">
+                          {entry.startTime} - {entry.endTime}
+                        </span>
+                        {entry.isTemporarilyModified && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 w-fit">
+                            {t('schedule.temporaryChange', '⊠ تعديل مؤقت')}
+                          </span>
+                        )}
+                      </div>
+                      {entry.slotType && (
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${getSessionBadgeColor(entry.slotType)}`}>
+                          {t(`schedule.${entry.slotType.toLowerCase()}`, entry.slotType)}
+                        </span>
+                      )}
+                      <div className="flex-1 flex flex-col">
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">
+                          {entry.course?.courseCode && <span className="text-blue-500 mr-2">{entry.course.courseCode}</span>}
+                          {entry.course?.name}
+                        </span>
+                        {entry.group?.name && (
+                          <span className="text-xs text-slate-500 font-bold mt-0.5">
+                            {t('common.group', 'Group:')} {entry.group.name}
+                          </span>
+                        )}
+                        {entry.teachingAssistant && (
+                          <span className="text-xs text-slate-500 mt-1">
+                            <strong className="text-slate-400">{t('schedule.ta', 'TA:')}</strong> {entry.teachingAssistant.firstName} {entry.teachingAssistant.lastName}
+                          </span>
+                        )}
+                      </div>
                       <span className="text-slate-500 dark:text-slate-400 text-sm">
                         {entry.room || t('schedule.noRoom')}
                       </span>

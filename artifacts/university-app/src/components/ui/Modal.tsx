@@ -19,6 +19,17 @@ const Modal: React.FC<ModalProps> = ({
   size = 'md',
 }) => {
   if (!isOpen) return null;
+  
+  // Handle Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const sizes = {
     sm: 'max-w-md',

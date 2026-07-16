@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import Button from './Button';
 import { Plus, Loader2 } from 'lucide-react';
 
@@ -12,37 +12,41 @@ export interface PageHeaderProps {
     className?: string;
     label?: string;
   };
+  extraActions?: React.ReactNode;
 }
 
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, action }) => {
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, action, extraActions }) => {
   const Icon = action?.icon || Plus;
 
   return (
-    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 animate-page">
-      <div className="flex flex-col text-start max-w-2xl">
-        <h1 className="heading-display mb-2">{title}</h1>
+    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 animate-page w-full min-w-0">
+      <div className="flex flex-col text-start max-w-full md:max-w-2xl min-w-0">
+        <h1 className="heading-display mb-2 break-words text-3xl sm:text-4xl md:text-5xl">{title}</h1>
         {subtitle && (
-          <p className="text-brand-text-sub font-medium text-sm leading-relaxed">{subtitle}</p>
+          <p className="text-brand-text-sub font-medium text-sm leading-relaxed break-words">{subtitle}</p>
         )}
       </div>
 
-      {action && (
+      {(action || extraActions) && (
         <div className="flex items-center gap-3 shrink-0">
-          <Button
-            onClick={action.onClick}
-            variant="primary"
-            size="lg"
-            disabled={action.disabled}
-            className={`shadow-overlay shadow-brand-primary-600/20 hover:shadow-brand-primary-600/30 px-8 py-3.5 ${action.className || ''}`}
-          >
-            {action.icon !== null && (
-              <Icon
-                size={20}
-                className={`mr-2 rtl:ml-2 rtl:mr-0 ${action.icon === Loader2 ? 'animate-spin' : ''}`}
-              />
-            )}
-            <span className="text-xs font-black uppercase tracking-widest">{action.label}</span>
-          </Button>
+          {extraActions}
+          {action && (
+            <Button
+              onClick={action.onClick}
+              variant="default"
+              size="lg"
+              disabled={action.disabled}
+              className={`shadow-overlay shadow-brand-primary-600/20 hover:shadow-brand-primary-600/30 px-8 py-3.5 ${action.className || ''}`}
+            >
+              {action.icon !== null && (
+                <Icon
+                  size={20}
+                  className={`mr-2 rtl:ml-2 rtl:mr-0 ${action.icon === Loader2 ? 'animate-spin' : ''}`}
+                />
+              )}
+              <span className="text-xs font-black uppercase tracking-widest">{action.label}</span>
+            </Button>
+          )}
         </div>
       )}
     </div>

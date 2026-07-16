@@ -1,42 +1,30 @@
 import React from 'react';
-import { Monitor, Cog, Pill, BarChart2, PenTool, Zap, ArrowLeft } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft, ArrowRight, Users } from 'lucide-react';
+import ImageWithFallback from './ui/ImageWithFallback';
 
-export const colleges = [
+export interface CollegeKeyItem {
+  id: number;
+  nameKey: string;
+  descKey: string;
+  studentsKey: string;
+  image: string;
+}
+
+export const collegesKeys: CollegeKeyItem[] = [
   {
-    name: 'كلية الحاسبات والمعلومات',
-    desc: 'إعداد كوادر تقنية متخصصة في هندسة البرمجيات والذكاء الاصطناعي.',
-    students: '١٢٠٠ طالب',
-    icon: <Monitor size={24} strokeWidth={2} />,
+    id: 1,
+    nameKey: 'landing.colleges.industry.name',
+    descKey: 'landing.colleges.industry.desc',
+    studentsKey: 'landing.colleges.industry.students',
+    image: '/assets/university/ne/campus-building.png',
   },
   {
-    name: 'كلية الهندسة والتكنولوجيا',
-    desc: 'دراسات هندسية متطورة تلبي احتياجات الثورة الصناعية الرابعة.',
-    students: '١٥٠٠ طالب',
-    icon: <Cog size={24} strokeWidth={2} />,
-  },
-  {
-    name: 'كلية الصيدلة والعلوم الطبية',
-    desc: 'تميز في الأبحاث الدوائية والعلوم الطبية الحديثة.',
-    students: '٨٠٠ طالب',
-    icon: <Pill size={24} strokeWidth={2} />,
-  },
-  {
-    name: 'كلية إدارة الأعمال',
-    desc: 'تخريج قادة أعمال قادرين على المنافسة في السوق العالمي.',
-    students: '٩٠٠ طالب',
-    icon: <BarChart2 size={24} strokeWidth={2} />,
-  },
-  {
-    name: 'كلية التصميم والفنون التطبيقية',
-    desc: 'دمج الفن بالتكنولوجيا لخلق حلول إبداعية مبتكرة.',
-    students: '٤٠٠ طالب',
-    icon: <PenTool size={24} strokeWidth={2} />,
-  },
-  {
-    name: 'كلية الهندسة الكهربائية',
-    desc: 'تخصصات دقيقة في الطاقة المتجددة وأنظمة الطاقة الذكية.',
-    students: '٦٠٠ طالب',
-    icon: <Zap size={24} strokeWidth={2} />,
+    id: 2,
+    nameKey: 'landing.colleges.health.name',
+    descKey: 'landing.colleges.health.desc',
+    studentsKey: 'landing.colleges.health.students',
+    image: '/assets/university/ne/campus-entrance.png',
   },
 ];
 
@@ -45,60 +33,94 @@ interface CollegesSectionProps {
 }
 
 export const CollegesSection: React.FC<CollegesSectionProps> = ({ isLoading = false }) => {
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
+
   return (
-    <section id="colleges" className="py-24 bg-white">
-      <div className="container mx-auto px-6 text-center space-y-16">
-        <div className="max-w-3xl mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <span className="text-xs font-black uppercase tracking-widest text-brand-navy-500">
-            كلياتنا الأكاديمية
-          </span>
-          <h2 className="text-4xl md:text-5xl font-black text-brand-navy-500 tracking-tight">
-            برامج دراسية متكاملة
-          </h2>
-          <p className="text-brand-text-muted font-medium text-lg">
-            نقدم مجموعة متنوعة من التخصصات التي تلبي احتياجات سوق العمل المحلي والدولي.
-          </p>
+    <section id="colleges" className="py-20 md:py-28 bg-slate-50 dark:bg-slate-900/50 border-y border-slate-100 dark:border-slate-800/50">
+      <div className="max-w-screen-xl mx-auto px-6">
+        
+        {/* Section Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+          <div className="space-y-3">
+            <span className="block text-xs font-black uppercase tracking-widest text-brand-green">
+              {t('landing.colleges.eyebrow')}
+            </span>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-brand-navy dark:text-brand-text-main leading-tight tracking-tight m-0">
+              {t('landing.colleges.title')}
+            </h2>
+            <p className="text-brand-text-secondary dark:text-brand-text-sub text-sm md:text-base font-medium leading-relaxed max-w-xl">
+              {t('landing.colleges.desc')}
+            </p>
+          </div>
+
+          <a
+            href="#colleges"
+            className="group inline-flex items-center gap-2 text-brand-navy dark:text-brand-text-main hover:text-brand-green dark:hover:text-brand-green font-bold text-sm transition-colors flex-shrink-0 pb-1 border-b border-brand-navy/10 hover:border-brand-green"
+          >
+            {t('landing.colleges.viewAll')}
+            {isRTL ? (
+              <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
+            ) : (
+              <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+            )}
+          </a>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {isLoading ? (
-            Array(6).fill(0).map((_, i) => (
-              <div key={i} className="skeleton h-64 rounded-[2.5rem]" />
-            ))
-          ) : (
-            colleges.map((college, i) => (
+        {/* Colleges Grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <div className="skeleton rounded-2xl h-96 w-full" />
+            <div className="skeleton rounded-2xl h-96 w-full" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {collegesKeys.map((college, i) => (
               <a
-                href="#colleges"
-                key={i}
-                className="group relative bg-white p-10 rounded-[2.5rem] border border-brand-border shadow-soft transition-all duration-500 hover:border-brand-green hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-navy-500/10 text-right flex flex-col focus:outline-none focus:ring-4 focus:ring-brand-green/30 cursor-pointer block"
-                style={{ animationDelay: `${i * 100}ms` }}
+                key={college.id}
+                href={`/colleges/${college.id}`}
+                className="group flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-brand-green/30"
+                style={{ animationDelay: `${i * 120}ms` }}
               >
-                <div className="text-5xl mb-6 transform transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6 text-brand-navy-500">
-                  {college.icon}
+                {/* Image Container */}
+                <div className="aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-700 relative">
+                  <ImageWithFallback
+                    src={college.image}
+                    alt={t(college.nameKey)}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                 </div>
-                <h3 className="text-xl font-black text-brand-navy-500 mb-4 group-hover:text-brand-green transition-colors">
-                  {college.name}
-                </h3>
-                <p className="text-brand-text-secondary text-sm leading-relaxed mb-6 font-medium">
-                  {college.desc}
-                </p>
-                <div className="mt-auto pt-6 border-t border-brand-border flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted">
-                    {college.students}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-black text-brand-green opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                      اعرف المزيد
+
+                {/* Content Container */}
+                <div className="p-6 flex flex-col flex-grow justify-between">
+                  <div className="space-y-2 mb-4">
+                    <h3 className="text-lg md:text-xl font-extrabold text-brand-navy dark:text-brand-text-main group-hover:text-brand-green transition-colors m-0">
+                      {t(college.nameKey)}
+                    </h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium leading-relaxed">
+                      {t(college.descKey)}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                    <span className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-bold">
+                      <Users size={14} className="text-slate-400" />
+                      <span className="font-mono">{t(college.studentsKey)}</span>
                     </span>
-                    <div className="w-10 h-10 rounded-xl bg-brand-primary-50 text-brand-green flex items-center justify-center group-hover:bg-brand-green group-hover:text-white transition-all duration-500 transform translate-x-4 group-hover:translate-x-0">
-                      <ArrowLeft size={18} className="rtl:-scale-x-100" />
-                    </div>
+                    <span className="text-brand-green group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs font-bold">
+                      {isRTL ? (
+                        <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
+                      ) : (
+                        <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                      )}
+                    </span>
                   </div>
                 </div>
               </a>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

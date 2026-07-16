@@ -1,17 +1,18 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BookOpen, User, MapPin, Plus } from 'lucide-react';
+import { BookOpen, User, MapPin, Plus, Loader2 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import type { Course, Doctor, SlotDialog, SlotEntry } from '../../types/timetable.types';
+import InstructorSelector from './InstructorSelector';
 
-type SessionType = 'LECTURE' | 'LAB' | 'SEMINAR';
+type SlotType = 'LECTURE' | 'LAB' | 'SECTION';
 
 export interface SlotFormValues {
   courseName: string;
   doctorName: string;
   room: string;
-  sessionType: SessionType;
+  slotType: SlotType;
 }
 
 interface SlotModalProps {
@@ -29,10 +30,10 @@ interface SlotModalProps {
   onSubmit: () => void;
 }
 
-const SESSION_TYPES: SessionType[] = ['LECTURE', 'LAB', 'SEMINAR'];
+const SESSION_TYPES: SlotType[] = ['LECTURE', 'LAB', 'SECTION'];
 
 const FIELD_CLASS =
-  'w-full h-11 bg-brand-bg-page/50 border border-brand-border rounded-xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer';
+  'w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm';
 
 /**
  * Combined Add / Edit slot modal.
@@ -56,6 +57,8 @@ export default function SlotModal({
   const { t } = useTranslation();
 
   const isEditing = Boolean(form.courseName && dialogContext);
+  
+  const selectedCourse = courses.find((c) => c.name === form.courseName);
 
   const handleCourseChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -63,9 +66,7 @@ export default function SlotModal({
       onChange({
         ...form,
         courseName: e.target.value,
-        doctorName: course?.doctor
-          ? `${course.doctor.firstName ?? ''} ${course.doctor.lastName ?? ''}`.trim()
-          : form.doctorName,
+        doctorName: form.doctorName,
       });
     },
     [courses, form, onChange]
@@ -84,8 +85,8 @@ export default function SlotModal({
       <div className="space-y-4 pt-2">
         {/* Course */}
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest ml-1 flex items-center gap-1">
-            <BookOpen size={11} />
+          <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2 mb-1.5">
+            <BookOpen size={14} className="text-slate-400" />
             {t('courses.course', 'Course')} *
           </label>
           <select
@@ -107,61 +108,27 @@ export default function SlotModal({
           </select>
         </div>
 
-        {/* Doctor */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest ml-1 flex items-center gap-1">
-            <User size={11} />
-            {t('timetables.instructor', 'Instructor')}
-          </label>
-          <div className="relative">
-            <User
-              size={16}
-              className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none`}
-            />
-            {doctors.length === 0 ? (
-              <select
-                disabled
-                className={`${FIELD_CLASS} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} opacity-50`}
-              >
-                <option>{t('timetable.noDoctors', 'No professors registered')}</option>
-              </select>
-            ) : (
-              <select
-                className={`${FIELD_CLASS} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
-                value={form.doctorName}
-                onChange={(e) => onChange({ ...form, doctorName: e.target.value })}
-                aria-label={t('timetables.selectProfessor', 'Select Professor')}
-              >
-                <option value="">{t('timetables.selectProfessor', 'Select Professor')}</option>
-                {doctors.map((doc) => {
-                  const isDifferentCollege =
-                    doc.department?.collegeId != null &&
-                    String(doc.department.collegeId) !== String(collegeId);
-                  const docName = `${doc.firstName ?? ''} ${doc.lastName ?? ''}`.trim();
-                  return (
-                    <option key={doc.id} value={docName}>
-                      {docName}
-                      {isDifferentCollege
-                        ? ` ⚠️ (${t('timetable.otherCollege', 'Other college')})`
-                        : ''}
-                    </option>
-                  );
-                })}
-              </select>
-            )}
-          </div>
-        </div>
+        {/* Instructor / TA */}
+        <InstructorSelector
+          courseId={selectedCourse?.id}
+          slotType={form.slotType}
+          value={form.doctorName}
+          onChange={(val) => onChange({ ...form, doctorName: val })}
+          isRTL={isRTL}
+          collegeId={collegeId}
+          fallbackOptions={doctors}
+        />
 
         {/* Room */}
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest ml-1 flex items-center gap-1">
-            <MapPin size={11} />
+          <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2 mb-1.5">
+            <MapPin size={14} className="text-slate-400" />
             {t('timetables.room', 'Room / Hall')} *
           </label>
           <div className="relative">
             <MapPin
               size={16}
-              className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none`}
+              className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none`}
             />
             <input
               className={`${FIELD_CLASS} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
@@ -175,20 +142,20 @@ export default function SlotModal({
 
         {/* Session type toggle */}
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest ml-1">
-            {t('schedule.sessionType', 'Session Type')}
+          <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2 mb-1.5">
+            {t('schedule.slotType', 'Session Type')}
           </label>
           <div className="grid grid-cols-3 gap-2">
             {SESSION_TYPES.map((type) => (
               <button
                 key={type}
                 type="button"
-                onClick={() => onChange({ ...form, sessionType: type })}
-                aria-pressed={form.sessionType === type}
+                onClick={() => onChange({ ...form, slotType: type })}
+                aria-pressed={form.slotType === type}
                 className={`h-10 text-xs font-black uppercase tracking-wider rounded-xl transition-all border ${
-                  form.sessionType === type
+                  form.slotType === type
                     ? 'bg-brand-primary-500 text-white border-brand-primary-500 shadow-md shadow-brand-primary-500/20'
-                    : 'bg-brand-bg-page/50 text-brand-text-secondary border-brand-border hover:bg-brand-navy/5'
+                    : 'bg-white dark:bg-slate-850 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
                 {t(`schedule.${type.toLowerCase()}`, type)}
@@ -198,12 +165,16 @@ export default function SlotModal({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 justify-end pt-4 border-t border-brand-border">
-          <Button variant="ghost" size="sm" onClick={onClose} className="flex-1">
+        <div className="flex items-center gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+          <Button type="button" variant="ghost" className="flex-1 rounded-xl text-xs font-semibold" onClick={onClose}>
             {t('common.cancel', 'Cancel')}
           </Button>
-          <Button variant="success" size="sm" onClick={onSubmit} className="flex-[2]">
-            <Plus size={15} className={isRTL ? 'ml-1' : 'mr-1'} />
+          <Button 
+            type="button"
+            className="flex-[2] bg-brand-primary-500 hover:bg-brand-primary-600 active:scale-95 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2" 
+            onClick={onSubmit}
+          >
+            {!isEditing && <Plus size={15} />}
             {isEditing ? t('common.save', 'Save') : t('timetable.addSlot', 'Add Slot')}
           </Button>
         </div>

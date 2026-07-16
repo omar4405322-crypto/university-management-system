@@ -2,7 +2,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 const router = express.Router();
 import * as doctorsController from '../controllers/doctors.controller';
-import { resetDoctorPassword } from '../controllers/doctors.controller';
+import { resetDoctorPassword, getSuggestedDoctors } from '../controllers/doctors.controller';
 import { authorize } from '../middleware/auth.middleware';
 import { doctorValidation, idParamValidation } from '../validations/academic.validation';
 import validate from '../middleware/validate.middleware';
@@ -19,6 +19,7 @@ const passwordResetLimiter = rateLimit({
 router.use(authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'));
 
 router.get('/stats', doctorsController.getDoctorStats);
+router.get('/suggested', getSuggestedDoctors);
 router.get('/', doctorsController.getAllDoctors);
 router.get('/:id', idParamValidation, validate, doctorsController.getDoctorById);
 router.post('/', doctorValidation, validate, doctorsController.createDoctor);

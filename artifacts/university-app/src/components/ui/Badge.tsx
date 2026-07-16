@@ -1,33 +1,57 @@
-import React from 'react';
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
 
-interface BadgeProps {
-  children: React.ReactNode;
-  variant?: 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'primary';
-  className?: string;
+import { cn } from "@/lib/utils"
+
+const badgeVariants = cva(
+  // @replit
+  // Whitespace-nowrap: Badges should never wrap.
+  "whitespace-nowrap inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" +
+  " hover-elevate ",
+  {
+    variants: {
+      variant: {
+        default:
+          // @replit shadow-xs instead of shadow, no hover because we use hover-elevate
+          "border-transparent bg-primary text-primary-foreground shadow-xs",
+        secondary:
+          // @replit no hover because we use hover-elevate
+          "border-transparent bg-secondary text-secondary-foreground",
+        destructive:
+          // @replit shadow-xs instead of shadow, no hover because we use hover-elevate
+          "border-transparent bg-destructive text-destructive-foreground shadow-xs",
+          // @replit shadow-xs" - use badge outline variable
+        outline: "text-foreground border [border-color:var(--badge-outline)]",
+        success:
+          "border-transparent bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-500/20",
+        warning:
+          "border-transparent bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border-amber-500/20",
+        danger:
+          "border-transparent bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border-rose-500/20",
+        info:
+          "border-transparent bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 border-blue-500/20",
+        neutral:
+          "border-transparent bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400 border-slate-500/20",
+        primary:
+          "border-transparent bg-brand-primary-500/10 text-brand-primary-600 dark:bg-brand-primary-500/20 dark:text-brand-primary-400 border-brand-primary-500/20",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  )
 }
 
-const Badge: React.FC<BadgeProps> = ({ children, variant = 'info', className = '' }) => {
-  const variants = {
-    success:
-      'bg-success/10 text-success border-success/20 dark:bg-success/10 dark:text-success dark:border-success/20',
-    warning:
-      'bg-warning/10 text-warning border-warning/20 dark:bg-warning/10 dark:text-warning dark:border-warning/20',
-    danger:
-      'bg-error/10 text-error border-error/20 dark:bg-error/10 dark:text-error dark:border-error/20',
-    info: 'bg-info/10 text-info border-info/20 dark:bg-info/10 dark:text-info dark:border-info/20',
-    neutral:
-      'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600',
-    primary:
-      'bg-brand-primary-50 text-brand-primary-700 border-brand-primary-100 dark:bg-brand-brand-green-dark/10 dark:text-brand-brand-green dark:border-brand-brand-green-dark/20',
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border uppercase tracking-wider ${variants[variant]} ${className}`}
-    >
-      {children}
-    </span>
-  );
-};
+export { Badge, badgeVariants }
 
 export default Badge;

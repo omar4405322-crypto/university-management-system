@@ -28,10 +28,10 @@ export default function AdminDashboard() {
   const { isDark } = useTheme();
   const { user } = useAuth();
 
-  const CHART_GREEN = '#8BB83C';
+  const CHART_GREEN = '#9EBC48';
   const CHART_COLORS = isDark
-    ? ['#8BB83C', '#a3d150', '#b4d16e', '#5e7d25', '#6f9330', '#94a3b8']
-    : ['#8BB83C', '#22c55e', '#16a34a', '#15803d', '#6f9330', '#132231'];
+    ? ['#9EBC48', '#B8D068', '#7A9A2E', '#D6BA34', '#3B82F6', '#10B981']
+    : ['#7A9A2E', '#9EBC48', '#142632', '#D6BA34', '#3B82F6', '#10B981'];
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -162,9 +162,9 @@ export default function AdminDashboard() {
     stats?.growthData?.length > 0
       ? stats.growthData
       : (stats?.enrollmentData || []).map((row: any) => ({
-          name: String(row.name),
-          value: row.students ?? row.value ?? 0,
-        }));
+        name: String(row.name),
+        value: row.students ?? row.value ?? 0,
+      }));
 
   const collegeDistributionData = stats?.collegeDistribution || [];
   const financeOverviewData = stats?.financeOverview || [];
@@ -175,32 +175,27 @@ export default function AdminDashboard() {
     ? Math.min(100, Math.round((totalStudentsCount / subscriptionLimit) * 100))
     : 0;
 
+  const kpiStats = [
+    kpis.find(k => k.id === 'totalStudents'),
+    kpis.find(k => k.id === 'totalDoctors'),
+    kpis.find(k => k.id === 'totalColleges'),
+    kpis.find(k => k.id === 'totalPayments')
+  ].filter(Boolean);
+
   return (
-    <div className="section-gap animate-in fade-in duration-700">
+    <div className="flex flex-col gap-6 animate-page">
       {/* === Hero Header === */}
-      <div className="relative overflow-hidden rounded-[2rem] shadow-elevated" style={{ minHeight: '180px' }}>
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${CAMPUS_HERO_1}), linear-gradient(135deg, var(--color-brand-navy-500) 0%, var(--color-brand-navy-700) 100%)` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/25 rtl:bg-gradient-to-l" />
-        <div className="relative z-10 flex flex-col gap-6 p-6 md:flex-row md:items-end md:justify-between md:p-8">
-          <div className="space-y-2 max-w-2xl">
-            <h1 className="text-3xl font-black tracking-tight text-white md:text-4xl">
+      <div className="relative overflow-hidden rounded-2xl bg-brand-navy-500 text-white min-h-[9rem] py-6 flex items-center transition-all duration-300">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between w-full px-8 gap-6">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl md:text-3xl font-black text-white mb-0 leading-tight">
               {t('dashboard.welcomeBack')}, {user?.email.split('@')[0]}
             </h1>
-            {user?.role === 'COLLEGE_ADMIN' && getCollegeName() && (
-              <div className="flex items-center gap-2 mt-2">
-                <Building2 size={16} className="text-brand-primary-400" />
-                <span className="text-sm font-bold text-white/90 bg-white/10 px-3 py-1 rounded-full">
-                  {getCollegeName()}
-                </span>
-              </div>
-            )}
-            <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-white/85">
-              <Shield size={16} className="text-brand-primary-400 shrink-0" />
-              <span>{user?.role.replace('_', ' ')}</span>
-              <span className="text-white/40">|</span>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-white/60">
+              <span className="px-2 py-0.5 rounded bg-white/10 text-white font-bold text-[10px] uppercase tracking-wider">
+                {user?.role.replace('_', ' ')}
+              </span>
+              <span>•</span>
               <span>
                 {new Date().toLocaleDateString(undefined, {
                   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -208,91 +203,145 @@ export default function AdminDashboard() {
               </span>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
             <Button
               variant="outline"
               size="md"
-              className="border-white/30 bg-white/10 font-bold text-xs uppercase tracking-widest text-white backdrop-blur-sm hover:bg-white/20"
+              className="border-white/15 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-widest transition-all"
               onClick={() => navigate('/notifications')}
             >
-              <History size={16} /> {t('dashboard.activityLog')}
+              <History size={14} /> {t('dashboard.activityLog')}
             </Button>
             <Button
-              variant="primary"
+              variant="outline"
               size="md"
-              className="shadow-overlay shadow-brand-primary-500/30 font-bold text-xs uppercase tracking-widest"
+              className="border-white/15 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-widest transition-all"
               onClick={() => navigate('/settings')}
             >
-              <Zap size={16} /> {t('dashboard.quickActions')}
+              <Zap size={14} /> {t('dashboard.quickActions')}
             </Button>
           </div>
         </div>
       </div>
 
       {/* === KPI Grid === */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-5 xl:gap-6 2xl:gap-8">
-        {kpis.map((kpi, idx) => (
-          <Card
-            key={kpi.id || idx}
-            variant="default"
-            noPadding
-            onClick={() => kpi.link && navigate(kpi.link)}
-            className={`group hover:-translate-y-0.5 transition-all duration-300 overflow-hidden relative ${kpi.link ? 'cursor-pointer hover:shadow-elevated' : ''}`}
-          >
-            <div className="p-5 space-y-3">
-              {kpi.alert && (
-                <div className="absolute top-2 left-2 px-2 py-0.5 bg-brand-accent-yellow text-brand-navy-500 text-[8px] font-black rounded-full uppercase tracking-tighter animate-pulse">
-                  {kpi.alertLabel}
-                </div>
-              )}
-              <div className="flex justify-between items-start">
-                <div
-                  className={`p-2.5 rounded-2xl transition-colors duration-300 ${
-                    kpi.color === 'green'
-                      ? 'bg-brand-primary-50 text-brand-primary-600 group-hover:bg-[var(--kpi-icon-hover)] group-hover:text-white'
-                      : kpi.color === 'navy'
-                        ? 'bg-brand-navy-50 text-brand-navy-500 group-hover:bg-[var(--kpi-icon-hover)] group-hover:text-white'
-                        : 'bg-brand-accent-yellow/10 text-brand-accent-yellow group-hover:bg-[var(--kpi-icon-hover)] group-hover:text-white'
-                  }`}
-                >
-                  <kpi.icon size={18} />
-                </div>
-                {kpi.trend === 'up' && <ArrowUpRight size={14} className="text-brand-primary-600" />}
-                {kpi.trend === 'down' && <ArrowDownRight size={14} className="text-error" />}
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-brand-text-muted">
-                  {kpi.title}
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <h3 className="text-2xl font-black tracking-tight text-brand-text-primary dark:text-brand-text-main">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {kpiStats.map((kpi, idx) => {
+          const Icon = kpi.icon;
+
+          let colorName = "green";
+          if (kpi.id === 'totalStudents') colorName = "blue";
+          else if (kpi.id === 'totalDoctors') colorName = "green";
+          else if (kpi.id === 'totalColleges') colorName = "navy";
+          else if (kpi.id === 'totalPayments') colorName = "yellow";
+
+          let iconColor = "";
+          let hoverText = "";
+
+          if (colorName === 'blue') {
+            iconColor = "text-blue-500";
+            hoverText = "group-hover:text-blue-600";
+          } else if (colorName === 'green') {
+            iconColor = "text-brand-primary-500";
+            hoverText = "group-hover:text-brand-primary-700";
+          } else if (colorName === 'navy') {
+            iconColor = "text-brand-navy-500 dark:text-slate-400";
+            hoverText = "group-hover:text-brand-navy-700 dark:group-hover:text-slate-200";
+          } else if (colorName === 'yellow') {
+            iconColor = "text-brand-accent-amber";
+            hoverText = "group-hover:text-amber-600";
+          }
+
+          return (
+            <Card
+              key={kpi.id || idx}
+              variant="default"
+              noPadding
+              onClick={() => kpi.link && navigate(kpi.link)}
+              className={`group rounded-2xl border border-brand-border/60 bg-brand-bg-card hover:shadow-md transition-all duration-300 ${kpi.link ? 'cursor-pointer' : ''}`}
+            >
+              <div className="p-6 flex justify-between items-start">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs uppercase tracking-widest text-brand-text-muted font-bold">
+                      {kpi.title}
+                    </p>
+                    {kpi.alert && (
+                      <span className="px-2 py-0.5 bg-brand-accent-amber/15 text-brand-accent-amber text-[9px] font-black rounded-md uppercase tracking-wider animate-pulse">
+                        {kpi.alertLabel}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main tabular-nums">
                     {kpi.value}
                   </h3>
-                  {kpi.change && (
-                    <div className="flex items-center gap-1">
-                      <span
-                        className={`text-[10px] font-bold ${
-                          kpi.trend === 'up' ? 'text-brand-primary-600' : kpi.trend === 'down' ? 'text-error' : 'text-brand-text-muted'
-                        }`}
-                      >
-                        {kpi.change}
-                      </span>
-                      {kpi.trend === 'up' && <ArrowUpRight size={12} className="text-brand-primary-600" />}
-                      {kpi.trend === 'down' && <ArrowDownRight size={12} className="text-error" />}
-                    </div>
-                  )}
+                </div>
+                <div className={`shrink-0 transition-colors duration-300 ease-in-out ${iconColor} ${hoverText}`}>
+                  <Icon size={20} />
                 </div>
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
-      {/* === Main Content Grid === */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 2xl:gap-8">
-        <div className="lg:col-span-8 xl:col-span-9 2xl:col-span-9 section-gap">
-          <Card variant="elevated" title={t('dashboard.academicOverview')} subtitle={t('dashboard.growthTrend')}>
-            <div className="h-[400px] w-full overflow-hidden mt-6">
+      {/* === Second Row: Subscription + Academic Overview === */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 min-w-0">
+          <Card variant="default" className="rounded-2xl border border-brand-border/60 shadow-sm p-6 flex flex-col justify-between h-full bg-brand-bg-card">
+            <div className="space-y-5">
+              <div className="space-y-1.5">
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-text-muted">{t('dashboard.subscription')}</h4>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-2xl font-black uppercase text-brand-text-primary dark:text-brand-text-main leading-none mb-0">
+                    {t('dashboard.enterprise')}
+                  </h3>
+                  <span className="px-2 py-0.5 text-[9px] font-black text-brand-primary-700 bg-brand-primary-50 dark:text-brand-primary-300 dark:bg-brand-primary-950/30 rounded-md uppercase tracking-wider">
+                    {t('common.active')}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-brand-text-secondary">{t('dashboard.quotaUsage')}</span>
+                  <span className="font-black text-brand-text-primary dark:text-brand-text-main">
+                    {totalStudentsCount.toLocaleString()} / {subscriptionLimit.toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-brand-primary-500 rounded-full transition-all duration-1000"
+                    style={{ width: `${subscriptionUsagePercent}%` }}
+                  />
+                </div>
+                <p className="text-[10px] font-bold text-brand-text-muted">
+                  {subscriptionUsagePercent}% {t('dashboard.quotaUsage')} · {totalStudentsCount.toLocaleString()} {t('dashboard.totalStudents').toLowerCase()}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              variant="primary"
+              className="w-full font-black uppercase tracking-[0.15em] py-3 mt-6 shadow-sm animate-interactive"
+              onClick={() => navigate('/settings')}
+            >
+              {t('dashboard.manageSubscription')}
+            </Button>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-2 min-w-0">
+          <Card variant="default" className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card">
+            <div className="mb-4">
+              <h3 className="text-lg font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
+                {t('dashboard.academicOverview')}
+              </h3>
+              <p className="text-xs text-brand-text-secondary dark:text-brand-text-sub font-medium">
+                {t('dashboard.growthTrend')}
+              </p>
+            </div>
+            <div className="h-[300px] w-full overflow-hidden">
               {!academicChartData.length ? (
                 <div className="flex h-full flex-col items-center justify-center gap-2 text-brand-text-muted">
                   <TrendingUp size={40} className="opacity-40" />
@@ -308,177 +357,130 @@ export default function AdminDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94A3B8' : '#64748B', fontSize: 12, fontWeight: 600 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94A3B8' : '#64748B', fontSize: 12, fontWeight: 600 }} dx={-10} />
-                                        <Tooltip content={<ChartTooltip active={false} payload={[]} label={''} />} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 600 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 600 }} dx={-10} />
+                    <Tooltip content={<ChartTooltip />} />
                     <Area type="monotone" dataKey="value" stroke={CHART_GREEN} strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
             </div>
           </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card variant="elevated" title={t('dashboard.collegeDistribution')} subtitle={t('dashboard.enrollmentTrends')}>
-              <div className="h-80 w-full overflow-hidden mt-6">
-                {!collegeDistributionData.length ? (
-                  <div className="flex h-full items-center justify-center text-sm font-bold text-brand-text-muted">{t('common.noData')}</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={collegeDistributionData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: isDark ? '#94A3B8' : '#64748B' }} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: isDark ? '#94A3B8' : '#64748B' }} />
-                                            <Tooltip content={<ChartTooltip active={false} payload={[]} label={''} />} cursor={{ fill: isDark ? '#1E293B' : '#F8FAFC' }} />
-                      <Bar dataKey="students" radius={[4, 4, 0, 0]} barSize={40}>
-                        {collegeDistributionData.map((entry: any, index: number) => (
-                          <Cell key={`college-${entry.name}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </Card>
-
-            <Card variant="elevated" title={t('dashboard.financialOverview')} subtitle={t('dashboard.paymentsStatus')}>
-              <div className="h-80 w-full overflow-hidden mt-6 flex items-center">
-                {!financeOverviewData.length ? (
-                  <div className="flex h-full w-full items-center justify-center text-sm font-bold text-brand-text-muted">{t('common.noData')}</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={financeOverviewData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={6} dataKey="value">
-                        {financeOverviewData.map((entry: any, index: number) => (
-                          <Cell key={`finance-${entry.name}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                                            <Tooltip content={<ChartTooltip active={false} payload={[]} label={''} />} />
-                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card title={t('dashboard.recentActivity')} variant="default" noPadding>
-              <div className="divide-y divide-brand-border">
-                {!stats?.recentActivity?.length ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
-                    <CheckCircle2 size={32} className="text-brand-text-muted opacity-30" />
-                    <p className="text-sm font-bold text-brand-text-muted">{t('common.noData')}</p>
-                  </div>
-                ) : (
-                  stats.recentActivity.slice(0, 4).map((activity: any) => (
-                    <div key={activity.id} className="p-5 flex items-center gap-4 hover:bg-surface-subtle/60 transition-colors group cursor-pointer">
-                      <div className="w-11 h-11 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-primary-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                        <CheckCircle2 size={18} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main truncate group-hover:text-brand-primary-600 transition-colors">
-                          {activity.description || t('dashboard.newStudentRegistration')}
-                        </p>
-                        <p className="text-caption mt-0.5">
-                          {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : ''}
-                        </p>
-                      </div>
-                      <ChevronRight size={16} className="rtl:-scale-x-100 text-brand-text-muted shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="px-5 py-4 border-t border-brand-border bg-surface-subtle/50">
-                <Button variant="ghost" size="sm" className="w-full font-black text-xs uppercase tracking-widest" onClick={() => navigate('/notifications')}>
-                  {t('dashboard.viewAllActivity')}
-                </Button>
-              </div>
-            </Card>
-
-            <Card title={t('dashboard.systemStatus')} variant="default" noPadding>
-              <div className="p-6 flex flex-col items-center justify-center gap-4 min-h-[160px]">
-                <div className="p-4 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 border border-brand-primary-100 dark:border-brand-primary-900/20 flex items-center gap-3 w-full">
-                  <div className="w-2.5 h-2.5 rounded-full bg-brand-primary-600 animate-ping shrink-0" />
-                  <p className="text-xs font-black text-brand-primary-600 uppercase tracking-widest">{t('dashboard.allSystemsOperational')}</p>
-                </div>
-                <p className="text-xs text-brand-text-muted text-center font-medium">
-                  {t('dashboard.systemStatusNote') || 'Detailed metrics available to system administrators.'}
-                </p>
-              </div>
-            </Card>
-          </div>
         </div>
+      </div>
 
-        <div className="lg:col-span-4 xl:col-span-3 2xl:col-span-3 section-gap">
-          <Card variant="elevated" noPadding className="rounded-[2rem]">
-            <div className="p-8 space-y-8">
-              <div className="space-y-1">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-text-muted">{t('dashboard.subscription')}</h4>
-                <h3 className="text-3xl font-black tracking-tightest uppercase italic text-brand-text-primary dark:text-brand-text-main">{t('dashboard.enterprise')}</h3>
+      {/* === Third Row: Charts === */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card variant="default" className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card min-w-0">
+          <div className="mb-4">
+            <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
+              {t('dashboard.collegeDistribution')}
+            </h3>
+            <p className="text-[11px] text-brand-text-secondary dark:text-brand-text-sub font-medium">
+              {t('dashboard.enrollmentTrends')}
+            </p>
+          </div>
+          <div className="h-72 w-full overflow-hidden">
+            {!collegeDistributionData.length ? (
+              <div className="flex h-full items-center justify-center text-sm font-bold text-brand-text-muted">{t('common.noData')}</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={collegeDistributionData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: isDark ? '#94A3B8' : '#64748B' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: isDark ? '#94A3B8' : '#64748B' }} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: isDark ? '#1E293B' : '#F8FAFC' }} />
+                  <Bar dataKey="students" radius={[4, 4, 0, 0]} barSize={32}>
+                    {collegeDistributionData.map((entry: any, index: number) => (
+                      <Cell key={`college-${entry.name}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+
+        <Card variant="default" className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card min-w-0">
+          <div className="mb-4">
+            <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
+              {t('dashboard.financialOverview')}
+            </h3>
+            <p className="text-[11px] text-brand-text-secondary dark:text-brand-text-sub font-medium">
+              {t('dashboard.paymentsStatus')}
+            </p>
+          </div>
+          <div className="h-72 w-full overflow-hidden flex items-center">
+            {!financeOverviewData.length ? (
+              <div className="flex h-full w-full items-center justify-center text-sm font-bold text-brand-text-muted">{t('common.noData')}</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={financeOverviewData} cx="50%" cy="50%" innerRadius={60} outerRadius={85} paddingAngle={4} dataKey="value">
+                    {financeOverviewData.map((entry: any, index: number) => (
+                      <Cell key={`finance-${entry.name}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<ChartTooltip />} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: 11, fontWeight: 600 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* === Bottom Row: Activity & Health === */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card title={t('dashboard.recentActivity')} variant="default" noPadding className="border border-brand-border/60 overflow-hidden shadow-sm bg-brand-bg-card rounded-2xl">
+          <div className="divide-y divide-brand-border/40">
+            {!stats?.recentActivity?.length ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
+                <CheckCircle2 size={32} className="text-brand-text-muted opacity-30" />
+                <p className="text-sm font-bold text-brand-text-muted">{t('common.noData')}</p>
               </div>
-              <div className="p-6 rounded-2xl bg-surface-subtle border border-brand-border space-y-5">
-                <div className="flex justify-between items-center gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Target size={16} className="text-brand-primary-600 shrink-0" />
-                    <span className="text-[10px] font-black uppercase tracking-wider text-brand-text-secondary">{t('dashboard.quotaUsage')}</span>
+            ) : (
+              stats.recentActivity.slice(0, 4).map((activity: any) => (
+                <div key={activity.id} className="p-5 flex items-center gap-4 hover:bg-brand-primary-50/10 dark:hover:bg-brand-navy-900/20 transition-all duration-150 group cursor-pointer border-b border-brand-border/40 last:border-0">
+                  <div className="w-10 h-10 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/20 text-brand-primary-600 dark:text-brand-primary-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <CheckCircle2 size={16} />
                   </div>
-                  <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main whitespace-nowrap">
-                    {totalStudentsCount.toLocaleString()} / {subscriptionLimit.toLocaleString()}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-main truncate group-hover:text-brand-primary-600 dark:group-hover:text-brand-primary-400 transition-colors">
+                      {activity.description || t('dashboard.newStudentRegistration')}
+                    </p>
+                    <p className="text-[10px] text-brand-text-muted mt-1 font-bold">
+                      {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                    </p>
+                  </div>
+                  <ChevronRight size={16} className="rtl:-scale-x-100 text-brand-text-muted shrink-0 group-hover:translate-x-1 transition-transform" />
                 </div>
-                <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-brand-primary-600 rounded-full shadow-lg transition-all duration-500" style={{ width: `${subscriptionUsagePercent}%` }} />
-                </div>
-                <p className="text-[10px] font-bold text-brand-text-muted">
-                  {subscriptionUsagePercent}% {t('dashboard.quotaUsage')} · {totalStudentsCount.toLocaleString()} {t('dashboard.totalStudents').toLowerCase()}
-                </p>
-              </div>
-              <Button variant="primary" className="w-full font-black uppercase tracking-[0.2em] py-5 shadow-overlay shadow-brand-primary-500/20" onClick={() => navigate('/settings')}>
-                {t('dashboard.manageSubscription')}
-              </Button>
-            </div>
-          </Card>
+              ))
+            )}
+          </div>
+          <div className="px-5 py-4 border-t border-brand-border/40 bg-surface-subtle/50">
+            <Button variant="ghost" size="sm" className="w-full font-black text-xs uppercase tracking-widest text-brand-primary-600 dark:text-brand-primary-400 hover:bg-brand-primary-500/10" onClick={() => navigate('/notifications')}>
+              {t('dashboard.viewAllActivity')}
+            </Button>
+          </div>
+        </Card>
 
-          <Card title={t('dashboard.upcomingEvents')} variant="default" noPadding>
-            <div className="p-6 space-y-5">
-              {!stats?.upcomingEvents?.length ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
-                  <Calendar size={28} className="text-brand-text-muted opacity-30" />
-                  <p className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">{t('dashboard.noUpcomingEvents') || 'No upcoming events'}</p>
-                </div>
-              ) : (
-                stats.upcomingEvents.slice(0, 3).map((event: any) => {
-                  const d = new Date(event.date);
-                  return (
-                    <div key={event.id} className="flex gap-4 group cursor-pointer">
-                      <div className="flex flex-col items-center justify-center w-14 h-16 rounded-xl bg-surface-subtle border border-brand-border group-hover:bg-brand-primary-600 group-hover:border-brand-primary-600 transition-all duration-300">
-                        <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-none group-hover:text-white transition-colors">{d.getDate()}</span>
-                        <span className="text-[9px] font-black uppercase text-brand-text-secondary group-hover:text-white/80 transition-colors">{d.toLocaleString('default', { month: 'short' })}</span>
-                      </div>
-                      <div className="flex-1 pt-1">
-                        <h5 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight group-hover:text-brand-primary-600 transition-colors">{event.title}</h5>
-                        <p className="text-caption mt-1">{event.location || ''}</p>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </Card>
-
-          {stats?.latestAnnouncement && (
-            <Card variant="subtle" className="border-brand-accent-yellow/20">
-              <div className="flex gap-4">
-                <div className="p-3 bg-brand-accent-yellow/20 text-brand-accent-yellow rounded-xl h-fit shrink-0"><Bell size={18} /></div>
-                <div className="space-y-1.5">
-                  <h6 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight">{stats.latestAnnouncement.title || t('dashboard.examSchedulePublished')}</h6>
-                  <p className="text-xs text-brand-text-secondary font-medium leading-relaxed">{stats.latestAnnouncement.body || t('dashboard.examScheduleNote')}</p>
-                </div>
+        <Card title={t('dashboard.systemStatus')} variant="default" className="border border-brand-border/60 shadow-sm bg-brand-bg-card rounded-2xl">
+          <div className="p-2 flex flex-col gap-4">
+            <div className="p-4 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-950/10 border border-brand-primary-100/30 dark:border-brand-primary-900/20 flex items-center gap-3">
+              <div className="relative flex h-3 w-3 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-primary-600"></span>
               </div>
-            </Card>
-          )}
-        </div>
+              <p className="text-xs font-black text-brand-primary-600 dark:text-brand-primary-400 uppercase tracking-widest">
+                {t('dashboard.allSystemsOperational')}
+              </p>
+            </div>
+            <p className="text-xs text-brand-text-secondary dark:text-brand-text-sub leading-relaxed">
+              {t('dashboard.systemStatusNote') || 'All APIs, database clusters, and storage instances are fully functional. Detailed metrics are available in the logs.'}
+            </p>
+          </div>
+        </Card>
       </div>
     </div>
   );

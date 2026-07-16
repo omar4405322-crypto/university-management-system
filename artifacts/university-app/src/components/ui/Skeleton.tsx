@@ -1,49 +1,50 @@
-import React from 'react';
+import { cn } from "@/lib/utils"
 
-const Skeleton: React.FC<any> = ({ className = '', variant = 'text', count = 1 }) => {
-  const base = 'animate-pulse bg-slate-200 dark:bg-slate-700 rounded';
-
-  const variants = {
-    text: 'h-4 w-full rounded',
-    title: 'h-6 w-3/4 rounded',
-    card: 'h-32 w-full rounded-2xl',
-    kpi: 'h-28 w-full rounded-2xl',
-    row: 'h-12 w-full rounded-xl',
-    avatar: 'h-10 w-10 rounded-full',
-    circle: 'rounded-full',
-  };
-
+function Skeleton({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <>
+    <div
+      className={cn("animate-pulse rounded-md bg-primary/10", className)}
+      {...props}
+    />
+  )
+}
+Skeleton.displayName = "Skeleton"
+
+function SkeletonKPIGrid({ count = 4 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className={`${base} ${variants[variant]} ${className}`} aria-hidden="true" />
+        <div key={i} className="rounded-lg border p-4 space-y-3">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-16" />
+          <Skeleton className="h-3 w-32" />
+        </div>
       ))}
-    </>
-  );
-};
+    </div>
+  )
+}
 
-export const SkeletonCard = () => (
-  <div className="card-default p-6 space-y-4">
-    <Skeleton variant="title" />
-    <Skeleton variant="text" count={3} className="mb-2" />
-  </div>
-);
+function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-4 border-b pb-2">
+        {Array.from({ length: cols }).map((_, i) => (
+          <Skeleton key={i} className="h-4 flex-1" />
+        ))}
+      </div>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex gap-4 py-2">
+          {Array.from({ length: cols }).map((_, j) => (
+            <Skeleton key={j} className="h-4 flex-1" />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
 
-export const SkeletonTable = ({ rows = 5 }) => (
-  <div className="space-y-3">
-    <Skeleton variant="row" className="opacity-60" />
-    {Array.from({ length: rows }).map((_, i) => (
-      <Skeleton key={i} variant="row" />
-    ))}
-  </div>
-);
-
-export const SkeletonKPIGrid = () => (
-  <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-    {Array.from({ length: 4 }).map((_, i) => (
-      <Skeleton key={i} variant="kpi" />
-    ))}
-  </div>
-);
-
+export { Skeleton, SkeletonKPIGrid, SkeletonTable }
 export default Skeleton;

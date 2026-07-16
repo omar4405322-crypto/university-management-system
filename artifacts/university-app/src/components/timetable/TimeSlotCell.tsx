@@ -12,9 +12,10 @@ interface TimeSlotCellProps {
   onAdd: () => void;
   onDelete: (day: string, slot: string) => void;
   onEdit: (day: string, slot: string) => void;
+  onEditOverride?: (entry: SlotEntry) => void;
 }
 
-/** Maps a sessionType to its Tailwind color classes. */
+/** Maps a slotType to its Tailwind color classes. */
 const SESSION_COLORS: Record<string, string> = {
   LAB: 'bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-700/30',
   SEMINAR: 'bg-purple-50 border-purple-200 dark:bg-purple-900/10 dark:border-purple-700/30',
@@ -42,6 +43,7 @@ const TimeSlotCell = memo(function TimeSlotCell({
   onAdd,
   onDelete,
   onEdit,
+  onEditOverride,
 }: TimeSlotCellProps) {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language?.startsWith('ar');
@@ -67,8 +69,10 @@ const TimeSlotCell = memo(function TimeSlotCell({
     );
   }
 
-  const colorClass = SESSION_COLORS[entry.sessionType] ?? SESSION_COLORS.LECTURE;
-  const icon = SESSION_ICONS[entry.sessionType] ?? SESSION_ICONS.LECTURE;
+  const colorClass = entry.isTemporarilyModified
+    ? 'bg-amber-500/10 dark:bg-amber-500/20 border-amber-300 dark:border-amber-700'
+    : (SESSION_COLORS[entry.slotType] ?? SESSION_COLORS.LECTURE);
+  const icon = SESSION_ICONS[entry.slotType] ?? SESSION_ICONS.LECTURE;
 
   return (
     <div
@@ -109,19 +113,36 @@ const TimeSlotCell = memo(function TimeSlotCell({
 
       {/* Footer: session type badge + edit */}
       <div className="pt-2 flex justify-between items-center border-t border-brand-border/40">
-        <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-white/50 border border-brand-border/50 flex items-center gap-1">
-          {icon}
-          {t(
-            `schedule.${(entry.sessionType ?? 'LECTURE').toLowerCase()}`,
-            entry.sessionType ?? 'LECTURE'
+        <div className="flex flex-col gap-1 items-start">
+          <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-white/50 border border-brand-border/50 flex items-center gap-1">
+            {icon}
+            {t(
+              `schedule.${(entry.slotType ?? 'LECTURE').toLowerCase()}`,
+              entry.slotType ?? 'LECTURE'
+            )}
+          </span>
+          {entry.isTemporarilyModified && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+              ⊠ Temp. Change
+            </span>
           )}
-        </span>
-        <button
-          onClick={handleEdit}
-          className="text-brand-primary-500 hover:text-brand-primary-600 font-black text-[10px] uppercase tracking-wider transition-colors shrink-0"
-        >
-          {t('common.edit', 'Edit')}
-        </button>
+        </div>
+        <div className="flex flex-col gap-1 items-end">
+          <button
+            onClick={handleEdit}
+            className="text-brand-primary-500 hover:text-brand-primary-600 font-black text-[10px] uppercase tracking-wider transition-colors shrink-0"
+          >
+            {t('common.edit', 'Edit')}
+          </button>
+          {onEditOverride && (
+            <button
+              onClick={() => onEditOverride(entry)}
+              className="text-amber-600 hover:text-amber-700 font-black text-[9px] uppercase tracking-wider transition-colors shrink-0"
+            >
+              Override
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

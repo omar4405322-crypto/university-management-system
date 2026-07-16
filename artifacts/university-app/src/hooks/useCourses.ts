@@ -6,9 +6,11 @@ interface UseCoursesOptions {
   initialPage?: number;
   limit?: number;
   initialSearch?: string;
+  collegeId?: string;
+  departmentId?: string;
 }
 
-export function useCourses({ initialPage = 1, limit = 10, initialSearch = '' }: UseCoursesOptions = {}) {
+export function useCourses({ initialPage = 1, limit = 10, initialSearch = '', collegeId, departmentId }: UseCoursesOptions = {}) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +22,7 @@ export function useCourses({ initialPage = 1, limit = 10, initialSearch = '' }: 
   const fetchData = useCallback(async (extraParams: Record<string, unknown> = {}) => {
     setLoading(true);
     setError(null);
-    const params = { page, limit, search: debouncedSearch, ...extraParams };
+    const params = { page, limit, search: debouncedSearch, collegeId, departmentId, ...extraParams };
     try {
       const res = await coursesService.getCourses(params);
       if (res.success) {
@@ -35,7 +37,7 @@ export function useCourses({ initialPage = 1, limit = 10, initialSearch = '' }: 
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch]);
+  }, [page, limit, debouncedSearch, collegeId, departmentId]);
 
   useEffect(() => {
     fetchData();

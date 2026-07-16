@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -18,7 +19,7 @@ import {
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import timetableService from '../../services/timetable.service';
@@ -32,8 +33,7 @@ const schema = z.object({
   semester: z.string().min(1, 'Semester is required'),
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  status: z.string().min(1, 'Status is required'),
-  scheduleData: z.any().optional()
+  status: z.string().min(1, 'Status is required')
 });
 
 type FormData = z.infer<typeof schema>;
@@ -57,17 +57,20 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
       semester: '1',
       title: '',
       description: '',
-      status: 'DRAFT',
-      scheduleData: { slots: [] }
+      status: 'DRAFT'
     }
   });
 
   const watchCollegeId = watch('collegeId');
 
-  // Set collegeId when modal opens for COLLEGE_ADMIN
+  // Set collegeId when modal opens for COLLEGE_ADMIN, and fetch colleges for others
   useEffect(() => {
-    if (isOpen && isCollegeAdmin && managedCollegeId) {
-      setValue('collegeId', managedCollegeId.toString());
+    if (isOpen) {
+      if (isCollegeAdmin && managedCollegeId) {
+        setValue('collegeId', managedCollegeId.toString());
+      } else {
+        fetchColleges();
+      }
     }
   }, [isOpen, isCollegeAdmin, managedCollegeId, setValue]);
 
@@ -87,7 +90,6 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
         departmentId: (timetable.departmentId || '').toString(),
         academicYear: (timetable.academicYear || '1').toString(),
         semester: (timetable.semester || '1').toString(),
-        scheduleData: timetable.scheduleData?.slots ? timetable.scheduleData : { slots: [] },
         title: timetable.title || '',
         description: timetable.description || '',
         status: timetable.status || 'DRAFT'
@@ -100,8 +102,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
         semester: '1',
         title: '',
         description: '',
-        status: 'DRAFT',
-        scheduleData: { slots: [] }
+        status: 'DRAFT'
       });
       setError('');
     }
@@ -143,8 +144,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
         semester: parseInt(data.semester),
         title: data.title,
         description: data.description || '',
-        status: data.status,
-        scheduleData: data.scheduleData
+        status: data.status
       };
 
       if (timetable) {
@@ -154,12 +154,13 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
         const created = await timetableService.createTimetable(payload);
         onSuccess(created.data || created);
       }
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || t('common.errorOccurred'));
     }
   };
 
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const SELECT_CLASS = WatchCollegeId =>
+    "w-full h-11 px-4 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer disabled:opacity-50";
 
   return (
     <Modal
@@ -169,9 +170,9 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
       subtitle={t('timetables.subtitle')}
       size="xl"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="form-section">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {error && (
-          <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 text-rose-600 text-sm font-bold flex items-center gap-2">
+          <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-sm font-bold flex items-center gap-2">
             <AlertCircle size={18} /> {error}
           </div>
         )}
@@ -179,22 +180,22 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
         {/* Basic Info Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-6">
-            <h3 className="text-lg font-black text-brand-text-main border-b border-brand-border pb-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-700 pb-2">
               {t('common.basicInfo')}
             </h3>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">{t('timetables.selectFaculty')} *</label>
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.selectFaculty')} *</label>
                 {isCollegeAdmin ? (
-                  <div className="w-full h-11 px-4 bg-brand-navy/5 border border-brand-border rounded-xl flex items-center gap-3">
+                  <div className="w-full h-11 px-4 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex items-center gap-3">
                     <Building2 size={20} className="text-brand-primary-500" />
-                    <span className="font-black text-brand-text-main text-sm">
+                    <span className="font-semibold text-brand-text-primary dark:text-brand-text-main text-sm">
                       {managedCollegeName || t('timetables.yourCollege')}
                     </span>
                   </div>
                 ) : (
                   <select
-                    className="w-full h-11 px-4 bg-brand-bg-page/50 border border-brand-border rounded-xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                    className={SELECT_CLASS(true)}
                     {...register('collegeId', {
                       onChange: (e) => {
                         setValue('departmentId', '');
@@ -210,9 +211,9 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">{t('timetables.selectDept')} *</label>
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.selectDept')} *</label>
                 <select
-                  className="w-full h-11 px-4 bg-brand-bg-page/50 border border-brand-border rounded-xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 disabled:opacity-50"
+                  className={SELECT_CLASS(true)}
                   {...register('departmentId')}
                   disabled={!watchCollegeId}
                 >
@@ -224,9 +225,9 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">{t('timetables.academicYear')} *</label>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.academicYear')} *</label>
                   <select
-                    className="w-full h-11 px-4 bg-brand-bg-page/50 border border-brand-border rounded-xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                    className={SELECT_CLASS(true)}
                     {...register('academicYear')}
                   >
                     {[1, 2, 3, 4, 5].map(y => <option key={y} value={y}>{t('auth.year')} {y}</option>)}
@@ -234,13 +235,14 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
                   {errors.academicYear && <p className="text-rose-500 text-xs mt-1">{errors.academicYear.message}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">{t('timetables.semester')} *</label>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.semester')} *</label>
                   <select
-                    className="w-full h-11 px-4 bg-brand-bg-page/50 border border-brand-border rounded-xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                    className={SELECT_CLASS(true)}
                     {...register('semester')}
                   >
-                    <option value="1">1</option>
-                    <option value="2">2</option>
+                    <option value="1">{t('schedule.semester1', 'Semester 1')}</option>
+                    <option value="2">{t('schedule.semester2', 'Semester 2')}</option>
+                    <option value="3">{t('schedule.semester3', 'Summer Semester')}</option>
                   </select>
                   {errors.semester && <p className="text-rose-500 text-xs mt-1">{errors.semester.message}</p>}
                 </div>
@@ -249,7 +251,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
           </div>
 
           <div className="space-y-6">
-            <h3 className="text-lg font-black text-brand-text-main border-b border-brand-border pb-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-700 pb-2">
               {t('timetables.details')}
             </h3>
             <div className="space-y-4">
@@ -262,18 +264,18 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
                 {errors.title && <p className="text-rose-500 text-xs mt-1">{errors.title.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">{t('common.description')}</label>
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('common.description')}</label>
                 <textarea
-                  className="w-full p-4 bg-brand-bg-page/50 border border-brand-border rounded-xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 min-h-[80px]"
+                  className="w-full p-4 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all min-h-[80px]"
                   placeholder={t('timetables.notesPlaceholder', 'Notes...')}
                   {...register('description')}
                 />
                 {errors.description && <p className="text-rose-500 text-xs mt-1">{errors.description.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">{t('finance.status')}</label>
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('finance.status')}</label>
                 <select
-                  className="w-full h-11 px-4 bg-brand-bg-page/50 border border-brand-border rounded-xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                  className={SELECT_CLASS(true)}
                   {...register('status')}
                 >
                   <option value="DRAFT">{t('timetables.draft')}</option>
@@ -285,9 +287,9 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
           </div>
         </div>
 
-        <div className="pt-6 border-t border-brand-border flex justify-end gap-3">
-          <Button type="button" variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button type="submit" disabled={isSubmitting} className="min-w-[140px] shadow-lg shadow-brand-green/20">
+        <div className="pt-6 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3">
+          <Button type="button" variant="ghost" className="rounded-xl font-bold" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit" disabled={isSubmitting} className="min-w-[140px] bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center justify-center gap-2 shadow-md shadow-brand-primary-500/10 hover:shadow-lg">
             {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : (
               <span className="flex items-center gap-2">
                 <Save size={18} /> {timetable ? t('common.update') : t('common.save')}

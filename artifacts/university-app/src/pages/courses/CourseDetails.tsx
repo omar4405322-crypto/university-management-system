@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 // FIXED: Course detail page with breadcrumbs - Phase 6
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -107,7 +107,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             <h1 className="text-3xl font-black text-brand-text-main">{course.name}</h1>
             <p className="text-sm text-brand-text-sub font-bold mt-1">
               {course.department?.name}
-              {course.doctor && ` · ${course.doctor.firstName} ${course.doctor.lastName}`}
+              {course.sections && course.sections.length > 0 && ` · ${course.sections.length} ${t('sections.title', 'Sections')}`}
             </p>
           </div>
         </div>

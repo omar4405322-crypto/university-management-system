@@ -1,15 +1,19 @@
 // FIXED: Non-blocking 2FA reminder for super admins (no route redirect)
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Shield } from 'lucide-react';
+import { AlertTriangle, Shield, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { FEATURE_FLAGS } from '../constants/featureFlags';
 
 const SuperAdminTwoFactorBanner = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const [isDismissed, setIsDismissed] = useState(false);
 
-  if (user?.role !== 'SUPER_ADMIN' || user?.twoFactorEnabled) {
+  // TEMP-DISABLED-2FA: Check REQUIRE_2FA feature flag to temporarily disable warnings.
+  // Re-enable this before production launch — see Task 53 in UI-UX-IMPROVEMENT-LOG.md
+  if (!FEATURE_FLAGS.REQUIRE_2FA || user?.role !== 'SUPER_ADMIN' || user?.twoFactorEnabled || isDismissed) {
     return null;
   }
 
@@ -34,6 +38,13 @@ const SuperAdminTwoFactorBanner = () => {
         <Shield size={16} />
         {t('profile.enable2fa')}
       </Link>
+      <button 
+        onClick={() => setIsDismissed(true)} 
+        className="p-1 hover:bg-amber-100 dark:hover:bg-amber-800/50 rounded-lg text-amber-700/60 hover:text-amber-700 transition-colors shrink-0"
+        aria-label="Dismiss"
+      >
+        <X size={18} />
+      </button>
     </div>
   );
 };

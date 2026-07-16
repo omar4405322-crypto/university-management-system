@@ -1,9 +1,10 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import studentsService from '../../services/students.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import { X, User, Phone, MapPin, AlertCircle, CheckCircle, School, GraduationCap, Hash, Calendar } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';

@@ -1,14 +1,17 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Printer } from 'lucide-react';
-import type { Department, TimetableFilters } from '../../types/timetable.types';
+import type { Department, TimetableFilters, College } from '../../types/timetable.types';
 
 const YEARS = ['1', '2', '3', '4', '5'] as const;
-const SEMS = ['1', '2'] as const;
+const SEMS = ['1', '2', '3'] as const;
 
 interface TimetableFiltersBarProps {
   filters: TimetableFilters;
   departments: Department[];
+  colleges: College[];
+  loadingColleges: boolean;
+  isCollegeAdmin: boolean;
   loadingDepts: boolean;
   isDeptAdminLocked: boolean;
   saving: boolean;
@@ -27,7 +30,10 @@ const SELECT_CLASS =
  */
 export default function TimetableFiltersBar({
   filters,
+  colleges = [],
   departments,
+  loadingColleges,
+  isCollegeAdmin,
   loadingDepts,
   isDeptAdminLocked,
   saving,
@@ -35,22 +41,47 @@ export default function TimetableFiltersBar({
   onChange,
   onSave,
 }: TimetableFiltersBarProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
 
   const update = (field: keyof TimetableFilters, value: string) => {
-    onChange({ ...filters, [field]: value });
+    if (field === 'collegeId') {
+      onChange({ ...filters, collegeId: value, departmentId: '' });
+    } else {
+      onChange({ ...filters, [field]: value });
+    }
   };
 
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 flex-wrap">
       {/* ── Selects ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-4 flex-wrap flex-1">
+        {!isCollegeAdmin && (
+          <select
+            className={`w-full md:w-56 ${SELECT_CLASS}`}
+            value={filters.collegeId || ''}
+            onChange={(e) => update('collegeId', e.target.value)}
+            aria-label={t('timetables.selectCollege', 'Select College')}
+          >
+            <option value="">
+              {loadingColleges
+                ? t('common.loading', 'Loading...')
+                : t('timetables.selectCollege', 'All Colleges')}
+            </option>
+            {colleges.map((c) => (
+              <option key={c.id} value={String(c.id)}>
+                {isRTL ? c.nameAr || c.name : c.name}
+              </option>
+            ))}
+          </select>
+        )}
+
         {/* Department */}
         <select
           className={`w-full md:w-56 ${SELECT_CLASS}`}
           value={filters.departmentId}
           onChange={(e) => update('departmentId', e.target.value)}
-          disabled={isDeptAdminLocked}
+          disabled={isDeptAdminLocked || (!isCollegeAdmin && !filters.collegeId)}
           aria-label={t('timetables.selectDept', 'Select Department')}
         >
           <option value="">
@@ -60,7 +91,7 @@ export default function TimetableFiltersBar({
           </option>
           {departments.map((d) => (
             <option key={d.id} value={String(d.id)}>
-              {d.name}
+              {isRTL ? d.nameAr || d.name : d.name}
             </option>
           ))}
         </select>
@@ -88,7 +119,7 @@ export default function TimetableFiltersBar({
         >
           {SEMS.map((s) => (
             <option key={s} value={s}>
-              {t('timetables.semester', 'Semester')} {s}
+              {t(`schedule.semester${s}`, s === '3' ? 'Summer Semester' : `Semester ${s}`)}
             </option>
           ))}
         </select>

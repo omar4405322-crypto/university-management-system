@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, Users, GraduationCap, BookOpen, Building2, Layers, X, Command } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -12,7 +12,7 @@ const GlobalSearch = () => {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState<any>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -208,13 +208,13 @@ const GlobalSearch = () => {
                           key={item.id}
                           onClick={() => go(item.path)}
                           onMouseEnter={() => setSelectedIndex(globalIdx)}
-                          className={`w-full text-start px-3 py-3 rounded-2xl flex items-center justify-between transition-colors ${isSelected ? 'bg-brand-primary-600/10 text-brand-primary-600' : 'hover:bg-surface-subtle text-brand-text-primary dark:text-brand-text-main'}`}
+                          className={`w-full text-start px-3 py-3 rounded-2xl flex items-center justify-between transition-colors ${isSelected ? 'bg-brand-brand-green-dark/10 text-brand-primary-600' : 'hover:bg-surface-subtle text-brand-text-primary dark:text-brand-text-main'}`}
                         >
                           <div className="flex flex-col gap-0.5">
                             <span className={`text-sm font-bold ${isSelected ? 'text-brand-primary-600' : ''}`}>{item.title}</span>
                             {item.meta && <span className="text-xs text-brand-text-muted font-medium">{item.meta}</span>}
                           </div>
-                          {isSelected && <span className="text-xs font-bold text-brand-primary-600 opacity-60 px-2 py-1 bg-brand-primary-600/10 rounded-lg">Enter ↵</span>}
+                          {isSelected && <span className="text-xs font-bold text-brand-brand-green-dark opacity-60 px-2 py-1 bg-brand-brand-green-dark/10 rounded-lg">Enter ↵</span>}
                         </button>
                       );
                     })}
@@ -242,9 +242,9 @@ const GlobalSearch = () => {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="hidden md:flex items-center justify-between w-64 lg:w-80 h-10 px-4 rounded-xl border border-brand-border bg-surface-subtle hover:bg-brand-bg-card hover:border-brand-primary-600/50 transition-all group"
+        className="hidden md:flex items-center justify-between w-64 lg:w-80 h-10 px-4 rounded-xl border border-brand-border bg-surface-subtle hover:bg-brand-bg-card hover:border-brand-brand-green-dark/50 transition-all group"
       >
-        <div className="flex items-center gap-2 text-brand-text-muted group-hover:text-brand-primary-600 transition-colors">
+        <div className="flex items-center gap-2 text-brand-text-muted group-hover:text-brand-brand-green-dark transition-colors">
           <Search size={16} />
           <span className="text-sm">{t('search.placeholder')}...</span>
         </div>

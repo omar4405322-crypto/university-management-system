@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import os from 'os';
 dotenv.config();
 
 import crypto from 'crypto';
@@ -87,6 +88,16 @@ const PORT: number = Number(process.env.PORT) || 5000;
 
 server.listen(PORT, '0.0.0.0', () => {
   logger.info(`[SERVER] Running on http://localhost:${PORT}`);
+  
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) {
+        logger.info(`[SERVER] Running on http://${net.address}:${PORT} (Network)`);
+      }
+    }
+  }
+  
   logger.info(`[ENV] NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
 });
 

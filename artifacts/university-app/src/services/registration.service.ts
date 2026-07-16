@@ -5,9 +5,9 @@ import api from './api';
 const registrationService = {
   getRequests: (): Promise<ApiResponse<any>> => apiRequest(() => api.get('/auth/requests')),
 
-  approveRequest: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/auth/requests/${id}/approve`)),
+  approveRequest: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/auth/requests/${id}/approve`, {})),
 
-  rejectRequest: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/auth/requests/${id}/reject`)),
+  rejectRequest: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/auth/requests/${id}/reject`, {})),
 };
 
 export default registrationService;

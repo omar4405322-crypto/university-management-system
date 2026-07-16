@@ -5,6 +5,75 @@ import { createNotification } from '../utils/notification.utils';
 import { AppError, AuthorizationError, NotFoundError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
 
+const recalculateAbsence = async (studentId: number, courseId: number) => {
+  const statsData = await prisma.attendance.groupBy({
+    by: ['status'],
+    where: { studentId, courseId },
+    _count: true
+  });
+
+  let total = 0;
+  let excused = 0;
+  let absent = 0;
+  let late = 0;
+  
+  statsData.forEach(item => {
+    total += item._count;
+    if (item.status === 'EXCUSED') excused += item._count;
+    if (item.status === 'ABSENT') absent += item._count;
+    if (item.status === 'LATE') late += item._count;
+  });
+
+  const activeTotal = total - excused;
+  if (activeTotal === 0) return;
+
+  const absencePercent = ((absent + (late * 0.5)) / activeTotal) * 100;
+
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    include: { department: true }
+  });
+
+  const policies = await prisma.absenceThresholdPolicy.findMany({
+    where: {
+      OR: [
+        { courseId },
+        { departmentId: course?.departmentId },
+        { departmentId: null, courseId: null }
+      ]
+    }
+  });
+  
+  let policy = policies.find((p: any) => p.courseId === courseId);
+  if (!policy) policy = policies.find((p: any) => p.departmentId === course?.departmentId);
+  if (!policy) policy = policies.find((p: any) => p.courseId === null && p.departmentId === null);
+  
+  const maxAbsencePercent = policy ? policy.maxAbsencePercent : 25;
+
+  if (absencePercent >= maxAbsencePercent) {
+    const enrollment = await prisma.enrollment.findFirst({
+      where: { studentId, courseId }
+    });
+
+    if (enrollment && enrollment.status !== 'BLOCKED') {
+      await prisma.enrollment.update({
+        where: { id: enrollment.id },
+        data: { status: 'BLOCKED' }
+      });
+
+      const student = await prisma.student.findUnique({ where: { id: studentId }});
+      if (student) {
+        await createNotification({
+          userId: student.userId,
+          title: 'Enrollment Blocked',
+          message: `Your enrollment in ${course?.name} has been blocked due to exceeding the maximum absence limit (${maxAbsencePercent}%).`,
+          type: 'error'
+        });
+      }
+    }
+  }
+};
+
 /**
  * @desc    Record attendance for multiple students
  * @route   POST /api/attendance
@@ -15,33 +84,43 @@ export const recordAttendance = catchAsync(
     const { courseId, date, records } = req.body; // records: [{ studentId, status, remarks }]
 
     // Validate course scope
-    const course = await prisma.course.findUnique({
-      where: { id: parseInt(courseId as string) },
+    const courseScope: any = getScopeWhere(req.user!, 'course');
+    const course = await prisma.course.findFirst({
+      where: {
+        AND: [
+          { id: parseInt(courseId as string) },
+          courseScope
+        ]
+      },
       include: { department: true },
     });
-    if (!course) return next(new AppError('Course not found', 404));
-    const courseScope: any = getScopeWhere(req.user!, 'course');
-    if (courseScope && Object.keys(courseScope).length) {
-      if (
-        courseScope.department &&
-        course.department?.collegeId !== courseScope.department.collegeId
-      )
-        return next(new AuthorizationError('Access denied'));
-      if (courseScope.departmentId && course.departmentId !== courseScope.departmentId)
-        return next(new AuthorizationError('Access denied'));
-    }
+    if (!course) return next(new AuthorizationError('Access denied: You are not authorized for this course.'));
 
     const attendanceDate = date ? new Date(date as string) : new Date();
+    attendanceDate.setHours(0, 0, 0, 0);
 
     const createdRecords = await prisma.$transaction(
       records.map((record: any) =>
-        prisma.attendance.create({
-          data: {
+        prisma.attendance.upsert({
+          where: {
+            studentId_courseId_date: {
+              studentId: parseInt(record.studentId),
+              courseId: parseInt(courseId as string),
+              date: attendanceDate
+            }
+          },
+          update: {
+            status: record.status,
+            remarks: record.remarks,
+            recordedById: req.user!.id
+          },
+          create: {
             studentId: parseInt(record.studentId),
             courseId: parseInt(courseId as string),
             date: attendanceDate,
             status: record.status,
             remarks: record.remarks,
+            recordedById: req.user!.id
           },
           include: {
             student: { select: { userId: true, firstName: true, lastName: true } },
@@ -52,8 +131,8 @@ export const recordAttendance = catchAsync(
     );
 
     // Send attendance notifications concurrently (non-blocking, errors logged)
-    Promise.all(
-      createdRecords
+    Promise.all([
+      ...createdRecords
         .filter((a: any) => a.status === 'ABSENT' || a.status === 'LATE')
         .map(async (attendance: any) => {
           try {
@@ -67,8 +146,11 @@ export const recordAttendance = catchAsync(
             const logger = require('../utils/logger.js').default || require('../utils/logger.js');
             logger.error(`[ATTENDANCE] Failed to send notification: ${err.message}`);
           }
-        })
-    ).catch(() => {}); // Non-blocking: response already sent
+        }),
+      ...Array.from(new Set(records.map((r: any) => parseInt(r.studentId)))).map(
+        (studentId: number) => recalculateAbsence(studentId, parseInt(courseId as string))
+      )
+    ]).catch(() => {}); // Non-blocking: response already sent
 
     res.status(201).json({ success: true, data: createdRecords });
   }
@@ -86,22 +168,18 @@ export const getCourseAttendance = catchAsync(
 
     const where: any = { courseId: parseInt(courseId as string) };
 
-    // Enforce scope: ensure course within admin scope
-    const course = await prisma.course.findUnique({
-      where: { id: parseInt(courseId as string) },
+    // Enforce scope: ensure course within admin/doctor scope
+    const courseScope: any = getScopeWhere(req.user!, 'course');
+    const course = await prisma.course.findFirst({
+      where: {
+        AND: [
+          { id: parseInt(courseId as string) },
+          courseScope
+        ]
+      },
       include: { department: true },
     });
-    if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
-    const courseScope: any = getScopeWhere(req.user!, 'course');
-    if (courseScope && Object.keys(courseScope).length) {
-      if (
-        courseScope.department &&
-        course.department?.collegeId !== courseScope.department.collegeId
-      )
-        return res.status(403).json({ success: false, message: 'Access denied' });
-      if (courseScope.departmentId && course.departmentId !== courseScope.departmentId)
-        return res.status(403).json({ success: false, message: 'Access denied' });
-    }
+    if (!course) return res.status(403).json({ success: false, message: 'Access denied: You are not authorized for this course.' });
     if (date) {
       const startOfDay = new Date(date as string);
       startOfDay.setHours(0, 0, 0, 0);
@@ -118,13 +196,33 @@ export const getCourseAttendance = catchAsync(
       where,
       include: {
         student: {
-          select: { id: true, studentId: true, firstName: true, lastName: true },
+          select: { id: true, studentId: true, firstName: true, lastName: true, group: { select: { id: true, name: true } } },
         },
+        recordedBy: {
+          select: {
+            id: true,
+            role: true,
+            doctor: { select: { firstName: true, lastName: true } },
+            teachingAssistant: { select: { firstName: true, lastName: true } }
+          }
+        }
       },
       orderBy: { date: 'desc' },
     });
 
-    res.json({ success: true, data: attendance });
+    const mappedData = attendance.map((record: any) => ({
+      ...record,
+      recordedBy: record.recordedBy ? {
+        id: record.recordedBy.id,
+        role: record.recordedBy.role,
+        firstName: record.recordedBy.doctor?.firstName || record.recordedBy.teachingAssistant?.firstName || 'Admin',
+        lastName: record.recordedBy.doctor?.lastName || record.recordedBy.teachingAssistant?.lastName || 'User'
+      } : null,
+      group: record.student.studentGroup || null,
+      recordedAt: record.createdAt
+    }));
+
+    return res.json({ success: true, data: mappedData });
   }
 );
 
@@ -148,18 +246,16 @@ export const getStudentAttendance = catchAsync(
       }
     } else {
       // If admin viewing other student's attendance, ensure student is within scope
-      const studentRecord = await prisma.student.findUnique({
-        where: { id: studentId },
-        include: { department: true },
+      const studentScope: any = getScopeWhere(req.user!, 'student');
+      const studentRecord = await prisma.student.findFirst({
+        where: {
+          AND: [
+            { id: studentId },
+            studentScope
+          ]
+        },
       });
-      if (!studentRecord) return next(new NotFoundError('Student not found'));
-      const deptScope: any = getScopeWhere(req.user!, 'department');
-      if (deptScope && Object.keys(deptScope).length) {
-        if (deptScope.collegeId && studentRecord.department?.collegeId !== deptScope.collegeId)
-          return next(new AuthorizationError('Access denied'));
-        if (deptScope.id && studentRecord.departmentId !== deptScope.id)
-          return next(new AuthorizationError('Access denied'));
-      }
+      if (!studentRecord) return next(new AuthorizationError('Access denied or Student not found'));
     }
 
     const { courseId, page = 1, limit = 20 } = req.query;
@@ -199,9 +295,10 @@ export const getStudentAttendance = catchAsync(
       stats[item.status] = item._count;
     });
 
-    const percentage = total > 0 ? ((stats.PRESENT + stats.LATE * 0.5) / total) * 100 : 0;
+    const effectiveTotal = total - stats.EXCUSED;
+    const percentage = effectiveTotal > 0 ? ((stats.PRESENT + stats.LATE * 0.5) / effectiveTotal) * 100 : 0;
 
-    res.json({
+    return res.json({
       success: true,
       data: attendance,
       pagination: {
@@ -216,3 +313,297 @@ export const getStudentAttendance = catchAsync(
     });
   }
 );
+
+export const getMyCourses = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const userId = req.user!.id;
+  const userRole = req.user!.role;
+
+  if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(userRole)) {
+    const courseScope = getScopeWhere(req.user!, 'course');
+    const courses = await prisma.course.findMany({
+      where: courseScope,
+      select: { id: true, name: true, courseCode: true }
+    });
+    return res.json({ success: true, data: courses });
+  }
+
+  if (userRole === 'STUDENT') {
+    const myStudent = await prisma.student.findUnique({ where: { userId } });
+    if (!myStudent) return res.json({ success: true, data: [] });
+
+    // Get courses from schedule slots matching the student's group
+    const slotCourseIds: number[] = [];
+    if (myStudent.groupId) {
+      const slots = await prisma.scheduleSlot.findMany({
+        where: { groupId: myStudent.groupId },
+        select: { courseId: true }
+      });
+      slots.forEach((s: any) => slotCourseIds.push(s.courseId));
+    }
+
+    // Also get courses from enrollments
+    const enrollments = await prisma.enrollment.findMany({
+      where: { studentId: myStudent.id, status: 'ENROLLED' },
+      select: { courseId: true }
+    });
+
+    // Also get courses from same department/year
+    const deptCourses = myStudent.departmentId ? await prisma.course.findMany({
+      where: { departmentId: myStudent.departmentId, year: myStudent.year },
+      select: { id: true }
+    }) : [];
+
+    const courseIds = Array.from(new Set([
+      ...slotCourseIds,
+      ...enrollments.map((e: any) => e.courseId),
+      ...deptCourses.map((c: any) => c.id)
+    ]));
+
+    const courses = await prisma.course.findMany({
+      where: { id: { in: courseIds } },
+      select: { id: true, name: true, courseCode: true }
+    });
+
+    return res.json({ success: true, data: courses });
+  }
+
+  if (userRole === 'TEACHING_ASSISTANT') {
+    const myTA = await prisma.teachingAssistant.findUnique({ where: { userId } });
+    if (!myTA) return res.json({ success: true, data: [] });
+    
+    const slots = await prisma.scheduleSlot.findMany({
+      where: { teachingAssistantId: myTA.id },
+      select: { courseId: true }
+    });
+    
+    const courseIds = Array.from(new Set(slots.map((s: any) => s.courseId)));
+    const courses = await prisma.course.findMany({
+      where: { id: { in: courseIds } },
+      select: { id: true, name: true, courseCode: true }
+    });
+    return res.json({ success: true, data: courses });
+  }
+
+  if (userRole === 'DOCTOR') {
+    const myDoctor = await prisma.doctor.findUnique({ where: { userId } });
+    if (!myDoctor) return res.json({ success: true, data: [] });
+    
+    const slots = await prisma.scheduleSlot.findMany({
+      where: { doctorId: myDoctor.id },
+      select: { courseId: true }
+    });
+    
+    const courseIds = Array.from(new Set(slots.map((s: any) => s.courseId)));
+    const courses = await prisma.course.findMany({
+      where: { id: { in: courseIds } },
+      select: { id: true, name: true, courseCode: true }
+    });
+    return res.json({ success: true, data: courses });
+  }
+
+  return res.json({ success: true, data: [] });
+});
+
+export const getMyAttendance = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const student = await prisma.student.findUnique({
+    where: { userId: req.user!.id },
+    select: { id: true }
+  });
+  if (!student) return next(new AuthorizationError('Student profile not found.'));
+
+  const studentId = student.id;
+  const { courseId } = req.query;
+  const where: any = { studentId };
+  if (courseId) where.courseId = parseInt(courseId as string);
+
+  const attendance = await prisma.attendance.findMany({
+    where,
+    include: { course: { select: { name: true, courseCode: true } } },
+    orderBy: { date: 'desc' }
+  });
+  return res.json({ success: true, data: attendance });
+});
+
+export const getAttendanceSummary = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { courseId } = req.params;
+
+  const courseScope: any = getScopeWhere(req.user!, 'course');
+  const course = await prisma.course.findFirst({
+    where: {
+      AND: [
+        { id: parseInt(courseId as string) },
+        courseScope
+      ]
+    }
+  });
+  if (!course) return next(new AuthorizationError('Access denied: You are not authorized for this course.'));
+
+  const statsData = await prisma.attendance.groupBy({
+    by: ['status'],
+    where: { courseId: parseInt(courseId as string) },
+    _count: true
+  });
+  const stats: any = { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0 };
+  statsData.forEach(item => stats[item.status] = item._count);
+  return res.json({ success: true, data: stats });
+});
+
+export const bulkSaveAttendance = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { courseId, date, records } = req.body;
+
+  const courseScope: any = getScopeWhere(req.user!, 'course');
+  const course = await prisma.course.findFirst({
+    where: {
+      AND: [
+        { id: parseInt(courseId as string) },
+        courseScope
+      ]
+    }
+  });
+  if (!course) return next(new AuthorizationError('Access denied: You are not authorized for this course.'));
+
+  const dateObj = new Date(date);
+  dateObj.setHours(0, 0, 0, 0);
+
+  const operations = records.map((record: any) => 
+    prisma.attendance.upsert({
+      where: {
+        studentId_courseId_date: {
+          studentId: record.studentId,
+          courseId: parseInt(courseId),
+          date: dateObj
+        }
+      },
+      update: {
+        status: record.status,
+        remarks: record.remarks || null,
+        recordedById: req.user!.id
+      },
+      create: {
+        studentId: record.studentId,
+        courseId: parseInt(courseId),
+        date: dateObj,
+        status: record.status,
+        remarks: record.remarks || null,
+        recordedById: req.user!.id
+      }
+    })
+  );
+
+  await prisma.$transaction(operations);
+
+  // Recalculate absences
+  const uniqueStudents = Array.from(new Set(records.map((r: any) => parseInt(r.studentId))));
+  uniqueStudents.forEach((studentId: any) => {
+    recalculateAbsence(studentId, parseInt(courseId)).catch(() => {});
+  });
+
+  return res.json({ success: true, message: 'Attendance bulk saved successfully' });
+});
+
+export const getAttendanceRecords = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { courseId, date, departmentId, collegeId, page = 1, limit = 50 } = req.query;
+
+  const where: any = {};
+  
+  if (courseId) where.courseId = parseInt(courseId as string);
+  if (date) {
+    const startOfDay = new Date(date as string);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date as string);
+    endOfDay.setHours(23, 59, 59, 999);
+    where.date = { gte: startOfDay, lte: endOfDay };
+  }
+  
+  if (departmentId) {
+    where.course = { departmentId: parseInt(departmentId as string) };
+  } else if (collegeId) {
+    where.course = { department: { collegeId: parseInt(collegeId as string) } };
+  }
+
+  const courseScope: any = getScopeWhere(req.user!, 'course');
+  if (courseScope && Object.keys(courseScope).length) {
+    if (where.course) {
+      where.course = { AND: [where.course, courseScope] };
+    } else {
+      where.course = courseScope;
+    }
+  }
+
+  const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+
+  const [attendance, total] = await Promise.all([
+    prisma.attendance.findMany({
+      where,
+      include: {
+        student: {
+          select: { id: true, studentId: true, firstName: true, lastName: true, group: { select: { id: true, name: true } } },
+        },
+        course: { select: { name: true, courseCode: true } },
+        recordedBy: {
+          select: {
+            id: true,
+            role: true,
+            doctor: { select: { firstName: true, lastName: true } },
+            teachingAssistant: { select: { firstName: true, lastName: true } }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: parseInt(limit as string),
+    }),
+    prisma.attendance.count({ where })
+  ]);
+
+  const mappedData = attendance.map((record: any) => ({
+    ...record,
+    recordedBy: record.recordedBy ? {
+      id: record.recordedBy.id,
+      role: record.recordedBy.role,
+      firstName: record.recordedBy.doctor?.firstName || record.recordedBy.teachingAssistant?.firstName || 'Admin',
+      lastName: record.recordedBy.doctor?.lastName || record.recordedBy.teachingAssistant?.lastName || 'User'
+    } : null,
+    group: record.student.studentGroup || null,
+    recordedAt: record.createdAt
+  }));
+
+  return res.json({ 
+    success: true, 
+    data: mappedData,
+    pagination: {
+      total,
+      page: parseInt(page as string),
+      totalPages: Math.ceil(total / parseInt(limit as string))
+    }
+  });
+});
+
+export const unblockEnrollment = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { enrollmentId } = req.params;
+  
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { id: parseInt(enrollmentId as string) },
+    include: { course: true, student: true }
+  });
+  
+  if (!enrollment) return next(new NotFoundError('Enrollment not found'));
+
+  const courseScope: any = getScopeWhere(req.user!, 'course');
+  if (courseScope && Object.keys(courseScope).length) {
+    const courseCheck = await prisma.course.findFirst({
+      where: { AND: [{ id: enrollment.courseId }, courseScope] }
+    });
+    if (!courseCheck) return next(new AuthorizationError('Access denied: You are not authorized for this course.'));
+  }
+
+  if (enrollment.status !== 'BLOCKED') return res.json({ success: true, message: 'Enrollment is not blocked' });
+
+  await prisma.enrollment.update({
+    where: { id: enrollment.id },
+    data: { status: 'ENROLLED' }
+  });
+
+  return res.json({ success: true, message: 'Student unblocked successfully' });
+});
+

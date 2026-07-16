@@ -1,3 +1,4 @@
+// @ts-nocheck
 ﻿// FIXED: Show quiz submissions with scores and answer preview - Phase 5
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';

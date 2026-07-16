@@ -10,11 +10,17 @@ const departmentService = {
 
   getDepartmentById: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/departments/${id}`)),
 
+  getDepartmentsByCollege: (collegeId: string): Promise<ApiResponse<any>> => 
+    apiRequest(() => api.get('/departments', { params: { collegeId } })),
+
   createDepartment: (data?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post('/departments', data)),
 
   updateDepartment: (id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/departments/${id}`, data)),
 
   deleteDepartment: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/departments/${id}`)),
+
+  autoDivideStudents: (departmentId: string, numberOfGroups: number): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.post(`/student-groups/${departmentId}/auto-divide`, { numberOfGroups })),
 };
 
 export default departmentService;

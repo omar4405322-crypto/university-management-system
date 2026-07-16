@@ -3,21 +3,26 @@ import departmentService from '../services/department.service';
 import coursesService from '../services/courses.service';
 import doctorsService from '../services/doctors.service';
 import timetableService from '../services/timetable.service';
+import schedulesService from '../services/schedules.service';
+import collegeService from '../services/college.service';
 import type {
   TimetableFilters,
   SlotsMap,
   Department,
   Course,
   Doctor,
+  College,
 } from '../types/timetable.types';
 
 interface UseTimetableDataReturn {
   slots: SlotsMap;
   setSlots: React.Dispatch<React.SetStateAction<SlotsMap>>;
+  colleges: College[];
   departments: Department[];
   courses: Course[];
   doctors: Doctor[];
   timetableId: number | null;
+  loadingColleges: boolean;
   loadingDepts: boolean;
   loadingSlots: boolean;
   loadingCourses: boolean;
@@ -38,14 +43,41 @@ export function useTimetableData(
   userRole: string | undefined
 ): UseTimetableDataReturn {
   const [slots, setSlots] = useState<SlotsMap>({});
+  const [colleges, setColleges] = useState<College[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [timetableId, setTimetableId] = useState<number | null>(null);
+  const [loadingColleges, setLoadingColleges] = useState(false);
   const [loadingDepts, setLoadingDepts] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Colleges (once on mount) ─────────────────────────────────────────────────
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoadingColleges(true);
+    collegeService
+      .getColleges()
+      .then((res: { success: boolean; data?: College[] | { data?: { colleges?: College[] }, colleges?: College[] } | null }) => {
+        if (controller.signal.aborted) return;
+        if (res.success) {
+          const raw = res.data;
+          const arr: College[] = Array.isArray(raw)
+            ? raw
+            : (raw as any)?.data?.colleges ?? (raw as any)?.colleges ?? (raw as any)?.data ?? [];
+          setColleges(arr);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) setError(String(err));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingColleges(false);
+      });
+    return () => controller.abort();
+  }, []);
 
   // ── Departments (once, or when college scope changes) ──────────────────────
   useEffect(() => {
@@ -53,7 +85,8 @@ export function useTimetableData(
     setLoadingDepts(true);
 
     const params: Record<string, unknown> = {};
-    if (collegeId) params.collegeId = collegeId;
+    const effectiveCollegeId = filters.collegeId || collegeId;
+    if (effectiveCollegeId) params.collegeId = effectiveCollegeId;
 
     departmentService
       .getDepartments(params)
@@ -71,7 +104,7 @@ export function useTimetableData(
       });
 
     return () => controller.abort();
-  }, [collegeId]);
+  }, [filters.collegeId, collegeId]);
 
   // ── Timetable slots (whenever dept/year/sem filters change) ────────────────
   useEffect(() => {
@@ -81,53 +114,51 @@ export function useTimetableData(
     setLoadingSlots(true);
     setError(null);
 
-    timetableService
-      .getTimetables({
+    Promise.all([
+      timetableService.getTimetables({
         departmentId: filters.departmentId,
         academicYear: filters.academicYear,
         semester: filters.semester,
+      }),
+      schedulesService.getWeeklyTimetable({
+        departmentId: filters.departmentId,
+        year: filters.academicYear,
+        semester: filters.semester,
       })
-      .then(
-        (res: {
-          data?: {
-            timetables?: Array<{
-              id: number;
-              scheduleData: {
-                slots: Array<{
-                  day: string;
-                  startTime: string;
-                  endTime: string;
-                  courseName: string;
-                  instructor: string;
-                  room: string;
-                  sessionType?: string;
-                }>;
-              } | null;
-            }>;
-          } | null;
-        }) => {
-          if (controller.signal.aborted) return;
-          const timetable = res.data?.timetables?.[0];
-          if (timetable?.scheduleData?.slots) {
-            const mapped: SlotsMap = {};
-            timetable.scheduleData.slots.forEach((slot) => {
-              const key = `${slot.day}_${slot.startTime}-${slot.endTime}`;
-              mapped[key] = {
-                courseName: slot.courseName,
-                doctorName: slot.instructor,
-                room: slot.room,
-                sessionType: (slot.sessionType as 'LECTURE' | 'LAB' | 'SEMINAR') ?? 'LECTURE',
-                timetableId: timetable.id,
-              };
-            });
-            setSlots(mapped);
-            setTimetableId(timetable.id);
-          } else {
-            setSlots({});
-            setTimetableId(null);
-          }
+    ])
+      .then(([timetableRes, schedulesRes]: any) => {
+        if (controller.signal.aborted) return;
+        
+        const timetable = timetableRes.data?.timetables?.[0];
+        setTimetableId(timetable?.id ?? null);
+        
+        const slotsArray = schedulesRes.data?.data || schedulesRes.data || [];
+        if (slotsArray.length > 0) {
+          const mapped: SlotsMap = {};
+          slotsArray.forEach((slot: any) => {
+            const key = `${(slot.dayOfWeek || '').toUpperCase()}_${slot.startTime}-${slot.endTime}`;
+            mapped[key] = {
+              courseName: slot.course?.name || `Course ${slot.courseId}`,
+              doctorName:
+                (slot.slotType === 'LAB' || slot.slotType === 'SECTION') && slot.teachingAssistant?.firstName
+                  ? `${slot.teachingAssistant.firstName} ${slot.teachingAssistant.lastName}`
+                  : slot.doctor?.firstName
+                  ? `${slot.doctor.firstName} ${slot.doctor.lastName}`
+                  : '',
+              room: slot.room || '',
+              slotType: slot.slotType || 'LECTURE',
+              timetableId: slot.timetableId,
+              courseId: slot.courseId,
+              doctorId: slot.doctorId,
+              groupId: slot.groupId,
+              id: slot.id
+            };
+          });
+          setSlots(mapped);
+        } else {
+          setSlots({});
         }
-      )
+      })
       .catch((err: unknown) => {
         if (!controller.signal.aborted) setError(String(err));
       })
@@ -193,10 +224,12 @@ export function useTimetableData(
   return {
     slots,
     setSlots,
+    colleges,
     departments,
     courses,
     doctors,
     timetableId,
+    loadingColleges,
     loadingDepts,
     loadingSlots,
     loadingCourses,

@@ -10,13 +10,11 @@ const schema = z.object({
   description: z.string().optional(),
   credits: z.coerce.number().min(1, 'Credits must be at least 1').max(10, 'Credits must be at most 10'),
   maxStudents: z.coerce.number().min(1, 'Max students must be at least 1'),
-  doctorId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
 
 const EditCourseModal = ({ isOpen, onClose, onSuccess, course }) => {
-  const [doctors, setDoctors] = useState([]);
   const [toast, setToast] = useState(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -25,29 +23,18 @@ const EditCourseModal = ({ isOpen, onClose, onSuccess, course }) => {
 
   useEffect(() => {
     if (isOpen) {
-      fetchDoctors();
       if (course) {
         reset({
           name: course.name || '',
           description: course.description || '',
           credits: course.credits || 3,
           maxStudents: course.maxStudents || 30,
-          doctorId: course.doctorId || '',
         });
       }
     }
   }, [isOpen, course, reset]);
 
-  const fetchDoctors = async () => {
-    try {
-      const result = await doctorsService.getDoctors({ limit: 100 });
-      if (result.success) {
-        setDoctors(result.data.doctors);
-      }
-    } catch (error) {
-      console.error('Error fetching doctors:', error);
-    }
-  };
+
 
   const showToast = (message, type) => {
     setToast({ message, type });
@@ -126,21 +113,7 @@ const EditCourseModal = ({ isOpen, onClose, onSuccess, course }) => {
               />
               {errors.maxStudents && <p className="text-rose-500 text-xs mt-1">{errors.maxStudents.message}</p>}
             </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-brand-text-primary dark:text-brand-text-secondary mb-1">Assign Doctor</label>
-              <select
-                {...register('doctorId')}
-                className="w-full px-3 py-2 border border-brand-border dark:border-brand-border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-primary-500/30 dark:bg-brand-bg-elevated dark:text-brand-text-main"
-              >
-                <option value="">Unassigned</option>
-                {doctors.map((doc) => (
-                  <option key={doc.id} value={doc.id}>
-                    {doc.firstName} {doc.lastName} ({doc.doctorId})
-                  </option>
-                ))}
-              </select>
-              {errors.doctorId && <p className="text-rose-500 text-xs mt-1">{errors.doctorId.message}</p>}
-            </div>
+
           </div>
 
           <div className="mt-6 flex flex-col-reverse sm:flex-row justify-end gap-3">

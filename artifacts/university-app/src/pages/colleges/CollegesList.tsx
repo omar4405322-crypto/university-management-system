@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 // FIXED [Phase 7]: Empty state + delete confirmation modal
 import React, { useState, useEffect } from 'react';
 import Card from '../../components/ui/Card';
@@ -6,22 +6,21 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import {
   Building2,
-    _Users,
-    _GraduationCap,
-    _MoreVertical,
-    _Plus,
   ExternalLink,
   Edit2,
   Trash2,
   AlertCircle,
   CheckCircle,
   Loader2,
+  Plus,
+  Layers,
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import collegeService from '../../services/college.service';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import AddCollegeModal from './AddCollegeModal';
 import EditCollegeModal from './EditCollegeModal';
 import CollegeCardImage from '../../components/CollegeCardImage';
@@ -34,6 +33,7 @@ const CollegesList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isRTL } = useLanguage();
   const [colleges, setColleges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -105,18 +105,30 @@ const CollegesList = () => {
       {/* Toast Notification */}
       
 
-      <PageHeader
-        title={t('colleges.title')}
-        subtitle={t('colleges.subtitle')}
-        action={
-          user?.role === 'SUPER_ADMIN'
-            ? {
-                label: t('colleges.addCollege'),
-                onClick: () => setIsAddModalOpen(true),
-              }
-            : null
-        }
-      />
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 text-start">
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main mb-1">
+            {t('colleges.title')}
+          </h1>
+          <p className="text-sm text-brand-text-muted font-medium leading-relaxed">
+            {t('colleges.subtitle')}
+          </p>
+        </div>
+
+        {user?.role === 'SUPER_ADMIN' && (
+          <div className="flex items-center gap-3 shrink-0">
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              variant="primary"
+              size="md"
+              className="font-bold text-xs uppercase tracking-widest px-6 py-2.5 shadow-sm"
+            >
+              <Plus size={16} className="mr-2 rtl:ml-2 rtl:mr-0" />
+              <span>{t('colleges.addCollege')}</span>
+            </Button>
+          </div>
+        )}
+      </div>
 
       {loading ? (
         <div className="flex flex-col justify-center items-center h-96 gap-4">
@@ -140,7 +152,7 @@ const CollegesList = () => {
             <Card
               key={college.id}
               noPadding
-              className="group border-none shadow-soft hover:-translate-y-2 duration-500 rounded-[2.5rem] overflow-hidden"
+              className="group border border-brand-border/60 bg-brand-bg-card rounded-2xl overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
             >
               <div className="relative h-64 w-full overflow-hidden">
                 <CollegeCardImage
@@ -161,7 +173,7 @@ const CollegesList = () => {
                         <Edit2 size={18} />
                       </button>
                       <button
-                        onClick={() => setDeleteTarget({ id: college.id, name: college.name })}
+                        onClick={() => setDeleteTarget({ id: college.id, name: isRTL ? (college.nameAr || college.name) : college.name })}
                         className="w-10 h-10 rounded-xl bg-white/10 p-2.5 text-white backdrop-blur-xl hover:bg-error transition-all duration-300 shadow-xl border border-white/10 flex items-center justify-center"
                         title={t('common.delete')}
                       >
@@ -179,14 +191,17 @@ const CollegesList = () => {
                     {t('colleges.active')}
                   </Badge>
                   <h3 className="text-3xl font-black text-white tracking-tight drop-shadow-lg uppercase leading-tight">
-                    {college.name}
+                    {isRTL ? (college.nameAr || college.name) : college.name}
                   </h3>
                 </div>
               </div>
 
               <div className="p-8">
-                <p className="text-sm font-bold text-brand-text-secondary line-clamp-2 min-h-[3rem] leading-relaxed">
-                  {college.description}
+                <p 
+                  dir="auto"
+                  className="text-sm text-brand-text-muted text-start line-clamp-2 min-h-[3rem] leading-relaxed"
+                >
+                  {isRTL ? (college.descriptionAr || college.description) : college.description}
                 </p>
 
                 <div className="mt-8 grid grid-cols-2 gap-6 border-t border-brand-border dark:border-brand-border pt-6">
@@ -208,26 +223,26 @@ const CollegesList = () => {
                 </div>
 
                 {/* Assigned Admin Section */}
-                <div className="mt-6 p-4 bg-brand-navy-500/5 rounded-lg border border-brand-border">
-                  <p className="text-xs font-bold text-brand-text-secondary uppercase tracking-widest mb-2">
+                <div className="mt-6 p-3 bg-brand-bg-page rounded-xl text-start">
+                  <p className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest mb-2">
                     {t('colleges.assignedAdmin') || 'Assigned Admin'}
                   </p>
                   {college.assignedAdmin ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">👤</span>
-                      <div className="flex-1">
-                        <p className="font-bold text-sm text-brand-text-main">
-                          {college.assignedAdmin.name || college.assignedAdmin.email}
-                        </p>
-                        <p className="text-xs text-brand-text-secondary">
-                          {college.assignedAdmin.email}
-                        </p>
-                      </div>
+                    <div className="flex flex-col">
+                      <p 
+                        dir="auto"
+                        className="font-semibold text-sm text-brand-text-primary dark:text-brand-text-main"
+                      >
+                        {college.assignedAdmin.name || college.assignedAdmin.email}
+                      </p>
+                      <p className="text-xs text-brand-text-muted">
+                        {college.assignedAdmin.email}
+                      </p>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-warning">
-                      <AlertCircle size={16} />
-                      <span className="text-sm font-semibold">
+                    <div className="flex items-center gap-2 text-brand-accent-amber">
+                      <AlertCircle size={14} />
+                      <span className="text-xs font-bold">
                         {t('colleges.noAdminAssigned') || 'No admin assigned'}
                       </span>
                     </div>
@@ -237,17 +252,18 @@ const CollegesList = () => {
                 <div className="mt-8 flex items-center gap-3">
                   <Button
                     variant="primary"
-                    className="flex-1 text-[10px] font-black uppercase tracking-widest py-3.5 shadow-lg shadow-brand-primary-600/20"
+                    className="flex-1 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl shadow-sm flex items-center justify-center gap-2"
                     onClick={() => navigate(`/departments?collegeId=${college.id}`)}
                   >
-                    {t('colleges.manageDepts')}
+                    <Layers size={14} />
+                    <span>{t('colleges.manageDepts')}</span>
                   </Button>
                   <Button
-                    variant="outline"
-                    className="flex-1 text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 border-slate-200"
+                    variant="secondary"
+                    className="btn-secondary flex-1 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl shadow-sm flex items-center justify-center gap-2"
                     onClick={() => navigate(`/colleges/${college.id}`)}
                   >
-                    {t('colleges.viewDetails')}{' '}
+                    <span>{t('colleges.viewDetails')}</span>
                     <ExternalLink size={14} className="rtl:-scale-x-100" />
                   </Button>
                 </div>

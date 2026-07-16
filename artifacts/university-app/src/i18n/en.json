@@ -48,7 +48,60 @@
     "deleteConfirm": "Are you sure you want to delete this schedule?",
     "searchPlaceholder": "Search by course or room...",
     "updateSuccess": "Schedule updated successfully",
-    "createSuccess": "Schedule created successfully"
+    "createSuccess": "Schedule created successfully",
+    "selectSection": "Select Course Section",
+    "slotType": "Session Type",
+    "room": "Room",
+    "teachingAssistant": "Teaching Assistant (Optional)",
+    "noTA": "—",
+    "conflictError": "Conflict detected",
+    "timetableList": "Timetables",
+    "publishTimetable": "Publish",
+    "unpublishTimetable": "Unpublish",
+    "draft": "DRAFT",
+    "published": "PUBLISHED"
+  },
+  "sections": {
+    "title": "Sections Management",
+    "subtitle": "Manage course sections, group mappings, and student overrides.",
+    "searchCoursePlaceholder": "Search courses...",
+    "sectionsFor": "Sections for {{courseName}}",
+    "noCourseSelected": "Select a course to view sections",
+    "addSection": "Add Section",
+    "editSection": "Edit Section",
+    "deleteSection": "Delete Section",
+    "sectionName": "Section Name",
+    "doctor": "Doctor",
+    "manageGroups": "Manage Groups",
+    "studentOverrides": "Student Overrides",
+    "overrides": "Student Overrides",
+    "addSectionDesc": "Create a new section for this course",
+    "deleteConfirm": "Are you sure you want to delete this section? This cannot be undone.",
+    "deleteSuccess": "Section deleted successfully",
+    "addSuccess": "Section added successfully",
+    "updateSuccess": "Section updated successfully",
+    "groupsModalTitle": "Manage Student Groups",
+    "groupsModalDesc": "Assign entire student groups to this section.",
+    "addGroup": "Add Group",
+    "noGroups": "No groups assigned to this section yet.",
+    "overridesModalTitle": "Student Overrides",
+    "overridesModalDesc": "Manually override a specific student to be in this section.",
+    "addOverride": "Add Student Override",
+    "noOverrides": "No overrides for this section.",
+    "studentSearchPlaceholder": "Search student by name or ID...",
+    "create": "Create Section",
+    "selectCourse": "Select Course",
+    "selectCoursePrompt": "Select a course first",
+    "selectCourseDesc": "Please select a department and course from the filters above to view and manage its sections.",
+    "noSections": "No sections found",
+    "noSectionsDesc": "There are no sections created for this course yet.",
+    "section": "Section",
+    "instructor": "Instructor",
+    "autoDivide": "Auto-divide Students",
+    "autoDivideTitle": "Auto-divide Students",
+    "autoDivideDesc": "This will automatically divide all active students in the selected department into permanent cohorts alphabetically. Existing cohorts will be overwritten.",
+    "numberOfGroups": "Number of Groups",
+    "autoDivideSuccess": "Students divided successfully"
   },
   "STUDENTS": {
     "YEAR1": "Year 1",
@@ -79,7 +132,15 @@
     "saveFailedRetry": "Failed to save. Your changes are still here — please try again.",
     "saveError": "Error saving attendance",
     "accessDenied": "Access denied",
-    "accessDeniedDesc": "Only faculty and administrators can record attendance."
+    "accessDeniedDesc": "Only faculty and administrators can record attendance.",
+    "excused": "Excused",
+    "remarks": "Remarks (Optional)",
+    "dashboardTitle": "Attendance Dashboard",
+    "myRecords": "My Records",
+    "overallAttendance": "Overall Attendance",
+    "markAllPresent": "Mark All Present",
+    "markAllAbsent": "Mark All Absent",
+    "totalStudents": "Total Students"
   },
   "auth": {
     "admin": "Admin",
@@ -285,6 +346,7 @@
     "sessionExpired": "Your session has expired. Please login again."
   },
   "common": {
+    "searchPlaceholder": "Search...",
     "actions": "Actions",
     "add": "Add",
     "all": "All",
@@ -323,7 +385,6 @@
     "pm": "PM",
     "previous": "Previous",
     "previousShort": "Prev",
-    "next": "Next",
     "reject": "Reject",
     "rejected": "Rejected",
     "reset": "Reset",
@@ -361,7 +422,9 @@
     "general": "General",
     "year": "Year",
     "university": "University",
-    "managementSystem": "Management System"
+    "managementSystem": "Management System",
+    "skip": "Skip",
+    "finish": "Finish"
   },
   "courses": {
     "course": "Course",
@@ -455,8 +518,7 @@
     "paymentsBelowExpected": "Actual payments are below expected — review the financial report",
     "systemStatusNote": "Detailed metrics available to system administrators.",
     "noUpcomingEvents": "No upcoming events",
-    "viewAllActivity": "View all activity",
-    "growthTrend": "Growth Trend",
+    "viewAllActivity": "View All Activity",
     "pending": "Pending",
     "pendingPayments": "Pending Payments",
     "pendingTasks": "Pending Tasks",
@@ -498,7 +560,6 @@
     "upcomingExams": "Upcoming Exams",
     "upcomingQuizzes": "Upcoming Quizzes",
     "viewAll": "View All",
-    "viewAllActivity": "View All Activity",
     "viewAllRequests": "View all requests",
     "viewSchedule": "View Schedule",
     "vsLastMonth": "vs last month",
@@ -543,6 +604,10 @@
     "updateError": "Error updating department",
     "updateSuccess": "Department updated successfully",
     "notFound": "Department not found",
+    "defaultView": "Default View",
+    "sortByName": "Sort: Name",
+    "sortByStudents": "Sort: Students",
+    "sortByCourses": "Sort: Courses",
     "homeCollege": "Home college",
     "noStudents": "No students enrolled in this department.",
     "noCourses": "No courses in this department.",
@@ -565,13 +630,13 @@
     "createTitle": "Schedule New Exam",
     "createSubtitle": "Define the academic assessment parameters",
     "createSuccess": "Exam scheduled successfully! Redirecting...",
-    "createError": "Error creating exam schedule",
+    "createError": "Error creating exam",
     "coursesLoadError": "Could not load courses.",
     "basicInfo": "Basic Information",
     "examName": "Exam Name",
     "examNamePlaceholder": "e.g. Midterm — Data Structures",
     "titleRequired": "Exam name is required",
-    "selectCourse": "Course",
+    "selectCourse": "Select Course",
     "courseRequired": "Please select a course",
     "chooseCourse": "Choose a course",
     "examType": "Exam Type",
@@ -595,10 +660,6 @@
     "saveExam": "Save Exam Schedule",
     "scheduleNew": "Schedule New Exam",
     "scheduleSubtitle": "Define the date, time, and location for the exam",
-    "createError": "Error creating exam",
-    "selectCourse": "Select Course",
-    "chooseCourse": "Choose a course",
-    "examType": "Exam Type",
     "midterm": "Midterm Exam",
     "final": "Final Examination",
     "quiz": "General Quiz"
@@ -723,25 +784,23 @@
   },
   "footer": {
     "universityName": "6th of October University of Technology",
-    "universityNameAr": "جامعة 6 أكتوبر التكنولوجية",
-    "tagline": "A leading institution for technological education and professional excellence.",
+    "universityNameAr": "6th of October University of Technology",
+    "tagline": "Leading the way in innovation, research, and academic excellence. Join our community of future leaders today.",
     "quickLinks": "Quick Links",
     "academicCalendar": "Academic Calendar",
     "campusMap": "Campus Map",
     "careerServices": "Career Services",
     "studentPortal": "Student Portal",
     "contactUs": "Contact Us",
-    "address": "6th of October City, Giza, Egypt",
+    "address": "6th of October City, Egypt",
     "newsletter": "Newsletter",
-    "newsletterDesc": "Subscribe to get the latest university news and events.",
-    "emailPlaceholder": "Enter your email",
+    "newsletterDesc": "Subscribe for the latest news and updates.",
+    "emailPlaceholder": "Email address",
     "subscribe": "Subscribe",
     "copyright": "All rights reserved.",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
-    "cookies": "Cookies Policy",
-    "legalComingSoon": "Legal pages coming soon",
-    "subscribeSuccess": "✔ Got it! We'll reach out when the newsletter launches."
+    "cookies": "Cookie Policy"
   },
   "header": {
     "arabic": "Arabic",
@@ -777,6 +836,7 @@
     "schedule": "Schedule",
     "mySchedule": "My Weekly Schedule",
     "schedulesManagement": "Schedules Management",
+
     "timetableGrid": "Timetable Grid",
     "search": "Search anything...",
     "settings": "Settings",
@@ -909,7 +969,7 @@
     "doctorScheduleSubtitle": "Total classes",
     "noSchedule": "No scheduled classes",
     "noRoom": "No room",
-    "sessionType": "Session Type",
+    "slotType": "Session Type",
     "lecture": "Lecture",
     "lab": "Lab",
     "seminar": "Seminar",
@@ -921,6 +981,7 @@
     "title": "Schedules"
   },
   "students": {
+    "defaultView": "Default View",
     "accountDetails": "Account Details",
     "accountRole": "Account Role",
     "active": "Active",
@@ -1063,26 +1124,6 @@
     "noDoctors": "No professors registered",
     "otherCollege": "Other college"
   },
-  "footer": {
-    "universityName": "6th of October University of Technology",
-    "universityNameAr": "6th of October University of Technology",
-    "tagline": "Leading the way in innovation, research, and academic excellence. Join our community of future leaders today.",
-    "quickLinks": "Quick Links",
-    "academicCalendar": "Academic Calendar",
-    "campusMap": "Campus Map",
-    "careerServices": "Career Services",
-    "studentPortal": "Student Portal",
-    "contactUs": "Contact Us",
-    "address": "6th of October City, Egypt",
-    "newsletter": "Newsletter",
-    "newsletterDesc": "Subscribe for the latest news and updates.",
-    "emailPlaceholder": "Email address",
-    "subscribe": "Subscribe",
-    "copyright": "All rights reserved.",
-    "privacy": "Privacy Policy",
-    "terms": "Terms of Service",
-    "cookies": "Cookie Policy"
-  },
   "admins": {
     "title": "Admins Management",
     "addNew": "Add New Admin",
@@ -1103,5 +1144,162 @@
     "deleteError": "Error deleting admin",
     "revealEmailConfirm": "Reveal full email address? This action is for administrators only.",
     "clickToReveal": "Click to view full email"
+  },
+  "landing": {
+    "showcase": {
+      "title": "University Management System Features",
+      "subtitle": "Discover how the system simplifies your academic life",
+      "learnMore": "Learn More",
+      "prev": "Previous",
+      "next": "Next"
+    }
+  },
+  "schedule": {
+    "doctorScheduleTitle": "Doctor Schedule",
+    "doctorScheduleSubtitle": "Total Classes",
+    "academicYear": "Academic Year",
+    "allSemesters": "All Semesters",
+    "semester1": "Semester 1",
+    "semester2": "Semester 2",
+    "semester3": "Semester 3",
+    "noSchedule": "No schedule found",
+    "noRoom": "No Room Assigned",
+    "swipeHint": "Swipe to see other days",
+    "taScheduleTitle": "Teaching Assistant Schedule",
+    "taScheduleSubtitle": "Assigned sessions this week",
+    "totalSlots": "Total Slots",
+    "distinctCourses": "Distinct Courses",
+    "distinctSections": "Distinct Sections",
+    "lecture": "Lecture",
+    "lab": "Lab",
+    "tutorial": "Tutorial",
+    "seminar": "Seminar",
+    "ta": "TA:",
+    "section": "Section:",
+    "supervisor": "Supervisor:"
+  },
+  "landing": {
+    "nav": {
+      "home": "Home",
+      "about": "About",
+      "whyUs": "Why Us?",
+      "colleges": "Colleges",
+      "contact": "Contact",
+      "login": "Login",
+      "virtualTour": "Virtual Tour",
+      "searchPlaceholder": "Search website..."
+    },
+    "hero": {
+      "eyebrow": "Integrated Academic Management Platform",
+      "titlePart1": "6th of October University",
+      "titlePart2": "of Technology",
+      "desc": "Building a generation of leaders and innovators in the heart of technology-driven Egypt. An academic education combining theoretical knowledge with practical experience.",
+      "ctaRegister": "Start Registration Now",
+      "ctaAbout": "Learn More About Us"
+    },
+    "timetable": {
+      "conflictsBadge": "0 conflicts",
+      "autoValidated": "Auto-validated ✓",
+      "title": "Timetable Preview",
+      "days": {
+        "sunday": "Sunday",
+        "monday": "Monday",
+        "tuesday": "Tuesday"
+      },
+      "slots": {
+        "slot1": "08:00 - 10:00",
+        "slot2": "10:00 - 12:00",
+        "slot3": "12:00 - 14:00"
+      },
+      "subjects": {
+        "programming": "Intro to Programming",
+        "networks": "Networks Lab",
+        "math": "Discrete Math"
+      },
+      "instructors": {
+        "hassan": "Dr. Ahmed Hassan",
+        "omar": "Eng. Omar Adel",
+        "mona": "Dr. Mona Ali"
+      },
+      "rooms": {
+        "hallA": "Hall A",
+        "lab1": "Lab 1",
+        "hallB": "Hall B"
+      }
+    },
+    "stats": {
+      "colleges": "Academic Colleges",
+      "collegesDesc": "Covering key technical and scientific fields",
+      "students": "Registered Students",
+      "studentsDesc": "A diverse community from all over Egypt",
+      "excellence": "Years of Excellence",
+      "excellenceDesc": "A long and established academic history",
+      "countries": "Represented Countries",
+      "countriesDesc": "International horizons and global opportunities",
+      "ranking": "University Ranking",
+      "rankingDesc": "Among the top 20 technical universities"
+    },
+    "colleges": {
+      "eyebrow": "Academic Colleges",
+      "title": "Choose Your Academic Path",
+      "desc": "We offer a range of leading specializations to meet local and international job market needs.",
+      "viewAll": "View All Colleges",
+      "industry": {
+        "name": "College of Industry & Energy",
+        "desc": "Focuses on modern industrial technologies, mechatronics, automotive technology, and renewable energy.",
+        "students": "1,500 Students"
+      },
+      "health": {
+        "name": "College of Health Sciences",
+        "desc": "Offers outstanding programs in nursing, medical laboratories, prosthetics, and radiology.",
+        "students": "1,200 Students"
+      }
+    },
+    "whyUs": {
+      "eyebrow": "Why Choose Us?",
+      "title": "Excellence is Our Only Standard in Education",
+      "roles": {
+        "title": "4 Level Permissions",
+        "desc": "Flexible role hierarchy from Super Admin to College Admin, Doctor, TA, and Student."
+      },
+      "scheduling": {
+        "title": "Smart Scheduling",
+        "desc": "Automatically detects conflicts to prevent timing or room overlap."
+      },
+      "rtl": {
+        "title": "Full Arabic Support",
+        "desc": "Native RTL layout, 100% responsive, with a bilingual interface."
+      }
+    },
+    "about": {
+      "eyebrow": "About Our University",
+      "title1": "Technological Leadership",
+      "title2": "for a Better Future",
+      "desc": "6th of October University of Technology is a leading academic institution seeking to provide outstanding technology education aligned with global standards through innovative curricula and a creative research environment.",
+      "pills": {
+        "accredited": "Internationally Accredited",
+        "advancedResearch": "Advanced Research",
+        "partnerships": "Global Partnerships"
+      },
+      "learnMore": "Learn More About the University"
+    },
+    "cta": {
+      "title": "Ready to Start Your Academic Journey?",
+      "desc": "Register now and join thousands of students in our advanced digital platform and benefit from the latest learning technologies.",
+      "button": "Start Registration Now"
+    },
+    "footer": {
+      "desc": "A leading technological educational institution striving for excellence and innovation to prepare generations capable of leading Egypt's digital future.",
+      "quickLinks": "Quick Links",
+      "ourColleges": "Our Colleges",
+      "contactUs": "Contact Us",
+      "location": "Location",
+      "address": "6th of October City, Giza, Egypt",
+      "email": "Email",
+      "phone": "Phone",
+      "rights": "All rights reserved © {{year}} 6th of October University of Technology",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service"
+    }
   }
 }

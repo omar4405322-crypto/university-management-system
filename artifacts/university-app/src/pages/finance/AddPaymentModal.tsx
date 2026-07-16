@@ -6,7 +6,7 @@ import studentsService from '../../services/students.service';
 import paymentsService from '../../services/payments.service';
 import { Search, AlertCircle, Loader2, DollarSign, Calendar, FileText, User } from 'lucide-react';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import Modal from '../../components/ui/Modal';
 import { useTranslation } from 'react-i18next';
 
@@ -20,7 +20,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const AddPaymentModal = ({ isOpen, onClose, onSuccess }) => {
+const AddPaymentModal = ({ isOpen, onClose, onSuccess }: any) => {
   const { t } = useTranslation();
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -33,7 +33,7 @@ const AddPaymentModal = ({ isOpen, onClose, onSuccess }) => {
     }
   });
   
-  const [students, setStudents] = useState([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
 
@@ -80,7 +80,7 @@ const AddPaymentModal = ({ isOpen, onClose, onSuccess }) => {
       } else {
         setError(result.message || t('finance.createError'));
       }
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || t('finance.createError'));
     }
   };
@@ -178,7 +178,7 @@ const AddPaymentModal = ({ isOpen, onClose, onSuccess }) => {
               <FileText size={14} className="text-brand-text-muted" /> {t('finance.description')}
             </label>
             <textarea
-              rows="3"
+              rows={3}
               placeholder={t('finance.descriptionPlaceholder')}
               className="w-full px-4 py-2 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all resize-none placeholder:text-brand-text-muted"
               {...register('description')}

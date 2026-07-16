@@ -6,7 +6,7 @@ import collegeService from '../../services/college.service';
 import usersService from '../../services/users.service';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { School, Info, AlertCircle, CheckCircle, Loader2, ChevronRight, UserPlus, UserCheck, PlusCircle } from 'lucide-react';
@@ -181,41 +181,66 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
       subtitle={step === 1 ? t('colleges.addDesc') : t('colleges.assignAdminDesc') || 'Assign an admin to manage this college (optional)'}
     >
       {toast && (
-        <div className={`p-4 rounded-xl text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-300 ${toast.type === 'error' ? 'bg-rose-500' : 'bg-brand-green'}`}>
+        <div className={`p-4 mb-6 rounded-xl text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-300 ${toast.type === 'error' ? 'bg-rose-500' : 'bg-brand-green'}`}>
           {toast.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle size={20} />}
-          <span className="font-medium">{toast.message}</span>
+          <span className="font-medium text-sm">{toast.message}</span>
         </div>
       )}
 
+      {/* Step Indicator Progress Bar */}
+      <div className="flex items-center justify-between mb-8 max-w-xs mx-auto relative px-4 select-none">
+        <div className="flex flex-col items-center z-10">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all duration-300 ${step === 1 ? 'bg-brand-primary-500 border-brand-primary-500 text-white shadow-md shadow-brand-primary-500/20' : 'bg-brand-primary-50 border-brand-primary-200 text-brand-primary-600'}`}>
+            1
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-wider mt-1.5 text-brand-text-primary">
+            {t('common.basicInfo') || 'Basic Info'}
+          </span>
+        </div>
+        <div className="flex-1 h-0.5 mx-2 bg-brand-border dark:bg-slate-700 relative -top-3.5 transition-all duration-300">
+          <div className="h-full bg-brand-primary-500 transition-all duration-500" style={{ width: step === 2 ? '100%' : '0%' }} />
+        </div>
+        <div className="flex flex-col items-center z-10">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all duration-300 ${step === 2 ? 'bg-brand-primary-500 border-brand-primary-500 text-white shadow-md shadow-brand-primary-500/20' : 'bg-brand-bg-card border-brand-border text-brand-text-muted'}`}>
+            2
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-wider mt-1.5 text-brand-text-muted">
+            {t('colleges.admin') || 'Admin'}
+          </span>
+        </div>
+      </div>
+
       {step === 1 ? (
         // Step 1: Create College
-        <form onSubmit={handleSubmit(onSubmit)} className="form-section">
-          <div className="space-y-5">
-            <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-                <School size={14} className="text-brand-text-muted" /> {t('colleges.nameEn')} <span className="text-rose-500">*</span>
-              </label>
-              <Input
-                {...register('name')}
-                placeholder="e.g. College of Engineering"
-                disabled={loading}
-                className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
-            </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+                  <School size={14} className="text-brand-text-muted" /> {t('colleges.nameEn')} <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  {...register('name')}
+                  placeholder="e.g. College of Engineering"
+                  disabled={loading}
+                  className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed h-11 rounded-xl"
+                />
+                {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
+              </div>
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-                <School size={14} className="text-brand-text-muted" /> {t('colleges.nameAr')}
-              </label>
-              <Input
-                {...register('nameAr')}
-                placeholder={t('colleges.nameArPlaceholder', 'e.g. Faculty of Engineering')}
-                disabled={loading}
-                className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed font-arabic"
-                dir="rtl"
-              />
-              {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+                  <School size={14} className="text-brand-text-muted" /> {t('colleges.nameAr')}
+                </label>
+                <Input
+                  {...register('nameAr')}
+                  placeholder={t('colleges.nameArPlaceholder', 'e.g. Faculty of Engineering')}
+                  disabled={loading}
+                  className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed font-arabic h-11 rounded-xl"
+                  dir="rtl"
+                />
+                {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -224,10 +249,10 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
               </label>
               <textarea
                 {...register('description')}
-                rows="3"
+                rows={4}
                 placeholder={t('colleges.descPlaceholder')}
                 disabled={loading}
-                className="w-full px-4 py-2 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all resize-none placeholder:text-brand-text-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-3 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all resize-none placeholder:text-brand-text-muted disabled:opacity-50 disabled:cursor-not-allowed"
               ></textarea>
               {errors.description && <p className="text-rose-500 text-xs mt-1">{errors.description.message}</p>}
             </div>
@@ -239,23 +264,25 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
               variant="ghost"
               onClick={handleClose}
               disabled={loading}
+              className="text-xs font-black uppercase tracking-wider px-5 py-3"
             >
               {t('common.cancel')}
             </Button>
             <Button
               type="submit"
+              variant="primary"
               disabled={isSubmitting || loading}
-              className="min-w-[140px] flex items-center justify-center gap-2"
+              className="min-w-[140px] flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider px-6 py-3"
             >
               {loading ? (
                 <>
-                  <Loader2 className="animate-spin" size={20} />
+                  <Loader2 className="animate-spin" size={16} />
                   <span>{t('common.creating', 'Creating...')}</span>
                 </>
               ) : (
                 <>
                   {t('colleges.addCollege')}
-                  <ChevronRight size={18} className="rtl:-scale-x-100" />
+                  <ChevronRight size={16} className="rtl:-scale-x-100" />
                 </>
               )}
             </Button>
@@ -263,75 +290,104 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
         </form>
       ) : (
         // Step 2: Assign Admin
-        <div className="form-section space-y-5">
+        <div className="space-y-6">
           {fetching ? (
-            <div className="flex justify-center py-8">
-              <Loader2 size={32} className="animate-spin text-brand-primary-500" />
+            <div className="flex justify-center py-12">
+              <Loader2 size={36} className="animate-spin text-brand-primary-500" />
             </div>
           ) : (
-            <div className="space-y-5">
-              {/* Mode Selector */}
-              <div className="flex gap-2 bg-brand-navy/5 rounded-xl p-1">
+            <div className="space-y-6">
+              {/* Mode Selector Tabs */}
+              <div className="flex gap-2 bg-brand-navy-50/50 dark:bg-slate-800/50 rounded-xl p-1 border border-brand-border/60">
                 <button
                   type="button"
                   onClick={() => setAssignMode('select')}
-                  className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
-                    assignMode === 'select'
-                      ? 'bg-brand-primary-500 text-white shadow-md'
+                  className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${assignMode === 'select'
+                      ? 'bg-brand-primary-500 text-white shadow-md shadow-brand-primary-500/20'
                       : 'text-brand-text-secondary hover:text-brand-text-main'
-                  }`}
+                    }`}
                 >
-                  <UserCheck size={16} className="inline-block mr-1" />
+                  <UserCheck size={14} />
                   {t('colleges.selectExistingAdmin') || 'Select Existing Admin'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setAssignMode('create')}
-                  className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all ${
-                    assignMode === 'create'
-                      ? 'bg-brand-primary-500 text-white shadow-md'
+                  className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${assignMode === 'create'
+                      ? 'bg-brand-primary-500 text-white shadow-md shadow-brand-primary-500/20'
                       : 'text-brand-text-secondary hover:text-brand-text-main'
-                  }`}
+                    }`}
                 >
-                  <PlusCircle size={16} className="inline-block mr-1" />
+                  <PlusCircle size={14} />
                   {t('colleges.createNewAdmin') || 'Create New Admin'}
                 </button>
               </div>
 
               {assignMode === 'select' ? (
                 // Select Existing Admin
-                <div>
+                <div className="animate-fade-in">
                   {admins.length === 0 ? (
-                    <div className="text-center py-8 bg-brand-navy/5 rounded-lg p-4 border border-brand-border">
-                      <AlertCircle size={40} className="mx-auto mb-3 text-brand-text-muted" />
-                      <p className="text-brand-text-secondary mb-4">{t('colleges.noAvailableAdmins') || 'No available COLLEGE_ADMIN users found'}</p>
-                      <p className="text-sm text-brand-text-muted">{t('colleges.canCreateAdminLater') || 'You can assign an admin later'}</p>
+                    <div className="text-center py-10 bg-brand-bg-page/40 rounded-2xl p-6 border border-dashed border-brand-border/80">
+                      <AlertCircle size={36} className="mx-auto mb-3 text-brand-text-muted" />
+                      <p className="font-semibold text-sm text-brand-text-primary mb-2">{t('colleges.noAvailableAdmins') || 'No available COLLEGE_ADMIN users found'}</p>
+                      <p className="text-xs text-brand-text-muted">{t('colleges.canCreateAdminLater') || 'You can assign an admin later'}</p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('colleges.selectCollegeAdmin') || 'Select College Admin'}</label>
-                      <select
-                        value={selectedAdminId}
-                        onChange={(e) => setSelectedAdminId(e.target.value)}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm dark:text-white focus:ring-2 focus:ring-blue-500/20 outline-none"
-                      >
-                        <option value="">{t('common.selectOptional')} {t('colleges.admin')}</option>
-                        {admins.map((admin) => (
-                          <option key={admin.id} value={admin.id}>
-                            {admin.email}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="space-y-2 text-start">
+                      <label className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('colleges.selectCollegeAdmin') || 'Select College Admin'}</label>
+                      <div className="relative">
+                        <select
+                          value={selectedAdminId}
+                          onChange={(e) => setSelectedAdminId(e.target.value)}
+                          className="select-brand"
+                        >
+                          <option value="">{t('common.selectOptional')} {t('colleges.admin')}</option>
+                          {admins.map((admin) => (
+                            <option key={admin.id} value={admin.id}>
+                              {admin.email} ({admin.firstName} {admin.lastName})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   )}
                 </div>
               ) : (
                 // Create New Admin Form
-                <div className="space-y-4">
-                  <p className="text-sm text-brand-text-secondary">{t('colleges.createAdminDesc') || 'Create a new COLLEGE_ADMIN user who will be assigned to this college'}</p>
-                  
+                <div className="space-y-4 text-start animate-fade-in">
+                  <p className="text-xs text-brand-text-secondary leading-relaxed bg-brand-bg-page/30 p-3 rounded-xl border border-brand-border/40">
+                    {t('colleges.createAdminDesc') || 'Create a new COLLEGE_ADMIN user who will be assigned to this college'}
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.firstName') || 'First Name'} <span className="text-rose-500">*</span></label>
+                      <Input
+                        name="firstName"
+                        value={adminFormData.firstName}
+                        onChange={handleAdminChange}
+                        placeholder="Ahmed"
+                        required
+                        disabled={loading}
+                        className="h-11 rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.lastName') || 'Last Name'} <span className="text-rose-500">*</span></label>
+                      <Input
+                        name="lastName"
+                        value={adminFormData.lastName}
+                        onChange={handleAdminChange}
+                        placeholder="Mohamed"
+                        required
+                        disabled={loading}
+                        className="h-11 rounded-xl"
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('admins.email') || 'Email'}</label>
+                    <label className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.email') || 'Email'} <span className="text-rose-500">*</span></label>
                     <Input
                       type="email"
                       name="email"
@@ -340,11 +396,12 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
                       placeholder="admin@college.edu"
                       required
                       disabled={loading}
+                      className="h-11 rounded-xl"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('admins.password') || 'Password'}</label>
+                    <label className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.password') || 'Password'} <span className="text-rose-500">*</span></label>
                     <Input
                       type="password"
                       name="password"
@@ -353,32 +410,8 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
                       placeholder="••••••••"
                       required
                       disabled={loading}
+                      className="h-11 rounded-xl"
                     />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('admins.firstName') || 'First Name'}</label>
-                      <Input
-                        name="firstName"
-                        value={adminFormData.firstName}
-                        onChange={handleAdminChange}
-                        placeholder="Ahmed"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('admins.lastName') || 'Last Name'}</label>
-                      <Input
-                        name="lastName"
-                        value={adminFormData.lastName}
-                        onChange={handleAdminChange}
-                        placeholder="Mohamed"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
                   </div>
                 </div>
               )}
@@ -391,6 +424,7 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
               variant="ghost"
               onClick={handleClose}
               disabled={loading}
+              className="text-xs font-black uppercase tracking-wider px-5 py-3"
             >
               {t('common.cancel')}
             </Button>
@@ -402,25 +436,26 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
                 resetModal();
               }}
               disabled={loading}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-xs font-black uppercase tracking-wider px-5 py-3"
             >
               {t('common.skip')}
             </Button>
             {assignMode === 'select' ? (
               <Button
                 type="button"
+                variant="primary"
                 disabled={loading}
                 onClick={handleAssignAdmin}
-                className="min-w-[140px] flex items-center justify-center gap-2"
+                className="min-w-[140px] flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider px-6 py-3"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="animate-spin" size={20} />
+                    <Loader2 className="animate-spin" size={16} />
                     <span>{t('common.assigning')}</span>
                   </>
                 ) : (
                   <>
-                    <UserPlus size={18} />
+                    <UserPlus size={16} />
                     {selectedAdminId ? t('colleges.assignAdmin') : t('common.finish')}
                   </>
                 )}
@@ -428,18 +463,19 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
             ) : (
               <Button
                 type="button"
+                variant="primary"
                 disabled={loading}
                 onClick={handleCreateAdmin}
-                className="min-w-[140px] flex items-center justify-center gap-2"
+                className="min-w-[140px] flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider px-6 py-3"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="animate-spin" size={20} />
+                    <Loader2 className="animate-spin" size={16} />
                     <span>{t('common.creating')}</span>
                   </>
                 ) : (
                   <>
-                    <UserPlus size={18} />
+                    <UserPlus size={16} />
                     {t('colleges.createAndAssign') || 'Create & Assign'}
                   </>
                 )}
@@ -452,4 +488,4 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
   );
 };
 
-export default AddCollegeModal;
+export default AddCollegeModal; AddCollegeModal;

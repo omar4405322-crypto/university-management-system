@@ -1,28 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
   /* Font Families */
   --font-sans: 'Inter', 'Poppins', 'Cairo', 'system-ui', 'sans-serif';
-  --font-display: 'Inter', 'Poppins', 'Cairo', 'system-ui', 'sans-serif';
-  --font-mono: 'SF Mono', 'Fira Code', 'monospace';
+  --font-display: 'Cairo', 'Inter', 'Poppins', 'system-ui', 'sans-serif';
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Fira Code', 'monospace';
   --font-arabic: 'Cairo', 'sans-serif';
 
   /* Brand Primary Green — official: #9EBC48 */
-  --color-brand-primary-50:  #f2f7e8;
+  --color-brand-primary-50: #f2f7e8;
   --color-brand-primary-100: #e5efcf;
   --color-brand-primary-200: #cde0a3;
-  --color-brand-primary-300: #B8D068;
+  --color-brand-primary-300: #A8D45A;
   --color-brand-primary-400: #a9c454;
-  --color-brand-primary-500: #9EBC48;
-  --color-brand-primary-600: #7A9A2E;
+  --color-brand-primary-500: #84BD3A;
+  --color-brand-primary-600: #6A9E2A;
   --color-brand-primary-700: #5f7a22;
   --color-brand-primary-800: #4a6018;
   --color-brand-primary-900: #3a4c12;
   --color-brand-primary-950: #1e2a08;
 
   /* Brand Navy — official: #142632 */
-  --color-brand-navy-50:  #edf1f3;
+  --color-brand-navy-50: #edf1f3;
   --color-brand-navy-100: #d5dee3;
   --color-brand-navy-200: #afc0ca;
   --color-brand-navy-300: #7A9AAA;
@@ -55,11 +54,14 @@
   --color-surface-subtle: var(--surface-subtle);
 
   /* Flat brand aliases — official palette */
-  --color-brand-green:      #9EBC48;
-  --color-brand-green-dark: #7A9A2E;
-  --color-brand-navy:       #142632;
+  --color-brand-green: #84BD3A;
+  --color-brand-green-dark: #6A9E2A;
+  --color-brand-brand-green: #84BD3A;
+  --color-brand-brand-green-dark: #6A9E2A;
+  --color-brand-navy: #142632;
 
   /* Brand Accent */
+  --color-brand-accent-gold: #E8A23D;
   --color-brand-accent-yellow: #D6BA34;
   --color-brand-accent-rose: #EF4444;
   --color-brand-accent-blue: #3B82F6;
@@ -104,51 +106,52 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+:root {
   /* Official brand palette */
-  --brand-green:         #9EBC48;
-  --brand-green-light:   #B8D068;
-  --brand-green-dark:    #7A9A2E;
-  --brand-navy:          #142632;
-  --brand-navy-light:    #1E3A4A;
-  --brand-navy-dark:     #0A1820;
+  --brand-green: #84BD3A;
+  --brand-green-light: #A8D45A;
+  --brand-green-dark: #6A9E2A;
+  --brand-navy: #142632;
+  --brand-navy-light: #1E3A4A;
+  --brand-navy-dark: #0A1820;
 
   /* Official surface colors */
-  --brand-bg-page:       #F6F7F7;
-  --brand-bg-card:       #FEFEFE;
-  --brand-bg-elevated:   #FEFEFE;
-  --brand-sidebar:       #142632;
-  --brand-border:        #D3D8C3;
-  --surface-subtle:      #F6F7F7;
+  --brand-bg-page: #F6F7F7;
+  --brand-bg-card: #FEFEFE;
+  --brand-bg-elevated: #FEFEFE;
+  --brand-sidebar: #142632;
+  --brand-border: #D3D8C3;
+  --surface-subtle: #F6F7F7;
 
   /* Official text colors */
-  --brand-text-main:     #142632;
-  --brand-text-sub:      #6D7F77;
-  --brand-text-muted:    #A0ACAA;
+  --brand-text-main: #142632;
+  --brand-text-sub: #6D7F77;
+  --brand-text-muted: #A0ACAA;
 
-  --success:             #10B981;
-  --warning:             #F59E0B;
-  --error:               #EF4444;
-  --info:                #3B82F6;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --info: #3B82F6;
 
-  --kpi-icon-hover:      #142632;
+  --kpi-icon-hover: #142632;
 }
 
 .dark {
-  --brand-bg-page:       #0f172a;
-  --brand-bg-card:       #1e293b;
-  --brand-bg-elevated:   #334155;
-  --brand-sidebar:       #0A1820;
-  --brand-border:        #1E3A4A;
-  --surface-subtle:      #1e293b;
+  --brand-bg-page: #0f172a;
+  --brand-bg-card: #1e293b;
+  --brand-bg-elevated: #334155;
+  --brand-sidebar: #0A1820;
+  --brand-border: #1E3A4A;
+  --surface-subtle: #1e293b;
 
-  --brand-text-main:     #f8fafc;
-  --brand-text-sub:      #94a3b8;
-  --brand-text-muted:    #64748b;
+  --brand-text-main: #f8fafc;
+  --brand-text-sub: #94a3b8;
+  --brand-text-muted: #64748b;
 
-  --brand-green:         #9EBC48;
-  --brand-green-glow:    rgba(158, 188, 72, 0.1);
+  --brand-green: #84BD3A;
+  --brand-green-glow: rgba(132, 189, 58, 0.1);
 
-  --kpi-icon-hover:      #94a3b8;
+  --kpi-icon-hover: #94a3b8;
 }
 
 @layer base {
@@ -157,7 +160,7 @@
   }
 
   body {
-    @apply font-sans antialiased text-base leading-relaxed;
+    @apply font-sans antialiased text-base leading-relaxed overflow-x-clip;
     background-color: var(--brand-bg-page);
     color: var(--brand-text-main);
     transition: background-color 0.3s ease, color 0.3s ease;
@@ -172,7 +175,12 @@
   }
 
   /* Headings — display-driven hierarchy */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-bold text-brand-navy dark:text-brand-text-main;
   }
 
@@ -180,14 +188,17 @@
     @apply text-4xl md:text-5xl font-black leading-[1.05] mb-6;
     letter-spacing: var(--tracking-display);
   }
+
   h2 {
     @apply text-2xl md:text-3xl font-extrabold leading-[1.15] mb-4;
     letter-spacing: var(--tracking-heading);
   }
+
   h3 {
     @apply text-xl leading-[1.25] mb-3;
     letter-spacing: var(--tracking-heading);
   }
+
   h4 {
     @apply text-base font-bold leading-[1.3] mb-2;
   }
@@ -210,6 +221,7 @@
 }
 
 @layer components {
+
   /* === Interaction Primitives === */
   .interactive-hover {
     @apply transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] hover:shadow-card;
@@ -363,48 +375,56 @@
   }
 
   /* Toast notifications */
-  .toast-success { 
-    position: fixed; 
-    top: 4.5rem; 
-    inset-inline-end: 1rem; /* auto-flips: right in LTR, left in RTL */ 
-    z-index: 50; 
-    padding: 0.875rem 1.25rem; 
-    border-radius: 1rem; 
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05); 
-    color: white; 
-    background-color: var(--success); 
-    display: flex; 
-    align-items: center; 
-    gap: 0.75rem; 
-    font-size: 0.875rem; 
-    font-weight: 600; 
-    max-width: 360px; 
-    animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
-  } 
-  
-  .toast-error { 
-    position: fixed; 
-    top: 4.5rem; 
-    inset-inline-end: 1rem; 
-    z-index: 50; 
-    padding: 0.875rem 1.25rem; 
-    border-radius: 1rem; 
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05); 
-    color: white; 
-    background-color: var(--error); 
-    display: flex; 
-    align-items: center; 
-    gap: 0.75rem; 
-    font-size: 0.875rem; 
-    font-weight: 600; 
-    max-width: 360px; 
-    animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
-  } 
-  
-  @keyframes toast-in { 
-    from { opacity: 0; transform: translateY(-8px) scale(0.96); } 
-    to   { opacity: 1; transform: translateY(0) scale(1); } 
-  } 
+  .toast-success {
+    position: fixed;
+    top: 4.5rem;
+    inset-inline-end: 1rem;
+    /* auto-flips: right in LTR, left in RTL */
+    z-index: 50;
+    padding: 0.875rem 1.25rem;
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    color: white;
+    background-color: var(--success);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    max-width: 360px;
+    animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .toast-error {
+    position: fixed;
+    top: 4.5rem;
+    inset-inline-end: 1rem;
+    z-index: 50;
+    padding: 0.875rem 1.25rem;
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    color: white;
+    background-color: var(--error);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    max-width: 360px;
+    animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.96);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
 
   /* Pagination */
   .pagination-btn {
@@ -432,17 +452,28 @@
     scrollbar-width: thin;
     scrollbar-color: var(--brand-border) transparent;
   }
+
   .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
+    width: 6px;
+    height: 6px;
+    transition: width 0.2s ease;
   }
+
+  .custom-scrollbar:hover::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background-color: var(--brand-border);
     border-radius: 99px;
+    transition: width 0.2s ease, background-color 0.2s ease;
   }
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -465,6 +496,26 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.line-clamp-ltr {
+  direction: ltr;
+  text-align: left;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.line-clamp-rtl {
+  direction: rtl;
+  text-align: right;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
 }
 
 [dir="rtl"] .label-icon {
@@ -555,8 +606,15 @@
 
 /* Animations */
 @keyframes fadeInScale {
-  from { opacity: 0; transform: scale(0.98) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .animate-page {
@@ -576,4 +634,68 @@ html {
 [dir='ltr'] aside.fixed {
   left: 0;
   right: auto;
+}
+
+/* ─── Landing Page ─────────────────────────────────────────────────────────── */
+
+/* Hero video overlay gradient (replaces inline style on the overlay div) */
+.hero-overlay {
+  background: linear-gradient(to bottom,
+      rgba(10, 20, 50, 0.55) 0%,
+      rgba(10, 20, 50, 0.35) 50%,
+      rgba(10, 20, 50, 0.65) 100%);
+}
+
+/* Hero title responsive size (clamp not expressible as a Tailwind utility) */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: clamp(2rem, 8vw, 4rem) !important;
+  }
+}
+
+/* Fade-in-up entrance animation */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Skeleton loading shimmer */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Video-tour button in navbar */
+.video-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.video-btn:hover .label {
+  opacity: 1;
 }

@@ -17,6 +17,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import RouteFallback from './components/RouteFallback';
 import NotFoundPage from './components/NotFoundPage';
 import AppShell from './components/layout/AppShell';
+import PageWrapper from './components/layout/PageWrapper';
 // PERF: All page-level components are now lazy-loaded — excluded from initial bundle
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
@@ -25,12 +26,16 @@ const DashboardContainer = lazy(() => import('./pages/dashboard/DashboardContain
 const CoursesList = lazy(() => import('./pages/courses/CoursesList'));
 const CourseDetails = lazy(() => import('./pages/courses/CourseDetails'));
 const DoctorsList = lazy(() => import('./pages/doctors/DoctorsList'));
+const TeachingAssistantsList = lazy(() => import('./pages/teaching-assistants/TeachingAssistantsList'));
 const WeeklySchedule = lazy(() => import('./pages/schedules/WeeklySchedule'));
 const DoctorSchedule = lazy(() => import('./pages/schedules/DoctorSchedule'));
 const StudentSchedule = lazy(() => import('./pages/schedules/StudentSchedule'));
+const TASchedule = lazy(() => import('./pages/schedules/TASchedule'));
 const ExamsList = lazy(() => import('./pages/exams/ExamsList'));
 const ExamDetails = lazy(() => import('./pages/exams/ExamDetails'));
 const TakeExam = lazy(() => import('./pages/exams/TakeExam'));
+const ExamSubmissions = lazy(() => import('./pages/exams/ExamSubmissions'));
+const ExamResults = lazy(() => import('./pages/exams/ExamResults'));
 const CollegesList = lazy(() => import('./pages/colleges/CollegesList'));
 const CollegeDetails = lazy(() => import('./pages/colleges/CollegeDetails'));
 const DepartmentsList = lazy(() => import('./pages/departments/DepartmentsList'));
@@ -59,8 +64,9 @@ const AnalyticsDashboard = lazy(() => import('./pages/analytics/AnalyticsDashboa
 const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'));
 const QuizzesList = lazy(() => import('./pages/quizzes/QuizzesList'));
 const DegreeAudit = lazy(() => import('./pages/degree-audit/DegreeAudit'));
+const GroupManagement = lazy(() => import('./pages/groups/GroupManagement'));
 
-const LazyRoute = ({ children }) => (
+const LazyRoute = ({ children }: { children: React.ReactNode }) => (
   <ErrorBoundary>
     <Suspense fallback={<RouteFallback />}>{children}</Suspense>
   </ErrorBoundary>
@@ -82,7 +88,7 @@ const Unauthorized = () => {
         </p>
         <Button
           onClick={() => window.history.back()}
-          variant="primary"
+          variant="default"
           size="lg"
           className="rounded-2xl"
         >
@@ -93,15 +99,20 @@ const Unauthorized = () => {
   );
 };
 
+import DebugOverflowPanel from './components/ui/DebugOverflowPanel';
+
 const AppContent = () => {
   const { isRTL } = useLanguage();
   const { user } = useAuth();
+  
+  const isDebugMode = new URLSearchParams(window.location.search).get('debug') === '1';
 
   return (
     <div
-      className="min-h-screen bg-brand-bg-page text-brand-text-main transition-colors duration-300"
+      className="min-h-screen bg-brand-bg-page text-brand-text-main transition-colors duration-300 relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
+      {isDebugMode && <DebugOverflowPanel />}
       {/* PERF: Single top-level Suspense catches all newly lazy-loaded pages */}
       <Suspense fallback={<RouteFallback />}>
       <Routes>
@@ -121,20 +132,20 @@ const AppContent = () => {
                       <Route
                         path="dashboard"
                         element={
-                          <div className="animate-page">
+                          <PageWrapper>
                             <DashboardContainer />
-                          </div>
+                          </PageWrapper>
                         }
                       />
                       <Route
                         path="students"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <StudentsList />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -142,55 +153,67 @@ const AppContent = () => {
                         path="students/:id"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <StudentDetails />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
                       <Route
                         path="courses"
                         element={
-                          <div className="animate-page">
+                          <PageWrapper>
                             <CoursesList />
-                          </div>
+                          </PageWrapper>
                         }
                       />
                       <Route
                         path="courses/:id"
                         element={
-                          <div className="animate-page">
+                          <PageWrapper>
                             <CourseDetails />
-                          </div>
+                          </PageWrapper>
                         }
                       />
                       <Route
                         path="doctors"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <DoctorsList />
-                            </div>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="teaching-assistants"
+                        element={
+                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
+                            <PageWrapper>
+                              <LazyRoute>
+                                <TeachingAssistantsList />
+                              </LazyRoute>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
                       <Route
                         path="schedule"
                         element={
-                          <div className="animate-page">
+                          <PageWrapper>
                             <WeeklySchedule />
-                          </div>
+                          </PageWrapper>
                         }
                       />
                       <Route
                         path="schedules/doctor"
                         element={
                           <ProtectedRoute allowedRoles={['DOCTOR']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <DoctorSchedule />
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -198,9 +221,21 @@ const AppContent = () => {
                         path="schedules/student"
                         element={
                           <ProtectedRoute allowedRoles={['STUDENT']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <StudentSchedule />
-                            </div>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="schedules/ta"
+                        element={
+                          <ProtectedRoute allowedRoles={['TEACHING_ASSISTANT', 'ADMIN']}>
+                            <PageWrapper>
+                              <LazyRoute>
+                                <TASchedule />
+                              </LazyRoute>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -215,11 +250,11 @@ const AppContent = () => {
                               'DEPARTMENT_ADMIN',
                             ]}
                           >
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <TimetableManagement />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -227,11 +262,11 @@ const AppContent = () => {
                         path="schedules-management"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <SchedulesList />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -239,20 +274,20 @@ const AppContent = () => {
                         path="schedules/timetable"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <TimetableGrid />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
                       <Route
                         path="exams"
                         element={
-                          <div className="animate-page">
+                          <PageWrapper>
                             <ExamsList />
-                          </div>
+                          </PageWrapper>
                         }
                       />
                       <Route
@@ -261,11 +296,11 @@ const AppContent = () => {
                           <ProtectedRoute
                             allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'COLLEGE_ADMIN']}
                           >
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <CreateExam />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -273,29 +308,53 @@ const AppContent = () => {
                         path="exams/:id/take"
                         element={
                           <ProtectedRoute allowedRoles={['STUDENT']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <TakeExam />
-                            </div>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="exams/:id/submissions"
+                        element={
+                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR']}>
+                            <PageWrapper>
+                              <LazyRoute>
+                                <ExamSubmissions />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="exams/:id/results"
+                        element={
+                          <ProtectedRoute allowedRoles={['STUDENT']}>
+                            <PageWrapper>
+                              <LazyRoute>
+                                <ExamResults />
+                              </LazyRoute>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
                       <Route
                         path="exams/:id"
                         element={
-                          <div className="animate-page">
+                          <PageWrapper>
                             <ExamDetails />
-                          </div>
+                          </PageWrapper>
                         }
                       />
                       <Route
                         path="finance"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <FinanceDashboard />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -303,11 +362,11 @@ const AppContent = () => {
                         path="analytics"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <AnalyticsDashboard />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -315,9 +374,9 @@ const AppContent = () => {
                         path="colleges"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <CollegesList />
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -325,9 +384,9 @@ const AppContent = () => {
                         path="colleges/:id"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <CollegeDetails />
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -335,11 +394,11 @@ const AppContent = () => {
                         path="departments/:id"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <DepartmentDetails />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -347,9 +406,9 @@ const AppContent = () => {
                         path="departments"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <DepartmentsList />
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -364,9 +423,9 @@ const AppContent = () => {
                               'DEPARTMENT_ADMIN',
                             ]}
                           >
-                            <div className="animate-page">
+                            <PageWrapper>
                               <RegistrationRequests />
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -374,11 +433,23 @@ const AppContent = () => {
                         path="admins"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <AdminsList />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="groups"
+                        element={
+                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
+                            <PageWrapper>
+                              <LazyRoute>
+                                <GroupManagement />
+                              </LazyRoute>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -394,11 +465,11 @@ const AppContent = () => {
                               'COLLEGE_ADMIN',
                             ]}
                           >
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <QuizzesList />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -406,11 +477,11 @@ const AppContent = () => {
                         path="degree-audit/:studentId"
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'STUDENT']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <DegreeAudit />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -420,9 +491,9 @@ const AppContent = () => {
                           <ProtectedRoute
                             allowedRoles={['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'COLLEGE_ADMIN']}
                           >
-                            <div className="animate-page">
+                            <PageWrapper>
                               <CreateQuiz />
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -430,9 +501,9 @@ const AppContent = () => {
                         path="quizzes/:id/take"
                         element={
                           <ProtectedRoute allowedRoles={['STUDENT']}>
-                            <div className="animate-page">
+                            <PageWrapper>
                               <TakeQuiz />
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
@@ -448,18 +519,18 @@ const AppContent = () => {
                               'COLLEGE_ADMIN',
                             ]}
                           >
-                            <div className="animate-page">
+                            <PageWrapper>
                               <TasksList />
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
                       <Route
                         path="notifications"
                         element={
-                          <div className="animate-page">
+                          <PageWrapper>
                             <NotificationsPage />
-                          </div>
+                          </PageWrapper>
                         }
                       />
                       <Route
@@ -474,30 +545,30 @@ const AppContent = () => {
                               'COLLEGE_ADMIN',
                             ]}
                           >
-                            <div className="animate-page">
+                            <PageWrapper>
                               <LazyRoute>
                                 <AttendancePage />
                               </LazyRoute>
-                            </div>
+                            </PageWrapper>
                           </ProtectedRoute>
                         }
                       />
                       <Route
                         path="settings"
                         element={
-                          <div className="animate-page">
+                          <PageWrapper>
                             <LazyRoute>
                               <SettingsPage />
                             </LazyRoute>
-                          </div>
+                          </PageWrapper>
                         }
                       />
                       <Route
                         path="profile"
                         element={
-                          <div className="animate-page">
+                          <PageWrapper>
                             <Profile />
-                          </div>
+                          </PageWrapper>
                         }
                       />
                       <Route path="*" element={<NotFoundPage />} />

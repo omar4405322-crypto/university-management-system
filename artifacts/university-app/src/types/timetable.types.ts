@@ -1,15 +1,24 @@
 export type Day = 'Saturday' | 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday';
 
-export type SessionType = 'LECTURE' | 'LAB' | 'SEMINAR';
+export type SlotType = 'LECTURE' | 'LAB' | 'SECTION';
 
 /** A single occupied slot in the flat slot map coming from the API. */
 export interface SlotEntry {
   courseName: string;
   doctorName: string;
   room: string;
-  sessionType: SessionType;
+  slotType: SlotType;
   /** The parent timetable id — needed when saving back. */
   timetableId: number | null;
+  courseId?: number;
+  doctorId?: number;
+  groupId?: number | null;
+  id?: number;
+  /** Set to true when an active ScheduleOverride exists for today */
+  isTemporarilyModified?: boolean;
+  overrideReason?: string | null;
+  /** The raw overrides array from the API (active overrides only) */
+  overrides?: Array<{ id: number; room?: string | null; reason?: string | null }>;
 }
 
 /**
@@ -22,17 +31,13 @@ export interface TimetableDocument {
   collegeId: number;
   academicYear: number;
   semester: number;
-  scheduleData: {
-    slots: Array<{
-      day: Day;
-      startTime: string;
-      endTime: string;
-      courseName: string;
-      instructor: string;
-      room: string;
-      sessionType?: SessionType;
-    }>;
-  } | null;
+
+}
+
+export interface College {
+  id: number;
+  name: string;
+  nameAr?: string;
 }
 
 export interface Department {
@@ -46,11 +51,7 @@ export interface Course {
   id: number;
   name: string;
   courseCode: string;
-  doctor?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  } | null;
+
 }
 
 export interface Doctor {
@@ -70,6 +71,7 @@ export type SlotKey = string;
 export type SlotsMap = Record<SlotKey, SlotEntry>;
 
 export interface TimetableFilters {
+  collegeId?: string;
   departmentId: string;
   academicYear: string;
   semester: string;

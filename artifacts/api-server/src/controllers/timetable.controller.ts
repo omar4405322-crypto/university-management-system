@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
+import { TimetableService } from '../services/timetable.service';
 import { getScopeWhere } from '../utils/scope.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError, AuthorizationError, AppError } from '../utils/appError';
@@ -116,7 +117,6 @@ export const createTimetable = catchAsync(
       semester,
       title,
       description,
-      scheduleData,
       fileUrl,
       status,
     } = req.body;
@@ -158,18 +158,21 @@ export const createTimetable = catchAsync(
       );
     }
 
-    const timetable = await prisma.timetable.create({
-      data: {
-        collegeId: parseInt(collegeId as string),
-        departmentId: parseInt(departmentId as string),
-        academicYear: parseInt(academicYear as string),
-        semester: parseInt(semester as string),
-        title,
-        description,
-        scheduleData: scheduleData || {},
-        fileUrl,
-        status: status || 'DRAFT',
-      },
+    const timetable = await prisma.$transaction(async (tx) => {
+      const created = await tx.timetable.create({
+        data: {
+          collegeId: parseInt(collegeId as string),
+          departmentId: parseInt(departmentId as string),
+          academicYear: parseInt(academicYear as string),
+          semester: parseInt(semester as string),
+          title,
+          description,
+          fileUrl,
+          status: status || 'DRAFT',
+        },
+      });
+
+      return created;
     });
 
     res.status(201).json({ success: true, data: timetable });
@@ -183,7 +186,7 @@ export const createTimetable = catchAsync(
  */
 export const updateTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { title, description, scheduleData, fileUrl, status, academicYear, semester } = req.body;
+    const { title, description, fileUrl, status, academicYear, semester } = req.body;
     const id = parseInt(req.params.id as string);
 
     // Enforce scope on update
@@ -197,17 +200,20 @@ export const updateTimetable = catchAsync(
         return next(new AuthorizationError('Access denied'));
     }
 
-    const timetable = await prisma.timetable.update({
-      where: { id },
-      data: {
-        title,
-        description,
-        scheduleData,
-        fileUrl,
-        status,
-        academicYear: academicYear !== undefined ? parseInt(academicYear as string) : undefined,
-        semester: semester !== undefined ? parseInt(semester as string) : undefined,
-      },
+    const timetable = await prisma.$transaction(async (tx) => {
+      const updated = await tx.timetable.update({
+        where: { id },
+        data: {
+          title,
+          description,
+          fileUrl,
+          status,
+          academicYear: academicYear !== undefined ? parseInt(academicYear as string) : undefined,
+          semester: semester !== undefined ? parseInt(semester as string) : undefined,
+        },
+      });
+
+      return updated;
     });
 
     res.json({ success: true, data: timetable });
@@ -243,9 +249,12 @@ export const deleteTimetable = catchAsync(
 
 export const publishTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const timetable = await prisma.timetable.update({
-      where: { id: parseInt(req.params.id as string) },
-      data: { status: 'PUBLISHED' },
+    const timetable = await prisma.$transaction(async (tx) => {
+      const updated = await tx.timetable.update({
+        where: { id: parseInt(req.params.id as string) },
+        data: { status: 'PUBLISHED' },
+      });
+      return updated;
     });
     res.json({ success: true, data: timetable });
   }
@@ -253,9 +262,12 @@ export const publishTimetable = catchAsync(
 
 export const unpublishTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const timetable = await prisma.timetable.update({
-      where: { id: parseInt(req.params.id as string) },
-      data: { status: 'DRAFT' },
+    const timetable = await prisma.$transaction(async (tx) => {
+      const updated = await tx.timetable.update({
+        where: { id: parseInt(req.params.id as string) },
+        data: { status: 'DRAFT' },
+      });
+      return updated;
     });
     res.json({ success: true, data: timetable });
   }

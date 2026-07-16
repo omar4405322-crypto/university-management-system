@@ -1,6 +1,7 @@
-﻿import React from 'react';
+import React from 'react';
 import { Download, Trash2, Edit2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { createPortal } from 'react-dom';
 import Button from './Button';
 
 export interface BulkActionToolbarProps {
@@ -22,13 +23,12 @@ const BulkActionToolbar: React.FC<BulkActionToolbarProps> = ({
 
   if (selectedCount === 0) return null;
 
-  return (
+  return createPortal(
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-brand-bg-elevated text-brand-text-primary px-6 py-3 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-brand-border animate-in slide-in-from-bottom-8 fade-in duration-300">
       <div className="flex items-center gap-3 border-r border-brand-border/60 pr-4 rtl:pr-0 rtl:border-r-0 rtl:border-l rtl:pl-4">
-        <span className="flex items-center justify-center bg-brand-primary-600 text-white font-bold text-sm h-6 w-6 rounded-full">
-          {selectedCount}
+        <span className="text-sm font-semibold">
+          {t('departments.selectedCount', { count: selectedCount })}
         </span>
-        <span className="text-sm font-semibold">{t('common.selected', 'Selected')}</span>
       </div>
 
       <div className="flex items-center gap-2">
@@ -61,7 +61,8 @@ const BulkActionToolbar: React.FC<BulkActionToolbarProps> = ({
           <X size={16} />
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
