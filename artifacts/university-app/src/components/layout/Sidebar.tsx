@@ -174,7 +174,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
           },
           {
-            title: 'common.groups', // Ensure 'common.groups' exists in translations or use a generic title
+            title: 'nav.groups', // Ensure 'nav.groups' exists in translations or use a generic title
             path: '/groups',
             icon: Users,
             roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
