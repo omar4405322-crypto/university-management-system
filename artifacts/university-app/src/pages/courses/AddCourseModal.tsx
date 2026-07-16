@@ -3,7 +3,7 @@ import coursesService from '../../services/courses.service';
 import doctorsService from '../../services/doctors.service';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { BookOpen, User, Hash, FileText, Users, CreditCard, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -16,14 +16,12 @@ const schema = z.object({
   description: z.string().optional(),
   credits: z.coerce.number().min(1, 'Credits must be at least 1').max(10, 'Credits must be at most 10'),
   maxStudents: z.coerce.number().min(1, 'Max students must be at least 1'),
-  doctorId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
 
 const AddCourseModal = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useTranslation();
-  const [doctors, setDoctors] = useState([]);
   const [toast, setToast] = useState(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -35,22 +33,6 @@ const AddCourseModal = ({ isOpen, onClose, onSuccess }) => {
   });
   const [toast, setToast] = useState(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchDoctors();
-    }
-  }, [isOpen]);
-
-  const fetchDoctors = async () => {
-    try {
-      const result = await doctorsService.getDoctors({ limit: 100 });
-      if (result.success) {
-        setDoctors(result.data.doctors);
-      }
-    } catch (error) {
-      console.error('Error fetching doctors:', error);
-    }
-  };
 
   const showToast = (message, type) => {
     setToast({ message, type });
@@ -143,24 +125,7 @@ const AddCourseModal = ({ isOpen, onClose, onSuccess }) => {
             />
             {errors.maxStudents && <p className="text-rose-500 text-xs mt-1">{errors.maxStudents.message}</p>}
           </div>
-          <div className="md:col-span-2 space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <User size={14} className="text-brand-text-muted" /> {t('courses.assignDoctor')}
-            </label>
-            <select
-              {...register('doctorId')}
-              className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23132231'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
-            >
-              <option value="">{t('courses.unassigned')}</option>
-              {doctors.map((doc) => (
-                <option key={doc.id} value={doc.id}>
-                  {doc.firstName} {doc.lastName} ({doc.doctorId})
-                </option>
-              ))}
-            </select>
-            {errors.doctorId && <p className="text-rose-500 text-xs mt-1">{errors.doctorId.message}</p>}
-          </div>
+
         </div>
 
         <div className="mt-8 flex justify-end gap-3 border-t border-brand-border pt-6">

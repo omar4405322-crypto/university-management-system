@@ -55,7 +55,6 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
       where,
       include: {
         department: { select: { name: true } },
-        doctor: { select: { firstName: true, lastName: true } },
         _count: { select: { enrollments: true } },
       },
       skip,
@@ -89,11 +88,9 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
     where: { id: parseInt(req.params.id as string) },
     include: {
       department: { include: { college: true } },
-      doctor: true,
       enrollments: {
         include: { student: true },
       },
-      schedules: true,
       _count: {
         select: {
           enrollments: true,
@@ -131,20 +128,7 @@ export const getCourseRoster = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const courseId = parseInt(req.params.id as string, 10);
     const course = await prisma.course.findUnique({
-      where: { id: courseId },
-      select: {
-        id: true,
-        departmentId: true,
-        year: true,
-        enrollments: {
-          where: { status: 'ENROLLED' },
-          select: {
-            student: {
-              select: { id: true, firstName: true, lastName: true, studentId: true },
-            },
-          },
-        },
-      },
+      where: { id: courseId }
     });
 
     if (!course) {
@@ -152,24 +136,84 @@ export const getCourseRoster = catchAsync(
     }
 
     const rosterMap = new Map();
-    course.enrollments.forEach((e: any) => rosterMap.set(e.student.id, e.student));
 
-    if (course.departmentId) {
-      const deptStudents = await prisma.student.findMany({
-        where: {
-          departmentId: course.departmentId,
-          year: course.year,
-          isActive: true,
+    // Build roster from enrollments + department/year students
+    const courseWithEnrollments = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: {
+        departmentId: true,
+        year: true,
+        enrollments: {
+          where: { status: 'ENROLLED' },
+          select: {
+            student: {
+              select: { id: true, firstName: true, lastName: true, studentId: true, groupId: true,
+                group: { select: { id: true, name: true } }
+              },
+            },
+          },
         },
-        select: { id: true, firstName: true, lastName: true, studentId: true },
-        orderBy: { lastName: 'asc' },
+      },
+    });
+
+    if (courseWithEnrollments) {
+      courseWithEnrollments.enrollments.forEach((e: any) => rosterMap.set(e.student.id, e.student));
+
+      if (courseWithEnrollments.departmentId) {
+        const deptStudents = await prisma.student.findMany({
+          where: {
+            departmentId: courseWithEnrollments.departmentId,
+            year: courseWithEnrollments.year,
+            isActive: true,
+          },
+          select: { id: true, firstName: true, lastName: true, studentId: true, groupId: true,
+            group: { select: { id: true, name: true } }
+          },
+        });
+        deptStudents.forEach((s: any) => rosterMap.set(s.id, s));
+      }
+    }
+
+    const sortedData = Array.from(rosterMap.values()).sort((a: any, b: any) => {
+      if (!a.lastName) return 1;
+      if (!b.lastName) return -1;
+      return a.lastName.localeCompare(b.lastName);
+    });
+
+    const dateStr = req.query.date as string;
+    if (dateStr) {
+      const dateObj = new Date(dateStr);
+      dateObj.setHours(0, 0, 0, 0);
+
+      const attendances = await prisma.attendance.findMany({
+        where: {
+          courseId,
+          date: dateObj
+        }
       });
-      deptStudents.forEach((s: any) => rosterMap.set(s.id, s));
+
+      const attendanceMap = new Map();
+      const remarksMap = new Map();
+      attendances.forEach((att: any) => {
+        attendanceMap.set(att.studentId, att.status);
+        remarksMap.set(att.studentId, att.remarks);
+      });
+
+      const rosterWithStatus = sortedData.map((student: any) => ({
+        ...student,
+        existingStatus: attendanceMap.get(student.id) || null,
+        existingRemarks: remarksMap.get(student.id) || ''
+      }));
+
+      return res.json({
+        success: true,
+        data: rosterWithStatus,
+      });
     }
 
     res.json({
       success: true,
-      data: Array.from(rosterMap.values()),
+      data: sortedData,
     });
   }
 );
@@ -197,14 +241,13 @@ export const createCourse = catchAsync(async (req: Request, res: Response, next:
       ...courseData,
       credits: parseInt(courseData.credits as string),
       departmentId: parseInt(courseData.departmentId as string),
-      doctorId: courseData.doctorId ? parseInt(courseData.doctorId as string) : undefined,
       maxStudents: courseData.maxStudents ? parseInt(courseData.maxStudents as string) : undefined,
       year: courseData.year ? parseInt(courseData.year as string) : undefined,
       semester: courseData.semester ? parseInt(courseData.semester as string) : undefined,
     },
   });
 
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
     data: newCourse,
   });
@@ -249,8 +292,6 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
         updateData.departmentId !== undefined
           ? parseInt(updateData.departmentId as string)
           : undefined,
-      doctorId:
-        updateData.doctorId !== undefined ? parseInt(updateData.doctorId as string) : undefined,
       maxStudents:
         updateData.maxStudents !== undefined
           ? parseInt(updateData.maxStudents as string)
@@ -288,7 +329,6 @@ export const deleteCourse = catchAsync(async (req: Request, res: Response, next:
   }
 
   await prisma.$transaction([
-    prisma.schedule.deleteMany({ where: { courseId: parseInt(id as string) } }),
     prisma.attendance.deleteMany({ where: { courseId: parseInt(id as string) } }),
     prisma.course.delete({ where: { id: parseInt(id as string) } }),
   ]);

@@ -47,7 +47,7 @@ import departmentRoutes from './routes/department.routes';
 import quizRoutes from './routes/quiz.routes';
 // @ts-ignore
 import taskRoutes from './routes/task.routes';
-import examSessionRoutes from './routes/examSession.routes';
+
 // @ts-ignore
 import usersRoutes from './routes/users.routes';
 // @ts-ignore
@@ -62,6 +62,12 @@ import timetableRoutes from './routes/timetable.routes';
 import searchRoutes from './routes/search.routes';
 // @ts-ignore
 import teachingAssistantsRoutes from './routes/teaching-assistants.routes';
+// @ts-ignore
+
+// @ts-ignore
+import studentGroupsRoutes from './routes/studentGroups.routes';
+// @ts-ignore
+import requestsRoutes from './routes/requests.routes';
 // @ts-ignore
 import { protect } from './middleware/auth.middleware';
 
@@ -109,6 +115,7 @@ const envOrigins = process.env.ALLOWED_ORIGINS
 const allowedOrigins = [
   ...envOrigins,
   process.env.FRONTEND_URL,
+  process.env.FRONTEND_NETWORK_URL,
   process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : undefined,
   'http://localhost:5173',
   'http://localhost:3000',
@@ -127,13 +134,15 @@ app.use(
       }
       // Allow any localhost port (dev only)
       const isLocalhost = /^https?:\/\/localhost(:\d+)?$/.test(origin);
+      // Allow local network IP addresses
+      const isLocalNetwork = /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
       const isVercelPreview = /https:\/\/university-management-system.*\.vercel\.app$/.test(origin);
       // Match any *.replit.dev, *.replit.app, *.repl.co subdomain
       const isReplitOrigin =
         /https?:\/\/[^/]*\.replit\.app(:\d+)?$/.test(origin) ||
         /https?:\/\/[^/]*\.repl\.co(:\d+)?$/.test(origin) ||
         /https?:\/\/[^/]*\.replit\.dev(:\d+)?$/.test(origin);
-      if (allowedOrigins.includes(origin) || isLocalhost || isVercelPreview || isReplitOrigin) {
+      if (allowedOrigins.includes(origin) || isLocalhost || isLocalNetwork || isVercelPreview || isReplitOrigin) {
         return callback(null, true);
       }
       return callback(new Error('Not allowed by CORS'));
@@ -227,11 +236,11 @@ app.use('/api/schedules', protect, schedulesRoutes);
 app.use('/api/exams', protect, examsRoutes);
 app.use('/api/payments', protect, paymentsRoutes);
 app.use('/api/dashboard', protect, dashboardRoutes);
-app.use('/api/colleges', protect, collegeRoutes);
-app.use('/api/departments', protect, departmentRoutes);
+app.use('/api/colleges', collegeRoutes);
+app.use('/api/departments', departmentRoutes);
 app.use('/api/quizzes', protect, quizRoutes);
 app.use('/api/tasks', protect, taskRoutes);
-app.use('/api/exam-sessions', examSessionRoutes);
+
 app.use('/api/users', protect, usersRoutes);
 app.use('/api/notifications', protect, notificationRoutes);
 app.use('/api/analytics', protect, analyticsRoutes);
@@ -239,6 +248,9 @@ app.use('/api/attendance', protect, attendanceRoutes);
 app.use('/api/timetable', protect, timetableRoutes);
 app.use('/api/search', protect, searchRoutes);
 app.use('/api/teaching-assistants', protect, teachingAssistantsRoutes);
+
+app.use('/api/student-groups', protect, studentGroupsRoutes);
+app.use('/api/requests', protect, requestsRoutes);
 if (process.env.NODE_ENV !== 'production') {
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }

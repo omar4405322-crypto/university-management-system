@@ -23,7 +23,7 @@ import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import Card from '../../components/ui/Card';
 import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import Badge from '../../components/ui/Badge';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SkeletonKPIGrid, SkeletonTable } from '../../components/ui/Skeleton';
@@ -51,7 +51,7 @@ const FinanceDashboard = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(
-        user?.role
+    user?.role
   );
 
   const [activeTab, setActiveTab] = useState(isAdmin ? 'OVERVIEW' : 'PAYMENTS');
@@ -159,16 +159,16 @@ const FinanceDashboard = () => {
 
   const studentStats = !isAdmin
     ? {
-        totalPaid: payments
-          .filter((p) => p.status === 'PAID')
-          .reduce((sum, p) => sum + p.amount, 0),
-        totalPending: payments
-          .filter((p) => p.status === 'PENDING')
-          .reduce((sum, p) => sum + p.amount, 0),
-        totalOverdue: payments
-          .filter((p) => p.status === 'OVERDUE')
-          .reduce((sum, p) => sum + p.amount, 0),
-      }
+      totalPaid: payments
+        .filter((p) => p.status === 'PAID')
+        .reduce((sum, p) => sum + p.amount, 0),
+      totalPending: payments
+        .filter((p) => p.status === 'PENDING')
+        .reduce((sum, p) => sum + p.amount, 0),
+      totalOverdue: payments
+        .filter((p) => p.status === 'OVERDUE')
+        .reduce((sum, p) => sum + p.amount, 0),
+    }
     : null;
 
   if (loading && !stats && payments.length === 0) {
@@ -182,7 +182,7 @@ const FinanceDashboard = () => {
 
   return (
     <div className="space-y-8 animate-page">
-      
+
 
       <PageHeader
         title={t('finance.title')}
@@ -190,12 +190,12 @@ const FinanceDashboard = () => {
         action={
           isAdmin
             ? {
-                label: t('finance.addPayment'),
-                onClick: () => {
-                  setEditPayment(null);
-                  setIsModalOpen(true);
-                },
-              }
+              label: t('finance.addPayment'),
+              onClick: () => {
+                setEditPayment(null);
+                setIsModalOpen(true);
+              },
+            }
             : undefined
         }
       />
@@ -350,7 +350,7 @@ const FinanceDashboard = () => {
                         tick={{ fontSize: 10, fontWeight: 900, fill: chartColors.tick }}
                       />
                       <Tooltip
-                                                content={<ChartTooltip active={false} payload={[]} label={''} />}
+                        content={<ChartTooltip active={false} payload={[]} label={''} />}
                         cursor={{ fill: 'var(--surface-subtle)' }}
                       />
                       <Bar dataKey="amount" fill="var(--brand-green)" radius={[12, 12, 0, 0]} barSize={40} />
@@ -382,7 +382,7 @@ const FinanceDashboard = () => {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                                            <Tooltip content={<ChartTooltip active={false} payload={[]} label={''} />} />
+                      <Tooltip content={<ChartTooltip active={false} payload={[]} label={''} />} />
                       <Legend
                         verticalAlign="bottom"
                         height={36}
@@ -420,7 +420,7 @@ const FinanceDashboard = () => {
               {isAdmin && (
                 <div className="flex items-center gap-2">
                   <Select
-                    
+
                     value={filters.status}
                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                   >
@@ -430,7 +430,7 @@ const FinanceDashboard = () => {
                     <option value="OVERDUE">{t('finance.overdue')}</option>
                   </Select>
                   <Select
-                    
+
                     value={filters.type}
                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                   >
@@ -477,21 +477,21 @@ const FinanceDashboard = () => {
                 headers={
                   isAdmin
                     ? [
-                        t('students.fullName'),
-                        t('finance.amount'),
-                        t('finance.type'),
-                        t('finance.dueDate'),
-                        t('profile.status'),
-                        t('common.actions'),
-                      ]
+                      t('students.fullName'),
+                      t('finance.amount'),
+                      t('finance.type'),
+                      t('finance.dueDate'),
+                      t('profile.status'),
+                      t('common.actions'),
+                    ]
                     : [
-                        t('finance.type'),
-                        t('finance.amount'),
-                        t('finance.dueDate'),
-                        t('finance.paidAt'),
-                        t('profile.status'),
-                        t('common.actions'),
-                      ]
+                      t('finance.type'),
+                      t('finance.amount'),
+                      t('finance.dueDate'),
+                      t('finance.paidAt'),
+                      t('profile.status'),
+                      t('common.actions'),
+                    ]
                 }
               >
                 {payments.map((payment) => (
@@ -556,48 +556,48 @@ const FinanceDashboard = () => {
                         actions={[
                           ...(isAdmin && payment.status !== 'PAID'
                             ? [
-                                {
-                                  label: t('finance.markPaid'),
-                                  icon: CheckCircle,
-                                  variant: 'edit',
-                                  onClick: () => setConfirmPaymentId(payment.id),
-                                },
-                              ]
+                              {
+                                label: t('finance.markPaid'),
+                                icon: CheckCircle,
+                                variant: 'edit',
+                                onClick: () => setConfirmPaymentId(payment.id),
+                              },
+                            ]
                             : []),
                           ...(isAdmin
                             ? [
-                                {
-                                  label: t('common.edit', 'Edit'),
-                                  icon: Edit,
-                                  variant: 'default',
-                                  onClick: () => {
-                                    setEditPayment(payment);
-                                    setIsModalOpen(true);
-                                  },
+                              {
+                                label: t('common.edit', 'Edit'),
+                                icon: Edit,
+                                variant: 'default',
+                                onClick: () => {
+                                  setEditPayment(payment);
+                                  setIsModalOpen(true);
                                 },
-                                {
-                                  label: t('common.delete', 'Delete'),
-                                  icon: Trash2,
-                                  variant: 'danger',
-                                  onClick: () => setPaymentToDelete(payment.id),
-                                },
-                              ]
+                              },
+                              {
+                                label: t('common.delete', 'Delete'),
+                                icon: Trash2,
+                                variant: 'danger',
+                                onClick: () => setPaymentToDelete(payment.id),
+                              },
+                            ]
                             : []),
                           ...(!isAdmin && payment.status !== 'PAID'
                             ? [
-                                {
-                                  label: t('finance.payNow'),
-                                  icon: CreditCard,
-                                  variant: 'default',
-                                  onClick: () => {},
-                                },
-                              ]
+                              {
+                                label: t('finance.payNow'),
+                                icon: CreditCard,
+                                variant: 'default',
+                                onClick: () => { },
+                              },
+                            ]
                             : []),
                           {
                             label: 'Download Receipt',
                             icon: Download,
                             variant: 'default',
-                            onClick: () => {},
+                            onClick: () => { },
                           },
                         ]}
                       />

@@ -21,7 +21,6 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
   const departmentScope: any = getScopeWhere(req.user!, 'department');
   const paymentScope: any = { student: studentScope };
   const examScope: any = getScopeWhere(req.user!, 'exam');
-  const scheduleScope: any = getScopeWhere(req.user!, 'schedule');
 
   let collegeId: string | number = 'ALL';
   let departmentId: string | number = 'ALL';
@@ -105,18 +104,14 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
       orderBy: { date: 'asc' },
       include: { course: { select: { name: true } } },
     }),
-    prisma.schedule.findMany({
+    prisma.scheduleSlot.findMany({
       where: {
         dayOfWeek: today,
-        course: scheduleScope.course,
+        course: courseScope,
       },
       include: {
-        course: {
-          select: {
-            name: true,
-            doctor: { select: { firstName: true, lastName: true } },
-          },
-        },
+        course: { select: { name: true } },
+        doctor: { select: { firstName: true, lastName: true } },
       },
     }),
     prisma.student.groupBy({
@@ -207,19 +202,19 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
       room: e.room,
     })),
     todaySchedule: todaySchedule.map((s: any) => ({
-      courseName: s.course.name,
+      courseName: s.course?.name || 'N/A',
       startTime: s.startTime,
       endTime: s.endTime,
       room: s.room,
-      doctorName: s.course.doctor
-        ? `Dr. ${s.course.doctor.firstName} ${s.course.doctor.lastName}`
+      doctorName: s.doctor
+        ? `Dr. ${s.doctor.firstName} ${s.doctor.lastName}`
         : 'TBA',
     })),
   };
 
   await setCache(cacheKey, responseData, 300); // 5 min TTL
 
-  res.json({
+  return res.json({
     success: true,
     data: responseData,
   });
@@ -280,22 +275,17 @@ export const getStudentStats = catchAsync(
         orderBy: { date: 'asc' },
         include: { course: { select: { name: true } } },
       }),
-      prisma.schedule.findMany({
+      prisma.scheduleSlot.findMany({
         where: {
           dayOfWeek: today,
-          course: {
-            enrollments: {
-              some: { studentId: student.id, status: 'ENROLLED' },
-            },
-          },
+          OR: [
+            { groupId: student.groupId || -1 },
+            { slotType: 'LECTURE', groupId: null, course: { departmentId: student.departmentId } },
+          ],
         },
         include: {
-          course: {
-            select: {
-              name: true,
-              doctor: { select: { firstName: true, lastName: true } },
-            },
-          },
+          course: { select: { name: true } },
+          doctor: { select: { firstName: true, lastName: true } },
         },
       }),
       prisma.course.findMany({
@@ -346,7 +336,7 @@ export const getStudentStats = catchAsync(
       },
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         profile: {
@@ -369,12 +359,12 @@ export const getStudentStats = catchAsync(
           room: e.room,
         })),
         todaySchedule: todaySchedule.map((s: any) => ({
-          courseName: s.course.name,
+          courseName: s.course?.name || 'N/A',
           startTime: s.startTime,
           endTime: s.endTime,
           room: s.room,
-          doctorName: s.course.doctor
-            ? `Dr. ${s.course.doctor.firstName} ${s.course.doctor.lastName}`
+          doctorName: s.doctor
+            ? `Dr. ${s.doctor.firstName} ${s.doctor.lastName}`
             : 'TBA',
         })),
         upcomingQuizzes,
@@ -396,15 +386,15 @@ export const getDoctorStats = catchAsync(
       return next(new NotFoundError('Doctor profile not found'));
     }
 
-    const [myCourses, todaySchedule, upcomingExams] = await Promise.all([
-      prisma.course.findMany({
+    const [myScheduleSlots, todaySchedule, upcomingExams] = await Promise.all([
+      prisma.scheduleSlot.findMany({
         where: { doctorId: doctor.id },
-        select: { courseCode: true, name: true, credits: true, maxStudents: true },
+        include: { course: { select: { courseCode: true, name: true, credits: true, maxStudents: true } } },
       }),
-      prisma.schedule.findMany({
+      prisma.scheduleSlot.findMany({
         where: {
           dayOfWeek: today,
-          course: { doctorId: doctor.id },
+          doctorId: doctor.id,
         },
         include: { course: { select: { name: true } } },
       }),
@@ -412,14 +402,22 @@ export const getDoctorStats = catchAsync(
         take: 3,
         where: {
           date: { gte: new Date() },
-          course: { doctorId: doctor.id },
+          course: { scheduleSlots: { some: { doctorId: doctor.id } } },
         },
         orderBy: { date: 'asc' },
         include: { course: { select: { name: true } } },
       }),
     ]);
 
-    res.json({
+    const uniqueCourses = new Map();
+    myScheduleSlots.forEach((slot: any) => {
+      if (slot.course) {
+        uniqueCourses.set(slot.course.courseCode, slot.course);
+      }
+    });
+    const myCourses = Array.from(uniqueCourses.values());
+
+    return res.json({
       success: true,
       data: {
         profile: {
@@ -430,7 +428,7 @@ export const getDoctorStats = catchAsync(
         },
         myCourses,
         todaySchedule: todaySchedule.map((s: any) => ({
-          courseName: s.course.name,
+          courseName: s.course?.name || 'N/A',
           startTime: s.startTime,
           endTime: s.endTime,
           room: s.room,

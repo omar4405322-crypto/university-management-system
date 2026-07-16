@@ -20,7 +20,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
+import Input from '../components/ui/input';
 
 // ── Zod schema ──────────────────────────────────────────────────────────────
 const getLoginSchema = (t: any) => z.object({
@@ -132,10 +132,7 @@ const Login = () => {
 
   return (
     <div 
-      className="min-h-screen w-full relative overflow-hidden font-arabic bg-cover bg-center select-none" 
-      style={{
-        backgroundImage: "url('/assets/university/campus-entrance.png')",
-      }}
+      className="min-h-screen w-full relative overflow-hidden font-arabic select-none" 
       dir="rtl"
     >
       <style>{`
@@ -144,54 +141,92 @@ const Login = () => {
             display: none !important;
           }
         }
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translate(-50%, calc(-50% + 20px));
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+          }
+        }
+        .card-entrance {
+          animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .login-input {
+          direction: rtl;
+          text-align: right;
+          transition: all 0.2s ease !important;
+        }
+        .login-input::placeholder {
+          opacity: 0.5 !important;
+        }
+        .login-input:focus {
+          border-color: #84cc16 !important;
+          box-shadow: 0 0 0 3px rgba(132,204,22,0.15) !important;
+        }
+        .login-btn {
+          background: linear-gradient(135deg, #65a30d, #84cc16) !important;
+          transition: all 0.2s ease !important;
+        }
+        .login-btn:hover:not(:disabled) {
+          transform: scale(1.01);
+          background: linear-gradient(135deg, #4d7c0f, #65a30d) !important;
+        }
+        .login-btn:active:not(:disabled) {
+          transform: scale(0.99);
+        }
       `}</style>
-      {/* Dark Navy Gradient Overlay & CSS Dot Grid Pattern */}
+
+      {/* Background Gradient & Overlay Pattern */}
       <div 
         className="absolute inset-0 z-0"
         style={{
-          background: "linear-gradient(135deg, var(--brand-navy-dark) 0%, var(--brand-navy) 100%)",
+          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f2027 100%)",
         }}
       />
       
       <div 
-        className="absolute inset-0 z-0 opacity-40 pointer-events-none"
+        className="absolute inset-0 z-0 pointer-events-none"
         style={{
-          backgroundImage: "radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 0)",
-          backgroundSize: "24px 24px",
+          backgroundImage: `
+            repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 24px),
+            repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 24px)
+          `,
         }}
       />
 
       {/* Floating Link Back to Home (outside the card) */}
       <Link
         to="/"
-        className="fixed top-5 right-6 z-20 flex items-center gap-2 text-white/80 hover:text-white font-bold text-sm transition-all group"
+        className="fixed top-5 right-6 z-20 flex items-center gap-2 text-white/85 hover:text-white font-bold text-sm transition-all duration-200 hover:underline group"
       >
         <span>العودة للرئيسية</span>
         <ArrowRight size={18} strokeWidth={2} className="group-hover:translate-x-1 transition-transform" />
       </Link>
 
       {/* Centered Login Card */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-full max-w-[440px] px-4 sm:px-0">
+      <div className="absolute top-1/2 left-1/2 z-10 w-full max-w-[420px] px-4 sm:px-0 card-entrance">
         <div 
-          className="rounded-[24px] shadow-[0_32px_80px_rgba(0,0,0,0.35)] transition-all duration-300 w-full bg-[var(--brand-bg-card)]"
+          className="rounded-[16px] shadow-[0_25px_50px_rgba(0,0,0,0.4)] transition-all duration-300 w-full bg-white"
           style={{
             padding: '48px 40px',
+            borderTop: '3px solid #84cc16',
           }}
         >
-          {/* Top Center University Logo */}
+          {/* Top Center University Logo (Styled Text) */}
           <div className="text-center flex flex-col items-center justify-center">
-            <img 
-              src="/assets/university/logo.svg" 
-              alt="شعار الجامعة" 
-              className="w-16 h-auto mx-auto" 
-            />
-            <h2 className="text-[28px] font-bold text-[var(--brand-text-main)] tracking-tight leading-tight text-center mt-4">
+            <h1 className="text-[18px] font-bold text-slate-800 leading-tight">
+              جامعة 6 أكتوبر التكنولوجية
+            </h1>
+            <div className="w-10 h-[3px] bg-[#84cc16] rounded-full mx-auto mt-2.5 mb-2.5" />
+            <p className="text-[12px] text-gray-400 font-semibold">
+              نظام الإدارة الأكاديمية
+            </p>
+            <h2 className="text-[26px] font-black text-slate-900 tracking-tight leading-tight mt-5">
               تسجيل الدخول
             </h2>
-            <div className="w-10 h-[3px] bg-brand-green rounded-full mx-auto mt-2 mb-4" />
-            <p className="text-[13px] text-gray-500 font-medium text-center">
-              بوابة جامعة 6 أكتوبر التكنولوجية
-            </p>
           </div>
 
           <div className="w-full mt-6 space-y-6">
@@ -213,7 +248,7 @@ const Login = () => {
                     </label>
                     <div className="relative group">
                       <Mail
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-green transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#84cc16] transition-colors"
                         size={18}
                         strokeWidth={2}
                       />
@@ -222,10 +257,10 @@ const Login = () => {
                         type="email"
                         placeholder={t('auth.emailPlaceholder')}
                         autoComplete="email"
-                        className={`w-full h-[52px] pr-12 pl-4 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-[15px] focus:outline-none focus:ring-[3px] transition-all duration-200 ${
+                        className={`login-input w-full h-[52px] pr-12 pl-4 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-[15px] focus:outline-none transition-all duration-200 ${
                           errors.email
-                            ? 'border-rose-500 focus:ring-rose-500/15 focus:border-rose-500'
-                            : 'border-[var(--brand-border)] focus:ring-[var(--brand-green)]/15 focus:border-brand-green'
+                            ? 'border-rose-500'
+                            : 'border-[var(--brand-border)]'
                         }`}
                       />
                     </div>
@@ -243,14 +278,14 @@ const Login = () => {
                       <button
                         type="button"
                         onClick={() => setShowForgotModal(true)}
-                        className="text-xs font-bold text-brand-green hover:text-brand-green-dark transition-colors"
+                        className="text-xs font-bold text-[#84cc16] hover:text-[#65a30d] transition-colors cursor-pointer"
                       >
                         نسيت كلمة المرور؟
                       </button>
                     </div>
                     <div className="relative group">
                       <Lock
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-green transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#84cc16] transition-colors"
                         size={18}
                         strokeWidth={2}
                       />
@@ -259,10 +294,10 @@ const Login = () => {
                         type={showPassword ? 'text' : 'password'}
                         placeholder={t('auth.passwordPlaceholder')}
                         autoComplete="current-password"
-                        className={`w-full h-[52px] pr-12 pl-12 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-[15px] focus:outline-none focus:ring-[3px] transition-all duration-200 ${
+                        className={`login-input w-full h-[52px] pr-12 pl-12 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-[15px] focus:outline-none transition-all duration-200 ${
                           errors.password
-                            ? 'border-rose-500 focus:ring-rose-500/15 focus:border-rose-500'
-                            : 'border-[var(--brand-border)] focus:ring-[var(--brand-green)]/15 focus:border-brand-green'
+                            ? 'border-rose-500'
+                            : 'border-[var(--brand-border)]'
                         }`}
                       />
                       <button
@@ -297,7 +332,7 @@ const Login = () => {
                     </label>
                     <div className="relative group">
                       <Lock
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-green transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#84cc16] transition-colors"
                         size={18}
                         strokeWidth={2}
                       />
@@ -307,10 +342,10 @@ const Login = () => {
                         autoFocus
                         placeholder="000000"
                         maxLength={6}
-                        className={`w-full h-[52px] pr-12 pl-4 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-sm text-center font-mono tracking-[0.5em] focus:outline-none focus:ring-[3px] transition-all ${
+                        className={`login-input w-full h-[52px] pr-12 pl-4 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-sm text-center font-mono tracking-[0.5em] focus:outline-none transition-all ${
                           errors.totpToken
-                            ? 'border-rose-500 focus:ring-rose-500/15 focus:border-rose-500'
-                            : 'border-[var(--brand-border)] focus:ring-[var(--brand-green)]/15 focus:border-brand-green'
+                            ? 'border-rose-500'
+                            : 'border-[var(--brand-border)]'
                         }`}
                       />
                     </div>
@@ -329,33 +364,24 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-[52px] bg-brand-green hover:bg-brand-green-dark text-white font-bold rounded-[10px] shadow-lg shadow-brand-green/20 transition-all flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                className="login-btn w-full h-[52px] text-white font-bold rounded-[10px] shadow-lg shadow-brand-green/20 transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isSubmitting ? (
                   <Loader2 className="animate-spin" size={24} strokeWidth={2} />
                 ) : (
                   <div className="flex items-center justify-center gap-3">
                     <span>{show2FA ? 'التحقق من الرمز' : t('auth.login')}</span>
-                    <ArrowLeft size={18} strokeWidth={2} />
                   </div>
                 )}
               </button>
             </form>
 
-            {/* Divider "أو" */}
-            <div className="relative flex items-center justify-center my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
-              </div>
-              <span className="relative px-3 bg-[var(--brand-bg-card)] text-sm text-gray-400">أو</span>
-            </div>
-
-            <div className="text-center">
-              <p className="text-sm text-brand-text-muted font-bold">
+            <div className="text-center pt-2">
+              <p className="text-sm text-gray-500 font-medium">
                 {t('auth.noAccount')}{' '}
                 <Link
                   to="/register"
-                  className="text-brand-green hover:text-brand-green-dark transition-colors border-b-2 border-brand-green/20 pb-0.5"
+                  className="text-[#84cc16] font-bold hover:underline transition-colors"
                 >
                   {t('auth.registerHere')}
                 </Link>
@@ -422,7 +448,7 @@ const Login = () => {
                 <Button
                   type="button"
                   onClick={closeForgotModal}
-                  variant="primary"
+                  variant="default"
                   className="w-full rounded-2xl"
                 >
                   {t('auth.understood')}
@@ -458,7 +484,7 @@ const Login = () => {
                   <Button
                     type="submit"
                     disabled={forgotLoading || !forgotEmail.trim()}
-                    variant="primary"
+                    variant="default"
                     className="flex-1 rounded-2xl"
                   >
                     {forgotLoading ? (

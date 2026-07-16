@@ -19,7 +19,7 @@ export function useSavedViews(storageKey: string, defaultView: SavedView) {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return parsed.map(v => v.id === 'default' ? defaultView : v);
         }
       }
     } catch (e) {
@@ -85,7 +85,7 @@ export function useSavedViews(storageKey: string, defaultView: SavedView) {
 
   const updateActiveView = (updates: Partial<SavedView>) => {
     setViews((prev) =>
-      prev.map((v) => (v.id === activeViewId ? { ...v, ...updates } : v))
+      prev.map((v) => (v.id === activeViewId && v.id !== 'default' ? { ...v, ...updates } : v))
     );
   };
 

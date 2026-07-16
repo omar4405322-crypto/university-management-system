@@ -1,5 +1,6 @@
 // @ts-ignore
 import dotenv from 'dotenv';
+import os from 'os';
 dotenv.config();
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
@@ -38,6 +39,16 @@ startRiskDetectionJob();
 
 server.listen(PORT, '0.0.0.0', () => {
   logger.info(`[SERVER] Running on http://localhost:${PORT}`);
+  
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+      if (net.family === 'IPv4' && !net.internal) {
+        logger.info(`[SERVER] Running on http://${net.address}:${PORT} (Network)`);
+      }
+    }
+  }
 });
 
 process.on('unhandledRejection', (err: any) => {

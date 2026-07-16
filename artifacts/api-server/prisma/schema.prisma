@@ -8,62 +8,70 @@ datasource db {
 }
 
 model User {
-  id               Int            @id @default(autoincrement())
-  email            String         @unique
-  password         String
-  role             Role           @default(STUDENT)
-  adminRole        AdminRole?
-  collegeId        Int?           // For COLLEGE_ADMIN
-  college          College?       @relation(fields: [collegeId], references: [id])
-  departmentId     Int?           // For DEPARTMENT_ADMIN
-  department       Department?    @relation(fields: [departmentId], references: [id])
+  id           Int         @id @default(autoincrement())
+  email        String      @unique
+  password     String
+  role         Role        @default(STUDENT)
+  adminRole    AdminRole?
+  collegeId    Int? // For COLLEGE_ADMIN
+  college      College?    @relation(fields: [collegeId], references: [id])
+  departmentId Int? // For DEPARTMENT_ADMIN
+  department   Department? @relation(fields: [departmentId], references: [id])
 
-  // For scoped ADMIN users — optional FK to the college they manage
+  // For scoped ADMIN users â€” optional FK to the college they manage
   managedCollegeId Int?
-  managedCollege   College?       @relation("ManagedCollege", fields: [managedCollegeId], references: [id])
+  managedCollege   College? @relation("ManagedCollege", fields: [managedCollegeId], references: [id])
 
-  // For scoped ADMIN users — optional FK to the department they manage
+  // For scoped ADMIN users â€” optional FK to the department they manage
   managedDepartmentId Int?
-  managedDepartment   Department?   @relation("ManagedDepartment", fields: [managedDepartmentId], references: [id])
+  managedDepartment   Department? @relation("ManagedDepartment", fields: [managedDepartmentId], references: [id])
 
-  profilePicture   String?
-  twoFactorEnabled Boolean        @default(false)
-  twoFactorSecret  String?        // TOTP secret
-  tokenVersion     Int            @default(0)
-  createdAt        DateTime       @default(now())
-  doctor           Doctor?
-  student          Student?
-  notifications    Notification[]
-  auditLogs        AuditLog[]
-  refreshTokens    RefreshToken[]
+  profilePicture           String?
+  twoFactorEnabled         Boolean                 @default(false)
+  twoFactorSecret          String? // TOTP secret
+  tokenVersion             Int                     @default(0)
+  createdAt                DateTime                @default(now())
+  doctor                   Doctor?
+  teachingAssistant        TeachingAssistant?
+  student                  Student?
+  notifications            Notification[]
+  auditLogs                AuditLog[]
+  refreshTokens            RefreshToken[]
+  scheduleOverrides        ScheduleOverride[]
+  recordedAttendances      Attendance[]
+  scheduleRequests         ScheduleChangeRequest[]
+  resolvedScheduleRequests ScheduleChangeRequest[] @relation("ResolvedRequests")
+  isActive                 Boolean                 @default(true)
+  deactivatedAt            DateTime?
 
   @@index([role])
   @@index([email])
 }
 
-model RefreshToken { 
-  id        Int      @id @default(autoincrement()) 
-  token     String   @unique 
-  userId    Int 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade) 
-  expiresAt DateTime 
-  createdAt DateTime @default(now()) 
-  @@index([userId]) 
-} 
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
 
 model AuditLog {
-  id             Int      @id @default(autoincrement())
-  userId         Int?
-  user           User?    @relation(fields: [userId], references: [id])
-  userEmail      String?
-  userRole       String?
-  action         String   // e.g., "CREATE_STUDENT", "UPDATE_PAYMENT"
-  entity         String   // e.g., "Student", "Payment"
-  entityId       String?
-  details        Json?
-  ipAddress      String?
-  userAgent      String?
-  timestamp      DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  userEmail String?
+  userRole  String?
+  action    String // e.g., "CREATE_STUDENT", "UPDATE_PAYMENT"
+  entity    String // e.g., "Student", "Payment"
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  timestamp DateTime @default(now())
 
   @@index([userId])
   @@index([entity, entityId])
@@ -74,7 +82,7 @@ model AuditLog {
 model Notification {
   id        Int      @id @default(autoincrement())
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
   type      String   @default("info") // info, success, warning, error
@@ -89,6 +97,7 @@ model College {
   name          String
   nameAr        String?
   description   String?
+  descriptionAr String?
   departments   Department[]
   admins        User[]
   // Back relation for scoped ADMIN users who manage a single college
@@ -98,39 +107,42 @@ model College {
 }
 
 model Department {
-  id          Int      @id @default(autoincrement())
-  name        String
-  nameAr      String?
-  collegeId   Int
-  college     College  @relation(fields: [collegeId], references: [id])
-  courses     Course[]
-  students    Student[]
-  doctors     Doctor[]
-  admins      User[]
+  id                   Int                      @id @default(autoincrement())
+  name                 String
+  nameAr               String?
+  collegeId            Int
+  college              College                  @relation(fields: [collegeId], references: [id])
+  courses              Course[]
+  students             Student[]
+  doctors              Doctor[]
+  admins               User[]
+  teachingAssistants   TeachingAssistant[]
   // Back relation for scoped DEPARTMENT_ADMIN users who manage a single department
-  managedAdmins User[]       @relation("ManagedDepartment")
+  managedAdmins        User[]                   @relation("ManagedDepartment")
   registrationRequests RegistrationRequest[]
-  timetables  Timetable[]
-  createdAt    DateTime @default(now())
+  timetables           Timetable[]
+  createdAt            DateTime                 @default(now())
+  absencePolicies      AbsenceThresholdPolicy[]
+  studentGroups        StudentGroup[]
 
   @@index([collegeId])
 }
 
 model RegistrationRequest {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  password     String
-  role         Role
-  firstName    String
-  lastName     String
-  studentId    String?  // For students
-  year         Int?     // For students
-  phone        String?
-  departmentId Int?
-  department   Department? @relation(fields: [departmentId], references: [id])
-  status       RequestStatus @default(PENDING)
+  id              Int           @id @default(autoincrement())
+  email           String        @unique
+  password        String
+  role            Role
+  firstName       String
+  lastName        String
+  studentId       String? // For students
+  year            Int? // For students
+  phone           String?
+  departmentId    Int?
+  department      Department?   @relation(fields: [departmentId], references: [id])
+  status          RequestStatus @default(PENDING)
   rejectionReason String?
-  createdAt    DateTime @default(now())
+  createdAt       DateTime      @default(now())
 
   @@index([status])
   @@index([email])
@@ -143,28 +155,31 @@ enum RequestStatus {
 }
 
 model Student {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @unique
-  firstName    String
-  lastName     String
-  studentId    String   @unique
-  year         Int      @default(1)
-  phone        String?
-  address      String?
-  bio          String?
-  isActive     Boolean  @default(true)
-  gender       String?
-  birthDate    DateTime?
-  enrolledAt   DateTime @default(now())
-  departmentId Int?
-  department   Department? @relation(fields: [departmentId], references: [id])
-  user         User     @relation(fields: [userId], references: [id])
-  payments     Payment[]
+  id              Int                   @id @default(autoincrement())
+  userId          Int                   @unique
+  firstName       String
+  lastName        String
+  studentId       String                @unique
+  year            Int                   @default(1)
+  phone           String?
+  address         String?
+  bio             String?
+  isActive        Boolean               @default(true)
+  gender          String?
+  birthDate       DateTime?
+  enrolledAt      DateTime              @default(now())
+  departmentId    Int?
+  department      Department?           @relation(fields: [departmentId], references: [id])
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments        Payment[]
   quizSubmissions QuizSubmission[]
   taskSubmissions TaskSubmission[]
-  enrollments  Enrollment[]
-  attendance   Attendance[]
-  successMetrics StudentSuccessMetric?
+  enrollments     Enrollment[]
+  attendance      Attendance[]
+  successMetrics  StudentSuccessMetric?
+  examSubmissions ExamSubmission[]
+  groupId         Int?
+  group           StudentGroup?         @relation(fields: [groupId], references: [id])
 
   @@index([studentId])
   @@index([departmentId, year])
@@ -172,14 +187,14 @@ model Student {
 }
 
 model StudentSuccessMetric {
-  id                Int      @id @default(autoincrement())
-  studentId         Int      @unique
-  student           Student  @relation(fields: [studentId], references: [id])
-  attendanceRate    Float    @default(0)
-  averageQuizScore  Float    @default(0)
-  assignmentCompletionRate Float @default(0)
-  predictedRisk     RiskLevel @default(LOW)
-  lastCalculated    DateTime @default(now())
+  id                       Int       @id @default(autoincrement())
+  studentId                Int       @unique
+  student                  Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attendanceRate           Float     @default(0)
+  averageQuizScore         Float     @default(0)
+  assignmentCompletionRate Float     @default(0)
+  predictedRisk            RiskLevel @default(LOW)
+  lastCalculated           DateTime  @default(now())
 }
 
 enum RiskLevel {
@@ -190,15 +205,19 @@ enum RiskLevel {
 }
 
 model Attendance {
-  id        Int      @id @default(autoincrement())
-  studentId Int
-  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  courseId  Int
-  course    Course   @relation(fields: [courseId], references: [id])
-  date      DateTime @default(now())
-  status    AttendanceStatus @default(PRESENT)
-  remarks   String?
-  createdAt DateTime @default(now())
+  id           Int              @id @default(autoincrement())
+  studentId    Int
+  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId     Int
+  course       Course           @relation(fields: [courseId], references: [id])
+  date         DateTime         @default(now())
+  status       AttendanceStatus @default(PRESENT)
+  remarks      String?
+  recordedById Int?
+  recordedBy   User?            @relation(fields: [recordedById], references: [id])
+  semester     Int?
+  academicYear Int?
+  createdAt    DateTime         @default(now())
 
   @@unique([studentId, courseId, date])
   @@index([courseId, date])
@@ -213,16 +232,16 @@ enum AttendanceStatus {
 }
 
 model Payment {
-  id            Int           @id @default(autoincrement())
-  studentId     Int
-  student       Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  amount        Float
-  type          PaymentType
-  status        PaymentStatus @default(PENDING)
-  description   String?
-  dueDate       DateTime?
-  paidAt        DateTime?
-  createdAt     DateTime      @default(now())
+  id          Int           @id @default(autoincrement())
+  studentId   Int
+  student     Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  amount      Float
+  type        PaymentType
+  status      PaymentStatus @default(PENDING)
+  description String?
+  dueDate     DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
 
   @@index([studentId, status])
   @@index([createdAt])
@@ -245,12 +264,12 @@ enum PaymentStatus {
 // NOTE: doctor_id_seq must exist before running prisma db push.
 // Run: pnpm run db:push (which calls db:setup automatically)
 model Doctor {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @unique
-  user         User     @relation(fields: [userId], references: [id])
+  id           Int         @id @default(autoincrement())
+  userId       Int         @unique
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   firstName    String
   lastName     String
-  doctorId     String         @unique @default(dbgenerated("'DOC-' || lpad(nextval('doctor_id_seq'::regclass)::text, 5, '0')"))
+  doctorId     String      @unique @default(dbgenerated("'DOC-' || lpad(nextval('doctor_id_seq'::regclass)::text, 5, '0')"))
   phone        String?
   address      String?
   bio          String?
@@ -259,98 +278,99 @@ model Doctor {
   specialty    String?
   departmentId Int?
   department   Department? @relation(fields: [departmentId], references: [id])
-  courses      Course[]
-  quizzes      Quiz[]
-  tasks        Task[]
 
-  @@index([doctorId])
+  quizzes           Quiz[]
+  tasks             Task[]
+  scheduleOverrides ScheduleOverride[]
+  scheduleSlots     ScheduleSlot[]
+
   @@index([departmentId])
 }
 
 model Course {
-  id           Int      @id @default(autoincrement())
-  courseCode   String   @unique
+  id           Int         @id @default(autoincrement())
+  courseCode   String      @unique
   name         String
   description  String?
-  credits      Int      @default(3)
-  maxStudents  Int      @default(30)
-  year         Int      @default(1)
-  semester     Int      @default(1)
+  credits      Int         @default(3)
+  maxStudents  Int         @default(30)
+  year         Int         @default(1)
+  semester     Int         @default(1)
   departmentId Int?
   department   Department? @relation(fields: [departmentId], references: [id])
-  doctorId     Int?
-  doctor       Doctor?  @relation(fields: [doctorId], references: [id])
-  schedules    Schedule[]
-  exams        Exam[]
-  quizzes      Quiz[]
-  tasks        Task[]
-  enrollments  Enrollment[]
-  attendance   Attendance[]
-  createdAt    DateTime @default(now())
+
+  exams                  Exam[]
+  quizzes                Quiz[]
+  tasks                  Task[]
+  enrollments            Enrollment[]
+  attendance             Attendance[]
+  absencePolicies        AbsenceThresholdPolicy[]
+  createdAt              DateTime                 @default(now())
+  scheduleSlots          ScheduleSlot[]
+  scheduleChangeRequests ScheduleChangeRequest[]
 
   @@index([courseCode])
   @@index([departmentId])
-  @@index([doctorId])
 }
 
 model Quiz {
-  id           Int          @id @default(autoincrement())
-  title        String
-  description  String?
-  courseId     Int
-  course       Course       @relation(fields: [courseId], references: [id])
-  doctorId     Int
-  doctor       Doctor       @relation(fields: [doctorId], references: [id])
-  duration     Int          // in minutes
-  startTime    DateTime?
-  endTime      DateTime?
-  questions    Question[]
-  submissions  QuizSubmission[]
-  createdAt    DateTime     @default(now())
+  id          Int              @id @default(autoincrement())
+  title       String
+  description String?
+  courseId    Int
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  doctorId    Int
+  doctor      Doctor           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  duration    Int // in minutes
+  startTime   DateTime?
+  endTime     DateTime?
+  questions   Question[]
+  submissions QuizSubmission[]
+  createdAt   DateTime         @default(now())
 
   @@index([courseId])
 }
 
 model Question {
-  id       Int      @id @default(autoincrement())
-  quizId   Int
-  quiz     Quiz     @relation(fields: [quizId], references: [id])
-  text     String
-  optionA  String
-  optionB  String
-  optionC  String
-  optionD  String
-  correct  String   // "A", "B", "C", or "D"
-  points   Int      @default(1)
+  id      Int    @id @default(autoincrement())
+  quizId  Int
+  quiz    Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  text    String
+  optionA String
+  optionB String
+  optionC String
+  optionD String
+  correct String // "A", "B", "C", or "D"
+  points  Int    @default(1)
 
   @@index([quizId])
 }
 
 model QuizSubmission {
-  id        Int      @id @default(autoincrement())
-  quizId    Int
-  quiz      Quiz     @relation(fields: [quizId], references: [id])
-  studentId Int
-  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  answers   Json     // { questionId: "A", ... }
-  score     Float?
+  id          Int      @id @default(autoincrement())
+  quizId      Int
+  quiz        Quiz     @relation(fields: [quizId], references: [id])
+  studentId   Int
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers     Json // { questionId: "A", ... }
+  score       Float?
   submittedAt DateTime @default(now())
 
   @@index([quizId, studentId])
 }
 
 model Task {
-  id          Int       @id @default(autoincrement())
+  id          Int              @id @default(autoincrement())
   title       String
   description String
   courseId    Int
-  course      Course    @relation(fields: [courseId], references: [id])
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   doctorId    Int
-  doctor      Doctor    @relation(fields: [doctorId], references: [id])
+  doctor      Doctor           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
   dueDate     DateTime
-  maxScore    Int       @default(100)
+  maxScore    Int              @default(100)
   submissions TaskSubmission[]
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime         @default(now())
 
   @@index([courseId])
 }
@@ -358,7 +378,7 @@ model Task {
 model TaskSubmission {
   id          Int      @id @default(autoincrement())
   taskId      Int
-  task        Task     @relation(fields: [taskId], references: [id])
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   studentId   Int
   student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   fileUrl     String?
@@ -369,34 +389,22 @@ model TaskSubmission {
   @@index([taskId, studentId])
 }
 
-model Schedule {
-  id        Int      @id @default(autoincrement())
-  courseId  Int
-  course    Course   @relation(fields: [courseId], references: [id])
-  dayOfWeek String   // "Sunday", "Monday", etc.
-  startTime String   // "09:00"
-  endTime   String   // "11:00"
-  room      String?
-  createdAt DateTime @default(now())
-
-  @@index([courseId])
-}
-
 model Timetable {
   id           Int        @id @default(autoincrement())
   collegeId    Int
   college      College    @relation(fields: [collegeId], references: [id])
   departmentId Int
   department   Department @relation(fields: [departmentId], references: [id])
-  academicYear Int        // Study Level: 1, 2, 3, 4, etc.
-  semester     Int        // 1 or 2
+  academicYear Int // Study Level: 1, 2, 3, 4, etc.
+  semester     Int // 1 or 2
   title        String
   description  String?
-  scheduleData Json?      // JSON for dynamic schedule slots
-  fileUrl      String?    // If they prefer uploading a PDF/Image
-  status       TimetableStatus @default(DRAFT)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+
+  fileUrl       String? // If they prefer uploading a PDF/Image
+  status        TimetableStatus @default(DRAFT)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  scheduleSlots ScheduleSlot[]
 
   @@unique([collegeId, departmentId, academicYear, semester])
   @@index([collegeId, departmentId])
@@ -408,17 +416,86 @@ enum TimetableStatus {
 }
 
 model Exam {
-  id        Int      @id @default(autoincrement())
-  courseId  Int
-  course    Course   @relation(fields: [courseId], references: [id])
-  type      ExamType @default(MIDTERM)
-  date      DateTime
-  startTime String
-  endTime   String
-  room      String?
-  createdAt DateTime @default(now())
+  id              Int              @id @default(autoincrement())
+  courseId        Int
+  course          Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  type            ExamType         @default(MIDTERM)
+  date            DateTime
+  startTime       String
+  endTime         String
+  room            String?
+  durationMinutes Int              @default(120)
+  questions       ExamQuestion[]
+  submissions     ExamSubmission[]
+  createdAt       DateTime         @default(now())
 
   @@index([courseId, date])
+}
+
+model ExamQuestion {
+  id            Int              @id @default(autoincrement())
+  examId        Int
+  exam          Exam             @relation(fields: [examId], references: [id], onDelete: Cascade)
+  text          String
+  type          ExamQuestionType @default(MCQ)
+  optionA       String?
+  optionB       String?
+  optionC       String?
+  optionD       String?
+  correctAnswer String
+  points        Int              @default(1)
+  order         Int              @default(1)
+
+  @@index([examId])
+}
+
+model ExamSubmission {
+  id            Int                  @id @default(autoincrement())
+  examId        Int
+  exam          Exam                 @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentId     Int
+  student       Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers       Json // { questionId: string, answer: string }[]
+  score         Float?
+  maxScore      Float                @default(0)
+  status        ExamSubmissionStatus @default(PENDING)
+  antiCheatLogs Json?
+  startedAt     DateTime             @default(now())
+  submittedAt   DateTime?
+  violations    ExamViolation[]
+
+  @@unique([examId, studentId])
+  @@index([examId, studentId])
+}
+
+model ExamViolation {
+  id           Int               @id @default(autoincrement())
+  submissionId Int
+  submission   ExamSubmission    @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  type         ExamViolationType
+  occurredAt   DateTime          @default(now())
+  details      String?
+
+  @@index([submissionId])
+}
+
+enum ExamQuestionType {
+  MCQ
+  TRUE_FALSE
+  SHORT_ANSWER
+}
+
+enum ExamSubmissionStatus {
+  PENDING
+  GRADED
+}
+
+enum ExamViolationType {
+  TAB_SWITCH
+  BLUR
+  RIGHT_CLICK
+  COPY_PASTE
+  FULLSCREEN_EXIT
 }
 
 enum ExamType {
@@ -430,6 +507,7 @@ enum ExamType {
 enum Role {
   STUDENT
   DOCTOR
+  TEACHING_ASSISTANT
   ADMIN
   COLLEGE_ADMIN
   DEPARTMENT_ADMIN
@@ -444,16 +522,16 @@ enum AdminRole {
 }
 
 model Enrollment {
-  id           Int      @id @default(autoincrement())
+  id           Int              @id @default(autoincrement())
   studentId    Int
-  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   courseId     Int
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   semester     Int
   academicYear Int
   finalGrade   Float?
   status       EnrollmentStatus @default(ENROLLED)
-  enrolledAt   DateTime @default(now())
+  enrolledAt   DateTime         @default(now())
 
   @@unique([studentId, courseId, semester, academicYear])
   @@index([studentId])
@@ -465,4 +543,160 @@ enum EnrollmentStatus {
   COMPLETED
   WITHDRAWN
   FAILED
+  BLOCKED
+}
+
+model TeachingAssistant {
+  id             String      @id @default(cuid())
+  userId         Int         @unique
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName      String      @default("TA")
+  lastName       String      @default("Staff")
+  employeeId     String      @unique
+  departmentId   Int?
+  department     Department? @relation(fields: [departmentId], references: [id])
+  specialization String?
+  status         TAStatus    @default(ACTIVE)
+  joinedAt       DateTime    @default(now())
+
+  scheduleSlots ScheduleSlot[]
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  scheduleOverrides ScheduleOverride[]
+
+  @@index([departmentId])
+}
+
+enum TAStatus {
+  ACTIVE
+  ON_LEAVE
+  INACTIVE
+}
+
+// 1. StudentGroup: Represents a permanent cohort subdivision
+model StudentGroup {
+  id             Int            @id @default(autoincrement())
+  name           String // e.g. "A", "A1", "A2"
+  departmentId   Int
+  department     Department     @relation(fields: [departmentId], references: [id])
+  parentGroupId  Int?
+  parentGroup    StudentGroup?  @relation("GroupTree", fields: [parentGroupId], references: [id])
+  children       StudentGroup[] @relation("GroupTree")
+  rangeStartName String    @default("") // first student name alphabetically at creation time
+  rangeEndName   String    @default("") // last student name alphabetically at creation time
+  createdAt      DateTime       @default(now())
+
+  students      Student[]
+  scheduleSlots ScheduleSlot[]
+}
+
+// 5. ScheduleSlot: The unified time block
+model ScheduleSlot {
+  id          Int           @id @default(autoincrement())
+  courseId    Int
+  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  doctorId    Int?
+  doctor      Doctor?       @relation(fields: [doctorId], references: [id])
+  groupId     Int?
+  group       StudentGroup? @relation(fields: [groupId], references: [id])
+  timetableId Int?
+  timetable   Timetable?    @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+
+  dayOfWeek String
+  startTime String
+  endTime   String
+  room      String?
+
+  slotType    SlotType
+
+  // TAs own specific slots (like Labs)
+  teachingAssistantId String?
+  teachingAssistant   TeachingAssistant? @relation(fields: [teachingAssistantId], references: [id])
+
+  overrides        ScheduleOverride[]
+  scheduleRequests ScheduleChangeRequest[]
+
+  @@index([courseId])
+  @@index([timetableId])
+  @@index([teachingAssistantId])
+  @@index([groupId])
+}
+
+
+
+model ScheduleOverride {
+  id             Int          @id @default(autoincrement())
+  scheduleSlotId Int
+  scheduleSlot   ScheduleSlot @relation(fields: [scheduleSlotId], references: [id], onDelete: Cascade)
+
+  startDate DateTime // First date this override is active (inclusive)
+  endDate   DateTime // Last date this override is active (inclusive). After this date, original slot data is shown again.
+
+  // Nullable fields — only the CHANGED attributes are set. Null = "keep original value"
+  room                String?
+  dayOfWeek           String?
+  startTime           String?
+  endTime             String?
+  doctorId            Int?
+  doctor              Doctor?            @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  teachingAssistantId String?
+  teachingAssistant   TeachingAssistant? @relation(fields: [teachingAssistantId], references: [id], onDelete: SetNull)
+
+  reason        String? // Optional admin note explaining the override
+  createdBy     Int // userId of Admin who created this
+  createdByUser User     @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([scheduleSlotId])
+  @@index([startDate, endDate])
+}
+
+model AbsenceThresholdPolicy {
+  id                Int         @id @default(autoincrement())
+  departmentId      Int?
+  department        Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  courseId          Int?
+  course            Course?     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  maxAbsencePercent Float       @default(25.0) // E.g. 25% max absence
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+enum ScheduleRequestType {
+  NEW_SLOT
+  UPDATE_SLOT
+  DELETE_SLOT
+  OVERRIDE
+}
+
+model ScheduleChangeRequest {
+  id     Int                 @id @default(autoincrement())
+  type   ScheduleRequestType
+  status RequestStatus       @default(PENDING)
+
+  requesterId Int
+  requester   User @relation(fields: [requesterId], references: [id], onDelete: Restrict)
+
+  courseId       Int
+  course         Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  scheduleSlotId Int?
+  scheduleSlot   ScheduleSlot? @relation(fields: [scheduleSlotId], references: [id], onDelete: Cascade)
+
+  proposedData Json
+
+  reason       String?
+  adminComment String?
+  resolvedById Int?
+  resolvedBy   User?   @relation("ResolvedRequests", fields: [resolvedById], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum SlotType {
+  LECTURE
+  SECTION
+  LAB
 }

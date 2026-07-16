@@ -1,5 +1,4 @@
-// FIXED: Session init vs login loading; parse standardized API errors - login fix
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
 import api, { setAccessToken } from '../services/api';
 
 export interface User {
@@ -61,26 +60,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const initAuth = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Try to get a new access token via the httpOnly refresh cookie
-      const refreshResponse = await api.post('/auth/refresh');
-      const { accessToken } = refreshResponse.data.data;
-      setToken(accessToken);
+  const initPromiseRef = useRef<Promise<void> | null>(null);
 
-      // Now fetch the user profile
-      const meResponse = await api.get('/auth/me');
-      const me = meResponse.data.data;
-      setUser({ ...me, twoFactorEnabled: Boolean(me.twoFactorEnabled) });
-    } catch (err) {
-      // No valid refresh cookie — user must log in
-      setToken(null);
-      setUser(null);
-      localStorage.removeItem('user');
-    } finally {
-      setLoading(false);
+  const initAuth = useCallback(async () => {
+    if (initPromiseRef.current) {
+      return initPromiseRef.current;
     }
+
+    const promise = (async () => {
+      setLoading(true);
+      try {
+        // Try to get a new access token via the httpOnly refresh cookie
+        const refreshResponse = await api.post('/auth/refresh');
+        const { accessToken } = refreshResponse.data.data;
+        setToken(accessToken);
+
+        // Now fetch the user profile
+        const meResponse = await api.get('/auth/me');
+        const me = meResponse.data.data;
+        setUser({ ...me, twoFactorEnabled: Boolean(me.twoFactorEnabled) });
+      } catch (err) {
+        // No valid refresh cookie — user must log in
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
+        initPromiseRef.current = null;
+      }
+    })();
+
+    initPromiseRef.current = promise;
+    return promise;
   }, []);
 
   useEffect(() => {
@@ -127,7 +138,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: any) => {
     try {
-      setLoading(true);
+      // NOTE: Do NOT touch `loading` here — it's reserved for session hydration (initAuth).
+      // Toggling it during registration causes re-renders that unmount the Register page prematurely.
       setError(null);
       const response = await api.post('/auth/register', data);
       return { success: true, message: response.data.message };
@@ -135,8 +147,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const message = err.message || 'Registration failed';
       setError(message);
       return { success: false, message };
-    } finally {
-      setLoading(false);
     }
   };
 

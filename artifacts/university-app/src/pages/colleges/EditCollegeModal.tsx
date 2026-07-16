@@ -5,7 +5,7 @@ import * as z from 'zod';
 import collegeService from '../../services/college.service';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { School, Info, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
@@ -83,40 +83,42 @@ const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
       title={t('colleges.editTitle') || 'Edit College'}
       subtitle={t('colleges.editDesc') || 'Update college information'}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="form-section">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {toast && (
-          <div className={`p-4 rounded-xl text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-300 ${toast.type === 'error' ? 'bg-rose-500' : 'bg-brand-green'}`}>
+          <div className={`p-4 mb-6 rounded-xl text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-300 ${toast.type === 'error' ? 'bg-rose-500' : 'bg-brand-green'}`}>
             {toast.type === 'error' ? <AlertCircle size={20} /> : <CheckCircle size={20} />}
-            <span className="font-medium">{toast.message}</span>
+            <span className="font-medium text-sm">{toast.message}</span>
           </div>
         )}
 
-        <div className="space-y-5">
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <School size={14} className="text-brand-text-muted" /> {t('colleges.nameEn')} <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              {...register('name')}
-              placeholder="e.g. College of Engineering"
-              disabled={loading}
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
-          </div>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+                <School size={14} className="text-brand-text-muted" /> {t('colleges.nameEn')} <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                {...register('name')}
+                placeholder="e.g. College of Engineering"
+                disabled={loading}
+                className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed h-11 rounded-xl"
+              />
+              {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
+            </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <School size={14} className="text-brand-text-muted" /> {t('colleges.nameAr')}
-            </label>
-            <Input
-              {...register('nameAr')}
-              placeholder={t('colleges.nameArPlaceholder', 'e.g. Faculty of Engineering')}
-              disabled={loading}
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed font-arabic"
-              dir="rtl"
-            />
-            {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+                <School size={14} className="text-brand-text-muted" /> {t('colleges.nameAr')}
+              </label>
+              <Input
+                {...register('nameAr')}
+                placeholder={t('colleges.nameArPlaceholder', 'e.g. Faculty of Engineering')}
+                disabled={loading}
+                className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed font-arabic h-11 rounded-xl"
+                dir="rtl"
+              />
+              {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -125,9 +127,9 @@ const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
             </label>
             <textarea
               {...register('description')}
-              rows="3"
+              rows={4}
               disabled={loading}
-              className="w-full px-4 py-3 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-3 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all resize-none placeholder:text-brand-text-muted disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="Brief description of the college..."
             />
             {errors.description && <p className="text-rose-500 text-xs mt-1">{errors.description.message}</p>}
@@ -135,22 +137,24 @@ const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
         </div>
 
         <div className="mt-8 flex justify-end gap-3 border-t border-brand-border pt-6">
-          <Button 
-            type="button" 
-            variant="ghost" 
-            onClick={onClose} 
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
             disabled={loading}
+            className="text-xs font-black uppercase tracking-wider px-5 py-3"
           >
             {t('common.cancel')}
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
+            variant="primary"
             disabled={isSubmitting || loading}
-            className="min-w-[140px] flex items-center justify-center gap-2"
+            className="min-w-[140px] flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider px-6 py-3"
           >
             {loading ? (
               <>
-                <Loader2 className="animate-spin" size={20} />
+                <Loader2 className="animate-spin" size={16} />
                 <span>{t('common.saving', 'Saving...')}</span>
               </>
             ) : (

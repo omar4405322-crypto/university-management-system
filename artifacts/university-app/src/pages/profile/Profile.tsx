@@ -1,10 +1,10 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 // FIXED: 2FA warning banner, enable action for super admins, prompt query param - Phase 3
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import Badge from '../../components/ui/Badge';
 import { useAuth } from '../../context/AuthContext';
 import { Shield, Camera, Lock, X, Loader2, Building2, Award, AlertTriangle } from 'lucide-react';
@@ -13,6 +13,7 @@ import api from '../../services/api';
 import Modal from '../../components/ui/Modal';
 import { Textarea } from '../../components/ui/Textarea';
 import { logger } from '../../lib/logger';
+import { FEATURE_FLAGS } from '../../constants/featureFlags';
 
 const Profile = () => {
   const { user, setUser } = useAuth();
@@ -189,6 +190,13 @@ const Profile = () => {
 
   const roleLabel = user?.role ? t(`auth.${user.role.toLowerCase()}`) : '';
 
+  const getProfilePictureUrl = (path?: string) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    const baseUrl = (import.meta as any).env.VITE_BACKEND_URL?.replace(/\/api$/, '') || 'http://localhost:5000';
+    return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
@@ -238,7 +246,7 @@ const Profile = () => {
                 <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-brand-primary-500 to-brand-primary-600 text-4xl font-black text-white ring-4 ring-brand-primary-100 shadow-xl overflow-hidden">
                   {user?.profilePicture ? (
                     <img
-                      src={user.profilePicture}
+                      src={getProfilePictureUrl(user.profilePicture)}
                       alt={t('profile.avatar')}
                       className="h-full w-full object-cover"
                     />
@@ -271,6 +279,20 @@ const Profile = () => {
                       {fullProfile.department.college
                         ? `${fullProfile.department.college.name}`
                         : fullProfile.department.name}
+                    </p>
+                  )}
+                  {fullProfile.group && (
+                    <p className="text-xs font-bold text-brand-primary-500 bg-brand-primary-50 dark:bg-brand-primary-900/20 inline-block px-2 py-0.5 rounded-md mt-1 border border-brand-primary-100 dark:border-brand-primary-800">
+                      Group: {(() => {
+                        // Build breadcrumb path by walking parentGroup chain
+                        const path = [];
+                        let g = fullProfile.group;
+                        while (g) {
+                          path.unshift(g.name);
+                          g = g.parentGroup;
+                        }
+                        return path.join(' → ');
+                      })()}
                     </p>
                   )}
                 </div>
@@ -504,7 +526,7 @@ const Profile = () => {
                   {t('profile.update')}
                 </Button>
               </div>
-              {(show2faPrompt || (user?.role === 'SUPER_ADMIN' && !user?.twoFactorEnabled)) && (
+              {FEATURE_FLAGS.REQUIRE_2FA && (show2faPrompt || (user?.role === 'SUPER_ADMIN' && !user?.twoFactorEnabled)) && (
                 <div className="p-4 rounded-xl border-2 border-brand-accent-yellow bg-brand-accent-yellow/10 flex gap-3">
                   <AlertTriangle className="text-brand-accent-yellow shrink-0" size={22} />
                   <div>

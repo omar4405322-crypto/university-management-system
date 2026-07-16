@@ -58,6 +58,71 @@ export const getDoctorStats = catchAsync(
   }
 );
 
+export const getSuggestedDoctors = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { courseId } = req.query;
+  if (!courseId) {
+    return next(new AppError('courseId is required', 400));
+  }
+
+  const course = await prisma.course.findUnique({
+    where: { id: parseInt(courseId as string) },
+    include: { department: true },
+  });
+
+  if (!course) {
+    return next(new NotFoundError('Course not found'));
+  }
+
+  const scopeWhere: any = getScopeWhere(req.user!);
+
+  const allDoctors = await prisma.doctor.findMany({
+    where: scopeWhere,
+    include: {
+      user: {
+        select: {
+          email: true,
+          role: true,
+        },
+      },
+      department: {
+        include: { college: true },
+      },
+      scheduleSlots: {
+        where: { courseId: course.id },
+      },
+    },
+  });
+
+  const suggested = allDoctors.map((doc) => {
+    let tier = 4;
+    let reason = 'Other';
+
+    if (doc.scheduleSlots.length > 0) {
+      tier = 1;
+      reason = 'Previously Taught';
+    } else if (doc.departmentId === course.departmentId) {
+      tier = 2;
+      reason = 'Same Department';
+    } else if (doc.department?.collegeId && course.department?.collegeId && doc.department.collegeId === course.department.collegeId) {
+      tier = 3;
+      reason = 'Same College';
+    }
+
+    return {
+      ...doc,
+      tier,
+      reason,
+    };
+  });
+
+  suggested.sort((a, b) => a.tier - b.tier);
+
+  res.json({
+    success: true,
+    data: suggested,
+  });
+});
+
 export const getAllDoctors = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { search = '', page = 1, limit = 10 } = req.query as Record<string, string>;
   const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -92,7 +157,7 @@ export const getAllDoctors = catchAsync(async (req: Request, res: Response, next
           include: { college: true },
         },
         _count: {
-          select: { courses: true },
+          select: { scheduleSlots: true },
         },
       },
       skip,
@@ -126,7 +191,7 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
       department: {
         include: { college: true },
       },
-      courses: true,
+      scheduleSlots: true,
     },
   });
 
@@ -290,7 +355,7 @@ export const deleteDoctor = catchAsync(async (req: Request, res: Response, next:
   const id = parseInt(req.params.id as string);
   const doctor = await prisma.doctor.findUnique({
     where: { id },
-    include: { department: true },
+    include: { department: true, scheduleSlots: true, quizzes: true, tasks: true },
   });
 
   if (!doctor) {
@@ -301,12 +366,23 @@ export const deleteDoctor = catchAsync(async (req: Request, res: Response, next:
     return res.status(403).json({ message: 'Access denied: doctor belongs to a different scope' });
   }
 
+  let blockingItems = [];
+  if (doctor.scheduleSlots && doctor.scheduleSlots.length > 0) {
+    blockingItems.push(`${doctor.scheduleSlots.length} active schedule slots`);
+  }
+  if (doctor.quizzes && doctor.quizzes.length > 0) {
+    blockingItems.push(`${doctor.quizzes.length} active quizzes`);
+  }
+  if (doctor.tasks && doctor.tasks.length > 0) {
+    blockingItems.push(`${doctor.tasks.length} active tasks`);
+  }
+
+  if (blockingItems.length > 0) {
+    return next(new AppError(`Cannot delete doctor: This doctor has ${blockingItems.join(' and ')}. Reassign them before deletion.`, 400));
+  }
+
   await prisma.$transaction(async (tx: any) => {
-    // Set doctorId to null for all courses assigned to this doctor
-    await tx.course.updateMany({
-      where: { doctorId: doctor.id },
-      data: { doctorId: null },
-    });
+
 
     await tx.doctor.delete({ where: { id: doctor.id } });
     await tx.user.delete({ where: { id: doctor.userId } });

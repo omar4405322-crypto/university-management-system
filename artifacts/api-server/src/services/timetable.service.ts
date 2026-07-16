@@ -1,132 +1,90 @@
 import prisma from '../utils/prismaClient';
 import { ConflictError, NotFoundError } from '../utils/appError';
-import { Prisma } from '@prisma/client';
+
+export interface ConflictCheckInput {
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  room: string | null;
+  courseId: number;
+  doctorId?: number | null;
+  groupId?: number | null;
+  teachingAssistantId: string | null;
+  excludeSlotId?: number;
+}
 
 class TimetableService {
-  static async checkRoomConflict(
-    room: string,
-    day: string,
-    startTime: string,
-    endTime: string,
-    excludeId?: number
-  ) {
-    const conflict = await prisma.schedule.findFirst({
-      where: {
-        dayOfWeek: day,
-        room,
-        id: excludeId ? { not: excludeId } : undefined,
-        OR: [
-          { AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }] },
-          { AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }] },
-          { AND: [{ startTime: { gte: startTime } }, { endTime: { lte: endTime } }] },
-        ],
-      },
-    });
-    return conflict !== null;
-  }
+  static async checkConflicts(input: ConflictCheckInput, tx: any = prisma) {
+    const { dayOfWeek, startTime, endTime, room, doctorId, groupId, teachingAssistantId, excludeSlotId } = input;
 
-  static async createTimetable(data: any) {
-    const {
-      collegeId,
-      departmentId,
-      academicYear,
-      semester,
-      title,
-      description,
-      scheduleData,
-      fileUrl,
-      status,
-    } = data;
+    // Common time overlap condition
+    const timeOverlap = {
+      OR: [
+        { AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }] },
+        { AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }] },
+        { AND: [{ startTime: { gte: startTime } }, { endTime: { lte: endTime } }] },
+      ],
+    };
 
-    const department = await prisma.department.findUnique({
-      where: { id: departmentId },
-      select: { collegeId: true },
-    });
-    if (!department) {
-      throw new NotFoundError('Department not found');
-    }
-    if (department.collegeId !== collegeId) {
-      throw new ConflictError('Department does not belong to this college');
-    }
+    const excludeCondition = excludeSlotId ? { id: { not: excludeSlotId } } : {};
 
-    const existing = await prisma.timetable.findUnique({
-      where: {
-        collegeId_departmentId_academicYear_semester: {
-          collegeId,
-          departmentId,
-          academicYear,
-          semester,
-        },
-      },
-    });
-    if (existing) {
-      throw new ConflictError(
-        'A timetable for this Faculty, Department, Year, and Semester combination already exists.'
-      );
-    }
-
-    const slots = scheduleData?.slots ?? [];
-    for (const slot of slots) {
-      if (slot.room) {
-        const hasConflict = await TimetableService.checkRoomConflict(
-          slot.room,
-          slot.day,
-          slot.startTime,
-          slot.endTime
+    // 1. Room conflict
+    if (room) {
+      const baseSlotConflicts = await tx.scheduleSlot.findMany({
+        where: { dayOfWeek, room, ...timeOverlap, ...excludeCondition },
+        include: { overrides: { where: { dayOfWeek, ...timeOverlap } } }
+      });
+      const unmovedConflict = baseSlotConflicts.find((slot: any) => {
+        const activeOverrideChangesRoom = slot.overrides.some(
+          (ov: any) => ov.room && ov.room !== room
         );
-        if (hasConflict) {
-          throw new ConflictError(`Time conflict in room ${slot.room} on ${slot.day}`);
-        }
-      }
+        return !activeOverrideChangesRoom;
+      });
+      if (unmovedConflict) throw new ConflictError(`Time conflict in room ${room} on ${dayOfWeek}`);
+      
+      const overrideRoomConflict = await tx.scheduleOverride.findFirst({
+        where: { dayOfWeek, room, ...timeOverlap, ...(excludeSlotId ? { scheduleSlotId: { not: excludeSlotId } } : {}) },
+      });
+      if (overrideRoomConflict) throw new ConflictError(`Time conflict with an active override in room ${room} on ${dayOfWeek}`);
     }
 
-    return prisma.timetable.create({
-      data: {
-        collegeId,
-        departmentId,
-        academicYear,
-        semester,
-        title,
-        description,
-        scheduleData: scheduleData ?? {},
-        fileUrl,
-        status: status ?? 'DRAFT',
-      },
-    });
-  }
-
-  static async syncSlotsToSchedule(timetableId: number) {
-    const timetable = await prisma.timetable.findUnique({ where: { id: timetableId } });
-    if (!timetable?.scheduleData) return;
-
-    const slots = (timetable.scheduleData as any).slots ?? [];
-
-    for (const slot of slots) {
-      if (!slot.courseName) continue;
-      const course = await prisma.course.findFirst({
-        where: { name: slot.courseName, departmentId: timetable.departmentId },
+    // 2. Doctor conflict
+    if (doctorId) {
+      const doctorConflict = await tx.scheduleSlot.findFirst({
+        where: { dayOfWeek, doctorId, ...timeOverlap, ...excludeCondition },
       });
-      if (!course) continue;
+      if (doctorConflict) throw new ConflictError('Time conflict: The doctor is already scheduled at this time');
 
-      const existingSchedule = await prisma.schedule.findFirst({
+      const overrideDoctorConflict = await tx.scheduleOverride.findFirst({
+        where: { dayOfWeek, doctorId, ...timeOverlap, ...(excludeSlotId ? { scheduleSlotId: { not: excludeSlotId } } : {}) },
+      });
+      if (overrideDoctorConflict) throw new ConflictError('Time conflict: The doctor has an active override at this time');
+    }
+
+    // 3. TA conflict
+    if (teachingAssistantId) {
+      const taConflict = await tx.scheduleSlot.findFirst({
+        where: { dayOfWeek, teachingAssistantId, ...timeOverlap, ...excludeCondition },
+      });
+      if (taConflict) throw new ConflictError('Time conflict: The teaching assistant is already scheduled at this time');
+      
+      const overrideTaConflict = await tx.scheduleOverride.findFirst({
+        where: { dayOfWeek, teachingAssistantId, ...timeOverlap, ...(excludeSlotId ? { scheduleSlotId: { not: excludeSlotId } } : {}) },
+      });
+      if (overrideTaConflict) throw new ConflictError('Time conflict: The TA has an active override at this time');
+    }
+
+    // 4. StudentGroup conflict — check if any slot already targets the same group
+    if (groupId) {
+      const groupConflict = await tx.scheduleSlot.findFirst({
         where: {
-          courseId: course.id,
-          dayOfWeek: slot.day,
-          startTime: slot.startTime,
-          room: slot.room ?? '',
+          dayOfWeek,
+          groupId,
+          ...timeOverlap,
+          ...excludeCondition,
         },
       });
-      if (!existingSchedule) {
-        await prisma.schedule.create({
-          data: {
-            courseId: course.id,
-            dayOfWeek: slot.day,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-            room: slot.room ?? '',
-          },
-        });
-      }
+      if (groupConflict) throw new ConflictError('Time conflict: The student group is already scheduled at this time');
     }
   }
 

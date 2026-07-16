@@ -8,10 +8,8 @@ export interface UserScope {
 export type EntityType =
   | 'department'
   | 'course'
-  | 'schedule'
   | 'exam'
   | 'student'
-  | 'doctor'
   | 'timetable'
   | string;
 
@@ -20,7 +18,10 @@ export const getScopeWhere = (
   entity?: EntityType
 ): Record<string, any> => {
   // Returns a Prisma where filter appropriate for the entity based on user scope
-  if (!user) return { id: -1 };
+  if (!user) {
+    if (entity === 'department') return {};
+    return { id: -1 };
+  }
 
   // SUPER_ADMIN: no filter
   if (user.role === 'SUPER_ADMIN') return {};
@@ -30,11 +31,8 @@ export const getScopeWhere = (
     // Most entities are related via department.collegeId; for department entity itself we filter by collegeId
     if (entity === 'department') return { collegeId: user.managedCollegeId };
     if (entity === 'course') return { department: { collegeId: user.managedCollegeId } };
-    if (entity === 'schedule')
-      return { course: { department: { collegeId: user.managedCollegeId } } };
     if (entity === 'exam') return { course: { department: { collegeId: user.managedCollegeId } } };
     if (entity === 'student') return { department: { collegeId: user.managedCollegeId } };
-    if (entity === 'doctor') return { department: { collegeId: user.managedCollegeId } };
     if (entity === 'timetable') return { department: { collegeId: user.managedCollegeId } };
     return { department: { collegeId: user.managedCollegeId } };
   }
@@ -44,10 +42,8 @@ export const getScopeWhere = (
     // For department entity, match id; for others, departmentId
     if (entity === 'department') return { id: user.managedDepartmentId };
     if (entity === 'course') return { departmentId: user.managedDepartmentId };
-    if (entity === 'schedule') return { course: { departmentId: user.managedDepartmentId } };
     if (entity === 'exam') return { course: { departmentId: user.managedDepartmentId } };
     if (entity === 'student') return { departmentId: user.managedDepartmentId };
-    if (entity === 'doctor') return { departmentId: user.managedDepartmentId };
     if (entity === 'timetable') return { departmentId: user.managedDepartmentId };
     return { departmentId: user.managedDepartmentId };
   }
@@ -56,13 +52,23 @@ export const getScopeWhere = (
   if (user.role === 'ADMIN' && user.managedCollegeId) {
     if (entity === 'department') return { collegeId: user.managedCollegeId };
     if (entity === 'course') return { department: { collegeId: user.managedCollegeId } };
-    if (entity === 'schedule')
-      return { course: { department: { collegeId: user.managedCollegeId } } };
     if (entity === 'exam') return { course: { department: { collegeId: user.managedCollegeId } } };
     if (entity === 'student') return { department: { collegeId: user.managedCollegeId } };
-    if (entity === 'doctor') return { department: { collegeId: user.managedCollegeId } };
     if (entity === 'timetable') return { department: { collegeId: user.managedCollegeId } };
     return { department: { collegeId: user.managedCollegeId } };
+  }
+
+  // DOCTOR: scoped to the sections they teach
+  if (user.role === 'DOCTOR' && user.doctor?.id) {
+    if (entity === 'course') return { scheduleSlots: { some: { doctorId: user.doctor.id } } };
+    if (entity === 'timetable') return { doctorId: user.doctor.id }; // ScheduleSlot entity
+    return { id: -1 }; // Doctors shouldn't query departments/students universally without scope
+  }
+
+  // TEACHING_ASSISTANT: scoped to the sections/slots they are assigned
+  if (user.role === 'TEACHING_ASSISTANT' && user.teachingAssistant?.id) {
+    if (entity === 'timetable') return { teachingAssistantId: user.teachingAssistant.id }; // ScheduleSlot entity
+    return { id: -1 };
   }
 
   return { id: -1 };

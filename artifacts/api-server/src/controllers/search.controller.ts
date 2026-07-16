@@ -78,7 +78,7 @@ export const globalSearch = catchAsync(async (req: Request, res: Response) => {
     }),
   ]);
 
-  res.json({
+  return res.json({
     success: true,
     data: { students, doctors, courses, colleges, departments },
   });

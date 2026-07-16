@@ -6,6 +6,8 @@ const doctorsService = {
   getStats: (): Promise<ApiResponse<any>> => apiRequest(() => api.get('/doctors/stats')),
 
   getDoctors: (params?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.get('/doctors', { params })),
+  
+  getSuggestedDoctors: (courseId: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/doctors/suggested`, { params: { courseId } })),
 
   getDoctorById: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/doctors/${id}`)),
 

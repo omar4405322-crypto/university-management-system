@@ -1,25 +1,24 @@
-import React, { InputHTMLAttributes } from 'react';
+import * as React from "react"
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: React.ReactNode;
-  error?: React.ReactNode;
-}
+import { cn } from "@/lib/utils"
 
-const Input: React.FC<InputProps> = ({ label, error, className = '', ...props }) => {
-  return (
-    <div className="form-field">
-      {label && <label className="label-stat text-brand-text-secondary ms-1">{label}</label>}
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+  ({ className, type, ...props }, ref) => {
+    return (
       <input
-        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border dark:border-slate-700 rounded-xl text-sm text-brand-text-primary dark:text-brand-text-main transition-all duration-200
-          focus:outline-none focus:ring-4 focus:ring-brand-brand-green-dark/10 focus:border-brand-brand-green-dark
-          placeholder:text-brand-text-muted dark:placeholder:text-brand-text-muted
-          disabled:bg-surface-subtle disabled:text-brand-text-muted disabled:cursor-not-allowed
-          ${error ? 'border-error ring-error/10' : 'border-brand-border hover:border-brand-text-muted'} ${className}`}
+        type={type}
+        className={cn(
+          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          className
+        )}
+        ref={ref}
         {...props}
       />
-      {error && <p className="text-xs text-error font-medium mt-1.5 ms-1">{error}</p>}
-    </div>
-  );
-};
+    )
+  }
+)
+Input.displayName = "Input"
+
+export { Input }
 
 export default Input;

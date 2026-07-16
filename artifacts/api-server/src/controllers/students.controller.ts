@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { invalidateCache } from '../utils/redis.utils';
 import { getScopeWhere } from '../utils/scope.utils';
+import { StudentGroupsService } from '../services/studentGroups.service';
 
 const mapStudentStatus = (student: any) => ({
   ...student,
@@ -170,6 +171,10 @@ export const toggleStudentStatus = catchAsync(
       },
     });
 
+    if (updated.isActive) {
+      await StudentGroupsService.assignStudentToGroup(updated);
+    }
+
     auditLog('TOGGLE_STUDENT_STATUS', 'Student', req.params.id as string, req);
     res.json({
       success: true,
@@ -258,6 +263,8 @@ export const createStudent = catchAsync(async (req: Request, res: Response, next
       },
     });
   });
+
+  await StudentGroupsService.assignStudentToGroup(newStudent);
 
   await invalidateCache('dashboard:*');
 

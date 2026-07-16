@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 // FIXED: Phase 4 — full i18n for tabs, labels, validation, and placeholders
 import React, { useState, useEffect } from 'react';
 import {
@@ -23,11 +23,12 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import Badge from '../../components/ui/Badge';
 import api from '../../services/api';
 import { CAMPUS_HERO_2, UNIVERSITY_PROMO_VIDEO } from '../../constants/universityAssets';
 import { useToast } from '../../context/ToastContext';
+import { FEATURE_FLAGS } from '../../constants/featureFlags';
 
 const SettingsPage = () => {
   const { t } = useTranslation();
@@ -438,7 +439,7 @@ const SettingsPage = () => {
                   </p>
                 </div>
                 <div className="p-6 space-y-4">
-                  {isSuperAdmin && !twoFactorEnabled && (
+                  {FEATURE_FLAGS.REQUIRE_2FA && isSuperAdmin && !twoFactorEnabled && (
                     <div className="p-4 rounded-xl border-2 border-brand-accent-yellow bg-brand-accent-yellow/10 flex items-start gap-3">
                       <AlertCircle className="text-brand-accent-yellow shrink-0 mt-0.5" size={20} />
                       <p className="text-sm font-bold text-brand-text-primary">
@@ -448,7 +449,7 @@ const SettingsPage = () => {
                   )}
                   <div
                     className={`flex items-center justify-between p-4 rounded-xl border bg-brand-bg-page/30 hover:bg-brand-bg-page/50 transition-all ${
-                      isSuperAdmin && !twoFactorEnabled
+                      FEATURE_FLAGS.REQUIRE_2FA && isSuperAdmin && !twoFactorEnabled
                         ? 'border-brand-accent-yellow'
                         : 'border-brand-border'
                     }`}

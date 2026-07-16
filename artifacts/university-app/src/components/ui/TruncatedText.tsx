@@ -1,11 +1,14 @@
 import React from 'react';
 
-const isArabic = (text) => /[\u0600-\u06FF]/.test(text);
+const isArabic = (text: string) => /[\u0600-\u06FF]/.test(text);
 
-export function TruncatedText({ text, maxWidth = '100%' }) {
+export function TruncatedText({ text, maxWidth = '100%', lineClamp = 1 }: { text: string; maxWidth?: string | number; lineClamp?: number }) {
   if (!text) return null;
 
-  const className = isArabic(text) ? 'truncate-rtl' : 'truncate-ltr';
+  const isAr = isArabic(text);
+  const className = lineClamp > 1
+    ? (isAr ? 'line-clamp-rtl' : 'line-clamp-ltr')
+    : (isAr ? 'truncate-rtl' : 'truncate-ltr');
 
   return (
     <div className="relative group inline-block max-w-full">

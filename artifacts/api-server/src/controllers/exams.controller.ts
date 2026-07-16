@@ -219,3 +219,201 @@ export const getExamById = catchAsync(async (req: Request, res: Response, next: 
 
   res.json({ success: true, data: exam });
 });
+
+
+// --- EXAM QUESTIONS ---
+
+export const getExamQuestions = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const examId = parseInt(req.params.id as string);
+  const exam = await prisma.exam.findUnique({ where: { id: examId } });
+  if (!exam) return next(new NotFoundError('Exam not found'));
+
+  const questions = await prisma.examQuestion.findMany({
+    where: { examId },
+    orderBy: { order: 'asc' },
+  });
+
+  // If user is STUDENT, strip the correctAnswer
+  if (req.user?.role === 'STUDENT') {
+    const stripped = questions.map((q: any) => {
+      const { correctAnswer, ...rest } = q;
+      return rest;
+    });
+    return res.json({ success: true, data: stripped });
+  }
+
+  res.json({ success: true, data: questions });
+});
+
+export const addExamQuestion = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const examId = parseInt(req.params.id as string);
+  const { text, type, optionA, optionB, optionC, optionD, correctAnswer, points, order } = req.body;
+
+  const exam = await prisma.exam.findUnique({ where: { id: examId } });
+  if (!exam) return next(new NotFoundError('Exam not found'));
+
+  const question = await prisma.examQuestion.create({
+    data: {
+      examId, text, type, optionA, optionB, optionC, optionD, correctAnswer, points: points || 1, order: order || 1
+    }
+  });
+
+  res.status(201).json({ success: true, data: question });
+});
+
+export const updateExamQuestion = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const questionId = parseInt(req.params.questionId as string);
+  const { text, type, optionA, optionB, optionC, optionD, correctAnswer, points, order } = req.body;
+
+  const question = await prisma.examQuestion.findUnique({ where: { id: questionId } });
+  if (!question) return next(new NotFoundError('Question not found'));
+
+  const updated = await prisma.examQuestion.update({
+    where: { id: questionId },
+    data: { text, type, optionA, optionB, optionC, optionD, correctAnswer, points, order }
+  });
+
+  res.json({ success: true, data: updated });
+});
+
+export const deleteExamQuestion = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const questionId = parseInt(req.params.questionId as string);
+  const question = await prisma.examQuestion.findUnique({ where: { id: questionId } });
+  if (!question) return next(new NotFoundError('Question not found'));
+
+  await prisma.examQuestion.delete({ where: { id: questionId } });
+  res.json({ success: true, message: 'Question deleted' });
+});
+
+// --- EXAM SESSIONS & SUBMISSIONS ---
+
+export const startExamSession = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const examId = parseInt(req.params.id as string);
+  const student = await prisma.student.findUnique({ where: { userId: req.user!.id } });
+  if (!student) return next(new AuthorizationError('Only students can start exams'));
+
+  const exam = await prisma.exam.findUnique({ where: { id: examId } });
+  if (!exam) return next(new NotFoundError('Exam not found'));
+
+  // Check if submission already exists
+  let submission = await prisma.examSubmission.findUnique({
+    where: { examId_studentId: { examId, studentId: student.id } }
+  });
+
+  if (submission && submission.status !== 'PENDING') {
+    return next(new AuthorizationError('You have already completed this exam'));
+  }
+
+  if (!submission) {
+    submission = await prisma.examSubmission.create({
+      data: {
+        examId,
+        studentId: student.id,
+        answers: [],
+        status: 'PENDING',
+      }
+    });
+  }
+
+  res.status(201).json({ success: true, data: submission });
+});
+
+export const submitExam = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const examId = parseInt(req.params.id as string);
+  const { answers, antiCheatLogs } = req.body;
+  
+  const student = await prisma.student.findUnique({ where: { userId: req.user!.id } });
+  if (!student) return next(new AuthorizationError('Only students can submit exams'));
+
+  let submission = await prisma.examSubmission.findUnique({
+    where: { examId_studentId: { examId, studentId: student.id } }
+  });
+
+  if (!submission) {
+    return next(new NotFoundError('No active exam session found. Please start the exam first.'));
+  }
+
+  if (submission.status !== 'PENDING') {
+    return next(new AuthorizationError('Exam already submitted'));
+  }
+
+  const questions = await prisma.examQuestion.findMany({ where: { examId } });
+  let score = 0;
+  let maxScore = 0;
+  let allAutoGradeable = true;
+
+  // answers format: { questionId: string, answer: string }[] OR { [questionId]: string }
+  // depending on frontend. Let's support object map:
+  const answersMap: Record<string, string> = Array.isArray(answers) 
+    ? answers.reduce((acc: any, curr: any) => ({ ...acc, [curr.questionId]: curr.answer }), {})
+    : answers || {};
+
+  questions.forEach((q: any) => {
+    maxScore += q.points;
+    if (q.type === 'SHORT_ANSWER') {
+      allAutoGradeable = false;
+    } else {
+      const studentAnswer = answersMap[q.id.toString()];
+      if (studentAnswer && studentAnswer.toString().toUpperCase() === q.correctAnswer.toUpperCase()) {
+        score += q.points;
+      }
+    }
+  });
+
+  const updatedSubmission = await prisma.examSubmission.update({
+    where: { id: submission.id },
+    data: {
+      answers: answersMap,
+      score: allAutoGradeable ? score : null, // If there's short answer, score is pending manual review
+      maxScore,
+      status: allAutoGradeable ? 'GRADED' : 'PENDING',
+      submittedAt: new Date(),
+      antiCheatLogs: antiCheatLogs || []
+    }
+  });
+
+  // Handle violations if any
+  if (Array.isArray(antiCheatLogs) && antiCheatLogs.length > 0) {
+    const violationRecords = antiCheatLogs.map((log: any) => ({
+      submissionId: updatedSubmission.id,
+      type: log.type,
+      details: log.details || null,
+      occurredAt: log.occurredAt ? new Date(log.occurredAt) : new Date()
+    }));
+    await prisma.examViolation.createMany({ data: violationRecords });
+  }
+
+  res.json({ success: true, data: updatedSubmission });
+});
+
+export const getExamSubmissions = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const examId = parseInt(req.params.id as string);
+  
+  const submissions = await prisma.examSubmission.findMany({
+    where: { examId },
+    include: {
+      student: {
+        include: { user: { select: { email: true } } }
+      },
+      violations: true
+    },
+    orderBy: { submittedAt: 'desc' }
+  });
+
+  res.json({ success: true, data: submissions });
+});
+
+export const getMyExamSubmission = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const examId = parseInt(req.params.id as string);
+  const student = await prisma.student.findUnique({ where: { userId: req.user!.id } });
+  if (!student) return next(new AuthorizationError('Access denied'));
+
+  const submission = await prisma.examSubmission.findUnique({
+    where: { examId_studentId: { examId, studentId: student.id } },
+    include: { violations: true }
+  });
+
+  if (!submission) return next(new NotFoundError('Submission not found'));
+
+  res.json({ success: true, data: submission });
+});

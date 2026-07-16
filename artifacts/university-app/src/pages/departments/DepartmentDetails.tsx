@@ -5,10 +5,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Building2,
-  Users,
-  BookOpen,
-  GraduationCap,
-  Calendar,
   Loader2,
   AlertCircle,
   CheckCircle,
@@ -60,9 +56,6 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({ departmentId, isD
   };
 
 
-  const openSchedule = () => {
-    navigate(`/schedules-management?departmentId=${id}`);
-  };
 
   if (loading) {
     return (
@@ -108,80 +101,20 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({ departmentId, isD
             {!isDrawerMode && <Breadcrumbs items={breadcrumbItems} />}
       
 
-      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between bg-brand-bg-card p-6 rounded-3xl border border-brand-border shadow-soft mb-6 mt-4">
-        <div className="flex items-center gap-6">
-          {!isDrawerMode && (
-            <button
-              type="button"
-              onClick={() => navigate('/departments')}
-              className="p-3 text-brand-text-sub hover:text-brand-green hover:bg-brand-green/10 rounded-2xl transition-all"
-            >
-              <ArrowLeft size={24} className="rtl:-scale-x-100" />
-            </button>
-          )}
-          <div>
-            <h1 className="text-3xl font-black text-brand-text-main">{department.name}</h1>
-            {department.nameAr && (
-              <p className="text-xl text-brand-text-sub mt-1 font-arabic" dir="rtl">
-                {department.nameAr}
-              </p>
-            )}
-            <p className="text-sm text-brand-text-sub font-bold mt-2 flex items-center gap-2">
-              <Building2 size={16} className="text-brand-green" />
-              {t('departments.homeCollege', 'Home college')}: {department.college?.name || '—'}
-            </p>
-          </div>
+      {!isDrawerMode && (
+        <div className="flex items-center gap-4 mb-6 mt-4">
+          <button
+            type="button"
+            onClick={() => navigate('/departments')}
+            className="p-3 text-brand-text-sub hover:text-brand-green hover:bg-brand-green/10 rounded-2xl transition-all"
+          >
+            <ArrowLeft size={24} className="rtl:-scale-x-100" />
+          </button>
         </div>
-        <Button
-          className="flex items-center gap-2 shadow-xl shadow-brand-green/20 font-bold"
-          onClick={openSchedule}
-        >
-          <Calendar size={18} /> {t('nav.schedule')}
-        </Button>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <Card className="flex items-center gap-5 border-l-0">
-          <div className="p-4 bg-brand-green/10 text-brand-green rounded-2xl">
-            <Users size={28} />
-          </div>
-          <div>
-            <p className="text-xs font-black text-brand-text-muted uppercase tracking-widest">
-              {t('nav.students')}
-            </p>
-            <h3 className="text-2xl font-black text-brand-text-main mt-1">{students.length}</h3>
-          </div>
-        </Card>
-        <Card className="flex items-center gap-5 border-l-0">
-          <div className="p-4 bg-brand-navy-500/10 text-brand-navy-500 rounded-2xl">
-            <BookOpen size={28} />
-          </div>
-          <div>
-            <p className="text-xs font-black text-brand-text-muted uppercase tracking-widest">
-              {t('nav.courses')}
-            </p>
-            <h3 className="text-2xl font-black text-brand-text-main mt-1">{courses.length}</h3>
-          </div>
-        </Card>
-        <Card className="flex items-center gap-5 border-l-0">
-          <div className="p-4 bg-brand-yellow/10 text-brand-yellow rounded-2xl">
-            <GraduationCap size={28} />
-          </div>
-          <div>
-            <p className="text-xs font-black text-brand-text-muted uppercase tracking-widest">
-              {t('nav.doctors')}
-            </p>
-            <h3 className="text-2xl font-black text-brand-text-main mt-1">{doctors.length}</h3>
-          </div>
-        </Card>
-      </div>
-
-      <Card title={t('nav.students')} noPadding className="border-l-0">
-        {students.length === 0 ? (
-          <p className="p-8 text-center text-brand-text-sub font-bold">
-            {t('departments.noStudents', 'No students enrolled in this department.')}
-          </p>
-        ) : (
+      {students.length > 0 && (
+        <Card title={t('nav.students')} noPadding className="border-l-0">
           <Table headers={[t('students.studentId'), t('students.name'), t('auth.year')]}>
             {students.map((s) => (
               <TableRow
@@ -197,15 +130,11 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({ departmentId, isD
               </TableRow>
             ))}
           </Table>
-        )}
-      </Card>
+        </Card>
+      )}
 
-      <Card title={t('nav.courses')} noPadding className="border-l-0">
-        {courses.length === 0 ? (
-          <p className="p-8 text-center text-brand-text-sub font-bold">
-            {t('departments.noCourses', 'No courses in this department.')}
-          </p>
-        ) : (
+      {courses.length > 0 && (
+        <Card title={t('nav.courses')} noPadding className="border-l-0">
           <Table headers={[t('courses.code'), t('courses.name'), t('courses.credits')]}>
             {courses.map((c) => (
               <TableRow key={c.id}>
@@ -217,19 +146,15 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({ departmentId, isD
               </TableRow>
             ))}
           </Table>
-        )}
-      </Card>
+        </Card>
+      )}
 
-      <Card
-        title={t('departments.assignedProfessors', 'Assigned professors')}
-        noPadding
-        className="border-l-0"
-      >
-        {doctors.length === 0 ? (
-          <p className="p-8 text-center text-brand-text-sub font-bold">
-            {t('departments.noDoctors', 'No professors assigned.')}
-          </p>
-        ) : (
+      {doctors.length > 0 && (
+        <Card
+          title={t('departments.assignedProfessors', 'Assigned professors')}
+          noPadding
+          className="border-l-0"
+        >
           <Table headers={[t('doctors.doctorId'), t('doctors.name'), t('doctors.specialty')]}>
             {doctors.map((d) => (
               <TableRow key={d.id}>
@@ -241,8 +166,8 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({ departmentId, isD
               </TableRow>
             ))}
           </Table>
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 };

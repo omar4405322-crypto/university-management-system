@@ -1,276 +1,283 @@
-require('dotenv').config();
-import {  PrismaClient  } from '@prisma/client';
+import 'dotenv/config';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const superAdminPassword = await bcrypt.hash('SuperAdmin123!', 10);
   const commonPassword = await bcrypt.hash('Password123!', 10);
 
-  console.log('Seeding Colleges and Departments...');
-  
-  // 1. Colleges
-  const industryCollege = await prisma.college.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      id: 1,
-      name: "College of Industry & Energy",
-      nameAr: "كلية الصناعة والطاقة",
-      description: "Focuses on modern industrial technologies and renewable energy."
-    }
-  });
+  // STEP 1 - Read the current state
+  const colleges = await prisma.college.findMany();
+  const departments = await prisma.department.findMany();
 
-  const healthCollege = await prisma.college.upsert({
-    where: { id: 2 },
-    update: {},
-    create: {
-      id: 2,
-      name: "College of Health Sciences",
-      nameAr: "كلية العلوم الصحية",
-      description: "Dedicated to medical and healthcare education."
-    }
-  });
+  console.log(`Found ${colleges.length} Colleges and ${departments.length} Departments. Building on top of them...`);
 
-  // 2. Departments
-  const ictDept = await prisma.department.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      id: 1,
-      name: "Information & Communication Technology",
-      nameAr: "تكنولوجيا المعلومات والاتصالات",
-      collegeId: industryCollege.id
-    }
-  });
+  let totalStudents = 0;
+  let totalDoctors = 0;
+  let totalTAs = 0;
+  let totalCourses = 0;
+  let totalTimetables = 0;
+  let totalSections = 0;
+  let totalSlots = 0;
 
-  const mechDept = await prisma.department.upsert({
-    where: { id: 2 },
-    update: {},
-    create: {
-      id: 2,
-      name: "Mechatronics Department",
-      nameAr: "قسم الميكاترونيكس",
-      collegeId: industryCollege.id
-    }
-  });
-
-  const renewDept = await prisma.department.upsert({
-    where: { id: 3 },
-    update: {},
-    create: {
-      id: 3,
-      name: "Renewable Energy Department",
-      nameAr: "قسم الطاقة المتجددة",
-      collegeId: industryCollege.id
-    }
-  });
-
-  const nursingDept = await prisma.department.upsert({
-    where: { id: 4 },
-    update: {},
-    create: {
-      id: 4,
-      name: "Nursing Department",
-      nameAr: "قسم التمريض",
-      collegeId: healthCollege.id
-    }
-  });
-
-  const labsDept = await prisma.department.upsert({
-    where: { id: 5 },
-    update: {},
-    create: {
-      id: 5,
-      name: "Medical Labs Department",
-      nameAr: "قسم المختبرات الطبية",
-      collegeId: healthCollege.id
-    }
-  });
-
-  const railwayDept = await prisma.department.upsert({
-    where: { id: 6 },
-    update: {},
-    create: {
-      id: 6,
-      name: "Railway Technology",
-      nameAr: "تكنولوجيا السكك الحديدية",
-      collegeId: industryCollege.id
-    }
-  });
-
-  const autoDept = await prisma.department.upsert({
-    where: { id: 7 },
-    update: {},
-    create: {
-      id: 7,
-      name: "Automotive Technology",
-      nameAr: "تكنولوجيا السيارات",
-      collegeId: industryCollege.id
-    }
-  });
-
-  const emsDept = await prisma.department.upsert({
-    where: { id: 8 },
-    update: {},
-    create: {
-      id: 8,
-      name: "Emergency Medical Services",
-      nameAr: "خدمات الطوارئ الطبية",
-      collegeId: healthCollege.id
-    }
-  });
-
-  const prostheticsDept = await prisma.department.upsert({
-    where: { id: 9 },
-    update: {},
-    create: {
-      id: 9,
-      name: "Prosthetics and Orthotics",
-      nameAr: "الأطراف الصناعية والأجهزة التعويضية",
-      collegeId: healthCollege.id
-    }
-  });
-
-  const radiologyDept = await prisma.department.upsert({
-    where: { id: 10 },
-    update: {},
-    create: {
-      id: 10,
-      name: "Radiology",
-      nameAr: "الأشعة",
-      collegeId: healthCollege.id
-    }
-  });
-
-  console.log('Seeding Super Admin...');
-  const adminPassword = await bcrypt.hash('Admin123!', 10);
-  // 3. Super Admin
-  await prisma.user.upsert({
-    where: { email: 'superadmin@university.com' },
-    update: { role: 'SUPER_ADMIN', adminRole: null, twoFactorEnabled: true },
-    create: {
-      email: 'superadmin@university.com',
-      password: superAdminPassword,
-      role: 'SUPER_ADMIN',
-      twoFactorEnabled: true,
-    }
-  });
-
-  // Admin account (matches README / login placeholder)
-  await prisma.user.upsert({
-    where: { email: 'admin@university.com' },
-    update: { role: 'ADMIN', password: adminPassword, adminRole: null },
-    create: {
-      email: 'admin@university.com',
-      password: adminPassword,
-      role: 'ADMIN',
-    },
-  });
-
-  console.log('Seeding ICT Curriculum (Year 1 Semester 1)...');
-  // 4. ICT Curriculum Courses
-  const coursesData = [
-    { code: 'ICT101', name: 'Introduction to Programming', credits: 3 },
-    { code: 'ICT102', name: 'Computer Architecture', credits: 3 },
-    { code: 'MATH101', name: 'Calculus I', credits: 4 },
-    { code: 'ENG101', name: 'English Composition I', credits: 3 },
-    { code: 'PHY101', name: 'Physics for Engineers', credits: 4 },
+  const nameMix = [
+    { f: 'Ahmed', l: 'Hassan' },
+    { f: 'Sarah', l: 'Smith' },
+    { f: 'Mohamed', l: 'Ali' },
+    { f: 'Laila', l: 'Johnson' },
+    { f: 'Omar', l: 'Farooq' }
   ];
 
-  for (const course of coursesData) {
-    await prisma.course.upsert({
-      where: { courseCode: course.code },
-      update: { 
-        departmentId: ictDept.id,
-        year: 1,
-        semester: 1
-      },
-      create: {
-        courseCode: course.code,
-        name: course.name,
-        credits: course.credits,
-        departmentId: ictDept.id,
-        year: 1,
-        semester: 1
+  const docNames = [
+    { f: 'Dr. Youssef', l: 'Ibrahim' },
+    { f: 'Dr. Emily', l: 'Davis' },
+    { f: 'Dr. Tarek', l: 'Nour' }
+  ];
+
+  const taNames = [
+    { f: 'Kareem', l: 'Mostafa' },
+    { f: 'Jessica', l: 'Williams' }
+  ];
+
+  for (const dept of departments) {
+    console.log(`\n--- Seeding Department: ${dept.name} ---`);
+
+    // STEP 2 - Seed per department
+
+    // 5 Students
+    const deptStudents = [];
+    for (let i = 0; i < 5; i++) {
+      const email = `student${i}.dept${dept.id}@test.com`;
+      const sId = `STU-D${dept.id}-2026-00${i}`;
+      const user = await prisma.user.upsert({
+        where: { email },
+        update: {},
+        create: { email, password: commonPassword, role: 'STUDENT' }
+      });
+      const st = await prisma.student.upsert({
+        where: { userId: user.id },
+        update: { departmentId: dept.id },
+        create: {
+          userId: user.id,
+          firstName: nameMix[i].f,
+          lastName: nameMix[i].l,
+          studentId: sId,
+          departmentId: dept.id,
+          year: 1
+        }
+      });
+      deptStudents.push(st);
+      totalStudents++;
+    }
+
+    // 3 Doctors
+    const deptDoctors = [];
+    for (let i = 0; i < 3; i++) {
+      const email = `doctor${i}.dept${dept.id}@test.com`;
+      const docId = `DOC-D${dept.id}-${i}`;
+      const user = await prisma.user.upsert({
+        where: { email },
+        update: {},
+        create: { email, password: commonPassword, role: 'DOCTOR' }
+      });
+      const doc = await prisma.doctor.upsert({
+        where: { userId: user.id },
+        update: { departmentId: dept.id },
+        create: {
+          userId: user.id,
+          firstName: docNames[i].f,
+          lastName: docNames[i].l,
+          doctorId: docId,
+          departmentId: dept.id
+        }
+      });
+      deptDoctors.push(doc);
+      totalDoctors++;
+    }
+
+    // 2 TAs
+    const deptTAs = [];
+    const taNames = [
+      { f: 'Hassan', l: 'Reda' },
+      { f: 'Mona', l: 'Kamal' }
+    ];
+    for (let i = 0; i < 2; i++) {
+      const email = `ta${i}.dept${dept.id}@test.com`;
+      const empId = `TA-D${dept.id}-${i}`;
+      const user = await prisma.user.upsert({
+        where: { email },
+        update: {},
+        create: { email, password: commonPassword, role: 'TEACHING_ASSISTANT' }
+      });
+      const ta = await prisma.teachingAssistant.upsert({
+        where: { userId: user.id },
+        update: { 
+          departmentId: dept.id,
+          firstName: taNames[i].f,
+          lastName: taNames[i].l
+        },
+        create: {
+          userId: user.id,
+          employeeId: empId,
+          departmentId: dept.id,
+          firstName: taNames[i].f,
+          lastName: taNames[i].l
+        }
+      });
+      deptTAs.push(ta);
+      totalTAs++;
+    }
+
+    // At least 2 Courses
+    let courses = await prisma.course.findMany({ where: { departmentId: dept.id } });
+    if (courses.length < 2) {
+      for (let i = courses.length; i < 2; i++) {
+        const courseCode = `CRS-D${dept.id}-10${i}`;
+        const c = await prisma.course.upsert({
+          where: { courseCode },
+          update: {},
+          create: {
+            courseCode,
+            name: `Course ${i} for Dept ${dept.id}`,
+            departmentId: dept.id,
+            credits: 3,
+            year: 1,
+            semester: 1
+          }
+        });
+        courses.push(c);
+        totalCourses++;
       }
-    });
+    }
+
+    // STEP 3 - Timetable + Sections + Slots
+    // For academic years 1 and 2
+    for (const year of [1, 2]) {
+      // 1 Timetable
+      const timetable = await prisma.timetable.upsert({
+        where: {
+          collegeId_departmentId_academicYear_semester: {
+            collegeId: dept.collegeId,
+            departmentId: dept.id,
+            academicYear: year,
+            semester: 1
+          }
+        },
+        update: { status: 'PUBLISHED' },
+        create: {
+          collegeId: dept.collegeId,
+          departmentId: dept.id,
+          academicYear: year,
+          semester: 1,
+          title: `Year ${year} Sem 1 Timetable`,
+          status: 'PUBLISHED'
+        }
+      });
+      totalTimetables++;
+
+      // Filter courses by year
+      const yearCourses = courses.filter(c => c.year === year || c.year === 1); // fallback to year 1 courses if none
+      
+      for (const course of yearCourses) {
+        // Create ScheduleSlots directly with courseId, doctorId, groupId, slotType
+        const existingSlots = await prisma.scheduleSlot.findMany({
+          where: { courseId: course.id, timetableId: timetable.id }
+        });
+
+        if (existingSlots.length === 0) {
+          // LECTURE
+          await prisma.scheduleSlot.create({
+            data: {
+              courseId: course.id,
+              doctorId: deptDoctors[0].id,
+              timetableId: timetable.id,
+              dayOfWeek: 'MONDAY',
+              startTime: '09:00',
+              endTime: '11:00',
+              room: 'Hall A',
+              slotType: 'LECTURE',
+              sessionType: 'LECTURE'
+            }
+          });
+          totalSlots++;
+
+          // LAB assigned to TA
+          await prisma.scheduleSlot.create({
+            data: {
+              courseId: course.id,
+              doctorId: deptDoctors[0].id,
+              timetableId: timetable.id,
+              dayOfWeek: 'WEDNESDAY',
+              startTime: '10:00',
+              endTime: '12:00',
+              room: 'Lab 1',
+              slotType: 'LAB',
+              sessionType: 'LAB',
+              teachingAssistantId: deptTAs[0].id
+            }
+          });
+          totalSlots++;
+        }
+      }
+
+      // 1 StudentGroup per department/year
+      const groupName = `Group A (Y${year})`;
+      let group = await prisma.studentGroup.findFirst({
+        where: { departmentId: dept.id, name: groupName }
+      });
+      
+      if (!group) {
+        group = await prisma.studentGroup.create({
+          data: {
+            name: groupName,
+            departmentId: dept.id,
+            rangeStartName: deptStudents.length > 0 ? `${deptStudents[0].firstName} ${deptStudents[0].lastName}` : '',
+            rangeEndName: deptStudents.length > 0 ? `${deptStudents[deptStudents.length - 1].firstName} ${deptStudents[deptStudents.length - 1].lastName}` : '',
+          }
+        });
+      }
+
+      // Assign all students to Group A
+      for (const st of deptStudents) {
+        await prisma.student.update({
+          where: { id: st.id },
+          data: { groupId: group.id }
+        });
+      }
+    }
   }
 
-  console.log('Seeding Sample Doctor and Student...');
-  // 5. Sample Doctor
-  const doctorUser = await prisma.user.upsert({
-    where: { email: 'doctor@university.com' },
-    update: {},
-    create: {
-      email: 'doctor@university.com',
-      password: commonPassword,
-      role: 'DOCTOR'
-    }
-  });
+  // STEP 4 - Verify
+  console.log('\n--- VERIFICATION COUNTS ---');
+  console.log(`Total Students Seeded/Upserted: ${totalStudents}`);
+  console.log(`Total Doctors Seeded/Upserted: ${totalDoctors}`);
+  console.log(`Total TAs Seeded/Upserted: ${totalTAs}`);
+  console.log(`Total Courses Added: ${totalCourses}`);
+  console.log(`Total Timetables Seeded/Upserted: ${totalTimetables}`);
+  console.log(`Total ScheduleSlots Added: ${totalSlots}`);
+  
+  const dbStudents = await prisma.student.count();
+  const dbDoctors = await prisma.doctor.count();
+  const dbTAs = await prisma.teachingAssistant.count();
+  const dbTimetables = await prisma.timetable.count();
+  const dbGroups = await prisma.studentGroup.count();
+  const dbSlots = await prisma.scheduleSlot.count();
 
-  await prisma.doctor.upsert({
-    where: { userId: doctorUser.id },
-    update: { 
-      departmentId: ictDept.id,
-      doctorId: 'DOC20260001'
-    },
-    create: {
-      userId: doctorUser.id,
-      firstName: 'Ahmed',
-      lastName: 'Ali',
-      doctorId: 'DOC20260001',
-      departmentId: ictDept.id
-    }
-  });
-
-  // 6. Sample Student
-  const studentUser = await prisma.user.upsert({
-    where: { email: 'student@university.com' },
-    update: {},
-    create: {
-      email: 'student@university.com',
-      password: commonPassword,
-      role: 'STUDENT'
-    }
-  });
-
-  const student = await prisma.student.upsert({
-    where: { userId: studentUser.id },
-    update: { 
-      departmentId: ictDept.id,
-      studentId: 'STU20260001'
-    },
-    create: {
-      userId: studentUser.id,
-      firstName: 'Omar',
-      lastName: 'Hassan',
-      studentId: 'STU20260001',
-      departmentId: ictDept.id,
-      enrolledAt: new Date()
-    }
-  });
-
-  // 7. Enroll Student in Courses
-  const ictCourses = await prisma.course.findMany({
-    where: { departmentId: ictDept.id }
-  });
-
-  await prisma.student.update({
-    where: { id: student.id },
-    data: {
-      courses: {
-        connect: ictCourses.map(c => ({ id: c.id }))
-      }
-    }
-  });
-
-  console.log('Seed data created successfully');
+  console.log('\n--- TOTAL DATABASE COUNTS ---');
+  console.log(`Students: ${dbStudents}`);
+  console.log(`Doctors: ${dbDoctors}`);
+  console.log(`Teaching Assistants: ${dbTAs}`);
+  console.log(`Timetables: ${dbTimetables}`);
+  console.log(`Student Groups: ${dbGroups}`);
+  console.log(`Schedule Slots: ${dbSlots}`);
+  
+  console.log('\n✅ Seeding complete without errors.');
 }
 
 main()
   .catch((e) => {
+    console.error('❌ SEED ERROR:');
     console.error(e);
     process.exit(1);
   })

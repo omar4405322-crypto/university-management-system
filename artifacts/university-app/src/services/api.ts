@@ -55,7 +55,8 @@ api.interceptors.response.use(
       if (originalRequest.url?.includes('/auth/refresh')) {
         localStorage.removeItem('user');
         setAccessToken(null);
-        if (!window.location.pathname.includes('/login') && !(window as any).__isRedirecting) {
+        const isPublicPage = window.location.pathname.includes('/login') || window.location.pathname.includes('/register');
+        if (!isPublicPage && !(window as any).__isRedirecting) {
           (window as any).__isRedirecting = true;
           window.location.href = '/login?expired=true';
         }
@@ -105,9 +106,10 @@ api.interceptors.response.use(
         localStorage.removeItem('user');
         setAccessToken(null);
 
-        // Only redirect if we are not already on the login page
+        // Only redirect if we are not already on a public page
         // and only do it once to avoid ERR_ABORTED in console
-        if (!window.location.pathname.includes('/login') && !(window as any).__isRedirecting) {
+        const isPublicPage = window.location.pathname.includes('/login') || window.location.pathname.includes('/register');
+        if (!isPublicPage && !(window as any).__isRedirecting) {
           (window as any).__isRedirecting = true;
           window.location.href = '/login?expired=true';
         }

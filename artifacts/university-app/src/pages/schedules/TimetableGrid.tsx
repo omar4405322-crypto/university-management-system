@@ -8,8 +8,10 @@ import { useTimetableData } from '../../hooks/useTimetableData';
 import TimetableFiltersBar from '../../components/timetable/TimetableFiltersBar';
 import TimeSlotCell from '../../components/timetable/TimeSlotCell';
 import SlotModal from '../../components/timetable/SlotModal';
+import { OverrideModal } from '../../components/timetable/OverrideModal';
 import timetableService from '../../services/timetable.service';
 import type { TimetableFilters, SlotsMap, Day } from '../../types/timetable.types';
+import type { SlotEntry } from '../../types/timetable.types';
 import type { SlotFormValues } from '../../components/timetable/SlotModal';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -20,7 +22,7 @@ const EMPTY_FORM: SlotFormValues = {
   courseName: '',
   doctorName: '',
   room: '',
-  sessionType: 'LECTURE',
+  slotType: 'LECTURE',
 };
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -33,7 +35,7 @@ const EMPTY_FORM: SlotFormValues = {
 export default function TimetableGrid() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
-  const { scope } = useScope();
+  const { scopeParams, isCollegeAdmin } = useScope();
   const isRTL = i18n.language?.startsWith('ar');
   const [searchParams] = useSearchParams();
 
@@ -49,16 +51,26 @@ export default function TimetableGrid() {
   const [form, setForm] = useState<SlotFormValues>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [overrideEntry, setOverrideEntry] = useState<SlotEntry | null>(null);
+  const [selectedDay, setSelectedDay] = useState<Day>(DAYS[0]);
+
+  const handleEditOverride = useCallback((entry: SlotEntry) => {
+    setOverrideEntry(entry);
+    setOverrideModalOpen(true);
+  }, []);
 
   // ── Scope helpers ────────────────────────────────────────────────────────────
-  const collegeId = user?.managedCollegeId ?? user?.collegeId ?? scope?.collegeId;
-  const deptId = user?.managedDepartmentId ?? user?.departmentId ?? scope?.departmentId;
+  const collegeId = user?.managedCollegeId ?? user?.collegeId ?? scopeParams?.collegeId;
+  const deptId = user?.managedDepartmentId ?? user?.departmentId ?? scopeParams?.departmentId;
   const isDeptAdminLocked = user?.role === 'DEPARTMENT_ADMIN';
 
   // ── Remote data ──────────────────────────────────────────────────────────────
   const {
     slots,
     setSlots,
+    colleges,
+    loadingColleges,
     departments,
     courses,
     doctors,
@@ -89,7 +101,7 @@ export default function TimetableGrid() {
           courseName: existing.courseName,
           doctorName: existing.doctorName,
           room: existing.room,
-          sessionType: existing.sessionType,
+          slotType: existing.slotType,
         });
         setDialog({ day: day as Day, slot });
       }
@@ -152,7 +164,7 @@ export default function TimetableGrid() {
           courseName: val.courseName,
           instructor: val.doctorName,
           room: val.room,
-          sessionType: val.sessionType,
+          slotType: val.slotType,
         };
       });
       const dept = departments.find((d) => String(d.id) === filters.departmentId);
@@ -166,7 +178,7 @@ export default function TimetableGrid() {
         scheduleData: { slots: slotsArray },
       };
       if (timetableId) {
-        await timetableService.updateTimetable(timetableId, payload);
+        await timetableService.updateTimetable(String(timetableId), payload);
       } else {
         await timetableService.createTimetable(payload);
       }
@@ -194,6 +206,9 @@ export default function TimetableGrid() {
       {/* Filter bar */}
       <TimetableFiltersBar
         filters={filters}
+        colleges={colleges}
+        loadingColleges={loadingColleges}
+        isCollegeAdmin={isCollegeAdmin}
         departments={departments}
         loadingDepts={loadingDepts}
         isDeptAdminLocked={isDeptAdminLocked}
@@ -204,7 +219,8 @@ export default function TimetableGrid() {
       />
 
       {/* Grid */}
-      <div className="bg-brand-bg-card border border-brand-border rounded-2xl shadow-soft overflow-hidden relative">
+      {/* Desktop view */}
+      <div className="hidden md:block bg-brand-bg-card border border-brand-border rounded-2xl shadow-soft overflow-hidden relative">
         {loadingSlots && (
           <div className="absolute inset-0 bg-brand-bg-card/70 backdrop-blur-sm z-10 flex items-center justify-center">
             <Loader2 size={40} className="animate-spin text-brand-primary-500" />
@@ -255,6 +271,7 @@ export default function TimetableGrid() {
                           onAdd={() => handleOpenAdd(day, slot)}
                           onDelete={handleDeleteSlot}
                           onEdit={handleOpenEdit}
+                          onEditOverride={handleEditOverride}
                         />
                       </td>
                     );
@@ -263,6 +280,62 @@ export default function TimetableGrid() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Mobile view */}
+      <div className="md:hidden space-y-4">
+        {/* Mobile Day Selector Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar" dir={isRTL ? 'rtl' : 'ltr'}>
+          {DAYS.map((day) => (
+            <button
+              key={day}
+              onClick={() => setSelectedDay(day)}
+              className={`flex-shrink-0 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${
+                selectedDay === day
+                  ? 'bg-brand-primary-600 text-white shadow-brand-primary-600/20'
+                  : 'bg-surface-subtle text-brand-text-secondary hover:bg-brand-primary-600/10 border border-brand-border'
+              }`}
+            >
+              {t(`days.${day.toLowerCase()}`, day)}
+            </button>
+          ))}
+        </div>
+
+        {/* Time slots cards */}
+        <div className="space-y-3 relative min-h-[200px]">
+          {loadingSlots && (
+            <div className="absolute inset-0 bg-brand-bg-page/70 backdrop-blur-sm z-10 flex items-center justify-center">
+              <Loader2 size={32} className="animate-spin text-brand-primary-500" />
+            </div>
+          )}
+          {TIME_SLOTS.map((slot) => {
+            const key = `${selectedDay}_${slot}`;
+            return (
+              <div key={slot} className="bg-brand-bg-card border border-brand-border rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+                <div className="flex justify-between items-center border-b border-brand-border/40 pb-2">
+                  <span className="text-xs font-black text-brand-primary-600 tracking-wider">
+                    {slot}
+                  </span>
+                  <span className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest">
+                    {t(`days.${selectedDay.toLowerCase()}`, selectedDay)}
+                  </span>
+                </div>
+                <div>
+                  <TimeSlotCell
+                    entry={slots[key] ?? null}
+                    day={selectedDay}
+                    slot={slot}
+                    canEdit={Boolean(filters.departmentId)}
+                    onAdd={() => handleOpenAdd(selectedDay, slot)}
+                    onDelete={handleDeleteSlot}
+                    onEdit={handleOpenEdit}
+                    onEditOverride={handleEditOverride}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -279,6 +352,12 @@ export default function TimetableGrid() {
         onChange={setForm}
         onClose={() => setDialog(null)}
         onSubmit={handleSaveSlot}
+      />
+      <OverrideModal
+        isOpen={overrideModalOpen}
+        onClose={() => setOverrideModalOpen(false)}
+        entry={overrideEntry}
+        onSuccess={() => window.location.reload()}
       />
     </div>
   );

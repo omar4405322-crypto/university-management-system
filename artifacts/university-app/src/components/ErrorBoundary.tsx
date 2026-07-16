@@ -53,7 +53,7 @@ class ErrorBoundary extends Component<Props, State> {
             <p className="text-brand-text-sub font-bold text-sm mb-6">
               {this.props.message || 'This page could not be displayed. Try refreshing or go back.'}
             </p>
-                        {(import.meta as unknown as Record<string, unknown>).env.DEV &&
+                        {((import.meta as any).env?.DEV) &&
               this.state.error?.message && (
                 <p className="text-xs text-rose-600 mb-4 font-mono text-left bg-rose-50 dark:bg-rose-950/30 p-3 rounded-xl">
                   {this.state.error.message}

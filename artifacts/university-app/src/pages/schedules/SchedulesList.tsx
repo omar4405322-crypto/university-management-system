@@ -1,5 +1,4 @@
-﻿// @ts-nocheck
-// FIXED: Missing PageHeader import caused blank page; query-param scope header and safe filters - Phase 1
+// @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar,
@@ -10,10 +9,18 @@ import {
   CheckCircle,
   Edit2,
   Trash2,
+  Plus,
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
+import Table, {
+  TableRow,
+  TableCell,
+  ActionMenu,
+  TableHeader,
+  TableBody,
+  TableHead,
+} from '../../components/ui/Table';
 import FilterBar from '../../components/ui/FilterBar';
 import schedulesService from '../../services/schedules.service';
 import collegeService from '../../services/college.service';
@@ -22,18 +29,30 @@ import coursesService from '../../services/courses.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/PageHeader';
 import ScheduleModal from './ScheduleModal';
-import { Select } from '../../components/ui/Select';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const SchedulesList = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { isRTL } = useLanguage();
   const { scopeParams, isCollegeAdmin } = useScope();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.classList.add('bg-slate-50', 'dark:bg-slate-900');
+      return () => {
+        mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
+      };
+    }
+  }, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [schedules, setSchedules] = useState([]);
@@ -196,10 +215,12 @@ const SchedulesList = () => {
 
   const filteredSchedules = (schedules || []).filter((s) => {
     const course = s.course || {};
+    const groupName = s.group?.name || '';
     const term = (search || '').toLowerCase();
     return (
       (course.name || '').toLowerCase().includes(term) ||
       (course.courseCode || '').toLowerCase().includes(term) ||
+      groupName.toLowerCase().includes(term) ||
       (s.room && s.room.toLowerCase().includes(term))
     );
   });
@@ -210,26 +231,33 @@ const SchedulesList = () => {
       
 
       <PageHeader
-        title={
-          scopeLabel
-            ? `${t('SCHEDULES.TITLE', 'Schedules Management')} — ${scopeLabel}`
-            : t('SCHEDULES.TITLE', 'Schedules Management')
-        }
+        title={t('SCHEDULES.TITLE', 'Schedules Management')}
         subtitle={t('SCHEDULES.SUBTITLE', 'Manage university timetables and class assignments.')}
         action={
           canManage
             ? {
                 label: t('SCHEDULES.CREATE', 'Create Schedule'),
+                icon: Plus,
                 onClick: () => {
                   setEditingSchedule(null);
                   setIsModalOpen(true);
                 },
+                className: 'bg-brand-primary-500 hover:bg-brand-primary-600 text-white rounded-xl active:scale-95 transition-all',
               }
             : null
         }
+        extraActions={
+          <button
+            onClick={() => navigate(`/schedules/timetable?collegeId=${selectedCollege}&departmentId=${selectedDept}&academicYear=${selectedYear}&semester=${selectedSemester}`)}
+            className="flex items-center gap-2 px-6 py-3.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-brand-text-primary dark:text-brand-text-main rounded-xl font-black uppercase tracking-widest text-xs transition-all shadow-sm"
+          >
+            <Calendar size={20} />
+            {t('SCHEDULES.VIEW_AS_GRID', 'عرض كشبكة')}
+          </button>
+        }
       />
 
-      <Card noPadding className="border-none shadow-soft overflow-hidden">
+      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0 mb-6">
         <FilterBar
           search={search}
           onSearchChange={setSearch}
@@ -237,37 +265,37 @@ const SchedulesList = () => {
         >
           {!isCollegeAdmin && (
             <>
-              <Select
-                
+              <select
                 value={selectedCollege}
                 onChange={(e) => handleCollegeChange(e.target.value)}
+                className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
               >
                 <option value="">{t('common.allColleges', 'All Colleges')}</option>
                 {colleges.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {isRTL ? c.nameAr || c.name : c.name}
                   </option>
                 ))}
-              </Select>
-              <Select
-                
+              </select>
+              <select
                 value={selectedDept}
                 onChange={(e) => setSelectedDept(e.target.value)}
                 disabled={!selectedCollege}
+                className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0 disabled:opacity-50"
               >
                 <option value="">{t('common.allDepartments', 'All Departments')}</option>
                 {departments.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.name}
+                    {isRTL ? d.nameAr || d.name : d.name}
                   </option>
                 ))}
-              </Select>
+              </select>
             </>
           )}
-          <Select
-            
+          <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
+            className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
           >
             <option value="">{t('common.allYears', 'All Years')}</option>
             {[1, 2, 3, 4, 5].map((y) => (
@@ -275,20 +303,22 @@ const SchedulesList = () => {
                 {t('common.year', 'Year')} {y}
               </option>
             ))}
-          </Select>
-          <Select
-            
+          </select>
+          <select
             value={selectedSemester}
             onChange={(e) => setSelectedSemester(e.target.value)}
+            className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
           >
             <option value="">{t('schedule.allSemesters', 'All Semesters')}</option>
             <option value="1">{t('schedule.semester1', 'Semester 1')}</option>
             <option value="2">{t('schedule.semester2', 'Semester 2')}</option>
-            <option value="3">{t('timetables.semester', 'Semester')} 3</option>
-          </Select>
+            <option value="3">{t('schedule.semester3', 'Summer Semester')}</option>
+          </select>
         </FilterBar>
+      </Card>
 
-        <div className="min-h-[400px]">
+      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-4 md:p-6">
+        <div className="min-h-0">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
               <Loader2 className="animate-spin text-brand-primary-600" size={40} />
@@ -312,14 +342,14 @@ const SchedulesList = () => {
               </button>
             </div>
           ) : filteredSchedules.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-96 text-center p-8">
-              <div className="w-24 h-24 rounded-[2.5rem] bg-surface-subtle dark:bg-surface-subtle flex items-center justify-center mb-6 border-2 border-dashed border-slate-200 dark:border-slate-700">
-                <Calendar size={48} className="text-brand-text-muted opacity-50" />
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="h-16 w-16 rounded-full bg-brand-primary-500/10 dark:bg-brand-primary-500/20 flex items-center justify-center mb-5 text-brand-primary-600 dark:text-brand-primary-400 shrink-0">
+                <Calendar size={32} />
               </div>
-              <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tight uppercase mb-2">
+              <h3 className="text-xl font-bold text-brand-text-primary dark:text-brand-text-main tracking-tight mb-2">
                 {t('SCHEDULES.EMPTY_TITLE', 'No schedules yet')}
               </h3>
-              <p className="text-brand-text-secondary font-bold max-w-xs mx-auto">
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium max-w-xs mx-auto">
                 {t(
                   'SCHEDULES.EMPTY_DESC',
                   'There are no class schedules for this selection. Create one to get started.'
@@ -332,97 +362,112 @@ const SchedulesList = () => {
                     setEditingSchedule(null);
                     setIsModalOpen(true);
                   }}
-                  className="mt-6 px-6 py-3 rounded-2xl bg-brand-primary-600 text-white font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+                  className="mt-6 px-5 py-2.5 bg-brand-primary-500 hover:bg-brand-primary-600 text-white text-xs font-semibold rounded-xl active:scale-95 transition-all shadow-md shadow-brand-primary-500/10 hover:shadow-lg"
                 >
                   {t('SCHEDULES.CREATE', 'Create Schedule')}
                 </button>
               )}
             </div>
           ) : (
-            <Table
-              headers={[
-                t('courses.course', 'Course'),
-                t('timetables.day', 'Time Slot'),
-                t('timetables.room', 'Room'),
-                t('auth.department', 'Department'),
-                t('common.actions', 'Actions'),
-              ]}
-            >
-              {filteredSchedules.map((schedule) => (
-                <TableRow key={schedule.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 flex items-center justify-center text-brand-primary-600 font-black shadow-inner">
-                        <BookOpen size={20} />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-black text-brand-text-primary dark:text-brand-text-main tracking-tight">
-                          {schedule.course.name}
-                        </span>
-                        <span className="text-[10px] font-black uppercase text-brand-primary-600 tracking-wider">
-                          {schedule.course.courseCode}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">
-                        {schedule.dayOfWeek}
-                      </span>
-                      <span className="text-[10px] font-bold text-brand-text-secondary uppercase">
-                        {schedule.startTime} - {schedule.endTime}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-brand-accent-yellow/10 flex items-center justify-center text-brand-accent-yellow">
-                        <MapPin size={14} />
-                      </div>
-                      <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">
-                        {schedule.room || t('common.tba', 'TBA')}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-tight truncate max-w-[150px]">
-                        {schedule.department?.name}
-                      </span>
-                      <span className="text-[10px] font-bold text-brand-text-muted uppercase">
-                        {t('common.year', 'Year')} {schedule.year} •{' '}
-                        {t('timetables.semester', 'Sem')} {schedule.semester}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <ActionMenu
-                      actions={[
-                        {
-                          label: t('common.edit', 'Edit'),
-                          icon: Edit2,
-                          variant: 'edit',
-                          onClick: () => {
-                            setEditingSchedule(schedule);
-                            setIsModalOpen(true);
-                          },
-                        },
-                        ...(isSuperAdmin
-                          ? [
-                              {
-                                label: t('common.delete', 'Delete'),
-                                icon: Trash2,
-                                variant: 'delete',
-                                onClick: () => handleDelete(schedule.id),
-                              },
-                            ]
-                          : []),
-                      ]}
-                    />
-                  </TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/40">
+                  <TableHead className="text-start font-semibold text-brand-text-primary dark:text-brand-text-main py-4 px-4">
+                    {t('courses.course', 'Course')}
+                  </TableHead>
+                  <TableHead className="text-center font-semibold text-brand-text-primary dark:text-brand-text-main py-4 px-4">
+                    {t('timetables.day', 'Time Slot')}
+                  </TableHead>
+                  <TableHead className="text-center font-semibold text-brand-text-primary dark:text-brand-text-main py-4 px-4">
+                    {t('timetables.room', 'Room')}
+                  </TableHead>
+                  <TableHead className="text-start font-semibold text-brand-text-primary dark:text-brand-text-main py-4 px-4">
+                    {t('SCHEDULES.slotType', 'Session Type')} / {t('auth.doctor', 'Doctor')}
+                  </TableHead>
+                  <TableHead className="text-end font-semibold text-brand-text-primary dark:text-brand-text-main py-4 px-4">
+                    {t('common.actions', 'Actions')}
+                  </TableHead>
                 </TableRow>
-              ))}
+              </TableHeader>
+              <TableBody className="divide-y divide-slate-200 dark:divide-slate-700">
+                {filteredSchedules.map((schedule) => (
+                  <TableRow
+                    key={schedule.id}
+                    className="border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                  >
+                    <TableCell className="text-start py-4 px-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-brand-primary-500/10 dark:bg-brand-primary-500/20 flex items-center justify-center text-brand-primary-600 dark:text-brand-primary-400 font-semibold shadow-inner">
+                          <BookOpen size={20} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-brand-text-primary dark:text-brand-text-main tracking-tight">
+                            {schedule.course?.name} {schedule.group ? `- ${schedule.group.name}` : ''}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase text-brand-primary-600 dark:text-brand-primary-400 tracking-wider mt-0.5">
+                            {schedule.course?.courseCode}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center py-4 px-4">
+                      <div className="flex flex-col items-center justify-center">
+                        <span className="text-xs font-semibold text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">
+                          {t(`days.${(schedule.dayOfWeek || '').toLowerCase()}`, schedule.dayOfWeek)}
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase mt-0.5" dir="ltr">
+                          {schedule.startTime} - {schedule.endTime}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center py-4 px-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-brand-yellow/10 flex items-center justify-center text-brand-yellow shrink-0">
+                          <MapPin size={14} />
+                        </div>
+                        <span className="text-xs font-medium text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">
+                          {schedule.room || t('common.tba', 'TBA')}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-start py-4 px-4">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-brand-text-primary dark:text-brand-text-main uppercase tracking-tight truncate max-w-[180px]">
+                          {schedule.slotType || 'LECTURE'}
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-0.5">
+                          {schedule.doctor?.firstName ? `Dr. ${schedule.doctor.firstName} ${schedule.doctor.lastName}` : t('common.staff', 'Staff')}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-end py-4 px-4">
+                      <ActionMenu
+                        actions={[
+                          {
+                            label: t('common.edit', 'Edit'),
+                            icon: Edit2,
+                            variant: 'edit',
+                            onClick: () => {
+                              setEditingSchedule(schedule);
+                              setIsModalOpen(true);
+                            },
+                          },
+                          ...(isSuperAdmin
+                            ? [
+                                {
+                                  label: t('common.delete', 'Delete'),
+                                  icon: Trash2,
+                                  variant: 'delete',
+                                  onClick: () => handleDelete(schedule.id),
+                                },
+                              ]
+                            : []),
+                        ]}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
             </Table>
           )}
         </div>

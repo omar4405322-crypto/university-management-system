@@ -45,3 +45,62 @@ export const attendanceValidation = [
 ];
 
 export const functionalIdValidation = [param('id').isInt().withMessage('Invalid ID format')];
+
+const VALID_DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+
+export const scheduleValidation = [
+  body('dayOfWeek')
+    .isIn(VALID_DAYS)
+    .withMessage('Invalid day of week. Use uppercase: MONDAY, TUESDAY, etc.'),
+  body('startTime')
+    .matches(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Start time must be in HH:MM format (24-hour)'),
+  body('endTime')
+    .matches(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('End time must be in HH:MM format (24-hour)')
+    .custom((endTime, { req }) => {
+      if (req.body.startTime && endTime <= req.body.startTime) {
+        throw new Error('End time must be after start time');
+      }
+      return true;
+    }),
+
+  body('room')
+    .optional()
+    .isString()
+    .trim()
+    .customSanitizer(val => val.toUpperCase()),
+];
+
+export const overrideValidation = [
+  body('dayOfWeek')
+    .optional()
+    .isIn(VALID_DAYS)
+    .withMessage('Invalid day of week. Use uppercase: MONDAY, TUESDAY, etc.'),
+  body('startTime')
+    .optional()
+    .matches(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Start time must be in HH:MM format (24-hour)'),
+  body('endTime')
+    .optional()
+    .matches(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('End time must be in HH:MM format (24-hour)')
+    .custom((endTime, { req }) => {
+      if (req.body.startTime && endTime <= req.body.startTime) {
+        throw new Error('End time must be after start time');
+      }
+      return true;
+    }),
+  body('startDate').isISO8601().withMessage('Valid start date is required'),
+  body('endDate').isISO8601().withMessage('Valid end date is required').custom((endDate, { req }) => {
+    if (new Date(endDate) < new Date(req.body.startDate)) {
+      throw new Error('End date must be after or equal to start date');
+    }
+    return true;
+  }),
+  body('room')
+    .optional()
+    .isString()
+    .trim()
+    .customSanitizer(val => val.toUpperCase()),
+];

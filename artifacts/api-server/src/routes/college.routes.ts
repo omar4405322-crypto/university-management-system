@@ -13,8 +13,9 @@ import validate from '../middleware/validate.middleware';
 
 const router = express.Router();
 
-router.get('/', protect, getAllColleges);
-router.get('/:id', protect, adminIdValidation, validate, getCollegeById);
+// Public: needed by the registration form (no token available yet)
+router.get('/', getAllColleges);
+router.get('/:id', adminIdValidation, validate, getCollegeById);
 
 // Admin only routes
 router.post('/', protect, authorize('SUPER_ADMIN'), collegeValidation, validate, createCollege);

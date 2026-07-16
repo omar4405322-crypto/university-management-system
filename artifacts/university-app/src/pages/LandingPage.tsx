@@ -1,28 +1,39 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { CollegesSection, colleges } from '../components/CollegesSection';
+import { useTranslation } from 'react-i18next';
+import { CollegesSection, collegesKeys } from '../components/CollegesSection';
+import { FeaturesCarousel } from '../components/FeaturesCarousel/FeaturesCarousel';
 import { CountUp } from '../components/ui/CountUp';
 import { useUniversityStats } from '../hooks/useUniversityStats';
+import ImageWithFallback from '../components/ui/ImageWithFallback';
+import LanguageToggle from '../components/ui/LanguageToggle';
 import {
+  Search,
   GraduationCap,
   Building2,
   Users,
   BookOpen,
-  ChevronDown,
-  Menu,
-  X,
   Globe,
   Trophy,
   Briefcase,
   Microscope,
   ArrowLeft,
+  ArrowRight,
   Play,
-  Monitor,
-  Cog,
-  Pill,
-  BarChart2,
-  PenTool,
-  Zap,
+  ChevronDown,
+  Menu,
+  X,
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin,
+  ShieldCheck,
+  CalendarRange,
+  Languages,
+  MapPin,
+  Beaker,
+  MonitorPlay,
+  Users2
 } from 'lucide-react';
 
 // Assets
@@ -35,40 +46,32 @@ const ENTRANCE = '/assets/university/ne/campus-entrance.png';
 const AERIAL = '/assets/university/ne/campus-aerial.png';
 const WIDE = '/assets/university/ne/campus-wide.png';
 const PORTRAIT_1 = '/assets/university/ne/campus-portrait-1.png';
-const _PORTRAIT_2 = '/assets/university/ne/campus-portrait-2.png';
 
-const ImageWithFallback = ({ src, alt, className, ...props }) => {
-  const [error, setError] = useState(false);
+// Timetable preview cell helper
+interface MockSlot {
+  course: string;
+  instructor: string;
+  room: string;
+  type: 'LAB' | 'LECTURE' | 'SECTION';
+}
 
-  if (error || !src) {
-    return (
-      <div
-        className={`${className} bg-gradient-to-br from-brand-navy-500 to-brand-navy-dark flex items-center justify-center`}
-        {...props}
-      >
-        <Building2 className="text-white/20" size={48} />
-      </div>
-    );
-  }
+const LandingPage: React.FC = () => {
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
 
-  return (
-    <img src={src} alt={alt} loading="lazy" decoding="async" className={className} onError={() => setError(true)} {...props} />
-  );
-};
-
-const LandingPage = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState("home");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeSection, setActiveSection] = useState('home');
   const { stats: universityStats, isLoading: statsLoading } = useUniversityStats();
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 80);
     };
-    window.addEventListener('scroll', handleScroll);
-    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     const sections = document.querySelectorAll('section[id], footer[id]');
     const observer = new IntersectionObserver(
       (entries) => {
@@ -81,535 +84,706 @@ const LandingPage = () => {
       { threshold: 0.1, rootMargin: '-20% 0px -60% 0px' }
     );
     sections.forEach((section) => observer.observe(section));
-    
-    // Simulate data loading
-    setIsLoading(false);
-    
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
       sections.forEach((section) => observer.unobserve(section));
     };
   }, []);
 
-  const navLinks = [
-    { name: 'الرئيسية', href: '#home' },
-    { name: 'عن الجامعة', href: '#about' },
-    { name: 'الكليات', href: '#colleges' },
-    { name: 'التخصصات', href: '#specialties' },
-    { name: 'التواصل', href: '#contact' },
-  ];
+  const navLinks = useMemo(() => [
+    { name: t('landing.nav.home'), href: '#home' },
+    { name: t('landing.nav.about'), href: '#about' },
+    { name: t('landing.nav.whyUs'), href: '#why-us' },
+    { name: t('landing.nav.colleges'), href: '#colleges' },
+    { name: t('landing.nav.contact'), href: '#contact' },
+  ], [t]);
 
-  const statsData = universityStats || {
+  const statsData = useMemo(() => universityStats || {
     totalStudents: 15420,
     totalColleges: 8,
     totalFaculty: 850,
     totalSpecializations: 45
+  }, [universityStats]);
+
+  const stats = useMemo(() => [
+    {
+      label: t('landing.stats.colleges'),
+      desc: t('landing.stats.collegesDesc'),
+      value: <CountUp end={statsData.totalColleges} />,
+      icon: <Building2 size={22} strokeWidth={2} />,
+    },
+    {
+      label: t('landing.stats.students'),
+      desc: t('landing.stats.studentsDesc'),
+      value: <CountUp end={statsData.totalStudents} prefix="+" />,
+      icon: <Users size={22} strokeWidth={2} />,
+    },
+    {
+      label: t('landing.stats.excellence'),
+      desc: t('landing.stats.excellenceDesc'),
+      value: <CountUp end={10} prefix="+" />,
+      icon: <Trophy size={22} strokeWidth={2} />,
+    },
+    {
+      label: t('landing.stats.countries'),
+      desc: t('landing.stats.countriesDesc'),
+      value: <CountUp end={30} prefix="+" />,
+      icon: <Globe size={22} strokeWidth={2} />,
+    },
+    {
+      label: t('landing.stats.ranking'),
+      desc: t('landing.stats.rankingDesc'),
+      value: 'Top 20',
+      icon: <GraduationCap size={22} strokeWidth={2} />,
+    },
+  ], [statsData, t]);
+
+  const mockTimetable: Record<string, Record<string, MockSlot | null>> = {
+    sunday: {
+      slot1: {
+        course: t('landing.timetable.subjects.programming'),
+        instructor: t('landing.timetable.instructors.hassan'),
+        room: t('landing.timetable.rooms.hallA'),
+        type: 'LECTURE',
+      },
+      slot2: null,
+      slot3: {
+        course: t('landing.timetable.subjects.networks'),
+        instructor: t('landing.timetable.instructors.omar'),
+        room: t('landing.timetable.rooms.lab1'),
+        type: 'LAB',
+      },
+    },
+    monday: {
+      slot1: null,
+      slot2: {
+        course: t('landing.timetable.subjects.math'),
+        instructor: t('landing.timetable.instructors.mona'),
+        room: t('landing.timetable.rooms.hallB'),
+        type: 'LECTURE',
+      },
+      slot3: null,
+    },
+    tuesday: {
+      slot1: {
+        course: t('landing.timetable.subjects.networks'),
+        instructor: t('landing.timetable.instructors.omar'),
+        room: t('landing.timetable.rooms.lab1'),
+        type: 'LAB',
+      },
+      slot2: null,
+      slot3: {
+        course: t('landing.timetable.subjects.programming'),
+        instructor: t('landing.timetable.instructors.hassan'),
+        room: t('landing.timetable.rooms.hallA'),
+        type: 'LECTURE',
+      },
+    },
   };
 
-  const stats = [
-    { 
-      label: 'طالب مسجل', 
-      value: <CountUp end={statsData.totalStudents} prefix="+" />,
-      icon: <Users size={24} strokeWidth={2} /> 
-    },
-    { 
-      label: 'كلية أكاديمية', 
-      value: <CountUp end={statsData.totalColleges} />,
-      icon: <Building2 size={24} strokeWidth={2} /> 
-    },
-    { 
-      label: 'عضو هيئة تدريس', 
-      value: <CountUp end={statsData.totalFaculty} prefix="+" />,
-      icon: <GraduationCap size={24} strokeWidth={2} /> 
-    },
-    { 
-      label: 'تخصص دراسي', 
-      value: <CountUp end={statsData.totalSpecializations} prefix="+" />,
-      icon: <BookOpen size={24} strokeWidth={2} /> 
-    },
-  ];
+  const getSessionColor = (type: 'LAB' | 'LECTURE' | 'SECTION') => {
+    switch (type) {
+      case 'LAB':
+        return 'bg-green-500/5 dark:bg-green-500/10 border-s-4 border-s-green-500 border border-y-slate-200/50 border-e-slate-200/50 dark:border-y-slate-700/50 dark:border-e-slate-700/50';
+      case 'SECTION':
+        return 'bg-purple-500/5 dark:bg-purple-500/10 border-s-4 border-s-purple-500 border border-y-slate-200/50 border-e-slate-200/50 dark:border-y-slate-700/50 dark:border-e-slate-700/50';
+      case 'LECTURE':
+      default:
+        return 'bg-brand-primary-500/5 dark:bg-brand-primary-500/10 border-s-4 border-s-brand-primary-500 border border-y-slate-200/50 border-e-slate-200/50 dark:border-y-slate-700/50 dark:border-e-slate-700/50';
+    }
+  };
 
-  const features = [
-    {
-      title: 'تعليم رقمي متطور',
-      desc: 'منصة إلكترونية متكاملة لإدارة المقررات والتفاعل الأكاديمي.',
-      icon: <Globe size={32} strokeWidth={2} />,
-    },
-    {
-      title: 'تميز أكاديمي',
-      desc: 'أعضاء هيئة تدريس من نخبة الأساتذة والباحثين العالميين.',
-      icon: <Trophy size={32} strokeWidth={2} />,
-    },
-    {
-      title: 'ربط بسوق العمل',
-      desc: 'شراكات استراتيجية مع كبرى الشركات التكنولوجية والصناعية.',
-      icon: <Briefcase size={32} strokeWidth={2} />,
-    },
-    {
-      title: 'بحث علمي',
-      desc: 'مراكز بحثية متخصصة ومختبرات مجهزة بأحدث التقنيات العالمية.',
-      icon: <Microscope size={32} strokeWidth={2} />,
-    },
-  ];
+  const getSessionIcon = (type: 'LAB' | 'LECTURE' | 'SECTION') => {
+    switch (type) {
+      case 'LAB':
+        return <Beaker size={10} className="text-green-500" />;
+      case 'SECTION':
+        return <Users2 size={10} className="text-purple-500" />;
+      case 'LECTURE':
+      default:
+        return <MonitorPlay size={10} className="text-brand-primary-500" />;
+    }
+  };
 
   return (
     <div
-      className="min-h-screen bg-white font-arabic selection:bg-brand-green/30 selection:text-brand-navy-500 overflow-x-hidden"
-      dir="rtl"
+      className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 font-sans selection:bg-brand-green/30 selection:text-brand-navy overflow-x-hidden"
+      dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* 1. Navbar */}
+      {/* ─── 1. NAVBAR ────────────────────────────────────────────────────────── */}
       <nav
-        className={`fixed top-0 w-full z-[100] transition-all duration-500 ${
-          isScrolled
-            ? 'bg-white/95 backdrop-blur-md shadow-[0_2px_20px_rgba(0,0,0,0.08)] py-3'
-            : 'bg-transparent py-6'
-        }`}
+        className={`fixed top-0 w-full z-[100] transition-all duration-500 ${isScrolled
+            ? 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-[0_2px_20px_rgba(0,0,0,0.08)] py-2'
+            : 'bg-transparent py-4'
+          }`}
       >
-        <div className="container mx-auto px-6 flex items-center justify-between">
-          {/* Logo and Video (Right in RTL) */}
-          <div className="flex items-center gap-2 relative z-10 min-w-0 flex-shrink-0">
-            <Link to="/">
-              <ImageWithFallback
-                src={isScrolled ? LOGO : LOGO_WHITE}
-                alt="شعار الجامعة"
-                className="h-10 md:h-12 w-auto object-contain transition-all duration-500"
-              />
-            </Link>
-            <button className={`video-btn hidden md:flex items-center gap-2 ${isScrolled ? 'text-brand-navy-500' : 'text-white'}`} aria-label="Watch Introduction Video">
-              <span className="label hidden md:inline text-sm font-bold px-2 py-1 rounded bg-white/90 text-brand-navy-500">
-                جولة افتراضية
-              </span>
-              <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center shadow-lg">
-                <Play size={18} className="fill-current text-white" />
-              </div>
-            </button>
-          </div>
+        <div className="max-w-screen-xl mx-auto px-6 flex items-center justify-between gap-4">
+          {/* Logo */}
+          <Link to="/" className="flex-shrink-0">
+            <ImageWithFallback
+              src={isScrolled ? LOGO : LOGO_WHITE}
+              alt="University Logo"
+              className="h-10 md:h-11 w-auto object-contain transition-all duration-500"
+            />
+          </Link>
 
-          {/* Desktop Nav Links (Left in RTL) */}
-          <div className="hidden lg:flex items-center gap-10">
-            <ul className="flex items-center gap-8">
-              {navLinks.map((link) => {
-                const sectionId = link.href.replace('#', '');
-                const isActive = activeSection === sectionId;
-                return (
+          {/* Centered Nav Links */}
+          <ul className="hidden lg:flex items-center justify-center gap-8">
+            {navLinks.map((link) => {
+              const sectionId = link.href.replace('#', '');
+              const isActive = activeSection === sectionId;
+              return (
                 <li key={link.name}>
                   <a
                     href={link.href}
                     aria-current={isActive ? 'page' : undefined}
-                    className={`text-sm font-bold tracking-tight transition-all relative ${
-                      isActive 
-                        ? 'text-brand-green after:absolute after:-bottom-2 after:left-0 after:w-full after:h-0.5 after:bg-brand-green after:rounded-full' 
-                        : isScrolled ? 'text-brand-navy-500 hover:text-brand-green' : 'text-white hover:text-brand-green'
-                    }`}
+                    className={`text-sm font-bold tracking-tight transition-all relative pb-1 ${isActive
+                        ? 'text-brand-green after:absolute after:-bottom-1 after:right-0 after:w-full after:h-0.5 after:bg-brand-green after:rounded-full'
+                        : isScrolled
+                          ? 'text-brand-navy dark:text-brand-text-main hover:text-brand-green'
+                          : 'text-white/90 hover:text-white'
+                      }`}
                   >
                     {link.name}
                   </a>
                 </li>
-              )})}
-            </ul>
+              );
+            })}
+          </ul>
+
+          {/* Right Controls */}
+          <div className="hidden lg:flex items-center gap-3 flex-shrink-0">
+            {/* Search Input Box */}
+            {isSearchOpen && (
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t('landing.nav.searchPlaceholder')}
+                className="px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-green bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 transition-all w-48"
+                autoFocus
+              />
+            )}
+
+            {/* Search Icon Button */}
+            <button
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className={`p-2 rounded-xl transition-colors ${isScrolled
+                  ? 'text-brand-navy dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-800'
+                  : 'text-white hover:bg-white/10'
+                }`}
+              aria-label="Search"
+            >
+              <Search size={20} />
+            </button>
+
+            {/* Language Toggle */}
+            <LanguageToggle />
+
+            {/* Outline: virtual tour */}
+            <button
+              className={`flex items-center gap-2 px-5 py-2 rounded-xl border font-bold text-sm transition-all duration-300 ${isScrolled
+                  ? 'border-brand-navy/30 dark:border-slate-700 text-brand-navy dark:text-brand-text-main hover:border-brand-green hover:text-brand-green'
+                  : 'border-white/40 text-white hover:border-white hover:bg-white/10'
+                }`}
+            >
+              <div className="w-5 h-5 rounded-full border border-current flex items-center justify-center">
+                <Play size={8} className="fill-current" />
+              </div>
+              {t('landing.nav.virtualTour')}
+            </button>
+
+            {/* Solid green: login */}
             <Link
               to="/login"
-              className="px-6 py-2.5 bg-brand-green hover:bg-brand-green-dark text-white font-black rounded-xl shadow-lg shadow-brand-green/20 transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-brand-green/30"
+              className="px-5 py-2 bg-brand-green hover:bg-brand-green-dark text-white font-black text-sm rounded-xl shadow-md shadow-brand-green/25 transition-all duration-300 hover:-translate-y-0.5"
             >
-              تسجيل الدخول
+              {t('landing.nav.login')}
             </Link>
           </div>
 
-          {/* Mobile Hamburger */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className={`lg:hidden p-2 z-[101] relative rounded-xl transition-colors ${
-              isScrolled
-                ? 'text-brand-navy-500 hover:bg-brand-primary-50'
-                : 'text-white hover:bg-white/10'
-            }`}
-          >
-            {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
-          </button>
+          {/* Mobile controls & hamburger */}
+          <div className="flex lg:hidden items-center gap-2">
+            <LanguageToggle />
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-expanded={isMobileMenuOpen}
+              aria-label="Open menu"
+              className={`p-2 rounded-xl transition-colors ${isScrolled
+                  ? 'text-brand-navy dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-850'
+                  : 'text-white hover:bg-white/10'
+                }`}
+            >
+              {isMobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
+            </button>
+          </div>
         </div>
 
-        {/* Mobile Menu Backdrop (clicks outside) */}
+        {/* Mobile backdrop */}
         {isMobileMenuOpen && (
-          <div 
-            className="fixed inset-0 z-[98] bg-brand-navy-500/20 backdrop-blur-sm lg:hidden"
+          <div
+            className="fixed inset-0 z-[98] bg-brand-navy/20 dark:bg-black/40 backdrop-blur-sm lg:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
             aria-hidden="true"
           />
         )}
 
-        {/* Mobile Dropdown Menu */}
+        {/* Mobile dropdown */}
         <div
-          className={`absolute top-full left-0 w-full z-[99] bg-white shadow-2xl transition-all duration-300 lg:hidden origin-top ${
-            isMobileMenuOpen ? 'opacity-100 scale-y-100 visible' : 'opacity-0 scale-y-0 invisible pointer-events-none'
-          }`}
+          className={`absolute top-full left-0 w-full z-[99] bg-white dark:bg-slate-900 shadow-2xl transition-all duration-300 lg:hidden origin-top ${isMobileMenuOpen ? 'opacity-100 scale-y-100 visible' : 'opacity-0 scale-y-0 invisible pointer-events-none'
+            }`}
         >
-          <div className="flex flex-col py-4 px-6 gap-2 border-t border-brand-border/50">
+          <div className="flex flex-col py-4 px-6 gap-2 border-t border-slate-100 dark:border-slate-800">
             {navLinks.map((link) => {
               const sectionId = link.href.replace('#', '');
               const isActive = activeSection === sectionId;
               return (
-              <a
-                key={link.name}
-                href={link.href}
+                <a
+                  key={link.name}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`text-lg font-bold py-3 border-b border-slate-100 dark:border-slate-800 last:border-none ${isActive ? 'text-brand-green' : 'text-brand-navy dark:text-brand-text-main hover:text-brand-green'
+                    }`}
+                >
+                  {link.name}
+                </a>
+              );
+            })}
+            <div className="flex flex-col gap-3 pt-4 border-t border-slate-150 dark:border-slate-800 mt-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t('landing.nav.searchPlaceholder')}
+                  className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+              <button className="py-3 rounded-xl border border-brand-navy/30 dark:border-slate-700 text-brand-navy dark:text-brand-text-main font-bold text-sm text-center flex items-center justify-center gap-2">
+                <Play size={12} className="fill-current" />
+                {t('landing.nav.virtualTour')}
+              </button>
+              <Link
+                to="/login"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`text-lg font-bold py-3 border-b border-brand-border/50 last:border-none ${
-                  isActive ? 'text-brand-green' : 'text-brand-navy-500 hover:text-brand-green'
-                }`}
+                className="py-3 rounded-xl bg-brand-green text-white font-black text-sm shadow-md text-center transition-all"
               >
-                {link.name}
-              </a>
-            )})}
-
-            <Link
-              to="/login"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="mt-4 w-full py-3 rounded-xl bg-brand-green text-brand-navy-500 hover:bg-brand-green-dark hover:text-white font-black text-lg shadow-lg text-center transition-all"
-            >
-              تسجيل الدخول
-            </Link>
+                {t('landing.nav.login')}
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
 
-      {/* 2. Hero Section */}
-      <section id="home" className="relative z-30 pt-40 pb-48 lg:pt-48 lg:pb-56 flex items-center justify-center hero-section min-h-[85vh]">
-        {/* Background Image */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          <ImageWithFallback
-            src={HERO_1}
-            alt="الحرم الجامعي"
-            className="w-full h-full object-cover scale-110 animate-slow-zoom"
-          />
-          <div className="absolute inset-0 z-[1]" style={{ background: 'linear-gradient(to bottom, rgba(10, 20, 50, 0.55) 0%, rgba(10, 20, 50, 0.35) 50%, rgba(10, 20, 50, 0.65) 100%)' }} />
-        </div>
-
-        {/* Hero Content */}
-        <div className="container mx-auto px-6 relative z-10 text-center space-y-8">
-          <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-brand-green/20 border border-brand-green/30 backdrop-blur-md animate-fade-in-up">
-            <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-brand-navy-500">
-              منصة إدارة أكاديمية متكاملة
-            </span>
+      <main>
+        {/* ─── 2. HERO SECTION ──────────────────────────────────────────────────── */}
+        <section
+          id="home"
+          className="relative flex items-center justify-center min-h-screen bg-brand-navy dark:bg-slate-950 pt-28 pb-36 overflow-hidden"
+        >
+          {/* Decorative Campus Photo Backdrop Fragment */}
+          <div className="absolute inset-0 z-0 opacity-15 dark:opacity-10 pointer-events-none scale-105 filter blur-xs">
+            <ImageWithFallback
+              src={HERO_1}
+              alt="Campus decorative backdrop"
+              className="w-full h-full object-cover"
+            />
           </div>
 
-          <h1 className="hero-title text-5xl md:text-7xl lg:text-8xl font-black text-white leading-tight tracking-tightest drop-shadow-2xl animate-fade-in-up delay-100">
-            جامعة ٦ أكتوبر <br />
-            <span className="text-brand-green">التكنولوجية</span>
-          </h1>
+          <div className="max-w-screen-xl mx-auto px-6 relative z-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+            {/* Right column (RTL: right, LTR: left) - Headline text */}
+            <div className="lg:col-span-6 space-y-8 text-center lg:text-start order-1">
+              <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-brand-navy-700/60 dark:bg-slate-900/60 border border-white/10 backdrop-blur-sm">
+                <span className="text-[11px] md:text-xs font-bold tracking-wider text-white/90">
+                  {t('landing.hero.eyebrow')}
+                </span>
+              </div>
 
-          <p className="max-w-2xl mx-auto text-lg md:text-xl text-white/80 font-medium leading-relaxed animate-fade-in-up delay-200">
-            نبني جيلاً من القادة والمبتكرين في قلب مصر التكنولوجية. تعليم أكاديمي يجمع بين المعرفة
-            النظرية والخبرة العملية.
-          </p>
+              <h1 className="text-4xl md:text-6xl font-black leading-tight tracking-tight text-white font-display">
+                {t('landing.hero.titlePart1')}
+                <br />
+                <span className="text-brand-green">{t('landing.hero.titlePart2')}</span>
+              </h1>
 
-          <div className="hero-buttons flex flex-col sm:flex-row items-center justify-center gap-5 pt-8 animate-fade-in-up delay-300">
-            <Link
-              to="/register"
-              className="group flex items-center gap-3 px-8 py-4 bg-brand-green hover:bg-brand-green-dark text-brand-navy-500 font-black rounded-2xl shadow-xl shadow-brand-green/20 transition-all duration-300 transform hover:-translate-y-1"
-            >
-              <span>ابدأ التسجيل الآن</span>
-              <ArrowLeft
-                size={18}
-                className="rtl:-scale-x-100 transition-transform group-hover:-translate-x-1"
-              />
-            </Link>
-            <a
-              href="#about"
-              className="px-8 py-4 border-2 border-white/30 hover:border-white bg-white/5 hover:bg-white/10 text-white font-black rounded-2xl backdrop-blur-md transition-all duration-300"
-            >
-              تعرف علينا أكثر
-            </a>
+              <p className="text-slate-300 dark:text-slate-400 text-base md:text-lg font-medium leading-relaxed max-w-xl mx-auto lg:mx-0">
+                {t('landing.hero.desc')}
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                <Link
+                  to="/register"
+                  className="group w-full sm:w-auto inline-flex items-center justify-center gap-3 px-7 py-3.5 bg-brand-green hover:bg-brand-green-dark text-white font-black text-sm rounded-xl shadow-lg shadow-brand-green/25 transition-all duration-300 hover:-translate-y-0.5"
+                >
+                  <span>{t('landing.hero.ctaRegister')}</span>
+                  {isRTL ? (
+                    <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
+                  ) : (
+                    <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                  )}
+                </Link>
+                <a
+                  href="#about"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3.5 border border-white/30 hover:border-white/60 bg-white/5 hover:bg-white/10 text-white font-bold text-sm rounded-xl backdrop-blur-xs transition-all duration-300"
+                >
+                  {t('landing.hero.ctaAbout')}
+                </a>
+              </div>
+            </div>
+
+            {/* Left column (RTL: left, LTR: right) - Visual Mock Timetable Card */}
+            <div className="lg:col-span-6 flex justify-center order-2">
+              <div className="w-full max-w-md relative">
+                {/* Visual card */}
+                <div
+                  className="w-full bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 p-4 md:p-6 transition-all duration-500 transform rotate-1 md:rotate-2 hover:rotate-0 hover:-translate-y-1.5 motion-reduce:hover:transform-none"
+                >
+                  {/* Card header */}
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-700 mb-4">
+                    <span className="text-xs md:text-sm font-black text-slate-800 dark:text-white flex items-center gap-1.5">
+                      <CalendarRange size={16} className="text-brand-green" />
+                      {t('landing.timetable.title')}
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] md:text-xs font-black text-brand-green bg-brand-primary-50 dark:bg-brand-primary-950/30 px-2.5 py-1 rounded-full">
+                      <span className="w-1.5 h-1.5 bg-brand-green rounded-full animate-pulse" />
+                      {t('landing.timetable.autoValidated')}
+                    </span>
+                  </div>
+
+                  {/* Timetable visual table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-[10px] md:text-xs text-start">
+                      <thead>
+                        <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                          <th className="p-2 font-black text-slate-500 dark:text-slate-400 text-start">{t('landing.nav.home')}</th>
+                          <th className="p-2 font-black text-slate-500 dark:text-slate-400 text-center">{t('landing.timetable.days.sunday')}</th>
+                          <th className="p-2 font-black text-slate-500 dark:text-slate-400 text-center">{t('landing.timetable.days.monday')}</th>
+                          <th className="p-2 font-black text-slate-500 dark:text-slate-400 text-center">{t('landing.timetable.days.tuesday')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(['slot1', 'slot2', 'slot3'] as const).map((slotKey) => (
+                          <tr key={slotKey} className="border-b border-slate-100 dark:border-slate-700/50 last:border-none">
+                            <td className="p-2 font-mono text-slate-400 font-medium whitespace-nowrap">
+                              {t(`landing.timetable.slots.${slotKey}`)}
+                            </td>
+                            {(['sunday', 'monday', 'tuesday'] as const).map((dayKey) => {
+                              const cell = mockTimetable[dayKey][slotKey];
+                              return (
+                                <td key={dayKey} className="p-2 min-w-[90px]">
+                                  {cell ? (
+                                    <div className={`p-1.5 rounded-lg text-[9px] md:text-[10px] space-y-1 shadow-sm leading-snug ${getSessionColor(cell.type)}`}>
+                                      <p className="font-extrabold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1">
+                                        {getSessionIcon(cell.type)}
+                                        {cell.course}
+                                      </p>
+                                      <p className="text-slate-500 dark:text-slate-400 font-medium truncate">{cell.instructor}</p>
+                                      <p className="text-slate-400 dark:text-slate-500 font-bold truncate flex items-center gap-1">
+                                        <MapPin size={8} />
+                                        {cell.room}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="w-full py-3 flex items-center justify-center text-slate-300 dark:text-slate-700/80 border border-dashed border-slate-100 dark:border-slate-800 rounded-lg">
+                                      <span>—</span>
+                                    </div>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Floating Conflict status badge */}
+                <div className="absolute -top-3 -end-3 bg-white dark:bg-slate-800 text-slate-800 dark:text-white px-3.5 py-2 rounded-xl shadow-lg border border-slate-200/50 dark:border-slate-700/50 flex items-center gap-2 transform -rotate-2">
+                  <div className="w-3 h-3 rounded-full bg-brand-green flex items-center justify-center">
+                    <ShieldCheck size={10} className="text-white" />
+                  </div>
+                  <span className="text-[10px] md:text-xs font-black tracking-tight font-mono">{t('landing.timetable.conflictsBadge')}</span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-48 left-1/2 -translate-x-1/2 animate-bounce opacity-50">
-          <ChevronDown className="text-white" size={32} />
-        </div>
-
-        {/* Stats Bar (Overlapping) */}
-        <div className="absolute bottom-0 left-0 w-full translate-y-1/2 z-20">
-          <div className="container mx-auto px-6">
-            <div className="stats-cards-row grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+        {/* ─── 3. STATS CARD ────────────────────────────────────────────────────── */}
+        <section className="relative z-30 max-w-screen-xl mx-auto px-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-150 dark:border-slate-700 -mt-16 md:-mt-24">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x lg:divide-x-reverse divide-slate-100 dark:divide-slate-700">
               {stats.map((stat, i) => (
                 <div
                   key={i}
-                  className="bg-white/95 backdrop-blur-md p-8 md:p-10 rounded-[2rem] shadow-2xl shadow-brand-navy-500/10 border border-brand-border flex flex-col items-center text-center group hover:-translate-y-2 transition-all duration-500 ring-1 ring-brand-navy-500/5 min-h-[140px]"
+                  className={`flex items-start gap-4 p-6 group hover:bg-slate-50/50 dark:hover:bg-slate-750/30 transition-colors duration-300 ${i === 0 ? 'rounded-t-2xl lg:rounded-tr-2xl lg:rounded-tl-none' : ''
+                    } ${i === stats.length - 1 ? 'rounded-b-2xl lg:rounded-bl-2xl lg:rounded-br-none' : ''
+                    }`}
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-brand-primary-50 text-brand-green flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand-green group-hover:text-white transition-all duration-500 shadow-inner">
+                  <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/20 text-brand-green flex items-center justify-center group-hover:bg-brand-green group-hover:text-white transition-all duration-300">
                     {stat.icon}
                   </div>
-                  {statsLoading ? (
-                    <div className="h-8 w-20 rounded-lg skeleton mb-1 mx-auto" />
-                  ) : (
-                    <h4 className="text-2xl md:text-3xl font-black text-brand-navy-500 mb-1">
-                      {stat.value}
-                    </h4>
-                  )}
-                  <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-brand-text-muted">
-                    {stat.label}
-                  </p>
+                  <div className="min-w-0">
+                    {statsLoading ? (
+                      <div className="h-6 w-16 bg-slate-200 dark:bg-slate-700 animate-pulse rounded mb-1" />
+                    ) : (
+                      <p className="text-2xl md:text-3xl font-black text-brand-accent-gold dark:text-brand-accent-gold leading-none font-mono">
+                        {stat.value}
+                      </p>
+                    )}
+                    <p className="text-xs font-extrabold text-brand-navy dark:text-white leading-snug mt-1.5">{stat.label}</p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-snug mt-1">{stat.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 3. About Section */}
-      <section id="about" className="pt-32 pb-24 lg:pt-40 lg:pb-32 bg-brand-bg-page relative overflow-hidden">
-        <div className="container mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Image (Left) */}
-            <div className="relative group order-2 lg:order-1">
-              <div className="absolute -inset-4 bg-brand-green/20 rounded-[3rem] blur-2xl group-hover:bg-brand-green/30 transition-all duration-500" />
-              <div className="relative rounded-[2.5rem] overflow-hidden shadow-elevated aspect-[4/3]">
-                <ImageWithFallback
-                  src={AERIAL}
-                  alt="الحرم الجامعي للجامعة"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-              </div>
-              <div className="absolute -bottom-8 -right-8 w-48 h-48 bg-brand-navy-500 rounded-3xl p-6 hidden md:flex flex-col justify-center items-center text-center shadow-2xl">
-                <p className="text-brand-green font-black text-4xl mb-1">١٠+</p>
-                <p className="text-white/80 text-[10px] font-black uppercase tracking-widest">
-                  سنوات من التميز
-                </p>
-              </div>
-            </div>
+        {/* ─── 4. COLLEGES SECTION ───────────────────────────────────────────────── */}
+        <CollegesSection isLoading={false} />
 
-            {/* Text (Right) */}
-            <div className="space-y-8 order-1 lg:order-2">
-              <div className="space-y-4">
-                <span className="text-xs font-black uppercase tracking-widest text-brand-navy-500">
-                  عن جامعتنا
-                </span>
-                <h2 className="text-4xl md:text-5xl font-black text-brand-navy-500 leading-tight">
-                  ريادة تكنولوجية <br />
-                  <span className="text-brand-green">لمستقبل أفضل</span>
-                </h2>
-                <p className="text-brand-text-secondary text-lg leading-relaxed font-medium">
-                  تعد جامعة ٦ أكتوبر التكنولوجية صرحاً أكاديمياً رائداً يسعى لتقديم تعليم تكنولوجي
-                  متميز يواكب المعايير العالمية، من خلال برامج دراسية مبتكرة وبيئة تعليمية محفزة
-                  للإبداع والبحث العلمي.
-                </p>
-              </div>
+        {/* ─── 5. WHY CHOOSE US SECTION ──────────────────────────────────────────── */}
+        <section id="why-us" className="py-24 md:py-32 bg-brand-navy dark:bg-slate-950 relative overflow-hidden">
+          {/* Abstract shapes */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-brand-green/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-brand-primary-600/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
 
-              <div className="flex flex-wrap gap-3">
-                {['معتمدة دولياً', 'بحث علمي متقدم', 'شراكات عالمية'].map((pill) => (
-                  <span
-                    key={pill}
-                    className="px-5 py-2 rounded-xl bg-white border border-brand-border text-brand-navy-500 text-xs font-black shadow-soft hover:shadow-md hover:border-brand-green transition-all duration-300"
-                  >
-                    {pill}
+          <div className="max-w-screen-xl mx-auto px-6 relative z-10">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              {/* Left Column: Text & Features List */}
+              <div className="space-y-12 order-1">
+                <div className="space-y-4">
+                  <span className="text-xs font-black uppercase tracking-widest text-brand-green">
+                    {t('landing.whyUs.eyebrow')}
                   </span>
-                ))}
-              </div>
+                  <h2 className="text-3xl md:text-5xl font-extrabold text-white leading-tight font-display m-0">
+                    {t('landing.whyUs.title')}
+                  </h2>
+                </div>
 
-              <div className="pt-4">
-                <Link
-                  to="/about"
-                  className="inline-flex items-center gap-3 text-brand-navy-500 font-black text-sm group"
-                >
-                  <span className="border-b-2 border-brand-green pb-1">اعرف المزيد عن الجامعة</span>
-                  <ArrowLeft
-                    size={16}
-                    className="rtl:-scale-x-100 transition-transform group-hover:-translate-x-1"
-                  />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Colleges Grid */}
-      <CollegesSection isLoading={isLoading} />
-
-      {/* 5. Why Choose Us Section */}
-      <section id="specialties" className="py-24 md:py-32 bg-brand-navy-500 relative overflow-hidden">
-        {/* Abstract shapes */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-brand-green/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-brand-primary-600/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
-
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <div className="space-y-12">
-              <div className="space-y-4">
-                <span className="text-xs font-black uppercase tracking-widest text-brand-green">
-                  لماذا تختارنا؟
-                </span>
-                <h2 className="text-4xl md:text-5xl font-black text-white leading-tight">
-                  التميز هو معيارنا <br />
-                  الوحيد في التعليم
-                </h2>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-8">
-                {features.map((feature, i) => (
-                  <div key={i} className="space-y-4 group">
-                    <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 text-brand-green flex items-center justify-center group-hover:bg-brand-green group-hover:text-brand-navy-500 transition-all duration-500">
-                      {feature.icon}
+                <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Feature 1: Roles */}
+                  <div className="space-y-4 group">
+                    <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 text-brand-green flex items-center justify-center group-hover:bg-brand-green group-hover:text-brand-navy transition-all duration-500">
+                      <ShieldCheck size={28} />
                     </div>
-                    <h4 className="text-lg font-black text-white">{feature.title}</h4>
-                    <p className="text-white/60 text-sm leading-relaxed font-medium">
-                      {feature.desc}
+                    <h4 className="text-lg font-black text-white">{t('landing.whyUs.roles.title')}</h4>
+                    <p className="text-white/60 dark:text-slate-400 text-sm leading-relaxed font-medium">
+                      {t('landing.whyUs.roles.desc')}
                     </p>
                   </div>
-                ))}
+
+                  {/* Feature 2: Scheduling */}
+                  <div className="space-y-4 group">
+                    <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 text-brand-green flex items-center justify-center group-hover:bg-brand-green group-hover:text-brand-navy transition-all duration-500">
+                      <CalendarRange size={28} />
+                    </div>
+                    <h4 className="text-lg font-black text-white">{t('landing.whyUs.scheduling.title')}</h4>
+                    <p className="text-white/60 dark:text-slate-400 text-sm leading-relaxed font-medium">
+                      {t('landing.whyUs.scheduling.desc')}
+                    </p>
+                  </div>
+
+                  {/* Feature 3: RTL Support */}
+                  <div className="space-y-4 group col-span-1 md:col-span-2">
+                    <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 text-brand-green flex items-center justify-center group-hover:bg-brand-green group-hover:text-brand-navy transition-all duration-500">
+                      <Languages size={28} />
+                    </div>
+                    <h4 className="text-lg font-black text-white">{t('landing.whyUs.rtl.title')}</h4>
+                    <p className="text-white/60 dark:text-slate-400 text-sm leading-relaxed font-medium">
+                      {t('landing.whyUs.rtl.desc')}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="relative">
-              <div className="absolute -inset-4 bg-brand-green/20 rounded-[3rem] blur-2xl" />
-              <div className="relative rounded-[3rem] overflow-hidden shadow-2xl aspect-square border-8 border-white/5">
-                <ImageWithFallback
-                  src={HERO_2}
-                  alt="نجاح الطلاب"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Campus Gallery */}
-      <section className="py-24 lg:py-32 bg-brand-bg-page">
-        <div className="container mx-auto px-6 space-y-16">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-4 text-right">
-              <span className="text-xs font-black uppercase tracking-widest text-brand-navy-500">
-                معرض الصور
-              </span>
-              <h2 className="text-4xl md:text-5xl font-black text-brand-navy-500 tracking-tight">
-                استكشف حرمنا الجامعي
-              </h2>
-            </div>
-            <button className="px-8 py-3 rounded-2xl border border-brand-border text-brand-navy-500 font-black text-sm hover:bg-white hover:border-brand-green transition-all duration-300">
-              مشاهدة المعرض الكامل
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="md:col-span-2 md:row-span-2 group overflow-hidden rounded-[2.5rem] shadow-elevated">
-              <ImageWithFallback
-                src={BUILDING}
-                alt="المبنى الرئيسي"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-pointer"
-              />
-            </div>
-            <div className="group overflow-hidden rounded-[2rem] shadow-elevated h-64">
-              <ImageWithFallback
-                src={ENTRANCE}
-                alt="المدخل"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-pointer"
-              />
-            </div>
-            <div className="group overflow-hidden rounded-[2rem] shadow-elevated h-64">
-              <ImageWithFallback
-                src={PORTRAIT_1}
-                alt="الطلاب"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-pointer"
-              />
-            </div>
-            <div className="md:col-span-2 group overflow-hidden rounded-[2rem] shadow-elevated h-80">
-              <ImageWithFallback
-                src={WIDE}
-                alt="رؤية بانورامية"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-pointer"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. CTA Banner */}
-      <section className="py-20">
-        <div className="container mx-auto px-6">
-          <div className="relative rounded-[3rem] overflow-hidden bg-gradient-to-r from-brand-green to-brand-green-dark p-12 md:p-20 text-center space-y-8 shadow-2xl shadow-brand-green/30">
-            {/* Abstract Background pattern */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none">
-              <div className="absolute top-0 left-0 w-full h-full transform -skew-y-12 bg-white/20" />
-            </div>
-
-            <div className="relative z-10 space-y-6">
-              <h2 className="text-4xl md:text-6xl font-black text-brand-navy-500 tracking-tight">
-                جاهز لبدء رحلتك الأكاديمية؟
-              </h2>
-              <p className="max-w-2xl mx-auto text-lg md:text-xl text-brand-navy-500 font-bold leading-relaxed">
-                سجّل الآن وانضم لآلاف الطلاب في منصتنا الرقمية المتقدمة واستفد من أحدث التقنيات
-                التعليمية.
-              </p>
-              <div className="pt-6">
-                <Link
-                  to="/login"
-                  className="inline-flex items-center gap-4 px-10 py-5 bg-brand-navy-500 text-white font-black rounded-2xl shadow-2xl hover:bg-brand-navy-600 transition-all duration-300 transform hover:-translate-y-1"
-                >
-                  <span className="text-lg">سجّل دخولك الآن</span>
-                  <ArrowLeft size={20} className="rtl:-scale-x-100" />
-                </Link>
+              {/* Right Column: Visual success image */}
+              <div className="relative order-2 flex justify-center">
+                <div className="absolute -inset-4 bg-brand-green/20 rounded-[3rem] blur-2xl" />
+                <div className="relative rounded-[3.5rem] overflow-hidden shadow-2xl aspect-square max-w-sm md:max-w-md">
+                  <ImageWithFallback
+                    src={HERO_2}
+                    alt="Student success"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 8. Footer */}
-      <footer id="contact" className="bg-brand-navy-500 pt-24 pb-12 text-white">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 pb-20 border-b border-white/10">
+        {/* ─── 6. ABOUT SECTION ──────────────────────────────────────────────────── */}
+        <section id="about" className="py-24 lg:py-32 bg-slate-50 dark:bg-slate-900 relative overflow-hidden">
+          <div className="max-w-screen-xl mx-auto px-6">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              {/* Visual Campus Image (RTL: left, LTR: right) - rhythm shift */}
+              <div className="relative group order-2 lg:order-1 flex justify-center">
+                <div className="absolute -inset-4 bg-brand-green/10 rounded-[3rem] blur-2xl group-hover:bg-brand-green/20 transition-all duration-500" />
+                <div className="relative rounded-[2.5rem] overflow-hidden shadow-xl aspect-[4/3] max-w-md w-full">
+                  <ImageWithFallback
+                    src={AERIAL}
+                    alt="Campus main layout"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                </div>
+                <div className="absolute -bottom-8 -start-8 w-44 h-44 bg-brand-navy dark:bg-slate-800 rounded-3xl p-6 hidden md:flex flex-col justify-center items-center text-center shadow-2xl border border-white/5">
+                  <p className="text-brand-accent-gold font-mono font-black text-4xl mb-1">10+</p>
+                  <p className="text-white/80 text-[10px] font-black uppercase tracking-wider leading-snug">
+                    {t('landing.stats.excellence')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Text Column (RTL: right, LTR: left) */}
+              <div className="space-y-8 order-1 lg:order-2">
+                <div className="space-y-4">
+                  <span className="block text-xs font-black uppercase tracking-widest text-brand-green">
+                    {t('landing.about.eyebrow')}
+                  </span>
+                  <h2 className="text-3xl md:text-5xl font-extrabold text-brand-navy dark:text-white leading-tight font-display m-0">
+                    {t('landing.about.title1')} <br />
+                    <span className="text-brand-green">{t('landing.about.title2')}</span>
+                  </h2>
+                  <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg leading-relaxed font-medium">
+                    {t('landing.about.desc')}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    t('landing.about.pills.accredited'),
+                    t('landing.about.pills.advancedResearch'),
+                    t('landing.about.pills.partnerships')
+                  ].map((pill) => (
+                    <span
+                      key={pill}
+                      className="px-5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-150 dark:border-slate-700 text-brand-navy dark:text-white text-xs font-bold shadow-sm hover:shadow-md hover:border-brand-green transition-all duration-300"
+                    >
+                      {pill}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="pt-4">
+                  <Link
+                    to="/about"
+                    className="inline-flex items-center gap-3 text-brand-navy dark:text-white hover:text-brand-green font-black text-sm group"
+                  >
+                    <span className="border-b-2 border-brand-green pb-1">{t('landing.about.learnMore')}</span>
+                    {isRTL ? (
+                      <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
+                    ) : (
+                      <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                    )}
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── 7. FEATURE SHOWCASE CAROUSEL ──────────────────────────────────────── */}
+        <FeaturesCarousel />
+
+        {/* ─── 8. CTA BANNER ─────────────────────────────────────────────────────── */}
+        <section className="py-20 bg-slate-50 dark:bg-slate-900/50">
+          <div className="max-w-screen-xl mx-auto px-6">
+            <div className="relative rounded-[3rem] overflow-hidden bg-brand-navy dark:bg-slate-950 p-12 md:p-20 text-center space-y-8 shadow-2xl border border-white/5">
+              <div className="absolute inset-0 opacity-10 pointer-events-none">
+                <div className="absolute top-0 left-0 w-full h-full transform -skew-y-12 bg-white/20" />
+              </div>
+
+              <div className="relative z-10 space-y-6">
+                <h2 className="text-3xl md:text-5xl font-extrabold text-white leading-tight font-display m-0">
+                  {t('landing.cta.title')}
+                </h2>
+                <p className="max-w-2xl mx-auto text-base md:text-lg text-slate-300 dark:text-slate-400 font-bold leading-relaxed">
+                  {t('landing.cta.desc')}
+                </p>
+                <div className="pt-6">
+                  <Link
+                    to="/register"
+                    className="inline-flex items-center gap-4 px-10 py-5 bg-brand-green hover:bg-brand-green-dark text-white font-black rounded-2xl shadow-xl hover:shadow-brand-green/20 transition-all duration-300 transform hover:-translate-y-1"
+                  >
+                    <span className="text-base md:text-lg">{t('landing.cta.button')}</span>
+                    {isRTL ? (
+                      <ArrowLeft size={20} className="transition-transform" />
+                    ) : (
+                      <ArrowRight size={20} className="transition-transform" />
+                    )}
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* ─── 9. FOOTER ─────────────────────────────────────────────────────────── */}
+      <footer id="contact" className="bg-slate-900 dark:bg-slate-950 pt-24 pb-12 text-white border-t border-slate-800">
+        <div className="max-w-screen-xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 pb-20 border-b border-slate-800">
             {/* Brand Col */}
-            <div className="space-y-8">
+            <div className="space-y-8 text-start">
               <ImageWithFallback
                 src={LOGO_WHITE}
-                alt="شعار الجامعة"
+                alt="University Logo"
                 className="h-14 w-auto object-contain"
               />
-              <p className="text-white/60 text-sm leading-relaxed font-medium">
-                صرح تعليمي تكنولوجي رائد يسعى للتميز والابتكار في إعداد أجيال قادرة على قيادة
-                المستقبل الرقمي في مصر.
+              <p className="text-slate-400 text-sm leading-relaxed font-medium">
+                {t('landing.footer.desc')}
               </p>
               <div className="flex items-center gap-4">
                 <a
-                  href="#"
+                  href="https://facebook.com"
                   aria-label="Facebook"
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:bg-brand-green hover:text-brand-navy-500 hover:border-brand-green transition-all duration-300 text-sm font-bold"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300"
                 >
-                  f
+                  <Facebook size={18} />
                 </a>
                 <a
-                  href="#"
-                  aria-label="Twitter"
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:bg-brand-green hover:text-brand-navy-500 hover:border-brand-green transition-all duration-300 text-sm font-bold"
+                  href="https://twitter.com"
+                  aria-label="Twitter / X"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300"
                 >
-                  𝕏
+                  <Twitter size={18} />
                 </a>
                 <a
-                  href="#"
+                  href="https://instagram.com"
                   aria-label="Instagram"
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:bg-brand-green hover:text-brand-navy-500 hover:border-brand-green transition-all duration-300 text-sm font-bold"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300"
                 >
-                  ig
+                  <Instagram size={18} />
                 </a>
                 <a
-                  href="#"
+                  href="https://linkedin.com"
                   aria-label="LinkedIn"
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:bg-brand-green hover:text-brand-navy-500 hover:border-brand-green transition-all duration-300 text-sm font-bold"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300"
                 >
-                  in
+                  <Linkedin size={18} />
                 </a>
               </div>
             </div>
 
             {/* Quick Links */}
-            <div className="space-y-8">
-              <h4 className="text-lg font-black tracking-tight">روابط سريعة</h4>
+            <div className="space-y-8 text-start">
+              <h4 className="text-lg font-black tracking-tight">{t('landing.footer.quickLinks')}</h4>
               <ul className="space-y-4">
                 {navLinks.map((link) => (
                   <li key={link.name}>
                     <a
                       href={link.href}
-                      className="text-white/60 hover:text-brand-green text-sm font-bold transition-colors"
+                      className="text-slate-400 hover:text-brand-green text-sm font-bold transition-colors"
                     >
                       {link.name}
                     </a>
@@ -619,16 +793,16 @@ const LandingPage = () => {
             </div>
 
             {/* Colleges */}
-            <div className="space-y-8">
-              <h4 className="text-lg font-black tracking-tight">كلياتنا</h4>
+            <div className="space-y-8 text-start">
+              <h4 className="text-lg font-black tracking-tight">{t('landing.footer.ourColleges')}</h4>
               <ul className="space-y-4">
-                {colleges.slice(0, 5).map((college) => (
-                  <li key={college.name}>
+                {collegesKeys.map((college) => (
+                  <li key={college.id}>
                     <a
-                      href="#"
-                      className="text-white/60 hover:text-brand-green text-sm font-bold transition-colors"
+                      href={`/colleges/${college.id}`}
+                      className="text-slate-400 hover:text-brand-green text-sm font-bold transition-colors"
                     >
-                      {college.name}
+                      {t(college.nameKey)}
                     </a>
                   </li>
                 ))}
@@ -636,128 +810,51 @@ const LandingPage = () => {
             </div>
 
             {/* Contact */}
-            <div className="space-y-8 text-right">
-              <h4 className="text-lg font-black tracking-tight">تواصل معنا</h4>
+            <div className="space-y-8 text-start">
+              <h4 className="text-lg font-black tracking-tight">{t('landing.footer.contactUs')}</h4>
               <div className="space-y-6">
                 <div className="space-y-1">
                   <p className="text-xs font-black uppercase tracking-widest text-brand-green">
-                    الموقع
+                    {t('landing.footer.location')}
                   </p>
-                  <p className="text-white/60 text-sm font-bold">مدينة ٦ أكتوبر، الجيزة، مصر</p>
+                  <p className="text-slate-400 text-sm font-bold">{t('landing.footer.address')}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-black uppercase tracking-widest text-brand-green">
-                    البريد الإلكتروني
+                    {t('landing.footer.email')}
                   </p>
-                  <p className="text-white/60 text-sm font-bold">info@university.edu.eg</p>
+                  <a href="mailto:info@university.edu.eg" className="text-slate-400 hover:text-brand-green text-sm font-bold transition-colors">
+                    info@university.edu.eg
+                  </a>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-black uppercase tracking-widest text-brand-green">
-                    الهاتف
+                    {t('landing.footer.phone')}
                   </p>
-                  <p className="text-white/60 text-sm font-bold" dir="ltr">
+                  <a href="tel:+201234567890" dir="ltr" className="text-slate-400 hover:text-brand-green text-sm font-bold transition-colors">
                     +20 123 456 7890
-                  </p>
+                  </a>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="pt-12 flex flex-col md:flex-row items-center justify-between gap-6">
-            <p className="text-white/40 text-xs font-black tracking-widest uppercase">
-              جميع الحقوق محفوظة © {new Date().getFullYear()} جامعة ٦ أكتوبر التكنولوجية
+            <p className="text-slate-500 text-xs font-bold tracking-wider uppercase text-center md:text-start">
+              {t('landing.footer.rights', { year: new Date().getFullYear() })}
             </p>
-            <div className="flex items-center gap-8 text-[10px] font-black uppercase tracking-widest text-white/40">
-              <button type="button" className="hover:text-brand-green transition-colors">
-                سياسة الخصوصية
-              </button>
-              <button type="button" className="hover:text-brand-green transition-colors">
-                شروط الاستخدام
-              </button>
-              <span className="text-white/20">v1.0.0</span>
+            <div className="flex items-center gap-8 text-[10px] font-black uppercase tracking-wider text-slate-500">
+              <a href="#" className="hover:text-brand-green transition-colors">
+                {t('landing.footer.privacy')}
+              </a>
+              <a href="#" className="hover:text-brand-green transition-colors">
+                {t('landing.footer.terms')}
+              </a>
+              <span className="text-slate-700">v1.0.0</span>
             </div>
           </div>
         </div>
       </footer>
-
-      {/* Global CSS for animations */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slow-zoom {
-          from { transform: scale(1); }
-          to { transform: scale(1.1); }
-        }
-        .animate-fade-in-up {
-          animation: fade-in-up 1s cubic-bezier(0.16, 1, 0.3, 1) both;
-        }
-        .animate-slow-zoom {
-          animation: slow-zoom 20s ease-in-out infinite alternate;
-        }
-        .delay-100 { animation-delay: 100ms; }
-        .delay-200 { animation-delay: 200ms; }
-        .delay-300 { animation-delay: 300ms; }
-        
-        html {
-          scroll-behavior: smooth;
-        }
-
-        /* 3. Clarify Video Icon */
-        .video-btn {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          position: relative;
-        }
-        .video-btn:hover .label {
-          opacity: 1;
-        }
-
-
-
-        /* 8. Skeleton Loading */
-        .skeleton {
-          background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-          background-size: 200% 100%;
-          animation: skeleton-loading 1.5s infinite;
-          border-radius: 8px;
-        }
-        @keyframes skeleton-loading {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-
-        /* 9. Responsive Improvements */
-        @media (max-width: 768px) {
-          .hero-title {
-            font-size: clamp(2rem, 8vw, 4rem) !important;
-          }
-          .hero-buttons {
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-          }
-          .hero-stats {
-            display: grid !important;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-          }
-          .stats-cards-row {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-        }
-        @media (max-width: 480px) {
-          .stats-cards-row {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `,
-        }}
-      />
     </div>
   );
 };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import doctorsService from '../../services/doctors.service';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { X, User, Phone, Briefcase, AlertCircle, CheckCircle } from 'lucide-react';
 

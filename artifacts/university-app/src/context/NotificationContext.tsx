@@ -3,7 +3,28 @@ import api from '../services/api';
 import { useAuth } from './AuthContext';
 import { logger } from '../lib/logger';
 
-const NotificationContext = createContext();
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  [key: string]: any;
+}
+
+interface NotificationContextType {
+  notifications: Notification[];
+  unreadCount: number;
+  pendingRequestsCount: number;
+  loading: boolean;
+  fetchNotifications: () => Promise<void>;
+  fetchPendingRequestsCount: () => Promise<void>;
+  markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
+}
+
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
@@ -13,9 +34,10 @@ export const useNotifications = () => {
   return context;
 };
 
-export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState([]);
+export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
@@ -26,7 +48,7 @@ export const NotificationProvider = ({ children }) => {
       const response = await api.get('/notifications');
       if (response.data.success) {
         setNotifications(response.data.data);
-        setUnreadCount(response.data.data.filter((n) => !n.isRead).length);
+        setUnreadCount(response.data.data.filter((n: Notification) => !n.isRead).length);
       }
     } catch (error: any) {
       logger.error('Fetch notifications error:', error);
@@ -35,14 +57,39 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
+  const fetchPendingRequestsCount = async () => {
+    if (!user) {
+      setPendingRequestsCount(0);
+      return;
+    }
+    const adminRoles = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'];
+    if (!adminRoles.includes(user.role)) {
+      setPendingRequestsCount(0);
+      return;
+    }
+    try {
+      const response = await api.get('/auth/requests');
+      if (response.data.success) {
+        const pendingCount = response.data.data.filter((r: any) => r.status === 'PENDING').length;
+        setPendingRequestsCount(pendingCount);
+      }
+    } catch (error: any) {
+      logger.error('Fetch pending requests count error:', error);
+    }
+  };
+
   useEffect(() => {
     fetchNotifications();
-    // Poll for notifications every 1 minute
-    const interval = setInterval(fetchNotifications, 60000);
+    fetchPendingRequestsCount();
+    // Poll for notifications and requests every 1 minute
+    const interval = setInterval(() => {
+      fetchNotifications();
+      fetchPendingRequestsCount();
+    }, 60000);
     return () => clearInterval(interval);
   }, [user]);
 
-  const markAsRead = async (id) => {
+  const markAsRead = async (id: string) => {
     try {
       const response = await api.put(`/notifications/${id}/read`);
       if (response.data.success) {
@@ -66,7 +113,7 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  const deleteNotification = async (id) => {
+  const deleteNotification = async (id: string) => {
     try {
       const response = await api.delete(`/notifications/${id}`);
       if (response.data.success) {
@@ -86,8 +133,10 @@ export const NotificationProvider = ({ children }) => {
       value={{
         notifications,
         unreadCount,
+        pendingRequestsCount,
         loading,
         fetchNotifications,
+        fetchPendingRequestsCount,
         markAsRead,
         markAllAsRead,
         deleteNotification,

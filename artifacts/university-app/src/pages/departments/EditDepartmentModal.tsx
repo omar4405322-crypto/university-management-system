@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import departmentService from '../../services/department.service';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { School, GraduationCap, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -110,16 +110,16 @@ const EditDepartmentModal = ({ isOpen, onClose, department, colleges, onSuccess 
         </div>
 
         <div className="mt-8 flex justify-end gap-3 border-t border-brand-border pt-6">
-          <Button 
-            type="button" 
-            variant="ghost" 
-            onClick={onClose} 
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
             disabled={isSubmitting}
           >
             {t('common.cancel')}
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={isSubmitting}
             className="min-w-[140px]"
           >
