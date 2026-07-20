@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../ui/LanguageToggle';
 import { useLanguage } from '../../context/LanguageContext';
 import GlobalSearch from './GlobalSearch';
+import { getDynamicBaseUrl } from '../../services/api';
 
 const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
   const { user, logout } = useAuth();
@@ -57,7 +58,7 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
   const getProfilePictureUrl = (path?: string) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
-    const baseUrl = (import.meta as any).env.VITE_BACKEND_URL?.replace(/\/api$/, '') || 'http://localhost:5000';
+    const baseUrl = getDynamicBaseUrl().replace(/\/api$/, '') || 'http://localhost:5000';
     return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
   };
 

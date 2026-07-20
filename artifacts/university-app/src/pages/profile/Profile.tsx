@@ -9,7 +9,7 @@ import Badge from '../../components/ui/Badge';
 import { useAuth } from '../../context/AuthContext';
 import { Shield, Camera, Lock, X, Loader2, Building2, Award, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import api from '../../services/api';
+import api, { getDynamicBaseUrl } from '../../services/api';
 import Modal from '../../components/ui/Modal';
 import { Textarea } from '../../components/ui/Textarea';
 import { logger } from '../../lib/logger';
@@ -193,7 +193,7 @@ const Profile = () => {
   const getProfilePictureUrl = (path?: string) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
-    const baseUrl = (import.meta as any).env.VITE_BACKEND_URL?.replace(/\/api$/, '') || 'http://localhost:5000';
+    const baseUrl = getDynamicBaseUrl().replace(/\/api$/, '') || 'http://localhost:5000';
     return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
   };
 

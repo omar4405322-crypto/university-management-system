@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import departmentService from '../services/department.service';
 import coursesService from '../services/courses.service';
 import doctorsService from '../services/doctors.service';
@@ -27,6 +27,7 @@ interface UseTimetableDataReturn {
   loadingSlots: boolean;
   loadingCourses: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
 /**
@@ -53,6 +54,8 @@ export function useTimetableData(
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshCount, setRefreshCount] = useState(0);
+  const refetch = useCallback(() => setRefreshCount((c) => c + 1), []);
 
   // ── Colleges (once on mount) ─────────────────────────────────────────────────
   useEffect(() => {
@@ -167,7 +170,7 @@ export function useTimetableData(
       });
 
     return () => controller.abort();
-  }, [filters.departmentId, filters.academicYear, filters.semester]);
+  }, [filters.departmentId, filters.academicYear, filters.semester, refreshCount]);
 
   // ── Courses & Doctors (whenever the selected department changes) ───────────
   useEffect(() => {
@@ -234,5 +237,6 @@ export function useTimetableData(
     loadingSlots,
     loadingCourses,
     error,
+    refetch,
   };
 }

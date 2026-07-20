@@ -9,14 +9,18 @@ import TimetableFiltersBar from '../../components/timetable/TimetableFiltersBar'
 import TimeSlotCell from '../../components/timetable/TimeSlotCell';
 import SlotModal from '../../components/timetable/SlotModal';
 import { OverrideModal } from '../../components/timetable/OverrideModal';
+import { SkeletonTable } from '../../components/ui/Skeleton';
+import { TimeRange } from '../../components/ui/TimeRange';
 import timetableService from '../../services/timetable.service';
+import schedulesService from '../../services/schedules.service';
+import { notifyScheduleChange, subscribeToScheduleChanges } from '../../utils/scheduleSync';
 import type { TimetableFilters, SlotsMap, Day } from '../../types/timetable.types';
 import type { SlotEntry } from '../../types/timetable.types';
+import { generateTimeSlots } from '../../utils/scheduleConfig';
 import type { SlotFormValues } from '../../components/timetable/SlotModal';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const DAYS: Day[] = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-const TIME_SLOTS = ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-16:00', '16:00-18:00'];
 
 const EMPTY_FORM: SlotFormValues = {
   courseName: '',
@@ -25,19 +29,21 @@ const EMPTY_FORM: SlotFormValues = {
   slotType: 'LECTURE',
 };
 
-// ── Component ──────────────────────────────────────────────────────────────────
-/**
- * TimetableGrid — orchestrator component.
- * All data fetching lives in useTimetableData; all cell rendering in TimeSlotCell;
- * the filter bar in TimetableFiltersBar; the add/edit dialog in SlotModal.
- * This component's job is wiring them together and handling save/delete logic.
- */
 export default function TimetableGrid() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { scopeParams, isCollegeAdmin } = useScope();
   const isRTL = i18n.language?.startsWith('ar');
   const [searchParams] = useSearchParams();
+  const [timeSlots, setTimeSlots] = useState<string[]>(generateTimeSlots);
+
+  React.useEffect(() => {
+    const handleConfigChange = () => {
+      setTimeSlots(generateTimeSlots());
+    };
+    window.addEventListener('scheduleConfigChanged', handleConfigChange);
+    return () => window.removeEventListener('scheduleConfigChanged', handleConfigChange);
+  }, []);
 
   // ── Filter state ─────────────────────────────────────────────────────────────
   const [filters, setFilters] = useState<TimetableFilters>({
@@ -78,15 +84,24 @@ export default function TimetableGrid() {
     loadingDepts,
     loadingSlots,
     loadingCourses,
+    refetch,
   } = useTimetableData(filters, collegeId, deptId, user?.role);
+
+  // Real-time synchronization subscription from Tables Management page
+  React.useEffect(() => {
+    const unsubscribe = subscribeToScheduleChanges(() => {
+      refetch();
+    });
+    return unsubscribe;
+  }, [refetch]);
 
   // ── Toast helper ─────────────────────────────────────────────────────────────
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   }, []);
 
-  // ── Stable slot handlers (passed into memoized cells) ───────────────────────
+  // ── Stable slot handlers ───────────────────────
   const handleOpenAdd = useCallback((day: Day, slot: string) => {
     setForm(EMPTY_FORM);
     setDialog({ day, slot });
@@ -112,6 +127,7 @@ export default function TimetableGrid() {
   const handleDeleteSlot = useCallback(
     (day: string, slot: string) => {
       if (!window.confirm(t('timetables.deleteConfirm', 'Delete this class slot?'))) return;
+
       setSlots((prev) => {
         const next: SlotsMap = { ...prev };
         delete next[`${day}_${slot}`];
@@ -125,7 +141,6 @@ export default function TimetableGrid() {
   const handleSaveSlot = useCallback(() => {
     if (!form.courseName || !dialog) return;
     const key = `${dialog.day}_${dialog.slot}`;
-    // Warn if same course is already on this day in a different time slot
     const conflict = Object.entries(slots).find(
       ([k, v]) => k !== key && k.startsWith(`${dialog.day}_`) && v.courseName === form.courseName
     );
@@ -136,14 +151,16 @@ export default function TimetableGrid() {
       );
       return;
     }
+
     setSlots((prev) => ({
       ...prev,
       [key]: { ...form, timetableId: timetableId ?? null },
     }));
+
     setDialog(null);
   }, [form, dialog, slots, timetableId, showToast, t, setSlots]);
 
-  // ── Persist timetable to backend ─────────────────────────────────────────────
+  // ── Persist timetable to backend & Sync to Tables Management ──────────────
   const handleSaveTimetable = useCallback(async () => {
     if (!filters.departmentId || !filters.academicYear || !filters.semester) {
       showToast(
@@ -152,6 +169,15 @@ export default function TimetableGrid() {
       );
       return;
     }
+
+    // Ask user if they want to sync directly to Master Schedule (Tables Management)
+    const shouldSyncToMaster = window.confirm(
+      t(
+        'timetables.syncConfirmPrompt',
+        'تطبيق وتزامن التغييرات مع إدارة الجداول (الجدول الرئيسي)؟\n\n• موافق (OK): تطبيق وتزامن متبادل مع صفحة إدارة الجداول.\n• إلغاء (Cancel): الحفظ في شبكة الجداول فقط.'
+      )
+    );
+
     setSaving(true);
     try {
       const slotsArray = Object.entries(slots).map(([key, val]) => {
@@ -177,20 +203,37 @@ export default function TimetableGrid() {
         title: `${t('timetables.title', 'Timetable')} - ${t('common.year', 'Year')} ${filters.academicYear} - ${t('timetables.semester', 'Semester')} ${filters.semester}`,
         scheduleData: { slots: slotsArray },
       };
+
       if (timetableId) {
         await timetableService.updateTimetable(String(timetableId), payload);
       } else {
         await timetableService.createTimetable(payload);
       }
-      showToast(t('timetables.saveSuccess', 'Timetable saved successfully ✅'), 'success');
-    } catch {
+
+      if (shouldSyncToMaster) {
+        await schedulesService.syncGrid({
+          collegeId: Number(effectiveCollegeId),
+          departmentId: Number(filters.departmentId),
+          academicYear: Number(filters.academicYear),
+          semester: Number(filters.semester),
+          slots: slotsArray,
+        });
+        notifyScheduleChange();
+        showToast(
+          t('timetables.syncSuccess', 'تم حفظ الجدول وتزامنه بنجاح مع إدارة الجداول ✅'),
+          'success'
+        );
+      } else {
+        showToast(t('timetables.saveSuccess', 'Timetable saved successfully ✅'), 'success');
+      }
+    } catch (err) {
+      console.error('Save error', err);
       showToast(t('common.errorOccurred', 'Error saving timetable'), 'error');
     } finally {
       setSaving(false);
     }
   }, [filters, slots, departments, collegeId, timetableId, showToast, t]);
 
-  // ── Return ───────────────────────────────────────────────────────────────────
   return (
     <div className="section-gap animate-in fade-in duration-500">
       {/* Toast */}
@@ -218,7 +261,6 @@ export default function TimetableGrid() {
         onSave={handleSaveTimetable}
       />
 
-      {/* Grid */}
       {/* Desktop view */}
       <div className="hidden md:block bg-brand-bg-card border border-brand-border rounded-2xl shadow-soft overflow-hidden relative">
         {loadingSlots && (
@@ -240,37 +282,33 @@ export default function TimetableGrid() {
                     key={day}
                     className="p-4 text-center font-black uppercase text-xs tracking-widest text-brand-text-muted border-r border-brand-border last:border-r-0"
                   >
-                    {t(`days.${day.toLowerCase()}`, day)}
+                    {t(`days.${day.toLowerCase()}`)}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {TIME_SLOTS.map((slot) => (
-                <tr
-                  key={slot}
-                  className="border-b border-brand-border last:border-b-0 hover:bg-surface-subtle/30 transition-colors"
-                >
-                  <td
-                    className={`p-4 font-black text-xs text-brand-text-primary border-r border-brand-border ${isRTL ? 'text-right' : 'text-left'}`}
-                  >
-                    {slot}
+            <tbody className="divide-y divide-brand-border">
+              {timeSlots.map((slot) => (
+                <tr key={slot} className="hover:bg-brand-bg-card/50 transition-colors">
+                  <td className="p-3 font-bold text-xs text-brand-text-muted border-r border-brand-border align-middle bg-surface-subtle/30 text-center">
+                    {(() => {
+                      const [start, end] = slot.split('-');
+                      return start && end ? <TimeRange start={start} end={end} /> : slot;
+                    })()}
                   </td>
                   {DAYS.map((day) => {
                     const key = `${day}_${slot}`;
+                    const entry = slots[key];
                     return (
-                      <td
-                        key={key}
-                        className="p-3 border-r border-brand-border last:border-r-0 min-h-[100px] align-top"
-                      >
+                      <td key={key} className="p-2 border-r border-brand-border last:border-r-0 align-top">
                         <TimeSlotCell
-                          entry={slots[key] ?? null}
                           day={day}
                           slot={slot}
-                          canEdit={Boolean(filters.departmentId)}
-                          onAdd={() => handleOpenAdd(day, slot)}
-                          onDelete={handleDeleteSlot}
+                          entry={entry}
+                          canEdit={true}
+                          onAdd={() => handleOpenAdd(day as Day, slot)}
                           onEdit={handleOpenEdit}
+                          onDelete={handleDeleteSlot}
                           onEditOverride={handleEditOverride}
                         />
                       </td>
@@ -285,80 +323,85 @@ export default function TimetableGrid() {
 
       {/* Mobile view */}
       <div className="md:hidden space-y-4">
-        {/* Mobile Day Selector Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar" dir={isRTL ? 'rtl' : 'ltr'}>
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
           {DAYS.map((day) => (
             <button
               key={day}
               onClick={() => setSelectedDay(day)}
-              className={`flex-shrink-0 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${
-                selectedDay === day
-                  ? 'bg-brand-primary-600 text-white shadow-brand-primary-600/20'
-                  : 'bg-surface-subtle text-brand-text-secondary hover:bg-brand-primary-600/10 border border-brand-border'
-              }`}
+              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${selectedDay === day
+                  ? 'bg-brand-primary-500 text-white shadow-md'
+                  : 'bg-brand-bg-card border border-brand-border text-brand-text-muted'
+                }`}
             >
-              {t(`days.${day.toLowerCase()}`, day)}
+              {t(`days.${day.toLowerCase()}`)}
             </button>
           ))}
         </div>
 
-        {/* Time slots cards */}
-        <div className="space-y-3 relative min-h-[200px]">
+        <div className="space-y-3">
           {loadingSlots && (
-            <div className="absolute inset-0 bg-brand-bg-page/70 backdrop-blur-sm z-10 flex items-center justify-center">
+            <div className="p-8 flex justify-center">
               <Loader2 size={32} className="animate-spin text-brand-primary-500" />
             </div>
           )}
-          {TIME_SLOTS.map((slot) => {
+          {timeSlots.map((slot) => {
             const key = `${selectedDay}_${slot}`;
+            const entry = slots[key];
             return (
               <div key={slot} className="bg-brand-bg-card border border-brand-border rounded-2xl p-4 shadow-sm flex flex-col gap-3">
-                <div className="flex justify-between items-center border-b border-brand-border/40 pb-2">
-                  <span className="text-xs font-black text-brand-primary-600 tracking-wider">
-                    {slot}
-                  </span>
-                  <span className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest">
-                    {t(`days.${selectedDay.toLowerCase()}`, selectedDay)}
+                <div className="flex justify-between items-center border-b border-brand-border/50 pb-2">
+                  <span className="text-xs font-black text-brand-text-muted">{slot}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-brand-primary-600">
+                    {t(`days.${selectedDay.toLowerCase()}`)}
                   </span>
                 </div>
-                <div>
-                  <TimeSlotCell
-                    entry={slots[key] ?? null}
-                    day={selectedDay}
-                    slot={slot}
-                    canEdit={Boolean(filters.departmentId)}
-                    onAdd={() => handleOpenAdd(selectedDay, slot)}
-                    onDelete={handleDeleteSlot}
-                    onEdit={handleOpenEdit}
-                    onEditOverride={handleEditOverride}
-                  />
-                </div>
+                <TimeSlotCell
+                  day={selectedDay}
+                  slot={slot}
+                  entry={entry}
+                  canEdit={true}
+                  onAdd={() => handleOpenAdd(selectedDay as Day, slot)}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleDeleteSlot}
+                  onEditOverride={handleEditOverride}
+                />
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Add / Edit dialog */}
-      <SlotModal
-        isOpen={Boolean(dialog)}
-        dialogContext={dialog}
-        form={form}
-        courses={courses}
-        doctors={doctors}
-        loadingCourses={loadingCourses}
-        collegeId={collegeId}
-        isRTL={isRTL}
-        onChange={setForm}
-        onClose={() => setDialog(null)}
-        onSubmit={handleSaveSlot}
-      />
-      <OverrideModal
-        isOpen={overrideModalOpen}
-        onClose={() => setOverrideModalOpen(false)}
-        entry={overrideEntry}
-        onSuccess={() => window.location.reload()}
-      />
+      {/* Modal Dialog */}
+      {dialog && (
+        <SlotModal
+          isOpen={Boolean(dialog)}
+          dialogContext={dialog}
+          form={form}
+          courses={courses}
+          doctors={doctors}
+          loadingCourses={loadingCourses}
+          collegeId={collegeId}
+          isRTL={isRTL}
+          onChange={setForm}
+          onClose={() => setDialog(null)}
+          onSubmit={handleSaveSlot}
+        />
+      )}
+
+      {overrideEntry && (
+        <OverrideModal
+          isOpen={overrideModalOpen}
+          onClose={() => {
+            setOverrideModalOpen(false);
+            setOverrideEntry(null);
+          }}
+          entry={overrideEntry}
+          onSuccess={() => {
+            notifyScheduleChange();
+            refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

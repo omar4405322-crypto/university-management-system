@@ -30,7 +30,8 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -253,7 +254,7 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
             >
               <option value="">{t('auth.selectCollege')}</option>
               {colleges.map(college => (
-                <option key={college.id} value={college.id}>{college.name}</option>
+                <option key={college.id} value={college.id}>{isRTL ? college.nameAr || college.name : college.name}</option>
               ))}
             </select>
             {errors.collegeId && <p className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>}
@@ -270,7 +271,7 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
             >
               <option value="">{t('auth.selectDept')}</option>
               {departments.map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
+                <option key={dept.id} value={dept.id}>{isRTL ? dept.nameAr || dept.name : dept.name}</option>
               ))}
             </select>
             {errors.departmentId && <p className="text-rose-500 text-xs mt-1">{errors.departmentId.message}</p>}

@@ -29,6 +29,12 @@ router.delete(
   schedulesController.deleteSchedule
 );
 
+router.post(
+  '/sync-grid',
+  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
+  schedulesController.syncGridToMaster
+);
+
 router.use('/:slotId/overrides', overridesRouter);
 router.use('/overrides', overridesRouter);
 

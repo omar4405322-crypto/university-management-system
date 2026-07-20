@@ -1,7 +1,9 @@
 import express from 'express';
 const router = express.Router();
 import * as studentGroupsController from '../controllers/studentGroups.controller';
-import { authorize } from '../middleware/auth.middleware';
+import { protect, authorize } from '../middleware/auth.middleware';
+
+router.use(protect);
 
 router.get(
   '/departments/:departmentId/groups',

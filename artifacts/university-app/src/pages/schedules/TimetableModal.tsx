@@ -39,11 +39,12 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
   const { user } = useAuth();
   const isCollegeAdmin = user?.role === 'COLLEGE_ADMIN';
   const managedCollegeId = user?.managedCollegeId;
-  const managedCollegeName = user?.managedCollege?.name;
+  const managedCollegeName = isRTL ? user?.managedCollege?.nameAr || user?.managedCollege?.name : user?.managedCollege?.name;
   const [colleges, setColleges] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [error, setError] = useState('');
@@ -204,7 +205,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
                     })}
                   >
                     <option value="">{t('timetables.selectFaculty')}</option>
-                    {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {colleges.map(c => <option key={c.id} value={c.id}>{isRTL ? c.nameAr || c.name : c.name}</option>)}
                   </select>
                 )}
                 {errors.collegeId && <p className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>}
@@ -218,7 +219,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
                   disabled={!watchCollegeId}
                 >
                   <option value="">{t('timetables.selectDept')}</option>
-                  {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  {departments.map(d => <option key={d.id} value={d.id}>{isRTL ? d.nameAr || d.name : d.name}</option>)}
                 </select>
                 {errors.departmentId && <p className="text-rose-500 text-xs mt-1">{errors.departmentId.message}</p>}
               </div>

@@ -16,7 +16,14 @@ import {
   Moon,
   Smartphone,
   Video,
+  Clock,
 } from 'lucide-react';
+import {
+  getScheduleStartTime,
+  setScheduleStartTime,
+  getScheduleTimeStep,
+  setScheduleTimeStep,
+} from '../../utils/scheduleConfig';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -62,8 +69,17 @@ const SettingsPage = () => {
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
   const [errors, setErrors] = useState<any>({});
+  const [scheduleStartTime, setScheduleStartTimeState] = useState(getScheduleStartTime);
+  const [scheduleTimeStep, setScheduleTimeStepState] = useState(getScheduleTimeStep);
 
-    const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
+  const handleSaveScheduleConfig = (e) => {
+    e.preventDefault();
+    setScheduleStartTime(scheduleStartTime);
+    setScheduleTimeStep(scheduleTimeStep);
+    showToast(t('settings.scheduleConfigSaved', 'Schedule start time and step settings saved successfully!'), 'success');
+  };
+
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const twoFactorEnabled = Boolean(user?.twoFactorEnabled);
 
@@ -581,61 +597,131 @@ const SettingsPage = () => {
 
           {/* ── System Tab ── */}
           {activeTab === 'system' && isAdmin && (
-            <Card>
-              <div className="px-6 py-5 border-b border-brand-border">
-                <h2 className="text-lg font-black text-brand-text-primary tracking-tight m-0">
-                  {t('settings.systemAdmin')}
-                </h2>
-                <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                  {t('settings.systemAdminDesc')}
-                </p>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-xl border border-brand-border bg-brand-bg-page/30 hover:bg-brand-bg-page/50 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center shadow-sm">
-                      <Database size={18} className="text-brand-navy-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-brand-text-primary">
-                        {t('settings.maintenanceMode')}
-                      </p>
-                      <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                        {t('settings.maintenanceDesc')}
-                      </p>
-                    </div>
+            <div className="space-y-6">
+              <Card>
+                <div className="px-6 py-5 border-b border-brand-border flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-black text-brand-text-primary tracking-tight m-0">
+                      {t('settings.scheduleTimingConfig', 'إعدادات توقيت المحاضرات والجدول')}
+                    </h2>
+                    <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
+                      {t('settings.scheduleTimingConfigDesc', 'تعديل توقيت بداية جدول المحاضرات والمرونة الزمنية بسهولة')}
+                    </p>
                   </div>
-                  <Badge
-                    variant="info"
-                    className="text-[10px] font-black uppercase tracking-widest"
-                  >
-                    {t('common.disabled')}
+                  <Badge variant="primary" className="text-[10px] font-black uppercase tracking-widest">
+                    SUPER ADMIN
                   </Badge>
                 </div>
+                <form onSubmit={handleSaveScheduleConfig} className="p-6 space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">
+                        {t('settings.lectureStartTime', 'توقيت بداية المحاضرات الرسمية')}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Clock size={18} className="text-brand-primary-500 shrink-0" />
+                        <select
+                          value={scheduleStartTime}
+                          onChange={(e) => {
+                            setScheduleStartTimeState(e.target.value);
+                            setIsDirty(true);
+                          }}
+                          className="w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-xl text-sm font-bold text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all cursor-pointer"
+                        >
+                          <option value="07:00">07:00 AM</option>
+                          <option value="08:00">08:00 AM</option>
+                          <option value="09:00">09:00 AM ({t('common.recommended', 'مستحسن')})</option>
+                          <option value="10:00">10:00 AM</option>
+                          <option value="11:00">11:00 AM</option>
+                        </select>
+                      </div>
+                    </div>
 
-                <div className="flex items-center justify-between p-4 rounded-xl border border-brand-border bg-brand-bg-page/30 hover:bg-brand-bg-page/50 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center shadow-sm">
-                      <Shield size={18} className="text-brand-green" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-brand-text-primary">
-                        {t('settings.registrationLock')}
-                      </p>
-                      <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                        {t('settings.registrationDesc')}
-                      </p>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">
+                        {t('settings.scheduleStepMinutes', 'خطوة المرونة الزمنية (كل 3 دقائق)')}
+                      </label>
+                      <select
+                        value={scheduleTimeStep}
+                        onChange={(e) => {
+                          setScheduleTimeStepState(Number(e.target.value));
+                          setIsDirty(true);
+                        }}
+                        className="w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-xl text-sm font-bold text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all cursor-pointer"
+                      >
+                        <option value="3">كل 3 دقائق (Every 3 mins)</option>
+                        <option value="5">كل 5 دقائق (Every 5 mins)</option>
+                        <option value="15">كل 15 دقيقة (Every 15 mins)</option>
+                        <option value="30">كل 30 دقيقة (Every 30 mins)</option>
+                        <option value="60">كل 60 دقيقة (Every hour)</option>
+                      </select>
                     </div>
                   </div>
-                  <Badge
-                    variant="success"
-                    className="text-[10px] font-black uppercase tracking-widest"
-                  >
-                    {t('common.open')}
-                  </Badge>
+
+                  <div className="flex justify-end pt-3 border-t border-brand-border">
+                    <Button type="submit" className="text-xs font-black uppercase tracking-widest">
+                      {t('common.saveChanges', 'حفظ التغييرات')}
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+
+              <Card>
+                <div className="px-6 py-5 border-b border-brand-border">
+                  <h2 className="text-lg font-black text-brand-text-primary tracking-tight m-0">
+                    {t('settings.systemAdmin')}
+                  </h2>
+                  <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
+                    {t('settings.systemAdminDesc')}
+                  </p>
                 </div>
-              </div>
-            </Card>
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-xl border border-brand-border bg-brand-bg-page/30 hover:bg-brand-bg-page/50 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center shadow-sm">
+                        <Database size={18} className="text-brand-navy-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-brand-text-primary">
+                          {t('settings.maintenanceMode')}
+                        </p>
+                        <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
+                          {t('settings.maintenanceDesc')}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="info"
+                      className="text-[10px] font-black uppercase tracking-widest"
+                    >
+                      {t('common.disabled')}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 rounded-xl border border-brand-border bg-brand-bg-page/30 hover:bg-brand-bg-page/50 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center shadow-sm">
+                        <Shield size={18} className="text-brand-green" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-brand-text-primary">
+                          {t('settings.registrationLock')}
+                        </p>
+                        <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
+                          {t('settings.registrationDesc')}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="success"
+                      className="text-[10px] font-black uppercase tracking-widest"
+                    >
+                      {t('common.open')}
+                    </Badge>
+                  </div>
+                </div>
+              </Card>
+            </div>
           )}
         </div>
       </div>

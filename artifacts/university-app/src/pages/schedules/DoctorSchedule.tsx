@@ -7,6 +7,8 @@ import schedulesService from '../../services/schedules.service';
 import { Select } from '../../components/ui/Select';
 import { logger } from '../../lib/logger';
 
+import { TimeRange } from '../../components/ui/TimeRange';
+
 const getSessionBadgeColor = (type: string) => {
   switch (type) {
     case 'LECTURE': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
@@ -27,14 +29,8 @@ const DAYS_AR = {
   Thursday: 'الخميس',
 };
 
-const DAY_COLORS = {
-  Saturday: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700',
-  Sunday: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700',
-  Monday: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700',
-  Tuesday: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700',
-  Wednesday: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-700',
-  Thursday: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700',
-};
+import { ScheduleView } from '../../components/timetable/ScheduleView';
+import { generateHourlyTimes } from '../../utils/scheduleConfig';
 
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -48,6 +44,50 @@ const DoctorSchedule = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const days = isAr
+    ? ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  const getTodayDayName = useCallback((availableDays: string[]) => {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayName = dayNames[new Date().getDay()];
+    return availableDays.includes(todayName) ? todayName : availableDays[0];
+  }, []);
+
+  const [selectedDay, setSelectedDay] = useState(() => getTodayDayName(days));
+
+  useEffect(() => {
+    setSelectedDay((prev) => (days.includes(prev) ? prev : getTodayDayName(days)));
+  }, [i18n.language, days, getTodayDayName]);
+
+  const [times, setTimes] = useState<string[]>(generateHourlyTimes());
+
+  useEffect(() => {
+    const handleConfigChange = () => {
+      setTimes(generateHourlyTimes());
+    };
+    window.addEventListener('scheduleConfigChanged', handleConfigChange);
+    return () => window.removeEventListener('scheduleConfigChanged', handleConfigChange);
+  }, []);
+
+  const formatTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? t('common.pm') || 'PM' : t('common.am') || 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const getEntriesForTimeSlot = (day: string, time: string) => {
+    if (!schedule || !schedule[day]) return [];
+    return schedule[day].filter((s: any) => {
+      const startHour = parseInt(s.startTime.split(':')[0]);
+      const currentHour = parseInt(time.split(':')[0]);
+      return startHour === currentHour;
+    });
+  };
+
   // Filter state
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
@@ -60,7 +100,17 @@ const DoctorSchedule = () => {
       if (selectedYear) params.year = selectedYear;
       if (selectedSemester) params.semester = selectedSemester;
       const result = await schedulesService.getWeeklyTimetable(params);
-      setSchedule(result?.data || result || {});
+      let data = result?.data || result || {};
+      if (Array.isArray(data)) {
+        data = data.reduce((acc: any, slot: any) => {
+          if (!slot.dayOfWeek) return acc;
+          const dayName = slot.dayOfWeek.charAt(0).toUpperCase() + slot.dayOfWeek.slice(1).toLowerCase();
+          if (!acc[dayName]) acc[dayName] = [];
+          acc[dayName].push(slot);
+          return acc;
+        }, {});
+      }
+      setSchedule(data);
     } catch (err: any) {
       logger.error('Error fetching schedule:', err);
       setError(err.message || t('common.fetchError', 'Failed to load schedule'));
@@ -225,67 +275,16 @@ const DoctorSchedule = () => {
 
       {/* Schedule Grid */}
       {!loading && !error && Number(totalClasses) > 0 && (
-        <div className="grid gap-4">
-          {DAYS_EN.map((eng) => {
-            const entries = schedule[eng] || [];
-            if (entries.length === 0) return null;
-            return (
-              <div key={eng} className={`rounded-2xl border p-4 ${DAY_COLORS[eng]}`}>
-                <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-3 text-lg">
-                  {isAr ? DAYS_AR[eng] : eng}
-                </h3>
-                <div className="grid gap-2">
-                  {entries.map((entry, i) => (
-                    <div
-                      key={i}
-                      className={`bg-white dark:bg-slate-800 rounded-xl p-3 flex flex-col md:flex-row md:items-center gap-2 shadow-sm border-s-4 ${
-                        entry.isTemporarilyModified ? 'border-s-amber-500' : 'border-s-transparent'
-                      }`}
-                    >
-                      <div className="flex flex-col gap-1 min-w-[120px]">
-                        <span className="text-blue-600 dark:text-blue-400 font-bold text-sm">
-                          {entry.startTime} - {entry.endTime}
-                        </span>
-                        {entry.isTemporarilyModified && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 w-fit">
-                            {t('schedule.temporaryChange', '⊠ تعديل مؤقت')}
-                          </span>
-                        )}
-                      </div>
-                      {entry.slotType && (
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${getSessionBadgeColor(entry.slotType)}`}>
-                          {t(`schedule.${entry.slotType.toLowerCase()}`, entry.slotType)}
-                        </span>
-                      )}
-                      <div className="flex-1 flex flex-col">
-                        <span className="font-semibold text-slate-700 dark:text-slate-200">
-                          {entry.course?.courseCode && <span className="text-blue-500 mr-2">{entry.course.courseCode}</span>}
-                          {entry.course?.name}
-                        </span>
-                        {entry.group?.name && (
-                          <span className="text-xs text-slate-500 font-bold mt-0.5">
-                            {t('common.group', 'Group:')} {entry.group.name}
-                          </span>
-                        )}
-                        {entry.teachingAssistant && (
-                          <span className="text-xs text-slate-500 mt-1">
-                            <strong className="text-slate-400">{t('schedule.ta', 'TA:')}</strong> {entry.teachingAssistant.firstName} {entry.teachingAssistant.lastName}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-slate-500 dark:text-slate-400 text-sm">
-                        {entry.room || t('schedule.noRoom')}
-                      </span>
-                      <span className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded-lg">
-                        {entry.course?.department?.name || ''}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <ScheduleView 
+          timetable={schedule} 
+          role="DOCTOR" 
+          selectedDay={selectedDay} 
+          setSelectedDay={setSelectedDay} 
+          days={days} 
+          times={times} 
+          formatTime={formatTime} 
+          canManage={false} 
+        />
       )}
     </div>
   );

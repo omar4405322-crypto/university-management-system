@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Users, FolderTree, SplitSquareHorizontal, Trash2, Settings, AlertCircle, ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
+import { Users, FolderTree, SplitSquareHorizontal, Trash2, Settings, AlertCircle, ChevronDown, ChevronRight, ChevronLeft, Plus, X } from 'lucide-react';
 import studentGroupsService from '../../services/studentGroups.service';
 import collegeService from '../../services/college.service';
+import Modal from '../../components/ui/Modal';
+import { TimeRange } from '../../components/ui/TimeRange';
 import departmentService from '../../services/department.service';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../context/AuthContext';
-
+import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import { Badge } from '../../components/ui/Badge';
 
 export default function GroupManagement() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { isRTL } = useLanguage();
   const { showToast } = useToast();
   
   const [colleges, setColleges] = useState<any[]>([]);
@@ -77,7 +80,7 @@ export default function GroupManagement() {
       const res = await studentGroupsService.getDepartmentGroups(selectedDeptId);
       setTree(res.data || []);
     } catch (err: any) {
-      showToast(err.message || 'Failed to fetch groups', 'error');
+      showToast(err.message || t('groups.fetchFailed'), 'error');
     } finally {
       setLoading(false);
     }
@@ -105,12 +108,12 @@ export default function GroupManagement() {
       const res = await studentGroupsService.autoDivideStudents(selectedDeptId, payload);
       if (res.requiresConfirmation) {
         // Show confirmation modal
-        setConfirmMessage('This will overwrite existing groups and affect downstream data. Are you sure?');
+        setConfirmMessage(t('groups.confirmAutoDivide'));
         setAffectedSlotsList(res.affectedSlots || []);
         setConfirmAction(() => async () => {
           payload.confirmed = true;
           await studentGroupsService.autoDivideStudents(selectedDeptId, payload);
-          showToast('Students divided successfully', 'success');
+          showToast(t('groups.divideSuccess'), 'success');
           setConfirmModalOpen(false);
           setAutoDivideModalOpen(false);
           fetchGroups();
@@ -118,11 +121,11 @@ export default function GroupManagement() {
         setConfirmModalOpen(true);
         return;
       }
-      showToast('Students divided successfully', 'success');
+      showToast(t('groups.divideSuccess'), 'success');
       setAutoDivideModalOpen(false);
       fetchGroups();
     } catch (err: any) {
-      showToast(err.message || 'Failed to divide students', 'error');
+      showToast(err.message || t('groups.divideFailed'), 'error');
     }
   };
 
@@ -138,12 +141,12 @@ export default function GroupManagement() {
       }
       const res = await studentGroupsService.splitGroup(activeGroupId, payload);
       if (res.requiresConfirmation) {
-        setConfirmMessage('This group or its descendants have associated schedule slots. Splitting will affect them.');
+        setConfirmMessage(t('groups.confirmSplit'));
         setAffectedSlotsList(res.affectedSlots || []);
         setConfirmAction(() => async () => {
           payload.confirmed = true;
           await studentGroupsService.splitGroup(activeGroupId!, payload);
-          showToast('Group split successfully', 'success');
+          showToast(t('groups.splitSuccess'), 'success');
           setConfirmModalOpen(false);
           setSplitModalOpen(false);
           fetchGroups();
@@ -151,11 +154,11 @@ export default function GroupManagement() {
         setConfirmModalOpen(true);
         return;
       }
-      showToast('Group split successfully', 'success');
+      showToast(t('groups.splitSuccess'), 'success');
       setSplitModalOpen(false);
       fetchGroups();
     } catch (err: any) {
-      showToast(err.message || 'Failed to split group', 'error');
+      showToast(err.message || t('groups.splitFailed'), 'error');
     }
   };
 
@@ -163,21 +166,21 @@ export default function GroupManagement() {
     try {
       const res = await studentGroupsService.deleteGroup(groupId);
       if (res.requiresConfirmation) {
-        setConfirmMessage('This group or its descendants have associated schedule slots. Deleting will remove them.');
+        setConfirmMessage(t('groups.confirmDelete'));
         setAffectedSlotsList(res.affectedSlots || []);
         setConfirmAction(() => async () => {
           await studentGroupsService.deleteGroup(groupId, { confirmed: true });
-          showToast('Group deleted successfully', 'success');
+          showToast(t('groups.deleteSuccess'), 'success');
           setConfirmModalOpen(false);
           fetchGroups();
         });
         setConfirmModalOpen(true);
         return;
       }
-      showToast('Group deleted successfully', 'success');
+      showToast(t('groups.deleteSuccess'), 'success');
       fetchGroups();
     } catch (err: any) {
-      showToast(err.message || 'Failed to delete group', 'error');
+      showToast(err.message || t('groups.deleteFailed'), 'error');
     }
   };
 
@@ -193,13 +196,19 @@ export default function GroupManagement() {
           return (
             <div key={node.id} className="w-full">
               <div 
-                className={`flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-brand-primary-500/50 transition-colors ${level > 0 ? 'border-l-4 border-l-brand-primary-500/30' : ''}`}
-                style={{ marginLeft: `${level * 24}px` }}
+                className={`flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-brand-primary-500/50 transition-colors ${level > 0 ? 'border-s-4 border-s-brand-primary-500/30' : ''}`}
+                style={isRTL ? { marginRight: `${level * 24}px` } : { marginLeft: `${level * 24}px` }}
               >
                 <div className="flex items-center gap-3">
                   {hasChildren ? (
                     <button onClick={() => toggleExpand(node.id)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-500">
-                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      {isExpanded ? (
+                        <ChevronDown size={16} />
+                      ) : isRTL ? (
+                        <ChevronLeft size={16} />
+                      ) : (
+                        <ChevronRight size={16} />
+                      )}
                     </button>
                   ) : (
                     <div className="w-6" /> // spacer
@@ -210,9 +219,9 @@ export default function GroupManagement() {
                       {node.name}
                     </span>
                     <span className="text-xs text-slate-500 flex items-center gap-2">
-                      <Users size={12} /> {node.studentCount ?? 0} Students
+                      <Users size={12} /> {node.studentCount ?? 0} {t('groups.students')}
                       {node.rangeStartName && node.rangeEndName && (
-                        <span className="text-slate-400 ml-2">({node.rangeStartName} — {node.rangeEndName})</span>
+                        <span className="text-slate-400 ms-2">({node.rangeStartName} — {node.rangeEndName})</span>
                       )}
                     </span>
                   </div>
@@ -220,7 +229,7 @@ export default function GroupManagement() {
                 
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-xs">
-                    {node.studentCount ?? 0} students
+                    {node.studentCount ?? 0} {t('groups.students')}
                   </Badge>
                   <div className="flex items-center gap-1">
                     <button
@@ -233,7 +242,7 @@ export default function GroupManagement() {
                         setSplitModalOpen(true);
                       }}
                       className="p-1.5 text-slate-500 hover:text-brand-primary-500 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-900/20 rounded-md transition-colors"
-                      title="Split Group"
+                      title={t('groups.splitGroup')}
                     >
                       <SplitSquareHorizontal size={16} />
                     </button>
@@ -241,7 +250,7 @@ export default function GroupManagement() {
                       type="button"
                       onClick={() => handleDelete(node.id)}
                       className="p-1.5 text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-md transition-colors"
-                      title="Delete Group"
+                      title={t('groups.deleteGroup')}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -264,38 +273,37 @@ export default function GroupManagement() {
   return (
     <div className="section-gap animate-page">
       <PageHeader
-        title="Group Management"
-        subtitle="Manage student groups and subdivisions for the department"
-
+        title={t('groups.title')}
+        subtitle={t('groups.subtitle')}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {isAdmin && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">College</label>
+            <label className="text-xs font-bold text-slate-600 dark:text-slate-400 ms-1">{t('groups.college')}</label>
             <select
               value={selectedCollegeId || ''}
               onChange={(e) => setSelectedCollegeId(Number(e.target.value) || null)}
               className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-primary-500/20"
             >
-              <option value="">Select College</option>
+              <option value="">{t('groups.selectCollege')}</option>
               {colleges.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>{isRTL ? c.nameAr || c.name : c.name}</option>
               ))}
             </select>
           </div>
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">Department</label>
+          <label className="text-xs font-bold text-slate-600 dark:text-slate-400 ms-1">{t('groups.department')}</label>
           <select
             value={selectedDeptId || ''}
             onChange={(e) => setSelectedDeptId(Number(e.target.value) || null)}
             disabled={!selectedCollegeId && isAdmin}
             className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-primary-500/20"
           >
-            <option value="">Select Department</option>
+            <option value="">{t('groups.selectDept')}</option>
             {departments.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
+              <option key={d.id} value={d.id}>{isRTL ? d.nameAr || d.name : d.name}</option>
             ))}
           </select>
         </div>
@@ -306,7 +314,7 @@ export default function GroupManagement() {
           <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
               <FolderTree size={20} className="text-brand-primary-500" />
-              Department Groups
+              {t('groups.deptGroups')}
             </CardTitle>
             <Button
               onClick={() => {
@@ -317,7 +325,7 @@ export default function GroupManagement() {
               }}
               className="bg-brand-primary-500 hover:bg-brand-primary-600 text-white rounded-xl shadow-md text-sm font-semibold"
             >
-              <Settings size={16} className="mr-2" /> Auto-Divide Department
+              <Settings size={16} className="me-2" /> {t('groups.autoDivide')}
             </Button>
           </CardHeader>
           <CardContent className="pt-6">
@@ -328,8 +336,8 @@ export default function GroupManagement() {
             ) : (
               <EmptyState
                 icon={<FolderTree size={40} />}
-                title="No Groups Found"
-                subtitle="This department has no student groups. Use Auto-Divide to generate groups based on student count."
+                title={t('groups.noGroupsTitle')}
+                subtitle={t('groups.noGroupsDesc')}
               />
             )}
           </CardContent>
@@ -337,8 +345,8 @@ export default function GroupManagement() {
       ) : (
         <div className="flex flex-col items-center justify-center p-12 text-slate-400 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
           <FolderTree size={48} className="mb-4 opacity-50" />
-          <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300">Select a Department</h3>
-          <p className="text-sm">Please select a college and department to manage groups.</p>
+          <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300">{t('groups.selectDeptTitle')}</h3>
+          <p className="text-sm">{t('groups.selectDeptDesc')}</p>
         </div>
       )}
 
@@ -347,7 +355,7 @@ export default function GroupManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700">
-              <h2 className="text-lg font-bold">Auto-Divide Department</h2>
+              <h2 className="text-lg font-bold">{t('groups.autoDivideTitle')}</h2>
               <button onClick={() => setAutoDivideModalOpen(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><X size={20} /></button>
             </div>
             <form onSubmit={handleAutoDivide} className="p-6 space-y-4">
@@ -358,28 +366,28 @@ export default function GroupManagement() {
                   onClick={() => setDivideMode('number')}
                   className={`flex-1 py-2 text-sm font-semibold transition-colors ${divideMode === 'number' ? 'bg-brand-primary-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                 >
-                  Number of Groups
+                  {t('groups.numGroups')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setDivideMode('maxSize')}
                   className={`flex-1 py-2 text-sm font-semibold transition-colors ${divideMode === 'maxSize' ? 'bg-brand-primary-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                 >
-                  Max Students per Group
+                  {t('groups.maxStudents')}
                 </button>
               </div>
               {divideMode === 'number' ? (
                 <div>
-                  <label className="text-xs font-bold mb-1 block">Number of Groups</label>
+                  <label className="text-xs font-bold mb-1 block">{t('groups.numGroups')}</label>
                   <input type="number" min="1" value={numGroups} onChange={e => setNumGroups(Number(e.target.value))} className="w-full px-4 py-2 border rounded-xl dark:bg-slate-700 dark:border-slate-600" required />
                 </div>
               ) : (
                 <div>
-                  <label className="text-xs font-bold mb-1 block">Max Students per Group</label>
+                  <label className="text-xs font-bold mb-1 block">{t('groups.maxStudents')}</label>
                   <input type="number" min="1" value={maxSize} onChange={e => setMaxSize(Number(e.target.value))} className="w-full px-4 py-2 border rounded-xl dark:bg-slate-700 dark:border-slate-600" required />
                 </div>
               )}
-              <Button type="submit" className="w-full bg-brand-primary-500 text-white rounded-xl py-2">Execute Auto-Divide</Button>
+              <Button type="submit" className="w-full bg-brand-primary-500 text-white rounded-xl py-2">{t('groups.executeAutoDivide')}</Button>
             </form>
           </div>
         </div>
@@ -390,7 +398,7 @@ export default function GroupManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700">
-              <h2 className="text-lg font-bold">Split Group</h2>
+              <h2 className="text-lg font-bold">{t('groups.splitGroupTitle')}</h2>
               <button onClick={() => setSplitModalOpen(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><X size={20} /></button>
             </div>
             <form onSubmit={handleSplit} className="p-6 space-y-4">
@@ -401,28 +409,28 @@ export default function GroupManagement() {
                   onClick={() => setSplitMode('number')}
                   className={`flex-1 py-2 text-sm font-semibold transition-colors ${splitMode === 'number' ? 'bg-brand-primary-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                 >
-                  Number of Subgroups
+                  {t('groups.numSubgroups')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setSplitMode('maxSize')}
                   className={`flex-1 py-2 text-sm font-semibold transition-colors ${splitMode === 'maxSize' ? 'bg-brand-primary-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                 >
-                  Max Students per Subgroup
+                  {t('groups.maxStudentsSubgroup')}
                 </button>
               </div>
               {splitMode === 'number' ? (
                 <div>
-                  <label className="text-xs font-bold mb-1 block">Number of Subgroups</label>
+                  <label className="text-xs font-bold mb-1 block">{t('groups.numSubgroups')}</label>
                   <input type="number" min="2" value={numGroups} onChange={e => setNumGroups(Number(e.target.value))} className="w-full px-4 py-2 border rounded-xl dark:bg-slate-700 dark:border-slate-600" required />
                 </div>
               ) : (
                 <div>
-                  <label className="text-xs font-bold mb-1 block">Max Students per Subgroup</label>
+                  <label className="text-xs font-bold mb-1 block">{t('groups.maxStudentsSubgroup')}</label>
                   <input type="number" min="1" value={maxSize} onChange={e => setMaxSize(Number(e.target.value))} className="w-full px-4 py-2 border rounded-xl dark:bg-slate-700 dark:border-slate-600" required />
                 </div>
               )}
-              <Button type="submit" className="w-full bg-brand-primary-500 text-white rounded-xl py-2">Split Group</Button>
+              <Button type="submit" className="w-full bg-brand-primary-500 text-white rounded-xl py-2">{t('groups.executeSplitGroup')}</Button>
             </form>
           </div>
         </div>
@@ -434,7 +442,7 @@ export default function GroupManagement() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
             <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700">
               <h2 className="text-lg font-bold flex items-center gap-2 text-amber-600">
-                <AlertCircle size={20} /> Confirmation Required
+                <AlertCircle size={20} /> {t('groups.confirmRequired')}
               </h2>
               <button onClick={() => setConfirmModalOpen(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><X size={20} /></button>
             </div>
@@ -442,10 +450,10 @@ export default function GroupManagement() {
               <p className="text-sm text-slate-600 dark:text-slate-300">{confirmMessage}</p>
               {affectedSlotsList.length > 0 && (
                 <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-slate-900/50">
-                  <p className="text-xs font-bold text-slate-500 mb-2">Affected Schedule Slots ({affectedSlotsList.length}):</p>
+                  <p className="text-xs font-bold text-slate-500 mb-2">{t('groups.affectedSlots', { count: affectedSlotsList.length })}</p>
                   {affectedSlotsList.map((slot: any, index: number) => (
                     <div key={slot.id || index} className="text-xs text-slate-600 dark:text-slate-400 py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                      {slot.dayOfWeek} {slot.startTime}–{slot.endTime} {slot.room ? `(${slot.room})` : ''} — Course #{slot.courseId}
+                      {t(`days.${(slot.dayOfWeek || '').toLowerCase()}`, slot.dayOfWeek)} <TimeRange start={slot.startTime} end={slot.endTime} /> {slot.room ? `(${slot.room})` : ''} — {t('groups.course')} #{slot.courseId}
                     </div>
                   ))}
                 </div>
@@ -457,14 +465,14 @@ export default function GroupManagement() {
                   onClick={() => setConfirmModalOpen(false)}
                   className="flex-1 rounded-xl"
                 >
-                  Cancel
+                  {t('groups.cancel')}
                 </Button>
                 <Button
                   type="button"
                   onClick={() => confirmAction && confirmAction()}
                   className="flex-1 bg-amber-500 hover:bg-amber-600 text-white rounded-xl"
                 >
-                  Confirm & Proceed
+                  {t('groups.confirmProceed')}
                 </Button>
               </div>
             </div>

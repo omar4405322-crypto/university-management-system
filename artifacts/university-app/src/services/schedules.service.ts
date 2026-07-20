@@ -12,6 +12,8 @@ const schedulesService = {
   updateSchedule: (id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/schedules/${id}`, data)),
 
   deleteSchedule: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/schedules/${id}`)),
+
+  syncGrid: (data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post('/schedules/sync-grid', data)),
 };
 
 export default schedulesService;

@@ -46,7 +46,14 @@ const CoursesList = () => {
   const [departments, setDepartments] = useState([]);
   const [selectedCollege, setSelectedCollege] = useState('');
   const [selectedDept, setSelectedDept] = useState(urlDeptId || '');
-  const { data: courses, loading, error, search, setSearch, page, setPage, total, refetch } = useCourses({ collegeId: selectedCollege, departmentId: selectedDept });
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
+  const { data: courses, loading, error, search, setSearch, page, setPage, total, refetch } = useCourses({ 
+    collegeId: selectedCollege, 
+    departmentId: selectedDept,
+    year: selectedYear,
+    semester: selectedSemester
+  });
   const totalPages = Math.ceil(total / 10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -111,15 +118,24 @@ const CoursesList = () => {
     }
   }, []);
 
-  // Apply scope defaults for admins
+  // Apply scope defaults for admins / students
   const scope = useScope();
+
+  useEffect(() => {
+    if (user?.role === 'STUDENT') {
+      const studentYr = user.student?.year || user.year;
+      if (studentYr && !selectedYear) {
+        setSelectedYear(String(studentYr));
+      }
+    }
+  }, [user, selectedYear]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       refetch();
     }, 400);
     return () => clearTimeout(timer);
-  }, [search, selectedCollege, selectedDept, page]);
+  }, [search, selectedCollege, selectedDept, selectedYear, selectedSemester, page]);
 
   const handleCollegeChange = async (e) => {
     const collegeId = e.target.value;
@@ -162,6 +178,8 @@ const CoursesList = () => {
     setSearch('');
     setSelectedCollege('');
     setSelectedDept('');
+    setSelectedYear('');
+    setSelectedSemester('');
     setDepartments([]);
     setPage(1);
   };
@@ -229,60 +247,68 @@ const CoursesList = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
-        <Card noPadding className="md:col-span-1 h-fit bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-          <div className="p-6 bg-surface-subtle dark:bg-slate-800/30 border-b border-brand-border dark:border-brand-border flex items-center justify-between">
-            <h3 className="font-black text-brand-text-primary dark:text-brand-text-main flex items-center gap-2 uppercase tracking-widest text-xs">
-              <Filter size={16} className="text-brand-primary-600" /> 
-              {t('students.filters')}
-            </h3>
-            <button onClick={resetFilters} className="text-[10px] font-black text-brand-primary-600 hover:opacity-70 transition-opacity uppercase tracking-widest">
-              {t('COMMON.RESET')}
-            </button>
-          </div>
-          
-          <div className="p-6 space-y-6">
-            <div className="space-y-1.5">
-              <label className="label-stat ml-1">{t('COURSES.SEARCHCOURSE')}</label>
-              <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted h-4 w-4 group-focus-within:text-brand-primary-600 transition-colors" />
-                <Input 
-                  placeholder={t('COURSES.SEARCHPLACEHOLDER')} 
-                  className="pl-10 h-10 bg-surface-subtle dark:bg-surface-subtle border-none font-bold text-sm"
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-1.5">
-              <label className="label-stat ml-1">{t('auth.college')}</label>
-              <select 
-                value={selectedCollege}
-                onChange={handleCollegeChange}
-                className="w-full h-10 px-4 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-xs font-black uppercase tracking-widest text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-primary-600/20 transition-all appearance-none cursor-pointer"
-              >
-                <option value="">{t('colleges.allColleges')}</option>
-                {Array.isArray(colleges) && colleges.map(c => <option key={c.id} value={c.id}>{isRTL ? c.nameAr || c.name : c.name}</option>)}
-              </select>
-            </div>
+      {/* Horizontal Filter Bar */}
+      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-0 mb-6">
+        <FilterBar
+          search={search}
+          onSearchChange={(val) => { setSearch(val); setPage(1); }}
+          searchPlaceholder={t('COURSES.SEARCHPLACEHOLDER')}
+          onClear={search || selectedCollege || selectedDept || selectedYear || selectedSemester ? resetFilters : undefined}
+        >
+          <select 
+            value={selectedCollege}
+            onChange={handleCollegeChange}
+            className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
+          >
+            <option value="">{t('colleges.allColleges')}</option>
+            {Array.isArray(colleges) && colleges.map(c => (
+              <option key={c.id} value={c.id}>
+                {isRTL ? c.nameAr || c.name : c.name}
+              </option>
+            ))}
+          </select>
 
-            <div className="space-y-1.5">
-              <label className="label-stat ml-1">{t('auth.department')}</label>
-              <select 
-                value={selectedDept}
-                onChange={(e) => { setSelectedDept(e.target.value); setPage(1); }}
-                disabled={!selectedCollege}
-                className="w-full h-10 px-4 bg-surface-subtle dark:bg-surface-subtle border-none rounded-xl text-xs font-black uppercase tracking-widest text-brand-text-primary dark:text-brand-text-main focus:ring-2 focus:ring-brand-primary-600/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
-              >
-                <option value="">{t('departments.allDepartments')}</option>
-                {Array.isArray(departments) && departments.map(d => <option key={d.id} value={d.id}>{isRTL ? d.nameAr || d.name : d.name}</option>)}
-              </select>
-            </div>
-          </div>
-        </Card>
+          <select 
+            value={selectedDept}
+            onChange={(e) => { setSelectedDept(e.target.value); setPage(1); }}
+            disabled={!selectedCollege}
+            className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0 disabled:opacity-50"
+          >
+            <option value="">{t('departments.allDepartments')}</option>
+            {Array.isArray(departments) && departments.map(d => (
+              <option key={d.id} value={d.id}>
+                {isRTL ? d.nameAr || d.name : d.name}
+              </option>
+            ))}
+          </select>
 
-        <div className="md:col-span-3">
+          <select 
+            value={selectedYear}
+            onChange={(e) => { setSelectedYear(e.target.value); setPage(1); }}
+            className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
+          >
+            <option value="">{t('common.allYears', 'All Years')}</option>
+            {[1, 2, 3, 4, 5].map(y => (
+              <option key={y} value={y.toString()}>
+                {t('common.year', 'Year')} {y}
+              </option>
+            ))}
+          </select>
+
+          <select 
+            value={selectedSemester}
+            onChange={(e) => { setSelectedSemester(e.target.value); setPage(1); }}
+            className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
+          >
+            <option value="">{t('schedule.allSemesters', 'All Semesters')}</option>
+            <option value="1">{t('schedule.semester1', 'Semester 1')}</option>
+            <option value="2">{t('schedule.semester2', 'Semester 2')}</option>
+            <option value="3">{t('schedule.semester3', 'Summer')}</option>
+          </select>
+        </FilterBar>
+      </Card>
+
+      <div className="w-full">
           {loading && (!Array.isArray(courses) || courses.length === 0) ? (
             <LoadingState message="Fetching academic curriculum..." />
           ) : error ? (
@@ -319,6 +345,9 @@ const CoursesList = () => {
                             {t('auth.department')}
                           </TableHead>
                           <TableHead className="text-center text-xs uppercase tracking-widest text-brand-text-muted font-black pb-3">
+                            {t('auth.year', 'Year')}
+                          </TableHead>
+                          <TableHead className="text-center text-xs uppercase tracking-widest text-brand-text-muted font-black pb-3">
                             {t('courses.instructor')}
                           </TableHead>
                           <TableHead hideOnMobile className="text-center text-xs uppercase tracking-widest text-brand-text-muted font-black pb-3">
@@ -338,6 +367,18 @@ const CoursesList = () => {
                             </TableCell>
                             <TableCell hideOnMobile className="label-stat max-w-[150px]">
                               <TruncatedText text={isRTL ? course.department?.nameAr || course.department?.name : course.department?.name} />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex flex-col items-center gap-1">
+                                <Badge variant="info" className="font-bold text-[10px] px-2 py-0.5">
+                                  {t('common.year', 'Year')} {course.year || 1}
+                                </Badge>
+                                {course.semester && (
+                                  <span className="text-[9px] font-bold text-slate-400">
+                                    {t('schedule.sem', 'Sem')} {course.semester}
+                                  </span>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               {(() => {
@@ -397,7 +438,6 @@ const CoursesList = () => {
             </Card>
           )}
         </div>
-      </div>
 
       <ConfirmDeleteModal
         isOpen={Boolean(deleteTarget)}
@@ -411,6 +451,10 @@ const CoursesList = () => {
         <CourseModal 
           isOpen={isModalOpen}
           course={selectedCourse}
+          initialCollegeId={selectedCollege}
+          initialDepartmentId={selectedDept}
+          initialYear={selectedYear}
+          initialSemester={selectedSemester}
           onClose={() => setIsModalOpen(false)}
           onSuccess={() => { setIsModalOpen(false); refetch(); showToast(selectedCourse ? t('courses.updateSuccess') : t('courses.addSuccess'), 'success'); }}
         />

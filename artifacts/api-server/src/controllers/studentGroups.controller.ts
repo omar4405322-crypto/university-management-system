@@ -15,7 +15,7 @@ function toBase26(num: number): string {
 export const autoDivideStudents = async (req: Request, res: Response) => {
   try {
     const departmentId = parseInt(req.params.departmentId as string);
-    let { numberOfGroups, maxGroupSize, confirmed } = req.body;
+    let { numberOfGroups, maxGroupSize, confirmed } = req.body || {};
 
     if (isNaN(departmentId)) return res.status(400).json({ success: false, message: 'Invalid department ID' });
     if ((!numberOfGroups && !maxGroupSize) || (numberOfGroups && maxGroupSize)) {
@@ -44,9 +44,8 @@ export const autoDivideStudents = async (req: Request, res: Response) => {
 
     await prisma.$transaction(async (tx) => {
       await tx.student.updateMany({ where: { departmentId }, data: { groupId: null } });
-      // Delete all groups (cascade should handle self-relations if properly configured, otherwise delete leaves first)
-      // Since prisma doesn't cascade self-relations easily via deleteMany, we might just wipe them
-      // Alternatively, we can use a raw query or delete in loop. Let's assume Prisma handles it or we delete all.
+      await tx.scheduleSlot.updateMany({ where: { group: { departmentId } }, data: { groupId: null } });
+      await tx.studentGroup.updateMany({ where: { departmentId }, data: { parentGroupId: null } });
       await tx.studentGroup.deleteMany({ where: { departmentId } });
 
       const groups = [];
@@ -88,7 +87,7 @@ export const autoDivideStudents = async (req: Request, res: Response) => {
 export const splitGroup = async (req: Request, res: Response) => {
   try {
     const groupId = parseInt(req.params.groupId as string);
-    let { numberOfSubgroups, maxSubgroupSize, confirmed } = req.body;
+    let { numberOfSubgroups, maxSubgroupSize, confirmed } = req.body || {};
 
     if (isNaN(groupId)) return res.status(400).json({ success: false, message: 'Invalid group ID' });
     if ((!numberOfSubgroups && !maxSubgroupSize) || (numberOfSubgroups && maxSubgroupSize)) {
@@ -165,7 +164,11 @@ export const splitGroup = async (req: Request, res: Response) => {
 export const deleteGroup = async (req: Request, res: Response) => {
   try {
     const groupId = parseInt(req.params.groupId as string);
-    const { confirmed } = req.body;
+    const { confirmed } = req.body || {};
+
+    const groupToDelete = await prisma.studentGroup.findUnique({ where: { id: groupId } });
+    if (!groupToDelete) return res.status(404).json({ success: false, message: 'Group not found' });
+    const targetParentGroupId = groupToDelete.parentGroupId;
     
     // Find all descendants to check for slots
     async function getDescendantIds(id: number): Promise<number[]> {
@@ -184,13 +187,14 @@ export const deleteGroup = async (req: Request, res: Response) => {
     }
 
     await prisma.$transaction(async (tx) => {
-      // Null out students
-      await tx.student.updateMany({ where: { groupId: { in: affectedGroupIds } }, data: { groupId: null } });
-      // Delete groups (bottom up to avoid constraint issues, or let Prisma handle it)
-      // Reverse array to delete leaves first
-      for (const id of affectedGroupIds.reverse()) {
-         await tx.studentGroup.delete({ where: { id } });
-      }
+      // Reassign students to the parent group (or null if deleting a root group)
+      await tx.student.updateMany({ where: { groupId: { in: affectedGroupIds } }, data: { groupId: targetParentGroupId } });
+      // Null out schedule slots referencing these groups
+      await tx.scheduleSlot.updateMany({ where: { groupId: { in: affectedGroupIds } }, data: { groupId: null } });
+      // Null out parentGroupId self-references to avoid constraint issues during deletion
+      await tx.studentGroup.updateMany({ where: { id: { in: affectedGroupIds } }, data: { parentGroupId: null } });
+      // Delete all affected groups
+      await tx.studentGroup.deleteMany({ where: { id: { in: affectedGroupIds } } });
     });
 
     return res.json({ success: true, message: 'Group deleted successfully' });
@@ -216,7 +220,7 @@ export const getGroupsByDepartment = async (req: Request, res: Response) => {
 export const manualOverrideGroup = async (req: Request, res: Response) => {
   try {
     const studentId = parseInt(req.params.studentId as string);
-    const { groupId } = req.body;
+    const { groupId } = req.body || {};
 
     await prisma.student.update({
       where: { id: studentId },

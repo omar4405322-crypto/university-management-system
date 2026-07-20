@@ -25,10 +25,28 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const CourseModal = ({ isOpen, onClose, onSuccess, course }: { isOpen: boolean, onClose: () => void, onSuccess: () => void, course?: any }) => {
+const CourseModal = ({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
+  course,
+  initialCollegeId,
+  initialDepartmentId,
+  initialYear,
+  initialSemester
+}: { 
+  isOpen: boolean, 
+  onClose: () => void, 
+  onSuccess: () => void, 
+  course?: any,
+  initialCollegeId?: string | number,
+  initialDepartmentId?: string | number,
+  initialYear?: string | number,
+  initialSemester?: string | number
+}) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormData>({ 
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({ 
     resolver: zodResolver(schema),
     defaultValues: {
       name: '',
@@ -36,10 +54,10 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }: { isOpen: boolean, 
       description: '',
       credits: 3,
       maxStudents: 30,
-      departmentId: '',
-      collegeId: '',
-      year: 1,
-      semester: 1
+      departmentId: initialDepartmentId ? String(initialDepartmentId) : '',
+      collegeId: initialCollegeId ? String(initialCollegeId) : '',
+      year: initialYear ? Number(initialYear) : 1,
+      semester: initialSemester ? Number(initialSemester) : 1
     }
   });
   
@@ -68,26 +86,30 @@ const CourseModal = ({ isOpen, onClose, onSuccess, course }: { isOpen: boolean, 
           description: course.description || '',
           credits: course.credits || 3,
           maxStudents: course.maxStudents || 30,
-          departmentId: course.departmentId || '',
-          collegeId: course.department?.collegeId || '',
+          departmentId: course.departmentId ? String(course.departmentId) : '',
+          collegeId: course.department?.collegeId ? String(course.department.collegeId) : '',
           year: course.year || 1,
           semester: course.semester || 1
         });
       } else {
+        const selCollege = initialCollegeId ? String(initialCollegeId) : '';
         reset({
           name: '',
           courseCode: '',
           description: '',
           credits: 3,
           maxStudents: 30,
-          departmentId: '',
-          collegeId: '',
-          year: 1,
-          semester: 1
+          departmentId: initialDepartmentId ? String(initialDepartmentId) : '',
+          collegeId: selCollege,
+          year: initialYear ? Number(initialYear) : 1,
+          semester: initialSemester ? Number(initialSemester) : 1
         });
+        if (selCollege) {
+          fetchDepartments(selCollege);
+        }
       }
     }
-  }, [isOpen, course, reset]);
+  }, [isOpen, course, reset, initialCollegeId, initialDepartmentId, initialYear, initialSemester]);
 
   const fetchInitialData = async () => {
     try {

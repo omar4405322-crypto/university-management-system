@@ -55,7 +55,14 @@ export const getWeeklyTimetable = catchAsync(
 
       // For a student: find schedule slots that target their group (or any ancestor group),
       // plus lecture slots (slotType LECTURE) for their department courses.
-      // Simplification: find all slots in their department's timetables, then filter by group match or lectures.
+      // Make sure the timetable is PUBLISHED and matches the student's year.
+      const baseStudentWhere = {
+        timetable: {
+          status: 'PUBLISHED',
+          academicYear: student.year,
+        }
+      };
+
       if (student.groupId) {
         // Get all ancestor group IDs (the student's group + all parents)
         const groupIds: number[] = [];
@@ -70,18 +77,19 @@ export const getWeeklyTimetable = catchAsync(
         }
 
         whereClause = {
+          ...baseStudentWhere,
           OR: [
             { groupId: { in: groupIds } },
             // Lectures with no group (department-wide) for this student's courses
-            { slotType: 'LECTURE', groupId: null, course: { departmentId: student.departmentId } },
+            { slotType: 'LECTURE', groupId: null, course: { departmentId: student.departmentId, year: student.year } },
           ]
         };
       } else {
-        // Student has no group — only show lectures for their dept
+        // Student has no group — show all slots for their department and year
+        // to prevent an empty schedule until they are assigned to a group.
         whereClause = {
-          slotType: 'LECTURE',
-          groupId: null,
-          course: { departmentId: student.departmentId }
+          ...baseStudentWhere,
+          course: { departmentId: student.departmentId, year: student.year }
         };
       }
     } else if (user!.role === 'DOCTOR') {
@@ -172,6 +180,18 @@ export const createSchedule = catchAsync(
       }
     }
 
+    let effectiveTimetableId: number | undefined = timetableId ? parseInt(timetableId as string) : undefined;
+    if (!effectiveTimetableId) {
+      const foundTb = await prisma.timetable.findFirst({
+        where: {
+          departmentId: course.departmentId!,
+          academicYear: course.year,
+          semester: course.semester,
+        }
+      });
+      if (foundTb) effectiveTimetableId = foundTb.id;
+    }
+
     let scheduleSlot;
     try {
       scheduleSlot = await prisma.$transaction(async (tx) => {
@@ -198,7 +218,7 @@ export const createSchedule = catchAsync(
             room,
             teachingAssistantId,
 
-            timetableId: timetableId ? parseInt(timetableId as string) : undefined
+            timetableId: effectiveTimetableId
           },
         });
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -244,18 +264,29 @@ export const updateSchedule = catchAsync(
       }
     }
 
+    let targetTimetableId = existing.timetableId;
+
     if (courseId && newCourseId !== existing.courseId) {
       const course = await prisma.course.findUnique({ where: { id: newCourseId } });
       if (!course) return next(new NotFoundError('Course not found'));
 
-      if (existing.timetableId) {
-        const timetable = await prisma.timetable.findUnique({ where: { id: existing.timetableId } });
-        if (timetable && (timetable.departmentId !== course.departmentId ||
-            timetable.academicYear !== course.year ||
-            timetable.semester !== course.semester)) {
-          return next(new ValidationError('Timetable scope does not match new Course scope'));
+      const foundTb = await prisma.timetable.findFirst({
+        where: {
+          departmentId: course.departmentId!,
+          academicYear: course.year,
+          semester: course.semester,
         }
-      }
+      });
+      targetTimetableId = foundTb ? foundTb.id : null;
+    } else if (!targetTimetableId && existing.course) {
+      const foundTb = await prisma.timetable.findFirst({
+        where: {
+          departmentId: existing.course.departmentId!,
+          academicYear: existing.course.year,
+          semester: existing.course.semester,
+        }
+      });
+      if (foundTb) targetTimetableId = foundTb.id;
     }
 
     const scheduleSlot = await prisma.$transaction(async (tx) => {
@@ -284,7 +315,7 @@ export const updateSchedule = catchAsync(
           doctorId: newDoctorId,
           groupId: newGroupId,
           slotType: slotType || undefined,
-          timetableId: null, // Detach from automatic syncing if manually edited
+          timetableId: targetTimetableId,
         },
       });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -314,5 +345,104 @@ export const deleteSchedule = catchAsync(
     await prisma.scheduleSlot.delete({ where: { id: slotId } });
     auditLog('DELETE_SCHEDULE', 'ScheduleSlot', req.params.id as string, req);
     res.json({ success: true, message: 'ScheduleSlot deleted' });
+  }
+);
+
+export const syncGridToMaster = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { collegeId, departmentId, academicYear, semester, slots } = req.body;
+
+    if (!slots || !Array.isArray(slots)) {
+      return next(new ValidationError('Slots array is required for synchronization'));
+    }
+
+    let syncedCount = 0;
+    for (const slot of slots) {
+      const { day, startTime, endTime, courseName, instructor, room, slotType } = slot;
+      if (!courseName) continue;
+
+      const course = await prisma.course.findFirst({
+        where: {
+          OR: [
+            { name: { contains: courseName, mode: 'insensitive' } },
+            { nameAr: { contains: courseName, mode: 'insensitive' } },
+            { courseCode: { contains: courseName, mode: 'insensitive' } },
+          ],
+          ...(departmentId ? { departmentId: parseInt(departmentId) } : {}),
+        },
+      });
+
+      if (!course) continue;
+
+      let doctorId: number | null = null;
+      if (instructor) {
+        const parts = instructor.split(' ');
+        const doctor = await prisma.doctor.findFirst({
+          where: {
+            OR: [
+              { firstName: { contains: parts[0], mode: 'insensitive' } },
+              { lastName: { contains: parts[parts.length - 1], mode: 'insensitive' } },
+            ],
+          },
+        });
+        if (doctor) doctorId = doctor.id;
+      }
+
+      let timetableId: number | null = null;
+      if (departmentId && academicYear && semester) {
+        const timetable = await prisma.timetable.findFirst({
+          where: {
+            departmentId: parseInt(departmentId),
+            academicYear: parseInt(academicYear),
+            semester: parseInt(semester)
+          }
+        });
+        if (timetable) timetableId = timetable.id;
+      }
+
+      const existingSlot = await prisma.scheduleSlot.findFirst({
+        where: {
+          courseId: course.id,
+          dayOfWeek: (day || 'MONDAY').toUpperCase(),
+          startTime: startTime || '09:00',
+        },
+      });
+
+      if (existingSlot) {
+        await prisma.scheduleSlot.update({
+          where: { id: existingSlot.id },
+          data: {
+            endTime: endTime || '11:00',
+            room: room || existingSlot.room,
+            slotType: slotType || existingSlot.slotType,
+            ...(doctorId ? { doctorId } : {}),
+            ...(timetableId ? { timetableId } : {}),
+          },
+        });
+      } else if (doctorId) {
+        await prisma.scheduleSlot.create({
+          data: {
+            courseId: course.id,
+            groupId: null,
+            doctorId,
+            timetableId,
+            slotType: slotType || 'LECTURE',
+            dayOfWeek: (day || 'MONDAY').toUpperCase(),
+            startTime: startTime || '09:00',
+            endTime: endTime || '11:00',
+            room: room || 'Main Hall',
+          },
+        });
+      }
+      syncedCount++;
+    }
+
+    auditLog('SYNC_GRID_TO_MASTER', 'ScheduleSlot', '0', req);
+
+    res.json({
+      success: true,
+      message: `Successfully synced ${syncedCount} slots to Master Schedule`,
+      data: { syncedCount },
+    });
   }
 );
