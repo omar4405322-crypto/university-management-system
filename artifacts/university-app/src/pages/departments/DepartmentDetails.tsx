@@ -28,7 +28,8 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({ departmentId, isD
   const { id } = useParams();
   const actualId = departmentId || id;
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
   const [department, setDepartment] = useState(null);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
@@ -91,9 +92,9 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({ departmentId, isD
   const breadcrumbItems = [
     { label: t('nav.colleges'), link: '/colleges' },
     ...(department.college?.id
-      ? [{ label: department.college.name, link: `/colleges/${department.college.id}` }]
+      ? [{ label: isRTL ? department.college.nameAr || department.college.name : department.college.name, link: `/colleges/${department.college.id}` }]
       : []),
-    { label: department.name },
+    { label: isRTL ? department.nameAr || department.name : department.name },
   ];
 
   return (
@@ -134,18 +135,41 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({ departmentId, isD
       )}
 
       {courses.length > 0 && (
-        <Card title={t('nav.courses')} noPadding className="border-l-0">
-          <Table headers={[t('courses.code'), t('courses.name'), t('courses.credits')]}>
-            {courses.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell>
-                  <Badge variant="info">{c.courseCode}</Badge>
-                </TableCell>
-                <TableCell className="font-black">{c.name}</TableCell>
-                <TableCell>{c.credits}</TableCell>
-              </TableRow>
-            ))}
-          </Table>
+        <Card title={t('nav.courses', 'Curriculum Courses by Year')} noPadding className="border-l-0 mb-6 overflow-hidden">
+          <div className="p-4 space-y-6">
+            {[1, 2, 3, 4, 5].map((yr) => {
+              const yearCourses = courses.filter((c: any) => (c.year || 1) === yr);
+              if (yearCourses.length === 0) return null;
+              return (
+                <div key={yr} className="space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                    <Badge variant="info" className="font-bold text-xs px-2.5 py-1">
+                      {t('common.year', 'Year')} {yr}
+                    </Badge>
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      ({yearCourses.length} {t('departments.courses', 'courses')})
+                    </span>
+                  </div>
+                  <Table headers={[t('courses.code'), t('courses.name'), t('courses.credits'), t('schedule.semester', 'Semester')]}>
+                    {yearCourses.map((c: any) => (
+                      <TableRow key={c.id}>
+                        <TableCell>
+                          <Badge variant="info">{c.courseCode}</Badge>
+                        </TableCell>
+                        <TableCell className="font-black">{c.name}</TableCell>
+                        <TableCell>{c.credits}</TableCell>
+                        <TableCell>
+                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                            {t('schedule.sem', 'Semester')} {c.semester || 1}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </Table>
+                </div>
+              );
+            })}
+          </div>
         </Card>
       )}
 

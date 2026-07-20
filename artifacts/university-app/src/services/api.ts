@@ -3,8 +3,20 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 
 /**
  * Enterprise-grade Axios instance with interceptors
  */
+
+export const getDynamicBaseUrl = () => {
+  const envUrl = (import.meta as any).env.VITE_BACKEND_URL;
+  if (typeof window !== 'undefined') {
+    const { hostname } = window.location;
+    if (envUrl && envUrl.includes('localhost') && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return envUrl.replace('localhost', hostname);
+    }
+  }
+  return envUrl || '/api';
+};
+
 const api: AxiosInstance = axios.create({
-  baseURL: (import.meta as any).env.VITE_BACKEND_URL || '/api',
+  baseURL: getDynamicBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

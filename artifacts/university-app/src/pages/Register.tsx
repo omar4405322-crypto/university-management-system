@@ -446,7 +446,7 @@ const Register = () => {
               </div>
             </div>
 
-            <Button type="submit" disabled={isSubmitting} className="w-full h-12 rounded-2xl mt-4">
+            <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full h-12 rounded-2xl mt-4">
               {isSubmitting ? (
                 <>
                   <Loader2 className="animate-spin" size={20} />

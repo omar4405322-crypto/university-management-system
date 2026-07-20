@@ -71,5 +71,21 @@ export const getScopeWhere = (
     return { id: -1 };
   }
 
+  // STUDENT: scoped to their department and year OR explicit enrollments
+  if (user.role === 'STUDENT' && user.student) {
+    if (entity === 'course') return {
+      OR: [
+        { 
+          departmentId: user.student.departmentId,
+          year: user.student.year
+        },
+        { enrollments: { some: { studentId: user.student.id } } }
+      ]
+    };
+    if (entity === 'department') return { id: user.student.departmentId };
+    if (entity === 'timetable') return { departmentId: user.student.departmentId };
+    return { id: -1 };
+  }
+
   return { id: -1 };
 };

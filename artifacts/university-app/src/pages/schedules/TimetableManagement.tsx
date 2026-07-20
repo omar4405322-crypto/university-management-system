@@ -228,13 +228,12 @@ const TimetableManagement = () => {
   );
 
   // Compute Subtitle Text Properly
-  const collegeName =
-    user?.college?.name ||
-    user?.managedCollege?.name ||
-    user?.managedCollegeName ||
-    user?.collegeName ||
-    '';
-  const deptName = user?.department?.name || user?.managedDepartment?.name || '';
+  const collegeName = isRTL
+    ? (user?.college?.nameAr || user?.managedCollege?.nameAr || user?.college?.name || user?.managedCollege?.name || user?.managedCollegeName || user?.collegeName || '')
+    : (user?.college?.name || user?.managedCollege?.name || user?.managedCollegeName || user?.collegeName || '');
+  const deptName = isRTL
+    ? (user?.department?.nameAr || user?.managedDepartment?.nameAr || user?.department?.name || user?.managedDepartment?.name || '')
+    : (user?.department?.name || user?.managedDepartment?.name || '');
 
   let subtitleText = '';
   if (isSuperAdmin) subtitleText = t('timetables.allColleges');
@@ -449,7 +448,7 @@ const TimetableManagement = () => {
                           <div className="space-y-1.5">
                             <p className="text-xs font-semibold text-brand-text-primary dark:text-brand-text-main flex items-center gap-1.5">
                               <Building2 size={14} className="text-slate-400 dark:text-slate-500" />
-                              {ti.department?.name || t('common.general', 'General')}
+                              {(isRTL ? ti.department?.nameAr || ti.department?.name : ti.department?.name) || t('common.general', 'General')}
                             </p>
                             <div className="flex items-center gap-2">
                               <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200/50 dark:border-slate-600/50">
@@ -559,7 +558,7 @@ const TimetableManagement = () => {
                         <div className="space-y-3">
                           <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400">
                             <Building2 size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
-                            <span className="truncate">{ti.department?.name || t('common.general', 'General')}</span>
+                            <span className="truncate">{(isRTL ? ti.department?.nameAr || ti.department?.name : ti.department?.name) || t('common.general', 'General')}</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-widest shadow-sm border border-slate-200 dark:border-slate-600">

@@ -349,13 +349,13 @@ const DepartmentsList = () => {
                       </span>
                     </div>
 
-                    {/* Department names — Arabic big, English small */}
+                    {/* Department names — Swaps dynamically based on active language */}
                     <div className="mb-4">
                       <h3 className="text-lg font-black text-brand-text-primary dark:text-white leading-tight mb-0.5">
-                        {dept.nameAr || dept.name}
+                        {isRTL ? dept.nameAr || dept.name : dept.name}
                       </h3>
                       <p className="text-xs text-brand-text-secondary dark:text-slate-400 font-medium">
-                        {dept.name}
+                        {isRTL ? dept.name : dept.nameAr || ''}
                       </p>
                     </div>
 

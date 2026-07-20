@@ -12,6 +12,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
+import { TimeRange } from '../../components/ui/TimeRange';
 import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/input';
 import { useForm } from 'react-hook-form';
@@ -442,7 +443,7 @@ const ExamsList = () => {
                               {new Date(exam.date).toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </div>
                             <div className="text-xs text-brand-text-secondary dark:text-slate-400">
-                              {exam.startTime} - {exam.endTime}
+                              <TimeRange start={exam.startTime} end={exam.endTime} />
                             </div>
                           </TableCell>
                           <TableCell className="p-4 text-center font-medium text-brand-text-primary dark:text-white">

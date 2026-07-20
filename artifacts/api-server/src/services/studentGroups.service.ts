@@ -17,24 +17,23 @@ export class StudentGroupsService {
 
     if (!group) return [];
 
+    let attendees: any[] = [...group.students];
     if (group.children.length > 0) {
-      let attendees: any[] = [];
       for (const child of group.children) {
         const childAttendees = await this.computeAttendees(child.id);
         attendees = attendees.concat(childAttendees);
       }
-      // Deduplicate by id just in case
-      const uniqueIds = new Set();
-      return attendees.filter(student => {
-        if (!uniqueIds.has(student.id)) {
-          uniqueIds.add(student.id);
-          return true;
-        }
-        return false;
-      });
-    } else {
-      return group.students;
     }
+
+    // Deduplicate by id just in case
+    const uniqueIds = new Set();
+    return attendees.filter(student => {
+      if (!uniqueIds.has(student.id)) {
+        uniqueIds.add(student.id);
+        return true;
+      }
+      return false;
+    });
   }
 
   /**
@@ -73,6 +72,20 @@ export class StudentGroupsService {
         rootNodes.push(group);
       }
     });
+
+    // Recursively compute total student count including all subgroup descendants
+    function calculateTotalStudents(node: any): number {
+      let total = node.studentCount || 0;
+      if (node.children && node.children.length > 0) {
+        for (const child of node.children) {
+          total += calculateTotalStudents(child);
+        }
+      }
+      node.studentCount = total;
+      return total;
+    }
+
+    rootNodes.forEach(root => calculateTotalStudents(root));
 
     return rootNodes;
   }

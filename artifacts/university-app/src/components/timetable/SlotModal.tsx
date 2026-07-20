@@ -1,10 +1,12 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BookOpen, User, MapPin, Plus, Loader2 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
+import { TimeRange } from '../ui/TimeRange';
 import type { Course, Doctor, SlotDialog, SlotEntry } from '../../types/timetable.types';
 import InstructorSelector from './InstructorSelector';
+import SearchableSelect from '../ui/SearchableSelect';
 
 type SlotType = 'LECTURE' | 'LAB' | 'SECTION';
 
@@ -37,15 +39,13 @@ const FIELD_CLASS =
 
 /**
  * Combined Add / Edit slot modal.
- * The title switches automatically based on whether form.courseName is already populated.
- * All labels are sourced from i18n via t(). Uses the shared Modal and Button UI components.
- * The course selector auto-fills the doctor field when a course with an assigned doctor is chosen.
+ * Sourced with SearchableSelect for course filtering.
  */
 export default function SlotModal({
   isOpen,
   dialogContext,
   form,
-  courses,
+  courses = [],
   doctors,
   loadingCourses,
   collegeId,
@@ -60,55 +60,56 @@ export default function SlotModal({
   
   const selectedCourse = courses.find((c) => c.name === form.courseName);
 
-  const handleCourseChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const course = courses.find((c) => c.name === e.target.value);
-      onChange({
-        ...form,
-        courseName: e.target.value,
-        doctorName: form.doctorName,
-      });
-    },
-    [courses, form, onChange]
-  );
+  const courseOptions = useMemo(() => {
+    return courses.map((c) => ({
+      value: c.name,
+      label: `${c.name} ${c.courseCode ? `(${c.courseCode})` : ''}`,
+      sublabel: c.department?.name || ''
+    }));
+  }, [courses]);
 
   const title = isEditing
     ? t('common.edit', 'Edit Slot')
     : t('timetable.addSlot', 'Add Class Slot');
 
-  const subtitle = dialogContext
-    ? `${t(`days.${dialogContext.day.toLowerCase()}`, dialogContext.day)} • ${dialogContext.slot}`
-    : undefined;
+  const subtitle = dialogContext ? (
+    <span>
+      {t(`days.${dialogContext.day.toLowerCase()}`, dialogContext.day)} • {' '}
+      {(() => {
+        const [s, e] = dialogContext.slot.split('-');
+        return s && e ? <TimeRange start={s} end={e} /> : dialogContext.slot;
+      })()}
+    </span>
+  ) : undefined;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} subtitle={subtitle} size="sm">
       <div className="space-y-4 pt-2">
-        {/* Course */}
+        {/* Course Searchable Select */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2 mb-1.5">
             <BookOpen size={14} className="text-slate-400" />
             {t('courses.course', 'Course')} *
           </label>
-          <select
-            className={FIELD_CLASS}
+          <SearchableSelect
+            options={courseOptions}
             value={form.courseName}
-            onChange={handleCourseChange}
-            aria-label={t('schedule.selectCourse', 'Select Course')}
-          >
-            <option value="">
-              {loadingCourses
-                ? t('common.loading', 'Loading...')
-                : t('schedule.selectCourse', 'Select Course')}
-            </option>
-            {courses.map((c) => (
-              <option key={c.id} value={c.name}>
-                {c.name} — {c.courseCode}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => {
+              onChange({
+                ...form,
+                courseName: val,
+                doctorName: form.doctorName,
+              });
+            }}
+            placeholder={loadingCourses ? t('common.loading', 'Loading...') : t('schedule.selectCourse', 'Select Course')}
+            searchPlaceholder={t('common.searchCoursePlaceholder', 'Search course by code or name...')}
+            disabled={loadingCourses}
+            isRTL={isRTL}
+            icon={<BookOpen size={16} />}
+          />
         </div>
 
-        {/* Instructor / TA */}
+        {/* Instructor / TA Searchable Selector */}
         <InstructorSelector
           courseId={selectedCourse?.id}
           slotType={form.slotType}

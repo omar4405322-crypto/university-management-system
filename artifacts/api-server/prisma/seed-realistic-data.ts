@@ -158,8 +158,6 @@ async function cleanOldData() {
   console.log("Cleaning up old placeholder data...");
   
   await prisma.scheduleSlot.deleteMany();
-  await prisma.sectionGroupMapping.deleteMany();
-  await prisma.courseSection.deleteMany();
   await prisma.course.deleteMany();
   
   await prisma.student.deleteMany();

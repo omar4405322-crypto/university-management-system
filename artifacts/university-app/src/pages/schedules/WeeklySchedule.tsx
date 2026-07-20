@@ -23,6 +23,7 @@ import { SkeletonTable } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { logger } from '../../lib/logger';
 import FilterBar from '../../components/ui/FilterBar';
+import { ScheduleView } from '../../components/timetable/ScheduleView';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import useScope from '../../hooks/useScope';
@@ -42,7 +43,7 @@ const WeeklySchedule = () => {
   const [loading, setLoading] = useState(true);
   const [timetable, setTimetable] = useState(null);
   const [error, setError] = useState(null);
-  
+
   const { scopeParams, isCollegeAdmin } = useScope();
   const [colleges, setColleges] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -57,12 +58,18 @@ const WeeklySchedule = () => {
     ? ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
     : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-  const [selectedDay, setSelectedDay] = useState(days[0]);
+  const getTodayDayName = useCallback((availableDays: string[]) => {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayName = dayNames[new Date().getDay()];
+    return availableDays.includes(todayName) ? todayName : availableDays[0];
+  }, []);
 
-  // Update selected day if days array order changes due to language
+  const [selectedDay, setSelectedDay] = useState(() => getTodayDayName(days));
+
+  // Maintain selected day or recalculate today on language change
   useEffect(() => {
-    setSelectedDay(days[0]);
-  }, [i18n.language]);
+    setSelectedDay((prev) => (days.includes(prev) ? prev : getTodayDayName(days)));
+  }, [i18n.language, days, getTodayDayName]);
 
   const times = [
     '08:00',
@@ -81,7 +88,7 @@ const WeeklySchedule = () => {
     if (canManage) {
       collegeService.getColleges().then(res => {
         if (res.success) setColleges(Array.isArray(res.data) ? res.data : res.data?.data || []);
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [canManage]);
 
@@ -91,7 +98,7 @@ const WeeklySchedule = () => {
     if (val) {
       departmentService.getDepartments({ collegeId: val }).then(res => {
         if (res.success) setDepartments(Array.isArray(res.data) ? res.data : res.data?.data || []);
-      }).catch(() => {});
+      }).catch(() => { });
     } else {
       setDepartments([]);
     }
@@ -115,7 +122,7 @@ const WeeklySchedule = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const params: any = { ...scopeParams };
       if (!isCollegeAdmin) {
         if (selectedCollege) params.collegeId = selectedCollege;
@@ -219,7 +226,7 @@ const WeeklySchedule = () => {
         <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0 mb-6">
           <FilterBar
             search=""
-            onSearchChange={() => {}}
+            onSearchChange={() => { }}
             searchPlaceholder=""
             hideSearch={true}
           >
@@ -290,270 +297,62 @@ const WeeklySchedule = () => {
           </p>
         </Card>
       ) : (
-      <>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
-        <div className="flex flex-col gap-2">
-          {/* Use department name as the primary title if available */}
-          <h1 className="text-3xl font-black text-brand-text-main tracking-tight">
-            {departmentName ? `${departmentName} - ` : ''}
-            {!canManage ? t('schedule.mySchedule', t('nav.schedule')) : t('timetables.title')}
-          </h1>
-          <div className="flex flex-wrap items-center gap-3">
-            {academicYear && (
-              <Badge variant="info" className="font-black uppercase tracking-widest">
-                {t('auth.year')} {academicYear}
-              </Badge>
-            )}
-            {semester && (
-              <Badge variant="neutral" className="font-black uppercase tracking-widest">
-                {t('timetables.semester')} {semester}
-              </Badge>
-            )}
-            {collegeName && (
-              <>
-                <span className="text-brand-text-muted hidden md:inline">•</span>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-brand-text-sub">
-                  <Building2 size={14} /> {collegeName}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+            <div className="flex flex-col gap-2">
+              {/* Use department name as the primary title if available */}
+              <h1 className="text-3xl font-black text-brand-text-main tracking-tight">
+                {departmentName ? `${departmentName} - ` : ''}
+                {!canManage ? t('schedule.mySchedule', t('nav.schedule')) : t('timetables.title')}
+              </h1>
+              <div className="flex flex-wrap items-center gap-3">
+                {academicYear && (
+                  <Badge variant="info" className="font-black uppercase tracking-widest">
+                    {t('auth.year')} {academicYear}
+                  </Badge>
+                )}
+                {semester && (
+                  <Badge variant="neutral" className="font-black uppercase tracking-widest">
+                    {t('timetables.semester')} {semester}
+                  </Badge>
+                )}
+                {collegeName && (
+                  <>
+                    <span className="text-brand-text-muted hidden md:inline">•</span>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-brand-text-sub">
+                      <Building2 size={14} /> {collegeName}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
 
-        <div className="flex items-center gap-4 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 border-s-4 border-s-brand-primary-500 shadow-sm transition-all hover:shadow-md hover:scale-[1.01]">
-          <div className="p-2.5 bg-brand-primary-500/10 dark:bg-brand-primary-500/20 text-brand-primary-600 dark:text-brand-primary-400 rounded-xl shrink-0">
-            <Calendar size={24} />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              {t('common.today')}
-            </p>
-            <p className="text-sm font-black text-brand-text-primary dark:text-brand-text-main mt-0.5">
-              {new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Day Selector */}
-      <div className="flex gap-2 overflow-x-auto pb-4 md:hidden custom-scrollbar">
-        {days.map((day) => (
-          <button
-            key={day}
-            onClick={() => setSelectedDay(day)}
-            className={`flex-shrink-0 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${
-              selectedDay === day
-                ? 'bg-brand-primary-600 text-white shadow-brand-primary-600/20'
-                : 'bg-surface-subtle text-brand-text-secondary hover:bg-brand-primary-600/10'
-            }`}
-          >
-            {t(`days.${day.toLowerCase()}`) || day.slice(0, 3)}
-          </button>
-        ))}
-      </div>
-
-      {/* Desktop View */}
-      <div className="hidden md:block">
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-4 md:p-6">
-          <div className="overflow-x-auto">
-            <div className="min-w-[1000px]">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
-                    <th className="p-4 w-24"></th>
-                    {days.map((day) => (
-                      <th
-                        key={day}
-                        className="p-4 text-xs font-semibold text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest"
-                      >
-                        {t(`days.${day.toLowerCase()}`)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {times.map((time) => (
-                    <tr key={time} className="group hover:bg-slate-50/10 dark:hover:bg-slate-800/5">
-                      <td className="p-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 text-center bg-slate-50/50 dark:bg-slate-900/10">
-                        {formatTime(time)}
-                      </td>
-                      {days.map((day) => {
-                        const entries = getEntriesForTimeSlot(day, time);
-                        return (
-                          <td
-                            key={`${day}-${time}`}
-                            className="p-2 align-top transition-colors"
-                          >
-                            {entries.length > 0 ? (
-                              <div className="space-y-2">
-                                {entries.map((entry, idx) => (
-                                  <div
-                                    key={idx}
-                                    className={`rounded-xl p-3 border-s-4 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] border border-y-slate-200/50 border-e-slate-200/50 dark:border-y-slate-700/50 dark:border-e-slate-700/50 group/entry ${
-                                      entry.isTemporarilyModified
-                                        ? 'border-s-amber-500 bg-amber-500/10 dark:bg-amber-500/20'
-                                        : 'border-s-brand-primary-500 bg-brand-primary-500/5 dark:bg-brand-primary-500/10'
-                                    }`}
-                                  >
-                                    <div className="flex justify-between items-start mb-2">
-                                      <div className="flex flex-col gap-1">
-                                        <Badge
-                                          variant="info"
-                                          className="text-[9px] font-medium px-1.5 py-0.5 bg-brand-primary-100 dark:bg-brand-primary-900/40 text-brand-primary-700 dark:text-brand-primary-300"
-                                        >
-                                          {entry.startTime} - {entry.endTime}
-                                        </Badge>
-                                        {entry.isTemporarilyModified && (
-                                          <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 w-fit">
-                                            {t('schedule.temporaryChange', '⊠ تعديل مؤقت')}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {entry.slotType && (
-                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${getSessionBadgeColor(entry.slotType)}`}>
-                                          {t(`schedule.${entry.slotType.toLowerCase()}`, entry.slotType)}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="text-xs font-medium text-brand-text-primary dark:text-brand-text-main leading-tight transition-colors group-hover/entry:text-brand-primary-600">
-                                      {entry.course?.code && (
-                                        <span className="text-brand-primary-600 dark:text-brand-primary-400 mr-2 text-[10px]">
-                                          {entry.course.code}
-                                        </span>
-                                      )}
-                                      {entry.course?.name}
-                                    </p>
-                                    {entry.group?.name && (
-                                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">
-                                        {t('common.group', 'Group:')} {entry.group.name}
-                                      </p>
-                                    )}
-                                    <div className="mt-2 space-y-1 text-[10px] text-slate-500 dark:text-slate-400">
-                                      <div className="flex items-center gap-1.5 font-normal">
-                                        <MapPin size={10} className="text-slate-400 shrink-0" />
-                                        <span>{entry.room || t('common.tba', 'TBA')}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5 font-normal">
-                                        <User size={10} className="text-slate-400 shrink-0" />
-                                        <span>
-                                          {entry.doctor
-                                            ? `${entry.doctor.firstName || ''} ${entry.doctor.lastName || ''}`
-                                            : t('common.staff', 'Staff')}
-                                        </span>
-                                      </div>
-                                      {entry.teachingAssistant && (
-                                        <div className="flex items-center gap-1.5 font-normal ml-4 text-[9px] text-slate-400">
-                                          <span>{t('schedule.ta', 'TA:')} {entry.teachingAssistant.firstName} {entry.teachingAssistant.lastName}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="h-16 flex items-center justify-center text-slate-300 dark:text-slate-600 select-none">
-                                <span>—</span>
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="flex items-center gap-4 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 border-s-4 border-s-brand-primary-500 shadow-sm transition-all hover:shadow-md hover:scale-[1.01]">
+              <div className="p-2.5 bg-brand-primary-500/10 dark:bg-brand-primary-500/20 text-brand-primary-600 dark:text-brand-primary-400 rounded-xl shrink-0">
+                <Calendar size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {t('common.today')}
+                </p>
+                <p className="text-sm font-black text-brand-text-primary dark:text-brand-text-main mt-0.5">
+                  {new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                </p>
+              </div>
             </div>
           </div>
-        </Card>
-      </div>
 
-      {/* Mobile View */}
-      <div className="md:hidden space-y-4">
-        <p className="text-[10px] font-black uppercase text-brand-text-muted text-center tracking-widest animate-pulse">
-          {t('schedule.swipeHint', 'Swipe to see other days')}
-        </p>
-        {times.flatMap((time) => getEntriesForTimeSlot(selectedDay, time)).length > 0 ? (
-          times
-            .flatMap((time) => getEntriesForTimeSlot(selectedDay, time))
-            .map((entry, idx) => (
-              <Card
-                key={idx}
-                className={`p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 border-s-4 shadow-sm rounded-2xl animate-in slide-in-from-bottom-2 duration-300 ${
-                  entry.isTemporarilyModified ? 'border-s-amber-500' : 'border-s-brand-primary-500'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      <Badge variant="info" className="text-[10px] font-medium px-3 py-1 bg-brand-primary-100 dark:bg-brand-primary-900/40 text-brand-primary-700 dark:text-brand-primary-300">
-                        {entry.startTime} - {entry.endTime}
-                      </Badge>
-                      {entry.isTemporarilyModified && (
-                        <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                          {t('schedule.temporaryChange', '⊠ تعديل مؤقت')}
-                        </span>
-                      )}
-                    </div>
-                    {entry.slotType && (
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${getSessionBadgeColor(entry.slotType)}`}>
-                        {t(`schedule.${entry.slotType.toLowerCase()}`, entry.slotType)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900/40 px-2.5 py-1 rounded-xl">
-                    <MapPin size={12} className="text-slate-400" />
-                    {entry.room || t('common.tba', 'TBA')}
-                  </div>
-                </div>
-
-                <h3 className="text-base font-semibold text-brand-text-primary dark:text-brand-text-main leading-tight mb-1">
-                  <span className="text-brand-primary-600 text-sm mr-2">{entry.course?.code}</span>
-                  {entry.course?.name}
-                </h3>
-                {entry.group?.name && (
-                  <p className="text-xs font-bold text-slate-400 mb-3">
-                    {t('common.group', 'Group:')} {entry.group.name}
-                  </p>
-                )}
-
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-700/50 flex flex-col gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-900/40 flex items-center justify-center text-slate-400">
-                      <User size={14} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                        {t('courses.instructor')}
-                      </span>
-                      <span className="text-xs font-semibold text-brand-text-primary dark:text-brand-text-main mt-0.5">
-                        {entry.doctor
-                          ? `${entry.doctor.firstName || ''} ${entry.doctor.lastName || ''}`
-                          : t('common.staff', 'Staff')}
-                      </span>
-                    </div>
-                  </div>
-                  {entry.teachingAssistant && (
-                    <div className="flex items-center gap-3 ml-11">
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {t('schedule.ta', 'TA:')}
-                      </span>
-                      <span className="text-[10px] font-medium text-slate-500">
-                        {entry.teachingAssistant.firstName} {entry.teachingAssistant.lastName}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            ))
-        ) : (
-          <EmptyState
-            icon={<Calendar size={40} />}
-            title={t('common.noData')}
-            subtitle={t('timetables.noSlots')}
+          <ScheduleView 
+            timetable={timetable} 
+            role="STUDENT" 
+            selectedDay={selectedDay} 
+            setSelectedDay={setSelectedDay} 
+            days={days} 
+            times={times} 
+            formatTime={formatTime} 
+            canManage={canManage} 
           />
-        )}
-      </div>
-      </>
+        </>
       )}
     </div>
   );

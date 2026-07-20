@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import examsService from '../../services/exams.service';
 import Card from '../../components/ui/Card';
+import { TimeRange } from '../../components/ui/TimeRange';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import { logger } from '../../lib/logger';
@@ -173,9 +174,9 @@ const ExamDetails = () => {
                   <span className="text-slate-500 flex items-center gap-2 text-sm font-bold"><Calendar size={16}/> Date</span>
                   <span className="font-bold text-slate-800 dark:text-slate-100">{new Date(exam.date).toLocaleDateString()}</span>
                 </div>
-                <div className="flex justify-between items-center pb-4 border-b border-slate-100 dark:border-slate-700/50">
+                <div className="flex justify-between items-start pb-4 border-b border-slate-100 dark:border-slate-700/50">
                   <span className="text-slate-500 flex items-center gap-2 text-sm font-bold"><Clock size={16}/> Time</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-100">{exam.startTime} - {exam.endTime}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100"><TimeRange start={exam.startTime} end={exam.endTime} /></span>
                 </div>
                 <div className="flex justify-between items-center pb-4 border-b border-slate-100 dark:border-slate-700/50">
                   <span className="text-slate-500 flex items-center gap-2 text-sm font-bold"><Clock size={16}/> Duration</span>

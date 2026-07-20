@@ -21,6 +21,8 @@ import Table, {
   TableBody,
   TableHead,
 } from '../../components/ui/Table';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { TimeRange } from '../../components/ui/TimeRange';
 import FilterBar from '../../components/ui/FilterBar';
 import schedulesService from '../../services/schedules.service';
 import collegeService from '../../services/college.service';
@@ -415,8 +417,8 @@ const SchedulesList = () => {
                         <span className="text-xs font-semibold text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">
                           {t(`days.${(schedule.dayOfWeek || '').toLowerCase()}`, schedule.dayOfWeek)}
                         </span>
-                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase mt-0.5" dir="ltr">
-                          {schedule.startTime} - {schedule.endTime}
+                        <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase mt-0.5">
+                          <TimeRange start={schedule.startTime} end={schedule.endTime} />
                         </span>
                       </div>
                     </TableCell>
