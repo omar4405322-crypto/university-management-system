@@ -70,6 +70,7 @@ import studentGroupsRoutes from './routes/studentGroups.routes';
 import requestsRoutes from './routes/requests.routes';
 // @ts-ignore
 import { protect } from './middleware/auth.middleware';
+import roomRoutes from './routes/room.routes';
 
 // @ts-ignore
 import swaggerUi from 'swagger-ui-express';
@@ -225,6 +226,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/enrollments', enrollmentLimiter, protect, enrollmentRoutes);
 app.use('/api/transcripts', protect, transcriptRoutes);
+app.use('/api/transcript', protect, transcriptRoutes);
 
 // Fallback limiter for other API routes
 app.use('/api', apiLimiter);
@@ -251,6 +253,7 @@ app.use('/api/teaching-assistants', protect, teachingAssistantsRoutes);
 
 app.use('/api/student-groups', protect, studentGroupsRoutes);
 app.use('/api/requests', protect, requestsRoutes);
+app.use('/api/rooms', protect, roomRoutes);
 if (process.env.NODE_ENV !== 'production') {
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }

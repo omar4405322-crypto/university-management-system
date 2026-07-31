@@ -12,6 +12,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../lib/apiClient';
 
 export function FacultyAttendanceDashboard() {
   const { t } = useTranslation();
@@ -25,6 +26,8 @@ export function FacultyAttendanceDashboard() {
   const [timeLeft, setTimeLeft] = useState(10);
   const [qrDuration, setQrDuration] = useState(10);
   const [flaggedRecords, setFlaggedRecords] = useState<any[]>([]);
+  const [hideMismatchWarning, setHideMismatchWarning] = useState(false);
+  const [isSavingRoom, setIsSavingRoom] = useState(false);
 
   // Toggleable list state for Present Students, Professor & TAs
   const [showRosterList, setShowRosterList] = useState(false);
@@ -72,6 +75,26 @@ export function FacultyAttendanceDashboard() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveRoomLocation = async () => {
+    if (!activeSession?.roomId || !activeSession?.latitude || !activeSession?.longitude) return;
+    try {
+      setIsSavingRoom(true);
+      await api.patch(`/rooms/${activeSession.roomId}/coordinates`, {
+        latitude: activeSession.latitude,
+        longitude: activeSession.longitude
+      });
+      alert('تم حفظ الموقع الجغرافي للقاعة بنجاح');
+      if (selectedCourseId) {
+        await checkActiveSession(selectedCourseId);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء حفظ الموقع');
+    } finally {
+      setIsSavingRoom(false);
     }
   };
 
@@ -375,13 +398,22 @@ export function FacultyAttendanceDashboard() {
               {/* Present Students Section */}
               <div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <UserCheck className="w-5 h-5 text-emerald-500" />
-                    <h4 className="text-lg font-bold text-slate-800 dark:text-white">
-                      {t('attendance.presentStudents', 'الطلاب الحاضرون')}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <UserCheck className="w-5 h-5 text-brand-primary-500" />
+                    <h4 className="text-lg font-bold text-slate-800 dark:text-white me-2">
+                      {t('attendance.roster', 'قائمة الطلاب')}
                     </h4>
+                    <Badge className="bg-slate-100 text-slate-800 font-bold">
+                      {t('attendance.total', 'الكل')}: {roster.length}
+                    </Badge>
                     <Badge className="bg-emerald-100 text-emerald-800 font-bold">
-                      {filteredStudents.length} / {roster.length}
+                      {t('attendance.present', 'حاضر')}: {presentCount}
+                    </Badge>
+                    <Badge className="bg-amber-100 text-amber-800 font-bold">
+                      {t('attendance.late', 'متأخر')}: {lateCount}
+                    </Badge>
+                    <Badge className="bg-rose-100 text-rose-800 font-bold">
+                      {t('attendance.absent', 'غائب')}: {roster.length - presentCount - lateCount}
                     </Badge>
                   </div>
 
@@ -406,6 +438,16 @@ export function FacultyAttendanceDashboard() {
                       }`}
                     >
                       {t('attendance.late', 'المتأخرون')} ({lateCount})
+                    </button>
+                    <button
+                      onClick={() => setRosterFilter('ABSENT')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        rosterFilter === 'ABSENT'
+                          ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                      }`}
+                    >
+                      {t('attendance.absent', 'الغائبون')} ({roster.length - presentCount - lateCount})
                     </button>
                     <button
                       onClick={() => setRosterFilter('FLAGGED')}
@@ -566,6 +608,41 @@ export function FacultyAttendanceDashboard() {
       {/* Main Active Session View (Centered, Stable, Non-Shifting Layout) */}
       {activeSession ? (
         <div className="max-w-4xl mx-auto space-y-6">
+
+          {/* Room Mismatch Warning */}
+          {activeSession?.roomMismatchWarning && !hideMismatchWarning && (
+            <div className="bg-amber-100 border border-amber-300 text-amber-800 p-4 rounded-xl flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                <span className="font-bold text-sm">You appear to be far from this room's registered location — please confirm you're in the right classroom.</span>
+              </div>
+              <button onClick={() => setHideMismatchWarning(true)} className="text-amber-600 hover:text-amber-800 shrink-0">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          {/* Geo Verification Off Warning */}
+          {activeSession?.geoVerificationActive === false && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-center gap-3 shadow-sm">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+              <span className="font-bold text-sm">Geolocation verification is OFF for this session — no location on file for this room.</span>
+            </div>
+          )}
+
+          {/* Save Room Location Banner/Button */}
+          {activeSession?.roomNeedsCoordinates && (
+            <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-indigo-500 shrink-0" />
+                <span className="font-bold text-sm">Geofencing is active via your live location, but this room doesn't have permanent coordinates saved.</span>
+              </div>
+              <Button onClick={handleSaveRoomLocation} disabled={isSavingRoom} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 font-bold text-sm flex items-center gap-2 shrink-0">
+                {isSavingRoom ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                Save this location for this room
+              </Button>
+            </div>
+          )}
 
           {/* Active Session Top Control Banner (Ultra-High Contrast, Premium Aesthetics) */}
           <div className="bg-slate-900 dark:bg-slate-950 rounded-3xl p-6 text-white shadow-2xl border border-slate-800 flex flex-col lg:flex-row items-center justify-between gap-6 relative overflow-hidden">
