@@ -4,6 +4,11 @@ import * as dashboardController from '../controllers/dashboard.controller';
 import { authorize } from '../middleware/auth.middleware';
 
 router.get(
+  '/',
+  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
+  dashboardController.getAdminStats
+);
+router.get(
   '/stats',
   authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
   dashboardController.getAdminStats

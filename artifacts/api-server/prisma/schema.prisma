@@ -232,7 +232,7 @@ model Attendance {
   scheduleSlot    ScheduleSlot?      @relation(fields: [scheduleSlotId], references: [id])
   createdAt       DateTime         @default(now())
 
-  @@unique([studentId, sessionId])
+  @@unique([studentId, courseId, date])
   @@index([courseId, date])
   @@index([studentId, courseId])
   @@index([sessionId])

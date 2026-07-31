@@ -25,15 +25,8 @@ function assertDoctorScope(
 
 export const getDoctorStats = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const scopeWhere: any = getScopeWhere(req.user!);
-    const courseWhere: any = {};
-    if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
-      courseWhere.department = { collegeId: req.user!.managedCollegeId };
-    } else if (req.user!.role === 'COLLEGE_ADMIN') {
-      courseWhere.department = { collegeId: req.user!.managedCollegeId };
-    } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
-      courseWhere.departmentId = req.user!.managedDepartmentId;
-    }
+    const scopeWhere: any = getScopeWhere(req.user!, 'doctor');
+    const courseWhere: any = getScopeWhere(req.user!, 'course');
 
     const [totalFaculty, activeProfessors, totalCourses, researchProjects] = await Promise.all([
       prisma.doctor.count({ where: scopeWhere }),
