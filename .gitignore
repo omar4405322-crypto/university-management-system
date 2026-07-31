@@ -54,3 +54,8 @@ Thumbs.db
 .env.local
 .env.*.local
 *.env
+
+# Database Backups
+backend/backups/
+backups/
+*.dump

@@ -11,14 +11,14 @@ import rateLimit from 'express-rate-limit';
 const qrLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // Limit each IP to 10 requests per window
-  message: 'Too many QR scan attempts, please try again later.'
+  message: 'Too many QR scan attempts, please try again later.',
 });
 
 const sessionLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: 'Too many session requests, please try again later.',
-  keyGenerator: (req: any) => req.user?.id ? `session_${req.user.id}` : (req.ip || 'unknown')
+  keyGenerator: (req: any) => req.user?.id ? `session_${req.user.id}` : (req.ip || 'unknown'),
 });
 
 

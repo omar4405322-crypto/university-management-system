@@ -263,24 +263,30 @@ export const getActiveSession = catchAsync(async (req: Request, res: Response, n
     } else {
       where.scheduleSlot = { courseId: parseInt(courseId as string) };
     }
-  } else {
-    return next(new AppError('Must provide courseId or scheduleSlotId', 400));
   }
 
-  const session = await prisma.attendanceSession.findFirst({ where });
+  const sessions = await prisma.attendanceSession.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  });
 
-  if (!session) return res.json({ success: true, data: null });
+  if (sessions.length === 0) return res.json({ success: true, data: [] });
 
-  res.json({ 
-    success: true, 
-    data: { 
-      sessionId: session.id, 
+  res.json({
+    success: true,
+    data: sessions.map((session: any) => ({
+      sessionId: session.id,
+      scheduleSlotId: session.scheduleSlotId,
+      doctorId: session.doctorId,
       expiresAt: session.expiresAt,
       latitude: session.latitude,
       longitude: session.longitude,
       radius: session.radius,
-      codeStepSeconds: session.codeStepSeconds
-    } 
+      codeStepSeconds: session.codeStepSeconds,
+      isActive: session.isActive,
+      createdAt: session.createdAt,
+    })),
   });
 });
 
