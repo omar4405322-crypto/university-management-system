@@ -28,7 +28,6 @@ const Footer = () => {
     }
     setNewsletterError('');
     setSubscribed(true);
-    // TODO: Wire to /api/newsletter endpoint when ready
     logger.warn('[Newsletter] Subscription not yet wired to backend.');
   };
 
