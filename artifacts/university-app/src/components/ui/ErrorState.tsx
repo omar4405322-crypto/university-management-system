@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
-import Button from './Button';
+import Button from './button';
 
 const ErrorState = ({
   title = 'Something went wrong',
@@ -10,7 +10,7 @@ const ErrorState = ({
 }: {
   title?: string;
   message?: string;
-  onRetry?: Record<string, unknown>;
+  onRetry?: () => void;
   className?: string;
 }) => {
   return (

@@ -162,9 +162,9 @@ const FEATURES = [
 
 // ─── Circular Loop Helpers ───────────────────────────────────────────────────
 
-const getCircularIndex = (index, total) => ((index % total) + total) % total;
+const getCircularIndex = (index: number, total: number) => ((index % total) + total) % total;
 
-const getDistance = (cardIndex, activeIndex, total) => {
+const getDistance = (cardIndex: number, activeIndex: number, total: number) => {
   const rawDistance = cardIndex - getCircularIndex(activeIndex, total);
   if (rawDistance > total / 2) return rawDistance - total;
   if (rawDistance < -total / 2) return rawDistance + total;
@@ -173,7 +173,7 @@ const getDistance = (cardIndex, activeIndex, total) => {
 
 // ─── Exact Google Labs Card Style calculation ────────────────────────────────
 
-const getCardStyle = (distance) => {
+const getCardStyle = (distance: number) => {
   const absD = Math.abs(distance);
   
   if (distance === 0) {

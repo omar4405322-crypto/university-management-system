@@ -1,27 +1,38 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
-import { BookOpen, Users, ClipboardList, FileText, ArrowUpRight, ArrowDownRight, CheckCircle2, ChevronRight, History, Zap, Bell, Calendar, Target, TrendingUp } from 'lucide-react';
+import {
+  BookOpen,
+  Users,
+  ClipboardList,
+  FileText,
+  Clock,
+  Calendar,
+  QrCode,
+  Plus,
+  CheckCircle2,
+  GraduationCap,
+  Sparkles,
+  MapPin,
+  Award
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import ChartTooltip from '../../components/ui/ChartTooltip';
 import dashboardService from '../../services/dashboard.service';
 import { CAMPUS_HERO_1 } from '../../constants/universityAssets';
 import { logger } from '../../lib/logger';
 
 export default function DoctorDashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const { user } = useAuth();
-
-  const CHART_GREEN = '#8BB83C';
+  const isRTL = i18n.language === 'ar';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,250 +70,282 @@ export default function DoctorDashboard() {
     return <ErrorState message={error} onRetry={fetchStats} />;
   }
 
-  const kpis = [
-    {
-      id: 'myCourses',
-      title: t('dashboard.myCourses'),
-      value: stats?.counts?.myCourses || '0',
-      change: t('dashboard.activeCourses'),
-      trend: 'neutral',
-      icon: BookOpen,
-      color: 'navy',
-    },
-    {
-      id: 'totalStudents',
-      title: t('dashboard.totalStudents'),
-      value: stats?.counts?.totalStudents || '0',
-      change: t('dashboard.enrolled'),
-      trend: 'up',
-      icon: Users,
-      color: 'green',
-    },
-    {
-      id: 'totalQuizzes',
-      title: t('dashboard.totalQuizzes'),
-      value: stats?.counts?.totalQuizzes || '0',
-      change: t('dashboard.assessments'),
-      trend: 'neutral',
-      icon: ClipboardList,
-      color: 'yellow',
-    },
-    {
-      id: 'pendingTasks',
-      title: t('dashboard.pendingTasks'),
-      value: stats?.counts?.pendingTasks || '0',
-      change: t('dashboard.toGrade'),
-      trend: stats?.counts?.pendingTasks > 0 ? 'down' : 'up',
-      icon: FileText,
-      color: 'navy',
-    },
-  ];
+  const profile = stats?.profile || {};
+  const doctorName = `${profile.firstName || user?.doctor?.firstName || ''} ${profile.lastName || user?.doctor?.lastName || ''}`.trim() || user?.email?.split('@')[0] || 'Doctor';
+  const departmentName = profile.departmentName || 'قسم الميكاترونيكس';
+  const collegeName = profile.collegeName || 'جامعة 6 أكتوبر التكنولوجية';
 
-  const academicChartData =
-    stats?.growthData?.length > 0
-      ? stats.growthData
-      : (stats?.enrollmentData || []).map((row: any) => ({
-        name: String(row.name),
-        value: row.students ?? row.value ?? 0,
-      }));
+  const myCourses = stats?.myCourses || [];
+  const todaySchedule = stats?.todaySchedule || [];
+  const upcomingExams = stats?.upcomingExams || [];
 
   return (
-    <div className="section-gap animate-in fade-in duration-700">
-      {/* === Hero Header === */}
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      {/* 1. Official University Brand Hero Banner */}
       <div className="relative overflow-hidden rounded-[2rem] shadow-elevated" style={{ minHeight: '180px' }}>
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${CAMPUS_HERO_1}), linear-gradient(135deg, var(--color-brand-navy-500) 0%, var(--color-brand-teal) 100%)` }}
+          style={{ backgroundImage: `url(${CAMPUS_HERO_1}), linear-gradient(135deg, var(--color-brand-navy-500) 0%, var(--color-brand-navy-600) 100%)` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/25 rtl:bg-gradient-to-l" />
-        <div className="relative z-10 flex flex-col gap-6 p-6 md:flex-row md:items-end md:justify-between md:p-8">
-          <div className="space-y-2 max-w-2xl">
-            <h1 className="text-3xl font-black tracking-tight text-white md:text-4xl">
-              {t('dashboard.welcomeBack')}, {user?.doctor?.firstName || user?.email.split('@')[0]}
-            </h1>
-            <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-white/85">
-              <span className="text-white/40">|</span>
-              <span>
-                {new Date().toLocaleDateString(undefined, {
-                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                })}
-              </span>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-brand-navy-900/75 to-black/40 rtl:bg-gradient-to-l" />
+        <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-brand-brand-green shrink-0 shadow-inner">
+              <GraduationCap size={36} />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-0.5 rounded-full bg-brand-brand-green/20 text-brand-brand-green text-xs font-bold border border-brand-brand-green/30 flex items-center gap-1.5">
+                  <Sparkles size={12} /> {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October Technological University'}
+                </span>
+                <span className="text-white/60 text-xs">• {collegeName}</span>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                {isRTL ? `أهلاً بك، د. ${doctorName}` : `Welcome, Dr. ${doctorName}`}
+              </h1>
+              <p className="text-xs md:text-sm text-white/80 font-medium flex items-center gap-2">
+                <Award size={14} className="text-brand-brand-green" />
+                {departmentName} {profile.specialty ? `— ${profile.specialty}` : ''}
+              </p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <Button
-              variant="outline"
-              size="md"
-              className="border-white/30 bg-white/10 font-bold text-xs uppercase tracking-widest text-white backdrop-blur-sm hover:bg-white/20"
-              onClick={() => navigate('/notifications')}
-            >
-              <History size={16} /> {t('dashboard.activityLog')}
-            </Button>
+
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="primary"
               size="md"
-              className="shadow-overlay shadow-brand-brand-green-dark/30 font-bold text-xs uppercase tracking-widest"
-              onClick={() => navigate('/settings')}
+              className="bg-brand-brand-green hover:bg-brand-brand-green-dark text-white font-bold text-xs shadow-overlay shadow-brand-brand-green/30 border-0 flex items-center gap-2 py-2.5 px-5 rounded-xl transition-all"
+              onClick={() => navigate('/attendance')}
             >
-              <Zap size={16} /> {t('dashboard.quickActions')}
+              <QrCode size={16} /> {isRTL ? 'بدء تسجيل الحضور (QR)' : 'Take Attendance'}
+            </Button>
+            <Button
+              variant="outline"
+              size="md"
+              className="border-white/20 bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-sm flex items-center gap-2 py-2.5 px-4 rounded-xl"
+              onClick={() => navigate('/quizzes')}
+            >
+              <Plus size={16} /> {isRTL ? 'إضافة اختبار' : 'Create Quiz'}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* === KPI Grid === */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-5 xl:gap-6 2xl:gap-8">
-        {kpis.map((kpi, idx) => (
-          <Card key={kpi.id || idx} variant="default" noPadding className="group hover:-translate-y-0.5 transition-all duration-300 overflow-hidden relative">
-            <div className="p-5 space-y-3">
-              <div className="flex justify-between items-start">
-                <div className={`p-2.5 rounded-2xl transition-colors duration-300 ease-in-out ${
-                  kpi.color === 'green'
-                    ? 'bg-brand-primary-50 dark:bg-brand-primary-950/20 text-brand-green dark:text-brand-green group-hover:text-brand-primary-700 dark:group-hover:text-brand-green-light'
-                    : kpi.color === 'navy'
-                    ? 'bg-brand-navy-50 dark:bg-slate-800/50 text-brand-navy-500 dark:text-slate-400 group-hover:text-brand-navy-700 dark:group-hover:text-slate-200'
-                    : 'bg-brand-accent-yellow/15 text-brand-accent-amber group-hover:text-amber-600'
-                }`}>
-                  <kpi.icon size={18} />
-                </div>
-                {kpi.trend === 'up' && <ArrowUpRight size={14} className="text-brand-brand-green-dark" />}
-                {kpi.trend === 'down' && <ArrowDownRight size={14} className="text-error" />}
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-brand-text-muted">{kpi.title}</p>
-                <div className="flex items-baseline gap-2">
-                  <h3 className="text-2xl font-black tracking-tight text-brand-text-primary dark:text-brand-text-main">{kpi.value}</h3>
-                  {kpi.change && (
-                    <div className="flex items-center gap-1">
-                      <span className={`text-[10px] font-bold ${kpi.trend === 'up' ? 'text-brand-brand-green-dark' : kpi.trend === 'down' ? 'text-error' : 'text-brand-text-muted'
-                        }`}>
-                        {kpi.change}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* === Main Content Grid === */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 2xl:gap-8">
-        <div className="lg:col-span-8 xl:col-span-9 2xl:col-span-9 min-w-0 section-gap">
-          <Card variant="elevated" title={t('dashboard.academicOverview')} subtitle={t('dashboard.growthTrend')}>
-            <div className="h-[400px] w-full overflow-hidden mt-6">
-              {!academicChartData.length ? (
-                <div className="flex h-full flex-col items-center justify-center gap-2 text-brand-text-muted">
-                  <TrendingUp size={40} className="opacity-40" />
-                  <p className="text-sm font-bold">{t('common.noData')}</p>
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={academicChartData}>
-                    <defs>
-                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_GREEN} stopOpacity={0.15} />
-                        <stop offset="95%" stopColor={CHART_GREEN} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94A3B8' : '#64748B', fontSize: 12, fontWeight: 600 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94A3B8' : '#64748B', fontSize: 12, fontWeight: 600 }} dx={-10} />
-                    <Tooltip content={<ChartTooltip active={false} payload={[]} label={''} />} />
-                    <Area type="monotone" dataKey="value" stroke={CHART_GREEN} strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card title={t('dashboard.recentActivity')} variant="default" noPadding>
-              <div className="divide-y divide-brand-border">
-                {!stats?.recentActivity?.length ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
-                    <CheckCircle2 size={32} className="text-brand-text-muted opacity-30" />
-                    <p className="text-sm font-bold text-brand-text-muted">{t('common.noData')}</p>
-                  </div>
-                ) : (
-                  stats.recentActivity.slice(0, 4).map((activity: any) => (
-                    <div key={activity.id} className="p-5 flex items-center gap-4 hover:bg-surface-subtle/60 transition-colors group cursor-pointer">
-                      <div className="w-11 h-11 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-900/10 text-brand-brand-green-dark flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                        <CheckCircle2 size={18} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main truncate group-hover:text-brand-brand-green-dark transition-colors">
-                          {activity.description || t('dashboard.newStudentRegistration')}
-                        </p>
-                        <p className="text-caption mt-0.5">
-                          {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : ''}
-                        </p>
-                      </div>
-                      <ChevronRight size={16} className="rtl:-scale-x-100 text-brand-text-muted shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="px-5 py-4 border-t border-brand-border bg-surface-subtle/50">
-                <Button variant="ghost" size="sm" className="w-full font-black text-xs uppercase tracking-widest" onClick={() => navigate('/notifications')}>
-                  {t('dashboard.viewAllActivity')}
-                </Button>
-              </div>
-            </Card>
-
-            <Card title={t('dashboard.systemStatus')} variant="default" noPadding>
-              <div className="p-6 flex flex-col items-center justify-center gap-4 min-h-[160px]">
-                <div className="p-4 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 border border-brand-primary-100 dark:border-brand-primary-900/20 flex items-center gap-3 w-full">
-                  <div className="w-2.5 h-2.5 rounded-full bg-brand-brand-green-dark animate-ping shrink-0" />
-                  <p className="text-xs font-black text-brand-brand-green-dark uppercase tracking-widest">{t('dashboard.allSystemsOperational')}</p>
-                </div>
-                <p className="text-xs text-brand-text-muted text-center font-medium">
-                  {t('dashboard.systemStatusNote') || 'Detailed metrics available to system administrators.'}
-                </p>
-              </div>
-            </Card>
+      {/* 2. Standalone Elevated Metrics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+        <div
+          onClick={() => navigate('/courses')}
+          className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-brand-text-muted">{isRTL ? 'المقررات الدراسية' : 'My Courses'}</p>
+            <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{stats?.counts?.myCourses || 0}</h3>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-brand-green-dark flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <BookOpen size={24} />
           </div>
         </div>
 
-        <div className="lg:col-span-4 xl:col-span-3 2xl:col-span-3 min-w-0 section-gap">
-          <Card title={t('dashboard.upcomingEvents')} variant="default" noPadding>
-            <div className="p-6 space-y-5">
-              {!stats?.upcomingEvents?.length ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
-                  <Calendar size={28} className="text-brand-text-muted opacity-30" />
-                  <p className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">{t('dashboard.noUpcomingEvents') || 'No upcoming events'}</p>
-                </div>
-              ) : (
-                stats.upcomingEvents.slice(0, 3).map((event: any) => {
-                  const d = new Date(event.date);
-                  return (
-                    <div key={event.id} className="flex gap-4 group cursor-pointer">
-                      <div className="flex flex-col items-center justify-center w-14 h-16 rounded-xl bg-surface-subtle border border-brand-border group-hover:bg-brand-brand-green-dark group-hover:border-brand-brand-green-dark transition-all duration-300">
-                        <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-none group-hover:text-white transition-colors">{d.getDate()}</span>
-                        <span className="text-[9px] font-black uppercase text-brand-text-secondary group-hover:text-white/80 transition-colors">{d.toLocaleString('default', { month: 'short' })}</span>
-                      </div>
-                      <div className="flex-1 pt-1">
-                        <h5 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight group-hover:text-brand-brand-green-dark transition-colors">{event.title}</h5>
-                        <p className="text-caption mt-1">{event.location || ''}</p>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </Card>
+        <div
+          onClick={() => navigate('/record')}
+          className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-brand-text-muted">{isRTL ? 'إجمالي الطلاب' : 'Total Students'}</p>
+            <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{stats?.counts?.totalStudents || 0}</h3>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-brand-navy-50 dark:bg-brand-navy-900/40 text-brand-navy-500 dark:text-brand-navy-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Users size={24} />
+          </div>
+        </div>
 
-          {stats?.latestAnnouncement && (
-            <Card variant="subtle" className="border-brand-accent-yellow/20">
-              <div className="flex gap-4">
-                <div className="p-3 bg-brand-accent-yellow/20 text-brand-accent-yellow rounded-xl h-fit shrink-0"><Bell size={18} /></div>
-                <div className="space-y-1.5">
-                  <h6 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight">{stats.latestAnnouncement.title || t('dashboard.examSchedulePublished')}</h6>
-                  <p className="text-xs text-brand-text-secondary font-medium leading-relaxed">{stats.latestAnnouncement.body || t('dashboard.examScheduleNote')}</p>
+        <div
+          onClick={() => navigate('/quizzes')}
+          className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-brand-text-muted">{isRTL ? 'الاختبارات المنجزة' : 'Total Quizzes'}</p>
+            <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{stats?.counts?.totalQuizzes || 0}</h3>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <ClipboardList size={24} />
+          </div>
+        </div>
+
+        <div
+          onClick={() => navigate('/tasks')}
+          className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-brand-text-muted">{isRTL ? 'الواجبات المعلقة' : 'Pending Tasks'}</p>
+            <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{stats?.counts?.pendingTasks || 0}</h3>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-brand-navy-50 dark:bg-brand-navy-900/40 text-brand-navy-600 dark:text-slate-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <FileText size={24} />
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Main Cohesive Container: Active Courses & Attendance Launcher */}
+      <div className="bg-surface-card rounded-3xl border border-brand-border p-6 shadow-card space-y-6">
+        <div className="flex items-center justify-between border-b border-brand-border pb-4">
+          <div>
+            <h2 className="text-lg font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+              <BookOpen size={20} className="text-brand-brand-green-dark" />
+              {isRTL ? 'المقررات الدراسية وجلسات الحضور' : 'Active Courses & Attendance'}
+            </h2>
+            <p className="text-xs text-brand-text-muted mt-0.5">
+              {isRTL ? 'إدارة مقرراتك الدراسية وبدء تسجيل الحضور المباشر للطلاب' : 'Manage active courses and start live attendance sessions'}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs font-bold text-brand-brand-green-dark hover:bg-brand-primary-50"
+            onClick={() => navigate('/courses')}
+          >
+            {isRTL ? 'إدارة جميع المقررات' : 'Manage All Courses'}
+          </Button>
+        </div>
+
+        {myCourses.length === 0 ? (
+          <div className="text-center py-12 text-brand-text-muted text-sm font-bold">
+            {isRTL ? 'لا توجد مقررات دراسية مسجلة حالياً' : 'No active courses currently assigned'}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {myCourses.map((course: any) => (
+              <div
+                key={course.id}
+                className="p-5 rounded-2xl bg-surface-subtle border border-brand-border hover:border-brand-brand-green/40 hover:shadow-md transition-all space-y-4"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <span className="px-2.5 py-0.5 rounded text-xs font-black bg-brand-primary-50 text-brand-brand-green-dark border border-brand-primary-200">
+                      {course.courseCode || 'MTR'}
+                    </span>
+                    <h3 className="text-base font-bold text-brand-text-primary dark:text-brand-text-main pt-1">
+                      {course.name}
+                    </h3>
+                  </div>
+                  <span className="text-xs font-semibold text-brand-text-muted bg-surface-card px-2.5 py-1 rounded-lg border border-brand-border">
+                    {course.credits ? `${course.credits} ${isRTL ? 'ساعات معتمدة' : 'Credits'}` : ''}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-4 text-xs font-medium text-brand-text-secondary">
+                  <span>{isRTL ? `الفرقة الدراسية: ${course.year || 1}` : `Year: ${course.year || 1}`}</span>
+                  <span>•</span>
+                  <span>{isRTL ? `الفصل: ${course.semester || 1}` : `Sem: ${course.semester || 1}`}</span>
+                </div>
+
+                <div className="pt-3 border-t border-brand-border flex items-center gap-3">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="flex-1 bg-brand-brand-green hover:bg-brand-brand-green-dark text-white font-bold text-xs py-2.5 shadow-sm flex items-center justify-center gap-2 border-0"
+                    onClick={() => navigate('/attendance')}
+                  >
+                    <QrCode size={15} /> {isRTL ? 'بدء تسجيل الحضور' : 'Start QR Session'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-brand-border hover:bg-surface-card font-bold text-xs py-2.5"
+                    onClick={() => navigate('/record')}
+                  >
+                    <Users size={15} /> {isRTL ? 'سجل الطلاب' : 'Student Roster'}
+                  </Button>
                 </div>
               </div>
-            </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 4. Secondary Cohesive Container: Today's Schedule & Upcoming Events */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Today's Schedule (8 cols) */}
+        <div className="lg:col-span-8 bg-surface-card rounded-3xl border border-brand-border p-6 shadow-card space-y-4">
+          <div className="flex items-center justify-between border-b border-brand-border pb-3">
+            <h3 className="text-base font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+              <Clock size={18} className="text-brand-brand-green-dark" />
+              {isRTL ? 'محاضرات ومواعيد اليوم' : "Today's Lectures"}
+            </h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs font-bold text-brand-text-muted"
+              onClick={() => navigate('/schedules/doctor')}
+            >
+              {isRTL ? 'الجدول الكامل' : 'Full Schedule'}
+            </Button>
+          </div>
+
+          {todaySchedule.length === 0 ? (
+            <div className="py-8 text-center space-y-2">
+              <CheckCircle2 size={32} className="mx-auto text-brand-brand-green-dark/60" />
+              <p className="text-xs font-bold text-brand-text-muted">
+                {isRTL ? 'لا توجد محاضرات مجدولة لهذا اليوم' : 'No lectures scheduled for today'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {todaySchedule.map((slot: any) => (
+                <div key={slot.id} className="p-4 rounded-xl bg-surface-subtle border border-brand-border flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="px-3 py-1.5 rounded-lg bg-brand-primary-50 text-brand-brand-green-dark font-bold text-xs">
+                      {slot.startTime} - {slot.endTime}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main">{slot.courseName}</h4>
+                      <p className="text-xs text-brand-text-muted">{slot.room} • {slot.slotType}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="bg-brand-brand-green hover:bg-brand-brand-green-dark text-white font-bold text-xs border-0"
+                    onClick={() => navigate('/attendance')}
+                  >
+                    <QrCode size={14} /> {isRTL ? 'حضور' : 'Attendance'}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Upcoming Exams (4 cols) */}
+        <div className="lg:col-span-4 bg-surface-card rounded-3xl border border-brand-border p-6 shadow-card space-y-4">
+          <div className="flex items-center justify-between border-b border-brand-border pb-3">
+            <h3 className="text-base font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+              <Calendar size={18} className="text-brand-accent-gold" />
+              {isRTL ? 'الاختبارات القادمة' : 'Upcoming Exams'}
+            </h3>
+            <Button variant="ghost" size="sm" className="text-xs font-bold text-brand-text-muted" onClick={() => navigate('/exams')}>
+              {isRTL ? 'عرض' : 'View'}
+            </Button>
+          </div>
+
+          {upcomingExams.length === 0 ? (
+            <div className="py-8 text-center text-xs font-bold text-brand-text-muted">
+              {isRTL ? 'لا توجد امتحانات قادمة' : 'No upcoming exams'}
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {upcomingExams.map((exam: any) => (
+                <div key={exam.id} className="p-3 rounded-xl bg-surface-subtle border border-brand-border flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center justify-center shrink-0">
+                    {new Date(exam.date).getDate()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main truncate">{exam.courseName}</p>
+                    <p className="text-[10px] text-brand-text-muted">{exam.type} • {exam.room}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>

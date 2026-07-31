@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import studentsService from '../../services/students.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { User, Mail, Lock, Phone, MapPin, Hash, AlertCircle, CheckCircle, School, GraduationCap, Calendar, Loader2, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -101,13 +101,13 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       const { collegeId, ...payload } = data;
       const result = await studentsService.createStudent(payload);
-      if (result.success) {
+      if (result && result.success) {
         onSuccess();
       } else {
-        showToast(result.message || t('students.createError'), 'error');
+        showToast(result?.message || t('students.createError'), 'error');
       }
-    } catch (error) {
-      showToast(error.response?.data?.message || t('students.createError'), 'error');
+    } catch (error: any) {
+      showToast(error?.message || error?.response?.data?.message || t('students.createError'), 'error');
     }
   };
 
@@ -281,14 +281,16 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
         <div className="mt-8 flex justify-end gap-3 border-t border-brand-border pt-6">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             onClick={onClose}
             disabled={isSubmitting}
+            className="btn-outline"
           >
             {t('common.cancel')}
           </Button>
           <Button
             type="submit"
+            variant="primary"
             disabled={isSubmitting}
             className="min-w-[140px]"
           >

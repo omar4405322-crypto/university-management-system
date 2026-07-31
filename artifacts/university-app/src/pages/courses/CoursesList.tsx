@@ -199,50 +199,45 @@ const CoursesList = () => {
         } : null}
       />
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total Courses Stat */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl flex flex-col gap-2 shadow-sm group hover:-translate-y-1 transition-all duration-300">
-          <div className="h-10 w-10 rounded-full bg-brand-primary-500/25 flex items-center justify-center shadow-[0_0_15px_rgba(132,189,58,0.45)] group-hover:shadow-[0_0_25px_rgba(132,189,58,0.65)] transition-shadow duration-300">
-            <BookOpen size={20} className="text-brand-primary-600" />
+      {/* Sleek Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+        {/* Total Courses */}
+        <div className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all">
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-brand-text-muted">{t('dashboard.totalCourses')}</p>
+            <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{total}</h3>
           </div>
-          <div className="mt-2">
-            <p className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">
-              {t('dashboard.totalCourses')}
-            </p>
-            <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main mt-1">
-              {total}
-            </h3>
+          <div className="w-12 h-12 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-brand-green-dark flex items-center justify-center shrink-0">
+            <BookOpen size={24} />
           </div>
         </div>
 
-        {/* Unassigned Courses Stat */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl flex flex-col gap-2 shadow-sm group hover:-translate-y-1 transition-all duration-300">
-          <div className="h-10 w-10 rounded-full bg-amber-500/25 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.45)] group-hover:shadow-[0_0_25px_rgba(245,158,11,0.65)] transition-shadow duration-300">
-            <AlertCircle size={20} className="text-amber-600" />
-          </div>
-          <div className="mt-2">
-            <p className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">
-              {t('courses.unassignedCourses')}
-            </p>
-            <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main mt-1">
-              {Array.isArray(courses) ? courses.filter(c => !(c.sections && c.sections.some((s: any) => s.doctor))).length : 0}
+        {/* Unassigned Courses */}
+        <div className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all">
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-brand-text-muted">{t('courses.unassignedCourses')}</p>
+            <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">
+              {Array.isArray(courses) ? courses.filter(c => {
+                const hasDoctor = (c.sections && c.sections.some((s: any) => s.doctor)) || (c.scheduleSlots && c.scheduleSlots.some((s: any) => s.doctor));
+                return !hasDoctor;
+              }).length : 0}
             </h3>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <AlertCircle size={24} />
           </div>
         </div>
 
-        {/* Total Students Stat */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl flex flex-col gap-2 shadow-sm group hover:-translate-y-1 transition-all duration-300">
-          <div className="h-10 w-10 rounded-full bg-blue-500/25 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.45)] group-hover:shadow-[0_0_25px_rgba(59,130,246,0.65)] transition-shadow duration-300">
-            <Users size={20} className="text-blue-600" />
-          </div>
-          <div className="mt-2">
-            <p className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">
-              {t('dashboard.totalStudents')}
-            </p>
-            <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main mt-1">
-              {Array.isArray(courses) ? courses.reduce((acc, c) => acc + (c._count?.students || 0), 0) : 0}
+        {/* Total Enrolled Students */}
+        <div className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all">
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-brand-text-muted">{t('dashboard.totalStudents')}</p>
+            <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">
+              {Array.isArray(courses) ? courses.reduce((acc, c) => acc + (c._count?.students || c._count?.enrollments || 0), 0) : 0}
             </h3>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-brand-navy-50 dark:bg-brand-navy-900/40 text-brand-navy-500 dark:text-brand-navy-300 flex items-center justify-center shrink-0">
+            <Users size={24} />
           </div>
         </div>
       </div>
@@ -255,32 +250,36 @@ const CoursesList = () => {
           searchPlaceholder={t('COURSES.SEARCHPLACEHOLDER')}
           onClear={search || selectedCollege || selectedDept || selectedYear || selectedSemester ? resetFilters : undefined}
         >
-          <select 
-            value={selectedCollege}
-            onChange={handleCollegeChange}
-            className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
-          >
-            <option value="">{t('colleges.allColleges')}</option>
-            {Array.isArray(colleges) && colleges.map(c => (
-              <option key={c.id} value={c.id}>
-                {isRTL ? c.nameAr || c.name : c.name}
-              </option>
-            ))}
-          </select>
+          {canManage && (
+            <>
+              <select 
+                value={selectedCollege}
+                onChange={handleCollegeChange}
+                className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
+              >
+                <option value="">{t('colleges.allColleges')}</option>
+                {Array.isArray(colleges) && colleges.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {isRTL ? c.nameAr || c.name : c.name}
+                  </option>
+                ))}
+              </select>
 
-          <select 
-            value={selectedDept}
-            onChange={(e) => { setSelectedDept(e.target.value); setPage(1); }}
-            disabled={!selectedCollege}
-            className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0 disabled:opacity-50"
-          >
-            <option value="">{t('departments.allDepartments')}</option>
-            {Array.isArray(departments) && departments.map(d => (
-              <option key={d.id} value={d.id}>
-                {isRTL ? d.nameAr || d.name : d.name}
-              </option>
-            ))}
-          </select>
+              <select 
+                value={selectedDept}
+                onChange={(e) => { setSelectedDept(e.target.value); setPage(1); }}
+                disabled={!selectedCollege}
+                className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0 disabled:opacity-50"
+              >
+                <option value="">{t('departments.allDepartments')}</option>
+                {Array.isArray(departments) && departments.map(d => (
+                  <option key={d.id} value={d.id}>
+                    {isRTL ? d.nameAr || d.name : d.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
 
           <select 
             value={selectedYear}
@@ -363,7 +362,18 @@ const CoursesList = () => {
                           <TableRow key={course.id} className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                             <TableCell hideOnMobile className="font-black text-brand-navy-500 dark:text-brand-primary-500 tracking-widest text-xs uppercase">{course.courseCode}</TableCell>
                             <TableCell className="font-medium text-brand-text-primary dark:text-brand-text-main tracking-tight">
-                              <TruncatedText text={course.name} />
+                              <div className="flex items-center gap-2">
+                                <TruncatedText text={course.name} />
+                                {course.isPublished !== false ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/50 shrink-0">
+                                    منشور 🟢
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/50 shrink-0">
+                                    مسودة 🔴
+                                  </span>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell hideOnMobile className="label-stat max-w-[150px]">
                               <TruncatedText text={isRTL ? course.department?.nameAr || course.department?.name : course.department?.name} />
@@ -382,8 +392,9 @@ const CoursesList = () => {
                             </TableCell>
                             <TableCell>
                               {(() => {
-                                const uniqueDoctors = course.sections
-                                  ? Array.from(new Map(course.sections.filter((s: any) => s.doctor).map((s: any) => [s.doctor.id, s.doctor])).values())
+                                const slots = course.sections || course.scheduleSlots || [];
+                                const uniqueDoctors = slots
+                                  ? Array.from(new Map(slots.filter((s: any) => s.doctor).map((s: any) => [s.doctor.id, s.doctor])).values())
                                   : [];
                                 
                                 if (uniqueDoctors.length > 0) {
@@ -391,8 +402,8 @@ const CoursesList = () => {
                                     <div className="flex flex-col gap-1.5">
                                       {(uniqueDoctors as any[]).map((doc: any) => (
                                         <div key={doc.id} className="flex items-center gap-2">
-                                          <div className="w-6 h-6 rounded-md bg-brand-primary-55 dark:bg-brand-primary-900/10 text-brand-primary-600 flex items-center justify-center text-[9px] font-black shadow-inner shrink-0">
-                                            {doc.firstName[0]}
+                                          <div className="w-6 h-6 rounded-md bg-brand-primary-50 text-brand-brand-green-dark flex items-center justify-center text-[9px] font-black shadow-inner shrink-0">
+                                            {doc.firstName ? doc.firstName[0] : 'D'}
                                           </div>
                                           <span className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main text-start whitespace-nowrap truncate max-w-[120px]">
                                             {doc.firstName} {doc.lastName}
@@ -412,18 +423,20 @@ const CoursesList = () => {
                               })()}
                             </TableCell>
                             <TableCell hideOnMobile className="text-center">
-                              <Badge variant="info" className="font-black text-[10px]">{course._count.students}</Badge>
+                              <Badge variant="info" className="font-black text-[10px]">{course._count?.students ?? course._count?.enrollments ?? 0}</Badge>
                             </TableCell>
                             <TableCell>
                               <ActionMenu actions={[
                                 { label: t('common.view'), icon: Eye, variant: 'view', onClick: () => navigate(`/courses/${course.id}`) },
-                                { label: t('common.edit'), icon: Edit2, variant: 'edit', onClick: () => { setSelectedCourse(course); setIsModalOpen(true); } },
-                                {
-                                  label: t('common.delete'),
-                                  icon: Trash2,
-                                  variant: 'delete',
-                                  onClick: () => setDeleteTarget({ id: course.id, name: course.name }),
-                                },
+                                ...(canManage ? [
+                                  { label: t('common.edit'), icon: Edit2, variant: 'edit', onClick: () => { setSelectedCourse(course); setIsModalOpen(true); } },
+                                  {
+                                    label: t('common.delete'),
+                                    icon: Trash2,
+                                    variant: 'delete',
+                                    onClick: () => setDeleteTarget({ id: course.id, name: course.name }),
+                                  },
+                                ] : [])
                               ]} />
                             </TableCell>
                           </TableRow>

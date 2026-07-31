@@ -40,12 +40,14 @@ export const startRiskDetectionJob = (): void => {
         if (batch.length === 0) break;
 
         for (const student of batch) {
-          // 1. Calculate Attendance Rate
+          // 1. Calculate Attendance Rate (unified formula — EXCUSED removed from denominator)
           const totalClasses = student.attendance.length;
+          const excusedCount = student.attendance.filter((a: any) => a.status === 'EXCUSED').length;
+          const countedTotal = Math.max(0, totalClasses - excusedCount);
           const presentClasses = student.attendance.filter(
             (a: any) => a.status === 'PRESENT' || a.status === 'LATE'
           ).length;
-          const attendanceRate = totalClasses > 0 ? (presentClasses / totalClasses) * 100 : 100;
+          const attendanceRate = countedTotal > 0 ? (presentClasses / countedTotal) * 100 : 100;
 
           // 2. Calculate Average Quiz Score
           const quizScores = student.quizSubmissions

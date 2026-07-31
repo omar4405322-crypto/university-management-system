@@ -15,7 +15,9 @@ function toBase26(num: number): string {
 export const autoDivideStudents = async (req: Request, res: Response) => {
   try {
     const departmentId = parseInt(req.params.departmentId as string);
-    let { numberOfGroups, maxGroupSize, confirmed } = req.body || {};
+    let { numberOfGroups, maxGroupSize, confirmed, year } = req.body || {};
+    
+    const academicYear = year ? parseInt(year) : 1;
 
     if (isNaN(departmentId)) return res.status(400).json({ success: false, message: 'Invalid department ID' });
     if ((!numberOfGroups && !maxGroupSize) || (numberOfGroups && maxGroupSize)) {
@@ -26,32 +28,32 @@ export const autoDivideStudents = async (req: Request, res: Response) => {
     if (!department) return res.status(404).json({ success: false, message: 'Department not found' });
 
     const students = await prisma.student.findMany({
-      where: { departmentId, isActive: true },
+      where: { departmentId, year: academicYear, isActive: true },
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }]
     });
 
-    if (students.length === 0) return res.status(400).json({ success: false, message: 'No active students found in this department' });
+    if (students.length === 0) return res.status(400).json({ success: false, message: `No active students found in this department for year ${academicYear}` });
 
     if (maxGroupSize) {
       numberOfGroups = Math.ceil(students.length / maxGroupSize);
     }
 
     // Check if we need confirmation for overwriting existing tree
-    const existingGroups = await prisma.studentGroup.findMany({ where: { departmentId, parentGroupId: null } });
+    const existingGroups = await prisma.studentGroup.findMany({ where: { departmentId, year: academicYear, parentGroupId: null } });
     if (existingGroups.length > 0 && !confirmed) {
-      return res.json({ success: true, requiresConfirmation: true, message: 'This will overwrite existing groups. Confirm to proceed.' });
+      return res.json({ success: true, requiresConfirmation: true, message: 'This will overwrite existing groups for this year. Confirm to proceed.' });
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.student.updateMany({ where: { departmentId }, data: { groupId: null } });
-      await tx.scheduleSlot.updateMany({ where: { group: { departmentId } }, data: { groupId: null } });
-      await tx.studentGroup.updateMany({ where: { departmentId }, data: { parentGroupId: null } });
-      await tx.studentGroup.deleteMany({ where: { departmentId } });
+      await tx.student.updateMany({ where: { departmentId, year: academicYear }, data: { groupId: null } });
+      await tx.scheduleSlot.updateMany({ where: { group: { departmentId, year: academicYear } }, data: { groupId: null } });
+      await tx.studentGroup.updateMany({ where: { departmentId, year: academicYear }, data: { parentGroupId: null } });
+      await tx.studentGroup.deleteMany({ where: { departmentId, year: academicYear } });
 
       const groups = [];
       for (let i = 0; i < numberOfGroups; i++) {
         groups.push(await tx.studentGroup.create({
-          data: { name: toBase26(i), departmentId }
+          data: { name: toBase26(i), departmentId, year: academicYear }
         }));
       }
 
@@ -207,9 +209,12 @@ export const deleteGroup = async (req: Request, res: Response) => {
 export const getGroupsByDepartment = async (req: Request, res: Response) => {
   try {
     const departmentId = parseInt(req.params.departmentId as string);
+    // year is optional — if not provided, return groups for all years
+    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+
     if (isNaN(departmentId)) return res.status(400).json({ success: false, message: 'Invalid department ID' });
 
-    const tree = await StudentGroupsService.getDepartmentGroupTree(departmentId);
+    const tree = await StudentGroupsService.getDepartmentGroupTree(departmentId, year as number);
     return res.json({ success: true, data: tree });
   } catch (error) {
     logger.error('Error fetching student groups: ' + (error as Error).message);

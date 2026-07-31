@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import studentsService from '../../services/students.service';
 import paymentsService from '../../services/payments.service';
 import { Search, AlertCircle, Loader2, DollarSign, Calendar, FileText, User } from 'lucide-react';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import Modal from '../../components/ui/Modal';
 import { useTranslation } from 'react-i18next';

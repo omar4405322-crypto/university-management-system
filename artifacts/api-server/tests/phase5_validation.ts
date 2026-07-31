@@ -14,7 +14,7 @@ function createMockRes() {
 
 async function runTests() {
   console.log("=== Running Phase 5 Validation Tests ===\n");
-  
+
   // Clean up
   await prisma.scheduleSlot.deleteMany({});
   await prisma.student.deleteMany({});
@@ -29,13 +29,13 @@ async function runTests() {
   // Create 600 students
   const studentsToInsert = Array.from({ length: 600 }).map((_, i) => ({
     userId: i + 1000,
-    firstName: `Student${String.fromCharCode(65 + (i % 26))}`, 
+    firstName: `Student${String.fromCharCode(65 + (i % 26))}`,
     lastName: `Last${i.toString().padStart(3, '0')}`,
     studentId: `S${i}`,
     departmentId: dept.id
   }));
   studentsToInsert.sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`));
-  
+
   await prisma.user.createMany({
     data: studentsToInsert.map(s => ({ id: s.userId, email: `s${s.userId}@test.com`, password: 'pw' }))
   });
@@ -47,7 +47,7 @@ async function runTests() {
   let res = createMockRes();
   await autoDivideStudents(req, res);
   console.log("Result:", res.data);
-  
+
   let groups = await prisma.studentGroup.findMany({ where: { departmentId: dept.id }, include: { _count: { select: { students: true } } }, orderBy: { name: 'asc' } });
   console.log("Groups created:", groups.map(g => `${g.name}: ${g._count.students} students`).join(', '));
   console.log("Alphabetical correctness:", groups.map(g => `${g.name} (${g.rangeStartName} - ${g.rangeEndName})`).join(' | '));
@@ -58,7 +58,7 @@ async function runTests() {
   res = createMockRes();
   await autoDivideStudents(req, res);
   console.log("Result:", res.data);
-  
+
   groups = await prisma.studentGroup.findMany({ where: { departmentId: dept.id }, include: { _count: { select: { students: true } } }, orderBy: { name: 'asc' } });
   console.log("Groups created:", groups.map(g => `${g.name}: ${g._count.students} students`).join(', '));
 
@@ -69,10 +69,10 @@ async function runTests() {
   res = createMockRes();
   await splitGroup(req, res);
   console.log("Result:", res.data);
-  
+
   const afterSplitGroupA = await prisma.studentGroup.findUnique({ where: { id: groupA!.id }, include: { _count: { select: { students: true } } } });
   const subgroupsOfA = await prisma.studentGroup.findMany({ where: { parentGroupId: groupA!.id }, include: { _count: { select: { students: true } } }, orderBy: { name: 'asc' } });
-  
+
   console.log(`Group A direct students: ${afterSplitGroupA!._count.students}`);
   console.log("Subgroups of A:", subgroupsOfA.map(g => `${g.name}: ${g._count.students} students`).join(', '));
 
@@ -91,7 +91,7 @@ async function runTests() {
   await prisma.scheduleSlot.create({
     data: { courseId: course.id, groupId: groupC!.id, dayOfWeek: 'Monday', startTime: '08:00', endTime: '10:00', slotType: 'SECTION', slotType: 'LECTURE' }
   });
-  
+
   req = { params: { groupId: groupC!.id.toString() }, body: { numberOfSubgroups: 2 } };
   res = createMockRes();
   await splitGroup(req, res);
@@ -109,12 +109,12 @@ async function runTests() {
   const newUserBefore = await prisma.user.create({ data: { email: 'before@test.com', password: 'pw' } });
   const beforeStudent = await prisma.student.create({ data: { userId: newUserBefore.id, firstName: 'AAAAA', lastName: 'Test', studentId: 'S_BEFORE', departmentId: dept.id } });
   await StudentGroupsService.assignStudentToGroup(beforeStudent);
-  
+
   // A new student falling after the last range
   const newUserAfter = await prisma.user.create({ data: { email: 'after@test.com', password: 'pw' } });
   const afterStudent = await prisma.student.create({ data: { userId: newUserAfter.id, firstName: 'ZZZZZ', lastName: 'Test', studentId: 'S_AFTER', departmentId: dept.id } });
   await StudentGroupsService.assignStudentToGroup(afterStudent);
-  
+
   // A new student falling inside A2's range
   const newUserMiddle = await prisma.user.create({ data: { email: 'mid@test.com', password: 'pw' } });
   const midStudent = await prisma.student.create({ data: { userId: newUserMiddle.id, firstName: 'StudentB', lastName: 'Last005', studentId: 'S_MID', departmentId: dept.id } });
@@ -123,7 +123,7 @@ async function runTests() {
   const beforeCheck = await prisma.student.findUnique({ where: { id: beforeStudent.id }, include: { group: true } });
   const afterCheck = await prisma.student.findUnique({ where: { id: afterStudent.id }, include: { group: true } });
   const midCheck = await prisma.student.findUnique({ where: { id: midStudent.id }, include: { group: true } });
-  
+
   console.log("Student Before assigned to:", beforeCheck?.group?.name);
   console.log("Student After assigned to:", afterCheck?.group?.name);
   console.log("Student Middle assigned to:", midCheck?.group?.name);
@@ -139,7 +139,7 @@ async function runTests() {
   console.log("\nTest 8: computeAttendees on root vs leaf");
   const attendeesRoot = await StudentGroupsService.computeAttendees(groupA!.id);
   const attendeesLeaf = await StudentGroupsService.computeAttendees(subgroupsOfA[0].id);
-  
+
   console.log("Attendees for Group A (Root):", attendeesRoot.length);
   console.log("Attendees for Group A1 (Leaf):", attendeesLeaf.length);
 

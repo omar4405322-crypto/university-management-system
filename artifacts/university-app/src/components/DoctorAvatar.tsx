@@ -7,17 +7,17 @@ const sizeClasses = {
   table: 'w-11 h-11 text-sm',
 };
 
-const _getInitials = (name) => {
+const _getInitials = (name?: string) => {
   if (!name || !name.trim()) return '?';
   return name
     .trim()
     .split(/\s+/)
     .slice(0, 2)
-    .map((word) => word.charAt(0).toUpperCase())
+    .map((word: string) => word.charAt(0).toUpperCase())
     .join('');
 };
 
-const _getAvatarColor = (name) => {
+const _getAvatarColor = (name?: string) => {
   const colors = [
     'bg-lime-600',
     'bg-emerald-600',
@@ -30,16 +30,21 @@ const _getAvatarColor = (name) => {
   return colors[index];
 };
 
-const resolveImageUrl = (imageUrl) => {
-  if (!imageUrl || typeof imageUrl !== 'string') return null;
-  const trimmed = imageUrl.trim();
-  if (!trimmed || trimmed.length < 4) return null;
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-  if (trimmed.startsWith('/')) return trimmed;
-  return `/${trimmed.replace(/^\//, '')}`;
+const resolveImageUrl = (imageUrl?: string) => {
+  if (!imageUrl) return null;
+  if (imageUrl.startsWith('http')) return imageUrl;
+  if (imageUrl.startsWith('/')) return `http://localhost:5000${imageUrl}`;
+  return `http://localhost:5000/${imageUrl}`;
 };
 
-const DoctorAvatar = ({ name, imageUrl, size = 'md', className = '' }) => {
+interface DoctorAvatarProps {
+  name?: string;
+  imageUrl?: string;
+  size?: 'sm' | 'md' | 'lg' | 'table';
+  className?: string;
+}
+
+const DoctorAvatar = ({ name, imageUrl, size = 'md', className = '' }: DoctorAvatarProps) => {
   const [imgError, setImgError] = useState(false);
   const resolvedUrl = resolveImageUrl(imageUrl);
   const roundedClass = size === 'table' ? 'rounded-2xl' : 'rounded-full';

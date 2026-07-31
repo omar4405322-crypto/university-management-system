@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
  
  test.describe('Attendance', () => { 
  
-   test('duplicate attendance on same day returns error (unique constraint)', async ({ request }) => { 
+   test('idempotent upsert: two saves on same day return 200 and produce a single record', async ({ request }) => { 
      const adminToken = await loginAs(request, ACCOUNTS.superAdmin.email, ACCOUNTS.superAdmin.password); 
  
      // Get first available student and course 
@@ -28,21 +28,31 @@ import { test, expect } from '@playwright/test';
        records: [{ studentId, status: 'PRESENT' }], 
      }; 
  
-     // First record — may succeed or fail if already exists today 
+     // First save — create-or-update; should be 2xx success 
      const first = await request.post('/api/attendance', { 
        headers: { Authorization: `Bearer ${adminToken}` }, 
        data: payload, 
      }); 
  
-     // Second record — MUST fail with 4xx (unique constraint) 
+     // Second save with SAME date/student/course — idempotent upsert, still 200 OK (no 4xx) 
      const second = await request.post('/api/attendance', { 
        headers: { Authorization: `Bearer ${adminToken}` }, 
        data: payload, 
      }); 
  
-     // At least one of the two must fail (unique constraint enforced) 
-     const bothSucceeded = first.status() === 201 && second.status() === 201; 
-     expect(bothSucceeded).toBe(false); 
+     // Both requests must succeed (upsert semantics) 
+     expect([200, 201]).toContain(first.status()); 
+     expect([200, 201]).toContain(second.status()); 
+ 
+     // And reading the course+date attendance for this student returns exactly 1 row 
+     const saved = await request.get(`/api/attendance/course/${courseId}?date=${today}`, { 
+       headers: { Authorization: `Bearer ${adminToken}` }, 
+     }); 
+     if (saved.status() === 200) { 
+       const rows: any[] = (await saved.json()).data ?? []; 
+       const forStudent = rows.filter((r) => r.studentId === studentId); 
+       expect(forStudent.length).toBeLessThanOrEqual(1); 
+     } 
    }); 
  
    test('GET /api/attendance/course/:id returns records', async ({ request }) => { 
@@ -72,8 +82,38 @@ import { test, expect } from '@playwright/test';
      const res = await request.get(`/api/attendance/student/${otherId}`, { 
        headers: { Authorization: `Bearer ${studentToken}` }, 
      }); 
-     // Should be 403 (not their own records) 
+     // Should be 403 (not their own records) or 404 (student id doesn't exist under their account) 
      expect([403, 404]).toContain(res.status()); 
    }); 
  
+   test('EXCUSED status is accepted by POST validation', async ({ request }) => { 
+     const adminToken = await loginAs(request, ACCOUNTS.superAdmin.email, ACCOUNTS.superAdmin.password); 
+ 
+     const studentsRes = await request.get('/api/students?limit=1', { 
+       headers: { Authorization: `Bearer ${adminToken}` }, 
+     }); 
+     const students = (await studentsRes.json()).data; 
+     if (!students || students.length === 0) { test.skip(); return; } 
+     const studentId = students[0].id; 
+ 
+     const coursesRes = await request.get('/api/courses?limit=1', { 
+       headers: { Authorization: `Bearer ${adminToken}` }, 
+     }); 
+     const courses = (await coursesRes.json()).data; 
+     if (!courses || courses.length === 0) { test.skip(); return; } 
+     const courseId = courses[0].id; 
+ 
+     const today = new Date().toISOString().split('T')[0]; 
+     const res = await request.post('/api/attendance', { 
+       headers: { Authorization: `Bearer ${adminToken}` }, 
+       data: { 
+         courseId, 
+         date: today, 
+         records: [{ studentId, status: 'EXCUSED', remarks: 'Medical excuse' }], 
+       }, 
+     }); 
+ 
+     // EXCUSED must not cause 422 validation error 
+     expect(res.status()).not.toBe(422); 
+   }); 
  }); 

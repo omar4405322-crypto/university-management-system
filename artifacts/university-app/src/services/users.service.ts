@@ -19,7 +19,11 @@ const getUsers = async (params: Record<string, unknown> = {}) => {
 
 const createAdmin = (data?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post('/users/admins', data));
 
-const deleteUser = (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/users/${id}`));
+const updateAdmin = (id: string | number, data?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/users/${id}`, data));
+
+const resetPassword = (id: string | number, data?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.patch(`/users/${id}/reset-password`, data));
+
+const deleteUser = (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/users/${id}`));
 
 const usersService = {
   getProfile,
@@ -27,6 +31,8 @@ const usersService = {
   updatePassword,
   getUsers,
   createAdmin,
+  updateAdmin,
+  resetPassword,
   deleteUser,
 };
 

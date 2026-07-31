@@ -436,3 +436,55 @@ export const hardDeleteUser = catchAsync(async (req: Request, res: Response, nex
   auditLog('HARD_DELETE_USER', 'User', req.params.id as string, req);
   return res.json({ success: true, message: 'User hard-deleted successfully' });
 });
+
+export const updateAdmin = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params;
+  const { email, role, managedCollegeId, managedDepartmentId } = req.body;
+
+  const data: any = {};
+  if (email) data.email = email;
+  if (role) data.role = role;
+
+  data.managedCollegeId =
+    (role === 'COLLEGE_ADMIN' || role === 'ADMIN') && managedCollegeId
+      ? parseInt(managedCollegeId as string)
+      : null;
+  data.managedDepartmentId =
+    role === 'DEPARTMENT_ADMIN' && managedDepartmentId
+      ? parseInt(managedDepartmentId as string)
+      : null;
+
+  const updatedAdmin = await prisma.user.update({
+    where: { id: parseInt(id as string) },
+    data,
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      createdAt: true,
+      managedCollegeId: true,
+      managedDepartmentId: true,
+    },
+  });
+
+  auditLog('UPDATE_ADMIN', 'User', id as string, req);
+  return res.json({ success: true, data: updatedAdmin });
+});
+
+export const resetUserPassword = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params;
+  const { newPassword } = req.body;
+
+  if (!newPassword || newPassword.length < 6) {
+    return next(new AppError('Password must be at least 6 characters long', 400));
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({
+    where: { id: parseInt(id as string) },
+    data: { password: hashedPassword },
+  });
+
+  auditLog('RESET_USER_PASSWORD', 'User', id as string, req);
+  return res.json({ success: true, message: 'Password reset successfully' });
+});

@@ -14,6 +14,8 @@ const schedulesService = {
   deleteSchedule: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/schedules/${id}`)),
 
   syncGrid: (data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post('/schedules/sync-grid', data)),
+
+  checkConflict: (data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post('/schedules/check-conflict', data)),
 };
 
 export default schedulesService;

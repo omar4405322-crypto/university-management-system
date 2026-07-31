@@ -18,7 +18,8 @@ export const updateRoomCoordinates = catchAsync(async (req: Request, res: Respon
     return next(new AppError('Latitude and longitude must be valid numbers', 400));
   }
 
-  const roomId = parseInt(id);
+  const rawId = Array.isArray(id) ? id[0] : id;
+  const roomId = parseInt(rawId);
 
   // Ownership check for doctors
   if (req.user!.role === 'DOCTOR') {

@@ -61,6 +61,7 @@ export const getScopeWhere = (
   // DOCTOR: scoped to the sections they teach
   if (user.role === 'DOCTOR' && user.doctor?.id) {
     if (entity === 'course') return { scheduleSlots: { some: { doctorId: user.doctor.id } } };
+    if (entity === 'exam') return { course: { scheduleSlots: { some: { doctorId: user.doctor.id } } } };
     if (entity === 'timetable') return { doctorId: user.doctor.id }; // ScheduleSlot entity
     return { id: -1 }; // Doctors shouldn't query departments/students universally without scope
   }
@@ -73,6 +74,19 @@ export const getScopeWhere = (
 
   // STUDENT: scoped to their department and year OR explicit enrollments
   if (user.role === 'STUDENT' && user.student) {
+    if (entity === 'exam') {
+      return {
+        course: {
+          OR: [
+            {
+              departmentId: user.student.departmentId,
+              year: user.student.year,
+            },
+            { enrollments: { some: { studentId: user.student.id } } },
+          ],
+        },
+      };
+    }
     if (entity === 'course') return {
       OR: [
         { 

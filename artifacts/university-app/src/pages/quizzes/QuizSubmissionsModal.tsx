@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Eye, User, Calendar, Award } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import quizService from '../../services/quiz.service';
 import { logger } from '../../lib/logger';

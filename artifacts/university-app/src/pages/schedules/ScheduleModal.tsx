@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { X, Clock, MapPin, BookOpen, Calendar, AlertCircle, Users, User, Building2, GraduationCap } from 'lucide-react';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import schedulesService from '../../services/schedules.service';
 import studentGroupsService from '../../services/studentGroups.service';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
@@ -20,7 +20,7 @@ import { notifyScheduleChange } from '../../utils/scheduleSync';
 
 const schema = z.object({
   courseId: z.string().min(1, 'Course is required'),
-  groupId: z.string().min(1, 'Group is required'),
+  groupId: z.string().optional(), // empty string means 'All Students' (department-wide)
   doctorId: z.string().min(1, 'Doctor is required'),
   slotType: z.string().min(1, 'Slot Type is required'),
   teachingAssistantId: z.string().optional(),
@@ -46,6 +46,8 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
   const [fetchedCourses, setFetchedCourses] = useState([]);
   const [selectedCollegeId, setSelectedCollegeId] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
   
   const [groups, setGroups] = useState([]);
   const [tas, setTas] = useState([]);
@@ -121,6 +123,8 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
   const handleCollegeChange = (collegeId: string) => {
     setSelectedCollegeId(collegeId);
     setSelectedDepartmentId('');
+    setSelectedYear('');
+    setSelectedSemester('');
     setValue('courseId', '');
     setValue('groupId', '');
     setValue('doctorId', '');
@@ -130,34 +134,56 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
   // When department selection changes
   const handleDepartmentChange = (departmentId: string) => {
     setSelectedDepartmentId(departmentId);
+    setSelectedYear('');
+    setSelectedSemester('');
     setValue('courseId', '');
     setValue('groupId', '');
     setValue('doctorId', '');
     
     if (departmentId) {
       setLoadingGroups(true);
-      studentGroupsService.getDepartmentGroups(departmentId)
+      // Pass selectedYear if already chosen; defaults to undefined (backend fetches all years)
+      const yearParam = selectedYear ? parseInt(selectedYear) : undefined;
+      studentGroupsService.getDepartmentGroups(departmentId, yearParam)
         .then(res => {
           if (res.success) {
-            setGroups(res.data?.groups || res.data || []);
+            // Backend returns a tree array directly in res.data
+            const rawGroups = Array.isArray(res.data) ? res.data : res.data?.groups || [];
+            // Flatten tree: include root groups and all their children
+            const flattenGroups = (nodes: any[]): any[] =>
+              nodes.flatMap((n: any) => [n, ...flattenGroups(n.children || [])]);
+            setGroups(flattenGroups(rawGroups));
           }
         })
         .catch(err => console.error('Failed to load groups', err))
         .finally(() => setLoadingGroups(false));
-
-      // Fetch courses for department directly
-      coursesService.getCourses({ departmentId })
-        .then(res => {
-          if (res.success) {
-            const list = Array.isArray(res.data) ? res.data : res.data?.data?.courses || res.data?.courses || res.data?.data || [];
-            if (list.length > 0) setFetchedCourses(list);
-          }
-        })
-        .catch(() => {});
     } else {
       setGroups([]);
     }
   };
+
+  // Fetch courses dynamically whenever Department, Academic Year, or Semester changes
+  useEffect(() => {
+    if (!selectedDepartmentId) {
+      setFetchedCourses([]);
+      return;
+    }
+
+    setLoadingCourses(true);
+    const params: any = { departmentId: selectedDepartmentId };
+    if (selectedYear) params.year = selectedYear;
+    if (selectedSemester) params.semester = selectedSemester;
+
+    coursesService.getCourses(params)
+      .then(res => {
+        if (res.success) {
+          const list = Array.isArray(res.data) ? res.data : res.data?.data?.courses || res.data?.courses || res.data?.data || [];
+          setFetchedCourses(list);
+        }
+      })
+      .catch(err => console.error('Failed to load courses', err))
+      .finally(() => setLoadingCourses(false));
+  }, [selectedDepartmentId, selectedYear, selectedSemester]);
 
   // Filter departments based on selected College
   const availableDepartments = useMemo(() => {
@@ -177,25 +203,19 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
     });
     const allUnique = Array.from(uniqueMap.values());
 
-    if (!selectedDepartmentId && !selectedCollegeId) {
-      return allUnique;
-    }
-
-    const filtered = allUnique.filter((c: any) => {
+    return allUnique.filter((c: any) => {
       const deptId = c.departmentId ?? c.department?.id;
       const colId = c.collegeId ?? c.department?.collegeId ?? c.department?.college?.id;
+      const yr = (c.year || 1).toString();
+      const sem = (c.semester || 1).toString();
 
-      if (selectedDepartmentId && deptId) {
-        if (deptId.toString() !== selectedDepartmentId.toString()) return false;
-      }
-      if (selectedCollegeId && colId) {
-        if (colId.toString() !== selectedCollegeId.toString()) return false;
-      }
+      if (selectedDepartmentId && deptId && deptId.toString() !== selectedDepartmentId.toString()) return false;
+      if (selectedCollegeId && colId && colId.toString() !== selectedCollegeId.toString()) return false;
+      if (selectedYear && yr !== selectedYear.toString()) return false;
+      if (selectedSemester && sem !== selectedSemester.toString()) return false;
       return true;
     });
-
-    return filtered.length > 0 ? filtered : allUnique;
-  }, [courses, fetchedCourses, selectedCollegeId, selectedDepartmentId]);
+  }, [courses, fetchedCourses, selectedCollegeId, selectedDepartmentId, selectedYear, selectedSemester]);
 
   const collegeOptions: SelectOption[] = useMemo(() => {
     return colleges.map((c: any) => ({
@@ -216,13 +236,17 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
       const code = course.code || course.courseCode ? `${course.code || course.courseCode} - ` : '';
       const name = isRTL ? course.nameAr || course.name : course.name;
       const deptName = course.department ? (isRTL ? course.department.nameAr || course.department.name : course.department.name) : '';
+      const yearText = `${t('common.year', 'Year')} ${course.year || 1}`;
+      const semText = `${t('schedule.sem', 'Sem')} ${course.semester || 1}`;
+      const metaInfo = `${yearText} • ${semText}${deptName ? ` • ${deptName}` : ''}`;
+      
       return {
         value: course.id.toString(),
         label: `${code}${name}`,
-        sublabel: deptName
+        sublabel: metaInfo
       };
     });
-  }, [availableCourses, isRTL]);
+  }, [availableCourses, isRTL, t]);
 
   // Fetch groups when courseId changes directly
   useEffect(() => {
@@ -234,17 +258,21 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
 
     const departmentId = (course.departmentId || course.department?.id)?.toString();
     const collegeId = (course.collegeId || course.department?.collegeId || course.department?.college?.id)?.toString();
+    const courseYear = course.year ? parseInt(course.year) : undefined;
 
     if (collegeId && !selectedCollegeId) {
       setSelectedCollegeId(collegeId);
     }
-    if (departmentId && !selectedDepartmentId) {
-      setSelectedDepartmentId(departmentId);
+    if (departmentId) {
+      if (!selectedDepartmentId) setSelectedDepartmentId(departmentId);
       setLoadingGroups(true);
-      studentGroupsService.getDepartmentGroups(departmentId)
+      studentGroupsService.getDepartmentGroups(departmentId, courseYear)
         .then(res => {
           if (res.success) {
-            setGroups(res.data?.groups || res.data || []);
+            const rawGroups = Array.isArray(res.data) ? res.data : res.data?.groups || [];
+            const flattenGroups = (nodes: any[]): any[] =>
+              nodes.flatMap((n: any) => [n, ...flattenGroups(n.children || [])]);
+            setGroups(flattenGroups(rawGroups));
           }
         })
         .catch(err => console.error('Failed to load groups', err))
@@ -294,7 +322,8 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
     const payload = {
       ...data,
       courseId: parseInt(data.courseId),
-      groupId: parseInt(data.groupId),
+      // Empty groupId means 'All Students' — send null for a department-wide slot
+      groupId: data.groupId ? parseInt(data.groupId) : null,
       doctorId: parseInt(data.doctorId),
       slotType: data.slotType,
       teachingAssistantId: data.teachingAssistantId ? parseInt(data.teachingAssistantId) : null
@@ -373,10 +402,53 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
                 onChange={handleDepartmentChange}
                 placeholder={loadingDepts ? t('common.loading', 'Loading...') : t('timetables.selectDept', 'Select Department')}
                 searchPlaceholder={t('common.searchDept', 'ابحث باسم القسم...')}
-                disabled={loadingDepts || !!schedule}
+                disabled={!selectedCollegeId || loadingDepts || !!schedule}
                 isRTL={isRTL}
                 icon={<GraduationCap size={16} />}
               />
+            </div>
+          </div>
+
+          {/* ── Academic Year & Semester Selectors ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+                <Calendar size={14} className="text-slate-400" /> {t('auth.year', 'Academic Year')}
+              </label>
+              <select
+                value={selectedYear}
+                disabled={!selectedDepartmentId}
+                onChange={(e) => {
+                  setSelectedYear(e.target.value);
+                  setValue('courseId', '');
+                }}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">{t('common.allYears', 'جميع السنوات الدراسية')}</option>
+                {[1, 2, 3, 4, 5].map(y => (
+                  <option key={y} value={y.toString()}>{t('common.year', 'Year')} {y}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+                <Clock size={14} className="text-slate-400" /> {t('schedule.semester', 'Semester')}
+              </label>
+              <select
+                value={selectedSemester}
+                disabled={!selectedDepartmentId}
+                onChange={(e) => {
+                  setSelectedSemester(e.target.value);
+                  setValue('courseId', '');
+                }}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">{t('schedule.allSemesters', 'جميع الفصول الدراسية')}</option>
+                <option value="1">{t('schedule.semester1', 'Semester 1')}</option>
+                <option value="2">{t('schedule.semester2', 'Semester 2')}</option>
+                <option value="3">{t('schedule.semester3', 'Summer')}</option>
+              </select>
             </div>
           </div>
 
@@ -396,7 +468,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
               placeholder={loadingCourses ? t('common.loading', 'Loading...') : t('courses.selectCourse', 'اختر المقرر الدراسـي...')}
               searchPlaceholder={t('common.searchCoursePlaceholder', 'ابحث برمز أو اسم المقرر...')}
               emptyText={t('courses.noCoursesFound', 'لا توجد مقررات مطابقة')}
-              disabled={!!schedule || loadingCourses}
+              disabled={!selectedDepartmentId || loadingCourses || !!schedule}
               isRTL={isRTL}
               icon={<BookOpen size={16} />}
             />
@@ -407,6 +479,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
               <Users size={14} className="text-slate-400" /> {t('common.group', 'Group')}
+              <span className="text-[10px] font-normal text-slate-400 ml-1">({t('schedule.groupOptional', 'optional — empty = all students')})</span>
             </label>
             <select
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm disabled:opacity-50"
@@ -414,15 +487,20 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
               disabled={!selectedCourseId || loadingGroups}
             >
               <option value="">
-                {loadingGroups ? t('common.loading', 'Loading...') : t('common.selectGroup', 'Select Group')}
+                {loadingGroups ? t('common.loading', 'Loading...') : t('schedule.allStudents', '📢 All Students (No Group)')}
               </option>
               {groups.map((g: any) => (
                 <option key={g.id} value={g.id.toString()}>
-                  {g.name}
+                  {g.parentGroupId ? `↳ ${g.name}` : g.name}
+                  {g.rangeStartName && g.rangeEndName ? ` (${g.rangeStartName} → ${g.rangeEndName})` : ''}
                 </option>
               ))}
             </select>
-            {errors.groupId && <p className="text-rose-500 text-xs mt-1">{errors.groupId.message}</p>}
+            {groups.length === 0 && selectedCourseId && !loadingGroups && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                ⚠ {t('schedule.noGroupsFound', 'No groups found for this course year. Slot will apply to all students.')}
+              </p>
+            )}
           </div>
           
           <div className="grid grid-cols-2 gap-4">

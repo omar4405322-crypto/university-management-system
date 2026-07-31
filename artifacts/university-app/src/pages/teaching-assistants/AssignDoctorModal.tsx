@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
 import doctorsService from '../../services/doctors.service';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { X, Search, Loader2, Link, Trash2 } from 'lucide-react';
 

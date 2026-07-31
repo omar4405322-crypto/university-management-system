@@ -1,12 +1,14 @@
 import api from './api';
 
 export const studentGroupsService = {
-  getDepartmentGroups: async (departmentId: number | string) => {
-    const response = await api.get(`/student-groups/departments/${departmentId}/groups`);
+  getDepartmentGroups: async (departmentId: number | string, year?: number) => {
+    const response = await api.get(`/student-groups/departments/${departmentId}/groups`, {
+      params: { year }
+    });
     return response.data;
   },
 
-  autoDivideStudents: async (departmentId: number | string, data: { numberOfGroups?: number; maxGroupSize?: number; confirmed?: boolean }) => {
+  autoDivideStudents: async (departmentId: number | string, data: { numberOfGroups?: number; maxGroupSize?: number; confirmed?: boolean; year?: number }) => {
     const response = await api.post(`/student-groups/departments/${departmentId}/groups/auto-divide`, data);
     return response.data;
   },

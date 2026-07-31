@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../context/LanguageContext';
-import Button from '../components/ui/Button';
+import Button from '../components/ui/button';
 import Input from '../components/ui/input';
 
 // ── Zod schema ──────────────────────────────────────────────────────────────

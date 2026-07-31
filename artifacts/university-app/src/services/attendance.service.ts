@@ -49,6 +49,11 @@ const attendanceService = {
     return response.data;
   },
 
+  getMySlots: async (params?: Record<string, any>) => {
+    const response = await api.get('/attendance/my-slots', { params });
+    return response.data;
+  },
+
   getMyAttendance: async (courseId?: number) => {
     const params = courseId ? { courseId } : {};
     const response = await api.get('/attendance/my-attendance', { params });
@@ -60,13 +65,72 @@ const attendanceService = {
     return response.data;
   },
 
-  bulkSave: async (courseId: number, date: string, records: any[]) => {
-    const response = await api.post('/attendance/bulk', { courseId, date, records });
+  bulkSave: async (sessionId: number, records: any[]) => {
+    const response = await api.post('/attendance/bulk', { sessionId, records });
     return response.data;
   },
 
   getAttendanceRecords: async (params: Record<string, any>) => {
     const response = await api.get('/attendance/records', { params });
+    return response.data;
+  },
+
+  startSession: async (data: { scheduleSlotId?: number; courseId?: number; latitude?: number; longitude?: number; radius?: number; gracePeriodMins?: number }) => {
+    const response = await api.post('/attendance/session/start', data);
+    return response.data;
+  },
+
+  stopSession: async (sessionId: number) => {
+    const response = await api.post(`/attendance/session/stop/${sessionId}`);
+    return response.data;
+  },
+
+  getActiveSession: async (courseId?: number, scheduleSlotId?: number) => {
+    const params: any = {};
+    if (courseId) params.courseId = courseId;
+    if (scheduleSlotId) params.scheduleSlotId = scheduleSlotId;
+    const response = await api.get('/attendance/session/active', { params });
+    return response.data;
+  },
+
+  getCurrentCode: async (sessionId: number, step: number = 10) => {
+    const response = await api.get(`/attendance/session/${sessionId}/current-code?step=${step}`);
+    return response.data;
+  },
+
+  recordAttendanceWithQR: async (payload: { sessionId: number; token: string; step?: number }, location?: { latitude: number; longitude: number }) => {
+    const data = { ...payload, ...location };
+    const response = await api.post('/attendance/scan-qr', data);
+    return response.data;
+  },
+
+  scanQr: async (data: { sessionId?: number; token: string; step?: number; latitude?: number; longitude?: number; deviceId?: string }) => {
+    const response = await api.post('/attendance/scan-qr', data);
+    return response.data;
+  },
+
+  getFlaggedRecords: async (sessionId: number) => {
+    const response = await api.get(`/attendance/session/${sessionId}/flagged`);
+    return response.data;
+  },
+
+  overrideFlaggedRecord: async (attendanceId: number, note?: string) => {
+    const response = await api.post(`/attendance/record/${attendanceId}/override`, { note });
+    return response.data;
+  },
+
+  getSlotSessions: async (slotId: number) => {
+    const response = await api.get(`/attendance/slot/${slotId}/sessions`);
+    return response.data;
+  },
+
+  getSessionRoster: async (sessionId: number) => {
+    const response = await api.get(`/attendance/session/${sessionId}/roster`);
+    return response.data;
+  },
+
+  updateSessionLocation: async (sessionId: number, location: { latitude: number; longitude: number; radius?: number }) => {
+    const response = await api.put(`/attendance/session/${sessionId}/location`, location);
     return response.data;
   }
 };

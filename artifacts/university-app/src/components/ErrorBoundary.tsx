@@ -1,7 +1,7 @@
 // FIXED: Router-level error boundary to prevent blank pages on render errors - Phase 1
 import React, { Component, ReactNode } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
-import Button from './ui/Button';
+import Button from './ui/button';
 import { logger } from '../lib/logger';
 
 interface Props {

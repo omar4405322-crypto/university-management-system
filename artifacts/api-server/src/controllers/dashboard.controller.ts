@@ -379,43 +379,89 @@ export const getDoctorStats = catchAsync(
     const today = getTodayDayOfWeek();
     const doctor = await prisma.doctor.findUnique({
       where: { userId: req.user!.id },
-      select: { id: true, firstName: true, lastName: true, doctorId: true, specialty: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        doctorId: true,
+        specialty: true,
+        departmentId: true,
+        department: {
+          select: {
+            name: true,
+            nameAr: true,
+            college: { select: { name: true, nameAr: true } },
+          },
+        },
+      },
     });
 
     if (!doctor) {
       return next(new NotFoundError('Doctor profile not found'));
     }
 
-    const [myScheduleSlots, todaySchedule, upcomingExams] = await Promise.all([
+    const [myScheduleSlots, todaySchedule, upcomingExams, recentSubmissions] = await Promise.all([
       prisma.scheduleSlot.findMany({
         where: { doctorId: doctor.id },
-        include: { course: { select: { courseCode: true, name: true, credits: true, maxStudents: true } } },
+        include: {
+          course: {
+            select: { id: true, courseCode: true, name: true, credits: true, year: true, semester: true, maxStudents: true },
+          },
+        },
       }),
       prisma.scheduleSlot.findMany({
         where: {
           dayOfWeek: today,
           doctorId: doctor.id,
         },
-        include: { course: { select: { name: true } } },
+        include: {
+          course: { select: { id: true, name: true, courseCode: true } },
+        },
       }),
       prisma.exam.findMany({
-        take: 3,
+        take: 4,
         where: {
           date: { gte: new Date() },
           course: { scheduleSlots: { some: { doctorId: doctor.id } } },
         },
         orderBy: { date: 'asc' },
-        include: { course: { select: { name: true } } },
+        include: { course: { select: { name: true, courseCode: true } } },
+      }),
+      prisma.taskSubmission.findMany({
+        take: 5,
+        where: { task: { doctorId: doctor.id } },
+        orderBy: { submittedAt: 'desc' },
+        include: {
+          student: { select: { firstName: true, lastName: true } },
+          task: { select: { title: true } },
+        },
       }),
     ]);
 
     const uniqueCourses = new Map();
     myScheduleSlots.forEach((slot: any) => {
       if (slot.course) {
-        uniqueCourses.set(slot.course.courseCode, slot.course);
+        uniqueCourses.set(slot.course.id, slot.course);
       }
     });
     const myCourses = Array.from(uniqueCourses.values());
+
+    const courseIds = Array.from(new Set(myScheduleSlots.map((s: any) => s.courseId).filter(Boolean)));
+
+    const [totalQuizzes, pendingTasks, totalStudents] = await Promise.all([
+      prisma.quiz.count({ where: { doctorId: doctor.id } }),
+      prisma.taskSubmission.count({ where: { score: null, task: { doctorId: doctor.id } } }),
+      prisma.student.count({
+        where: doctor.departmentId
+          ? {
+              OR: [
+                { enrollments: { some: { courseId: { in: courseIds } } } },
+                { departmentId: doctor.departmentId },
+              ],
+            }
+          : { enrollments: { some: { courseId: { in: courseIds } } } },
+      }),
+    ]);
 
     return res.json({
       success: true,
@@ -425,19 +471,115 @@ export const getDoctorStats = catchAsync(
           lastName: doctor.lastName,
           doctorId: doctor.doctorId,
           specialty: doctor.specialty,
+          departmentName: doctor.department?.nameAr || doctor.department?.name || '',
+          collegeName: doctor.department?.college?.nameAr || doctor.department?.college?.name || '',
+        },
+        counts: {
+          myCourses: myCourses.length,
+          totalStudents,
+          totalQuizzes,
+          pendingTasks,
         },
         myCourses,
         todaySchedule: todaySchedule.map((s: any) => ({
+          id: s.id,
+          courseId: s.courseId,
           courseName: s.course?.name || 'N/A',
+          courseCode: s.course?.courseCode || '',
           startTime: s.startTime,
           endTime: s.endTime,
-          room: s.room,
+          room: s.room || 'N/A',
+          slotType: s.slotType,
         })),
         upcomingExams: upcomingExams.map((e: any) => ({
+          id: e.id,
           courseName: e.course.name,
+          courseCode: e.course.courseCode,
           type: e.type,
           date: e.date,
           room: e.room,
+        })),
+        recentActivity: recentSubmissions.map((sub: any) => ({
+          id: sub.id,
+          title: `تسليم واجب: ${sub.task.title}`,
+          studentName: `${sub.student.firstName} ${sub.student.lastName}`,
+          submittedAt: sub.submittedAt,
+        })),
+      },
+    });
+  }
+);
+
+export const getPublicLandingStats = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const [
+      totalStudents,
+      totalColleges,
+      totalDoctors,
+      totalTAs,
+      totalDepartments,
+      totalCourses,
+      collegesList,
+      sampleSlots,
+    ] = await Promise.all([
+      prisma.student.count(),
+      prisma.college.count(),
+      prisma.doctor.count(),
+      prisma.teachingAssistant.count(),
+      prisma.department.count(),
+      prisma.course.count(),
+      prisma.college.findMany({
+        include: {
+          departments: {
+            select: {
+              id: true,
+              name: true,
+              nameAr: true,
+              _count: { select: { courses: true, students: true } },
+            },
+          },
+        },
+      }),
+      prisma.scheduleSlot.findMany({
+        take: 6,
+        include: {
+          course: { select: { name: true, courseCode: true } },
+          doctor: { select: { firstName: true, lastName: true } },
+          teachingAssistant: { select: { firstName: true, lastName: true } },
+        },
+        orderBy: { id: 'asc' },
+      }),
+    ]);
+
+    return res.json({
+      success: true,
+      data: {
+        totalStudents,
+        totalColleges,
+        totalFaculty: totalDoctors + totalTAs,
+        totalSpecializations: totalDepartments,
+        totalCourses,
+        colleges: collegesList.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          nameAr: c.nameAr || c.name,
+          description: c.description || '',
+          departmentsCount: c.departments?.length || 0,
+          studentsCount: c.departments?.reduce((acc: number, d: any) => acc + (d._count?.students || 0), 0) || 0,
+        })),
+        sampleSlots: sampleSlots.map((s: any) => ({
+          id: s.id,
+          dayOfWeek: s.dayOfWeek,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          sessionType: s.sessionType,
+          room: s.room || 'N/A',
+          course: s.course?.name || 'مادة دراسية',
+          instructor: s.doctor
+            ? `د. ${s.doctor.firstName} ${s.doctor.lastName}`
+            : s.teachingAssistant
+            ? `م. ${s.teachingAssistant.firstName} ${s.teachingAssistant.lastName}`
+            : 'أستاذ المادة',
         })),
       },
     });

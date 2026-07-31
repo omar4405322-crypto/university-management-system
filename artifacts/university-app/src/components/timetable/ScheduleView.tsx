@@ -85,99 +85,117 @@ export function ScheduleView({
     }
   };
 
-  const renderEntryCard = (entry: any, isDesktop = false) => (
-    <div
-      key={entry.id || Math.random()}
-      onClick={() => {
-        if (canManage) onSlotClick?.(entry);
-      }}
-      className={`rounded-xl p-3 border-s-4 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] border border-y-slate-200/50 border-e-slate-200/50 dark:border-y-slate-700/50 dark:border-e-slate-700/50 relative group/entry ${
-        entry.isTemporarilyModified
-          ? 'border-s-amber-500 bg-amber-500/5 dark:bg-amber-500/10'
-          : 'border-s-brand-primary-500 bg-brand-primary-500/5 dark:bg-brand-primary-500/10'
-      } ${!isDesktop ? 'bg-white dark:bg-slate-800' : ''} ${
-        canManage ? 'cursor-pointer' : ''
-      }`}
-    >
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex flex-col gap-1">
-          <Badge
-            variant="info"
-            className="text-[9px] font-medium px-1.5 py-0.5 bg-brand-primary-100 dark:bg-brand-primary-900/40 text-brand-primary-700 dark:text-brand-primary-300"
-          >
-            <TimeRange start={entry.startTime} end={entry.endTime} />
-          </Badge>
-          {entry.isTemporarilyModified && (
-            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 w-fit">
-              {t('schedule.temporaryChange', '⊠ تعديل مؤقت')}
+  // Determine today's day name for highlighting
+  const todayDayName = useMemo(() => {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return dayNames[new Date().getDay()];
+  }, []);
+
+  const renderEntryCard = (entry: any, isDesktop = false) => {
+    const isLecture = entry.slotType === 'LECTURE';
+    const isLab = entry.slotType === 'LAB';
+
+    const cardBgClass = isLecture
+      ? 'bg-blue-50/70 dark:bg-blue-950/20 border-s-blue-500 border-blue-200/60 dark:border-blue-900/40 text-blue-900 dark:text-blue-100'
+      : isLab
+      ? 'bg-amber-50/70 dark:bg-amber-950/20 border-s-amber-500 border-amber-200/60 dark:border-amber-900/40 text-amber-900 dark:text-amber-100'
+      : 'bg-purple-50/70 dark:bg-purple-950/20 border-s-purple-500 border-purple-200/60 dark:border-purple-900/40 text-purple-900 dark:text-purple-100';
+
+    return (
+      <div
+        key={entry.id || Math.random()}
+        onClick={() => {
+          if (canManage) onSlotClick?.(entry);
+        }}
+        className={`rounded-2xl p-3 border-s-4 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 relative group/entry ${cardBgClass} ${
+          canManage ? 'cursor-pointer' : ''
+        }`}
+      >
+        <div className="flex justify-between items-center gap-1 mb-2">
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/80 dark:bg-slate-800/80 shadow-xs border border-slate-200/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-200 backdrop-blur-xs">
+              <TimeRange start={entry.startTime} end={entry.endTime} />
+            </span>
+            {entry.isTemporarilyModified && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500 text-white shadow-xs">
+                {t('schedule.temporaryChange', 'تعديل مؤقت')}
+              </span>
+            )}
+          </div>
+          {entry.slotType && (
+            <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${getSessionBadgeColor(entry.slotType)}`}>
+              {String(t(`schedule.${entry.slotType.toLowerCase()}`, entry.slotType))}
             </span>
           )}
         </div>
-        {entry.slotType && (
-          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${getSessionBadgeColor(entry.slotType)}`}>
-            {t(`schedule.${entry.slotType.toLowerCase()}`, entry.slotType)}
-          </span>
-        )}
-      </div>
-      
-      <p className="text-xs font-medium text-brand-text-primary dark:text-brand-text-main leading-tight transition-colors group-hover/entry:text-brand-primary-600">
-        {entry.course?.code && (
-          <span className="text-brand-primary-600 dark:text-brand-primary-400 mr-2 text-[10px]">
-            {entry.course.code}
-          </span>
-        )}
-        {entry.course?.name}
-      </p>
-      
-      {entry.group?.name && (
-        <p className="text-[10px] font-bold text-slate-400 mt-0.5">
-          {t('common.group', 'Group:')} {entry.group.name}
+        
+        <p className="text-xs font-bold text-slate-800 dark:text-white leading-snug transition-colors group-hover/entry:text-brand-primary-600 dark:group-hover/entry:text-brand-primary-400">
+          {entry.course?.courseCode && (
+            <span className="text-brand-primary-600 dark:text-brand-primary-400 me-1.5 font-black text-[11px] bg-brand-primary-500/10 px-1.5 py-0.5 rounded">
+              {entry.course.courseCode}
+            </span>
+          )}
+          {entry.course?.name || entry.courseName}
         </p>
-      )}
-      
-      <div className="mt-2 space-y-1 text-[10px] text-slate-500 dark:text-slate-400">
-        <div className="flex items-center gap-1.5 font-normal">
-          <MapPin size={10} className="text-slate-400 shrink-0" />
-          <span>{entry.room || t('common.tba', 'TBA')}</span>
-        </div>
-        <div className="flex items-center gap-1.5 font-normal">
-          <User size={10} className="text-slate-400 shrink-0" />
-          <span>
-            {entry.doctor
-              ? `${entry.doctor.firstName || ''} ${entry.doctor.lastName || ''}`
-              : t('common.staff', 'Staff')}
-          </span>
-        </div>
-        {entry.teachingAssistant && (
-          <div className="flex items-center gap-1.5 font-normal ml-4 text-[9px] text-slate-400">
-            <span>{t('schedule.ta', 'TA:')} {entry.teachingAssistant.firstName} {entry.teachingAssistant.lastName}</span>
+        
+        {entry.group?.name && (
+          <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-200/60 dark:bg-slate-700/60 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+            <span>{t('common.group', 'المجموعة:')}</span>
+            <span className="text-brand-primary-600 dark:text-brand-primary-400">{entry.group.name}</span>
           </div>
         )}
+        
+        <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1 text-[10px] text-slate-600 dark:text-slate-300 font-semibold">
+          <div className="flex items-center gap-1.5">
+            <MapPin size={11} className="text-amber-500 shrink-0" />
+            <span className="truncate">{entry.room || t('common.tba', 'TBA')}</span>
+          </div>
+          {role !== 'DOCTOR' && (
+            <div className="flex items-center gap-1.5">
+              <User size={11} className="text-brand-primary-500 shrink-0" />
+              <span className="truncate">
+                {entry.doctor
+                  ? `${entry.doctor.firstName || ''} ${entry.doctor.lastName || ''}`
+                  : entry.doctorName || t('common.staff', 'Staff')}
+              </span>
+            </div>
+          )}
+          {entry.teachingAssistant && (
+            <div className="flex items-center gap-1.5 text-[9.5px] text-purple-600 dark:text-purple-300">
+              <User size={10} className="text-purple-400 shrink-0" />
+              <span className="truncate">{t('schedule.ta', 'المعيد:')} {entry.teachingAssistant.firstName} {entry.teachingAssistant.lastName}</span>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <>
       {/* Mobile Day Selector (Visible only on standard mobile < md) */}
       <div className="flex gap-2 overflow-x-auto pb-4 md:hidden custom-scrollbar">
-        {days.map((day) => (
-          <button
-            key={day}
-            onClick={() => setSelectedDay(day)}
-            className={`flex-shrink-0 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${selectedDay === day
-              ? 'bg-brand-primary-600 text-white shadow-brand-primary-600/20'
-              : 'bg-surface-subtle text-brand-text-secondary hover:bg-brand-primary-600/10'
-              }`}
-          >
-            {t(`days.${day.toLowerCase()}`) || day.slice(0, 3)}
-          </button>
-        ))}
+        {days.map((day) => {
+          const isToday = day.toLowerCase() === todayDayName.toLowerCase();
+          return (
+            <button
+              key={day}
+              onClick={() => setSelectedDay(day)}
+              className={`flex-shrink-0 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2 ${selectedDay === day
+                ? 'bg-brand-primary-600 text-white shadow-brand-primary-600/20'
+                : 'bg-surface-subtle text-brand-text-secondary hover:bg-brand-primary-600/10'
+                }`}
+            >
+              {isToday && <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />}
+              {t(`days.${day.toLowerCase()}`) || day.slice(0, 3)}
+            </button>
+          );
+        })}
       </div>
 
       {/* Grid container (Desktop & Tablet) */}
       <div className="hidden md:block">
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0 lg:p-6">
+        <Card className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0 lg:p-6">
           
           {/* Tablet specific headers with arrows */}
           <div className="flex items-center justify-between p-4 lg:hidden border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
@@ -204,34 +222,48 @@ export function ScheduleView({
             <div className="min-w-full">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
-                    <th className="p-4 w-24"></th>
-                    {days.map((day) => (
-                      <th
-                        key={day}
-                        className={`p-4 text-xs font-semibold text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest ${
-                          visibleDays.includes(day) ? 'table-cell lg:table-cell' : 'hidden lg:table-cell'
-                        }`}
-                      >
-                        {t(`days.${day.toLowerCase()}`)}
-                      </th>
-                    ))}
+                  <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+                    <th className="p-4 w-28 text-center text-xs font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+                      ⏰ {t('common.time', 'الوقت')}
+                    </th>
+                    {days.map((day) => {
+                      const isToday = day.toLowerCase() === todayDayName.toLowerCase();
+                      return (
+                        <th
+                          key={day}
+                          className={`p-4 text-xs font-extrabold uppercase tracking-widest text-center ${
+                            visibleDays.includes(day) ? 'table-cell lg:table-cell' : 'hidden lg:table-cell'
+                          } ${isToday ? 'bg-brand-primary-500/10 text-brand-primary-600 dark:text-brand-primary-400 border-b-2 border-b-brand-primary-500' : 'text-slate-700 dark:text-slate-200'}`}
+                        >
+                          <div className="flex items-center justify-center gap-1.5">
+                            {isToday && <span className="w-2 h-2 rounded-full bg-brand-primary-500 animate-ping" />}
+                            {t(`days.${day.toLowerCase()}`)}
+                            {isToday && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-brand-primary-500 text-white ms-1">
+                                {t('common.today', 'اليوم')}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                <tbody className="divide-y divide-slate-200/80 dark:divide-slate-700/80">
                   {times.map((time) => (
-                    <tr key={time} className="group hover:bg-slate-50/10 dark:hover:bg-slate-800/5">
-                      <td className="p-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 text-center bg-slate-50/50 dark:bg-slate-900/10">
+                    <tr key={time} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="p-3 text-[11px] font-black text-slate-500 dark:text-slate-400 text-center bg-slate-50/60 dark:bg-slate-900/30 whitespace-nowrap border-e border-slate-200/60 dark:border-slate-700/60">
                         {formatTime(time)}
                       </td>
                       {days.map((day) => {
                         const entries = getEntriesForTimeSlot(day, time);
+                        const isToday = day.toLowerCase() === todayDayName.toLowerCase();
                         return (
                           <td
                             key={`${day}-${time}`}
-                            className={`p-2 align-top transition-colors relative group/cell ${
+                            className={`p-2 align-top transition-colors relative group/cell border-e border-slate-200/40 dark:border-slate-700/40 min-w-[170px] ${
                               visibleDays.includes(day) ? 'table-cell lg:table-cell' : 'hidden lg:table-cell'
-                            }`}
+                            } ${isToday ? 'bg-brand-primary-500/[0.02] dark:bg-brand-primary-500/[0.04]' : ''}`}
                           >
                             {entries.length > 0 ? (
                               <div className="space-y-2">
@@ -239,7 +271,7 @@ export function ScheduleView({
                               </div>
                             ) : (
                               <div className="h-16 flex items-center justify-center text-slate-300 dark:text-slate-600 select-none">
-                                <span>—</span>
+                                <span className="text-xs opacity-40">—</span>
                               </div>
                             )}
 
@@ -281,6 +313,7 @@ export function ScheduleView({
           <EmptyState
             icon={<Calendar size={40} />}
             title={getEmptyStateTitle()}
+            subtitle={t('schedule.noSlotsForDay', 'لا توجد حصص مجدولة لهذا اليوم')}
           />
         )}
       </div>

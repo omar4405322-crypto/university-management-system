@@ -8,6 +8,7 @@ router.get(
   authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
   dashboardController.getAdminStats
 );
+router.get('/public-stats', dashboardController.getPublicLandingStats);
 router.get('/student', authorize('STUDENT'), dashboardController.getStudentStats);
 router.get('/doctor', authorize('DOCTOR'), dashboardController.getDoctorStats);
 

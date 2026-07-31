@@ -30,7 +30,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import Drawer from '../../components/ui/Drawer';
 const DepartmentDetails = React.lazy(() => import('./DepartmentDetails'));
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import ViewManager from '../../components/ui/ViewManager';
 import { useSavedViews, SavedView } from '../../hooks/useSavedViews';
 import { useDepartments } from '../../hooks/useDepartments';
@@ -413,7 +413,7 @@ const DepartmentsList = () => {
                     <button
                       onClick={e => {
                         e.stopPropagation();
-                        navigate(`/schedules-management?departmentId=${dept.id}`);
+                        navigate(`/schedules/timetable?departmentId=${dept.id}&collegeId=${dept.collegeId || ''}`);
                       }}
                       className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
                       <Calendar className="w-3.5 h-3.5" />

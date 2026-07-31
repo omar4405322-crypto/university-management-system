@@ -220,7 +220,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // 6. STATIC FILES
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // 7. ROUTES
 app.use('/api/auth', authLimiter, authRoutes);

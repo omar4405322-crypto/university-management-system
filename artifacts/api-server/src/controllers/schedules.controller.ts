@@ -9,7 +9,7 @@ import { Prisma } from '@prisma/client';
 
 export const getWeeklyTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { departmentId, year, semester, timetableId } = req.query as Record<string, string>;
+    const { departmentId, year, semester, timetableId, doctorId, teachingAssistantId } = req.query as Record<string, string>;
     const { user } = req;
 
     const filterYear = year ? parseInt(year) : undefined;
@@ -20,7 +20,20 @@ export const getWeeklyTimetable = catchAsync(
 
     const includeRelations = {
       course: {
-        select: { id: true, name: true, courseCode: true, year: true, semester: true }
+        select: {
+          id: true,
+          name: true,
+          courseCode: true,
+          year: true,
+          semester: true,
+          department: {
+            select: {
+              id: true,
+              name: true,
+              college: { select: { id: true, name: true } }
+            }
+          }
+        }
       },
       doctor: {
         select: { id: true, firstName: true, lastName: true, user: { select: { email: true, role: true } } }
@@ -53,15 +66,17 @@ export const getWeeklyTimetable = catchAsync(
         return res.json({ success: true, data: [] });
       }
 
-      // For a student: find schedule slots that target their group (or any ancestor group),
-      // plus lecture slots (slotType LECTURE) for their department courses.
-      // Make sure the timetable is PUBLISHED and matches the student's year.
-      const baseStudentWhere = {
-        timetable: {
-          status: 'PUBLISHED',
-          academicYear: student.year,
-        }
-      };
+      const enrollments = await prisma.enrollment.findMany({
+        where: { studentId: student.id, status: 'ENROLLED' },
+        select: { courseId: true }
+      });
+      const enrolledCourseIds = enrollments.map(e => e.courseId);
+
+      // Build semester/year constraints scoped to the student's own profile
+      // (filterYear/filterSemester are admin/external overrides, not used for students)
+      const studentYearFilter = student.year;
+      const baseCourseFilter: any = { departmentId: student.departmentId, year: studentYearFilter };
+      if (filterSemester !== undefined) baseCourseFilter.semester = filterSemester;
 
       if (student.groupId) {
         // Get all ancestor group IDs (the student's group + all parents)
@@ -76,22 +91,38 @@ export const getWeeklyTimetable = catchAsync(
           currentGroupId = group?.parentGroupId ?? null;
         }
 
+        // Build enrolled course filter (with optional semester)
+        const enrolledCourseFilter: any = { id: { in: enrolledCourseIds } };
+        if (filterSemester !== undefined) enrolledCourseFilter.semester = filterSemester;
+
         whereClause = {
-          ...baseStudentWhere,
           OR: [
+            // Slots assigned to this student's group (or parent groups)
             { groupId: { in: groupIds } },
-            // Lectures with no group (department-wide) for this student's courses
-            { slotType: 'LECTURE', groupId: null, course: { departmentId: student.departmentId, year: student.year } },
+            // Department-wide slots (no group) matching student's year (+ semester if filtered)
+            { groupId: null, course: { ...baseCourseFilter } },
+            // Slots for explicitly enrolled courses (no group) with optional semester
+            { groupId: null, course: enrolledCourseFilter },
           ]
         };
       } else {
-        // Student has no group — show all slots for their department and year
-        // to prevent an empty schedule until they are assigned to a group.
+        // Student has no group — show all slots for their department/year and enrolled courses
+        const enrolledCourseFilter: any = { id: { in: enrolledCourseIds } };
+        if (filterSemester !== undefined) enrolledCourseFilter.semester = filterSemester;
+
         whereClause = {
-          ...baseStudentWhere,
-          course: { departmentId: student.departmentId, year: student.year }
+          OR: [
+            { course: { ...baseCourseFilter } },
+            { course: enrolledCourseFilter },
+          ]
         };
       }
+      // Prevent year/semester from being re-applied below for students (already baked in above)
+      Object.defineProperty(whereClause, '__studentScopedFiltersApplied', { value: true, enumerable: false });
+    } else if (doctorId) {
+      whereClause = { doctorId: parseInt(doctorId) };
+    } else if (teachingAssistantId) {
+      whereClause = { teachingAssistantId: teachingAssistantId };
     } else if (user!.role === 'DOCTOR') {
       const doctor = await prisma.doctor.findUnique({ where: { userId: user!.id } });
       if (!doctor) return res.json({ success: true, data: [] });
@@ -108,8 +139,9 @@ export const getWeeklyTimetable = catchAsync(
       }
     }
 
-    // Apply year and semester filters
-    if (filterYear !== undefined || filterSemester !== undefined) {
+    // Apply year and semester filters for ADMIN roles only
+    // (Students already have year/semester baked into their OR clause above)
+    if (!whereClause.__studentScopedFiltersApplied && (filterYear !== undefined || filterSemester !== undefined)) {
       whereClause.course = whereClause.course || {};
       if (filterYear !== undefined) whereClause.course.year = filterYear;
       if (filterSemester !== undefined) whereClause.course.semester = filterSemester;
@@ -174,8 +206,8 @@ export const createSchedule = catchAsync(
       const timetable = await prisma.timetable.findUnique({ where: { id: parseInt(timetableId as string) } });
       if (!timetable) return next(new NotFoundError('Timetable not found'));
       if (timetable.departmentId !== course.departmentId ||
-          timetable.academicYear !== course.year ||
-          timetable.semester !== course.semester) {
+        timetable.academicYear !== course.year ||
+        timetable.semester !== course.semester) {
         return next(new ValidationError('Timetable scope does not match Course scope'));
       }
     }
@@ -365,7 +397,6 @@ export const syncGridToMaster = catchAsync(
         where: {
           OR: [
             { name: { contains: courseName, mode: 'insensitive' } },
-            { nameAr: { contains: courseName, mode: 'insensitive' } },
             { courseCode: { contains: courseName, mode: 'insensitive' } },
           ],
           ...(departmentId ? { departmentId: parseInt(departmentId) } : {}),
@@ -443,6 +474,230 @@ export const syncGridToMaster = catchAsync(
       success: true,
       message: `Successfully synced ${syncedCount} slots to Master Schedule`,
       data: { syncedCount },
+    });
+  }
+);
+
+export const checkScheduleConflict = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const {
+      dayOfWeek,
+      startTime,
+      endTime,
+      room,
+      doctorName,
+      doctorId,
+      teachingAssistantId,
+      taName,
+      courseName,
+      courseId,
+      departmentId,
+      academicYear,
+      semester,
+      excludeSlotId,
+    } = req.body;
+
+    if (!dayOfWeek || !startTime || !endTime) {
+      return res.json({ success: true, hasConflict: false, conflicts: [] });
+    }
+
+    const dayUpper = dayOfWeek.toUpperCase();
+    const conflicts: Array<{
+      type: 'ROOM_OCCUPIED' | 'DOCTOR_BUSY' | 'TA_BUSY' | 'BATCH_OVERLAP' | 'DUPLICATE_COURSE';
+      messageAr: string;
+      messageEn: string;
+      conflictingSlot?: any;
+    }> = [];
+
+    const timeOverlap = {
+      OR: [
+        { AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }] },
+        { AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }] },
+        { AND: [{ startTime: { gte: startTime } }, { endTime: { lte: endTime } }] },
+      ],
+    };
+
+    const excludeCondition = excludeSlotId ? { id: { not: Number(excludeSlotId) } } : {};
+
+    // 1. Check Room Conflict
+    if (room && room.trim() !== '') {
+      const trimmedRoom = room.trim();
+      const roomSlot = await prisma.scheduleSlot.findFirst({
+        where: {
+          dayOfWeek: dayUpper,
+          room: { equals: trimmedRoom, mode: 'insensitive' },
+          ...timeOverlap,
+          ...excludeCondition,
+        },
+        include: {
+          course: {
+            select: { name: true, courseCode: true, department: { select: { name: true } } },
+          },
+          doctor: { select: { firstName: true, lastName: true } },
+        },
+      });
+
+      if (roomSlot) {
+        const courseStr = roomSlot.course?.name || 'مادة أخرى';
+        const deptStr = roomSlot.course?.department?.name || '';
+        const docStr = roomSlot.doctor
+          ? `د. ${roomSlot.doctor.firstName} ${roomSlot.doctor.lastName}`
+          : '';
+        conflicts.push({
+          type: 'ROOM_OCCUPIED',
+          messageAr: `القاعة/المعمل (${trimmedRoom}) محجوزة بالفعل لمادة (${courseStr}) ${deptStr ? `بقسم ${deptStr}` : ''} ${docStr ? `مع ${docStr}` : ''} في الفترة (${roomSlot.startTime} - ${roomSlot.endTime}).`,
+          messageEn: `Room/Lab (${trimmedRoom}) is already booked for (${courseStr}) ${deptStr ? `[${deptStr}]` : ''} at (${roomSlot.startTime} - ${roomSlot.endTime}).`,
+          conflictingSlot: {
+            courseName: courseStr,
+            doctorName: docStr,
+            departmentName: deptStr,
+            time: `${roomSlot.startTime} - ${roomSlot.endTime}`,
+            room: trimmedRoom,
+          },
+        });
+      }
+    }
+
+    // 2. Check Doctor Conflict
+    let targetDoctorId: number | null = doctorId ? Number(doctorId) : null;
+    if (!targetDoctorId && doctorName) {
+      const parts = doctorName.trim().split(' ');
+      const foundDoctor = await prisma.doctor.findFirst({
+        where: {
+          OR: [
+            { firstName: { contains: parts[0], mode: 'insensitive' } },
+            { lastName: { contains: parts[parts.length - 1], mode: 'insensitive' } },
+          ],
+        },
+      });
+      if (foundDoctor) targetDoctorId = foundDoctor.id;
+    }
+
+    if (targetDoctorId) {
+      const docSlot = await prisma.scheduleSlot.findFirst({
+        where: {
+          dayOfWeek: dayUpper,
+          doctorId: targetDoctorId,
+          ...timeOverlap,
+          ...excludeCondition,
+        },
+        include: {
+          course: {
+            select: { name: true, courseCode: true, department: { select: { name: true } } },
+          },
+          doctor: { select: { firstName: true, lastName: true } },
+        },
+      });
+
+      if (docSlot) {
+        const docNameStr = docSlot.doctor
+          ? `د. ${docSlot.doctor.firstName} ${docSlot.doctor.lastName}`
+          : doctorName || 'المحاضر';
+        const courseStr = docSlot.course?.name || 'مادة أخرى';
+        const deptStr = docSlot.course?.department?.name || '';
+        conflicts.push({
+          type: 'DOCTOR_BUSY',
+          messageAr: `المحاضر (${docNameStr}) لديه محاضرة أخرى (${courseStr}) ${deptStr ? `بقسم ${deptStr}` : ''} بقاعة (${docSlot.room || 'غير محددة'}) في نفس الوقت (${docSlot.startTime} - ${docSlot.endTime}).`,
+          messageEn: `Instructor (${docNameStr}) is already teaching (${courseStr}) in room (${docSlot.room || 'N/A'}) at (${docSlot.startTime} - ${docSlot.endTime}).`,
+          conflictingSlot: {
+            courseName: courseStr,
+            doctorName: docNameStr,
+            departmentName: deptStr,
+            time: `${docSlot.startTime} - ${docSlot.endTime}`,
+            room: docSlot.room,
+          },
+        });
+      }
+    }
+
+    // 3. Check Teaching Assistant Conflict
+    let targetTaId: string | null = teachingAssistantId ? String(teachingAssistantId) : null;
+    if (!targetTaId && taName) {
+      const parts = taName.trim().split(' ');
+      const foundTa = await prisma.teachingAssistant.findFirst({
+        where: {
+          OR: [
+            { firstName: { contains: parts[0], mode: 'insensitive' } },
+            { lastName: { contains: parts[parts.length - 1], mode: 'insensitive' } },
+          ],
+        },
+      });
+      if (foundTa) targetTaId = foundTa.id;
+    }
+
+    if (targetTaId) {
+      const taSlot = await prisma.scheduleSlot.findFirst({
+        where: {
+          dayOfWeek: dayUpper,
+          teachingAssistantId: targetTaId,
+          ...timeOverlap,
+          ...excludeCondition,
+        },
+        include: {
+          course: {
+            select: { name: true, department: { select: { name: true } } },
+          },
+          teachingAssistant: { select: { firstName: true, lastName: true } },
+        },
+      });
+
+      if (taSlot) {
+        const taNameStr = taSlot.teachingAssistant
+          ? `م. ${taSlot.teachingAssistant.firstName} ${taSlot.teachingAssistant.lastName}`
+          : taName || 'المعيد';
+        const courseStr = taSlot.course?.name || 'سكشن آخر';
+        conflicts.push({
+          type: 'TA_BUSY',
+          messageAr: `المعيد (${taNameStr}) لديه سكشن آخر (${courseStr}) في بقاعة (${taSlot.room || 'غير محددة'}) في نفس الفترة (${taSlot.startTime} - ${taSlot.endTime}).`,
+          messageEn: `Teaching Assistant (${taNameStr}) is already assigned to (${courseStr}) at (${taSlot.startTime} - ${taSlot.endTime}).`,
+          conflictingSlot: {
+            courseName: courseStr,
+            doctorName: taNameStr,
+            time: `${taSlot.startTime} - ${taSlot.endTime}`,
+            room: taSlot.room,
+          },
+        });
+      }
+    }
+
+    // 4. Check Batch/Department Overlap
+    if (departmentId && academicYear && semester) {
+      const batchSlot = await prisma.scheduleSlot.findFirst({
+        where: {
+          dayOfWeek: dayUpper,
+          ...timeOverlap,
+          ...excludeCondition,
+          course: {
+            departmentId: Number(departmentId),
+            year: Number(academicYear),
+            semester: Number(semester),
+          },
+        },
+        include: {
+          course: { select: { name: true, courseCode: true } },
+          doctor: { select: { firstName: true, lastName: true } },
+        },
+      });
+
+      if (batchSlot) {
+        const existingCourse = batchSlot.course?.name || 'مادة أخرى';
+        conflicts.push({
+          type: 'BATCH_OVERLAP',
+          messageAr: `توجد بالفعل مادة أخرى (${existingCourse}) مجدولة لنفس السنة والقسم في هذه الفترة الزمنية (${batchSlot.startTime} - ${batchSlot.endTime}).`,
+          messageEn: `Another course (${existingCourse}) is already scheduled for this batch in this time slot (${batchSlot.startTime} - ${batchSlot.endTime}).`,
+          conflictingSlot: {
+            courseName: existingCourse,
+            time: `${batchSlot.startTime} - ${batchSlot.endTime}`,
+            room: batchSlot.room,
+          },
+        });
+      }
+    }
+
+    return res.json({
+      success: true,
+      hasConflict: conflicts.length > 0,
+      conflicts,
     });
   }
 );

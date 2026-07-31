@@ -119,7 +119,7 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
               </div>
               <div className="max-h-[60vh] md:max-h-[32rem] overflow-y-auto py-2 custom-scrollbar">
                 {pendingRequestsCount > 0 && (
-                  <div 
+                  <div
                     onClick={() => {
                       navigate('/registration-requests');
                       setIsNotificationsOpen(false);
@@ -131,8 +131,8 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
                         {isRTL ? 'طلبات تسجيل معلقة' : 'Pending Requests'}
                       </p>
                       <p className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">
-                        {isRTL 
-                          ? `هناك ${pendingRequestsCount} طلب تسجيل بانتظار المراجعة` 
+                        {isRTL
+                          ? `هناك ${pendingRequestsCount} طلب تسجيل بانتظار المراجعة`
                           : `There are ${pendingRequestsCount} registration requests awaiting review`
                         }
                       </p>
@@ -200,11 +200,10 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
         <div className="relative" ref={profileRef}>
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className={`flex items-center gap-2 md:gap-3 rounded-2xl border transition-all shadow-sm p-1.5 md:pr-4 md:rtl:pl-4 md:rtl:pr-1.5 ${
-              isProfileOpen
+            className={`flex items-center gap-2 md:gap-3 rounded-2xl border transition-all shadow-sm p-1.5 md:pr-4 md:rtl:pl-4 md:rtl:pr-1.5 ${isProfileOpen
                 ? 'border-brand-green bg-brand-primary-50/50 dark:bg-brand-primary-950/20'
                 : 'border-brand-border bg-slate-50 dark:bg-slate-800/30 hover:border-brand-green/50 hover:bg-brand-bg-card'
-            }`}
+              }`}
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-brand-green-dark font-black text-white shadow-lg shadow-brand-brand-green-dark/20 ring-2 ring-brand-bg-card transition-transform group-hover:scale-105 shrink-0 overflow-hidden">
               {user?.profilePicture ? (
@@ -221,17 +220,15 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
               <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main truncate max-w-[120px]">
                 {user?.firstName} {user?.lastName}
               </span>
-              <span className={`text-[10px] font-black uppercase tracking-tighter transition-colors ${
-                isProfileOpen ? 'text-brand-green' : 'text-brand-brand-green-dark'
-              }`}>
+              <span className={`text-[10px] font-black uppercase tracking-tighter transition-colors ${isProfileOpen ? 'text-brand-green' : 'text-brand-brand-green-dark'
+                }`}>
                 {user?.role?.replace('_', ' ')}
               </span>
             </div>
             <ChevronDown
               size={16}
-              className={`transition-transform duration-300 shrink-0 ${
-                isProfileOpen ? 'rotate-180 text-brand-green-dark' : 'text-brand-text-muted'
-              }`}
+              className={`transition-transform duration-300 shrink-0 ${isProfileOpen ? 'rotate-180 text-brand-green-dark' : 'text-brand-text-muted'
+                }`}
             />
           </button>
 

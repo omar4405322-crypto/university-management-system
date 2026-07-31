@@ -7,7 +7,7 @@ import Card from '../../components/ui/Card';
 import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody, ActionMenu } from '../../components/ui/Table';
 import { PageHeader } from '../../components/ui/PageHeader';
 import Badge from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import {
   Users,
@@ -34,10 +34,9 @@ import FilterBar from '../../components/ui/FilterBar';
 import Pagination from '../../components/ui/Pagination';
 import ErrorState from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { downloadCsv } from '../../utils/exportCsv';
 import Checkbox from '../../components/ui/Checkbox';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
-import Drawer from '../../components/ui/Drawer';
-import StudentDetails from './StudentDetails';
 import ViewManager from '../../components/ui/ViewManager';
 import ColumnPicker, { ColumnDef } from '../../components/ui/ColumnPicker';
 import { useSavedViews, SavedView } from '../../hooks/useSavedViews';
@@ -117,36 +116,37 @@ const StudentsList = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [resetPasswordStudent, setResetPasswordStudent] = useState(null);
   const { showToast } = useToast();
-  const [activeDrawerId, setActiveDrawerId] = useState<string | null>(null);
 
   
 
 
 
-  const handleExport = useCallback(async () => {
+  const handleExport = useCallback(() => {
     try {
-      setExporting(true);
-            const blob = await (studentService as unknown as Record<string, unknown>).exportStudents();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `students_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      showToast(t('students.exportSuccess'), 'success');
+      const exportList = Array.isArray(students) ? students : [];
+      if (exportList.length === 0) {
+        showToast(t('common.noDataToExport', 'No data to export'), 'error');
+        return;
+      }
+      const exportData = exportList.map((s) => ({
+        'Student ID': s.studentId || s.id,
+        'Name': `${s.firstName} ${s.lastName}`,
+        'Division': s.year ? `Division ${s.year}` : 'N/A',
+        'Department': s.department?.name || 'N/A',
+        'Group': s.group?.name || 'N/A',
+        'Email': s.user?.email || 'N/A',
+        'Status': s.isActive ? 'Active' : 'Inactive',
+      }));
+      downloadCsv(exportData, `students_${new Date().toISOString().split('T')[0]}.csv`);
+      showToast(t('common.exportSuccess', 'Export downloaded successfully'), 'success');
     } catch (_err: any) {
-      showToast(t('students.exportError'), 'error');
-    } finally {
-      setExporting(false);
+      showToast(t('common.exportError', 'Failed to export data'), 'error');
     }
-  }, [showToast, t]);
+  }, [students, showToast, t]);
 
   const handleToggleStatus = useCallback(async (student) => {
     try {
-      const result = await studentService.updateStudent(student.id, {
-        isActive: !student.isActive,
-      });
+      const result = await studentService.toggleStatus(student.id);
       if (result.success) {
         showToast(
           student.isActive ? t('students.deactivated') : t('students.activated'),
@@ -207,13 +207,35 @@ const StudentsList = () => {
   }, []);
 
   const handleBulkClear = useCallback(() => setSelectedIds([]), []);
+
   const handleBulkExport = useCallback(() => {
-    showToast(t('common.exporting', 'Exporting selected...'), 'success');
-  }, [showToast, t]);
-  const handleBulkDelete = useCallback(() => {
-    showToast(t('common.deleted', 'Deleted selected records'), 'success');
-    setSelectedIds([]);
-  }, [showToast, t]);
+    const selectedStudents = filteredStudents.filter((s) => selectedIds.includes(s.id));
+    const exportData = selectedStudents.map((s) => ({
+      ID: s.studentId || s.id,
+      Name: `${s.firstName} ${s.lastName}`,
+      Year: s.year || 'N/A',
+      Department: s.department?.name || 'N/A',
+      Email: s.user?.email || 'N/A',
+      Status: s.isActive ? 'Active' : 'Inactive',
+    }));
+    downloadCsv(exportData, `students_selected_${new Date().toISOString().split('T')[0]}.csv`);
+    showToast(t('common.exporting', 'Exported selected records'), 'success');
+  }, [filteredStudents, selectedIds, showToast, t]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!window.confirm(t('students.confirmBulkDelete', `Are you sure you want to delete ${selectedIds.length} selected student(s)?`))) return;
+    try {
+      for (const id of selectedIds) {
+        await studentService.deleteStudent(id);
+      }
+      showToast(t('students.bulkDeleteSuccess', 'Deleted selected students'), 'success');
+      setSelectedIds([]);
+      fetchStudents();
+    } catch (_err: any) {
+      showToast(t('common.error'), 'error');
+    }
+  }, [selectedIds, fetchStudents, showToast, t]);
+
   const handleBulkStatusChange = useCallback(() => {
     showToast(t('common.statusChanged', 'Status changed for selected records'), 'success');
     setSelectedIds([]);
@@ -238,54 +260,6 @@ const StudentsList = () => {
           className: "bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2"
         }}
       />
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Card 1: Total */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-md transition-all text-start">
-          <div className="rounded-xl p-2.5 bg-brand-primary-500/10 text-brand-primary-500">
-            <Users size={24} />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-2xl font-black text-brand-text-primary dark:text-white">
-              {totalCount}
-            </span>
-            <span className="text-sm text-brand-text-secondary dark:text-slate-400 font-bold">
-              {t('students.totalStudents')}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 2: Active */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-md transition-all text-start">
-          <div className="rounded-xl p-2.5 bg-green-500/10 text-green-500">
-            <UserCheck size={24} />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-2xl font-black text-brand-text-primary dark:text-white">
-              {activeCount}
-            </span>
-            <span className="text-sm text-brand-text-secondary dark:text-slate-400 font-bold">
-              {t('students.activeStudents')}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 3: Suspended */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-md transition-all text-start">
-          <div className="rounded-xl p-2.5 bg-red-500/10 text-red-500">
-            <UserX size={24} />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-2xl font-black text-brand-text-primary dark:text-white">
-              {suspendedCount}
-            </span>
-            <span className="text-sm text-brand-text-secondary dark:text-slate-400 font-bold">
-              {t('students.suspendedStudents')}
-            </span>
-          </div>
-        </div>
-      </div>
 
       {/* Filter & Search Bar Card */}
       <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
@@ -369,18 +343,11 @@ const StudentsList = () => {
                 <TableHeader className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
                   <TableRow>
                     <TableHead className="w-12 text-center p-4">
-                      <Checkbox
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
                         checked={isAllVisibleSelected}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            const newIds = new Set(selectedIds);
-                            filteredStudents.forEach((s) => newIds.add(s.id));
-                            setSelectedIds(Array.from(newIds));
-                          } else {
-                            const visibleIds = filteredStudents.map((s) => s.id);
-                            setSelectedIds(selectedIds.filter((id) => !visibleIds.includes(id)));
-                          }
-                        }}
+                        onChange={handleSelectAll}
                       />
                     </TableHead>
                     <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -392,11 +359,11 @@ const StudentsList = () => {
                     <TableHead hideOnMobile className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {t('students.colDepartment')}
                     </TableHead>
+                    <TableHead hideOnMobile className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {isRTL ? 'المجموعة' : 'Group'}
+                    </TableHead>
                     <TableHead hideOnMobile className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {t('students.colEmail')}
-                    </TableHead>
-                    <TableHead hideOnMobile className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {t('students.colEnrolledAt')}
                     </TableHead>
                     <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {t('students.colStatus')}
@@ -425,13 +392,14 @@ const StudentsList = () => {
                     return (
                       <TableRow 
                         key={student.id} 
-                        isSelected={isSelected}
-                        className="hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors"
+                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors ${isSelected ? 'bg-brand-primary-500/5 dark:bg-brand-primary-500/10' : ''}`}
                       >
-                        <TableCell className="text-center p-4">
-                          <Checkbox
+                        <TableCell className="w-12 text-center p-4" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
                             checked={isSelected}
-                            onCheckedChange={() => handleSelectOne(student.id)}
+                            onChange={() => handleSelectOne(student.id)}
                           />
                         </TableCell>
                         <TableCell className="p-4 text-start">
@@ -450,20 +418,22 @@ const StudentsList = () => {
                           </div>
                         </TableCell>
                         <TableCell hideOnMobile className="p-4 text-center font-medium">
-                          {t(`STUDENTS.YEAR${student.year}`, `Year ${student.year}`)}
+                          {t(`STUDENTS.YEAR${student.year}`, isRTL ? `الفرقة ${student.year}` : `Division ${student.year}`)}
                         </TableCell>
                         <TableCell hideOnMobile className="p-4 text-start font-medium">
                           {isRTL ? (student.department?.nameAr || student.department?.name || '—') : (student.department?.name || '—')}
                         </TableCell>
+                        <TableCell hideOnMobile className="p-4 text-center font-medium">
+                          {student.group ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono font-bold bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                              {student.group.parentGroup ? `${student.group.parentGroup.name} / ${student.group.name}` : student.group.name}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-xs">—</span>
+                          )}
+                        </TableCell>
                         <TableCell hideOnMobile className="p-4 text-start font-medium text-slate-500 dark:text-slate-400">
                           {student.user?.email || '—'}
-                        </TableCell>
-                        <TableCell hideOnMobile className="p-4 text-center font-medium text-slate-500 dark:text-slate-400">
-                          {new Date(student.enrolledAt).toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
                         </TableCell>
                         <TableCell className="p-4 text-center">
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${statusClass}`}>
@@ -477,7 +447,7 @@ const StudentsList = () => {
                                 label: t('common.view'),
                                 icon: Eye,
                                 variant: 'view',
-                                onClick: () => setActiveDrawerId(student.id),
+                                onClick: () => navigate(`/students/${student.id}`),
                               },
                               {
                                 label: t('common.edit'),
@@ -486,7 +456,7 @@ const StudentsList = () => {
                                 onClick: () => setEditingStudent(student),
                               },
                               {
-                                label: 'Reset Password',
+                                label: isRTL ? 'إعادة تعيين كلمة المرور' : 'Reset Password',
                                 icon: KeyRound,
                                 variant: 'edit',
                                 onClick: () => setResetPasswordStudent(student),
@@ -582,14 +552,6 @@ const StudentsList = () => {
         person={resetPasswordStudent}
         type="student"
       />
-
-      <Drawer
-        isOpen={Boolean(activeDrawerId)}
-        onClose={() => setActiveDrawerId(null)}
-        width="max-w-4xl"
-      >
-        {activeDrawerId && <StudentDetails studentId={activeDrawerId} isDrawerMode />}
-      </Drawer>
     </div>
   );
 };

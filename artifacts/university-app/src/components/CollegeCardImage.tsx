@@ -4,7 +4,7 @@ import { UNIVERSITY_LOGO, getCampusFallbackImage } from '../constants/university
 /**
  * College card banner: campus photo when no custom image; logo only as last resort.
  */
-const CollegeCardImage = ({ name, image, collegeId = 0 }) => {
+const CollegeCardImage = ({ name, image, collegeId = 0 }: { name?: string; image?: string; collegeId?: number }) => {
   const campusFallback = getCampusFallbackImage(collegeId);
   const hasCustomImage = Boolean(image);
 

@@ -14,8 +14,15 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const EditCourseModal = ({ isOpen, onClose, onSuccess, course }) => {
-  const [toast, setToast] = useState(null);
+interface EditCourseModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  course: any;
+}
+
+const EditCourseModal: React.FC<EditCourseModalProps> = ({ isOpen, onClose, onSuccess, course }) => {
+  const [toast, setToast] = useState<{ message: string; type: string } | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema)
@@ -34,9 +41,7 @@ const EditCourseModal = ({ isOpen, onClose, onSuccess, course }) => {
     }
   }, [isOpen, course, reset]);
 
-
-
-  const showToast = (message, type) => {
+  const showToast = (message: string, type: string) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
@@ -47,7 +52,7 @@ const EditCourseModal = ({ isOpen, onClose, onSuccess, course }) => {
       if (result.success) {
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || 'Error updating course', 'error');
     }
   };

@@ -3,8 +3,26 @@ import prisma from '../utils/prismaClient';
 import catchAsync from '../utils/catchAsync';
 import { AppError, AuthorizationError, NotFoundError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
+import { getCache, setCache, redis } from '../utils/redis.utils';
+import logger from '../utils/logger';
 import speakeasy from 'speakeasy';
 import bcrypt from 'bcryptjs';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+
+const usedTokens = new Set<string>();
+
+const verifySessionOwnership = async (session: any, req: Request) => {
+  if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(req.user!.role)) return true;
+  if (req.user!.role === 'DOCTOR') {
+    const doctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
+    if (doctor && (session.scheduleSlot.doctorId === doctor.id || session.doctorId === doctor.id)) return true;
+  }
+  if (req.user!.role === 'TEACHING_ASSISTANT') {
+    const ta = await prisma.teachingAssistant.findUnique({ where: { userId: req.user!.id } });
+    if (ta && session.scheduleSlot.teachingAssistantId === ta.id) return true;
+  }
+  return false;
+};
 
 // Haversine formula to calculate distance in meters
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -67,7 +85,7 @@ export const startSession = catchAsync(async (req: Request, res: Response, next:
             endTime: '22:00',
             slotType: 'LECTURE'
           },
-          include: { course: true }
+          include: { course: true, roomRef: true }
         });
       }
     } else if (req.user!.role === 'TEACHING_ASSISTANT') {
@@ -84,7 +102,7 @@ export const startSession = catchAsync(async (req: Request, res: Response, next:
             endTime: '22:00',
             slotType: 'LAB'
           },
-          include: { course: true }
+          include: { course: true, roomRef: true }
         });
       }
     }
@@ -108,19 +126,19 @@ export const startSession = catchAsync(async (req: Request, res: Response, next:
 
   // Parse endTime (e.g., "14:00") to set expiresAt
   const [hours, minutes] = (slot.endTime || '23:59').split(':').map(Number);
-  const expiresAt = new Date();
-  expiresAt.setHours(hours, minutes, 0, 0);
+  
+  const timeZone = 'Africa/Cairo';
+  const now = new Date();
+  const zonedNow = toZonedTime(now, timeZone);
+  
+  zonedNow.setHours(hours, minutes, 0, 0);
+  
+  let expiresAt = fromZonedTime(zonedNow, timeZone);
 
-  if (expiresAt < new Date()) {
+  if (expiresAt < now) {
     // If it's already past the end time today, maybe the class is ending soon or we just add 2 hours
-    expiresAt.setHours(new Date().getHours() + 2);
+    expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
   }
-
-  // Deactivate any existing active sessions for this slot today
-  await prisma.attendanceSession.updateMany({
-    where: { scheduleSlotId: slot.id, isActive: true },
-    data: { isActive: false }
-  });
 
   const secret = speakeasy.generateSecret({ length: 20 });
   const doctor = req.user!.role === 'DOCTOR' ? await prisma.doctor.findUnique({ where: { userId: req.user!.id } }) : null;
@@ -151,22 +169,30 @@ export const startSession = catchAsync(async (req: Request, res: Response, next:
     finalLng = reqLng;
   }
 
-  const session = await prisma.attendanceSession.create({
-    data: {
-      scheduleSlotId: slot.id,
-      doctorId: doctor?.id,
-      secretKey: secret.base32,
-      latitude: finalLat,
-      longitude: finalLng,
-      radius: finalRadius,
-      facultyCapturedLatitude: reqLat,
-      facultyCapturedLongitude: reqLng,
-      roomMismatchWarning,
-      gracePeriodMins: req.body.gracePeriodMins !== undefined && req.body.gracePeriodMins !== null ? parseInt(req.body.gracePeriodMins) : 15,
-      codeStepSeconds: 20,
-      expiresAt
-    }
-  });
+  const session = await prisma.$transaction(async (tx) => {
+    // Deactivate any existing active sessions for this slot today
+    await tx.attendanceSession.updateMany({
+      where: { scheduleSlotId: slot!.id, isActive: true },
+      data: { isActive: false }
+    });
+
+    return tx.attendanceSession.create({
+      data: {
+        scheduleSlotId: slot!.id,
+        doctorId: doctor?.id,
+        secretKey: secret.base32,
+        latitude: finalLat,
+        longitude: finalLng,
+        radius: finalRadius,
+        facultyCapturedLatitude: reqLat,
+        facultyCapturedLongitude: reqLng,
+        roomMismatchWarning,
+        gracePeriodMins: req.body.gracePeriodMins !== undefined && req.body.gracePeriodMins !== null ? parseInt(req.body.gracePeriodMins) : 15,
+        codeStepSeconds: 20,
+        expiresAt
+      }
+    });
+  }, { isolationLevel: 'Serializable' });
 
   res.json({ 
     success: true, 
@@ -261,21 +287,14 @@ export const getActiveSession = catchAsync(async (req: Request, res: Response, n
 export const getCurrentCode = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { sessionId } = req.params;
 
-  const session = await prisma.attendanceSession.findUnique({
-    where: { id: parseInt(sessionId as string) }
-  });
+  const session = await prisma.attendanceSession.findUnique({ where: { id: parseInt(sessionId as string) }, include: { scheduleSlot: true } });
 
   if (!session || !session.isActive) return next(new AppError('Session not found or inactive', 404));
 
   // Authorization check (only owner/admin can get code to display)
-  let authorized = false;
-  if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(req.user!.role)) {
-    authorized = true;
-  } else if (req.user!.role === 'DOCTOR' || req.user!.role === 'TEACHING_ASSISTANT') {
-    authorized = true; // For now we assume if they are logged in as faculty they can view the code, but we can restrict further if needed
+  if (!(await verifySessionOwnership(session, req))) {
+    return next(new AuthorizationError('Not authorized to view this session code'));
   }
-
-  if (!authorized) return next(new AuthorizationError('Not authorized'));
 
   const step = session.codeStepSeconds;
 
@@ -296,49 +315,99 @@ export const scanQr = catchAsync(async (req: Request, res: Response, next: NextF
   const student = await prisma.student.findUnique({ where: { userId: req.user!.id } });
   if (!student) return next(new AuthorizationError('Only students can record attendance this way'));
 
+  const rawToken = String(token || '').trim();
+  const cleanToken = rawToken
+    .replace(/[٠۰]/g, '0')
+    .replace(/[١۱]/g, '1')
+    .replace(/[٢۲]/g, '2')
+    .replace(/[٣۳]/g, '3')
+    .replace(/[٤۴]/g, '4')
+    .replace(/[٥۵]/g, '5')
+    .replace(/[٦۶]/g, '6')
+    .replace(/[٧۷]/g, '7')
+    .replace(/[٨۸]/g, '8')
+    .replace(/[٩۹]/g, '9');
+
+  if (!cleanToken) {
+    return next(new AppError('يرجى إدخال الرمز الخاص بالمحاضرة', 400));
+  }
 
   let session: any = null;
 
-  // If sessionId is not provided (manual code entry), find the active session that matches the token
-  if (!sessionId) {
+  const verifyTokenForSession = (s: any) => {
+    return speakeasy.totp.verify({
+      secret: s.secretKey,
+      encoding: 'base32',
+      token: cleanToken,
+      step: s.codeStepSeconds || 20,
+      window: 1
+    });
+  };
+
+  if (sessionId) {
+    const foundSession = await prisma.attendanceSession.findUnique({
+      where: { id: parseInt(sessionId) },
+      include: { scheduleSlot: { include: { course: true } } }
+    });
+
+    if (foundSession && foundSession.isActive) {
+      const isValid = verifyTokenForSession(foundSession);
+      if (isValid) {
+        session = foundSession;
+      }
+    }
+  }
+
+  // Fallback: if session not found or token didn't match provided sessionId, search all active sessions
+  if (!session) {
     const activeSessions = await prisma.attendanceSession.findMany({
-      where: { isActive: true, expiresAt: { gt: new Date() } },
+      where: { isActive: true },
       include: { scheduleSlot: { include: { course: true } } }
     });
 
     for (const s of activeSessions) {
-      const isValid = speakeasy.totp.verify({
-        secret: s.secretKey,
-        encoding: 'base32',
-        token,
-        step: s.codeStepSeconds,
-        window: 1
-      });
-      if (isValid) {
+      if (verifyTokenForSession(s)) {
         session = s;
         sessionId = s.id;
         break;
       }
     }
-    if (!session) return next(new AppError('Invalid or expired code', 400));
-  } else {
-    session = await prisma.attendanceSession.findUnique({
-      where: { id: parseInt(sessionId) },
-      include: { scheduleSlot: { include: { course: true } } }
-    });
-
-    if (!session || !session.isActive) return next(new AppError('Session is not active', 400));
-    if (new Date() > session.expiresAt) return next(new AppError('Session has expired', 400));
-
-    const isValid = speakeasy.totp.verify({
-      secret: session.secretKey,
-      encoding: 'base32',
-      token,
-      step: session.codeStepSeconds,
-      window: 1
-    });
-    if (!isValid) return next(new AppError('Invalid or expired QR code', 400));
   }
+
+  if (!session) {
+    return next(new AppError('الرمز اليدوي غير صحيح أو انتهت صلاحيته. يرجى تجربة الرمز الظاهر حالياً على الشاشة.', 400));
+  }
+
+  // Verify Student Enrollment
+  const enrollment = await prisma.enrollment.findFirst({
+    where: {
+      studentId: student.id,
+      courseId: session.scheduleSlot.courseId,
+    }
+  });
+
+  if (!enrollment) {
+    return next(new AppError('عذراً، أنت غير مسجل في هذا المقرر الدراسي.', 403));
+  }
+  
+  if (enrollment.status === 'BLOCKED') {
+    return next(new AppError('عذراً، تم حظر تسجيلك في هذا المقرر بسبب تجاوز نسبة الغياب.', 403));
+  }
+
+  const tokenKey = `attendance:used_token:${session.id}:${cleanToken}`;
+  const isUsedCache = await getCache(tokenKey);
+  
+  if (isUsedCache || usedTokens.has(tokenKey)) {
+    return next(new AppError('تم استخدام هذا الرمز بالفعل، يرجى انتظار الرمز التالي.', 400));
+  }
+  
+  usedTokens.add(tokenKey);
+  if (!redis || redis.status !== 'ready') {
+    logger.warn(`[Redis Fallback] Redis unavailable, tracking used token ${tokenKey} in memory.`);
+  }
+  
+  setTimeout(() => usedTokens.delete(tokenKey), (session.codeStepSeconds || 20) * 3000);
+  await setCache(tokenKey, '1', (session.codeStepSeconds || 20) * 3);
 
   let locationFlagged = false;
   if (session.latitude && session.longitude && latitude && longitude) {
@@ -351,22 +420,6 @@ export const scanQr = catchAsync(async (req: Request, res: Response, next: NextF
     locationFlagged = true;
   }
 
-  // Duplicate prevention check (AND logic)
-  if (deviceId && ipAddress) {
-    const duplicate = await prisma.attendance.findFirst({
-      where: {
-        sessionId: session.id,
-        ipAddress: ipAddress as string,
-        deviceId: deviceId as string,
-        studentId: { not: student.id }
-      }
-    });
-
-    if (duplicate) {
-      return next(new AppError('Device and IP have already been used to record attendance for another student in this session.', 403));
-    }
-  }
-
   const attendanceDate = new Date();
   attendanceDate.setHours(0, 0, 0, 0);
 
@@ -377,43 +430,66 @@ export const scanQr = catchAsync(async (req: Request, res: Response, next: NextF
   const gracePeriodMinutes = session.gracePeriodMins ?? 15; // Dynamic fair grace period
   const computedStatus: 'PRESENT' | 'LATE' = elapsedMinutes <= gracePeriodMinutes ? 'PRESENT' : 'LATE';
 
-  // Check if already attended
-  const existing = await prisma.attendance.findUnique({
-    where: { studentId_sessionId: { studentId: student.id, sessionId: session.id } }
-  });
+  const { attendance, existingStatus } = await prisma.$transaction(async (tx) => {
+    // Duplicate prevention check (AND logic) atomic read
+    if (deviceId && ipAddress) {
+      const duplicate = await tx.attendance.findFirst({
+        where: {
+          sessionId: session.id,
+          ipAddress: ipAddress as string,
+          deviceId: deviceId as string,
+          studentId: { not: student.id }
+        }
+      });
 
-  if (existing && (existing.status === 'PRESENT' || existing.status === 'LATE')) {
+      if (duplicate) {
+        throw new AppError('تم استخدام هذا الجهاز لتقييد حضور طالب آخر في هذه الجلسة.', 403);
+      }
+    }
+
+    const existing = await tx.attendance.findUnique({
+      where: { studentId_sessionId: { studentId: student.id, sessionId: session.id } }
+    });
+    
+    if (existing && (existing.status === 'PRESENT' || existing.status === 'LATE')) {
+       return { attendance: existing, existingStatus: existing.status };
+    }
+
+    const upserted = await tx.attendance.upsert({
+      where: { studentId_sessionId: { studentId: student.id, sessionId: session.id } },
+      update: {
+        status: computedStatus,
+        method: 'QR',
+        ipAddress: ipAddress as string,
+        deviceId,
+        locationData: { lat: latitude, lng: longitude },
+        locationFlagged,
+      },
+      create: {
+        studentId: student.id,
+        courseId: session.scheduleSlot.courseId,
+        scheduleSlotId: session.scheduleSlot.id,
+        date: attendanceDate,
+        status: computedStatus,
+        method: 'QR',
+        ipAddress: ipAddress as string,
+        deviceId,
+        locationData: { lat: latitude, lng: longitude },
+        locationFlagged,
+        sessionId: session.id
+      }
+    });
+
+    return { attendance: upserted, existingStatus: null };
+  }, { isolationLevel: 'Serializable' });
+
+  if (existingStatus) {
     return res.json({ 
       success: true, 
-      message: existing.status === 'LATE' ? 'تم تسجيل حضورك سابقاً (متأخر)' : 'تم تسجيل حضورك سابقاً', 
-      data: existing 
+      message: existingStatus === 'LATE' ? 'تم تسجيل حضورك سابقاً (متأخر)' : 'تم تسجيل حضورك سابقاً', 
+      data: attendance 
     });
   }
-
-  const attendance = await prisma.attendance.upsert({
-    where: { studentId_sessionId: { studentId: student.id, sessionId: session.id } },
-    update: {
-      status: computedStatus,
-      method: 'QR',
-      ipAddress: ipAddress as string,
-      deviceId,
-      locationData: { lat: latitude, lng: longitude },
-      locationFlagged,
-    },
-    create: {
-      studentId: student.id,
-      courseId: session.scheduleSlot.courseId,
-      scheduleSlotId: session.scheduleSlot.id,
-      date: attendanceDate,
-      status: computedStatus,
-      method: 'QR',
-      ipAddress: ipAddress as string,
-      deviceId,
-      locationData: { lat: latitude, lng: longitude },
-      locationFlagged,
-      sessionId: session.id
-    }
-  });
 
   let message = '';
   if (locationFlagged) {
@@ -478,6 +554,16 @@ export const rfidScan = catchAsync(async (req: Request, res: Response, next: Nex
 export const getFlaggedRecords = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { sessionId } = req.params;
 
+  const session = await prisma.attendanceSession.findUnique({
+    where: { id: parseInt(sessionId as string) },
+    include: { scheduleSlot: true }
+  });
+
+  if (!session) return next(new NotFoundError('Session not found'));
+  if (!(await verifySessionOwnership(session, req))) {
+    return next(new AuthorizationError('Not authorized to view this session'));
+  }
+
   const records = await prisma.attendance.findMany({
     where: { sessionId: parseInt(sessionId as string), locationFlagged: true },
     include: { student: { select: { id: true, studentId: true, firstName: true, lastName: true } } }
@@ -489,6 +575,16 @@ export const getFlaggedRecords = catchAsync(async (req: Request, res: Response, 
 export const overrideFlaggedRecord = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { attendanceId } = req.params;
   const { note } = req.body;
+
+  const attendanceRecord = await prisma.attendance.findUnique({
+    where: { id: parseInt(attendanceId as string) },
+    include: { session: { include: { scheduleSlot: true } } }
+  });
+
+  if (!attendanceRecord || !attendanceRecord.session) return next(new NotFoundError('Record not found'));
+  if (!(await verifySessionOwnership(attendanceRecord.session, req))) {
+    return next(new AuthorizationError('Not authorized to override records for this session'));
+  }
 
   const attendance = await prisma.attendance.update({
     where: { id: parseInt(attendanceId as string) },
@@ -526,6 +622,10 @@ export const getSessionRoster = catchAsync(async (req: Request, res: Response, n
   });
 
   if (!session) return next(new NotFoundError('Session not found'));
+
+  if (!(await verifySessionOwnership(session, req))) {
+    return next(new AuthorizationError('Not authorized to view this session roster'));
+  }
 
   const courseId = session.scheduleSlot.courseId;
   const groupId = session.scheduleSlot.groupId;
@@ -591,11 +691,13 @@ export const updateSessionLocation = catchAsync(async (req: Request, res: Respon
   const { sessionId } = req.params;
   const { latitude, longitude, radius } = req.body;
 
-  const session = await prisma.attendanceSession.findUnique({
-    where: { id: parseInt(sessionId as string) }
-  });
+  const session = await prisma.attendanceSession.findUnique({ where: { id: parseInt(sessionId as string) }, include: { scheduleSlot: true } });
 
   if (!session || !session.isActive) return next(new AppError('Active session not found', 404));
+
+  if (!(await verifySessionOwnership(session, req))) {
+    return next(new AuthorizationError('Not authorized to modify this session'));
+  }
 
   const updatedSession = await prisma.attendanceSession.update({
     where: { id: session.id },

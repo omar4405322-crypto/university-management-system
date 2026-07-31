@@ -26,6 +26,7 @@ const DashboardContainer = lazy(() => import('./pages/dashboard/DashboardContain
 const CoursesList = lazy(() => import('./pages/courses/CoursesList'));
 const CourseDetails = lazy(() => import('./pages/courses/CourseDetails'));
 const DoctorsList = lazy(() => import('./pages/doctors/DoctorsList'));
+const DoctorDetails = lazy(() => import('./pages/doctors/DoctorDetails'));
 const TeachingAssistantsList = lazy(() => import('./pages/teaching-assistants/TeachingAssistantsList'));
 const WeeklySchedule = lazy(() => import('./pages/schedules/WeeklySchedule'));
 const DoctorSchedule = lazy(() => import('./pages/schedules/DoctorSchedule'));
@@ -48,7 +49,7 @@ const Profile = lazy(() => import('./pages/profile/Profile'));
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from './context/LanguageContext';
 import { ShieldOff } from 'lucide-react';
-import Button from './components/ui/Button';
+import Button from './components/ui/button';
 
 const TimetableGrid = lazy(() => import('./pages/schedules/TimetableGrid'));
 const TimetableManagement = lazy(() => import('./pages/schedules/TimetableManagement'));
@@ -63,6 +64,7 @@ const FinanceDashboard = lazy(() => import('./pages/finance/FinanceDashboard'));
 const AnalyticsDashboard = lazy(() => import('./pages/analytics/AnalyticsDashboard'));
 const AttendancePage = lazy(() => import('./pages/attendance/AttendancePage'));
 const QuizzesList = lazy(() => import('./pages/quizzes/QuizzesList'));
+const StudentRecord = lazy(() => import('./pages/records/StudentRecord'));
 const DegreeAudit = lazy(() => import('./pages/degree-audit/DegreeAudit'));
 const GroupManagement = lazy(() => import('./pages/groups/GroupManagement'));
 
@@ -182,7 +184,21 @@ const AppContent = () => {
                         element={
                           <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
                             <PageWrapper>
-                              <DoctorsList />
+                              <LazyRoute>
+                                <DoctorsList />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="doctors/:id"
+                        element={
+                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
+                            <PageWrapper>
+                              <LazyRoute>
+                                <DoctorDetails />
+                              </LazyRoute>
                             </PageWrapper>
                           </ProtectedRoute>
                         }
@@ -200,17 +216,9 @@ const AppContent = () => {
                         }
                       />
                       <Route
-                        path="schedule"
-                        element={
-                          <PageWrapper>
-                            <WeeklySchedule />
-                          </PageWrapper>
-                        }
-                      />
-                      <Route
                         path="schedules/doctor"
                         element={
-                          <ProtectedRoute allowedRoles={['DOCTOR']}>
+                          <ProtectedRoute allowedRoles={['DOCTOR', 'SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
                             <PageWrapper>
                               <DoctorSchedule />
                             </PageWrapper>
@@ -230,7 +238,7 @@ const AppContent = () => {
                       <Route
                         path="schedules/ta"
                         element={
-                          <ProtectedRoute allowedRoles={['TEACHING_ASSISTANT', 'ADMIN']}>
+                          <ProtectedRoute allowedRoles={['TEACHING_ASSISTANT', 'SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
                             <PageWrapper>
                               <LazyRoute>
                                 <TASchedule />
@@ -261,22 +269,10 @@ const AppContent = () => {
                       <Route
                         path="schedules-management"
                         element={
-                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
+                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
                             <PageWrapper>
                               <LazyRoute>
                                 <SchedulesList />
-                              </LazyRoute>
-                            </PageWrapper>
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="schedules/timetable"
-                        element={
-                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN']}>
-                            <PageWrapper>
-                              <LazyRoute>
-                                <TimetableGrid />
                               </LazyRoute>
                             </PageWrapper>
                           </ProtectedRoute>
@@ -468,6 +464,26 @@ const AppContent = () => {
                             <PageWrapper>
                               <LazyRoute>
                                 <QuizzesList />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="record"
+                        element={
+                          <ProtectedRoute
+                            allowedRoles={[
+                              'SUPER_ADMIN',
+                              'ADMIN',
+                              'DOCTOR',
+                              'STUDENT',
+                              'COLLEGE_ADMIN',
+                            ]}
+                          >
+                            <PageWrapper>
+                              <LazyRoute>
+                                <StudentRecord />
                               </LazyRoute>
                             </PageWrapper>
                           </ProtectedRoute>

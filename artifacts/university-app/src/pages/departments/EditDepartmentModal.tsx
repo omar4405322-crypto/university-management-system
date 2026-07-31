@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import departmentService from '../../services/department.service';
 import Modal from '../../components/ui/Modal';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { School, GraduationCap, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
@@ -17,9 +17,17 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const EditDepartmentModal = ({ isOpen, onClose, department, colleges, onSuccess }) => {
+interface EditDepartmentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  department: any;
+  colleges: any[];
+  onSuccess: () => void;
+}
+
+const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ isOpen, onClose, department, colleges, onSuccess }) => {
   const { t } = useTranslation();
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState<{ message: string; type: string } | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema)
@@ -35,7 +43,7 @@ const EditDepartmentModal = ({ isOpen, onClose, department, colleges, onSuccess 
     }
   }, [department, isOpen, reset]);
 
-  const showToast = (message, type) => {
+  const showToast = (message: string, type: string) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
@@ -46,7 +54,7 @@ const EditDepartmentModal = ({ isOpen, onClose, department, colleges, onSuccess 
       if (result.success) {
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || t('departments.updateError'), 'error');
     }
   };
@@ -76,7 +84,7 @@ const EditDepartmentModal = ({ isOpen, onClose, department, colleges, onSuccess 
               className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer select-custom-arrow"
             >
               <option value="">{t('auth.selectCollege')}</option>
-              {colleges.map(college => (
+              {colleges.map((college: any) => (
                 <option key={college.id} value={college.id}>{college.name}</option>
               ))}
             </select>

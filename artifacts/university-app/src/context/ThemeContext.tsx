@@ -1,6 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-const ThemeContext = createContext({
+interface ThemeContextType {
+  theme: string;
+  toggleTheme: () => void;
+  isDark: boolean;
+  isSidebarCollapsed: boolean;
+  toggleSidebar: () => void;
+  density: string;
+  toggleDensity: () => void;
+  isCompact: boolean;
+}
+
+const ThemeContext = createContext<ThemeContextType>({
   theme: 'light',
   toggleTheme: () => {},
   isDark: false,
@@ -13,7 +24,7 @@ const ThemeContext = createContext({
 
 export const useTheme = () => useContext(ThemeContext);
 
-const getInitialTheme = () => {
+const getInitialTheme = (): string => {
   if (typeof window === 'undefined') return 'light';
 
   const saved = localStorage.getItem('theme');
@@ -24,7 +35,7 @@ const getInitialTheme = () => {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
-const applyThemeToDocument = (theme) => {
+const applyThemeToDocument = (theme: string) => {
   const root = document.documentElement;
   const isDark = theme === 'dark';
 
@@ -34,7 +45,7 @@ const applyThemeToDocument = (theme) => {
   localStorage.setItem('theme', theme);
 };
 
-export const ThemeProvider = ({ children }) => {
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState(getInitialTheme);
   
   const [density, setDensity] = useState(() => {

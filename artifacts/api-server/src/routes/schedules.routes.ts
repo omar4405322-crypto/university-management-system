@@ -35,6 +35,11 @@ router.post(
   schedulesController.syncGridToMaster
 );
 
+router.post(
+  '/check-conflict',
+  schedulesController.checkScheduleConflict
+);
+
 router.use('/:slotId/overrides', overridesRouter);
 router.use('/overrides', overridesRouter);
 

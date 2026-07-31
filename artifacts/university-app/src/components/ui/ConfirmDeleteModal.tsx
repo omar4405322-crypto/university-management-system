@@ -3,7 +3,7 @@ import React from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Modal from './Modal';
-import Button from './Button';
+import Button from './button';
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean;
@@ -64,7 +64,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
           </Button>
           <Button
             type="button"
-            variant={variant === 'danger' ? 'danger' : 'primary'}
+            variant={variant === 'danger' ? 'destructive' : 'default'}
             onClick={onConfirm}
             disabled={loading}
             className={`font-black uppercase tracking-widest text-xs ${

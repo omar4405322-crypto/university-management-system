@@ -132,14 +132,23 @@ export function useTimetableData(
       .then(([timetableRes, schedulesRes]: any) => {
         if (controller.signal.aborted) return;
         
-        const timetable = timetableRes.data?.timetables?.[0];
+        const rawTimetables = Array.isArray(timetableRes.data)
+          ? timetableRes.data
+          : timetableRes.data?.timetables ?? timetableRes.data?.data ?? [];
+        const timetable = rawTimetables[0];
         setTimetableId(timetable?.id ?? null);
         
-        const slotsArray = schedulesRes.data?.data || schedulesRes.data || [];
+        const slotsArray = Array.isArray(schedulesRes.data?.data)
+          ? schedulesRes.data.data
+          : Array.isArray(schedulesRes.data)
+          ? schedulesRes.data
+          : [];
         if (slotsArray.length > 0) {
           const mapped: SlotsMap = {};
           slotsArray.forEach((slot: any) => {
-            const key = `${(slot.dayOfWeek || '').toUpperCase()}_${slot.startTime}-${slot.endTime}`;
+            const rawDay = slot.dayOfWeek || slot.day || '';
+            const dayFormatted = rawDay ? rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase() : '';
+            const key = `${dayFormatted}_${slot.startTime}-${slot.endTime}`;
             mapped[key] = {
               courseName: slot.course?.name || `Course ${slot.courseId}`,
               doctorName:

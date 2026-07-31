@@ -16,7 +16,7 @@ const recalculateAbsence = async (studentId: number, courseId: number) => {
   let excused = 0;
   let absent = 0;
   let late = 0;
-  
+
   statsData.forEach(item => {
     total += item._count;
     if (item.status === 'EXCUSED') excused += item._count;
@@ -43,11 +43,11 @@ const recalculateAbsence = async (studentId: number, courseId: number) => {
       ]
     }
   });
-  
+
   let policy = policies.find((p: any) => p.courseId === courseId);
   if (!policy) policy = policies.find((p: any) => p.departmentId === course?.departmentId);
   if (!policy) policy = policies.find((p: any) => p.courseId === null && p.departmentId === null);
-  
+
   const maxAbsencePercent = policy ? policy.maxAbsencePercent : 25;
 
   if (absencePercent >= maxAbsencePercent) {
@@ -61,7 +61,7 @@ const recalculateAbsence = async (studentId: number, courseId: number) => {
         data: { status: 'BLOCKED' }
       });
 
-      const student = await prisma.student.findUnique({ where: { id: studentId }});
+      const student = await prisma.student.findUnique({ where: { id: studentId } });
       if (student) {
         await createNotification({
           userId: student.userId,
@@ -99,22 +99,30 @@ export const recordAttendance = catchAsync(
     const attendanceDate = date ? new Date(date as string) : new Date();
     attendanceDate.setHours(0, 0, 0, 0);
 
-    const createdRecords = await prisma.$transaction(
-      records.map((record: any) =>
-        prisma.attendance.upsert({
-          where: {
-            studentId_courseId_date: {
-              studentId: parseInt(record.studentId),
-              courseId: parseInt(courseId as string),
-              date: attendanceDate
-            }
-          },
-          update: {
+    const createdRecords = [];
+    for (const record of records) {
+      const existing = await prisma.attendance.findFirst({
+        where: {
+          studentId: parseInt(record.studentId),
+          courseId: parseInt(courseId as string),
+          date: attendanceDate
+        }
+      });
+
+      let updated;
+      if (existing) {
+        updated = await prisma.attendance.update({
+          where: { id: existing.id },
+          data: {
             status: record.status,
             remarks: record.remarks,
             recordedById: req.user!.id
           },
-          create: {
+          include: { student: { select: { userId: true, firstName: true, lastName: true } }, course: { select: { name: true } } }
+        });
+      } else {
+        updated = await prisma.attendance.create({
+          data: {
             studentId: parseInt(record.studentId),
             courseId: parseInt(courseId as string),
             date: attendanceDate,
@@ -122,13 +130,11 @@ export const recordAttendance = catchAsync(
             remarks: record.remarks,
             recordedById: req.user!.id
           },
-          include: {
-            student: { select: { userId: true, firstName: true, lastName: true } },
-            course: { select: { name: true } },
-          },
-        })
-      )
-    );
+          include: { student: { select: { userId: true, firstName: true, lastName: true } }, course: { select: { name: true } } }
+        });
+      }
+      createdRecords.push(updated);
+    }
 
     // Send attendance notifications concurrently (non-blocking, errors logged)
     Promise.all([
@@ -150,7 +156,7 @@ export const recordAttendance = catchAsync(
       ...Array.from(new Set(records.map((r: any) => parseInt(r.studentId)))).map(
         (studentId: number) => recalculateAbsence(studentId, parseInt(courseId as string))
       )
-    ]).catch(() => {}); // Non-blocking: response already sent
+    ]).catch(() => { }); // Non-blocking: response already sent
 
     res.status(201).json({ success: true, data: createdRecords });
   }
@@ -370,58 +376,181 @@ export const getMyCourses = catchAsync(async (req: Request, res: Response, next:
   if (userRole === 'TEACHING_ASSISTANT') {
     const myTA = await prisma.teachingAssistant.findUnique({ where: { userId } });
     if (!myTA) return res.json({ success: true, data: [] });
-    
+
     const slots = await prisma.scheduleSlot.findMany({
       where: { teachingAssistantId: myTA.id },
       select: { courseId: true }
     });
-    
+
     const courseIds = Array.from(new Set(slots.map((s: any) => s.courseId)));
-    const courses = await prisma.course.findMany({
+    let courses = await prisma.course.findMany({
       where: { id: { in: courseIds } },
       select: { id: true, name: true, courseCode: true }
     });
+
+    if (courses.length === 0 && myTA.departmentId) {
+      courses = await prisma.course.findMany({
+        where: { departmentId: myTA.departmentId },
+        select: { id: true, name: true, courseCode: true }
+      });
+    }
+
     return res.json({ success: true, data: courses });
   }
 
   if (userRole === 'DOCTOR') {
     const myDoctor = await prisma.doctor.findUnique({ where: { userId } });
     if (!myDoctor) return res.json({ success: true, data: [] });
-    
+
     const slots = await prisma.scheduleSlot.findMany({
       where: { doctorId: myDoctor.id },
       select: { courseId: true }
     });
-    
+
     const courseIds = Array.from(new Set(slots.map((s: any) => s.courseId)));
-    const courses = await prisma.course.findMany({
+    let courses = await prisma.course.findMany({
       where: { id: { in: courseIds } },
       select: { id: true, name: true, courseCode: true }
     });
+
+    if (courses.length === 0 && myDoctor.departmentId) {
+      courses = await prisma.course.findMany({
+        where: { departmentId: myDoctor.departmentId },
+        select: { id: true, name: true, courseCode: true }
+      });
+    }
+
     return res.json({ success: true, data: courses });
   }
 
   return res.json({ success: true, data: [] });
 });
 
+export const getMySlots = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const userRole = req.user!.role;
+  let slots: any[] = [];
+
+  const selectFields = {
+    course: { select: { id: true, name: true, courseCode: true } },
+    group: { select: { id: true, name: true } },
+    doctor: { select: { firstName: true, lastName: true } },
+    teachingAssistant: { select: { firstName: true, lastName: true } }
+  };
+  const orderBy: any = [{ dayOfWeek: 'asc' }, { startTime: 'asc' }];
+
+  if (userRole === 'DOCTOR') {
+    const myDoctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
+    if (myDoctor) {
+      slots = await prisma.scheduleSlot.findMany({
+        where: { doctorId: myDoctor.id },
+        include: selectFields,
+        orderBy
+      });
+
+      if (slots.length === 0 && myDoctor.departmentId) {
+        slots = await prisma.scheduleSlot.findMany({
+          where: { course: { departmentId: myDoctor.departmentId } },
+          include: selectFields,
+          orderBy
+        });
+      }
+    }
+  } else if (userRole === 'TEACHING_ASSISTANT') {
+    const myTA = await prisma.teachingAssistant.findUnique({ where: { userId: req.user!.id } });
+    if (myTA) {
+      slots = await prisma.scheduleSlot.findMany({
+        where: { teachingAssistantId: myTA.id },
+        include: selectFields,
+        orderBy
+      });
+
+      if (slots.length === 0 && myTA.departmentId) {
+        slots = await prisma.scheduleSlot.findMany({
+          where: { course: { departmentId: myTA.departmentId } },
+          include: selectFields,
+          orderBy
+        });
+      }
+    }
+  } else if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(userRole)) {
+    const courseScope: any = getScopeWhere(req.user!, 'course');
+    const where: any = (courseScope && Object.keys(courseScope).length > 0) ? { course: courseScope } : {};
+    slots = await prisma.scheduleSlot.findMany({
+      where,
+      include: selectFields,
+      orderBy
+    });
+  }
+
+  // Global fallback if still 0 slots found
+  if (slots.length === 0 && ['DOCTOR', 'TEACHING_ASSISTANT', 'SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(userRole)) {
+    slots = await prisma.scheduleSlot.findMany({
+      include: selectFields,
+      orderBy
+    });
+  }
+
+  return res.json({ success: true, data: slots });
+});
+
 export const getMyAttendance = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const student = await prisma.student.findUnique({
-    where: { userId: req.user!.id },
-    select: { id: true }
+    where: { userId: req.user!.id }
   });
   if (!student) return next(new AuthorizationError('Student profile not found.'));
 
   const studentId = student.id;
   const { courseId } = req.query;
-  const where: any = { studentId };
-  if (courseId) where.courseId = parseInt(courseId as string);
+  
+  if (!courseId) {
+    return next(new AppError('courseId is required', 400));
+  }
 
-  const attendance = await prisma.attendance.findMany({
-    where,
-    include: { course: { select: { name: true, courseCode: true } } },
-    orderBy: { date: 'desc' }
+  // 1. Find all slots for this student and course
+  // They could be in the slot via groupId or it's a general lecture (no groupId)
+  const slots = await prisma.scheduleSlot.findMany({
+    where: {
+      courseId: parseInt(courseId as string),
+      OR: [
+        { groupId: student.groupId },
+        { groupId: null }
+      ]
+    }
   });
-  return res.json({ success: true, data: attendance });
+
+  const slotIds = slots.map(s => s.id);
+
+  // 2. Find all sessions for these slots
+  const sessions = await prisma.attendanceSession.findMany({
+    where: { scheduleSlotId: { in: slotIds } },
+    orderBy: { createdAt: 'desc' },
+    include: { scheduleSlot: { include: { course: true } } }
+  });
+
+  // 3. Find student's attendance records for these sessions
+  const attendances = await prisma.attendance.findMany({
+    where: {
+      studentId,
+      sessionId: { in: sessions.map(s => s.id) }
+    }
+  });
+
+  const attendanceMap = new Map();
+  attendances.forEach((a: any) => attendanceMap.set(a.sessionId, a));
+
+  // 4. Combine
+  const data = sessions.map(session => {
+    const record = attendanceMap.get(session.id);
+    return {
+      sessionId: session.id,
+      date: session.createdAt,
+      course: session.scheduleSlot.course,
+      status: record ? record.status : 'ABSENT', // Implicit absence
+      remarks: record ? record.remarks : null
+    };
+  });
+
+  return res.json({ success: true, data });
 });
 
 export const getAttendanceSummary = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -449,29 +578,42 @@ export const getAttendanceSummary = catchAsync(async (req: Request, res: Respons
 });
 
 export const bulkSaveAttendance = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { courseId, date, records } = req.body;
+  const { sessionId, records } = req.body;
+
+  if (!sessionId) {
+    return next(new AppError('sessionId is required', 400));
+  }
+
+  const session = await prisma.attendanceSession.findUnique({
+    where: { id: parseInt(sessionId) },
+    include: { scheduleSlot: true }
+  });
+
+  if (!session) return next(new NotFoundError('Session not found'));
+
+  const courseId = session.scheduleSlot.courseId;
+  const scheduleSlotId = session.scheduleSlot.id;
 
   const courseScope: any = getScopeWhere(req.user!, 'course');
   const course = await prisma.course.findFirst({
     where: {
       AND: [
-        { id: parseInt(courseId as string) },
+        { id: courseId },
         courseScope
       ]
     }
   });
   if (!course) return next(new AuthorizationError('Access denied: You are not authorized for this course.'));
 
-  const dateObj = new Date(date);
+  const dateObj = new Date(session.createdAt);
   dateObj.setHours(0, 0, 0, 0);
 
-  const operations = records.map((record: any) => 
+  const operations = records.map((record: any) =>
     prisma.attendance.upsert({
       where: {
-        studentId_courseId_date: {
+        studentId_sessionId: {
           studentId: record.studentId,
-          courseId: parseInt(courseId),
-          date: dateObj
+          sessionId: parseInt(sessionId)
         }
       },
       update: {
@@ -481,11 +623,13 @@ export const bulkSaveAttendance = catchAsync(async (req: Request, res: Response,
       },
       create: {
         studentId: record.studentId,
-        courseId: parseInt(courseId),
+        courseId,
+        scheduleSlotId,
         date: dateObj,
         status: record.status,
         remarks: record.remarks || null,
-        recordedById: req.user!.id
+        recordedById: req.user!.id,
+        sessionId: parseInt(sessionId)
       }
     })
   );
@@ -495,7 +639,7 @@ export const bulkSaveAttendance = catchAsync(async (req: Request, res: Response,
   // Recalculate absences
   const uniqueStudents = Array.from(new Set(records.map((r: any) => parseInt(r.studentId))));
   uniqueStudents.forEach((studentId: any) => {
-    recalculateAbsence(studentId, parseInt(courseId)).catch(() => {});
+    recalculateAbsence(studentId, courseId).catch(() => { });
   });
 
   return res.json({ success: true, message: 'Attendance bulk saved successfully' });
@@ -505,7 +649,7 @@ export const getAttendanceRecords = catchAsync(async (req: Request, res: Respons
   const { courseId, date, departmentId, collegeId, page = 1, limit = 50 } = req.query;
 
   const where: any = {};
-  
+
   if (courseId) where.courseId = parseInt(courseId as string);
   if (date) {
     const startOfDay = new Date(date as string);
@@ -514,7 +658,7 @@ export const getAttendanceRecords = catchAsync(async (req: Request, res: Respons
     endOfDay.setHours(23, 59, 59, 999);
     where.date = { gte: startOfDay, lte: endOfDay };
   }
-  
+
   if (departmentId) {
     where.course = { departmentId: parseInt(departmentId as string) };
   } else if (collegeId) {
@@ -568,8 +712,8 @@ export const getAttendanceRecords = catchAsync(async (req: Request, res: Respons
     recordedAt: record.createdAt
   }));
 
-  return res.json({ 
-    success: true, 
+  return res.json({
+    success: true,
     data: mappedData,
     pagination: {
       total,
@@ -581,12 +725,12 @@ export const getAttendanceRecords = catchAsync(async (req: Request, res: Respons
 
 export const unblockEnrollment = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { enrollmentId } = req.params;
-  
+
   const enrollment = await prisma.enrollment.findUnique({
     where: { id: parseInt(enrollmentId as string) },
     include: { course: true, student: true }
   });
-  
+
   if (!enrollment) return next(new NotFoundError('Enrollment not found'));
 
   const courseScope: any = getScopeWhere(req.user!, 'course');
@@ -605,5 +749,37 @@ export const unblockEnrollment = catchAsync(async (req: Request, res: Response, 
   });
 
   return res.json({ success: true, message: 'Student unblocked successfully' });
+});
+
+export const getAuditDuplicateDevices = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  // Find deviceIds that have been used by more than one distinct student
+  const duplicates: any[] = await prisma.$queryRaw`
+    SELECT "deviceId", 
+           COUNT(DISTINCT "studentId")::int as "studentCount", 
+           array_agg(DISTINCT "studentId") as "studentIds"
+    FROM "Attendance"
+    WHERE "deviceId" IS NOT NULL
+    GROUP BY "deviceId"
+    HAVING COUNT(DISTINCT "studentId") > 1
+  `;
+  
+  if (!duplicates || duplicates.length === 0) {
+    return res.json({ success: true, data: [] });
+  }
+
+  // Enrich with student details
+  const enrichedDuplicates = await Promise.all(duplicates.map(async (dup) => {
+    const students = await prisma.student.findMany({
+      where: { id: { in: dup.studentIds } },
+      select: { id: true, studentId: true, firstName: true, lastName: true, user: { select: { email: true } } }
+    });
+    return {
+      deviceId: dup.deviceId,
+      studentCount: dup.studentCount,
+      students
+    };
+  }));
+
+  return res.json({ success: true, data: enrichedDuplicates });
 });
 

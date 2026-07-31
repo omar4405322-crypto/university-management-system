@@ -2,7 +2,7 @@
 // FIXED [Phase 7]: Empty state + delete confirmation modal
 import React, { useState, useEffect } from 'react';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import {
   Building2,

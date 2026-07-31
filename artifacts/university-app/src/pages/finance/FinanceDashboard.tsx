@@ -22,11 +22,11 @@ import AddPaymentModal from './AddPaymentModal';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import Card from '../../components/ui/Card';
 import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import Badge from '../../components/ui/Badge';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { SkeletonKPIGrid, SkeletonTable } from '../../components/ui/Skeleton';
+import { SkeletonKPIGrid, SkeletonTable } from '../../components/ui/skeleton';
 import {
   DollarSign,
   Clock,

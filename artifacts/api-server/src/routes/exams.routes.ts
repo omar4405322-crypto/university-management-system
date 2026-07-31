@@ -64,7 +64,8 @@ router.delete('/questions/:questionId', authorize('DOCTOR', 'ADMIN'), examsContr
 // --- EXAM SESSIONS & SUBMISSIONS ---
 router.post('/:id/start', authorize('STUDENT'), examsController.startExamSession);
 router.post('/:id/submit', authorize('STUDENT'), examsController.submitExam);
-router.get('/:id/submissions', authorize('DOCTOR', 'ADMIN'), examsController.getExamSubmissions);
+router.get('/:id/submissions', authorize('DOCTOR', 'ADMIN', 'SUPER_ADMIN'), examsController.getExamSubmissions);
 router.get('/:id/my-submission', authorize('STUDENT'), examsController.getMyExamSubmission);
+router.put('/submissions/:submissionId/grade', authorize('DOCTOR', 'ADMIN', 'SUPER_ADMIN'), examsController.gradeSubmission);
 
 export default router;

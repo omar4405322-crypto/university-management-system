@@ -28,7 +28,7 @@ i18n
       en: { translation: en },
     },
     lng: getInitialLanguage(),
-    fallbackLng: 'en',
+    fallbackLng: 'ar',
     supportedLngs: ['ar', 'en'],
     nonExplicitSupportedLngs: true,
     interpolation: { escapeValue: false },

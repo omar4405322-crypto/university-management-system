@@ -28,13 +28,23 @@ export const collegesKeys: CollegeKeyItem[] = [
   },
 ];
 
+import { PublicCollegeItem } from '../hooks/useUniversityStats';
+
 interface CollegesSectionProps {
+  colleges?: PublicCollegeItem[];
   isLoading?: boolean;
 }
 
-export const CollegesSection: React.FC<CollegesSectionProps> = ({ isLoading = false }) => {
+export const CollegesSection: React.FC<CollegesSectionProps> = ({ colleges, isLoading = false }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language?.startsWith('ar');
+
+  const defaultImages = [
+    '/assets/university/ne/campus-building.png',
+    '/assets/university/ne/campus-entrance.png',
+  ];
+
+  const hasDbColleges = colleges && colleges.length > 0;
 
   return (
     <section id="colleges" className="py-20 md:py-28 bg-slate-50 dark:bg-slate-900/50 border-y border-slate-100 dark:border-slate-800/50">
@@ -72,6 +82,53 @@ export const CollegesSection: React.FC<CollegesSectionProps> = ({ isLoading = fa
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="skeleton rounded-2xl h-96 w-full" />
             <div className="skeleton rounded-2xl h-96 w-full" />
+          </div>
+        ) : hasDbColleges ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {colleges.map((college, i) => (
+              <a
+                key={college.id}
+                href={`/colleges/${college.id}`}
+                className="group flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-brand-green/30"
+                style={{ animationDelay: `${i * 120}ms` }}
+              >
+                {/* Image Container */}
+                <div className="aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-700 relative">
+                  <ImageWithFallback
+                    src={defaultImages[i % defaultImages.length]}
+                    alt={isRTL ? college.nameAr : college.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                </div>
+
+                {/* Content Container */}
+                <div className="p-6 flex flex-col flex-grow justify-between">
+                  <div className="space-y-2 mb-4">
+                    <h3 className="text-lg md:text-xl font-extrabold text-brand-navy dark:text-brand-text-main group-hover:text-brand-green transition-colors m-0">
+                      {isRTL ? college.nameAr : college.name}
+                    </h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium leading-relaxed">
+                      {college.description}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                    <span className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-bold">
+                      <Users size={14} className="text-slate-400" />
+                      <span className="font-mono">{college.departmentsCount} {isRTL ? 'أقسام أكاديمية' : 'Departments'}</span>
+                    </span>
+                    <span className="text-brand-green group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs font-bold">
+                      {isRTL ? (
+                        <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" />
+                      ) : (
+                        <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </a>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">

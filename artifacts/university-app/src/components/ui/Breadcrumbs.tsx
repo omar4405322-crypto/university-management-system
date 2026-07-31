@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 // FIXED: Reusable breadcrumb navigation - Phase 6
 import React from 'react';
 import { Link } from 'react-router-dom';

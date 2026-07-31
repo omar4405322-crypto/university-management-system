@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 // FIXED: Phase 4 — Arabic i18n for stats, charts, and page header
 import React, { useState, useEffect } from 'react';
 import {
@@ -31,13 +31,13 @@ import {
 } from 'lucide-react';
 import analyticsService from '../../services/analytics.service';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import ChartTooltip from '../../components/ui/ChartTooltip';
-import { SkeletonKPIGrid } from '../../components/ui/Skeleton';
+import { SkeletonKPIGrid } from '../../components/ui/skeleton';
 import { logger } from '../../lib/logger';
 
 const AnalyticsDashboard = () => {

@@ -10,7 +10,7 @@ import Card from '../../components/ui/Card';
 import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody, ActionMenu } from '../../components/ui/Table';
 import Pagination from '../../components/ui/Pagination';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import { downloadCsv } from '../../utils/exportCsv';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
@@ -27,7 +27,8 @@ import {
   Plus,
   Search,
   GraduationCap,
-  Link
+  Link,
+  Calendar,
 } from 'lucide-react';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
 import { useNavigate } from 'react-router-dom';
@@ -187,28 +188,6 @@ const TeachingAssistantsList = () => {
           className: "bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2"
         }}
       />
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {stats.map((stat, i) => (
-          <Card
-            key={i}
-            className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-md transition-all text-start"
-          >
-            <div className={`rounded-xl p-2.5 ${stat.bgClass}`}>
-              <stat.icon size={24} />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-black text-brand-text-primary dark:text-white">
-                {stat.value}
-              </span>
-              <span className="text-sm text-brand-text-secondary dark:text-slate-400 font-bold">
-                {stat.label}
-              </span>
-            </div>
-          </Card>
-        ))}
-      </div>
 
       {/* Filter & Search Bar Card */}
       <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
@@ -385,6 +364,12 @@ const TeachingAssistantsList = () => {
                           <ActionMenu
                             actions={[
                               {
+                                label: isRTL ? 'عرض الجدول' : 'View Schedule',
+                                icon: Calendar,
+                                variant: 'view',
+                                onClick: () => navigate(`/schedules/ta?taId=${ta.id}`),
+                              },
+                              {
                                 label: t('teachingAssistants.assignDoctor'),
                                 icon: Link,
                                 variant: 'view',
@@ -397,7 +382,7 @@ const TeachingAssistantsList = () => {
                                 onClick: () => handleEdit(ta),
                               },
                               {
-                                label: 'Reset Password',
+                                label: isRTL ? 'إعادة تعيين كلمة المرور' : 'Reset Password',
                                 icon: KeyRound,
                                 variant: 'edit',
                                 onClick: () => setResetPasswordTA(ta),

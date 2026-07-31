@@ -5,6 +5,7 @@ import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError, AuthorizationError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
+import { sendToUser } from '../utils/socket';
 
 export const getAllExams = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { type, upcoming } = req.query;
@@ -62,7 +63,7 @@ export const getUpcomingExams = catchAsync(
 );
 
 export const createExam = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { courseId, type, date, startTime, endTime, room, location } = req.body;
+  const { courseId, type, title, date, startTime, endTime, room, location } = req.body;
 
   // Check if course belongs to admin's scope
   const course = await prisma.course.findUnique({
@@ -92,6 +93,7 @@ export const createExam = catchAsync(async (req: Request, res: Response, next: N
     data: {
       courseId: parseInt(courseId as string),
       type: type || 'MIDTERM',
+      title: title && String(title).trim() ? String(title).trim() : undefined,
       date: new Date(date as string),
       startTime,
       endTime,
@@ -106,6 +108,65 @@ export const createExam = catchAsync(async (req: Request, res: Response, next: N
       },
     },
   });
+
+  // Notify targeted students
+  try {
+    const targetStudents = await prisma.student.findMany({
+      where: {
+        OR: [
+          { enrollments: { some: { courseId: parseInt(courseId as string) } } },
+          ...(course.departmentId && course.year
+            ? [{ departmentId: course.departmentId, year: course.year }]
+            : []),
+        ],
+      },
+      select: { userId: true },
+    });
+
+    const studentUserIds = Array.from(
+      new Set(targetStudents.map((s) => s.userId).filter(Boolean))
+    );
+
+    if (studentUserIds.length > 0) {
+      const examTypeTitle =
+        type === 'FINAL'
+          ? 'الامتحان النهائي'
+          : type === 'MIDTERM'
+          ? 'امتحان منتصف الفصل'
+          : 'اختبار قصير';
+
+      const notifTitle = `جدولة امتحان جديد: ${course.name}`;
+      const notifMsg = `تم نشر وتخصيص ${examTypeTitle} لمادة (${course.name} - ${course.courseCode}) بتاريخ ${new Date(
+        date as string
+      ).toLocaleDateString('ar-EG')} بالقاعة/المكان (${room || location || 'TBA'}).`;
+
+      // 1. Create DB Notifications
+      await prisma.notification.createMany({
+        data: studentUserIds.map((uId) => ({
+          userId: uId,
+          title: notifTitle,
+          message: notifMsg,
+          type: 'warning',
+        })),
+      });
+
+      // 2. Broadcast via Socket.io
+      studentUserIds.forEach((uId) => {
+        try {
+          sendToUser(uId, 'notification', {
+            title: notifTitle,
+            message: notifMsg,
+            type: 'warning',
+            createdAt: new Date(),
+          });
+        } catch (_err) {
+          // ignore socket silent failure
+        }
+      });
+    }
+  } catch (notifErr) {
+    console.error('Failed to dispatch exam notifications:', notifErr);
+  }
 
   res.status(201).json({ success: true, data: exam });
 });
@@ -196,6 +257,12 @@ export const getExamById = catchAsync(async (req: Request, res: Response, next: 
           },
         },
       },
+      questions: {
+        select: {
+          id: true,
+          points: true
+        }
+      }
     },
   });
 
@@ -295,6 +362,35 @@ export const startExamSession = catchAsync(async (req: Request, res: Response, n
   const exam = await prisma.exam.findUnique({ where: { id: examId } });
   if (!exam) return next(new NotFoundError('Exam not found'));
 
+  // Ensure exam is active based on date and time
+  const now = new Date();
+  
+  if (exam.date) {
+    // Check start time
+    if (exam.startTime) {
+      const [h, m] = String(exam.startTime).split(':').map(Number);
+      if (!isNaN(h) && !isNaN(m)) {
+        const startDateTime = new Date(exam.date);
+        startDateTime.setHours(h, m, 0, 0);
+        if (now.getTime() < startDateTime.getTime()) {
+          return next(new AuthorizationError('Exam has not started yet'));
+        }
+      }
+    }
+    
+    // Check end time
+    if (exam.endTime) {
+      const [h, m] = String(exam.endTime).split(':').map(Number);
+      if (!isNaN(h) && !isNaN(m)) {
+        const endDateTime = new Date(exam.date);
+        endDateTime.setHours(h, m, 0, 0);
+        if (now.getTime() > endDateTime.getTime()) {
+          return next(new AuthorizationError('Exam time has expired'));
+        }
+      }
+    }
+  }
+
   // Check if submission already exists
   let submission = await prisma.examSubmission.findUnique({
     where: { examId_studentId: { examId, studentId: student.id } }
@@ -318,6 +414,35 @@ export const startExamSession = catchAsync(async (req: Request, res: Response, n
   res.status(201).json({ success: true, data: submission });
 });
 
+function normalizeMcq(val: any, q?: any): string {
+  if (!val) return '';
+  const str = String(val).trim();
+  if (q) {
+    if (q.optionA && str.toLowerCase() === String(q.optionA).trim().toLowerCase()) return 'A';
+    if (q.optionB && str.toLowerCase() === String(q.optionB).trim().toLowerCase()) return 'B';
+    if (q.optionC && str.toLowerCase() === String(q.optionC).trim().toLowerCase()) return 'C';
+    if (q.optionD && str.toLowerCase() === String(q.optionD).trim().toLowerCase()) return 'D';
+  }
+  const upper = str.toUpperCase();
+  if (['A', 'B', 'C', 'D'].includes(upper)) return upper;
+  if (upper.startsWith('OPTION_') || upper.startsWith('OPTION ')) {
+    const code = upper.replace(/^OPTION[_\s]*/, '').charAt(0);
+    if (['A', 'B', 'C', 'D'].includes(code)) return code;
+  }
+  if (upper.length <= 3 && ['A', 'B', 'C', 'D'].includes(upper.charAt(0))) {
+    return upper.charAt(0);
+  }
+  return upper;
+}
+
+function normalizeTF(val: any): string {
+  if (!val) return '';
+  const str = String(val).trim().toUpperCase();
+  if (['TRUE', 'T', 'A', '1', 'صواب', 'صح'].includes(str)) return 'TRUE';
+  if (['FALSE', 'F', 'B', '0', 'خطأ'].includes(str)) return 'FALSE';
+  return str;
+}
+
 export const submitExam = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const examId = parseInt(req.params.id as string);
   const { answers, antiCheatLogs } = req.body;
@@ -340,22 +465,43 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
   const questions = await prisma.examQuestion.findMany({ where: { examId } });
   let score = 0;
   let maxScore = 0;
-  let allAutoGradeable = true;
 
   // answers format: { questionId: string, answer: string }[] OR { [questionId]: string }
-  // depending on frontend. Let's support object map:
   const answersMap: Record<string, string> = Array.isArray(answers) 
-    ? answers.reduce((acc: any, curr: any) => ({ ...acc, [curr.questionId]: curr.answer }), {})
-    : answers || {};
+    ? answers.reduce((acc: any, curr: any) => ({ ...acc, [String(curr.questionId)]: String(curr.answer || '') }), {})
+    : (typeof answers === 'object' && answers !== null ? answers : {});
 
   questions.forEach((q: any) => {
-    maxScore += q.points;
-    if (q.type === 'SHORT_ANSWER') {
-      allAutoGradeable = false;
-    } else {
-      const studentAnswer = answersMap[q.id.toString()];
-      if (studentAnswer && studentAnswer.toString().toUpperCase() === q.correctAnswer.toUpperCase()) {
-        score += q.points;
+    const qPoints = Number(q.points) || 1;
+    maxScore += qPoints;
+
+    const studentAnswer = answersMap[q.id.toString()] || answersMap[q.id];
+    if (studentAnswer !== undefined && studentAnswer !== null) {
+      const sAnsStr = String(studentAnswer).trim().toUpperCase();
+      const cAnsStr = String(q.correctAnswer || '').trim().toUpperCase();
+
+      const qType = (q.type || '').toUpperCase().replace('-', '_');
+
+      if (qType === 'MCQ' || qType === 'MULTIPLE_CHOICE') {
+        const normS = normalizeMcq(studentAnswer, q);
+        const normC = normalizeMcq(q.correctAnswer, q);
+        // Direct string match or normalized match
+        if (normS === normC || sAnsStr === cAnsStr || sAnsStr === cAnsStr.replace('OPTION', '')) {
+          score += qPoints;
+        }
+      } else if (qType === 'TRUE_FALSE' || qType === 'TRUEFALSE' || qType === 'TF') {
+        const normS = normalizeTF(studentAnswer);
+        const normC = normalizeTF(q.correctAnswer);
+        // Check for common variations if normalize fails
+        const isStudentTrue = normS === 'TRUE' || sAnsStr === 'TRUE' || sAnsStr === 'A' || sAnsStr === '1' || sAnsStr === 'صواب' || sAnsStr === 'صح';
+        const isCorrectTrue = normC === 'TRUE' || cAnsStr === 'TRUE' || cAnsStr === 'A' || cAnsStr === '1' || cAnsStr === 'صواب' || cAnsStr === 'صح';
+        if (isStudentTrue === isCorrectTrue) {
+          score += qPoints;
+        }
+      } else if (qType === 'SHORT_ANSWER' || qType === 'ESSAY' || qType === 'TEXT') {
+        if (cAnsStr && (sAnsStr.toLowerCase().includes(cAnsStr.toLowerCase()) || cAnsStr.toLowerCase().includes(sAnsStr.toLowerCase()))) {
+          score += qPoints;
+        }
       }
     }
   });
@@ -364,9 +510,9 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
     where: { id: submission.id },
     data: {
       answers: answersMap,
-      score: allAutoGradeable ? score : null, // If there's short answer, score is pending manual review
-      maxScore,
-      status: allAutoGradeable ? 'GRADED' : 'PENDING',
+      score: score,
+      maxScore: maxScore || 10,
+      status: 'GRADED',
       submittedAt: new Date(),
       antiCheatLogs: antiCheatLogs || []
     }
@@ -389,6 +535,8 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
 export const getExamSubmissions = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const examId = parseInt(req.params.id as string);
   
+  const questions = await prisma.examQuestion.findMany({ where: { examId } });
+
   const submissions = await prisma.examSubmission.findMany({
     where: { examId },
     include: {
@@ -400,7 +548,63 @@ export const getExamSubmissions = catchAsync(async (req: Request, res: Response,
     orderBy: { submittedAt: 'desc' }
   });
 
-  res.json({ success: true, data: submissions });
+  // Auto-calculate & backfill score for any submission missing score
+  const updatedSubmissions = await Promise.all(
+    submissions.map(async (sub: any) => {
+      if (sub.score === null || sub.score === undefined || sub.status === 'PENDING') {
+        let calcScore = 0;
+        let totalMax = 0;
+
+        const answersMap: Record<string, string> =
+          typeof sub.answers === 'object' && sub.answers !== null
+            ? (sub.answers as Record<string, string>)
+            : {};
+
+        questions.forEach((q: any) => {
+          const qPoints = Number(q.points) || 1;
+          totalMax += qPoints;
+
+          const studentAns = answersMap[q.id.toString()] || answersMap[q.id];
+          if (studentAns !== undefined && studentAns !== null) {
+            const sAnsStr = String(studentAns).trim().toUpperCase();
+            const cAnsStr = String(q.correctAnswer || '').trim().toUpperCase();
+            const qType = (q.type || '').toUpperCase().replace('-', '_');
+
+            if (qType === 'MCQ' || qType === 'MULTIPLE_CHOICE') {
+              if (sAnsStr === cAnsStr || sAnsStr === cAnsStr.replace('OPTION', '')) {
+                calcScore += qPoints;
+              }
+            } else if (qType === 'TRUE_FALSE' || qType === 'TRUEFALSE' || qType === 'TF') {
+              const normS = sAnsStr === 'TRUE' || sAnsStr === 'A' || sAnsStr === '1' ? 'TRUE' : 'FALSE';
+              const normC = cAnsStr === 'TRUE' || cAnsStr === 'A' || cAnsStr === '1' ? 'TRUE' : 'FALSE';
+              if (normS === normC) {
+                calcScore += qPoints;
+              }
+            } else if (qType === 'SHORT_ANSWER' || qType === 'ESSAY' || qType === 'TEXT') {
+              if (cAnsStr && sAnsStr.toLowerCase().includes(cAnsStr.toLowerCase())) {
+                calcScore += qPoints;
+              }
+            }
+          }
+        });
+
+        // Persist computed score into DB
+        await prisma.examSubmission.update({
+          where: { id: sub.id },
+          data: {
+            score: calcScore,
+            maxScore: totalMax || 10,
+            status: 'GRADED',
+          },
+        });
+
+        return { ...sub, score: calcScore, maxScore: totalMax || 10, status: 'GRADED' };
+      }
+      return sub;
+    })
+  );
+
+  res.json({ success: true, data: updatedSubmissions });
 });
 
 export const getMyExamSubmission = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -415,5 +619,51 @@ export const getMyExamSubmission = catchAsync(async (req: Request, res: Response
 
   if (!submission) return next(new NotFoundError('Submission not found'));
 
-  res.json({ success: true, data: submission });
+  const exam = await prisma.exam.findUnique({ where: { id: examId } });
+
+  let questions = await prisma.examQuestion.findMany({
+    where: { examId },
+    orderBy: { order: 'asc' },
+  });
+
+  // Fallback: If no questions attached directly to examId, load questions from any exam of the same course
+  if (questions.length === 0 && exam?.courseId) {
+    questions = await prisma.examQuestion.findMany({
+      where: { exam: { courseId: exam.courseId } },
+      orderBy: { order: 'asc' },
+    });
+  }
+
+  res.json({
+    success: true,
+    data: {
+      ...submission,
+      questions,
+    },
+  });
+});
+
+export const gradeSubmission = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const submissionId = parseInt(req.params.submissionId as string);
+  const { score } = req.body;
+
+  const submission = await prisma.examSubmission.findUnique({
+    where: { id: submissionId },
+  });
+
+  if (!submission) {
+    return next(new NotFoundError('Submission not found'));
+  }
+
+  const updated = await prisma.examSubmission.update({
+    where: { id: submissionId },
+    data: {
+      score: Number(score),
+      status: 'GRADED',
+    },
+  });
+
+  auditLog('GRADE_SUBMISSION', 'ExamSubmission', submissionId.toString(), req);
+
+  res.json({ success: true, data: updated });
 });

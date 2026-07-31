@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import { BookOpen, Target, DollarSign, ClipboardList, Calendar, ArrowUpRight, ArrowDownRight, CheckCircle2, ChevronRight, History, Zap, Bell, TrendingUp } from 'lucide-react';
@@ -82,6 +82,7 @@ export default function StudentDashboard() {
       trend: 'neutral',
       icon: BookOpen,
       color: 'navy',
+      link: '/record',
     },
     {
       id: 'academicRisk',
@@ -91,6 +92,7 @@ export default function StudentDashboard() {
       trend: ['HIGH', 'CRITICAL'].includes(stats?.profile?.successMetrics?.predictedRisk) ? 'down' : 'up',
       icon: Target,
       color: ['HIGH', 'CRITICAL'].includes(stats?.profile?.successMetrics?.predictedRisk) ? 'yellow' : 'green',
+      link: '/attendance',
     },
     {
       id: 'paymentsStatus',
@@ -100,6 +102,7 @@ export default function StudentDashboard() {
       trend: stats?.myPayments?.pending?.count > 0 ? 'down' : 'up',
       icon: DollarSign,
       color: 'yellow',
+      link: '/record',
     },
     {
       id: 'upcomingQuizzes',
@@ -109,6 +112,7 @@ export default function StudentDashboard() {
       trend: 'neutral',
       icon: ClipboardList,
       color: 'green',
+      link: '/quizzes',
     },
     {
       id: 'currentSemester',
@@ -118,6 +122,7 @@ export default function StudentDashboard() {
       trend: 'neutral',
       icon: Calendar,
       color: 'navy',
+      link: '/schedules/student',
     },
   ];
 
@@ -152,7 +157,7 @@ export default function StudentDashboard() {
               </span>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3 shrink-0 mt-auto">
+          <div className="flex shrink-0 items-center gap-3">
             <Button
               variant="outline"
               size="md"
@@ -176,7 +181,13 @@ export default function StudentDashboard() {
       {/* === KPI Grid === */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-5 gap-5 xl:gap-6 2xl:gap-8">
         {kpis.map((kpi, idx) => (
-          <Card key={kpi.id || idx} variant="default" noPadding className="group hover:-translate-y-0.5 transition-all duration-300 overflow-hidden relative">
+          <Card
+            key={kpi.id || idx}
+            variant="default"
+            noPadding
+            onClick={() => kpi.link && navigate(kpi.link)}
+            className={`group hover:-translate-y-0.5 transition-all duration-300 overflow-hidden relative ${kpi.link ? 'cursor-pointer' : ''}`}
+          >
             <div className="p-5 space-y-3">
               <div className="flex justify-between items-start">
                 <div className={`p-2.5 rounded-2xl transition-colors duration-300 ease-in-out ${

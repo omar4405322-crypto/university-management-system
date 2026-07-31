@@ -23,13 +23,13 @@ export const createRequest = catchAsync(async (req: Request, res: Response, next
   }
   // TAs own slots, so if scheduleSlotId is provided, they must own the slot
   if (req.user!.role === 'TEACHING_ASSISTANT') {
-     if (!scheduleSlotId) {
-        return next(new AuthorizationError('TAs must specify the schedule slot they are requesting to change'));
-     }
-     const slot = await prisma.scheduleSlot.findUnique({ where: { id: parseInt(scheduleSlotId) } });
-     if (!slot || slot.teachingAssistantId !== req.user!.teachingAssistant?.id) {
-        return next(new AuthorizationError('You can only request changes for slots assigned to you'));
-     }
+    if (!scheduleSlotId) {
+      return next(new AuthorizationError('TAs must specify the schedule slot they are requesting to change'));
+    }
+    const slot = await prisma.scheduleSlot.findUnique({ where: { id: parseInt(scheduleSlotId) } });
+    if (!slot || slot.teachingAssistantId !== req.user!.teachingAssistant?.id) {
+      return next(new AuthorizationError('You can only request changes for slots assigned to you'));
+    }
   }
 
   const newReq = await prisma.scheduleChangeRequest.create({
@@ -116,8 +116,7 @@ export const approveRequest = catchAsync(async (req: Request, res: Response, nex
           startTime: data.startTime,
           endTime: data.endTime,
           room: data.room,
-          teachingAssistantId: data.teachingAssistantId,
-          slotType: data.slotType || 'LECTURE',
+          teachingAssistantId: data.teachingAssistantId
         }
       });
     } else if (changeReq.type === 'UPDATE_SLOT') {
@@ -147,13 +146,13 @@ export const approveRequest = catchAsync(async (req: Request, res: Response, nex
         }
       });
     } else if (changeReq.type === 'DELETE_SLOT') {
-       if (!changeReq.scheduleSlotId) throw new AppError('scheduleSlotId required for DELETE_SLOT', 400);
-       await tx.scheduleSlot.delete({ where: { id: changeReq.scheduleSlotId } });
+      if (!changeReq.scheduleSlotId) throw new AppError('scheduleSlotId required for DELETE_SLOT', 400);
+      await tx.scheduleSlot.delete({ where: { id: changeReq.scheduleSlotId } });
     } else if (changeReq.type === 'OVERRIDE') {
-       if (!changeReq.scheduleSlotId) throw new AppError('scheduleSlotId required for OVERRIDE', 400);
-       const slot = await tx.scheduleSlot.findUnique({ where: { id: changeReq.scheduleSlotId } });
-       if (!slot) throw new NotFoundError('ScheduleSlot not found');
-       await TimetableService.checkConflicts({
+      if (!changeReq.scheduleSlotId) throw new AppError('scheduleSlotId required for OVERRIDE', 400);
+      const slot = await tx.scheduleSlot.findUnique({ where: { id: changeReq.scheduleSlotId } });
+      if (!slot) throw new NotFoundError('ScheduleSlot not found');
+      await TimetableService.checkConflicts({
         dayOfWeek: data.dayOfWeek || slot.dayOfWeek,
         startTime: data.startTime || slot.startTime,
         endTime: data.endTime || slot.endTime,
