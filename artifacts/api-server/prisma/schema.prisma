@@ -41,6 +41,7 @@ model User {
   recordedAttendances      Attendance[]
   scheduleRequests         ScheduleChangeRequest[]
   resolvedScheduleRequests ScheduleChangeRequest[] @relation("ResolvedRequests")
+  uploadedMaterials        CourseMaterial[]
   isActive                 Boolean                 @default(true)
   deactivatedAt            DateTime?
 
@@ -180,6 +181,7 @@ model Student {
   examSubmissions ExamSubmission[]
   groupId         Int?
   group           StudentGroup?         @relation(fields: [groupId], references: [id])
+  rfidTag         String?               @unique // Assigned by Admin
 
   @@index([studentId])
   @@index([departmentId, year])
@@ -205,23 +207,42 @@ enum RiskLevel {
 }
 
 model Attendance {
-  id           Int              @id @default(autoincrement())
-  studentId    Int
-  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  courseId     Int
-  course       Course           @relation(fields: [courseId], references: [id])
-  date         DateTime         @default(now())
-  status       AttendanceStatus @default(PRESENT)
-  remarks      String?
-  recordedById Int?
-  recordedBy   User?            @relation(fields: [recordedById], references: [id])
-  semester     Int?
-  academicYear Int?
-  createdAt    DateTime         @default(now())
+  id              Int              @id @default(autoincrement())
+  studentId       Int
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId        Int
+  course          Course           @relation(fields: [courseId], references: [id])
+  date            DateTime         @default(now())
+  status          AttendanceStatus @default(PRESENT)
+  method          AttendanceMethod @default(MANUAL)
+  remarks         String?
+  recordedById    Int?
+  recordedBy      User?            @relation(fields: [recordedById], references: [id])
+  semester        Int?
+  academicYear    Int?
+  ipAddress       String?
+  deviceId        String?
+  locationData    Json?
+  locationFlagged Boolean          @default(false)
+  overriddenBy    String?
+  overrideNote    String?
+  sessionId       Int?
+  session         AttendanceSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  scheduleSlotId  Int?
+  scheduleSlot    ScheduleSlot?      @relation(fields: [scheduleSlotId], references: [id])
+  createdAt       DateTime         @default(now())
 
-  @@unique([studentId, courseId, date])
+  @@unique([studentId, sessionId])
   @@index([courseId, date])
   @@index([studentId, courseId])
+  @@index([sessionId])
+  @@index([scheduleSlotId])
+}
+
+enum AttendanceMethod {
+  MANUAL
+  QR
+  RFID
 }
 
 enum AttendanceStatus {
@@ -283,6 +304,7 @@ model Doctor {
   tasks             Task[]
   scheduleOverrides ScheduleOverride[]
   scheduleSlots     ScheduleSlot[]
+  attendanceSessions AttendanceSession[]
 
   @@index([departmentId])
 }
@@ -308,6 +330,7 @@ model Course {
   createdAt              DateTime                 @default(now())
   scheduleSlots          ScheduleSlot[]
   scheduleChangeRequests ScheduleChangeRequest[]
+  materials              CourseMaterial[]
 
   @@index([courseCode])
   @@index([departmentId])
@@ -419,6 +442,7 @@ model Exam {
   id              Int              @id @default(autoincrement())
   courseId        Int
   course          Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title           String?
   type            ExamType         @default(MIDTERM)
   date            DateTime
   startTime       String
@@ -578,6 +602,7 @@ enum TAStatus {
 model StudentGroup {
   id             Int            @id @default(autoincrement())
   name           String // e.g. "A", "A1", "A2"
+  year           Int            @default(1)
   departmentId   Int
   department     Department     @relation(fields: [departmentId], references: [id])
   parentGroupId  Int?
@@ -588,6 +613,18 @@ model StudentGroup {
   createdAt      DateTime       @default(now())
 
   students      Student[]
+  scheduleSlots ScheduleSlot[]
+}
+
+model Room {
+  id        Int      @id @default(autoincrement())
+  name      String
+  latitude  Float?
+  longitude Float?
+  radius    Int      @default(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   scheduleSlots ScheduleSlot[]
 }
 
@@ -607,6 +644,8 @@ model ScheduleSlot {
   startTime String
   endTime   String
   room      String?
+  roomId    Int?
+  roomRef   Room?         @relation(fields: [roomId], references: [id])
 
   slotType    SlotType
 
@@ -614,11 +653,15 @@ model ScheduleSlot {
   teachingAssistantId String?
   teachingAssistant   TeachingAssistant? @relation(fields: [teachingAssistantId], references: [id])
 
+  attendances        Attendance[]
+  attendanceSessions AttendanceSession[]
+
   overrides        ScheduleOverride[]
   scheduleRequests ScheduleChangeRequest[]
 
   @@index([courseId])
   @@index([timetableId])
+  @@index([doctorId])
   @@index([teachingAssistantId])
   @@index([groupId])
 }
@@ -700,3 +743,63 @@ enum SlotType {
   SECTION
   LAB
 }
+
+enum MaterialType {
+  LECTURE
+  TUTORIAL
+}
+
+model CourseMaterial {
+  id           Int          @id @default(autoincrement())
+  title        String
+  description  String?
+  type         MaterialType @default(LECTURE)
+  fileUrl      String
+  fileName     String?
+  fileSize     Int?
+  fileType     String?
+  courseId     Int
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  uploadedById Int
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([courseId])
+  @@index([uploadedById])
+}
+
+model AttendanceSession {
+  id             Int          @id @default(autoincrement())
+  scheduleSlotId Int          // Replaces courseSectionId since ScheduleSlot represents sections/lectures
+  scheduleSlot   ScheduleSlot @relation(fields: [scheduleSlotId], references: [id], onDelete: Cascade)
+  doctorId       Int?         // The doctor/TA who started the session
+  doctor         Doctor?      @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  isActive       Boolean      @default(true)
+  secretKey      String
+  latitude       Float?
+  longitude      Float?
+  radius         Float?       @default(120) // in meters
+  gracePeriodMins Int         @default(15)  // grace period for late students
+  codeStepSeconds Int         @default(20)  // step seconds for TOTP rotation
+  facultyCapturedLatitude Float?
+  facultyCapturedLongitude Float?
+  roomMismatchWarning      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  expiresAt      DateTime
+  attendances    Attendance[]
+
+  @@index([scheduleSlotId])
+  @@index([isActive])
+}
+
+model RfidDevice {
+  id         Int       @id @default(autoincrement())
+  roomId     String    @unique
+  secretHash String
+  label      String?
+  isActive   Boolean   @default(true)
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
