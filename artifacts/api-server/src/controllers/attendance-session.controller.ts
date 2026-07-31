@@ -125,14 +125,43 @@ export const startSession = catchAsync(async (req: Request, res: Response, next:
   const secret = speakeasy.generateSecret({ length: 20 });
   const doctor = req.user!.role === 'DOCTOR' ? await prisma.doctor.findUnique({ where: { userId: req.user!.id } }) : null;
 
+  let finalLat = null;
+  let finalLng = null;
+  let finalRadius = radius !== undefined && radius !== null ? parseFloat(radius) : 100;
+  let roomMismatchWarning = false;
+  
+  const reqLat = latitude !== undefined && latitude !== null ? parseFloat(latitude) : null;
+  const reqLng = longitude !== undefined && longitude !== null ? parseFloat(longitude) : null;
+  
+  if (slot.roomRef && slot.roomRef.latitude != null && slot.roomRef.longitude != null) {
+    // Room has authoritative coordinates
+    finalLat = slot.roomRef.latitude;
+    finalLng = slot.roomRef.longitude;
+    finalRadius = radius !== undefined && radius !== null ? parseFloat(radius) : (slot.roomRef.radius ?? 100);
+    
+    if (reqLat !== null && reqLng !== null) {
+      const dist = calculateDistance(finalLat, finalLng, reqLat, reqLng);
+      if (dist > 300) {
+        roomMismatchWarning = true;
+      }
+    }
+  } else if (reqLat !== null && reqLng !== null) {
+    // Room has no coordinates (or no room), use live capture as geofence
+    finalLat = reqLat;
+    finalLng = reqLng;
+  }
+
   const session = await prisma.attendanceSession.create({
     data: {
       scheduleSlotId: slot.id,
       doctorId: doctor?.id,
       secretKey: secret.base32,
-      latitude: latitude ? parseFloat(latitude) : null,
-      longitude: longitude ? parseFloat(longitude) : null,
-      radius: radius ? parseFloat(radius) : 100,
+      latitude: finalLat,
+      longitude: finalLng,
+      radius: finalRadius,
+      facultyCapturedLatitude: reqLat,
+      facultyCapturedLongitude: reqLng,
+      roomMismatchWarning,
       gracePeriodMins: req.body.gracePeriodMins !== undefined && req.body.gracePeriodMins !== null ? parseInt(req.body.gracePeriodMins) : 15,
       codeStepSeconds: 20,
       expiresAt
@@ -147,7 +176,11 @@ export const startSession = catchAsync(async (req: Request, res: Response, next:
       latitude: session.latitude,
       longitude: session.longitude,
       radius: session.radius,
-      codeStepSeconds: session.codeStepSeconds
+      codeStepSeconds: session.codeStepSeconds,
+      roomMismatchWarning: session.roomMismatchWarning,
+      geoVerificationActive: session.latitude !== null,
+      roomId: slot.roomId,
+      roomNeedsCoordinates: slot.roomId && slot.roomRef?.latitude == null && reqLat !== null
     } 
   });
 });
