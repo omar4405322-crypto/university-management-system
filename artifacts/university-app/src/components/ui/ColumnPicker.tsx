@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Columns3, GripVertical, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 

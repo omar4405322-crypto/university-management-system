@@ -19,7 +19,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import Table, { TableRow, TableCell, TableHeader, TableBody, TableHead } from '../../components/ui/Table';
 import LoadingState from '../../components/ui/LoadingState';
@@ -473,7 +473,7 @@ const TimetableManagement = () => {
                             <button
                               onClick={() =>
                                 navigate(
-                                  `/schedules/timetable?collegeId=${ti.department?.collegeId || ''}&departmentId=${ti.departmentId}&academicYear=${ti.academicYear}&semester=${ti.semester}`
+                                  `/schedules-management?collegeId=${ti.department?.collegeId || ''}&departmentId=${ti.departmentId}&academicYear=${ti.academicYear}&semester=${ti.semester}&view=grid`
                                 )
                               }
                               className="p-2 text-slate-400 dark:text-slate-500 hover:text-brand-primary-500 dark:hover:text-brand-primary-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all"
@@ -578,7 +578,7 @@ const TimetableManagement = () => {
                         size="sm"
                         onClick={() =>
                           navigate(
-                            `/schedules/timetable?collegeId=${ti.department?.collegeId || ''}&departmentId=${ti.departmentId}&academicYear=${ti.academicYear}&semester=${ti.semester}`
+                            `/schedules-management?collegeId=${ti.department?.collegeId || ''}&departmentId=${ti.departmentId}&academicYear=${ti.academicYear}&semester=${ti.semester}&view=grid`
                           )
                         }
                         className="flex-1 rounded-xl font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
@@ -690,7 +690,7 @@ const TimetableManagement = () => {
             );
             if (!editingTimetable && createdTimetable) {
               navigate(
-                `/schedules/timetable?collegeId=${createdTimetable.department?.collegeId || ''}&departmentId=${createdTimetable.departmentId}&academicYear=${createdTimetable.academicYear}&semester=${createdTimetable.semester}`
+                `/schedules-management?collegeId=${createdTimetable.department?.collegeId || ''}&departmentId=${createdTimetable.departmentId}&academicYear=${createdTimetable.academicYear}&semester=${createdTimetable.semester}&view=grid`
               );
             }
           }}

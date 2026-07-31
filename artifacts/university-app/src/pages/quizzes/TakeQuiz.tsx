@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import quizService from '../../services/quiz.service';
@@ -199,7 +199,7 @@ const TakeQuiz = () => {
           <div className="mb-4 p-4 rounded-xl bg-error/10 border border-error/20 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
             <AlertCircle size={20} className="text-error" />
             <p className="text-sm font-black text-error uppercase tracking-widest">
-              {i18n.language === 'ar' ? 'تبقى 5 دقائق فقط!' : 'Only 5 minutes left!'}
+              {i18n.language === 'ar' ? '???? 5 ????? ???!' : 'Only 5 minutes left!'}
             </p>
           </div>
         )}

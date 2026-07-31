@@ -10,7 +10,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import Table, { TableRow, TableCell } from '../../components/ui/Table';
 import departmentService from '../../services/department.service';

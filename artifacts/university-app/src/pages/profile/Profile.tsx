@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import Badge from '../../components/ui/Badge';
 import { useAuth } from '../../context/AuthContext';
@@ -11,7 +11,7 @@ import { Shield, Camera, Lock, X, Loader2, Building2, Award, AlertTriangle } fro
 import { useTranslation } from 'react-i18next';
 import api, { getDynamicBaseUrl } from '../../services/api';
 import Modal from '../../components/ui/Modal';
-import { Textarea } from '../../components/ui/Textarea';
+import { Textarea } from '../../components/ui/textarea';
 import { logger } from '../../lib/logger';
 import { FEATURE_FLAGS } from '../../constants/featureFlags';
 
@@ -50,7 +50,7 @@ const Profile = () => {
         gender: profile.gender || user.gender || '',
         birthDate:
           profile.birthDate || user.birthDate
-                        ? (profile.birthDate || user.birthDate).split('T')[0]
+            ? (profile.birthDate || user.birthDate).split('T')[0]
             : '',
       });
     }
@@ -282,17 +282,11 @@ const Profile = () => {
                     </p>
                   )}
                   {fullProfile.group && (
-                    <p className="text-xs font-bold text-brand-primary-500 bg-brand-primary-50 dark:bg-brand-primary-900/20 inline-block px-2 py-0.5 rounded-md mt-1 border border-brand-primary-100 dark:border-brand-primary-800">
-                      Group: {(() => {
-                        // Build breadcrumb path by walking parentGroup chain
-                        const path = [];
-                        let g = fullProfile.group;
-                        while (g) {
-                          path.unshift(g.name);
-                          g = g.parentGroup;
-                        }
-                        return path.join(' → ');
-                      })()}
+                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 inline-block px-2.5 py-1 rounded-lg mt-1 border border-amber-200 dark:border-amber-800">
+                      {i18n.language === 'ar' ? 'المجموعة: ' : 'Group: '}
+                      {fullProfile.group.parentGroup
+                        ? `${fullProfile.group.parentGroup.name} (${fullProfile.group.name})`
+                        : fullProfile.group.name}
                     </p>
                   )}
                 </div>
@@ -306,9 +300,9 @@ const Profile = () => {
                 <p className="mt-0.5 text-sm font-bold text-brand-text-primary">
                   {user?.createdAt
                     ? new Date((user as any).createdAt).toLocaleDateString(
-                        i18n.language === 'ar' ? 'ar-EG' : 'en-US',
-                        { month: 'short', year: 'numeric' }
-                      )
+                      i18n.language === 'ar' ? 'ar-EG' : 'en-US',
+                      { month: 'short', year: 'numeric' }
+                    )
                     : '—'}
                 </p>
               </div>
@@ -414,10 +408,10 @@ const Profile = () => {
                       name="bio"
                       value={formData.bio}
                       onChange={handleChange}
-                      
+
                       rows="4"
                       placeholder={t('profile.bioPlaceholder')}
-                     label={<>{t('profile.bio')}</>}></Textarea>
+                      label={<>{t('profile.bio')}</>}></Textarea>
                   </div>
                 </div>
               </div>
@@ -475,6 +469,18 @@ const Profile = () => {
                         value={fullProfile.studentId || ''}
                         disabled
                         className="opacity-50"
+                      />
+                      <Input
+                        label={i18n.language === 'ar' ? 'المجموعة الأكاديمية' : 'Student Group'}
+                        value={
+                          fullProfile.group
+                            ? fullProfile.group.parentGroup
+                              ? `${i18n.language === 'ar' ? 'المجموعة' : 'Group'} ${fullProfile.group.parentGroup.name} (${fullProfile.group.name})`
+                              : `${i18n.language === 'ar' ? 'المجموعة' : 'Group'} ${fullProfile.group.name}`
+                            : (i18n.language === 'ar' ? 'غير محدد' : 'Not Assigned')
+                        }
+                        disabled
+                        className="opacity-50 font-bold"
                       />
                     </>
                   )}
@@ -543,11 +549,10 @@ const Profile = () => {
                 </div>
               )}
               <div
-                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                  user?.twoFactorEnabled
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${user?.twoFactorEnabled
                     ? 'border-brand-green/30 bg-brand-green/5'
                     : 'border-brand-accent-yellow bg-brand-accent-yellow/10'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-4">
                   <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center text-brand-text-sub shadow-sm">

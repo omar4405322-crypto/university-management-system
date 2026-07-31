@@ -1,8 +1,8 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyRound, Eye, EyeOff, X } from 'lucide-react';
-import Button from './Button';
+import Button from './button';
 import api from '../../services/api';
 
 const ResetPasswordModal = ({ isOpen, onClose, person, type }) => {
@@ -106,7 +106,7 @@ const ResetPasswordModal = ({ isOpen, onClose, person, type }) => {
 
         {success && (
           <div className="px-4 py-3 rounded-xl bg-brand-primary-50 border border-brand-primary-100 text-sm text-brand-primary-600 font-medium">
-            ✓ {success}
+            ? {success}
           </div>
         )}
 

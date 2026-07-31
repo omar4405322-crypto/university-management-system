@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import departmentService from '../../services/department.service';
 import Modal from '../../components/ui/Modal';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { School, GraduationCap, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
@@ -16,17 +16,23 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-const AddDepartmentModal = ({ isOpen, onClose, colleges, onSuccess }) => {
+interface AddDepartmentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  colleges: any[];
+  onSuccess: () => void;
+}
+
+const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({ isOpen, onClose, colleges, onSuccess }) => {
   const { t } = useTranslation();
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({ resolver: zodResolver(schema) });
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState<{ message: string; type: string } | null>(null);
 
-  const showToast = (message, type) => {
+  const showToast = (message: string, type: string) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
-
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -36,7 +42,7 @@ const AddDepartmentModal = ({ isOpen, onClose, colleges, onSuccess }) => {
         onSuccess();
         reset();
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || t('departments.createError'), 'error');
     } finally {
       setLoading(false);
@@ -94,7 +100,7 @@ const AddDepartmentModal = ({ isOpen, onClose, colleges, onSuccess }) => {
               className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer select-custom-arrow"
             >
               <option value="">اختر الكلية...</option>
-              {colleges.map(college => (
+              {colleges.map((college: any) => (
                 <option key={college.id} value={college.id}>{college.name}</option>
               ))}
             </select>

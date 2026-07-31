@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import coursesService from '../../services/courses.service';
 import doctorsService from '../../services/doctors.service';
 import Modal from '../../components/ui/Modal';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { BookOpen, User, Hash, FileText, Users, CreditCard, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
@@ -20,9 +20,15 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const AddCourseModal = ({ isOpen, onClose, onSuccess }) => {
+interface AddCourseModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useTranslation();
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState<{ message: string; type: string } | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -31,10 +37,8 @@ const AddCourseModal = ({ isOpen, onClose, onSuccess }) => {
       maxStudents: 30,
     }
   });
-  const [toast, setToast] = useState(null);
 
-
-  const showToast = (message, type) => {
+  const showToast = (message: string, type: string) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
@@ -45,7 +49,7 @@ const AddCourseModal = ({ isOpen, onClose, onSuccess }) => {
       if (result.success) {
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast(error.response?.data?.message || t('courses.createError'), 'error');
     }
   };

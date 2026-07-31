@@ -17,7 +17,7 @@ import {
   Building2
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/input';
 import collegeService from '../../services/college.service';

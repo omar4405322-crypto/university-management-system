@@ -191,7 +191,13 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
       department: {
         include: { college: true },
       },
-      scheduleSlots: true,
+      scheduleSlots: {
+        include: {
+          course: {
+            select: { id: true, name: true, courseCode: true, year: true, semester: true }
+          }
+        }
+      },
     },
   });
 
@@ -203,7 +209,16 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
     return res.status(403).json({ message: 'Access denied: doctor belongs to a different scope' });
   }
 
-  res.json({ success: true, data: doctor });
+  // Extract unique courses from schedule slots
+  const courseMap = new Map<number, any>();
+  doctor.scheduleSlots.forEach((slot: any) => {
+    if (slot.course && !courseMap.has(slot.course.id)) {
+      courseMap.set(slot.course.id, slot.course);
+    }
+  });
+  const taughtCourses = Array.from(courseMap.values());
+
+  res.json({ success: true, data: { ...doctor, taughtCourses } });
 });
 
 export const createDoctor = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -395,9 +410,10 @@ export const deleteDoctor = catchAsync(async (req: Request, res: Response, next:
 export const resetDoctorPassword = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
-    const { newPassword } = req.body;
+    const { newPassword, password } = req.body;
+    const providedPassword = newPassword || password;
 
-    if (!newPassword || newPassword.length < 6) {
+    if (!providedPassword || providedPassword.length < 6) {
       return next(new AppError('Password must be at least 6 characters', 400));
     }
 
@@ -417,11 +433,14 @@ export const resetDoctorPassword = catchAsync(
       return res.status(403).json({ message: 'Access denied: doctor belongs to a different scope' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(providedPassword, 10);
 
     await prisma.user.update({
       where: { id: doctor.userId },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedPassword,
+        tokenVersion: { increment: 1 },
+      },
     });
 
     auditLog('RESET_DOCTOR_PASSWORD', 'Doctor', req.params.id as string, req);

@@ -3,7 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FileQuestion } from 'lucide-react';
-import Button from './ui/Button';
+import Button from './ui/button';
 
 const NotFoundPage = () => {
   const { t } = useTranslation();

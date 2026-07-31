@@ -14,6 +14,22 @@ const coursesService = {
   updateCourse: (id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/courses/${id}`, data)),
 
   deleteCourse: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/courses/${id}`)),
+
+  uploadCourseMaterial: (id: string, formData: FormData): Promise<ApiResponse<any>> =>
+    apiRequest(() =>
+      api.post(`/courses/${id}/materials`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    ),
+
+  deleteCourseMaterial: (id: string, materialId: number): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.delete(`/courses/${id}/materials/${materialId}`)),
+
+  toggleCourseMaterial: (id: string, materialId: number): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.patch(`/courses/${id}/materials/${materialId}/toggle`)),
+
+  toggleCoursePublication: (id: string): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.patch(`/courses/${id}/toggle-publication`)),
 };
 
 export default coursesService;

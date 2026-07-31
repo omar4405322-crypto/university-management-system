@@ -1,4 +1,4 @@
-﻿// FIXED: Footer quick links to internal routes; removed placeholder social icons - Phase 5
+// FIXED: Footer quick links to internal routes; removed placeholder social icons - Phase 5
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +19,7 @@ const Footer = () => {
   const [newsletterEmail, setNewsletterEmail] = React.useState('');
   const [newsletterError, setNewsletterError] = React.useState('');
 
-  const handleNewsletter = (e) => {
+  const handleNewsletter = (e: any) => {
     e.preventDefault();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!newsletterEmail || !emailRegex.test(newsletterEmail)) {
@@ -49,7 +49,7 @@ const Footer = () => {
                 src={UNIVERSITY_LOGO_WHITE}
                 alt={t('footer.universityName')}
                 className="h-12 w-12 shrink-0 object-contain"
-                onError={(e) => {
+                onError={(e: any) => {
                   e.currentTarget.onerror = null;
                   e.currentTarget.src = UNIVERSITY_LOGO_PNG;
                   e.currentTarget.onerror = () => {
@@ -129,7 +129,7 @@ const Footer = () => {
               {subscribed ? (
                 <p className="text-sm text-brand-primary-500 font-semibold">
                   {t('footer.subscribeSuccess') ||
-                    "✔ Got it! We'll reach out when the newsletter launches."}
+                    "? Got it! We'll reach out when the newsletter launches."}
                 </p>
               ) : (
                 <>
@@ -137,7 +137,7 @@ const Footer = () => {
                     <input
                       type="email"
                       value={newsletterEmail}
-                      onChange={(e) => setNewsletterEmail(e.target.value)}
+                      onChange={(e: any) => setNewsletterEmail(e.target.value)}
                       placeholder={t('footer.emailPlaceholder')}
                       className="bg-slate-800/50 border border-white/10 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-brand-primary-600 text-white placeholder:text-slate-500"
                     />
@@ -159,7 +159,7 @@ const Footer = () => {
 
         <div className="mt-12 pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>
-            © {currentYear} {t('footer.universityName')}. {t('footer.copyright')}
+            ? {currentYear} {t('footer.universityName')}. {t('footer.copyright')}
           </p>
           <p className="text-xs text-slate-600 italic">
             {t('footer.legalComingSoon') || 'Legal pages coming soon'}

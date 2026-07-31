@@ -6,13 +6,20 @@ import { useTranslation } from 'react-i18next';
 const STORAGE_KEY = 'language';
 
 /** @param {string | null | undefined} lng */
-export const normalizeLanguage = (lng) => {
+interface LanguageContextType {
+  language: string;
+  setLanguage: (lang: string) => void;
+  toggleLanguage: () => void;
+  isRTL: boolean;
+}
+
+export const normalizeLanguage = (lng?: string | null): string => {
   if (!lng) return 'ar';
   if (lng === 'ar' || lng.startsWith('ar')) return 'ar';
   return 'en';
 };
 
-const readStoredLanguage = () => {
+const readStoredLanguage = (): string => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === 'ar' || saved === 'en') return saved;
@@ -23,14 +30,14 @@ const readStoredLanguage = () => {
   }
 };
 
-const LanguageContext = createContext({
+const LanguageContext = createContext<LanguageContextType>({
   language: 'ar',
   setLanguage: () => {},
   toggleLanguage: () => {},
   isRTL: true,
 });
 
-export const LanguageProvider = ({ children }) => {
+export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
   const [language, setLanguageState] = useState(() => readStoredLanguage());
 
@@ -49,7 +56,7 @@ export const LanguageProvider = ({ children }) => {
   }, [language, i18n]);
 
   useEffect(() => {
-    const onLanguageChanged = (lng) => {
+    const onLanguageChanged = (lng: string) => {
       const next = normalizeLanguage(lng);
       setLanguageState((prev) => (prev === next ? prev : next));
     };
@@ -57,7 +64,7 @@ export const LanguageProvider = ({ children }) => {
     return () => i18n.off('languageChanged', onLanguageChanged);
   }, [i18n]);
 
-  const setLanguage = useCallback((lang) => {
+  const setLanguage = useCallback((lang: string) => {
     setLanguageState(normalizeLanguage(lang));
   }, []);
 

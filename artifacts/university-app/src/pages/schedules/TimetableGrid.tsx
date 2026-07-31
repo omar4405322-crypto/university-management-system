@@ -9,7 +9,7 @@ import TimetableFiltersBar from '../../components/timetable/TimetableFiltersBar'
 import TimeSlotCell from '../../components/timetable/TimeSlotCell';
 import SlotModal from '../../components/timetable/SlotModal';
 import { OverrideModal } from '../../components/timetable/OverrideModal';
-import { SkeletonTable } from '../../components/ui/Skeleton';
+import { SkeletonTable } from '../../components/ui/skeleton';
 import { TimeRange } from '../../components/ui/TimeRange';
 import timetableService from '../../services/timetable.service';
 import schedulesService from '../../services/schedules.service';
@@ -34,7 +34,7 @@ export default function TimetableGrid() {
   const { user } = useAuth();
   const { scopeParams, isCollegeAdmin } = useScope();
   const isRTL = i18n.language?.startsWith('ar');
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [timeSlots, setTimeSlots] = useState<string[]>(generateTimeSlots);
 
   React.useEffect(() => {
@@ -45,12 +45,48 @@ export default function TimetableGrid() {
     return () => window.removeEventListener('scheduleConfigChanged', handleConfigChange);
   }, []);
 
+  const getQueryParam = (keys: string[], fallback = '') => {
+    for (const key of keys) {
+      const val = searchParams.get(key);
+      if (val) return val;
+    }
+    return fallback;
+  };
+
   // ── Filter state ─────────────────────────────────────────────────────────────
   const [filters, setFilters] = useState<TimetableFilters>({
-    departmentId: searchParams.get('dept') ?? '',
-    academicYear: searchParams.get('year') ?? '1',
-    semester: searchParams.get('sem') ?? '1',
+    collegeId: getQueryParam(['collegeId', 'college']),
+    departmentId: getQueryParam(['departmentId', 'dept']),
+    academicYear: getQueryParam(['academicYear', 'year'], '1'),
+    semester: getQueryParam(['semester', 'sem'], '1'),
   });
+
+  React.useEffect(() => {
+    const col = searchParams.get('collegeId') || searchParams.get('college');
+    const dept = searchParams.get('departmentId') || searchParams.get('dept');
+    const yr = searchParams.get('academicYear') || searchParams.get('year');
+    const sem = searchParams.get('semester') || searchParams.get('sem');
+
+    setFilters((prev) => ({
+      collegeId: col !== null && col !== undefined ? col : prev.collegeId,
+      departmentId: dept !== null && dept !== undefined ? dept : prev.departmentId,
+      academicYear: yr ?? prev.academicYear ?? '1',
+      semester: sem ?? prev.semester ?? '1',
+    }));
+  }, [searchParams]);
+
+  const handleFilterChange = useCallback(
+    (nextFilters: TimetableFilters) => {
+      setFilters(nextFilters);
+      const newParams: Record<string, string> = {};
+      if (nextFilters.collegeId) newParams.collegeId = nextFilters.collegeId;
+      if (nextFilters.departmentId) newParams.departmentId = nextFilters.departmentId;
+      if (nextFilters.academicYear) newParams.academicYear = nextFilters.academicYear;
+      if (nextFilters.semester) newParams.semester = nextFilters.semester;
+      setSearchParams(newParams, { replace: true });
+    },
+    [setSearchParams]
+  );
 
   // ── Dialog state ─────────────────────────────────────────────────────────────
   const [dialog, setDialog] = useState<{ day: Day; slot: string } | null>(null);
@@ -60,6 +96,10 @@ export default function TimetableGrid() {
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   const [overrideEntry, setOverrideEntry] = useState<SlotEntry | null>(null);
   const [selectedDay, setSelectedDay] = useState<Day>(DAYS[0]);
+  const [auditingConflicts, setAuditingConflicts] = useState(false);
+  const [auditReport, setAuditReport] = useState<
+    Array<{ key: string; day: string; slot: string; course: string; messageAr: string; messageEn: string }> | null
+  >(null);
 
   const handleEditOverride = useCallback((entry: SlotEntry) => {
     setOverrideEntry(entry);
@@ -141,15 +181,45 @@ export default function TimetableGrid() {
   const handleSaveSlot = useCallback(() => {
     if (!form.courseName || !dialog) return;
     const key = `${dialog.day}_${dialog.slot}`;
-    const conflict = Object.entries(slots).find(
+
+    // 1. Check if course is already scheduled on the same day
+    const sameCourseConflict = Object.entries(slots).find(
       ([k, v]) => k !== key && k.startsWith(`${dialog.day}_`) && v.courseName === form.courseName
     );
-    if (conflict) {
+    if (sameCourseConflict) {
       showToast(
-        t('timetables.duplicateError', `Course "${form.courseName}" already scheduled on this day`),
+        t('timetables.duplicateError', `المادة "${form.courseName}" مجدولة بالفعل في هذا اليوم`),
         'error'
       );
       return;
+    }
+
+    // 2. Check if doctor is already scheduled on the same time slot in local timetable
+    if (form.doctorName) {
+      const sameDoctorConflict = Object.entries(slots).find(
+        ([k, v]) => k !== key && k.endsWith(`_${dialog.slot}`) && v.doctorName === form.doctorName
+      );
+      if (sameDoctorConflict) {
+        showToast(
+          t('timetables.doctorLocalConflict', `المحاضر "${form.doctorName}" محجوز بالفعل في هذا الوقت`),
+          'error'
+        );
+        return;
+      }
+    }
+
+    // 3. Check if room is occupied in local timetable at the same time slot
+    if (form.room) {
+      const sameRoomConflict = Object.entries(slots).find(
+        ([k, v]) => k !== key && k.endsWith(`_${dialog.slot}`) && v.room.toLowerCase() === form.room.toLowerCase()
+      );
+      if (sameRoomConflict) {
+        showToast(
+          t('timetables.roomLocalConflict', `القاعة "${form.room}" محجوزة بالفعل في هذه الفترة`),
+          'error'
+        );
+        return;
+      }
     }
 
     setSlots((prev) => ({
@@ -159,6 +229,68 @@ export default function TimetableGrid() {
 
     setDialog(null);
   }, [form, dialog, slots, timetableId, showToast, t, setSlots]);
+
+  // ── Audit Conflicts across the entire grid ───────────────────────────────────
+  const handleAuditConflicts = useCallback(async () => {
+    const entries = Object.entries(slots);
+    if (entries.length === 0) {
+      showToast(t('timetables.emptyGridAudit', 'لا توجد حصص مضافة في الجدول لفحصها'), 'error');
+      return;
+    }
+
+    setAuditingConflicts(true);
+    const foundConflicts: Array<{ key: string; day: string; slot: string; course: string; messageAr: string; messageEn: string }> = [];
+
+    try {
+      for (const [key, val] of entries) {
+        const [day, time] = key.split('_');
+        const [startTime, endTime] = (time || '').split('-');
+        if (!day || !startTime || !endTime || !val.courseName) continue;
+
+        const res = await schedulesService.checkConflict({
+          dayOfWeek: day,
+          startTime,
+          endTime,
+          room: val.room,
+          doctorName: val.doctorName,
+          courseName: val.courseName,
+          slotType: val.slotType,
+          departmentId: filters.departmentId,
+          academicYear: filters.academicYear,
+          semester: filters.semester,
+        });
+
+        const list = (res as any).data?.conflicts || (res as any).conflicts || [];
+        if (list.length > 0) {
+          list.forEach((c: any) => {
+            foundConflicts.push({
+              key,
+              day,
+              slot: time,
+              course: val.courseName,
+              messageAr: c.messageAr,
+              messageEn: c.messageEn,
+            });
+          });
+        }
+      }
+
+      if (foundConflicts.length === 0) {
+        showToast(
+          t('timetables.noConflictsFound', 'رائع! تم فحص كامل الجدول ولا يوجد أي تعارض بالقاعات أو المحاضرين ✅'),
+          'success'
+        );
+        setAuditReport(null);
+      } else {
+        setAuditReport(foundConflicts);
+      }
+    } catch (err) {
+      console.error('Audit error:', err);
+      showToast(t('common.errorOccurred', 'حدث خطأ أثناء فحص التعارضات'), 'error');
+    } finally {
+      setAuditingConflicts(false);
+    }
+  }, [slots, filters, showToast, t]);
 
   // ── Persist timetable to backend & Sync to Tables Management ──────────────
   const handleSaveTimetable = useCallback(async () => {
@@ -257,8 +389,10 @@ export default function TimetableGrid() {
         isDeptAdminLocked={isDeptAdminLocked}
         saving={saving}
         loadingSlots={loadingSlots}
-        onChange={setFilters}
+        auditingConflicts={auditingConflicts}
+        onChange={handleFilterChange}
         onSave={handleSaveTimetable}
+        onAuditConflicts={handleAuditConflicts}
       />
 
       {/* Desktop view */}
@@ -401,6 +535,53 @@ export default function TimetableGrid() {
             refetch();
           }}
         />
+      )}
+
+      {/* Audit Report Modal */}
+      {auditReport && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-brand-bg-card border border-brand-border rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-brand-border pb-3">
+              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold">
+                <AlertCircle size={20} />
+                <h3 className="text-base">تقرير فحص التعارضات في الجدول</h3>
+              </div>
+              <button
+                onClick={() => setAuditReport(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-brand-text-muted">
+              تم اكتشاف <strong className="text-rose-600 dark:text-rose-400 font-black">{auditReport.length}</strong> تعارض دراسي يحتاج إلى مراجعة قبل الاعتماد:
+            </p>
+
+            <div className="max-h-64 overflow-y-auto space-y-2.5 pr-1">
+              {auditReport.map((item, idx) => (
+                <div key={idx} className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-xl space-y-1 text-xs">
+                  <div className="flex justify-between items-center text-rose-800 dark:text-rose-300 font-bold">
+                    <span>{t(`days.${item.day.toLowerCase()}`, item.day)} • {item.slot}</span>
+                    <span className="bg-rose-200 dark:bg-rose-900 text-rose-900 dark:text-rose-200 px-2 py-0.5 rounded text-[10px]">{item.course}</span>
+                  </div>
+                  <p className="text-rose-700 dark:text-rose-300 leading-relaxed font-medium">
+                    {isRTL ? item.messageAr : item.messageEn}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-brand-border">
+              <button
+                onClick={() => setAuditReport(null)}
+                className="px-5 py-2 bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold text-xs rounded-xl shadow transition-all"
+              >
+                فهمت، سأقوم بالتعديل
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

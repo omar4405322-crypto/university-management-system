@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import collegeService from '../../services/college.service';
 import Modal from '../../components/ui/Modal';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
@@ -17,12 +17,19 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
+interface EditCollegeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  college: any;
+  onSuccess: () => void;
+}
+
+const EditCollegeModal: React.FC<EditCollegeModalProps> = ({ isOpen, onClose, college, onSuccess }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({ resolver: zodResolver(schema) });
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState<{ message: string; type: string } | null>(null);
 
   useEffect(() => {
     if (college) {
@@ -34,12 +41,12 @@ const EditCollegeModal = ({ isOpen, onClose, college, onSuccess }) => {
     }
   }, [college, isOpen, reset]);
 
-  const showToast = (message, type) => {
+  const showToast = (message: string, type: string) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
 
-  const getErrorMessage = (error) => {
+  const getErrorMessage = (error: any) => {
     if (error.status === 403) {
       return t('colleges.insufficientPermissions', 'You do not have permission to edit colleges. Only Super Admins can edit colleges.');
     }

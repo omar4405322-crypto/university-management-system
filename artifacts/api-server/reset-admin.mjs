@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 const prisma = new PrismaClient();
 
-const newPassword = 'Admin@1234';
+const newPassword = 'SuperAdmin123!';
 const hash = await bcrypt.hash(newPassword, 10);
 
 // Reset both admin accounts
@@ -14,8 +14,8 @@ await prisma.user.update({ where: { email: 'admin@university.com' }, data: { pas
 console.log('='.repeat(50));
 console.log('Admin passwords reset successfully!');
 console.log('='.repeat(50));
-console.log('superadmin@university.com  ->  Admin@1234');
-console.log('admin@university.com       ->  Admin@1234');
+console.log('superadmin@university.com  ->  SuperAdmin123!');
+console.log('admin@university.com       ->  SuperAdmin123!');
 console.log('='.repeat(50));
 
 await prisma.$disconnect();

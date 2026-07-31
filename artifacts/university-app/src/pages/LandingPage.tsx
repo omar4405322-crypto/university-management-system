@@ -64,7 +64,7 @@ const LandingPage: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('home');
-  const { stats: universityStats, isLoading: statsLoading } = useUniversityStats();
+  const { stats: universityStats, colleges, sampleSlots, isLoading: statsLoading } = useUniversityStats();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -100,10 +100,11 @@ const LandingPage: React.FC = () => {
   ], [t]);
 
   const statsData = useMemo(() => universityStats || {
-    totalStudents: 15420,
-    totalColleges: 8,
-    totalFaculty: 850,
-    totalSpecializations: 45
+    totalStudents: 605,
+    totalColleges: 2,
+    totalFaculty: 12,
+    totalSpecializations: 9,
+    totalCourses: 61,
   }, [universityStats]);
 
   const stats = useMemo(() => [
@@ -116,26 +117,26 @@ const LandingPage: React.FC = () => {
     {
       label: t('landing.stats.students'),
       desc: t('landing.stats.studentsDesc'),
-      value: <CountUp end={statsData.totalStudents} prefix="+" />,
+      value: <CountUp end={statsData.totalStudents} />,
       icon: <Users size={22} strokeWidth={2} />,
     },
     {
-      label: t('landing.stats.excellence'),
-      desc: t('landing.stats.excellenceDesc'),
-      value: <CountUp end={10} prefix="+" />,
-      icon: <Trophy size={22} strokeWidth={2} />,
-    },
-    {
-      label: t('landing.stats.countries'),
-      desc: t('landing.stats.countriesDesc'),
-      value: <CountUp end={30} prefix="+" />,
-      icon: <Globe size={22} strokeWidth={2} />,
-    },
-    {
-      label: t('landing.stats.ranking'),
-      desc: t('landing.stats.rankingDesc'),
-      value: 'Top 20',
+      label: t('landing.stats.faculty'),
+      desc: t('landing.stats.facultyDesc'),
+      value: <CountUp end={statsData.totalFaculty} />,
       icon: <GraduationCap size={22} strokeWidth={2} />,
+    },
+    {
+      label: t('landing.stats.departments'),
+      desc: t('landing.stats.departmentsDesc'),
+      value: <CountUp end={statsData.totalSpecializations} />,
+      icon: <Briefcase size={22} strokeWidth={2} />,
+    },
+    {
+      label: t('landing.stats.courses'),
+      desc: t('landing.stats.coursesDesc'),
+      value: <CountUp end={statsData.totalCourses} />,
+      icon: <BookOpen size={22} strokeWidth={2} />,
     },
   ], [statsData, t]);
 
@@ -542,7 +543,7 @@ const LandingPage: React.FC = () => {
         </section>
 
         {/* ─── 4. COLLEGES SECTION ───────────────────────────────────────────────── */}
-        <CollegesSection isLoading={false} />
+        <CollegesSection colleges={colleges} isLoading={statsLoading} />
 
         {/* ─── 5. WHY CHOOSE US SECTION ──────────────────────────────────────────── */}
         <section id="why-us" className="py-24 md:py-32 bg-brand-navy dark:bg-slate-950 relative overflow-hidden">

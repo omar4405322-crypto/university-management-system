@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 // FIXED: View submissions opens modal with API results - Phase 5
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import QuizSubmissionsModal from './QuizSubmissionsModal';

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import {
@@ -19,7 +19,7 @@ import schedulesService from '../../services/schedules.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { SkeletonTable } from '../../components/ui/Skeleton';
+import { SkeletonTable } from '../../components/ui/skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { logger } from '../../lib/logger';
 import FilterBar from '../../components/ui/FilterBar';
@@ -51,7 +51,7 @@ const WeeklySchedule = () => {
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
-  const canManage = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'].includes(user?.role);
+  const canManage = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
 
   const isRTL = i18n.language === 'ar';
   const days = isRTL
@@ -106,6 +106,13 @@ const WeeklySchedule = () => {
 
   useEffect(() => {
     fetchTargetedTimetable();
+    
+    // Poll for schedule changes every 10 seconds to ensure immediate updates
+    const interval = setInterval(() => {
+      fetchTargetedTimetable(true); // Pass a flag to avoid setting loading=true
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, [selectedDept, selectedYear, selectedSemester, scopeParams]);
 
   useEffect(() => {
@@ -118,10 +125,10 @@ const WeeklySchedule = () => {
     }
   }, []);
 
-  const fetchTargetedTimetable = async () => {
+  const fetchTargetedTimetable = async (isPolling = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (!isPolling) setLoading(true);
+      if (!isPolling) setError(null);
 
       const params: any = { ...scopeParams };
       if (!isCollegeAdmin) {

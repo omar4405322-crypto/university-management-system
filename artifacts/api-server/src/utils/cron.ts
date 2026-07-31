@@ -137,3 +137,26 @@ export const startRiskDetectionJob = (): void => {
     }
   });
 };
+
+/**
+ * Auto-expiry Job for Attendance Sessions
+ * Runs every 5 minutes to close sessions past their expiresAt
+ */
+export const startSessionAutoExpiryJob = (): void => {
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      const result = await prisma.attendanceSession.updateMany({
+        where: {
+          isActive: true,
+          expiresAt: { lte: new Date() }
+        },
+        data: { isActive: false }
+      });
+      if (result.count > 0) {
+        logger.info(`[CRON] Auto-expired ${result.count} attendance sessions`);
+      }
+    } catch (err: any) {
+      logger.error(`[CRON] Auto-expiry Job error: ${err.message}`);
+    }
+  });
+};

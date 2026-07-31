@@ -1,205 +1,88 @@
-import React, { useState, useEffect } from 'react';
+// @ts-nocheck
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import examsService from '../../services/exams.service';
-import coursesService from '../../services/courses.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
-import { Plus, Search, Calendar, Clock, MapPin, Filter, Trash2, Eye, Loader2, CheckCircle2, AlertCircle, SlidersHorizontal, FileText, CalendarCheck } from 'lucide-react';
+import {
+  Plus,
+  Calendar,
+  Clock,
+  MapPin,
+  Trash2,
+  Eye,
+  Loader2,
+  FileText,
+  CalendarCheck,
+  CheckCircle2,
+  Timer,
+  ArrowUpDown,
+  Play,
+  GraduationCap,
+} from 'lucide-react';
 import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody } from '../../components/ui/Table';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Badge from '../../components/ui/Badge';
+import Button from '../../components/ui/button';
 import { TimeRange } from '../../components/ui/TimeRange';
-import Modal from '../../components/ui/Modal';
-import Input from '../../components/ui/input';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import FilterBar from '../../components/ui/FilterBar';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import { useToast } from '../../context/ToastContext';
+import AddExamModal from './AddExamModal';
+import { getExamStatus, getDaysUntil, getExamLabel, getTypeBadgeConfig, getExamTimeWindowStatus } from './examUtils';
 
-const schema = z.object({
-  courseId: z.string().min(1, "Course is required"),
-  type: z.enum(['MIDTERM', 'FINAL', 'QUIZ']),
-  date: z.string().min(1, "Date is required"),
-  startTime: z.string().min(1, "Start time is required"),
-  endTime: z.string().min(1, "End time is required"),
-  room: z.string().optional()
-});
-
-type FormData = z.infer<typeof schema>;
-
-const AddExamModal = ({ isOpen, onClose, onSuccess }) => {
-  const { t } = useTranslation();
-  const [courses, setCourses] = useState([]);
-  const [error, setError] = useState('');
-
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      courseId: '',
-      type: 'MIDTERM',
-      date: '',
-      startTime: '09:00',
-      endTime: '11:00',
-      room: ''
-    }
-  });
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchCourses();
-      reset();
-    }
-  }, [isOpen, reset]);
-
-  const fetchCourses = async () => {
-    try {
-      const result = await coursesService.getCourses();
-      if (result.success) {
-        // Handle both old array format and new paginated object format
-        const coursesData = Array.isArray(result.data) ? result.data : result.data.courses;
-        setCourses(coursesData || []);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const onSubmit = async (data) => {
-    setError('');
-    try {
-      const result = await examsService.createExam(data);
-      if (result.success) {
-        onSuccess();
-        onClose();
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || t('exams.createError'));
-    }
-  };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={t('exams.scheduleNew')}
-      subtitle={t('exams.scheduleSubtitle')}
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="form-section">
-        {error && <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 text-rose-600 text-sm font-bold">{error}</div>}
-        
-        <div className="space-y-1.5">
-          <label className="text-sm font-bold text-brand-text-main ml-1">{t('exams.selectCourse')} *</label>
-          <select
-            className="w-full h-11 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer"
-            {...register('courseId')}
-          >
-            <option value="">{t('exams.chooseCourse')}</option>
-            {courses.map(c => <option key={c.id} value={c.id}>{c.courseCode} - {c.name}</option>)}
-          </select>
-          {errors.courseId && <p className="text-rose-500 text-xs mt-1">{errors.courseId.message}</p>}
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-sm font-bold text-brand-text-main ml-1">{t('exams.examType')} *</label>
-          <select
-            className="w-full h-11 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer"
-            {...register('type')}
-          >
-            <option value="MIDTERM">{t('exams.midterm')}</option>
-            <option value="FINAL">{t('exams.final')}</option>
-            <option value="QUIZ">{t('exams.quiz')}</option>
-          </select>
-          {errors.type && <p className="text-rose-500 text-xs mt-1">{errors.type.message}</p>}
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-sm font-bold text-brand-text-main ml-1">Exam Date *</label>
-          <Input
-            type="date"
-            {...register('date')}
-          />
-          {errors.date && <p className="text-rose-500 text-xs mt-1">{errors.date.message}</p>}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main ml-1">Start Time *</label>
-            <Input
-              type="time"
-              {...register('startTime')}
-            />
-            {errors.startTime && <p className="text-rose-500 text-xs mt-1">{errors.startTime.message}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main ml-1">End Time *</label>
-            <Input
-              type="time"
-              {...register('endTime')}
-            />
-            {errors.endTime && <p className="text-rose-500 text-xs mt-1">{errors.endTime.message}</p>}
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-sm font-bold text-brand-text-main ml-1">Location / Room</label>
-          <Input
-            placeholder="e.g. Auditorium A, Hall 302"
-            {...register('room')}
-          />
-          {errors.room && <p className="text-rose-500 text-xs mt-1">{errors.room.message}</p>}
-        </div>
-
-        <div className="mt-8 flex justify-end gap-3 border-t border-brand-border pt-6">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={isSubmitting} className="min-w-[140px]">
-            {isSubmitting ? 'Scheduling...' : 'Schedule Exam'}
-          </Button>
-        </div>
-      </form>
-    </Modal>
-  );
-};
-
+// ── Main ExamsList Component ──────────────────────────────────────────────────
 const ExamsList = () => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language?.startsWith('ar');
   const { user } = useAuth();
   const { scopeParams } = useScope();
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role || '');
+
   const [exams, setExams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filter, setFilter] = useState('ALL');
-  const [upcomingOnly, setUpcomingOnly] = useState(false);
-  const [toast, setToast] = useState(null);
 
-  // Set page background tint on mount
+  // Filters
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Delete
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Page background
   useEffect(() => {
     const mainEl = document.querySelector('main');
     if (mainEl) {
       mainEl.classList.add('bg-slate-50', 'dark:bg-slate-900');
-      return () => {
-        mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
-      };
     }
+    return () => {
+      if (mainEl) mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
+    };
   }, []);
 
+  // Fetch exams
   const fetchExams = async () => {
     try {
       setLoading(true);
-      const params = { ...scopeParams } as any;
-      if (filter !== 'ALL') params.type = filter;
-      if (upcomingOnly) params.upcoming = 'true';
-      
+      const params: any = { ...scopeParams };
+      if (typeFilter !== 'ALL') params.type = typeFilter;
+
       const result = await examsService.getExams(params);
-      if (result.success) setExams(result.data);
-    } catch (err) {
-      console.error(err);
+      if (result.success) {
+        setExams(Array.isArray(result.data) ? result.data : result.data?.exams || []);
+      }
+    } catch (_err) {
+      showToast(t('exams.loadError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -207,286 +90,450 @@ const ExamsList = () => {
 
   useEffect(() => {
     fetchExams();
-  }, [filter, upcomingOnly, scopeParams]);
+  }, [typeFilter, scopeParams]);
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this exam?')) {
-      try {
-        const result = await examsService.deleteExam(id);
-        if (result.success) {
-          showToast('Exam deleted successfully', 'success');
-          fetchExams();
-        }
-      } catch (err) {
-        showToast('Error deleting exam', 'error');
+  // Delete handler
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      setDeleteLoading(true);
+      const result = await examsService.deleteExam(deleteTarget.id);
+      if (result.success) {
+        showToast(t('exams.deleteSuccess'), 'success');
+        setDeleteTarget(null);
+        fetchExams();
       }
+    } catch (_err) {
+      showToast(t('exams.deleteError'), 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
-  const showToast = (message, type) => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+  // ── Computed stats ──────────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const total = exams.length;
+    let upcoming = 0;
+    let today = 0;
+    let completed = 0;
+    exams.forEach((exam) => {
+      const s = getExamStatus(exam);
+      if (s === 'UPCOMING') upcoming++;
+      else if (s === 'TODAY') today++;
+      else completed++;
+    });
+    return { total, upcoming, today, completed };
+  }, [exams]);
+
+  // ── Filtered + sorted exams ─────────────────────────────────────────────────
+  const displayExams = useMemo(() => {
+    let list = [...exams];
+
+    // Search filter
+    if (search.trim()) {
+      const term = search.toLowerCase();
+      list = list.filter(
+        (e) =>
+          (e.course?.name || '').toLowerCase().includes(term) ||
+          (e.course?.courseCode || '').toLowerCase().includes(term) ||
+          (e.room || '').toLowerCase().includes(term)
+      );
+    }
+
+    // Status filter - By default ('ALL'), show active/upcoming/today exams, as completed exams are archived in /record
+    if (statusFilter === 'ALL') {
+      list = list.filter((e) => getExamStatus(e) !== 'COMPLETED');
+    } else {
+      list = list.filter((e) => getExamStatus(e) === statusFilter);
+    }
+
+    // Sort
+    list.sort((a, b) => {
+      const da = new Date(a.date).getTime();
+      const db = new Date(b.date).getTime();
+      return sortOrder === 'asc' ? da - db : db - da;
+    });
+
+    return list;
+  }, [exams, search, statusFilter, sortOrder]);
+
+  // ── Status badge renderer ───────────────────────────────────────────────────
+  const renderStatusBadge = (exam: any) => {
+    const status = getExamStatus(exam);
+    const days = getDaysUntil(exam.date);
+
+    if (status === 'TODAY') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+          </span>
+          {t('exams.today')}
+        </span>
+      );
+    }
+    if (status === 'UPCOMING') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+          <Timer className="w-3 h-3" />
+          {days === 1 ? t('exams.inDay') : t('exams.inDays', { count: days })}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+        <CheckCircle2 className="w-3 h-3" />
+        {t('exams.ended')}
+      </span>
+    );
   };
 
-  const totalExams = exams.length;
-  const upcomingExams = exams.filter(exam => {
-    const examDate = new Date(exam.date);
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    return examDate >= today;
-  }).length;
-  const todayExams = exams.filter(exam => {
-    const examDate = new Date(exam.date).toDateString();
-    const today = new Date().toDateString();
-    return examDate === today;
-  }).length;
+  // ── Type badge renderer ─────────────────────────────────────────────────────
+  const renderTypeBadge = (type: string) => {
+    const c = getTypeBadgeConfig(type, t);
+    return <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${c.bg} ${c.text}`}>{c.label}</span>;
+  };
+
+  // ── Filter select class ─────────────────────────────────────────────────────
+  const FILTER_SELECT =
+    'h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0';
 
   return (
     <div className="section-gap animate-page">
-      {/* Toast Notification */}
-      {toast && (
-        <div className={`${toast.type === 'error' ? 'toast-error' : 'toast-success'}`}>
-          <div className="flex items-center gap-2">
-            {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
-            <span className="font-medium">{toast.message}</span>
+      {/* ── Page Header ──────────────────────────────────────────────────── */}
+      <PageHeader
+        title={t('exams.title')}
+        subtitle={t('exams.subtitle')}
+        action={
+          isAdmin
+            ? {
+                label: t('exams.addExam'),
+                onClick: () => setIsModalOpen(true),
+                icon: Plus,
+                className:
+                  '!bg-brand-primary-500 !text-white !rounded-lg hover:!bg-brand-primary-600 hover:!scale-[1.02] active:!scale-[0.98] transition-all duration-200 border-none shadow-none',
+              }
+            : undefined
+        }
+      />
+
+      {/* ── Archive Notice Banner ────────────────────────────────────────── */}
+      <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 shadow-sm">
+        <div className="flex items-center space-x-3 space-x-reverse">
+          <div className="p-2.5 bg-indigo-500/15 rounded-xl text-indigo-600 dark:text-indigo-400">
+            <GraduationCap className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-brand-text-primary dark:text-white">
+              {t('exams.archivedInfoTitle') || 'أرشيف الامتحانات المنتهية'}
+            </p>
+            <p className="text-xs text-brand-text-secondary dark:text-slate-400">
+              {t('exams.archivedInfoNotice') || 'تنتقل جميع الامتحانات المنتهية تلقائياً بعد انتهاء وقتها إلى السجل الأكاديمي للأرشفة الدائمة.'}
+            </p>
           </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate('/record')}
+          className="text-xs font-bold gap-2 rounded-xl border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/15 transition-all flex-shrink-0"
+        >
+          <span>{t('exams.goToRecord') || 'الذهاب إلى السجل الأكاديمي'}</span>
+        </Button>
+      </div>
+
+      {/* ── Stats Row ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+        {/* Total */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 flex items-center gap-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+          <div className="rounded-2xl p-3 bg-brand-primary-500/10 text-brand-primary-600 flex-shrink-0">
+            <FileText className="w-6 h-6" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-semibold text-brand-text-secondary dark:text-slate-400 truncate">
+              {t('exams.totalCount')}
+            </span>
+            <span className="text-2xl font-black text-brand-text-primary dark:text-white">{stats.total}</span>
+          </div>
+        </div>
+
+        {/* Upcoming */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 flex items-center gap-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+          <div className="rounded-2xl p-3 bg-blue-500/10 text-blue-600 flex-shrink-0">
+            <Clock className="w-6 h-6" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-semibold text-brand-text-secondary dark:text-slate-400 truncate">
+              {t('exams.upcomingCount')}
+            </span>
+            <span className="text-2xl font-black text-brand-text-primary dark:text-white">{stats.upcoming}</span>
+          </div>
+        </div>
+
+        {/* Today */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 flex items-center gap-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 relative overflow-hidden">
+          {stats.today > 0 && (
+            <div className="absolute top-0 start-0 w-full h-1 bg-gradient-to-r from-amber-400 to-amber-500 animate-pulse" />
+          )}
+          <div className="rounded-2xl p-3 bg-amber-500/10 text-amber-600 flex-shrink-0">
+            <CalendarCheck className="w-6 h-6" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-semibold text-brand-text-secondary dark:text-slate-400 truncate">
+              {t('exams.todayCount')}
+            </span>
+            <span className="text-2xl font-black text-brand-text-primary dark:text-white">{stats.today}</span>
+          </div>
+        </div>
+
+        {/* Completed */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 flex items-center gap-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+          <div className="rounded-2xl p-3 bg-slate-500/10 text-slate-500 flex-shrink-0">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-semibold text-brand-text-secondary dark:text-slate-400 truncate">
+              {t('exams.completedCount')}
+            </span>
+            <span className="text-2xl font-black text-brand-text-primary dark:text-white">{stats.completed}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Filter Bar ───────────────────────────────────────────────────── */}
+      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-0 mb-6 overflow-hidden">
+        <FilterBar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder={t('exams.searchPlaceholder')}
+          onClear={search || typeFilter !== 'ALL' || statusFilter !== 'ALL' ? () => { setSearch(''); setTypeFilter('ALL'); setStatusFilter('ALL'); } : undefined}
+        >
+          {/* Type filter */}
+          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={FILTER_SELECT}>
+            <option value="ALL">{t('exams.filterAll')}</option>
+            <option value="MIDTERM">{t('exams.filterMidterm')}</option>
+            <option value="FINAL">{t('exams.filterFinal')}</option>
+            <option value="QUIZ">{t('exams.filterQuiz')}</option>
+          </select>
+
+          {/* Status filter */}
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={FILTER_SELECT}>
+            <option value="ALL">{t('exams.allStatuses')}</option>
+            <option value="UPCOMING">{t('exams.statusUpcoming')}</option>
+            <option value="TODAY">{t('exams.statusToday')}</option>
+            <option value="COMPLETED">{t('exams.statusCompleted')}</option>
+          </select>
+
+          {/* Sort toggle */}
+          <button
+            onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+            className="h-10 px-3 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main hover:bg-slate-200 dark:hover:bg-slate-600 transition-all flex items-center gap-1.5 flex-shrink-0"
+            title={sortOrder === 'asc' ? t('exams.sortDateAsc') : t('exams.sortDateDesc')}
+          >
+            <ArrowUpDown className="w-3.5 h-3.5" />
+            {sortOrder === 'asc' ? t('exams.sortDateAsc') : t('exams.sortDateDesc')}
+          </button>
+        </FilterBar>
+      </Card>
+
+      {/* ── Table ────────────────────────────────────────────────────────── */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center h-80 gap-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <Loader2 className="animate-spin text-brand-primary-500" size={44} />
+          <p className="text-sm font-semibold text-brand-text-secondary dark:text-slate-400">{t('exams.fetching')}</p>
+        </div>
+      ) : displayExams.length === 0 ? (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-8">
+          <EmptyState
+            icon={<Calendar size={48} />}
+            title={t('exams.noExams')}
+            subtitle={t('exams.noExamsSubtitle')}
+            action={
+              isAdmin
+                ? { label: t('exams.addExam'), onClick: () => setIsModalOpen(true) }
+                : null
+            }
+          />
+        </div>
+      ) : (
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0">
+          <div className="overflow-x-auto">
+            <Table className="w-full">
+              <TableHeader className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
+                <TableRow>
+                  <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    {t('exams.examColumn')}
+                  </TableHead>
+                  <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    {t('exams.typeColumn')}
+                  </TableHead>
+                  <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    {t('exams.courseColumn')}
+                  </TableHead>
+                  <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    {t('exams.dateTimeColumn')}
+                  </TableHead>
+                  <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    {t('exams.roomColumn')}
+                  </TableHead>
+                  <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    {t('exams.statusColumn')}
+                  </TableHead>
+                  <TableHead className="text-end p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 pe-6">
+                    {t('exams.actionsColumn')}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {displayExams.map((exam) => {
+                  const status = getExamStatus(exam);
+                  return (
+                    <TableRow
+                      key={exam.id}
+                      className={`border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/60 cursor-pointer ${
+                        status === 'TODAY'
+                          ? 'bg-amber-50/40 dark:bg-amber-950/10 border-s-2 border-s-amber-400'
+                          : status === 'COMPLETED'
+                          ? 'opacity-70'
+                          : ''
+                      }`}
+                      onClick={() => navigate(`/exams/${exam.id}`)}
+                    >
+                      {/* Exam Name */}
+                      <TableCell className="p-4 text-start">
+                        <div className="font-semibold text-brand-text-primary dark:text-white text-sm">
+                          {getExamLabel(exam, t)}
+                        </div>
+                        <div className="text-xs text-brand-text-secondary dark:text-slate-400 mt-0.5">
+                          {exam.course?.name}
+                        </div>
+                      </TableCell>
+
+                      {/* Type Badge */}
+                      <TableCell className="p-4 text-center">{renderTypeBadge(exam.type)}</TableCell>
+
+                      {/* Course Code */}
+                      <TableCell className="p-4 text-start">
+                        <span className="font-bold text-brand-text-primary dark:text-white text-sm">
+                          {exam.course?.courseCode}
+                        </span>
+                      </TableCell>
+
+                      {/* Date & Time */}
+                      <TableCell className="p-4 text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-sm font-semibold text-brand-text-primary dark:text-white flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            {new Date(exam.date).toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </span>
+                          <span className="text-xs text-brand-text-secondary dark:text-slate-400 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <TimeRange start={exam.startTime} end={exam.endTime} />
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      {/* Room */}
+                      <TableCell className="p-4 text-center">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-text-primary dark:text-white">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          {exam.room || t('exams.tba')}
+                        </span>
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell className="p-4 text-center">{renderStatusBadge(exam)}</TableCell>
+
+                      {/* Actions */}
+                      <TableCell className="p-4 text-end pe-6">
+                        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                          {user?.role === 'STUDENT' ? (
+                            (() => {
+                              const twStatus = getExamTimeWindowStatus(exam);
+                              if (twStatus === 'NOT_STARTED') {
+                                return (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => navigate(`/exams/${exam.id}`)}
+                                    className="!bg-slate-100 dark:!bg-slate-700 !text-slate-500 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border-none shrink-0"
+                                  >
+                                    <Clock className="w-3.5 h-3.5" />
+                                    {t('exams.btnNotStarted', { time: exam.startTime })}
+                                  </Button>
+                                );
+                              }
+                              if (twStatus === 'EXPIRED') {
+                                return (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => navigate(`/exams/${exam.id}`)}
+                                    className="!bg-rose-50 dark:!bg-rose-950/40 !text-rose-600 dark:!text-rose-400 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border-none shrink-0"
+                                  >
+                                    <Clock className="w-3.5 h-3.5 text-rose-500" />
+                                    {t('exams.btnExpired')}
+                                  </Button>
+                                );
+                              }
+                              return (
+                                <Button
+                                  size="sm"
+                                  onClick={() => navigate(`/exams/${exam.id}`)}
+                                  className="!bg-brand-primary-500 hover:!bg-brand-primary-600 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-sm border-none shrink-0"
+                                >
+                                  <Play className="w-3.5 h-3.5 fill-current" />
+                                  {t('exams.btnStartExam')}
+                                </Button>
+                              );
+                            })()
+                          ) : (
+                            <button
+                              onClick={() => navigate(`/exams/${exam.id}`)}
+                              className="p-2 rounded-xl text-brand-primary-600 hover:bg-brand-primary-500/10 transition-all"
+                              title={t('common.view')}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          )}
+                          {isSuperAdmin && (
+                            <button
+                              onClick={() =>
+                                setDeleteTarget({
+                                  id: exam.id,
+                                  name: `${getExamLabel(exam.type, t)} — ${exam.course?.courseCode || ''}`,
+                                })
+                              }
+                              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all"
+                              title={t('common.delete')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
       )}
 
-      <PageHeader 
-        title={t('exams.title', 'الامتحانات')}
-        subtitle={t('exams.subtitle', 'الاختبارات الفصلية والنهائية والتقييمات القادمة')}
-        action={isAdmin ? {
-          label: t('exams.addExam', '+ إضافة امتحان'),
-          onClick: () => setIsModalOpen(true),
-          className: "bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl px-4 py-2 active:scale-95 transition-all flex items-center gap-2",
-          icon: Plus
-        } : undefined}
+      {/* ── Modals ────────────────────────────────────────────────────────── */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteTarget)}
+        itemName={deleteTarget?.name}
+        onClose={() => !deleteLoading && setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        loading={deleteLoading}
       />
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-page">
-        {/* Card 1: Total Exams */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-md transition-all">
-          <div className="rounded-xl p-2.5 bg-brand-primary-500/10 text-brand-primary-500">
-            <FileText size={24} />
-          </div>
-          <div className="flex flex-col text-start">
-            <span className="text-sm text-brand-text-secondary dark:text-slate-400 font-medium">
-              {t('exams.totalCount', 'إجمالي الامتحانات')}
-            </span>
-            <span className="text-2xl font-black text-brand-text-primary dark:text-white">
-              {totalExams}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 2: Upcoming Exams */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-md transition-all">
-          <div className="rounded-xl p-2.5 bg-blue-500/10 text-blue-500">
-            <Clock size={24} />
-          </div>
-          <div className="flex flex-col text-start">
-            <span className="text-sm text-brand-text-secondary dark:text-slate-400 font-medium">
-              {t('exams.upcomingCount', 'الامتحانات القادمة')}
-            </span>
-            <span className="text-2xl font-black text-brand-text-primary dark:text-white">
-              {upcomingExams}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 3: Today's Exams */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-md transition-all">
-          <div className="rounded-xl p-2.5 bg-amber-500/10 text-amber-500">
-            <CalendarCheck size={24} />
-          </div>
-          <div className="flex flex-col text-start">
-            <span className="text-sm text-brand-text-secondary dark:text-slate-400 font-medium">
-              {t('exams.todayCount', 'امتحانات اليوم')}
-            </span>
-            <span className="text-2xl font-black text-brand-text-primary dark:text-white">
-              {todayExams}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Filters Sidebar */}
-        <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 space-y-4">
-            <div className="flex items-center gap-2 text-brand-text-primary dark:text-white">
-              <SlidersHorizontal size={18} className="text-brand-primary-500" />
-              <h3 className="text-sm font-semibold">
-                {t('exams.filters', 'تصفية الامتحانات')}
-              </h3>
-            </div>
-            
-            <div className="border-b border-slate-200 dark:border-slate-700 my-3" />
-            
-            <div className="space-y-1">
-              {[
-                { value: 'ALL', label: t('exams.filterAll', 'الكل') },
-                { value: 'MIDTERM', label: t('exams.filterMidterm', 'اختبار منتصف الفصل') },
-                { value: 'FINAL', label: t('exams.filterFinal', 'الاختبار النهائي') },
-                { value: 'QUIZ', label: t('exams.filterQuiz', 'اختبار قصير') }
-              ].map((type) => (
-                <button
-                  key={type.value}
-                  onClick={() => setFilter(type.value)}
-                  className={`w-full text-start px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                    filter === type.value 
-                    ? 'bg-brand-primary-500 text-white shadow-sm' 
-                    : 'text-brand-text-secondary dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
-                  }`}
-                >
-                  {type.label}
-                </button>
-              ))}
-            </div>
-            
-            <div className="border-b border-slate-200 dark:border-slate-700 my-3" />
-            
-            <label className="flex items-center justify-between cursor-pointer group py-1">
-              <span className="text-sm font-medium text-brand-text-secondary dark:text-slate-400 group-hover:text-brand-text-primary dark:group-hover:text-white transition-colors">
-                {t('exams.upcomingOnly', 'القادمة فقط')}
-              </span>
-              <div className="relative">
-                <input 
-                  type="checkbox" 
-                  className="sr-only" 
-                  checked={upcomingOnly}
-                  onChange={(e) => setUpcomingOnly(e.target.checked)}
-                />
-                <div className={`w-10 h-5 rounded-full transition-colors duration-300 ${upcomingOnly ? 'bg-brand-primary-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
-                <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform duration-300 ${upcomingOnly ? 'translate-x-5' : ''}`} />
-              </div>
-            </label>
-          </div>
-        </div>
-
-        {/* Exams Table Content */}
-        <div className="lg:col-span-3">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center h-64 gap-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-              <Loader2 className="animate-spin text-brand-primary-500" size={40} />
-              <p className="text-sm font-semibold text-brand-text-secondary dark:text-slate-400">
-                {t('exams.fetching', 'Fetching exams...')}
-              </p>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-              {exams.length === 0 ? (
-                <div className="p-8">
-                  <EmptyState 
-                    icon={<Calendar size={48} />}
-                    title={t('exams.noExams', 'No Exams Found')}
-                    subtitle={t('exams.noExamsSubtitle', 'There are no exams scheduled matching your criteria.')}
-                  />
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table className="w-full">
-                    <TableHeader className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
-                      <TableRow>
-                        <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          {t('exams.exam', 'الامتحان')}
-                        </TableHead>
-                        <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          {t('exams.type', 'النوع')}
-                        </TableHead>
-                        <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          {t('courses.course', 'المقرر')}
-                        </TableHead>
-                        <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          {t('exams.dateTime', 'التاريخ والوقت')}
-                        </TableHead>
-                        <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          {t('exams.room', 'القاعة')}
-                        </TableHead>
-                        <TableHead className="text-end p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 pe-6">
-                          {t('common.actions', 'الإجراءات')}
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {exams.map((exam) => (
-                        <TableRow 
-                          key={exam.id} 
-                          className="hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors"
-                        >
-                          <TableCell className="p-4 text-start">
-                            <div className="font-semibold text-brand-text-primary dark:text-white">
-                              {exam.type === 'FINAL' ? t('exams.finalExam', 'الاختبار النهائي') : exam.type === 'MIDTERM' ? t('exams.midtermExam', 'اختبار منتصف الفصل') : t('exams.quizExam', 'اختبار قصير')}
-                            </div>
-                            <div className="text-xs text-brand-text-secondary dark:text-slate-400">
-                              {exam.course?.name}
-                            </div>
-                          </TableCell>
-                          <TableCell className="p-4 text-center">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                              exam.type === 'FINAL' 
-                                ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' 
-                                : exam.type === 'MIDTERM' 
-                                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400' 
-                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
-                            }`}>
-                              {exam.type === 'FINAL' ? t('exams.final', 'نهائي') : exam.type === 'MIDTERM' ? t('exams.midterm', 'منتصف') : t('exams.quiz', 'قصير')}
-                            </span>
-                          </TableCell>
-                          <TableCell className="p-4 text-start font-medium text-brand-text-primary dark:text-white">
-                            {exam.course?.courseCode}
-                          </TableCell>
-                          <TableCell className="p-4 text-center">
-                            <div className="text-sm font-semibold text-brand-text-primary dark:text-white">
-                              {new Date(exam.date).toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </div>
-                            <div className="text-xs text-brand-text-secondary dark:text-slate-400">
-                              <TimeRange start={exam.startTime} end={exam.endTime} />
-                            </div>
-                          </TableCell>
-                          <TableCell className="p-4 text-center font-medium text-brand-text-primary dark:text-white">
-                            {exam.room || t('exams.tba', 'TBA')}
-                          </TableCell>
-                          <TableCell className="p-4 text-end pe-6">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-xs font-semibold text-brand-primary-500 hover:text-brand-primary-600 flex items-center gap-1" 
-                                onClick={() => navigate(`/exams/${exam.id}`)}
-                              >
-                                <Eye size={16} />
-                                <span>{t('common.view', 'عرض')}</span>
-                              </Button>
-                              {isSuperAdmin && (
-                                <button 
-                                  onClick={() => handleDelete(exam.id)}
-                                  className="p-2 rounded-lg text-brand-text-muted hover:text-error hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all"
-                                  aria-label={t('common.delete', 'حذف')}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <AddExamModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSuccess={fetchExams} 
-      />
+      <AddExamModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { fetchExams(); showToast(t('exams.createSuccess'), 'success'); }} />
     </div>
   );
 };

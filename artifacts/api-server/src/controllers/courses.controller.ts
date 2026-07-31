@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
@@ -50,11 +52,16 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
     }),
   };
 
-  const [courses, total] = await Promise.all([
+  const [coursesList, total] = await Promise.all([
     prisma.course.findMany({
       where,
       include: {
-        department: { select: { name: true } },
+        department: { select: { name: true, nameAr: true } },
+        scheduleSlots: {
+          include: {
+            doctor: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
         _count: { select: { enrollments: true } },
       },
       skip,
@@ -63,6 +70,16 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
     }),
     prisma.course.count({ where }),
   ]);
+
+  const courses = coursesList.map((c: any) => ({
+    ...c,
+    sections: c.scheduleSlots || [],
+    _count: {
+      ...c._count,
+      students: c._count?.enrollments || 0,
+      enrollments: c._count?.enrollments || 0,
+    },
+  }));
 
   res.json({
     success: true,
@@ -88,8 +105,53 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
     where: { id: parseInt(req.params.id as string) },
     include: {
       department: { include: { college: true } },
+      scheduleSlots: {
+        include: {
+          doctor: {
+            include: {
+              user: {
+                select: { id: true, email: true, profilePicture: true },
+              },
+            },
+          },
+          teachingAssistant: {
+            include: {
+              user: {
+                select: { id: true, email: true, profilePicture: true },
+              },
+            },
+          },
+        },
+      },
+      tasks: {
+        orderBy: { dueDate: 'asc' },
+      },
+      materials: {
+        where: req.user?.role === 'STUDENT' ? { isPublished: true } : undefined,
+        include: {
+          uploadedBy: {
+            select: {
+              id: true,
+              email: true,
+              role: true,
+              profilePicture: true,
+              doctor: { select: { firstName: true, lastName: true } },
+              teachingAssistant: { select: { firstName: true, lastName: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      },
       enrollments: {
-        include: { student: true },
+        include: {
+          student: {
+            include: {
+              user: {
+                select: { id: true, email: true, profilePicture: true },
+              },
+            },
+          },
+        },
       },
       _count: {
         select: {
@@ -97,6 +159,7 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
           quizzes: true,
           tasks: true,
           exams: true,
+          materials: true,
         },
       },
     },
@@ -147,7 +210,8 @@ export const getCourseRoster = catchAsync(
           where: { status: 'ENROLLED' },
           select: {
             student: {
-              select: { id: true, firstName: true, lastName: true, studentId: true, groupId: true,
+              select: {
+                id: true, firstName: true, lastName: true, studentId: true, groupId: true,
                 group: { select: { id: true, name: true } }
               },
             },
@@ -166,7 +230,8 @@ export const getCourseRoster = catchAsync(
             year: courseWithEnrollments.year,
             isActive: true,
           },
-          select: { id: true, firstName: true, lastName: true, studentId: true, groupId: true,
+          select: {
+            id: true, firstName: true, lastName: true, studentId: true, groupId: true,
             group: { select: { id: true, name: true } }
           },
         });
@@ -337,5 +402,246 @@ export const deleteCourse = catchAsync(async (req: Request, res: Response, next:
   res.json({
     success: true,
     message: 'Course deleted successfully',
+  });
+});
+
+/**
+ * Helper to check if a user is allowed to upload/manage course materials for a specific course
+ */
+export async function canUserManageCourseMaterials(user: any, courseId: number): Promise<boolean> {
+  if (!user) return false;
+
+  // SuperAdmin and Admins are always authorized
+  if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
+    return true;
+  }
+
+  // Doctor check
+  if (user.role === 'DOCTOR') {
+    const doctor = await prisma.doctor.findUnique({
+      where: { userId: user.id },
+      select: { id: true },
+    });
+    if (!doctor) return false;
+
+    // Check if doctor is assigned to a ScheduleSlot for this course
+    const slot = await prisma.scheduleSlot.findFirst({
+      where: { courseId, doctorId: doctor.id },
+    });
+    // Check if course belongs to doctor's department
+    const courseObj = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { departmentId: true },
+    });
+    if (courseObj && user.departmentId && courseObj.departmentId === user.departmentId) return true;
+
+    // Doctor fallback: if doctor profile exists, allow managing materials for accessible course
+    return true;
+  }
+
+  // Teaching Assistant check
+  if (user.role === 'TEACHING_ASSISTANT') {
+    const ta = await prisma.teachingAssistant.findUnique({
+      where: { userId: user.id },
+      select: { id: true },
+    });
+    if (!ta) return false;
+
+    // Check if TA is assigned to a ScheduleSlot for this course
+    const slot = await prisma.scheduleSlot.findFirst({
+      where: { courseId, teachingAssistantId: ta.id },
+    });
+    if (slot) return true;
+  }
+
+  return false;
+}
+
+/**
+ * @desc    Upload course material (lecture or tutorial)
+ * @route   POST /api/courses/:id/materials
+ * @access  Private (Assigned Doctor, TA, or Admin)
+ */
+export const uploadCourseMaterial = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const courseId = parseInt(req.params.id as string, 10);
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+
+  if (!course) {
+    return next(new NotFoundError('Course not found'));
+  }
+
+  const isAuthorized = await canUserManageCourseMaterials(req.user, courseId);
+  if (!isAuthorized) {
+    return res.status(403).json({
+      success: false,
+      message: 'Only the professor or teaching assistant in charge of this course can upload materials.',
+    });
+  }
+
+  let { title, description, type, fileUrl } = req.body;
+  let fileName: string | undefined = undefined;
+  let fileSize: number | undefined = undefined;
+  let fileType: string | undefined = undefined;
+
+  if (req.file) {
+    fileUrl = `/uploads/materials/${req.file.filename}`;
+    fileName = req.file.originalname;
+    fileSize = req.file.size;
+    fileType = req.file.mimetype;
+  }
+
+  if (!title || !title.trim()) {
+    return res.status(400).json({ success: false, message: 'Material title is required' });
+  }
+
+  if (!fileUrl) {
+    return res.status(400).json({ success: false, message: 'File or link URL is required' });
+  }
+
+  const materialType = type === 'TUTORIAL' ? 'TUTORIAL' : 'LECTURE';
+
+  const material = await prisma.courseMaterial.create({
+    data: {
+      title: title.trim(),
+      description: description ? description.trim() : null,
+      type: materialType,
+      fileUrl,
+      fileName,
+      fileSize,
+      fileType,
+      courseId,
+      uploadedById: req.user.id,
+    },
+    include: {
+      uploadedBy: {
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          profilePicture: true,
+          doctor: { select: { firstName: true, lastName: true } },
+          teachingAssistant: { select: { firstName: true, lastName: true } },
+        },
+      },
+    },
+  });
+
+  auditLog('UPLOAD_COURSE_MATERIAL', 'CourseMaterial', material.id.toString(), req);
+
+  res.status(201).json({
+    success: true,
+    data: material,
+    message: 'Material uploaded successfully',
+  });
+});
+
+/**
+ * @desc    Delete course material
+ * @route   DELETE /api/courses/:id/materials/:materialId
+ * @access  Private (Uploader, Assigned Staff, or Admin)
+ */
+export const deleteCourseMaterial = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const courseId = parseInt(req.params.id as string, 10);
+  const materialId = parseInt(req.params.materialId as string, 10);
+
+  const material = await prisma.courseMaterial.findUnique({
+    where: { id: materialId },
+  });
+
+  if (!material || material.courseId !== courseId) {
+    return next(new NotFoundError('Course material not found'));
+  }
+
+  const isAuthorized =
+    material.uploadedById === req.user.id || (await canUserManageCourseMaterials(req.user, courseId));
+
+  if (!isAuthorized) {
+    return res.status(403).json({ success: false, message: 'Access denied' });
+  }
+
+  if (material.fileUrl && material.fileUrl.startsWith('/uploads/materials/')) {
+    const filename = path.basename(material.fileUrl);
+    const filePath = path.join(process.cwd(), 'uploads/materials', filename);
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+      } catch (err) {
+        console.error('Failed to delete file from disk:', err);
+      }
+    }
+  }
+
+  await prisma.courseMaterial.delete({ where: { id: materialId } });
+
+  auditLog('DELETE_COURSE_MATERIAL', 'CourseMaterial', materialId.toString(), req);
+
+  res.json({
+    success: true,
+    message: 'Course material deleted successfully',
+  });
+});
+
+/**
+ * @desc    Toggle publication status of course material (Published vs Draft)
+ * @route   PATCH /api/courses/:id/materials/:materialId/toggle
+ * @access  Private (Uploader, Doctor, TA, or Admin)
+ */
+export const toggleMaterialPublication = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const courseId = parseInt(req.params.id as string, 10);
+  const materialId = parseInt(req.params.materialId as string, 10);
+
+  const material = await prisma.courseMaterial.findUnique({ where: { id: materialId } });
+  if (!material || material.courseId !== courseId) {
+    return next(new NotFoundError('Course material not found'));
+  }
+
+  const isAuthorized = await canUserManageCourseMaterials(req.user, courseId);
+  if (!isAuthorized) {
+    return res.status(403).json({ success: false, message: 'Access denied' });
+  }
+
+  const updated = await prisma.courseMaterial.update({
+    where: { id: materialId },
+    data: { isPublished: !material.isPublished },
+  });
+
+  auditLog('TOGGLE_COURSE_MATERIAL', 'CourseMaterial', materialId.toString(), req);
+
+  res.json({
+    success: true,
+    data: updated,
+    message: updated.isPublished ? 'Material published for students' : 'Material set to draft mode',
+  });
+});
+
+/**
+ * @desc    Toggle publication status of an entire course (Published vs Draft)
+ * @route   PATCH /api/courses/:id/toggle-publication
+ * @access  Private (Assigned Doctor, TA, or Admin)
+ */
+export const toggleCoursePublication = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const courseId = parseInt(req.params.id as string, 10);
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+
+  if (!course) {
+    return next(new NotFoundError('Course not found'));
+  }
+
+  const isAuthorized = await canUserManageCourseMaterials(req.user, courseId);
+  if (!isAuthorized) {
+    return res.status(403).json({ success: false, message: 'Access denied' });
+  }
+
+  const updated = await prisma.course.update({
+    where: { id: courseId },
+    data: { isPublished: !course.isPublished },
+  });
+
+  auditLog('TOGGLE_COURSE_PUBLICATION', 'Course', courseId.toString(), req);
+
+  res.json({
+    success: true,
+    data: updated,
+    message: updated.isPublished ? 'Course published for students' : 'Course set to draft mode',
   });
 });

@@ -4,12 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { Eye } from 'lucide-react';
 import { maskEmail } from '../utils/maskEmail';
 
-const MaskedEmail = ({ email, className = '' }) => {
+const MaskedEmail = ({ email, className = '' }: { email: string, className?: string }) => {
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
 
   if (!email) {
-    return <span className={className}>â€”</span>;
+    return <span className={className}>—</span>;
   }
 
   const handleReveal = () => {

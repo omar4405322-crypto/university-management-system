@@ -318,6 +318,7 @@ model Course {
   maxStudents  Int         @default(30)
   year         Int         @default(1)
   semester     Int         @default(1)
+  isPublished  Boolean     @default(true)
   departmentId Int?
   department   Department? @relation(fields: [departmentId], references: [id])
 
@@ -758,6 +759,7 @@ model CourseMaterial {
   fileName     String?
   fileSize     Int?
   fileType     String?
+  isPublished  Boolean      @default(true)
   courseId     Int
   course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   uploadedById Int

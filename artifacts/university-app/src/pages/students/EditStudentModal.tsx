@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import studentsService from '../../services/students.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { X, User, Phone, MapPin, AlertCircle, CheckCircle, School, GraduationCap, Hash, Calendar } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -209,11 +209,11 @@ const EditStudentModal = ({ isOpen, onClose, onSuccess, student }) => {
                 className="w-full h-10 px-4 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all appearance-none cursor-pointer"
                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
               >
-                <option value="1">Year 1</option>
-                <option value="2">Year 2</option>
-                <option value="3">Year 3</option>
-                <option value="4">Year 4</option>
-                <option value="5">Year 5</option>
+                <option value="1">{t('auth.year1', isRTL ? 'الفرقة الأولى' : 'First Division')}</option>
+                <option value="2">{t('auth.year2', isRTL ? 'الفرقة الثانية' : 'Second Division')}</option>
+                <option value="3">{t('auth.year3', isRTL ? 'الفرقة الثالثة' : 'Third Division')}</option>
+                <option value="4">{t('auth.year4', isRTL ? 'الفرقة الرابعة' : 'Fourth Division')}</option>
+                <option value="5">{t('auth.year5', isRTL ? 'الفرقة الخامسة' : 'Fifth Division')}</option>
               </select>
               {errors.year && <p className="text-rose-500 text-xs mt-1">{errors.year.message}</p>}
             </div>
@@ -259,11 +259,13 @@ const EditStudentModal = ({ isOpen, onClose, onSuccess, student }) => {
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
+              className="btn-outline"
             >
               {t('common.cancel')}
             </Button>
             <Button
               type="submit"
+              variant="primary"
               loading={isSubmitting}
               disabled={isSubmitting}
               className="min-w-[140px]"

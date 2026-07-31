@@ -4,7 +4,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import LoadingState from './ui/LoadingState';
-import Button from './ui/Button';
+import Button from './ui/button';
 
 const ProtectedRoute = ({
   children,

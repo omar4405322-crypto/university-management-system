@@ -11,6 +11,8 @@ import {
   createAdmin,
   deleteUser,
   hardDeleteUser,
+  updateAdmin,
+  resetUserPassword,
 } from '../controllers/user.controller';
 import { protect, authorize } from '../middleware/auth.middleware';
 import upload from '../middleware/upload.middleware';
@@ -81,6 +83,8 @@ router.post(
   createAdmin
 );
 
+router.put('/:id', authorize('SUPER_ADMIN'), adminIdValidation, validate, updateAdmin);
+router.patch('/:id/reset-password', authorize('SUPER_ADMIN'), adminIdValidation, validate, resetUserPassword);
 router.delete('/:id', authorize('SUPER_ADMIN'), adminIdValidation, validate, deleteUser);
 router.delete('/:id/hard-delete', authorize('SUPER_ADMIN'), adminIdValidation, validate, hardDeleteUser);
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Printer } from 'lucide-react';
+import { Loader2, Printer, ShieldAlert } from 'lucide-react';
 import type { Department, TimetableFilters, College } from '../../types/timetable.types';
 
 const YEARS = ['1', '2', '3', '4', '5'] as const;
@@ -16,8 +16,10 @@ interface TimetableFiltersBarProps {
   isDeptAdminLocked: boolean;
   saving: boolean;
   loadingSlots: boolean;
+  auditingConflicts?: boolean;
   onChange: (next: TimetableFilters) => void;
   onSave: () => void;
+  onAuditConflicts?: () => void;
 }
 
 const SELECT_CLASS =
@@ -25,7 +27,7 @@ const SELECT_CLASS =
 
 /**
  * Renders the filter bar (department selector, year picker, semester picker)
- * and the Print / Save action buttons that sit above the timetable grid.
+ * and the Print / Audit Conflicts / Save action buttons that sit above the timetable grid.
  * All label strings come from the i18n layer via t().
  */
 export default function TimetableFiltersBar({
@@ -38,8 +40,10 @@ export default function TimetableFiltersBar({
   isDeptAdminLocked,
   saving,
   loadingSlots,
+  auditingConflicts = false,
   onChange,
   onSave,
+  onAuditConflicts,
 }: TimetableFiltersBarProps) {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language?.startsWith('ar');
@@ -98,14 +102,14 @@ export default function TimetableFiltersBar({
 
         {/* Academic Year */}
         <select
-          className={`w-full md:w-36 ${SELECT_CLASS}`}
+          className={`w-full md:w-44 ${SELECT_CLASS}`}
           value={filters.academicYear}
           onChange={(e) => update('academicYear', e.target.value)}
           aria-label={t('timetables.academicYear', 'Academic Year')}
         >
           {YEARS.map((y) => (
             <option key={y} value={y}>
-              {t('common.year', 'Year')} {y}
+              {t(`students.year${y}`, t(`common.YEAR${y}`, `${t('common.year', 'Year')} ${y}`))}
             </option>
           ))}
         </select>
@@ -127,6 +131,22 @@ export default function TimetableFiltersBar({
 
       {/* ── Actions ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
+        {onAuditConflicts && (
+          <button
+            onClick={onAuditConflicts}
+            disabled={auditingConflicts || loadingSlots}
+            aria-label={t('timetable.auditConflicts', 'Audit Conflicts')}
+            className="print:hidden px-4 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-sm"
+          >
+            {auditingConflicts ? (
+              <Loader2 size={16} className="animate-spin text-amber-600 dark:text-amber-400" />
+            ) : (
+              <ShieldAlert size={16} className="text-amber-600 dark:text-amber-400" />
+            )}
+            {t('timetable.auditConflicts', 'فحص التعارضات')}
+          </button>
+        )}
+
         <button
           onClick={() => window.print()}
           aria-label={t('common.print', 'Print')}

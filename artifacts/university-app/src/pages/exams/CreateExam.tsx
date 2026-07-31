@@ -17,10 +17,11 @@ import {
   Info,
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
+import { DEFAULT_ANTI_CHEAT_SETTINGS } from './examUtils';
 
-const parseTimeToMinutes = (time) => {
+const parseTimeToMinutes = (time: string | undefined) => {
   if (!time) return null;
   const [h, m] = time.split(':').map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
@@ -29,6 +30,7 @@ const parseTimeToMinutes = (time) => {
 
 const schema = z.object({
   courseId: z.string().min(1, 'Please select a course'),
+  title: z.string().optional(),
   type: z.enum(['MIDTERM', 'FINAL', 'QUIZ']),
   date: z.string().min(1, 'Exam date is required'),
   startTime: z.string().min(1, 'Start time is required'),
@@ -53,14 +55,15 @@ const CreateExam = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [coursesLoading, setCoursesLoading] = useState(true);
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       courseId: '',
+      title: '',
       type: 'MIDTERM',
       date: '',
       startTime: '09:00',
@@ -87,53 +90,73 @@ const CreateExam = () => {
     }
   };
 
-  const onSubmit = async (data) => {
+  const [antiCheatEnabled, setAntiCheatEnabled] = useState(DEFAULT_ANTI_CHEAT_SETTINGS.antiCheatEnabled);
+  const [maxLeavesBeforeCancel, setMaxLeavesBeforeCancel] = useState(DEFAULT_ANTI_CHEAT_SETTINGS.maxLeavesBeforeCancel);
+  const [leaveGraceSeconds, setLeaveGraceSeconds] = useState(DEFAULT_ANTI_CHEAT_SETTINGS.leaveGraceSeconds);
+  const [leaveWarningMessage, setLeaveWarningMessage] = useState('');
+  const [shuffleQuestions, setShuffleQuestions] = useState(DEFAULT_ANTI_CHEAT_SETTINGS.shuffleQuestions);
+  const [requireGeolocation, setRequireGeolocation] = useState(DEFAULT_ANTI_CHEAT_SETTINGS.requireGeolocation);
+  const [blockMultipleTabs, setBlockMultipleTabs] = useState(DEFAULT_ANTI_CHEAT_SETTINGS.blockMultipleTabs);
+  const [enableGeofencing, setEnableGeofencing] = useState(false);
+  const [allowedLat, setAllowedLat] = useState<string>('');
+  const [allowedLng, setAllowedLng] = useState<string>('');
+  const [allowedRadiusMeters, setAllowedRadiusMeters] = useState<number>(200);
+
+  const onSubmit = async (data: FormData) => {
     setError('');
     try {
       const payload = {
         courseId: data.courseId,
+        title: data.title ? data.title.trim() : undefined,
         type: data.type,
         date: data.date,
         startTime: data.startTime,
         endTime: data.endTime,
+        durationMinutes: data.durationMinutes,
         room: data.room ? data.room.trim() : 'TBA',
+        antiCheatEnabled,
+        maxLeavesBeforeCancel,
+        leaveGraceSeconds,
+        leaveWarningMessage: leaveWarningMessage.trim() || undefined,
+        shuffleQuestions,
+        requireGeolocation: requireGeolocation || enableGeofencing,
+        blockMultipleTabs,
+        enableGeofencing,
+        allowedLat: allowedLat ? parseFloat(allowedLat) : null,
+        allowedLng: allowedLng ? parseFloat(allowedLng) : null,
+        allowedRadiusMeters,
       };
       const result = await examsService.createExam(payload);
       if (result.success) {
         setSuccess(true);
-        setTimeout(() => navigate('/exams'), 2000);
+        setTimeout(() => navigate('/exams'), 1500);
       } else {
-        setError(result.message || t('exams.createError', 'Error creating exam'));
+        setError(result.message || 'Failed to create exam');
       }
-    } catch (err) {
-      setError(err.message || t('exams.createError', 'Error creating exam schedule'));
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || err.message || 'Error creating exam');
     }
   };
 
   return (
-    <div className="section-gap animate-in fade-in duration-700">
-      <div className="flex items-center gap-4">
+    <div className="section-gap animate-in fade-in duration-500">
+      <div className="flex items-center justify-between gap-4 mb-6">
         <button
-          type="button"
           onClick={() => navigate('/exams')}
-          className="p-3 text-brand-text-sub hover:text-brand-green hover:bg-brand-green/10 rounded-2xl transition-all duration-300"
+          className="flex items-center gap-2 text-brand-text-muted hover:text-brand-text-main font-bold text-xs uppercase tracking-widest transition-colors"
         >
-          <ChevronLeft size={24} className="rtl:-scale-x-100" />
+          <ChevronLeft size={16} />
+          {t('common.backToExams', 'Back to Exams')}
         </button>
-        <div>
-          <h1 className="text-3xl font-black text-brand-text-main tracking-tight">
-            {t('exams.createTitle', 'Schedule New Exam')}
-          </h1>
-          <p className="text-brand-text-sub font-bold mt-1 uppercase tracking-wider">
-            {t('exams.createSubtitle', 'Define the academic assessment parameters')}
-          </p>
-        </div>
+
+        <h1 className="heading-1 m-0">{t('exams.createTitle', 'Create New Exam')}</h1>
       </div>
 
       {success && (
-        <div className="p-4 rounded-2xl bg-brand-green text-white flex items-center gap-3">
+        <div className="p-4 rounded-2xl bg-emerald-500 text-white flex items-center gap-3">
           <CheckCircle2 size={24} />
-          <p className="font-bold">{t('exams.createSuccess', 'Exam scheduled successfully! Redirecting...')}</p>
+          <p className="font-bold">{t('exams.createSuccess', 'Exam created successfully! Redirecting...')}</p>
         </div>
       )}
 
@@ -146,7 +169,7 @@ const CreateExam = () => {
 
       <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <Card title={t('exams.basicInfo', 'Basic Information')} borderLeft={false}>
+          <Card title={t('exams.basicInfo', 'Basic Information')}>
             <div className="space-y-6 pt-2">
               <div className="space-y-2">
                 <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
@@ -158,7 +181,7 @@ const CreateExam = () => {
                   {...register('courseId')}
                 >
                   <option value="">{coursesLoading ? t('common.loading') : t('exams.chooseCourse', 'Choose a course')}</option>
-                  {courses.map((c) => (
+                  {courses.map((c: any) => (
                     <option key={c.id} value={c.id}>{c.courseCode} - {c.name}</option>
                   ))}
                 </select>
@@ -167,7 +190,19 @@ const CreateExam = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
-                  {t('exams.examType', 'Exam Type')} *
+                  {t('exams.customTypeLabel', 'مسمى / نوع الامتحان المخصص')}
+                </label>
+                <input
+                  type="text"
+                  placeholder={t('exams.customTypePlaceholder', 'اكتب مسمى الامتحان (مثال: اختبار شهر أكتوبر، امتحان عملي...)')}
+                  className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all placeholder:font-medium placeholder:text-slate-400"
+                  {...register('title')}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
+                  {t('exams.examTypeCategory', 'فئة الامتحان (التصنيف العام)')} *
                 </label>
                 <select
                   className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer"
@@ -184,7 +219,7 @@ const CreateExam = () => {
         </div>
 
         <div className="lg:col-span-1 space-y-6">
-          <Card title={t('exams.timingLocation', 'Timing & Location')} borderLeft={false}>
+          <Card title={t('exams.timingLocation', 'Timing & Location')}>
             <div className="space-y-6 pt-2">
               <div className="space-y-2">
                 <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">

@@ -203,6 +203,7 @@ model Attendance {
   remarks   String?
   createdAt DateTime @default(now())
 
+  @@unique([studentId, courseId, date])
   @@index([courseId, date])
   @@index([studentId, courseId])
 }

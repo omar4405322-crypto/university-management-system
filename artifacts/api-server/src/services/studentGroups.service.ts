@@ -38,14 +38,15 @@ export class StudentGroupsService {
 
   /**
    * Gets the full nested group tree for a department.
+   * If year is omitted, groups for all years are returned.
    */
-  static async getDepartmentGroupTree(departmentId: number) {
+  static async getDepartmentGroupTree(departmentId: number, year?: number) {
     const allGroups = await prisma.studentGroup.findMany({
-      where: { departmentId },
+      where: { departmentId, ...(year !== undefined ? { year } : {}) },
       include: {
         _count: { select: { students: true } }
       },
-      orderBy: { name: 'asc' }
+      orderBy: [{ year: 'asc' }, { name: 'asc' }]
     });
 
     const groupMap = new Map<number, any>();
@@ -53,6 +54,7 @@ export class StudentGroupsService {
       groupMap.set(g.id, {
         id: g.id,
         name: g.name,
+        year: g.year,
         rangeStartName: g.rangeStartName,
         rangeEndName: g.rangeEndName,
         studentCount: g._count.students,
@@ -98,7 +100,7 @@ export class StudentGroupsService {
 
     // 1. Find all leaf groups
     const allGroups = await prisma.studentGroup.findMany({
-      where: { departmentId: student.departmentId },
+      where: { departmentId: student.departmentId, year: student.year || 1 },
       include: { children: true }
     });
 

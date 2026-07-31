@@ -23,13 +23,20 @@ const examsService = {
 
   deleteExamQuestion: (questionId: string): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/exams/questions/${questionId}`)),
 
-  startExamSession: (examId: string): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/exams/${examId}/start`)),
+  startExamSession: (examId: string, data?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/exams/${examId}/start`, data)),
 
   submitExam: (examId: string, data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/exams/${examId}/submit`, data)),
 
   getExamSubmissions: (examId: string): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/exams/${examId}/submissions`)),
 
   getMyExamSubmission: (examId: string): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/exams/${examId}/my-submission`)),
+
+  gradeSubmission: (submissionId: string | number, score: number): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/exams/submissions/${submissionId}/grade`, { score })),
+
+  // ── Anti-Cheat Endpoints ──────────────────────────────────────────────────
+  reportDeviceInfo: (examId: string, deviceInfo: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/exams/${examId}/device-info`, deviceInfo)),
+
+  cancelExam: (examId: string, reason: string): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/exams/${examId}/cancel`, { reason })),
 };
 
 export default examsService;

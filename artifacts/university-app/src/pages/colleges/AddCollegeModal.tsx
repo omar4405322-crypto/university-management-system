@@ -5,7 +5,7 @@ import * as z from 'zod';
 import collegeService from '../../services/college.service';
 import usersService from '../../services/users.service';
 import Modal from '../../components/ui/Modal';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
@@ -18,13 +18,19 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
+interface AddCollegeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+const AddCollegeModal: React.FC<AddCollegeModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [step, setStep] = useState(1); // 1 = create college, 2 = assign admin
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({ resolver: zodResolver(schema) });
-  const [newCollege, setNewCollege] = useState(null);
-  const [admins, setAdmins] = useState([]);
+  const [newCollege, setNewCollege] = useState<any>(null);
+  const [admins, setAdmins] = useState<any[]>([]);
   const [selectedAdminId, setSelectedAdminId] = useState('');
   const [assignMode, setAssignMode] = useState('select'); // 'select' or 'create'
   const [adminFormData, setAdminFormData] = useState({
@@ -35,19 +41,19 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
   });
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState<{ message: string; type: string } | null>(null);
 
-  const showToast = (message, type) => {
+  const showToast = (message: string, type: string) => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handleAdminChange = (e) => {
+  const handleAdminChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setAdminFormData({ ...adminFormData, [name]: value });
   };
 
-  const getErrorMessage = (error) => {
+  const getErrorMessage = (error: any) => {
     if (error.status === 403) {
       return t('colleges.insufficientPermissions', 'You do not have permission to create colleges. Only Super Admins can create colleges.');
     }
@@ -69,7 +75,7 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
       const result = await usersService.getUsers({ role: 'COLLEGE_ADMIN' });
       if (result.success) {
         // Filter admins who don't have an assigned college
-        const availableAdmins = (result.data || []).filter(admin => !admin.managedCollegeId);
+        const availableAdmins = (result.data || []).filter((admin: any) => !admin.managedCollegeId);
         setAdmins(availableAdmins);
       }
     } catch (error) {
@@ -114,7 +120,7 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
         onSuccess();
         resetModal();
       }
-    } catch (error) {
+    } catch (error: any) {
       const message = error.response?.data?.message || t('colleges.assignAdminError') || 'Failed to assign admin';
       showToast(message, 'error');
     } finally {
@@ -145,7 +151,7 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
         onSuccess();
         resetModal();
       }
-    } catch (error) {
+    } catch (error: any) {
       const message = error.response?.data?.message || t('colleges.createAdminError') || 'Failed to create admin';
       showToast(message, 'error');
     } finally {
@@ -342,7 +348,7 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess }) => {
                           className="select-brand"
                         >
                           <option value="">{t('common.selectOptional')} {t('colleges.admin')}</option>
-                          {admins.map((admin) => (
+                          {admins.map((admin: any) => (
                             <option key={admin.id} value={admin.id}>
                               {admin.email} ({admin.firstName} {admin.lastName})
                             </option>

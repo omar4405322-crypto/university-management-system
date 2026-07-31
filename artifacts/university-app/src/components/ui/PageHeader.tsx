@@ -1,5 +1,5 @@
 import React from 'react';
-import Button from './Button';
+import Button from './button';
 import { Plus, Loader2 } from 'lucide-react';
 
 export interface PageHeaderProps {

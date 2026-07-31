@@ -12,7 +12,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../lib/apiClient';
+import api from '../../services/api';
 
 export function FacultyAttendanceDashboard() {
   const { t } = useTranslation();
@@ -42,6 +42,7 @@ export function FacultyAttendanceDashboard() {
 
   const timerRef = useRef<any>(null);
   const pollingRef = useRef<any>(null);
+  const targetTimeRef = useRef<number>(0);
 
   // 1. Initial Load: Fetch Courses
   useEffect(() => {
@@ -50,7 +51,7 @@ export function FacultyAttendanceDashboard() {
         const loadedCourses = res.data || [];
         setCourses(loadedCourses);
       })
-      .catch(() => setError(t('attendance.coursesLoadError') || 'Failed to load courses'));
+      .catch(() => setError(t('', '')));
   }, [t]);
 
   // 2. Load active session if course selected
@@ -86,13 +87,13 @@ export function FacultyAttendanceDashboard() {
         latitude: activeSession.latitude,
         longitude: activeSession.longitude
       });
-      alert('تم حفظ الموقع الجغرافي للقاعة بنجاح');
+      alert(t('attendance.roomLocationSaved', 'تم حفظ الموقع الجغرافي للقاعة بنجاح'));
       if (selectedCourseId) {
         await checkActiveSession(selectedCourseId);
       }
     } catch (err) {
       console.error(err);
-      alert('حدث خطأ أثناء حفظ الموقع');
+      alert(t('attendance.roomLocationSaveError', 'حدث خطأ أثناء حفظ الموقع'));
     } finally {
       setIsSavingRoom(false);
     }
@@ -101,24 +102,26 @@ export function FacultyAttendanceDashboard() {
   // 3. QR Token and Polling
   useEffect(() => {
     if (activeSession?.sessionId) {
-      updateToken();
       const stepSeconds = activeSession.codeStepSeconds || 20;
-      setTimeLeft(stepSeconds); // ensure timer resets correctly when session changes
+      targetTimeRef.current = Date.now() + stepSeconds * 1000;
+      updateToken();
+      setTimeLeft(stepSeconds);
 
       // Clear any existing intervals
       if (timerRef.current) clearInterval(timerRef.current);
       if (pollingRef.current) clearInterval(pollingRef.current);
 
-      // Countdown timer — updates display every second
+      // Countdown timer — absolute time math to prevent browser throttling drift
       timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            updateToken();
-            return stepSeconds;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+        const remaining = Math.ceil((targetTimeRef.current - Date.now()) / 1000);
+        if (remaining <= 0) {
+          targetTimeRef.current = Date.now() + stepSeconds * 1000;
+          updateToken();
+          setTimeLeft(stepSeconds);
+        } else {
+          setTimeLeft(remaining);
+        }
+      }, 500);
 
       // Poll session data (flagged records, present count, roster, instructors)
       pollingRef.current = setInterval(fetchSessionData, 3000);
@@ -218,7 +221,7 @@ export function FacultyAttendanceDashboard() {
       setActiveSession(res.data);
       setSelectedCourseId(courseId);
     } catch (err: any) {
-      setError(err.response?.data?.message || t('attendance.scanError') || 'Failed to start session');
+      setError(err.response?.data?.message || t('', ''));
     } finally {
       setLoading(false);
     }
@@ -906,7 +909,7 @@ export function FacultyAttendanceDashboard() {
                     className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-brand-primary-600 dark:hover:bg-brand-primary-700 text-white rounded-xl py-5 font-bold shadow-sm flex items-center justify-center gap-2"
                   >
                     <Play className="w-4 h-4" />
-                    {t('attendance.startSession') || 'بدء جلسة الحضور'}
+                    {t('', '')}
                   </Button>
                 </CardContent>
               </Card>

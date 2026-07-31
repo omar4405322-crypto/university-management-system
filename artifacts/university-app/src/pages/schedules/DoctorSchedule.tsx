@@ -1,34 +1,32 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { Calendar, Loader2, Filter } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import {
+  Calendar,
+  Loader2,
+  Filter,
+  User,
+  BookOpen,
+  MapPin,
+  Users,
+  Printer,
+  RotateCw,
+  Award,
+  Sparkles,
+  Building,
+  CheckCircle2
+} from 'lucide-react';
 import schedulesService from '../../services/schedules.service';
+import doctorsService from '../../services/doctors.service';
 import { Select } from '../../components/ui/Select';
 import { logger } from '../../lib/logger';
+import SearchableSelect from '../../components/ui/SearchableSelect';
+import Card from '../../components/ui/Card';
+import Badge from '../../components/ui/Badge';
 
 import { TimeRange } from '../../components/ui/TimeRange';
-
-const getSessionBadgeColor = (type: string) => {
-  switch (type) {
-    case 'LECTURE': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
-    case 'LAB': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
-    case 'SECTION': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800';
-    default: return 'bg-slate-100 text-slate-700 dark:bg-slate-800/40 dark:text-slate-300';
-  }
-};
-
-const DAYS_EN = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-
-const DAYS_AR = {
-  Saturday: 'السبت',
-  Sunday: 'الأحد',
-  Monday: 'الاثنين',
-  Tuesday: 'الثلاثاء',
-  Wednesday: 'الأربعاء',
-  Thursday: 'الخميس',
-};
-
 import { ScheduleView } from '../../components/timetable/ScheduleView';
 import { generateHourlyTimes } from '../../utils/scheduleConfig';
 
@@ -38,7 +36,45 @@ const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 const DoctorSchedule = () => {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isAr = i18n.language?.startsWith('ar');
+
+  const [doctorsList, setDoctorsList] = useState<any[]>([]);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>(
+    searchParams.get('doctorId') || ''
+  );
+
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
+
+  useEffect(() => {
+    if (isAdmin || searchParams.get('doctorId')) {
+      doctorsService.getDoctors({ limit: 100 }).then((res: any) => {
+        if (res.success && res.data) {
+          const list = Array.isArray(res.data) ? res.data : res.data.doctors || res.data.data || [];
+          setDoctorsList(list);
+          if (!selectedDoctorId && list.length > 0) {
+            setSelectedDoctorId(String(list[0].id));
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [isAdmin, searchParams]);
+
+  const activeDoctor = useMemo(() => {
+    if (selectedDoctorId && doctorsList.length > 0) {
+      return doctorsList.find((d) => String(d.id) === String(selectedDoctorId));
+    }
+    return null;
+  }, [selectedDoctorId, doctorsList]);
+
+  const doctorOptions = useMemo(() => {
+    return doctorsList.map((doc) => ({
+      value: String(doc.id),
+      label: `Dr. ${doc.firstName} ${doc.lastName}`,
+      sublabel: doc.department?.name || '',
+      group: doc.department?.name || t('schedule.doctorTitle', 'عضو هيئة التدريس')
+    }));
+  }, [doctorsList, t]);
 
   const [schedule, setSchedule] = useState<any>({});
   const [loading, setLoading] = useState(true);
@@ -74,18 +110,9 @@ const DoctorSchedule = () => {
     if (!timeStr) return '';
     const [hours, minutes] = timeStr.split(':');
     const hour = parseInt(hours);
-    const ampm = hour >= 12 ? t('common.pm') || 'PM' : t('common.am') || 'AM';
+    const ampm = hour >= 12 ? t('common.pm') || 'مساءً' : t('common.am') || 'صباحاً';
     const displayHour = hour % 12 || 12;
     return `${displayHour}:${minutes} ${ampm}`;
-  };
-
-  const getEntriesForTimeSlot = (day: string, time: string) => {
-    if (!schedule || !schedule[day]) return [];
-    return schedule[day].filter((s: any) => {
-      const startHour = parseInt(s.startTime.split(':')[0]);
-      const currentHour = parseInt(time.split(':')[0]);
-      return startHour === currentHour;
-    });
   };
 
   // Filter state
@@ -97,6 +124,7 @@ const DoctorSchedule = () => {
       setLoading(true);
       setError(null);
       const params: Record<string, unknown> = {};
+      if (selectedDoctorId) params.doctorId = selectedDoctorId;
       if (selectedYear) params.year = selectedYear;
       if (selectedSemester) params.semester = selectedSemester;
       const result = await schedulesService.getWeeklyTimetable(params);
@@ -117,160 +145,246 @@ const DoctorSchedule = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedYear, selectedSemester]);
+  }, [selectedDoctorId, selectedYear, selectedSemester, t]);
 
   useEffect(() => {
     fetchSchedule();
   }, [fetchSchedule]);
 
-  const totalClasses = Object.values(schedule).reduce(
-        (sum: number, day: Record<string, unknown>) => sum + (Array.isArray(day) ? day.length : 0),
-    0
-  );
+  const allSlots = useMemo(() => {
+    return Object.values(schedule || {}).flat().filter(Boolean);
+  }, [schedule]);
 
-  const selectClass = `
-    appearance-none rounded-xl border border-slate-200 dark:border-slate-600
-    bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200
-    text-sm font-semibold px-4 py-2.5 pr-10 rtl:pr-4 rtl:pl-10
-    focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400
-    transition-all duration-200 cursor-pointer min-w-[160px]
-  `;
+  const totalClasses = allSlots.length;
+  const distinctCourses = useMemo(() => new Set(allSlots.map((s: any) => s.course?.id || s.course?.name).filter(Boolean)).size, [allSlots]);
+  const distinctRooms = useMemo(() => new Set(allSlots.map((s: any) => s.room).filter(Boolean)).size, [allSlots]);
+  const distinctGroups = useMemo(() => new Set(allSlots.map((s: any) => s.groupId || s.group?.name).filter(Boolean)).size, [allSlots]);
+
+  const doctorNameDisplay = activeDoctor
+    ? `${activeDoctor.firstName} ${activeDoctor.lastName}`
+    : `${user?.firstName || ''} ${user?.lastName || ''}`;
+
+  const deptNameDisplay = activeDoctor?.department?.name || user?.department?.name || user?.managedDepartmentName || '';
 
   return (
-    <div className="section-gap animate-in fade-in duration-700">
-      {/* Header */}
-      <div className="mb-6 p-5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-              <Calendar size={24} className="text-blue-600 dark:text-blue-400" />
+    <div className="section-gap animate-in fade-in duration-700 space-y-6">
+      {/* 👑 PRO DOCTOR PROFILE BANNER (Clean Light/Dark Theme Matched) */}
+      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 text-slate-800 dark:text-white">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            {/* Avatar Badge */}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-primary-500 to-indigo-600 flex items-center justify-center text-2xl font-black text-white shadow-md shadow-brand-primary-500/20 shrink-0">
+              {doctorNameDisplay.charAt(0)}
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-700 dark:text-slate-200">
-                {t('schedule.doctorScheduleTitle')}
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                {t('common.dr', 'Dr.')} {user?.firstName} {user?.lastName} —{' '}
-                {t('schedule.doctorScheduleSubtitle')}: {loading ? '...' : totalClasses}
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-800 dark:text-white">
+                  {t('common.dr', 'Dr.')} {doctorNameDisplay}
+                </h1>
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-primary-700 dark:text-brand-primary-300 border border-brand-primary-200 dark:border-brand-primary-800 flex items-center gap-1.5">
+                  <Sparkles size={12} className="text-amber-500" />
+                  {t('schedule.doctorTitle', 'عضو هيئة التدريس')}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1 flex items-center gap-2">
+                <Building size={14} className="text-brand-primary-500" />
+                {deptNameDisplay ? `${deptNameDisplay}` : t('schedule.universityFaculty', 'جامعة 6 أكتوبر التكنولوجية')}
               </p>
             </div>
           </div>
+
+          {/* Controls & Searchable Doctor Switcher */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {(isAdmin || doctorsList.length > 0) && (
+              <div className="min-w-[240px] sm:min-w-[280px]">
+                <SearchableSelect
+                  options={doctorOptions}
+                  value={selectedDoctorId}
+                  onChange={(val) => {
+                    setSelectedDoctorId(val);
+                    setSearchParams({ doctorId: val });
+                  }}
+                  placeholder={t('doctors.selectDoctor', 'اختر الدكتور / المحاضر')}
+                  searchPlaceholder={t('doctors.searchDoctor', 'ابحث عن اسم الدكتور...')}
+                  emptyText={t('doctors.noDoctorsFound', 'لم يتم العثور على أي دكتور')}
+                  icon={<User size={16} />}
+                  isRTL={isAr}
+                />
+              </div>
+            )}
+
+            <button
+              onClick={() => window.print()}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs flex items-center gap-2 transition-all border border-slate-200 dark:border-slate-600 shadow-xs active:scale-95 cursor-pointer"
+            >
+              <Printer size={15} />
+              <span className="hidden sm:inline">{t('common.print', 'طباعة الجدول')}</span>
+            </button>
+
+            <button
+              onClick={fetchSchedule}
+              className="p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all border border-slate-200 dark:border-slate-600 shadow-xs active:scale-95 cursor-pointer"
+              title={t('common.refresh', 'تحديث')}
+            >
+              <RotateCw size={15} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="mb-6 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-            <Filter size={16} />
-            <span className="text-xs font-bold uppercase tracking-widest">
-              {t('common.filters', 'Filters')}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 flex-wrap flex-1">
-            {/* Academic Year */}
-            <div className="relative">
-              <Select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className={selectClass}
-              >
-                <option value="">{t('schedule.academicYear')}</option>
-                {yearOptions.map((yr) => (
-                  <option key={yr} value={yr}>
-                    {yr}
-                  </option>
-                ))}
-              </Select>
-              <div className="pointer-events-none absolute inset-y-0 right-3 rtl:right-auto rtl:left-3 flex items-center">
-                <svg
-                  className="h-4 w-4 text-slate-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
+      {/* 📊 SUMMARY STATS DASHBOARD BAR (4 CARDS) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm relative overflow-hidden group hover:border-brand-primary-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                {t('schedule.totalSessions', 'إجمالي الحصص الأسبوعية')}
+              </p>
+              <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white mt-1">
+                {loading ? '...' : totalClasses}
+              </h3>
             </div>
+            <div className="w-12 h-12 rounded-2xl bg-brand-primary-500/10 text-brand-primary-500 flex items-center justify-center font-bold text-xl shrink-0">
+              <Calendar size={24} />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm relative overflow-hidden group hover:border-indigo-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                {t('schedule.assignedCourses', 'المقررات المسندة')}
+              </p>
+              <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white mt-1">
+                {loading ? '...' : distinctCourses}
+              </h3>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold text-xl shrink-0">
+              <BookOpen size={24} />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm relative overflow-hidden group hover:border-amber-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                {t('schedule.assignedRooms', 'القاعات والمدرجات')}
+              </p>
+              <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white mt-1">
+                {loading ? '...' : distinctRooms}
+              </h3>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold text-xl shrink-0">
+              <MapPin size={24} />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm relative overflow-hidden group hover:border-purple-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                {t('schedule.targetGroups', 'المجموعات الطلابية')}
+              </p>
+              <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white mt-1">
+                {loading ? '...' : distinctGroups > 0 ? distinctGroups : t('common.all', 'الكل')}
+              </h3>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center font-bold text-xl shrink-0">
+              <Users size={24} />
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* 🎛️ CUSTOM FILTER BAR */}
+      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-widest me-2">
+              <Filter size={16} className="text-brand-primary-500" />
+              {t('common.filters', 'التصفية')}
+            </div>
+
+            {/* Academic Year */}
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 cursor-pointer"
+            >
+              <option value="">{t('schedule.academicYear', 'جميع السنوات الأكاديمية')}</option>
+              {yearOptions.map((yr) => (
+                <option key={yr} value={yr}>
+                  {t('common.year', 'سنة')} {yr}
+                </option>
+              ))}
+            </select>
 
             {/* Semester */}
-            <div className="relative">
-              <Select
-                value={selectedSemester}
-                onChange={(e) => setSelectedSemester(e.target.value)}
-                className={selectClass}
-              >
-                <option value="">{t('schedule.allSemesters')}</option>
-                <option value="1">{t('schedule.semester1')}</option>
-                <option value="2">{t('schedule.semester2')}</option>
-                <option value="3">{t('schedule.semester3', 'Summer Semester')}</option>
-              </Select>
-              <div className="pointer-events-none absolute inset-y-0 right-3 rtl:right-auto rtl:left-3 flex items-center">
-                <svg
-                  className="h-4 w-4 text-slate-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            {/* Reset */}
-            {(selectedYear || selectedSemester) && (
-              <button
-                onClick={() => {
-                  setSelectedYear('');
-                  setSelectedSemester('');
-                }}
-                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 uppercase tracking-widest transition-colors"
-              >
-                {t('common.resetFilters', 'Reset')}
-              </button>
-            )}
+            <select
+              value={selectedSemester}
+              onChange={(e) => setSelectedSemester(e.target.value)}
+              className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 cursor-pointer"
+            >
+              <option value="">{t('schedule.allSemesters', 'جميع الفصول الدراسية')}</option>
+              <option value="1">{t('schedule.semester1', 'الفصل الدراسي الأول')}</option>
+              <option value="2">{t('schedule.semester2', 'الفصل الدراسي الثاني')}</option>
+              <option value="3">{t('schedule.semester3', 'الفصل الصيفي')}</option>
+            </select>
           </div>
+
+          {(selectedYear || selectedSemester) && (
+            <button
+              onClick={() => {
+                setSelectedYear('');
+                setSelectedSemester('');
+              }}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 transition-colors"
+            >
+              ✕ {t('common.resetFilters', 'إلغاء الفلترة')}
+            </button>
+          )}
         </div>
-      </div>
+      </Card>
 
       {/* Loading */}
       {loading && (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 size={32} className="animate-spin text-blue-500" />
-        </div>
+        <Card className="p-16 flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+          <Loader2 size={36} className="animate-spin text-brand-primary-500 mb-3" />
+          <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
+            {t('common.loadingSchedule', 'جاري تحميل جدول المحاضرات...')}
+          </p>
+        </Card>
       )}
 
       {/* Error */}
       {!loading && error && (
-        <div className="text-center py-16">
-          <p className="text-red-500 font-medium mb-3">{error}</p>
+        <Card className="p-16 flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+          <p className="text-red-500 font-bold mb-3">{error}</p>
           <button
             onClick={fetchSchedule}
-            className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline"
+            className="px-5 py-2 bg-brand-primary-500 text-white font-bold rounded-xl text-xs hover:bg-brand-primary-600 transition-all shadow-md"
           >
-            {t('common.retry', 'Retry')}
+            {t('common.retry', 'إعادة المحاولة')}
           </button>
-        </div>
+        </Card>
       )}
 
       {/* No schedule */}
       {!loading && !error && totalClasses === 0 && (
-        <div className="text-center py-16 text-slate-400 dark:text-slate-500">
-          <p className="text-5xl mb-4">📅</p>
-          <p className="text-lg font-medium">{t('schedule.noSchedule')}</p>
-        </div>
+        <Card className="p-16 flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+          <div className="w-20 h-20 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center text-3xl mb-4 border border-blue-200 dark:border-blue-800">
+            📅
+          </div>
+          <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-1">
+            {t('schedule.noSchedule', 'لا توجد محاضرات مجدولة لهاته الفترة')}
+          </h3>
+          <p className="text-xs text-slate-400 font-medium max-w-sm">
+            {t('schedule.noScheduleDesc', 'لم يتم العثور على أي جلسات تدريس مجدولة حسب الفلاتر المحددة.')}
+          </p>
+        </Card>
       )}
 
       {/* Schedule Grid */}

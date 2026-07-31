@@ -469,6 +469,7 @@ const AppContent = () => {
                               'DOCTOR',
                               'STUDENT',
                               'COLLEGE_ADMIN',
+                              'DEPARTMENT_ADMIN',
                             ]}
                           >
                             <div className="animate-page">

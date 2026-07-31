@@ -3,7 +3,7 @@ import { Save, Plus, Trash2, CheckCircle, LayoutTemplate } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SavedView } from '../../hooks/useSavedViews';
 import Input from './input';
-import Button from './Button';
+import Button from './button';
 
 interface ViewManagerProps {
   views: SavedView[];

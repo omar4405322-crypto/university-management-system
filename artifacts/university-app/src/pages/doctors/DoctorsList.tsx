@@ -13,7 +13,7 @@ import FilterBar from '../../components/ui/FilterBar';
 import Pagination from '../../components/ui/Pagination';
 import { EmptyState } from '../../components/ui/EmptyState';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import { downloadCsv } from '../../utils/exportCsv';
 import DoctorAvatar from '../../components/DoctorAvatar';
 import { useTranslation } from 'react-i18next';
@@ -34,8 +34,10 @@ import {
   UserCheck,
   Plus,
   Search,
+  Calendar,
 } from 'lucide-react';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
+import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 import { useNavigate } from 'react-router-dom';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
@@ -63,6 +65,7 @@ const DoctorsList = () => {
   const [exporting, setExporting] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
 
   useEffect(() => {
     const mainEl = document.querySelector('main');
@@ -88,6 +91,50 @@ const DoctorsList = () => {
       return true;
     });
   }, [doctors, statusFilter]);
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredDoctors.map((d: any) => d.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string | number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkClear = () => setSelectedIds([]);
+
+  const handleBulkExport = () => {
+    const selectedDocs = filteredDoctors.filter((d: any) => selectedIds.includes(d.id));
+    const exportData = selectedDocs.map((d: any) => ({
+      ID: d.doctorId || d.id,
+      Name: `${d.firstName} ${d.lastName}`,
+      Email: d.user?.email || 'N/A',
+      Department: d.department?.name || 'N/A',
+      Status: d.status || 'active',
+    }));
+    downloadCsv(exportData, `doctors_selected_${new Date().toISOString().split('T')[0]}.csv`);
+    showToast(t('common.exporting', 'Exported selected records'), 'success');
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(t('doctors.confirmBulkDelete', `Are you sure you want to delete ${selectedIds.length} selected doctor(s)?`))) return;
+    try {
+      for (const id of selectedIds) {
+        await doctorsService.deleteDoctor(id);
+      }
+      showToast(t('doctors.bulkDeleteSuccess', 'Deleted selected doctors'), 'success');
+      setSelectedIds([]);
+      fetchDoctors();
+      fetchStats();
+    } catch (_err: any) {
+      showToast(t('common.error'), 'error');
+    }
+  };
 
   const [stats, setStats] = useState([
     { label: t('doctors.totalDoctors'), value: '0', icon: Users, bgClass: 'bg-brand-primary-500/10 text-brand-primary-500' },
@@ -178,9 +225,19 @@ const DoctorsList = () => {
     }
   }, [deleteTarget, fetchDoctors, fetchStats, t, showToast]);
 
-  const handleEdit = useCallback((doctor) => {
+  const handleEdit = useCallback(async (doctor) => {
+    // Start with list data immediately so modal opens fast
     setSelectedDoctor(doctor);
     setIsEditModalOpen(true);
+    // Then enrich with full details (includes taughtCourses + department.college)
+    try {
+      const result = await doctorsService.getDoctorById(doctor.id.toString());
+      if (result.success && result.data) {
+        setSelectedDoctor(result.data);
+      }
+    } catch (err) {
+      // Non-critical — list data is already shown
+    }
   }, []);
 
   return (
@@ -195,28 +252,6 @@ const DoctorsList = () => {
           className: "bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2"
         }}
       />
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
-          <Card
-            key={i}
-            className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-md transition-all text-start"
-          >
-            <div className={`rounded-xl p-2.5 ${stat.bgClass}`}>
-              <stat.icon size={24} />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-black text-brand-text-primary dark:text-white">
-                {stat.value}
-              </span>
-              <span className="text-sm text-brand-text-secondary dark:text-slate-400 font-bold">
-                {stat.label}
-              </span>
-            </div>
-          </Card>
-        ))}
-      </div>
 
       {/* Filter & Search Bar Card */}
       <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
@@ -302,6 +337,14 @@ const DoctorsList = () => {
               <Table className="w-full">
                 <TableHeader className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
                   <TableRow>
+                    <TableHead className="w-12 text-center p-4">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
+                        checked={filteredDoctors.length > 0 && selectedIds.length === filteredDoctors.length}
+                        onChange={handleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {t('doctors.colDoctor')}
                     </TableHead>
@@ -325,6 +368,7 @@ const DoctorsList = () => {
                 <TableBody>
                   {filteredDoctors.map((doctor) => {
                     const initials = `${doctor.firstName?.[0] || ''}${doctor.lastName?.[0] || ''}`.toUpperCase();
+                    const isSelected = selectedIds.includes(doctor.id);
                     
                     let statusClass = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
                     let statusLabel = t('doctors.statusActive');
@@ -340,8 +384,16 @@ const DoctorsList = () => {
                     return (
                       <TableRow 
                         key={doctor.id} 
-                        className="hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors"
+                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors ${isSelected ? 'bg-brand-primary-500/5 dark:bg-brand-primary-500/10' : ''}`}
                       >
+                        <TableCell className="w-12 text-center p-4" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
+                            checked={isSelected}
+                            onChange={() => handleSelectOne(doctor.id)}
+                          />
+                        </TableCell>
                         <TableCell className="p-4 text-start">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-brand-primary-500/10 flex items-center justify-center text-sm font-bold text-brand-primary-600 flex-shrink-0">
@@ -375,10 +427,16 @@ const DoctorsList = () => {
                           <ActionMenu
                             actions={[
                               {
-                                label: t('common.view'),
+                                label: t('common.view', 'View'),
                                 icon: Eye,
                                 variant: 'view',
                                 onClick: () => navigate(`/doctors/${doctor.id}`),
+                              },
+                              {
+                                label: isRTL ? 'عرض الجدول' : 'View Schedule',
+                                icon: Calendar,
+                                variant: 'view',
+                                onClick: () => navigate(`/schedules/doctor?doctorId=${doctor.id}`),
                               },
                               {
                                 label: t('common.edit'),
@@ -387,7 +445,7 @@ const DoctorsList = () => {
                                 onClick: () => handleEdit(doctor),
                               },
                               {
-                                label: 'Reset Password',
+                                label: isRTL ? 'إعادة تعيين كلمة المرور' : 'Reset Password',
                                 icon: KeyRound,
                                 variant: 'edit',
                                 onClick: () => setResetPasswordDoctor(doctor),
@@ -470,6 +528,13 @@ const DoctorsList = () => {
         onClose={() => setResetPasswordDoctor(null)}
         person={resetPasswordDoctor}
         type="doctor"
+      />
+
+      <BulkActionToolbar
+        selectedCount={selectedIds.length}
+        onClear={handleBulkClear}
+        onExport={handleBulkExport}
+        onDelete={isSuperAdmin ? handleBulkDelete : undefined}
       />
     </div>
   );

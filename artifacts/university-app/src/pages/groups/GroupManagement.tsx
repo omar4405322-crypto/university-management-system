@@ -7,7 +7,7 @@ import Modal from '../../components/ui/Modal';
 import { TimeRange } from '../../components/ui/TimeRange';
 import departmentService from '../../services/department.service';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { Button } from '../../components/ui/button';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../context/AuthContext';
@@ -20,12 +20,13 @@ export default function GroupManagement() {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
   const { showToast } = useToast();
-  
+
   const [colleges, setColleges] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [selectedCollegeId, setSelectedCollegeId] = useState<number | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState<number | null>(null);
-  
+  const [selectedYear, setSelectedYear] = useState<number>(1);
+
   const [tree, setTree] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
@@ -34,7 +35,7 @@ export default function GroupManagement() {
   const [autoDivideModalOpen, setAutoDivideModalOpen] = useState(false);
   const [splitModalOpen, setSplitModalOpen] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
-  
+
   // Toggle between numberOfGroups vs maxGroupSize mode
   const [divideMode, setDivideMode] = useState<'number' | 'maxSize'>('number');
   const [splitMode, setSplitMode] = useState<'number' | 'maxSize'>('number');
@@ -71,13 +72,13 @@ export default function GroupManagement() {
     } else {
       setTree([]);
     }
-  }, [selectedDeptId]);
+  }, [selectedDeptId, selectedYear]);
 
   const fetchGroups = async () => {
     if (!selectedDeptId) return;
     setLoading(true);
     try {
-      const res = await studentGroupsService.getDepartmentGroups(selectedDeptId);
+      const res = await studentGroupsService.getDepartmentGroups(selectedDeptId, selectedYear);
       setTree(res.data || []);
     } catch (err: any) {
       showToast(err.message || t('groups.fetchFailed'), 'error');
@@ -99,7 +100,7 @@ export default function GroupManagement() {
     e.preventDefault();
     if (!selectedDeptId) return;
     try {
-      const payload: any = { };
+      const payload: any = { year: selectedYear };
       if (divideMode === 'number') {
         payload.numberOfGroups = numGroups;
       } else {
@@ -186,16 +187,16 @@ export default function GroupManagement() {
 
   const renderTree = (nodes: any[], level = 0) => {
     if (!nodes || nodes.length === 0) return null;
-    
+
     return (
       <div className="flex flex-col gap-2 w-full mt-2">
         {nodes.map(node => {
           const isExpanded = expandedNodes.has(node.id);
           const hasChildren = node.children && node.children.length > 0;
-          
+
           return (
             <div key={node.id} className="w-full">
-              <div 
+              <div
                 className={`flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-brand-primary-500/50 transition-colors ${level > 0 ? 'border-s-4 border-s-brand-primary-500/30' : ''}`}
                 style={isRTL ? { marginRight: `${level * 24}px` } : { marginLeft: `${level * 24}px` }}
               >
@@ -226,7 +227,7 @@ export default function GroupManagement() {
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-xs">
                     {node.studentCount ?? 0} {t('groups.students')}
@@ -257,7 +258,7 @@ export default function GroupManagement() {
                   </div>
                 </div>
               </div>
-              
+
               {isExpanded && hasChildren && (
                 <div className="mt-2">
                   {renderTree(node.children, level + 1)}
@@ -277,7 +278,7 @@ export default function GroupManagement() {
         subtitle={t('groups.subtitle')}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {isAdmin && (
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 ms-1">{t('groups.college')}</label>
@@ -304,6 +305,18 @@ export default function GroupManagement() {
             <option value="">{t('groups.selectDept')}</option>
             {departments.map(d => (
               <option key={d.id} value={d.id}>{isRTL ? d.nameAr || d.name : d.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-bold text-slate-600 dark:text-slate-400 ms-1">{t('auth.year', 'Academic Year')}</label>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-primary-500/20"
+          >
+            {[1, 2, 3, 4, 5].map(y => (
+              <option key={y} value={y}>{t('common.year', 'Year')} {y}</option>
             ))}
           </select>
         </div>

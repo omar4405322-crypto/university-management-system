@@ -21,9 +21,12 @@ import http from 'http';
 // @ts-ignore
 import { initSocket } from './utils/socket';
 // @ts-ignore
-import { startRiskDetectionJob } from './utils/cron';
+import { startRiskDetectionJob, startSessionAutoExpiryJob } from './utils/cron';
 // @ts-ignore
 import logger from './utils/logger';
+
+// @ts-ignore
+import killPort from 'kill-port';
 
 const rawPort = process.env['PORT'];
 if (!rawPort) {
@@ -36,22 +39,43 @@ const server: http.Server = http.createServer(app);
 
 initSocket(server);
 startRiskDetectionJob();
+startSessionAutoExpiryJob();
 
-server.listen(PORT, '0.0.0.0', () => {
-  logger.info(`[SERVER] Running on http://localhost:${PORT}`);
-  
-  const nets = os.networkInterfaces();
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name] || []) {
-      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
-      if (net.family === 'IPv4' && !net.internal) {
-        logger.info(`[SERVER] Running on http://${net.address}:${PORT} (Network)`);
+const startServer = () => {
+  server.listen(PORT, '0.0.0.0', () => {
+    logger.info(`[SERVER] Running on http://localhost:${PORT}`);
+    
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name] || []) {
+        // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+        if (net.family === 'IPv4' && !net.internal) {
+          logger.info(`[SERVER] Running on http://${net.address}:${PORT} (Network)`);
+        }
       }
     }
-  }
-});
+  });
+};
+
+// Attempt to kill whatever is on the port first, then start the server.
+killPort(PORT, 'tcp')
+  .then(() => {
+    logger.info(`[SERVER] Cleared port ${PORT}`);
+    startServer();
+  })
+  .catch(() => {
+    // Port might not be in use, or we lack permissions. Just try starting anyway.
+    startServer();
+  });
 
 process.on('unhandledRejection', (err: any) => {
+  console.error('[FATAL] Unhandled Rejection:', err);
   logger.error(`[FATAL] Unhandled Rejection: ${err?.message}`, { stack: err?.stack });
+  server.close(() => process.exit(1));
+});
+
+process.on('uncaughtException', (err: any) => {
+  console.error('[FATAL] Uncaught Exception:', err);
+  logger.error(`[FATAL] Uncaught Exception: ${err?.message}`, { stack: err?.stack });
   server.close(() => process.exit(1));
 });

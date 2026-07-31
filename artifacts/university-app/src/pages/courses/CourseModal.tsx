@@ -3,7 +3,7 @@ import coursesService from '../../services/courses.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import doctorsService from '../../services/doctors.service';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { X, BookOpen, Hash, FileText, User, GraduationCap, School, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';

@@ -2,7 +2,7 @@ import React from 'react';
 import { Download, Trash2, Edit2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
-import Button from './Button';
+import Button from './button';
 
 export interface BulkActionToolbarProps {
   selectedCount: number;

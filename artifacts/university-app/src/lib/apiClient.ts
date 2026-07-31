@@ -8,13 +8,12 @@ export async function apiRequest<T>(
   try {
     const res = await fn();
     return res.data;
-  } catch (error: unknown) {
-    let message = 'An unexpected error occurred';
-
-    if (axios.isAxiosError(error)) {
-      const axiosErr = error as AxiosError<{ message?: string }>;
-      message = axiosErr.response?.data?.message ?? axiosErr.message;
-    }
+  } catch (error: any) {
+    const message =
+      error?.message ||
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      'An unexpected error occurred';
 
     return {
       success: false,
@@ -23,3 +22,6 @@ export async function apiRequest<T>(
     };
   }
 }
+
+import api from '../services/api';
+export default api;

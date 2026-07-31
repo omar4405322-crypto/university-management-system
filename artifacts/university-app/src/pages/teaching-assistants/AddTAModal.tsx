@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
-import Button from '../../components/ui/Button';
+import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import {
