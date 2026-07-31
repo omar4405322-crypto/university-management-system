@@ -4,7 +4,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import {
   Users, CheckCircle, Clock, AlertCircle,
   Play, Square, RefreshCw, AlertTriangle, UserCheck, BookOpen,
-  ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Eye, EyeOff, Search, X, ShieldCheck, GraduationCap, User, Award, Filter
+  ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Eye, EyeOff, Search, X, ShieldCheck, GraduationCap, User, Award, Filter,
+  QrCode, CreditCard, ScanFace, MapPin
 } from 'lucide-react';
 import attendanceService, { RosterStudent } from '../../services/attendance.service';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
@@ -30,6 +31,7 @@ export function FacultyAttendanceDashboard() {
   const [isSavingRoom, setIsSavingRoom] = useState(false);
 
   // Toggleable list state for Present Students, Professor & TAs
+  const [activeTab, setActiveTab] = useState<'QR' | 'MANUAL' | 'RFID' | 'FACE' | 'GPS'>('QR');
   const [showRosterList, setShowRosterList] = useState(false);
   const [roster, setRoster] = useState<any[]>([]);
   const [instructors, setInstructors] = useState<{ doctor: any; teachingAssistant: any }>({ doctor: null, teachingAssistant: null });
@@ -273,6 +275,17 @@ export function FacultyAttendanceDashboard() {
       fetchSessionData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleManualToggle = async (studentId: string, status: 'PRESENT' | 'LATE' | 'ABSENT') => {
+    if (!activeSession) return;
+    try {
+      await attendanceService.markStudentAttendance(activeSession.sessionId, studentId, status);
+      setRoster(prev => prev.map(s => s.studentId === studentId ? { ...s, existingStatus: status, method: 'MANUAL' } : s));
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update attendance');
+      fetchSessionData(); // revert
     }
   };
 
@@ -764,7 +777,34 @@ export function FacultyAttendanceDashboard() {
             </div>
           </div>
 
-          {/* Centered QR Display Card */}
+          {/* TABS NAVIGATION */}
+          <div className="bg-white dark:bg-slate-800 p-2 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2 overflow-hidden mb-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={() => setActiveTab('QR')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'QR' ? 'bg-brand-primary-50 text-brand-primary-700 dark:bg-brand-primary-900/40 dark:text-brand-primary-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                <QrCode className="w-5 h-5" />رمز الاستجابة (QR)
+              </button>
+              <button onClick={() => setActiveTab('MANUAL')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'MANUAL' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                <Users className="w-5 h-5" />يدوي (Manual)
+              </button>
+              <button onClick={() => setActiveTab('RFID')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'RFID' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                <CreditCard className="w-5 h-5" />البطاقة الذكية (RFID)
+              </button>
+            </div>
+             
+            <div className="flex flex-wrap items-center gap-2 border-slate-200 dark:border-slate-700 ltr:border-l rtl:border-r rtl:pr-4 ltr:pl-4">
+              <button disabled className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-slate-400 dark:text-slate-500 opacity-60 cursor-not-allowed">
+                <ScanFace className="w-5 h-5" />بصمة الوجه
+                <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 text-[9px] px-1.5 ml-1">قريباً</Badge>
+              </button>
+              <button disabled className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-slate-400 dark:text-slate-500 opacity-60 cursor-not-allowed">
+                <MapPin className="w-5 h-5" />الموقع (GPS)
+                <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 text-[9px] px-1.5 ml-1">قريباً</Badge>
+              </button>
+            </div>
+          </div>
+
+          {/* TAB CONTENT */}
+          {activeTab === 'QR' && (
           <Card className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative">
             <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-brand-primary-400 to-brand-primary-600"></div>
             <CardContent className="p-8 md:p-10 flex flex-col items-center justify-center">
@@ -829,6 +869,104 @@ export function FacultyAttendanceDashboard() {
 
             </CardContent>
           </Card>
+
+          )}
+
+          {activeTab === 'MANUAL' && (
+            <Card className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative">
+              <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+              <CardContent className="p-8">
+                <h3 className="text-xl font-black text-slate-800 dark:text-white mb-6">تسجيل الحضور اليدوي</h3>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-800/50 max-h-[400px] overflow-y-auto">
+                  {roster.map((s: any) => (
+                    <div key={s.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300">
+                          {s.firstName?.[0] || 'S'}{s.lastName?.[0] || ''}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800 dark:text-white">{s.firstName} {s.lastName}</p>
+                          <p className="text-xs text-slate-500">{s.studentId} • {s.group}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {s.existingStatus === 'PRESENT' && s.method === 'RFID' && (
+                          <Badge className="bg-indigo-100 text-indigo-800 text-[10px] uppercase font-bold">RFID</Badge>
+                        )}
+                        {s.existingStatus === 'PRESENT' && s.method === 'QR' && (
+                          <Badge className="bg-brand-primary-100 text-brand-primary-800 text-[10px] uppercase font-bold">QR</Badge>
+                        )}
+                        <button
+                          onClick={() => handleManualToggle(s.studentId, 'PRESENT')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${s.existingStatus === 'PRESENT' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'}`}
+                        >حاضر</button>
+                        <button
+                          onClick={() => handleManualToggle(s.studentId, 'LATE')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${s.existingStatus === 'LATE' ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'}`}
+                        >متأخر</button>
+                        <button
+                          onClick={() => handleManualToggle(s.studentId, 'ABSENT')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${s.existingStatus === 'ABSENT' ? 'bg-rose-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'}`}
+                        >غائب</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === 'RFID' && (
+            <Card className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative">
+              <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-indigo-400 to-indigo-600"></div>
+              <CardContent className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-800 dark:text-white">البطاقة الذكية (RFID)</h3>
+                    <p className="text-sm text-slate-500">سجل التمريرات الحية من جهاز القاعة</p>
+                  </div>
+                  <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/50 rounded-full flex items-center justify-center border border-indigo-100 dark:border-indigo-700">
+                    <CreditCard className="w-6 h-6 text-indigo-600 animate-pulse" />
+                  </div>
+                </div>
+
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-800/50 max-h-[400px] overflow-y-auto">
+                  {roster.filter((s: any) => s.method === 'RFID').length === 0 ? (
+                    <div className="p-8 flex flex-col items-center justify-center text-center">
+                      <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 border border-slate-100 dark:border-slate-700">
+                        <CreditCard className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+                      </div>
+                      <p className="font-bold text-slate-600 dark:text-slate-400">لا توجد تمريرات مسجلة بعد</p>
+                      <p className="text-sm text-slate-400 mt-1">مرر البطاقة على الجهاز لتسجيل الحضور</p>
+                    </div>
+                  ) : (
+                    roster
+                      .filter((s: any) => s.method === 'RFID')
+                      .sort((a: any, b: any) => new Date(b.recordedAt || 0).getTime() - new Date(a.recordedAt || 0).getTime())
+                      .map((s: any) => (
+                        <div key={s.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center font-bold text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                              {s.firstName?.[0] || 'S'}{s.lastName?.[0] || ''}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-800 dark:text-white">{s.firstName} {s.lastName}</p>
+                              <p className="text-xs text-slate-500">{s.studentId} • {s.group}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <Badge className="bg-emerald-100 text-emerald-800 text-[10px] uppercase font-bold mb-1">تم التسجيل</Badge>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {s.recordedAt ? new Date(s.recordedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Geolocation Review Card (if any flagged records exist) */}
           {flaggedRecords.length > 0 && (

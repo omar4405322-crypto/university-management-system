@@ -20,10 +20,7 @@ export interface MyAttendanceCourse {
   name: string;
   code: string;
 }
-
 const attendanceService = {
-  recordAttendance: (data?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post('/attendance', data)),
-
   getCourseAttendance: async (courseId: number, date?: string) => {
     const params = date ? { date } : {};
     const response = await api.get(`/attendance/course/${courseId}`, { params });
@@ -65,8 +62,8 @@ const attendanceService = {
     return response.data;
   },
 
-  bulkSave: async (sessionId: number, records: any[]) => {
-    const response = await api.post('/attendance/bulk', { sessionId, records });
+  markStudentAttendance: async (sessionId: number, studentId: string, status: 'PRESENT' | 'LATE' | 'ABSENT') => {
+    const response = await api.post(`/attendance/session/${sessionId}/mark`, { studentId, status });
     return response.data;
   },
 

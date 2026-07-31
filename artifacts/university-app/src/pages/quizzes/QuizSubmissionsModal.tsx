@@ -62,7 +62,6 @@ const QuizSubmissionsModal = ({ isOpen, onClose, quiz }) => {
         <p className="text-sm font-bold text-error py-8 text-center">{error}</p>
       ) : submissions.length === 0 ? (
         <div className="py-12 text-center">
-          {/* TODO: backend supports GET /quizzes/:id/results — wire answer-detail view when expanded */}
           <p className="text-brand-text-sub font-bold">{t('quizzes.noSubmissions')}</p>
         </div>
       ) : (

@@ -273,7 +273,7 @@ export const getActiveSession = catchAsync(async (req: Request, res: Response, n
 
   if (sessions.length === 0) return res.json({ success: true, data: [] });
 
-  res.json({
+  return res.json({
     success: true,
     data: sessions.map((session: any) => ({
       sessionId: session.id,
@@ -542,6 +542,7 @@ export const rfidScan = catchAsync(async (req: Request, res: Response, next: Nex
     update: {
       status: 'PRESENT',
       method: 'RFID',
+      recordedById: null
     },
     create: {
       studentId: student.id,
@@ -550,7 +551,8 @@ export const rfidScan = catchAsync(async (req: Request, res: Response, next: Nex
       date: attendanceDate,
       status: 'PRESENT',
       method: 'RFID',
-      sessionId: session.id
+      sessionId: session.id,
+      recordedById: null
     }
   });
 
@@ -598,6 +600,54 @@ export const overrideFlaggedRecord = catchAsync(async (req: Request, res: Respon
       locationFlagged: false,
       overriddenBy: req.user!.email,
       overrideNote: note
+    }
+  });
+
+  res.json({ success: true, data: attendance });
+});
+
+export const markStudentAttendance = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { sessionId } = req.params;
+  const { studentId, status } = req.body;
+
+  if (!['PRESENT', 'LATE', 'ABSENT'].includes(status)) {
+    return next(new AppError('Invalid status', 400));
+  }
+
+  const session = await prisma.attendanceSession.findUnique({
+    where: { id: parseInt(sessionId as string) },
+    include: { scheduleSlot: true }
+  });
+
+  if (!session) return next(new NotFoundError('Session not found'));
+  
+  if (!(await verifySessionOwnership(session, req))) {
+    return next(new AuthorizationError('Not authorized to modify records for this session'));
+  }
+
+  if (!session.isActive) {
+    return next(new AppError('Session is closed', 400));
+  }
+
+  const attendanceDate = new Date(session.createdAt);
+  attendanceDate.setHours(0, 0, 0, 0);
+
+  const attendance = await prisma.attendance.upsert({
+    where: { studentId_sessionId: { studentId: parseInt(studentId as string), sessionId: session.id } },
+    update: {
+      status,
+      method: 'MANUAL',
+      recordedById: req.user!.id
+    },
+    create: {
+      studentId: parseInt(studentId as string),
+      courseId: session.scheduleSlot.courseId,
+      scheduleSlotId: session.scheduleSlot.id,
+      date: attendanceDate,
+      status,
+      method: 'MANUAL',
+      recordedById: req.user!.id,
+      sessionId: session.id
     }
   });
 
@@ -666,6 +716,7 @@ export const getSessionRoster = catchAsync(async (req: Request, res: Response, n
     select: {
       studentId: true,
       status: true,
+      method: true,
       remarks: true,
       recordedBy: { select: { email: true, role: true } },
       createdAt: true
@@ -684,6 +735,7 @@ export const getSessionRoster = catchAsync(async (req: Request, res: Response, n
       lastName: s.lastName,
       group: s.group?.name || '-',
       existingStatus: record ? record.status : 'ABSENT',
+      method: record?.method || 'MANUAL',
       existingRemarks: record?.remarks || '',
       recordedBy: record?.recordedBy,
       recordedAt: record?.createdAt

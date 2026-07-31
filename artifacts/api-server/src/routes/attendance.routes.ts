@@ -48,19 +48,10 @@ router.get(
 );
 
 router.post(
-  '/',
+  '/session/:sessionId/mark',
   protect,
   adminOrTeacher,
-  attendanceValidation,
-  validate,
-  attendanceController.recordAttendance
-);
-
-router.post(
-  '/bulk',
-  protect,
-  adminOrTeacher,
-  attendanceController.bulkSaveAttendance
+  attendanceSessionController.markStudentAttendance
 );
 
 router.get(

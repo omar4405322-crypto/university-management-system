@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "Course" ADD COLUMN     "semester" INTEGER NOT NULL DEFAULT 1,
-ADD COLUMN     "year" INTEGER NOT NULL DEFAULT 1;
