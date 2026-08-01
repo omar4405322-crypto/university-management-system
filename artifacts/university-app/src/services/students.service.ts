@@ -14,6 +14,8 @@ const studentsService = {
   deleteStudent: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/students/${id}`)),
 
   toggleStatus: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.patch(`/students/${id}/status`)),
+
+  getStudentStatistics: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/students/${id}/statistics`)),
 };
 
 export default studentsService;

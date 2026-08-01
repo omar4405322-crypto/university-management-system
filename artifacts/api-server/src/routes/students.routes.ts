@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 const router = express.Router();
 import * as studentsController from '../controllers/students.controller';
 import { resetStudentPassword } from '../controllers/students.controller';
-import { authorize } from '../middleware/auth.middleware';
+import { protect, authorize } from '../middleware/auth.middleware';
 import { studentValidation, idParamValidation } from '../validations/academic.validation';
 import validate from '../middleware/validate.middleware';
 
@@ -15,7 +15,10 @@ const passwordResetLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// All student routes are ADMIN/SUPER_ADMIN only
+// Statistics endpoint accessible by STUDENT (for self/me) and DOCTOR/ADMIN (scoped)
+router.get('/:id/statistics', protect, studentsController.getStudentStatistics);
+
+// All other student management routes are ADMIN/SUPER_ADMIN only
 router.use(authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'));
 
 router.get('/', studentsController.getAllStudents);
