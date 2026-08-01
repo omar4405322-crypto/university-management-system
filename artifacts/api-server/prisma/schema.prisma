@@ -233,16 +233,20 @@ model Attendance {
   createdAt       DateTime         @default(now())
 
   @@unique([studentId, courseId, date])
+  @@unique([studentId, sessionId])
   @@index([courseId, date])
   @@index([studentId, courseId])
   @@index([sessionId])
   @@index([scheduleSlotId])
+  @@index([method])
 }
 
 enum AttendanceMethod {
   MANUAL
   QR
   RFID
+  FACE
+  GPS
 }
 
 enum AttendanceStatus {
