@@ -246,7 +246,7 @@ app.use('/api/tasks', protect, taskRoutes);
 app.use('/api/users', protect, usersRoutes);
 app.use('/api/notifications', protect, notificationRoutes);
 app.use('/api/analytics', protect, analyticsRoutes);
-app.use('/api/attendance', protect, attendanceRoutes);
+app.use('/api/attendance', attendanceRoutes);
 app.use('/api/timetable', protect, timetableRoutes);
 app.use('/api/search', protect, searchRoutes);
 app.use('/api/teaching-assistants', protect, teachingAssistantsRoutes);

@@ -53,7 +53,10 @@ export function FacultyAttendanceDashboard() {
         const loadedCourses = res.data || [];
         setCourses(loadedCourses);
       })
-      .catch(() => setError(t('', '')));
+      .catch((err: any) => {
+        console.error('Failed to load my-courses:', err);
+        setError(t('', ''));
+      });
   }, [t]);
 
   // 2. Load active session if course selected
@@ -124,6 +127,9 @@ export function FacultyAttendanceDashboard() {
           setTimeLeft(remaining);
         }
       }, 500);
+
+      // Immediate first sync of session data
+      fetchSessionData();
 
       // Poll session data (flagged records, present count, roster, instructors)
       pollingRef.current = setInterval(fetchSessionData, 3000);
@@ -278,14 +284,15 @@ export function FacultyAttendanceDashboard() {
     }
   };
 
-  const handleManualToggle = async (studentId: string, status: 'PRESENT' | 'LATE' | 'ABSENT') => {
+  const handleManualToggle = async (studentId: number, status: 'PRESENT' | 'LATE' | 'ABSENT') => {
     if (!activeSession) return;
     try {
       await attendanceService.markStudentAttendance(activeSession.sessionId, studentId, status);
-      setRoster(prev => prev.map(s => s.studentId === studentId ? { ...s, existingStatus: status, method: 'MANUAL' } : s));
+      fetchSessionData();
     } catch (err: any) {
+      console.error('Failed to mark attendance manually:', err);
       setError(err.response?.data?.message || 'Failed to update attendance');
-      fetchSessionData(); // revert
+      fetchSessionData();
     }
   };
 
@@ -897,15 +904,15 @@ export function FacultyAttendanceDashboard() {
                           <Badge className="bg-brand-primary-100 text-brand-primary-800 text-[10px] uppercase font-bold">QR</Badge>
                         )}
                         <button
-                          onClick={() => handleManualToggle(s.studentId, 'PRESENT')}
+                          onClick={() => handleManualToggle(s.id, 'PRESENT')}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${s.existingStatus === 'PRESENT' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'}`}
                         >حاضر</button>
                         <button
-                          onClick={() => handleManualToggle(s.studentId, 'LATE')}
+                          onClick={() => handleManualToggle(s.id, 'LATE')}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${s.existingStatus === 'LATE' ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'}`}
                         >متأخر</button>
                         <button
-                          onClick={() => handleManualToggle(s.studentId, 'ABSENT')}
+                          onClick={() => handleManualToggle(s.id, 'ABSENT')}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${s.existingStatus === 'ABSENT' ? 'bg-rose-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'}`}
                         >غائب</button>
                       </div>
