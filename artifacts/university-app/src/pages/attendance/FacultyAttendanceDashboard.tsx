@@ -286,6 +286,7 @@ export function FacultyAttendanceDashboard() {
 
   const handleManualToggle = async (studentId: number, status: 'PRESENT' | 'LATE' | 'ABSENT') => {
     if (!activeSession) return;
+    console.log('[handleManualToggle] fire', { studentId, targetStatus: status, sessionId: activeSession.sessionId });
     try {
       await attendanceService.markStudentAttendance(activeSession.sessionId, studentId, status);
       fetchSessionData();
@@ -296,7 +297,7 @@ export function FacultyAttendanceDashboard() {
     }
   };
 
-  const presentCount = roster.filter(s => s.existingStatus === 'PRESENT').length;
+  const presentCount = roster.filter(s => s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE').length;
   const lateCount = roster.filter(s => s.existingStatus === 'LATE').length;
 
   const filteredStudents = roster.filter(s => {
@@ -310,7 +311,7 @@ export function FacultyAttendanceDashboard() {
     if (!matchesSearch) return false;
 
     if (rosterFilter === 'PRESENT') {
-      return s.existingStatus === 'PRESENT';
+      return s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE';
     }
     if (rosterFilter === 'LATE') {
       return s.existingStatus === 'LATE';
@@ -595,6 +596,11 @@ export function FacultyAttendanceDashboard() {
                             {isPresent && (
                               <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] uppercase font-bold">
                                 {s.method || 'QR'}
+                              </Badge>
+                            )}
+                            {s.existingStatus === 'LATE' && (
+                              <Badge className="border border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700 text-[10px] font-black px-2 tracking-wide">
+                                ⚠️ متأخر
                               </Badge>
                             )}
                             <Badge className={
@@ -897,10 +903,21 @@ export function FacultyAttendanceDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {s.existingStatus === 'LATE' && (
+                          <Badge className="border border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700 text-[10px] font-black px-2 tracking-wide">
+                            ⚠️ متأخر
+                          </Badge>
+                        )}
                         {s.existingStatus === 'PRESENT' && s.method === 'RFID' && (
                           <Badge className="bg-indigo-100 text-indigo-800 text-[10px] uppercase font-bold">RFID</Badge>
                         )}
+                        {s.existingStatus === 'LATE' && s.method === 'RFID' && (
+                          <Badge className="bg-indigo-100 text-indigo-800 text-[10px] uppercase font-bold">RFID</Badge>
+                        )}
                         {s.existingStatus === 'PRESENT' && s.method === 'QR' && (
+                          <Badge className="bg-brand-primary-100 text-brand-primary-800 text-[10px] uppercase font-bold">QR</Badge>
+                        )}
+                        {s.existingStatus === 'LATE' && s.method === 'QR' && (
                           <Badge className="bg-brand-primary-100 text-brand-primary-800 text-[10px] uppercase font-bold">QR</Badge>
                         )}
                         <button

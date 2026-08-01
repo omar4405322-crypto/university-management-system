@@ -263,6 +263,12 @@ const Sidebar = ({ isOpen, onClose }) => {
             roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
           },
           {
+            title: 'nav.statistics',
+            path: '/statistics',
+            icon: BarChart3,
+            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+          },
+          {
             title: 'nav.tasks',
             path: '/tasks',
             icon: Activity,

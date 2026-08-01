@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
-  Calendar, CheckCircle, Clock, XCircle, BookOpen, AlertCircle, ScanLine, X, History, MapPin
+  Calendar, CheckCircle2, Clock, XCircle, BookOpen, AlertCircle, ScanLine, History, MapPin, Filter, ShieldAlert, ChevronDown, ChevronUp
 } from 'lucide-react';
 import attendanceService from '../../services/attendance.service';
+import studentsService from '../../services/students.service';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -16,7 +17,7 @@ export function StudentAttendanceDashboard() {
   const isRTL = i18n.language === 'ar';
   const dateLocale = isRTL ? ar : enUS;
   
-  // Helper to fix missing i18n keys
+  // Helper to resolve translation keys safely
   const txt = (key: string, fallback: string) => {
     const val = t(key);
     return val === key ? fallback : val;
@@ -25,208 +26,459 @@ export function StudentAttendanceDashboard() {
   const [myCourses, setMyCourses] = useState<any[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [myAttendance, setMyAttendance] = useState<any[]>([]);
+  const [centralStats, setCentralStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   useEffect(() => {
+    studentsService.getStudentStatistics('me')
+      .then(res => {
+        if (res.success && res.data?.attendance) {
+          setCentralStats(res.data.attendance);
+        }
+      })
+      .catch((err) => console.error('Failed to load centralized student statistics:', err));
+
     attendanceService.getMyCourses()
       .then(res => {
-        setMyCourses(res.data || []);
-        if (res.data?.length > 0) setSelectedCourseId(res.data[0].id);
+        const courses = res.data || [];
+        setMyCourses(courses);
+        if (courses.length > 0 && selectedCourseId === null) {
+          setSelectedCourseId(courses[0].id);
+        }
       })
-      .catch(() => console.error('Failed to load courses'));
+      .catch((err) => console.error('Failed to load courses:', err));
   }, []);
 
   useEffect(() => {
-    if (selectedCourseId) {
+    if (selectedCourseId !== null) {
       setLoading(true);
       attendanceService.getMyAttendance(selectedCourseId)
         .then(res => setMyAttendance(res.data || []))
-        .catch(() => console.error('Failed to load attendance records'))
+        .catch((err) => console.error('Failed to load attendance records:', err))
         .finally(() => setLoading(false));
+    } else {
+      setMyAttendance([]);
     }
   }, [selectedCourseId]);
 
   const renderStatusBadge = (status: string) => {
     switch (status) {
-      case 'PRESENT': return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-4 py-1.5 text-sm font-bold shadow-sm"><CheckCircle className="w-4 h-4 ltr:mr-1.5 rtl:ml-1.5" />{txt('attendance.present', 'حاضر')}</Badge>;
-      case 'ABSENT': return <Badge className="bg-rose-100 text-rose-800 border-rose-200 px-4 py-1.5 text-sm font-bold shadow-sm"><XCircle className="w-4 h-4 ltr:mr-1.5 rtl:ml-1.5" />{txt('attendance.absent', 'غائب')}</Badge>;
-      case 'LATE': return <Badge className="bg-amber-100 text-amber-800 border-amber-200 px-4 py-1.5 text-sm font-bold shadow-sm"><Clock className="w-4 h-4 ltr:mr-1.5 rtl:ml-1.5" />{txt('attendance.late', 'متأخر')}</Badge>;
-      case 'EXCUSED': return <Badge className="bg-blue-100 text-blue-800 border-blue-200 px-4 py-1.5 text-sm font-bold shadow-sm"><AlertCircle className="w-4 h-4 ltr:mr-1.5 rtl:ml-1.5" />{txt('attendance.excused', 'عذر')}</Badge>;
-      default: return null;
+      case 'PRESENT': 
+        return (
+          <Badge className="bg-brand-primary-50 text-brand-primary-800 dark:bg-brand-primary-950/60 dark:text-brand-primary-300 border-brand-primary-200 dark:border-brand-primary-800 px-3 py-0.5 text-[11px] font-bold shadow-xs flex items-center gap-1 shrink-0">
+            <CheckCircle2 className="w-3 h-3" />
+            {txt('attendance.present', 'حاضر')}
+          </Badge>
+        );
+      case 'ABSENT': 
+        return (
+          <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800 px-3 py-0.5 text-[11px] font-bold shadow-xs flex items-center gap-1 shrink-0">
+            <XCircle className="w-3 h-3" />
+            {txt('attendance.absent', 'غائب')}
+          </Badge>
+        );
+      case 'LATE': 
+        return (
+          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800 px-3 py-0.5 text-[11px] font-bold shadow-xs flex items-center gap-1 shrink-0">
+            <Clock className="w-3 h-3" />
+            {txt('attendance.late', 'متأخر')}
+          </Badge>
+        );
+      case 'EXCUSED': 
+        return (
+          <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800 px-3 py-0.5 text-[11px] font-bold shadow-xs flex items-center gap-1 shrink-0">
+            <AlertCircle className="w-3 h-3" />
+            {txt('attendance.excused', 'عذر')}
+          </Badge>
+        );
+      default: 
+        return null;
     }
   };
 
+  // Calculate statistics using formula: ((present + late * 0.5) / activeTotal) * 100
   const getStats = () => {
-    let present = 0, absent = 0, late = 0;
+    let present = 0, absent = 0, late = 0, excused = 0;
     myAttendance.forEach(a => {
       if (a.status === 'PRESENT') present++;
       if (a.status === 'ABSENT') absent++;
       if (a.status === 'LATE') late++;
+      if (a.status === 'EXCUSED') excused++;
     });
-    const attendancePercentage = myAttendance.length === 0 ? 0 : Math.round(((present + late) / myAttendance.length) * 100);
-    return { present, absent, late, total: myAttendance.length, percentage: attendancePercentage };
+
+    const total = myAttendance.length;
+    const activeTotal = total - excused;
+    
+    // Use centralized backend attendance rate when available for total cumulative stats
+    let percentage = centralStats?.rate !== undefined
+      ? Math.round(centralStats.rate)
+      : (activeTotal > 0 ? Math.round(((present + late * 0.5) / activeTotal) * 100) : 0);
+
+    const currentCourse = myCourses.find(c => c.id === selectedCourseId);
+    const configuredThreshold = currentCourse?.maxAbsencePercent || currentCourse?.absenceThreshold || null;
+    const absencePercent = activeTotal > 0 ? ((absent + late * 0.5) / activeTotal) * 100 : 0;
+    const isAboveThreshold = configuredThreshold !== null && absencePercent >= configuredThreshold;
+
+    return { 
+      present, 
+      absent, 
+      late, 
+      excused,
+      total, 
+      percentage,
+      configuredThreshold,
+      isAboveThreshold
+    };
   };
 
   const stats = getStats();
-  const selectedCourseName = myCourses.find(c => c.id === selectedCourseId)?.name;
+  const selectedCourse = myCourses.find(c => c.id === selectedCourseId);
+  const selectedCourseName = selectedCourse ? `${selectedCourse.courseCode || ''} ${selectedCourse.name || ''}`.trim() : '';
+
+  // Circular gauge style helper (Green >=85%, Amber 75-84%, Red <75%)
+  const getGaugeStyle = (pct: number) => {
+    if (pct >= 85) {
+      return {
+        stroke: '#84BD3A', // brand-primary-500
+        text: 'text-brand-primary-600 dark:text-brand-primary-400',
+        label: isRTL ? 'ممتاز' : 'Excellent',
+        badgeClass: 'bg-brand-primary-100 text-brand-primary-800 dark:bg-brand-primary-950/60 dark:text-brand-primary-300 border-brand-primary-300 dark:border-brand-primary-800'
+      };
+    }
+    if (pct >= 75) {
+      return {
+        stroke: '#F59E0B', // amber-500
+        text: 'text-amber-600 dark:text-amber-400',
+        label: isRTL ? 'مقبول' : 'Fair',
+        badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+      };
+    }
+    return {
+      stroke: '#EF4444', // rose-500
+      text: 'text-rose-600 dark:text-rose-400',
+      label: isRTL ? 'منخفض' : 'At Risk',
+      badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+    };
+  };
+
+  const gaugeStyle = getGaugeStyle(stats.percentage);
+  const radius = 38;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (stats.percentage / 100) * circumference;
+
+  // History list pagination slice
+  const displayedAttendance = showAllHistory ? myAttendance : myAttendance.slice(0, 6);
 
   return (
-    <div className="space-y-8 relative pb-28 animate-fade-in max-w-[1400px] mx-auto">
-      {/* Scanner Overlay - Full Screen Glassmorphism */}
+    <div className="space-y-5 md:space-y-6 relative pb-28 animate-fade-in max-w-[1400px] mx-auto dir-rtl">
+      
+      {/* Full-Screen Glassmorphism Scanner Overlay */}
       {showScanner && (
-        <div className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex flex-col pt-10 px-4 pb-4 overflow-y-auto animate-fade-in">
-          <div className="max-w-xl w-full mx-auto relative flex-1 flex flex-col">
-            <button 
-              onClick={() => setShowScanner(false)}
-              className="absolute -top-12 ltr:-right-4 rtl:-left-4 text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors z-50 shadow-lg border border-white/20"
-            >
-              <X className="w-6 h-6" />
-            </button>
+        <div className="fixed inset-0 z-50 bg-brand-navy-900/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="max-w-lg w-full relative">
             <StudentAttendanceScanner onCancel={() => setShowScanner(false)} />
           </div>
         </div>
       )}
 
-      {/* Floating Action Button for Scanning */}
-      <div className="fixed bottom-8 ltr:right-8 rtl:left-8 z-40">
+      {/* Attendance-Page-Only Floating Action Button (FAB) */}
+      <div className="fixed bottom-6 inset-inline-end-6 z-40">
         <button 
           onClick={() => setShowScanner(true)}
-          className="animate-pulse-gentle bg-brand-primary-600 hover:bg-brand-primary-700 text-white shadow-[0_0_40px_rgba(var(--brand-primary-600),0.5)] hover:shadow-[0_0_60px_rgba(var(--brand-primary-600),0.7)] rounded-full h-16 w-16 md:w-auto md:px-8 flex items-center justify-center gap-3 transition-all transform hover:scale-110 active:scale-95 border-2 border-brand-primary-400/50"
+          className="bg-brand-primary-600 hover:bg-brand-primary-700 active:scale-95 text-white shadow-xl hover:shadow-2xl rounded-full h-14 w-14 md:w-auto md:px-6 flex items-center justify-center gap-2.5 transition-all border border-brand-primary-400/30 font-bold"
+          aria-label={txt('attendance.studentScanner', 'تسجيل الحضور الآن')}
         >
-          <ScanLine className="w-7 h-7" />
-          <span className="hidden md:inline font-black text-lg tracking-wide uppercase">{txt('attendance.studentScanner', 'تسجيل الحضور الآن')}</span>
+          <ScanLine className="w-6 h-6 shrink-0" />
+          <span className="hidden md:inline text-sm tracking-wide">
+            {txt('attendance.studentScanner', 'تسجيل الحضور الآن')}
+          </span>
         </button>
       </div>
 
-      {/* Premium Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-brand-primary-950 to-slate-900 p-8 text-white shadow-xl border border-slate-800">
-        <div className="absolute -end-10 -top-10 w-64 h-64 rounded-full bg-brand-primary-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute -start-10 -bottom-10 w-64 h-64 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row gap-6 items-center justify-between">
-          <div className="flex items-center gap-5 w-full md:w-auto">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-primary-400 to-brand-primary-600 flex items-center justify-center shadow-lg ring-4 ring-white/10 shrink-0">
-              <ScanLine className="w-8 h-8 text-white" />
+      {/* Header Banner - High-contrast text on Brand Navy Gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-navy-700 via-brand-navy-600 to-brand-navy-500 p-5 md:p-7 shadow-md border border-brand-navy-400/30 text-white">
+        <div className="relative z-10 flex flex-col md:flex-row gap-5 items-start md:items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-13 h-13 rounded-2xl bg-brand-primary-500 text-white flex items-center justify-center shadow-md shrink-0 border border-brand-primary-400/40">
+              <ScanLine className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-black mb-1">
+              <h1 className="text-xl md:text-2xl font-black text-white tracking-tight mb-1 drop-shadow-xs">
                 {txt('attendance.studentDashboard', 'بوابة الحضور والانصراف')}
               </h1>
-              <p className="text-brand-primary-200 font-medium opacity-80 text-sm md:text-base">
-                {isRTL ? 'امسح الرمز الخاص بالمحاضرة لتسجيل حضورك فوراً' : 'Scan the lecture QR code to record your attendance instantly'}
+              <p className="text-slate-100 dark:text-white/95 font-medium text-xs md:text-sm leading-relaxed opacity-95">
+                {isRTL 
+                  ? 'تابع سجل حضورك في جميع المقررات الدراسية وقم بتسجيل الحضور المباشر بنقرة واحدة.' 
+                  : 'Track your lecture attendance records and check in live with one tap.'}
               </p>
             </div>
           </div>
-          
-          <div className="w-full md:w-auto bg-white/10 backdrop-blur-md border border-white/20 p-1.5 rounded-2xl shadow-inner">
-            <select
-              value={selectedCourseId ?? ''}
-              onChange={e => setSelectedCourseId(Number(e.target.value) || null)}
-              className="h-12 px-5 bg-slate-900/50 text-white border-0 rounded-xl text-base font-bold w-full md:w-72 focus:ring-2 focus:ring-brand-primary-400 outline-none appearance-none"
-              style={{ backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1em' }}
-            >
-              {myCourses.map(c => (
-                <option key={c.id} value={c.id} className="text-slate-900">{c.courseCode} - {c.name}</option>
-              ))}
-            </select>
-          </div>
         </div>
+
+        {/* Course Selection Bar (Horizontal Chips) */}
+        {myCourses.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-brand-navy-400/40">
+            <div className="flex items-center gap-2 mb-2.5 text-xs font-bold text-slate-100">
+              <Filter className="w-3.5 h-3.5 text-brand-primary-400" />
+              <span>{isRTL ? 'اختر المقرر الدراسي:' : 'Select Course:'}</span>
+            </div>
+            
+            <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
+              <button
+                onClick={() => setSelectedCourseId(null)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border ${
+                  selectedCourseId === null
+                    ? 'bg-brand-primary-600 text-white border-brand-primary-400 shadow-xs'
+                    : 'bg-brand-navy-800/90 text-slate-100 hover:bg-brand-navy-800 hover:text-white border-brand-navy-600'
+                }`}
+              >
+                {isRTL ? 'جميع المقررات' : 'All Courses'}
+              </button>
+
+              {myCourses.map(course => (
+                <button
+                  key={course.id}
+                  onClick={() => setSelectedCourseId(course.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border ${
+                    selectedCourseId === course.id
+                      ? 'bg-brand-primary-600 text-white border-brand-primary-400 shadow-xs'
+                      : 'bg-brand-navy-800/90 text-slate-100 hover:bg-brand-navy-800 hover:text-white border-brand-navy-600'
+                  }`}
+                >
+                  {course.courseCode ? `${course.courseCode} - ` : ''}{course.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {selectedCourseId ? (
-        <div className="space-y-6">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Main Dashboard Content */}
+      <div className="space-y-5 md:space-y-6">
+        
+        {/* Unified Glance-able Summary Widget */}
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 md:p-6 overflow-hidden">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             
-            <Card className="col-span-2 lg:col-span-1 bg-gradient-to-br from-brand-primary-500 to-brand-primary-700 rounded-3xl border-0 shadow-lg p-6 flex flex-col justify-center text-white relative overflow-hidden">
-              <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-1/4 translate-y-1/4">
-                <Calendar size={100} />
+            {/* Circular Percentage Gauge Unit */}
+            <div className="flex items-center gap-5 w-full md:w-auto shrink-0 pb-4 md:pb-0 border-b md:border-b-0 md:border-e border-slate-100 dark:border-slate-700/80 pe-0 md:pe-8">
+              <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 90 90">
+                  <circle 
+                    cx="45" 
+                    cy="45" 
+                    r={radius} 
+                    className="stroke-slate-100 dark:stroke-slate-700/60" 
+                    strokeWidth="8" 
+                    fill="transparent" 
+                  />
+                  <circle 
+                    cx="45" 
+                    cy="45" 
+                    r={radius} 
+                    stroke={gaugeStyle.stroke} 
+                    strokeWidth="8" 
+                    strokeDasharray={circumference} 
+                    strokeDashoffset={strokeDashoffset} 
+                    strokeLinecap="round" 
+                    fill="transparent" 
+                    className="transition-all duration-700 ease-out" 
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-xl font-black text-slate-800 dark:text-white leading-none">
+                    {stats.percentage}%
+                  </span>
+                </div>
               </div>
-              <span className="text-brand-primary-100 font-bold mb-1">{txt('attendance.attendanceRate', 'نسبة الحضور')}</span>
-              <div className="flex items-end gap-1">
-                <span className="text-5xl font-black">{stats.percentage}</span>
-                <span className="text-2xl font-bold mb-1">%</span>
+
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-bold text-sm text-slate-800 dark:text-white">
+                    {txt('attendance.attendanceRate', 'نسبة الحضور التراكمية')}
+                  </h3>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${gaugeStyle.badgeClass}`}>
+                    {gaugeStyle.label}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 font-medium">
+                  {isRTL ? 'تحسب من إجمالي المحاضرات النشطة' : 'Calculated from active sessions'}
+                </p>
+                {stats.isAboveThreshold && stats.configuredThreshold !== null && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-2.5 py-1 rounded-lg text-xs font-bold">
+                    <ShieldAlert className="w-3.5 h-3.5 shrink-0 text-rose-600 dark:text-rose-400" />
+                    <span>تجاوز نسبة الغياب المسموحة ({stats.configuredThreshold}%)</span>
+                  </div>
+                )}
               </div>
-            </Card>
+            </div>
 
-            <Card className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 flex flex-col justify-center gap-1 hover:border-brand-primary-500/30 transition-colors group">
-              <div className="rounded-xl w-12 h-12 flex items-center justify-center bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 mb-3 group-hover:scale-110 transition-transform"><BookOpen size={24}/></div>
-              <span className="text-sm text-slate-500 font-bold uppercase tracking-wider">{txt('attendance.heldSessions', 'إجمالي المحاضرات')}</span>
-              <span className="text-3xl font-black text-slate-800 dark:text-white">{stats.total}</span>
-            </Card>
+            {/* Compact Inline Counter Grid (4 Stat Blocks) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full flex-1">
+              
+              {/* Stat 1: Total Sessions */}
+              <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-100 dark:border-slate-700/60 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-slate-200/80 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500 font-bold block leading-tight">
+                    {txt('attendance.heldSessions', 'المحاضرات')}
+                  </span>
+                  <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
+                    {stats.total}
+                  </span>
+                </div>
+              </div>
 
-            <Card className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 flex flex-col justify-center gap-1 hover:border-emerald-500/30 transition-colors group">
-              <div className="rounded-xl w-12 h-12 flex items-center justify-center bg-emerald-100 text-emerald-600 mb-3 group-hover:scale-110 transition-transform"><CheckCircle size={24}/></div>
-              <span className="text-sm text-slate-500 font-bold uppercase tracking-wider">{txt('attendance.present', 'حاضر')}</span>
-              <span className="text-3xl font-black text-slate-800 dark:text-white">{stats.present}</span>
-            </Card>
+              {/* Stat 2: Present */}
+              <div className="bg-brand-primary-50/50 dark:bg-brand-primary-950/20 p-3.5 rounded-xl border border-brand-primary-200/50 dark:border-brand-primary-900/40 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-brand-primary-100 dark:bg-brand-primary-950 text-brand-primary-700 dark:text-brand-primary-300 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[11px] text-brand-primary-800 dark:text-brand-primary-300 font-bold block leading-tight">
+                    {txt('attendance.present', 'حاضر')}
+                  </span>
+                  <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
+                    {stats.present}
+                  </span>
+                </div>
+              </div>
 
-            <Card className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 flex flex-col justify-center gap-1 hover:border-amber-500/30 transition-colors group">
-              <div className="rounded-xl w-12 h-12 flex items-center justify-center bg-amber-100 text-amber-600 mb-3 group-hover:scale-110 transition-transform"><Clock size={24}/></div>
-              <span className="text-sm text-slate-500 font-bold uppercase tracking-wider">{txt('attendance.late', 'متأخر')}</span>
-              <span className="text-3xl font-black text-slate-800 dark:text-white">{stats.late}</span>
-            </Card>
+              {/* Stat 3: Late */}
+              <div className="bg-amber-50/50 dark:bg-amber-950/20 p-3.5 rounded-xl border border-amber-200/50 dark:border-amber-900/40 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[11px] text-amber-800 dark:text-amber-300 font-bold block leading-tight">
+                    {txt('attendance.late', 'متأخر')}
+                  </span>
+                  <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
+                    {stats.late}
+                  </span>
+                </div>
+              </div>
 
-            <Card className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 flex flex-col justify-center gap-1 hover:border-rose-500/30 transition-colors group">
-              <div className="rounded-xl w-12 h-12 flex items-center justify-center bg-rose-100 text-rose-600 mb-3 group-hover:scale-110 transition-transform"><XCircle size={24}/></div>
-              <span className="text-sm text-slate-500 font-bold uppercase tracking-wider">{txt('attendance.absent', 'غائب')}</span>
-              <span className="text-3xl font-black text-slate-800 dark:text-white">{stats.absent}</span>
-            </Card>
+              {/* Stat 4: Absent */}
+              <div className="bg-rose-50/50 dark:bg-rose-950/20 p-3.5 rounded-xl border border-rose-200/50 dark:border-rose-900/40 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center justify-center shrink-0">
+                  <XCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[11px] text-rose-800 dark:text-rose-300 font-bold block leading-tight">
+                    {txt('attendance.absent', 'غائب')}
+                  </span>
+                  <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
+                    {stats.absent}
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
           </div>
+        </Card>
 
-          <Card className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <CardHeader className="border-b border-slate-100 dark:border-slate-700 px-8 py-6 bg-slate-50/50 dark:bg-slate-900/50 flex flex-row items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-brand-primary-500/10 text-brand-primary-600 rounded-lg">
-                  <History size={20} />
-                </div>
-                <CardTitle className="text-xl font-bold">{txt('attendance.history', 'سجل الحضور التفصيلي')}</CardTitle>
+        {/* Detailed History Table / Compact Single-Line Rows with Expandable Pagination */}
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-700/80 px-5 py-4 bg-slate-50/50 dark:bg-slate-900/50 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-brand-primary-500/10 text-brand-primary-600 dark:text-brand-primary-400 rounded-xl border border-brand-primary-500/20">
+                <History className="w-4 h-4 md:w-5 md:h-5" />
               </div>
-              <Badge className="bg-white dark:bg-slate-800 shadow-sm border border-slate-200 font-bold text-slate-700 py-1.5">{selectedCourseName}</Badge>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="p-20 text-center text-slate-400 font-medium">{isRTL ? 'جاري التحميل...' : 'Loading...'}</div>
-              ) : myAttendance.length === 0 ? (
-                <div className="py-20">
-                  <EmptyState icon={<Calendar size={64} className="text-slate-300" />} title={txt('attendance.noRecords', 'لا توجد سجلات حضور حتى الآن')} subtitle={null} />
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                  {myAttendance.map((record, idx) => (
-                    <div key={idx} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-6 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center text-slate-500 shrink-0">
-                          <Calendar size={20} />
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-800 dark:text-white text-base mb-1">
-                            {format(new Date(record.date), 'EEEE, dd MMMM yyyy', { locale: dateLocale })}
-                          </p>
-                          <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
-                            {record.remarks && (
-                              <span className="flex items-center gap-1"><AlertCircle size={14}/> {record.remarks}</span>
-                            )}
-                            <span className="flex items-center gap-1 text-slate-400"><MapPin size={14}/> {isRTL ? 'تم التسجيل داخل الحرم الجامعي' : 'Recorded on campus'}</span>
-                          </div>
-                        </div>
+              <div>
+                <CardTitle className="text-sm md:text-base font-bold">
+                  {txt('attendance.history', 'سجل الحضور التفصيلي')}
+                </CardTitle>
+                <p className="text-xs text-slate-400 font-medium">
+                  {selectedCourseName || (isRTL ? 'عرض أحدث السجلات الحالية' : 'Showing recent records')}
+                </p>
+              </div>
+            </div>
+            
+            {selectedCourseName && (
+              <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600 font-bold text-xs px-2.5 py-0.5">
+                {selectedCourseName}
+              </Badge>
+            )}
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="py-16 text-center text-slate-400 font-medium text-sm">
+                {isRTL ? 'جاري تحميل سجلات الحضور...' : 'Loading attendance records...'}
+              </div>
+            ) : myAttendance.length === 0 ? (
+              <div className="py-14 px-4">
+                <EmptyState 
+                  icon={<Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600" />} 
+                  title={txt('attendance.noRecords', 'لا توجد سجلات حضور حتى الآن')} 
+                  subtitle={isRTL ? 'عند تسجيل الحضور في المحاضرات القادمة، ستظهر جميع السجلات هنا تفصيلياً.' : 'When you check into upcoming lectures, your records will appear here.'} 
+                />
+              </div>
+            ) : (
+              <div>
+                {/* Single-Line Compact Rows */}
+                <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                  {displayedAttendance.map((record, idx) => (
+                    <div 
+                      key={record.sessionId || idx} 
+                      className="flex items-center justify-between px-4 py-3 sm:px-5 sm:py-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors gap-3"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span className="font-bold text-slate-800 dark:text-white text-xs sm:text-sm truncate">
+                          {format(new Date(record.date), 'EEEE, dd MMMM yyyy', { locale: dateLocale })}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 shrink-0 hidden sm:inline-flex ms-1">
+                          <MapPin className="w-3 h-3 text-slate-400" />
+                          {isRTL ? 'في الحرم' : 'On campus'}
+                        </span>
+                        {record.remarks && (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-semibold truncate">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            {record.remarks}
+                          </span>
+                        )}
                       </div>
-                      <div className="sm:text-end shrink-0">
+
+                      <div className="shrink-0">
                         {renderStatusBadge(record.status)}
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        <div className="py-24 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <EmptyState icon={<BookOpen size={64} className="text-slate-300" />} title={txt('attendance.selectCourse', 'الرجاء اختيار مقرر من القائمة الجانبية لعرض السجل التفصيلي')} subtitle={null} />
-        </div>
-      )}
+
+                {/* Show More / Show Less Toggle Button Footer */}
+                {myAttendance.length > 6 && (
+                  <div className="p-3 border-t border-slate-100 dark:border-slate-700/60 bg-slate-50/40 dark:bg-slate-900/30 text-center">
+                    <button
+                      onClick={() => setShowAllHistory(!showAllHistory)}
+                      className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-brand-primary-600 hover:text-brand-primary-700 dark:text-brand-primary-400 dark:hover:text-brand-primary-300 py-1 px-4 rounded-xl hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/40 transition-all"
+                    >
+                      <span>
+                        {showAllHistory 
+                          ? (isRTL ? 'عرض أحدث 6 سجلات فقط' : 'Show top 6 records only')
+                          : (isRTL ? `عرض جميع السجلات (${myAttendance.length} سجل)` : `Show all ${myAttendance.length} records`)}
+                      </span>
+                      {showAllHistory ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+      </div>
     </div>
   );
 }

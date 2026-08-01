@@ -58,12 +58,21 @@ export const getScopeWhere = (
     return { department: { collegeId: user.managedCollegeId } };
   }
 
-  // DOCTOR: scoped to the sections they teach
+  // DOCTOR: scoped to the sections they teach or their department
   if (user.role === 'DOCTOR' && user.doctor?.id) {
     if (entity === 'course') return { scheduleSlots: { some: { doctorId: user.doctor.id } } };
     if (entity === 'exam') return { course: { scheduleSlots: { some: { doctorId: user.doctor.id } } } };
     if (entity === 'timetable') return { doctorId: user.doctor.id }; // ScheduleSlot entity
-    return { id: -1 }; // Doctors shouldn't query departments/students universally without scope
+    if (entity === 'student') {
+      const conditions: any[] = [
+        { enrollments: { some: { course: { scheduleSlots: { some: { doctorId: user.doctor.id } } } } } },
+      ];
+      if (user.doctor.departmentId) {
+        conditions.push({ departmentId: user.doctor.departmentId });
+      }
+      return { OR: conditions };
+    }
+    return { id: -1 }; // Doctors shouldn't query departments universally without scope
   }
 
   // TEACHING_ASSISTANT: scoped to the sections/slots they are assigned

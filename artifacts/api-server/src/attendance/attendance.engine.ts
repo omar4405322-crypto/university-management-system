@@ -116,6 +116,8 @@ class AttendanceEngine {
         }
 
         let existingStatus: AttendanceStatus | undefined;
+        let existingId: number | undefined;
+        let existingIsPresentOrLate: boolean = false;
 
         if (intent.sessionId) {
           const existing = await tx.attendance.findUnique({
@@ -127,29 +129,45 @@ class AttendanceEngine {
             },
           });
 
-          if (existing && (existing.status === 'PRESENT' || existing.status === 'LATE')) {
+          if (existing) {
+            existingId = existing.id;
             existingStatus = existing.status;
-            return { attendance: existing, isNew: false, existingStatus };
+            existingIsPresentOrLate =
+              existing.status === 'PRESENT' || existing.status === 'LATE';
+
+            const targetStatus: AttendanceStatus =
+              (intent.status as AttendanceStatus) || 'PRESENT';
+
+            if (
+              existingIsPresentOrLate &&
+              existing.status === targetStatus &&
+              targetStatus !== 'LATE' &&
+              targetStatus !== 'PRESENT'
+            ) {
+              return { attendance: existing, isNew: false, existingStatus };
+            }
           }
         }
 
         const attendanceDate = intent.date || new Date();
         attendanceDate.setHours(0, 0, 0, 0);
 
-        const upsertWhere: any = intent.sessionId
-          ? {
-              studentId_sessionId: {
-                studentId: intent.studentId,
-                sessionId: intent.sessionId,
-              },
+        if (existingId === undefined && intent.courseId) {
+          const existingByDate = await tx.attendance.findFirst({
+            where: {
+              studentId: intent.studentId,
+              courseId: intent.courseId,
+              date: attendanceDate,
+            },
+          });
+
+          if (existingByDate) {
+            existingId = existingByDate.id;
+            if (existingStatus === undefined) {
+              existingStatus = existingByDate.status;
             }
-          : {
-              studentId_courseId_date: {
-                studentId: intent.studentId,
-                courseId: intent.courseId!,
-                date: attendanceDate,
-              },
-            };
+          }
+        }
 
         const updateData: Prisma.AttendanceUpdateInput = {
           status: intent.status || 'PRESENT',
@@ -172,6 +190,10 @@ class AttendanceEngine {
           ...(intent.scheduleSlotId !== undefined &&
             intent.scheduleSlotId !== null && {
               scheduleSlotId: intent.scheduleSlotId,
+            }),
+          ...(intent.sessionId !== undefined &&
+            intent.sessionId !== null && {
+              sessionId: intent.sessionId,
             }),
         };
 
@@ -199,13 +221,18 @@ class AttendanceEngine {
           }),
         };
 
-        const attendance = await tx.attendance.upsert({
-          where: upsertWhere,
-          update: updateData,
-          create: createData,
-        });
+        const attendance =
+          existingId !== undefined
+            ? await tx.attendance.update({
+                where: { id: existingId },
+                data: updateData,
+              })
+            : await tx.attendance.create({ data: createData });
 
-        return { attendance, isNew: true, existingStatus };
+        const wasChange =
+          existingStatus === undefined || existingStatus !== attendance.status;
+
+        return { attendance, isNew: wasChange, existingStatus };
       },
       { isolationLevel: 'Serializable' }
     );

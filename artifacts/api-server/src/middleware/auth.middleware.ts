@@ -60,7 +60,7 @@ const protect = catchAsync(async (req: Request, res: Response, next: NextFunctio
           departmentId: true,
         },
       },
-      doctor: { select: { id: true, firstName: true, lastName: true, doctorId: true } },
+      doctor: { select: { id: true, firstName: true, lastName: true, doctorId: true, departmentId: true } },
       teachingAssistant: { select: { id: true, employeeId: true } },
     },
   });

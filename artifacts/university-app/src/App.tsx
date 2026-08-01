@@ -67,6 +67,7 @@ const QuizzesList = lazy(() => import('./pages/quizzes/QuizzesList'));
 const StudentRecord = lazy(() => import('./pages/records/StudentRecord'));
 const DegreeAudit = lazy(() => import('./pages/degree-audit/DegreeAudit'));
 const GroupManagement = lazy(() => import('./pages/groups/GroupManagement'));
+const StudentStatisticsPage = lazy(() => import('./pages/statistics/StudentStatisticsPage'));
 
 const LazyRoute = ({ children }: { children: React.ReactNode }) => (
   <ErrorBoundary>
@@ -564,6 +565,47 @@ const AppContent = () => {
                             <PageWrapper>
                               <LazyRoute>
                                 <AttendancePage />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="statistics"
+                        element={
+                          <ProtectedRoute
+                            allowedRoles={[
+                              'SUPER_ADMIN',
+                              'ADMIN',
+                              'DOCTOR',
+                              'STUDENT',
+                              'COLLEGE_ADMIN',
+                              'DEPARTMENT_ADMIN',
+                            ]}
+                          >
+                            <PageWrapper>
+                              <LazyRoute>
+                                <StudentStatisticsPage />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="statistics/:studentId"
+                        element={
+                          <ProtectedRoute
+                            allowedRoles={[
+                              'SUPER_ADMIN',
+                              'ADMIN',
+                              'DOCTOR',
+                              'COLLEGE_ADMIN',
+                              'DEPARTMENT_ADMIN',
+                            ]}
+                          >
+                            <PageWrapper>
+                              <LazyRoute>
+                                <StudentStatisticsPage isAdvisorView={true} />
                               </LazyRoute>
                             </PageWrapper>
                           </ProtectedRoute>
