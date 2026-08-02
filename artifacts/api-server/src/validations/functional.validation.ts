@@ -20,7 +20,18 @@ export const taskValidation = [
   body('title').notEmpty().withMessage('Task title is required').trim(),
   body('description').notEmpty().withMessage('Description is required'),
   body('courseId').isInt().withMessage('Course ID must be an integer'),
-  body('dueDate').isISO8601().withMessage('Valid due date is required'),
+  body('dueDate')
+    .isISO8601()
+    .withMessage('Valid due date is required')
+    .custom(value => {
+      const due = new Date(value).getTime();
+      const now = Date.now();
+      const TOLERANCE_MS = 60 * 60 * 1000;
+      if (due < now - TOLERANCE_MS) {
+        throw new Error('Due date must not be in the past');
+      }
+      return true;
+    }),
   body('maxScore').optional().isInt({ min: 1 }),
 ];
 

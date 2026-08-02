@@ -4,23 +4,42 @@ import type { ApiResponse } from '../types/models';
 import api from './api';
 
 const taskService = {
-  getTasks: (params?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.get('/tasks', { params })),
+  getTasks: (params?: Record<string, unknown>): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.get('/tasks', { params })),
 
-  createTask: (data?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post('/tasks', data)),
+  createTask: (data?: Record<string, unknown>): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.post('/tasks', data)),
 
-  submitTask: async (id, data) => {
-    // data can be { fileUrl, notes }
-    const response = await api.post(`/tasks/${id}/submit`, data);
-    return response.data;
-  },
+  updateTask: (
+    id: number | string,
+    data: Record<string, unknown>
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.put(`/tasks/${id}`, data)),
 
-  gradeSubmission: async (id, submissionId, data) => {
-    // data is { score }
-    const response = await api.put(`/tasks/${id}/submissions/${submissionId}/grade`, data);
-    return response.data;
-  },
+  deleteTask: (
+    id: number | string, force?: boolean): Promise<ApiResponse<any>> =>
+    apiRequest(() =>
+      api.delete(`/tasks/${id}`, { params: force ? { force: 'true' } : {} })
+    ),
 
-  getTaskSubmissions: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/tasks/${id}/submissions`)),
+  submitTask: (
+    id: number | string, data: Record<string, unknown>): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.post(`/tasks/${id}/submit`, data)),
+
+  gradeSubmission: (
+    id: number | string,
+    submissionId: number | string,
+    data: Record<string, unknown>
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() =>
+      api.put(`/tasks/${id}/submissions/${submissionId}/grade`, data)
+    ),
+
+  getTaskSubmissions: (id: number | string): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.get(`/tasks/${id}/submissions`)),
+
+  getMySubmission: (id: number | string): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.get(`/tasks/${id}/submission`)),
 };
 
 export default taskService;
