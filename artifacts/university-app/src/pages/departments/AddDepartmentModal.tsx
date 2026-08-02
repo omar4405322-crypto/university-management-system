@@ -68,11 +68,11 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({ isOpen, onClose
         <div className="space-y-5">
           <div className="space-y-1.5">
             <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <GraduationCap size={14} className="text-brand-text-muted" /> اسم القسم (عربي) <span className="text-rose-500">*</span>
+              <GraduationCap size={14} className="text-brand-text-muted" /> {t('departments.departmentNameAr', 'اسم القسم (عربي)')} <span className="text-rose-500">*</span>
             </label>
             <Input
               {...register('nameAr')}
-              placeholder="أدخل اسم القسم بالعربية"
+              placeholder={t('departments.departmentNameArPlaceholder', 'أدخل اسم القسم بالعربية')}
               className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic"
               dir="rtl"
             />
@@ -81,11 +81,11 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({ isOpen, onClose
 
           <div className="space-y-1.5">
             <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <GraduationCap size={14} className="text-brand-text-muted" /> Department Name (English) <span className="text-rose-500">*</span>
+              <GraduationCap size={14} className="text-brand-text-muted" /> {t('departments.departmentNameEn', 'Department Name (English)')} <span className="text-rose-500">*</span>
             </label>
             <Input
               {...register('name')}
-              placeholder="Enter department name in English"
+              placeholder={t('departments.departmentNameEnPlaceholder', 'Enter department name in English')}
               className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
             />
             {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
@@ -93,13 +93,13 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({ isOpen, onClose
 
           <div className="space-y-1.5">
             <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <School size={14} className="text-brand-text-muted" /> الكلية التابعة <span className="text-rose-500">*</span>
+              <School size={14} className="text-brand-text-muted" /> {t('departments.affiliatedCollege', 'الكلية التابعة')} <span className="text-rose-500">*</span>
             </label>
             <select
               {...register('collegeId')}
               className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer select-custom-arrow"
             >
-              <option value="">اختر الكلية...</option>
+              <option value="">{t('departments.selectCollege', 'اختر الكلية...')}</option>
               {colleges.map((college: any) => (
                 <option key={college.id} value={college.id}>{college.name}</option>
               ))}

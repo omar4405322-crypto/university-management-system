@@ -649,11 +649,11 @@ const SettingsPage = () => {
                         }}
                         className="w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-xl text-sm font-bold text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all cursor-pointer"
                       >
-                        <option value="3">كل 3 دقائق (Every 3 mins)</option>
-                        <option value="5">كل 5 دقائق (Every 5 mins)</option>
-                        <option value="15">كل 15 دقيقة (Every 15 mins)</option>
-                        <option value="30">كل 30 دقيقة (Every 30 mins)</option>
-                        <option value="60">كل 60 دقيقة (Every hour)</option>
+                        <option value="3">{t('settings.step3Mins', 'Every 3 minutes')}</option>
+                        <option value="5">{t('settings.step5Mins', 'Every 5 minutes')}</option>
+                        <option value="15">{t('settings.step15Mins', 'Every 15 minutes')}</option>
+                        <option value="30">{t('settings.step30Mins', 'Every 30 minutes')}</option>
+                        <option value="60">{t('settings.step60Mins', 'Every 60 minutes')}</option>
                       </select>
                     </div>
                   </div>

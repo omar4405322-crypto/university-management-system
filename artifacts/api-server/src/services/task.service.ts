@@ -9,6 +9,8 @@ import {
 import { getScopeWhere } from '../utils/scope.utils';
 import { notifyStudentsInCourse } from '../utils/notification.utils';
 import { auditLog } from '../utils/audit.utils';
+import { evaluatePortalState, PortalState } from '../utils/portalState';
+import TimelineService from './timeline.service';
 
 class TaskService {
   private static async getDoctorOrThrow(userId: number) {
@@ -127,6 +129,8 @@ class TaskService {
       type: 'info',
     });
 
+    await TimelineService.recordAssignmentCreated(task, user);
+
     return task;
   }
 
@@ -170,7 +174,10 @@ class TaskService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return tasks;
+    return tasks.map((task) => ({
+      ...task,
+      portalState: evaluatePortalState(task),
+    }));
   }
 
   static async updateTask(
@@ -290,6 +297,18 @@ class TaskService {
     }
 
     await TaskService.validateCourseScope(user, taskObj.course);
+
+    const portalState = evaluatePortalState(taskObj);
+    if (portalState !== PortalState.OPEN) {
+      if (portalState === PortalState.SCHEDULED) {
+        throw new ValidationError(
+          'Submissions have not opened yet for this assignment.'
+        );
+      }
+      throw new ValidationError(
+        'Submissions are closed for this assignment.'
+      );
+    }
 
     const existingSubmission = await prisma.taskSubmission.findUnique({
       where: { taskId_studentId: { taskId, studentId: student.id } },
@@ -437,6 +456,128 @@ class TaskService {
     }
 
     return submission;
+  }
+
+  static async togglePortalState(
+    user: any,
+    taskId: number,
+    action: 'CLOSE' | 'REOPEN'
+  ) {
+    const existing = await prisma.task.findUnique({
+      where: { id: taskId, NOT: { isDeleted: true } },
+      include: { course: { include: { department: true } } },
+    });
+
+    if (!existing) {
+      throw new NotFoundError('Task not found');
+    }
+
+    await TaskService.ensureCourseOwnershipOrScope(user, existing);
+
+    if (existing.state === 'ARCHIVED') {
+      throw new ValidationError(
+        'Cannot modify portal state on an archived assignment'
+      );
+    }
+
+    let updateData: any = {};
+    if (action === 'CLOSE') {
+      updateData = {
+        isManuallyClosed: true,
+        closedAt: new Date(),
+        closedById: user.id,
+      };
+    } else if (action === 'REOPEN') {
+      updateData = {
+        isManuallyClosed: false,
+        closedAt: null,
+        closedById: null,
+      };
+    } else {
+      throw new ValidationError('Action must be CLOSE or REOPEN');
+    }
+
+    const updated = await prisma.task.update({
+      where: { id: taskId },
+      data: updateData,
+      include: {
+        course: { select: { name: true, courseCode: true } },
+        doctor: { select: { firstName: true, lastName: true } },
+        _count: { select: { submissions: true } },
+      },
+    });
+
+    if (action === 'CLOSE') {
+      await TimelineService.recordPortalClosed(updated, user);
+    } else if (action === 'REOPEN') {
+      await TimelineService.recordPortalReopened(updated, user);
+    }
+
+    return {
+      ...updated,
+      portalState: evaluatePortalState(updated),
+    };
+  }
+
+  static async extendDeadline(
+    user: any,
+    taskId: number,
+    newDueDateInput: string | Date
+  ) {
+    const existing = await prisma.task.findUnique({
+      where: { id: taskId, NOT: { isDeleted: true } },
+      include: { course: { include: { department: true } } },
+    });
+
+    if (!existing) {
+      throw new NotFoundError('Task not found');
+    }
+
+    await TaskService.ensureCourseOwnershipOrScope(user, existing);
+
+    if (existing.state === 'ARCHIVED') {
+      throw new ValidationError(
+        'Cannot extend deadline on an archived assignment'
+      );
+    }
+
+    const newDueDate = new Date(newDueDateInput);
+    if (isNaN(newDueDate.getTime())) {
+      throw new ValidationError('Invalid due date format');
+    }
+
+    const now = new Date();
+    if (newDueDate <= now) {
+      throw new ValidationError('New due date must be in the future');
+    }
+
+    if (existing.startDate && newDueDate < new Date(existing.startDate)) {
+      throw new ValidationError('New due date cannot be before start date');
+    }
+
+    const previousDueDate = existing.dueDate;
+
+    const updated = await prisma.task.update({
+      where: { id: taskId },
+      data: { dueDate: newDueDate },
+      include: {
+        course: { select: { name: true, courseCode: true } },
+        doctor: { select: { firstName: true, lastName: true } },
+        _count: { select: { submissions: true } },
+      },
+    });
+
+    await TimelineService.recordDeadlineExtended(
+      updated,
+      previousDueDate,
+      updated.dueDate,
+      user
+    );
+
+    return {
+      ...updated,
+      portalState: evaluatePortalState(updated),
+    };
   }
 }
 

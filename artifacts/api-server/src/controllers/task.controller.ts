@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import catchAsync from '../utils/catchAsync';
 import { TaskService } from '../services/task.service';
+import TimelineService from '../services/timeline.service';
 import { ConflictError } from '../utils/appError';
 
 export const createTask = catchAsync(
@@ -138,5 +139,59 @@ export const getMySubmission = catchAsync(
     );
 
     return res.json({ success: true, data: submission });
+  }
+);
+
+export const togglePortal = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { action } = req.body;
+
+    const task = await TaskService.togglePortalState(
+      req.user!,
+      parseInt(id as string),
+      action
+    );
+
+    return res.json({ success: true, data: task });
+  }
+);
+
+export const extendDeadline = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { dueDate } = req.body;
+
+    const task = await TaskService.extendDeadline(
+      req.user!,
+      parseInt(id as string),
+      dueDate
+    );
+
+    return res.json({ success: true, data: task });
+  }
+);
+
+export const getTaskTimeline = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { cursor, limit, eventType, severity } = req.query;
+
+    const options: any = {};
+    if (cursor) options.cursorId = parseInt(cursor as string);
+    if (limit) options.limit = parseInt(limit as string);
+    if (eventType) options.eventType = eventType as any;
+    if (severity) options.severity = severity as any;
+
+    const result = await TimelineService.getTaskTimeline(
+      req.user!,
+      parseInt(id as string),
+      options
+    );
+
+    return res.json({
+      success: true,
+      data: result,
+    });
   }
 );

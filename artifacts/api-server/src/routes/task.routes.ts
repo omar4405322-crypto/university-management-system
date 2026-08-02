@@ -8,6 +8,9 @@ import {
   gradeSubmission,
   getTaskSubmissions,
   getMySubmission,
+  togglePortal,
+  extendDeadline,
+  getTaskTimeline,
 } from '../controllers/task.controller';
 import { protect, authorize } from '../middleware/auth.middleware';
 import { taskValidation, functionalIdValidation } from '../validations/functional.validation';
@@ -34,6 +37,32 @@ router.put(
   ],
   validate,
   updateTask
+);
+
+router.patch(
+  '/:id/portal',
+  authorize('DOCTOR', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN'),
+  [
+    ...functionalIdValidation,
+    body('action')
+      .isIn(['CLOSE', 'REOPEN'])
+      .withMessage('Action must be CLOSE or REOPEN'),
+  ],
+  validate,
+  togglePortal
+);
+
+router.post(
+  '/:id/extend-deadline',
+  authorize('DOCTOR', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN'),
+  [
+    ...functionalIdValidation,
+    body('dueDate')
+      .isISO8601()
+      .withMessage('dueDate must be a valid ISO 8601 date'),
+  ],
+  validate,
+  extendDeadline
 );
 
 router.delete(
@@ -73,6 +102,13 @@ router.get(
   functionalIdValidation,
   validate,
   getMySubmission
+);
+
+router.get(
+  '/:id/timeline',
+  functionalIdValidation,
+  validate,
+  getTaskTimeline
 );
 
 export default router;

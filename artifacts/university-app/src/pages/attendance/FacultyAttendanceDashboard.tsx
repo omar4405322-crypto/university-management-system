@@ -528,7 +528,7 @@ export function FacultyAttendanceDashboard() {
                     <div className="py-12 text-center text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
                       <CheckCircle className="w-10 h-10 mx-auto mb-2 text-emerald-400" />
                       <p className="font-medium text-sm">
-                        لا توجد حالات معلقة بانتظار المراجعة
+                        {t('attendance.noFlaggedRecords', 'لا توجد حالات معلقة بانتظار المراجعة')}
                       </p>
                     </div>
                   ) : (

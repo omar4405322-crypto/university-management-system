@@ -30,6 +30,12 @@ const coursesService = {
 
   toggleCoursePublication: (id: string): Promise<ApiResponse<any>> =>
     apiRequest(() => api.patch(`/courses/${id}/toggle-publication`)),
+
+  getCourseTimeline: (
+    id: string | number,
+    params?: { cursor?: number; limit?: number; eventType?: string; severity?: string }
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.get(`/courses/${id}/timeline`, { params })),
 };
 
 export default coursesService;

@@ -383,13 +383,13 @@ const Sidebar = ({ isOpen, onClose }) => {
             </div>
 
             {/* Text identity */}
-            <div className="flex min-w-0 flex-col" dir="rtl">
+            <div className="flex min-w-0 flex-col">
               <span className="truncate text-sm font-black leading-tight text-white"
                 style={{ letterSpacing: '0.01em' }}>
-                جامعة 6 أكتوبر التكنولوجية
+                {t('nav.universityTitle', 'جامعة 6 أكتوبر التكنولوجية')}
               </span>
               <span className="text-[10px] font-bold leading-tight tracking-wide text-brand-primary-400 mt-0.5">
-                نظام الإدارة
+                {t('nav.managementSystem', 'نظام الإدارة')}
               </span>
             </div>
           </Link>

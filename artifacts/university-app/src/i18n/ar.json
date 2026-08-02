@@ -2,7 +2,34 @@
   "COMMON": {
     "OF": "من",
     "PAGE": "صفحة",
-    "RESET": "إعادة تعيين"
+    "RESET": "إعادة تعيين",
+    "searchPlaceholder": "بحث باسم الطالب أو الكود..."
+  },
+  "timeline": {
+    "title": "سجل نشاط التكليف",
+    "courseTitle": "سجل النشاط العام للمقرر",
+    "activityLog": "سجل النشاط",
+    "portalStatus": "حالة البوابة:",
+    "filters": "تصفية حسب:",
+    "allSeverities": "جميع مستويات الأهمية",
+    "important": "هام",
+    "warnings": "تنبيهات",
+    "critical": "عاجل",
+    "info": "معلومات",
+    "allEvents": "جميع الأحداث",
+    "deadlineExtensions": "تمديد المواعيد",
+    "portalLocks": "إغلاق/فتح البوابة",
+    "viewDetails": "عرض التفاصيل",
+    "hideDetails": "إخفاء التفاصيل",
+    "previousDueDate": "الموعد السابق:",
+    "newDueDate": "الموعد الجديد:",
+    "loadMore": "تحميل المزيد من السجل",
+    "loadingMore": "جاري تحميل المزيد...",
+    "noHistoryTitle": "لا يوجد سجل نشاط",
+    "noHistoryDesc": "لم يتم تسجيل أي نشاط إداري لهذا التكليف حتى الآن.",
+    "noCourseHistoryDesc": "لم يتم تسجيل أي نشاط إداري لهذا المقرر حتى الآن.",
+    "retry": "إعادة المحاولة",
+    "loadError": "فشل في تحميل سجل النشاط."
   },
   "transcript": {
     "title": "سجل الامتحانات",
@@ -98,7 +125,10 @@
     "uploadedBy": "تم الرفع بواسطة",
     "uploadSuccess": "تم رفع المادة بنجاح",
     "deleteSuccess": "تم حذف المادة بنجاح",
-    "scheduleTimeline": "جدول مواعيد وقاعات المقرر الأسبوعي"
+    "scheduleTimeline": "جدول مواعيد وقاعات المقرر الأسبوعي",
+    "tasks": "الواجبات والمهام",
+    "timeline": "سجل النشاط",
+    "draftNotice": "تنبيه: هذا المقرر الدراسي في وضع المسودة حالياً ولم يتم نشره رسمياً بعد للطلاب."
   },
   "DASHBOARD": {
     "ACADEMICOVERVIEW": "نظرة أكاديمية عامة",
@@ -147,7 +177,9 @@
     "publishTimetable": "نشر",
     "unpublishTimetable": "إلغاء النشر",
     "draft": "مسودة",
-    "published": "منشور"
+    "published": "منشور",
+    "selectTA": "اختر المعيد",
+    "noTAAvailable": "لا يوجد معيد متاح"
   },
   "sections": {
     "title": "إدارة الشُعب",
@@ -211,25 +243,25 @@
     "statusColumn": "حالة الحضور",
     "noStudents": "لا يوجد طلاب",
     "noStudentsDesc": "لا توجد سجلات حضور حاليا لعرضها",
-    "qrSession": "جلسة الحضور (QR)",
+    "qrSession": "جلسة الحضور عبر QR",
     "startSession": "بدء جلسة الحضور",
-    "stopSession": "إنهاء الجلسة",
-    "scanQrToAttend": "امسح الرمز لتسجيل الحضور",
-    "qrRefreshesIn": "يتجدد الرمز بعد:",
-    "flaggedRecords": "حالات تحتاج لمراجعة (الموقع الجغرافي)",
-    "noFlaggedRecords": "لا توجد حالات معلقة.",
-    "approve": "اعتماد",
-    "studentScanner": "تسجيل الحضور (طالب)",
-    "startScanning": "بدء المسح",
-    "processing": "جاري التسجيل...",
-    "scanSuccessFlagged": "تم التسجيل بانتظار الاعتماد",
-    "success": "نجاح",
-    "error": "خطأ",
-    "locationMismatch": "أنت خارج نطاق الجلسة، تم تحويل الطلب للدكتور.",
-    "scanAgain": "مسح مرة أخرى",
-    "readyToScan": "الرجاء مسح الرمز من شاشة الدكتور",
-    "scanSuccess": "تم تسجيل الحضور بنجاح",
-    "scanError": "حدث خطأ أثناء المسح",
+    "stopSession": "إنهاء جلسة الحضور",
+    "scanQrToAttend": "امسح كود QR لتسجيل الحضور",
+    "qrRefreshesIn": "يتجدد الكود خلال",
+    "flaggedRecords": "سجلات الحضور المشبوهة",
+    "noFlaggedRecords": "لا توجد سجلات حضور مشبوهة",
+    "approve": "اعتماد الحضور",
+    "studentScanner": "ماسح حضور الطالب",
+    "startScanning": "تشغيل الكاميرا والمسح",
+    "processing": "جاري المعالجة...",
+    "scanSuccessFlagged": "تم تسجيل الحضور ولكن يتطلب مراجعة",
+    "success": "تم تسجيل حضورك بنجاح!",
+    "error": "حدث خطأ أثناء تسجيل الحضور",
+    "locationMismatch": "الموقع الجغرافي غير مطابق للقاعة",
+    "scanAgain": "مسح كود آخر",
+    "readyToScan": "جاهز لمسح كود QR",
+    "scanSuccess": "تم المسح بنجاح",
+    "scanError": "فشل المسح",
     "selectCourse": "اختر المقرر",
     "chooseCourse": "اختر مقرراً",
     "chooseCourseDesc": "اختر مقرراً من القائمة الجانبية لتحميل قائمة الطلاب.",
@@ -280,7 +312,14 @@
     "searchStudentPlaceholder": "ابحث باسم الطالب أو الرقم الجامعي...",
     "doctorRole": "أستاذ المادة (دكتور)",
     "taRole": "مساعد التدريس (معيد)",
-    "noStudentsPresent": "لا يوجد طلاب حاضرون حالياً في هذه الجلسة"
+    "noStudentsPresent": "لا يوجد طلاب حاضرون حالياً في هذه الجلسة",
+    "roomLocationSaved": "تم حفظ موقع القاعة بنجاح",
+    "roomLocationSaveError": "حدث خطأ أثناء حفظ موقع القاعة",
+    "locationPermissionAlert": "الوصول للموقع الجغرافي مطلوب للتحقق من الحضور",
+    "roster": "كشف الحضور",
+    "total": "إجمالي السجلات",
+    "flaggedRecordsTitle": "سجلات الحضور غير المطابقة",
+    "activeSession": "جلسة الحضور النشطة"
   },
   "auth": {
     "admin": "مدير",
@@ -349,7 +388,9 @@
     "invalidCredentials": "بيانات الدخول غير صحيحة",
     "backToLogin": "العودة لتسجيل الدخول",
     "studentIdRequired": "رقم الطالب الجامعي مطلوب",
-    "regError": "فشل التسجيل"
+    "regError": "فشل التسجيل",
+    "submittingApplication": "Submitting...",
+    "fullName": "اسم الطالب"
   },
   "analytics": {
     "title": "التحليلات والتقارير",
@@ -482,7 +523,8 @@
     "adminCreatedAssigned": "تم إنشاء الأدمن وتعيينه بنجاح",
     "createAdminError": "فشل في إنشاء الأدمن",
     "insufficientPermissions": "ليس لديك صلاحية لإنشاء الكليات. فقط المدراء العامون يمكنهم إنشاء الكليات.",
-    "sessionExpired": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى."
+    "sessionExpired": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.",
+    "selectAdmin": "اختر عميد / مسؤول الكلية"
   },
   "common": {
     "searchPlaceholder": "بحث...",
@@ -499,7 +541,7 @@
     "change": "تغيير",
     "close": "إغلاق",
     "confirm": "تأكيد",
-    "compact": "مضغوط",
+    "compact": "مكثف",
     "comfortable": "مريح",
     "delete": "حذف",
     "deleteError": "خطأ أثناء الحذف",
@@ -569,7 +611,25 @@
     "university": "الجامعة",
     "managementSystem": "نظام الإدارة",
     "skip": "تخطي",
-    "finish": "إنهاء"
+    "finish": "إنهاء",
+    "success": "نجاح",
+    "error": "خطأ",
+    "optional": "اختياري",
+    "saving": "جاري الحفظ...",
+    "group": "المجموعة",
+    "time": "الوقت",
+    "print": "طباعة",
+    "clear": "مسح",
+    "resetView": "إعادة ضبط العرض",
+    "changeStatus": "تغيير الحالة",
+    "searchCoursePlaceholder": "ابحث باسم المقرر أو الكود...",
+    "creating": "جاري الإنشاء...",
+    "assigning": "جاري التعيين...",
+    "total": "الإجمالي",
+    "noResults": "لا يوجد طلاب مطابقون للبحث",
+    "uploading": "جاري الرفع...",
+    "met": "مستوفى",
+    "unmet": "غير مستوفى"
   },
   "courses": {
     "course": "المقرر",
@@ -604,22 +664,22 @@
     "updateSuccess": "تم تحديث المقرر بنجاح",
     "addModal": {
       "title": "إضافة مقرر جديد",
-      "editTitle": "تعديل المقرر",
-      "subtitle": "إنشاء مقرر جديد وربطه بقسم أكاديمي.",
-      "editSubtitle": "تحديث تفاصيل المقرر والربط الأكاديمي.",
+      "editTitle": "تعديل مقرر",
+      "subtitle": "إنشاء مقرر دراسي جديد",
+      "editSubtitle": "تحديث بيانات المقرر",
       "courseName": "اسم المقرر",
-      "courseNamePlaceholder": "مثال: تطوير الويب المتقدم",
+      "courseNamePlaceholder": "مثال: هياكل البيانات",
       "courseCode": "كود المقرر",
-      "courseCodePlaceholder": "مثال: CS302",
+      "courseCodePlaceholder": "مثال: CS201",
       "credits": "الساعات المعتمدة",
       "college": "الكلية",
       "selectCollege": "اختر الكلية",
       "department": "القسم",
       "selectDepartment": "اختر القسم",
-      "instructor": "المحاضر",
-      "selectInstructor": "اختر المحاضر (سيتم الإعلان عنه)",
+      "instructor": "أستاذ المادة",
+      "selectInstructor": "اختر المحاضر",
       "maxStudents": "الحد الأقصى للطلاب",
-      "year": "السنة الدراسية",
+      "year": "الفرقة / المستوى",
       "year1": "الفرقة الأولى",
       "year2": "الفرقة الثانية",
       "year3": "الفرقة الثالثة",
@@ -642,7 +702,10 @@
         "departmentRequired": "القسم مطلوب",
         "maxStudentsRequired": "الحد الأقصى للطلاب يجب أن يكون 1 على الأقل"
       }
-    }
+    },
+    "noDepartment": "قسم أخصائي",
+    "noSearchResults": "لم يتم العثور على مقررات",
+    "noSearchResultsDesc": "جرب تعديل عبارة البحث أو فلاتر القسم."
   },
   "dashboard": {
     "academicOverview": "نظرة أكاديمية عامة",
@@ -753,7 +816,8 @@
     "welcome": "مرحباً",
     "welcomeBack": "مرحباً بعودتك",
     "yearOfStudy": "سنة الدراسة",
-    "loading": "جاري تحميل لوحة التحكم..."
+    "loading": "جاري تحميل لوحة التحكم...",
+    "newStudentRegistration": "تسجيل طالب جديد"
   },
   "days": {
     "friday": "الجمعة",
@@ -921,7 +985,7 @@
     "allStatuses": "كل الحالات",
     "statusUpcoming": "قادم",
     "statusToday": "اليوم",
-    "statusCompleted": "منتهي",
+    "statusCompleted": "تم التسليم",
     "sortDateAsc": "التاريخ: الأقرب أولاً",
     "sortDateDesc": "التاريخ: الأبعد أولاً",
     "examColumn": "الامتحان",
@@ -960,7 +1024,6 @@
     "submittedBannerTitle": "تم تسليم الإجابات بنجاح",
     "submittedBannerDesc": "لقد قمت بإجراء هذا الامتحان وتسليمه بنجاح. يمكنك الاطلاع على النتيجة أو انتظار الرصد النهائي.",
     "statusAvailable": "متاح للبدء",
-    "statusCompleted": "تم التسليم",
     "generalDepartment": "قسم عام",
     "yearLevel": "الفرقة",
     "yearLevel1": "الفرقة الأولى",
@@ -1260,7 +1323,27 @@
     "updateError": "خطأ في تحديث الدفعة",
     "updateSuccess": "تم تحديث الدفعة بنجاح",
     "viewAll": "عرض الكل",
-    "revenueByType": "الإيرادات حسب النوع"
+    "revenueByType": "الإيرادات حسب النوع",
+    "noStudentsDesc": "لا توجد سجلات مالية للطلاب",
+    "qrSession": "التحقق من الدفع عبر QR",
+    "startSession": "بدء التحقق من الدفع",
+    "stopSession": "إنهاء التحقق من الدفع",
+    "scanQrToAttend": "امسح كود QR للتحقق من الإيصال",
+    "qrRefreshesIn": "يتجدد الكود خلال",
+    "flaggedRecords": "معاملات مشبوهة",
+    "noFlaggedRecords": "لا توجد معاملات مشبوهة",
+    "approve": "اعتماد الدفع",
+    "studentScanner": "ماسح إيصال الدفع",
+    "startScanning": "تشغيل الكاميرا",
+    "processing": "جاري المعالجة...",
+    "scanSuccessFlagged": "تم التحقق من الدفع مع تنبيه للمراجعة",
+    "success": "تم التحقق من الدفع بنجاح!",
+    "error": "فشل التحقق من الدفع",
+    "locationMismatch": "موقع الدفع غير صالح",
+    "scanAgain": "مسح كود آخر",
+    "readyToScan": "جاهز لمسح كود الدفع",
+    "scanSuccess": "تم التوثيق بنجاح",
+    "scanError": "فشل التوثيق"
   },
   "footer": {
     "universityName": "جامعة 6 أكتوبر التكنولوجية",
@@ -1281,8 +1364,8 @@
     "privacy": "سياسة الخصوصية",
     "terms": "شروط الخدمة",
     "cookies": "سياسة ملفات تعريف الارتباط",
-    "legalComingSoon": "صفحات قانونية قريباً",
-    "subscribeSuccess": "✔ تم! سنتواصل معك عند إطلاق النشرة الإخبارية."
+    "legalComingSoon": "الصفحات القانونية قريباً",
+    "subscribeSuccess": "تم الاشتراك بنجاح"
   },
   "header": {
     "arabic": "العربية",
@@ -1292,7 +1375,9 @@
     "noNotifications": "لا توجد إشعارات",
     "notifications": "الإشعارات",
     "viewAllNotifications": "عرض كل الإشعارات",
-    "signedInAs": "مسجل الدخول كـ"
+    "signedInAs": "مسجل الدخول كـ",
+    "densityComfortable": "عرض مريح",
+    "densityCompact": "عرض مكثف"
   },
   "nav": {
     "academic": "الأكاديمي",
@@ -1495,7 +1580,25 @@
     "tutorial": "سيكشن",
     "ta": "المعيد:",
     "section": "شعبة:",
-    "supervisor": "المدرب:"
+    "supervisor": "المدرب:",
+    "editOverride": "تعديل الاستثناء",
+    "createOverride": "إضافة استثناء قاعة",
+    "startDate": "تاريخ البداية",
+    "endDate": "تاريخ النهاية",
+    "roomOverride": "القاعة البديلة",
+    "currentRoom": "القاعة الحالية",
+    "reason": "سبب التغيير",
+    "removeOverride": "حذف الاستثناء",
+    "temporaryChange": "تغيير مؤقت للقاعة",
+    "noSlotsForDay": "لا توجد محاضرات مجدولة لهذا اليوم",
+    "groupOptional": "المجموعة (اختياري)",
+    "allStudents": "جميع الطلاب",
+    "groupA": "مجموعة أ",
+    "groupB": "مجموعة ب",
+    "sec1": "سكشن 1",
+    "sec2": "سكشن 2",
+    "sec3": "سكشن 3",
+    "sem": "الترم"
   },
   "schedules": {
     "title": "الجداول الدراسية"
@@ -1595,7 +1698,9 @@
     "colActions": "الإجراءات",
     "statusActive": "نشط",
     "statusSuspended": "معلق",
-    "statusInactive": "غير نشط"
+    "statusInactive": "غير نشط",
+    "defaultView": "العرض الافتراضي",
+    "studentCode": "كود الطالب"
   },
   "tasks": {
     "createTask": "إضافة تكليف جديد",
@@ -1639,7 +1744,11 @@
     "deleteConfirmEmpty": "لا توجد تسليمات لهذا التكليف. يمكنك حذفه نهائياً أو إخفاؤه فقط.",
     "deletePermanent": "حذف نهائي",
     "deleteSoft": "إخفاء التكليف (موصى به)",
-    "deleteConfirmTitle": "هل تريد حذف هذا التكليف؟"
+    "deleteConfirmTitle": "هل تريد حذف هذا التكليف؟",
+    "statusClosedManually": "مغلقة يدوياً",
+    "statusClosed": "مغلقة",
+    "statusScheduled": "مجدولة",
+    "statusOpen": "مفتوحة"
   },
   "timetables": {
     "status": "الحالة",
@@ -1692,13 +1801,21 @@
     "collegePrefix": "كلية: ",
     "deptPrefix": "قسم: ",
     "allColleges": "جميع الكليات",
-    "deleteSlotConfirm": "هل أنت متأكد من حذف هذا الحصة؟"
+    "deleteSlotConfirm": "هل أنت متأكد من حذف هذا الحصة؟",
+    "selectProfessor": "اختر الدكتور",
+    "selectCollege": "اختر الكلية"
   },
   "timetable": {
     "addSlot": "إضافة حصة",
     "deleteSlot": "حذف الحصة",
     "noDoctors": "لا يوجد أساتذة مسجلون",
-    "otherCollege": "كلية أخرى"
+    "otherCollege": "كلية أخرى",
+    "tier1": "المستوى الأول - قياسي",
+    "tier2": "المستوى الثاني - متوسط",
+    "tier3": "المستوى الثالث - متقدم",
+    "tier4": "المستوى الرابع - تخصصي",
+    "conflictWarning": "تحذير تعارض الجداول",
+    "auditConflicts": "تدقيق التعارضات"
   },
   "admins": {
     "title": "إدارة المسؤولين",
@@ -1734,7 +1851,9 @@
     "colScope": "النطاق",
     "colCreatedAt": "تاريخ الإنشاء",
     "colActions": "الإجراءات",
-    "roleAdmin": "مسؤول"
+    "roleAdmin": "مسؤول",
+    "firstName": "الاسم الأول",
+    "lastName": "اسم العائلة"
   },
   "teachingAssistants": {
     "title": "إدارة المعيدين",
@@ -1975,5 +2094,15 @@
     "deleteSuccess": "تم حذف المجموعة بنجاح",
     "deleteFailed": "فشل في حذف المجموعة",
     "course": "مقرر"
+  },
+  "degreeAudit": {
+    "title": "تدقيق المهارات وإيفاء متطلبات التخرج",
+    "studentId": "رقم الطالب",
+    "eligibleTitle": "مؤهل للتخرج",
+    "eligibleDesc": "تم استيفاء جميع المتطلبات الأكاديمية والساعات المعتمدة.",
+    "notEligibleTitle": "غير مؤهل للتخرج حالياً",
+    "gpa": "المعدل التراكمي (GPA)",
+    "credits": "الساعات المكتسبة",
+    "estimatedGraduation": "تاريخ التخرج المتوقع"
   }
 }

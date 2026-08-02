@@ -290,7 +290,7 @@ export default function SlotModal({
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
               <User size={14} className="text-brand-primary-500" />
-              {form.slotType === 'LECTURE' ? 'المحاضر / الدكتور' : 'المعيد / المدرس المساعد'}
+              {form.slotType === 'LECTURE' ? t('timetables.professor', 'المحاضر / الدكتور') : t('timetables.ta', 'المعيد / المدرس المساعد')}
             </label>
             <InstructorSelector
               courseId={selectedCourse?.id}
@@ -308,7 +308,7 @@ export default function SlotModal({
         {checkingConflict ? (
           <div className="p-3.5 bg-brand-primary-500/5 dark:bg-brand-primary-500/10 rounded-2xl border border-brand-primary-500/20 flex items-center gap-2.5 text-xs text-brand-primary-600 dark:text-brand-primary-400 animate-pulse">
             <Loader2 size={16} className="animate-spin text-brand-primary-500 shrink-0" />
-            <span className="font-medium">جاري التحقق من التوافق وعدم وجود تعارضات بالقاعات والمحاضرين...</span>
+            <span className="font-medium">{t('timetable.checkingConflicts', 'جاري التحقق من التوافق وعدم وجود تعارضات بالقاعات والمحاضرين...')}</span>
           </div>
         ) : conflicts.length > 0 ? (
           <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-2xl space-y-2 text-xs animate-in fade-in duration-200 shadow-soft">
@@ -327,7 +327,7 @@ export default function SlotModal({
         ) : form.courseName && (form.doctorName || form.room) ? (
           <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-2xl flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium shadow-soft">
             <CheckCircle2 size={18} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span>لا يوجد أي تعارض - الوقت والقاعة والمحاضر متاحون بنجاح!</span>
+            <span>{t('timetable.noConflictMessage', 'لا يوجد أي تعارض - الوقت والقاعة والمحاضر متاحون بنجاح!')}</span>
           </div>
         ) : null}
 

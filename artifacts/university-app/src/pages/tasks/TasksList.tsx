@@ -18,7 +18,9 @@ import {
   Pencil,
   Trash2,
   MessageSquare,
+  History,
 } from 'lucide-react';
+import { TaskTimelineModal } from '../../components/tasks/TaskTimelineModal';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -69,7 +71,15 @@ const TasksList = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showExtendModal, setShowExtendModal] = useState(false);
+  const [showToggleConfirmModal, setShowToggleConfirmModal] = useState(false);
+  const [pendingPortalAction, setPendingPortalAction] = useState<'CLOSE' | 'REOPEN' | null>(null);
+  const [isTogglingPortal, setIsTogglingPortal] = useState(false);
+  const [extendDueDate, setExtendDueDate] = useState('');
+  const [dateValidationError, setDateValidationError] = useState<string | null>(null);
+  const [isExtending, setIsExtending] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [editingTask, setEditingTask] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -341,6 +351,149 @@ const TasksList = () => {
     }
   };
 
+  const validateExtendDueDate = (dateStr: string, taskObj: any): string | null => {
+    if (!dateStr) return 'Please select a valid future date and time.';
+    const selected = new Date(dateStr);
+    if (isNaN(selected.getTime())) return 'Invalid date format.';
+
+    const now = new Date();
+    if (selected <= now) {
+      return 'New due date must be in the future (after current server time).';
+    }
+
+    if (taskObj?.startDate && selected < new Date(taskObj.startDate)) {
+      return 'New due date cannot be earlier than the assignment start date.';
+    }
+
+    return null;
+  };
+
+  const onInitiateTogglePortal = (task: any, action: 'CLOSE' | 'REOPEN') => {
+    setSelectedTask(task);
+    setPendingPortalAction(action);
+    setShowToggleConfirmModal(true);
+  };
+
+  const onConfirmTogglePortal = async () => {
+    if (!selectedTask || !pendingPortalAction || isTogglingPortal) return;
+
+    const taskId = selectedTask.id;
+    const action = pendingPortalAction;
+    const previousTasks = [...tasks];
+
+    // Optimistic UI update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              isManuallyClosed: action === 'CLOSE',
+              portalState: action === 'CLOSE' ? 'MANUALLY_CLOSED' : 'OPEN',
+            }
+          : t
+      )
+    );
+
+    try {
+      setIsTogglingPortal(true);
+      const result = await taskService.togglePortal(taskId, action);
+
+      if (result.success && result.data) {
+        showToast(
+          action === 'CLOSE'
+            ? 'Submission portal closed successfully.'
+            : 'Submission portal reopened successfully.',
+          'success'
+        );
+        setTasks((prev) =>
+          prev.map((t) => (t.id === taskId ? { ...t, ...result.data } : t))
+        );
+      } else {
+        setTasks(previousTasks);
+        showToast(result.message || 'Unable to update submission portal state.', 'error');
+      }
+    } catch (e: any) {
+      setTasks(previousTasks);
+      const errMsg =
+        e.response?.data?.message || 'Unable to update submission portal state.';
+      showToast(errMsg, 'error');
+    } finally {
+      setIsTogglingPortal(false);
+      setShowToggleConfirmModal(false);
+      setSelectedTask(null);
+      setPendingPortalAction(null);
+    }
+  };
+
+  const onInitiateExtendDeadline = (task: any) => {
+    setSelectedTask(task);
+    const date = new Date(task.dueDate);
+    const iso = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setExtendDueDate(iso);
+    setDateValidationError(validateExtendDueDate(iso, task));
+    setShowExtendModal(true);
+  };
+
+  const handleExtendDueDateChange = (value: string) => {
+    setExtendDueDate(value);
+    setDateValidationError(validateExtendDueDate(value, selectedTask));
+  };
+
+  const onConfirmExtendDeadline = async () => {
+    if (!selectedTask || !extendDueDate || isExtending) return;
+
+    const validationErr = validateExtendDueDate(extendDueDate, selectedTask);
+    if (validationErr) {
+      setDateValidationError(validationErr);
+      return;
+    }
+
+    const taskId = selectedTask.id;
+    const previousTasks = [...tasks];
+    const newDueDateObj = new Date(extendDueDate);
+
+    // Optimistic UI update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              dueDate: newDueDateObj.toISOString(),
+              portalState: 'OPEN',
+            }
+          : t
+      )
+    );
+
+    try {
+      setIsExtending(true);
+      const result = await taskService.extendDeadline(taskId, extendDueDate);
+
+      if (result.success && result.data) {
+        showToast('Assignment deadline updated successfully.', 'success');
+        setTasks((prev) =>
+          prev.map((t) => (t.id === taskId ? { ...t, ...result.data } : t))
+        );
+      } else {
+        setTasks(previousTasks);
+        showToast(result.message || 'Unable to update assignment deadline.', 'error');
+      }
+    } catch (e: any) {
+      setTasks(previousTasks);
+      const errMsg =
+        e.response?.data?.message || 'Unable to update assignment deadline.';
+      showToast(errMsg, 'error');
+    } finally {
+      setIsExtending(false);
+      setShowExtendModal(false);
+      setSelectedTask(null);
+      setExtendDueDate('');
+      setDateValidationError(null);
+    }
+  };
+
   const locale = i18n.language === 'ar' ? 'ar-EG' : 'en-US';
   const formatDate = (d) =>
     d
@@ -408,20 +561,27 @@ const TasksList = () => {
         </Button>
       );
     }
+    const isClosed =
+      task.portalState === 'MANUALLY_CLOSED' ||
+      task.portalState === 'CLOSED' ||
+      task.isManuallyClosed ||
+      isOverdue(task.dueDate);
+
     return (
       <Button
+        disabled={isClosed}
         onClick={() => {
           setSelectedTask(task);
           setShowSubmitModal(true);
         }}
         className={`w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 shadow-lg ${
-          isOverdue(task.dueDate)
-            ? 'shadow-rose-500/20 bg-rose-600 hover:bg-rose-700'
+          isClosed
+            ? 'bg-gray-400 dark:bg-slate-700 text-white cursor-not-allowed opacity-60'
             : 'shadow-brand-primary-500/20'
         }`}
       >
         <FileUp size={16} />
-        {t('tasks.submitTask')}
+        {isClosed ? 'Submissions Closed' : t('tasks.submitTask')}
       </Button>
     );
   };
@@ -626,12 +786,12 @@ const TasksList = () => {
 
           <div>
             <label className="block text-sm font-medium text-brand-text-sub">
-              رابط الملف / الإجابة (File URL)
+              {t('tasks.fileUrlLabel', 'رابط الملف / الإجابة')}
             </label>
             <input
               type="url"
               className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-xl focus:ring-2 focus:ring-brand-primary-500 outline-none bg-brand-bg-card"
-              placeholder="https://drive.google.com/..."
+              placeholder="https://..."
               {...registerSubmit('fileUrl')}
             />
             {errorsSubmit.fileUrl && (
@@ -641,30 +801,22 @@ const TasksList = () => {
             )}
           </div>
 
-          <div className="pt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={() => setShowSubmitModal(false)}
-              className="px-4 py-2.5 text-brand-text-sub hover:bg-surface-subtle rounded-xl font-bold text-xs"
+              className="px-4 py-2 text-brand-text-sub hover:bg-surface-subtle rounded-xl font-bold text-xs"
             >
               {t('common.cancel')}
             </button>
             <Button
               type="submit"
               disabled={isSubmittingSubmit}
-              className="px-6 py-2.5 shadow-md shadow-brand-primary-500/20"
+              className="px-6 py-2 shadow-md shadow-brand-primary-500/20"
             >
-              {isSubmittingSubmit ? (
-                t('common.loading')
-              ) : (
-                <>
-                  {t('common.submit')}{' '}
-                  <Send
-                    size={16}
-                    className="rtl:-scale-x-100 ml-2"
-                  />
-                </>
-              )}
+              {isSubmittingSubmit
+                ? t('common.loading')
+                : t('tasks.submitTask')}
             </Button>
           </div>
         </form>
@@ -686,7 +838,7 @@ const TasksList = () => {
                 size={32}
               />
               <p className="text-sm font-bold text-brand-text-muted">
-                جاري تحميل التسليمات...
+                {t('tasks.loadingSubmissions', 'جاري تحميل التسليمات...')}
               </p>
             </div>
           ) : submissions.length === 0 ? (
@@ -696,7 +848,7 @@ const TasksList = () => {
                 className="mx-auto text-brand-text-muted opacity-40 mb-2"
               />
               <p className="text-sm font-bold text-brand-text-secondary">
-                لا توجد تسليمات لهذه المهمة حتى الآن.
+                {t('tasks.noSubmissionsYet', 'لا توجد تسليمات لهذه المهمة حتى الآن.')}
               </p>
             </div>
           ) : (
@@ -733,7 +885,7 @@ const TasksList = () => {
                           rel="noreferrer"
                           className="text-xs text-brand-primary-500 hover:underline font-bold inline-flex items-center gap-1 mt-2"
                         >
-                          <FileUp size={14} /> عرض الملف المرفق
+                          <FileUp size={14} /> {t('tasks.viewAttachedFile', 'عرض الملف المرفق')}
                         </a>
                       )}
                     </div>
@@ -817,7 +969,7 @@ const TasksList = () => {
                               },
                             }))
                           }
-                          placeholder="اكتب ملاحظات للطالب (اختياري)..."
+                          placeholder={t('tasks.feedbackPlaceholder', 'اكتب ملاحظات للطالب (اختياري)...')}
                           className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:ring-2 focus:ring-brand-primary-500 focus:outline-none"
                         />
                       </div>
@@ -882,7 +1034,7 @@ const TasksList = () => {
               </p>
             </div>
             <div className="mt-3 text-[10px] font-black text-brand-text-muted uppercase tracking-widest">
-              {selectedTask?._count?.submissions ?? 0} تسليم(ات) موجود(ة)
+              {selectedTask?._count?.submissions ?? 0} {t('tasks.existingSubmissionsCount', 'تسليم(ات) موجود(ة)')}
             </div>
           </div>
 
@@ -913,6 +1065,209 @@ const TasksList = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Toggle Portal Confirmation Modal */}
+      <Modal
+        isOpen={showToggleConfirmModal}
+        onClose={() => {
+          if (!isTogglingPortal) {
+            setShowToggleConfirmModal(false);
+            setSelectedTask(null);
+            setPendingPortalAction(null);
+          }
+        }}
+        title={
+          pendingPortalAction === 'CLOSE'
+            ? 'Close Submission Portal'
+            : 'Reopen Submission Portal'
+        }
+        subtitle={selectedTask?.title}
+        size="md"
+      >
+        <div className="pt-2 space-y-4">
+          <div
+            className={`p-4 rounded-2xl border ${
+              pendingPortalAction === 'CLOSE'
+                ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
+                : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <AlertCircle
+                size={20}
+                className={
+                  pendingPortalAction === 'CLOSE'
+                    ? 'text-amber-600 shrink-0 mt-0.5'
+                    : 'text-emerald-600 shrink-0 mt-0.5'
+                }
+              />
+              <p className="text-xs font-bold leading-relaxed text-brand-text-primary dark:text-brand-text-main">
+                {pendingPortalAction === 'CLOSE'
+                  ? 'Closing the submission portal will immediately prevent students from uploading new files or modifying existing submissions.'
+                  : 'Reopening the submission portal will restore dynamic evaluation and allow students to submit if the deadline has not passed.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs bg-surface-subtle p-3.5 rounded-2xl border border-brand-border">
+            <div>
+              <span className="font-bold text-brand-text-muted block text-[10px] uppercase tracking-widest">
+                Current Portal State
+              </span>
+              <span className="font-black text-brand-text-primary">
+                {selectedTask?.portalState || 'UNKNOWN'}
+              </span>
+            </div>
+            <div>
+              <span className="font-bold text-brand-text-muted block text-[10px] uppercase tracking-widest">
+                Current Deadline
+              </span>
+              <span className="font-black text-brand-text-primary">
+                {formatDate(selectedTask?.dueDate)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
+            <button
+              type="button"
+              disabled={isTogglingPortal}
+              onClick={() => {
+                setShowToggleConfirmModal(false);
+                setSelectedTask(null);
+                setPendingPortalAction(null);
+              }}
+              className="px-4 py-2.5 text-brand-text-sub hover:bg-surface-subtle rounded-xl font-bold text-xs disabled:opacity-50"
+            >
+              {t('common.cancel')}
+            </button>
+            <Button
+              onClick={onConfirmTogglePortal}
+              disabled={isTogglingPortal}
+              className={`px-6 py-2.5 text-xs font-bold shadow-md ${
+                pendingPortalAction === 'CLOSE'
+                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20'
+                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'
+              }`}
+            >
+              {isTogglingPortal ? (
+                <>
+                  <Loader2 size={14} className="animate-spin mr-2" />
+                  {pendingPortalAction === 'CLOSE'
+                    ? 'Closing...'
+                    : 'Reopening...'}
+                </>
+              ) : pendingPortalAction === 'CLOSE' ? (
+                'Confirm Close Submissions'
+              ) : (
+                'Confirm Reopen Submissions'
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Extend Deadline Modal */}
+      <Modal
+        isOpen={showExtendModal}
+        onClose={() => {
+          if (!isExtending) {
+            setShowExtendModal(false);
+            setSelectedTask(null);
+            setDateValidationError(null);
+          }
+        }}
+        title={t('tasks.extendModalTitle', 'Extend Assignment Deadline')}
+        subtitle={selectedTask?.title}
+        size="md"
+      >
+        <div className="space-y-4 pt-2">
+          <div className="grid grid-cols-2 gap-3 text-xs bg-surface-subtle p-3.5 rounded-2xl border border-brand-border mb-2">
+            <div>
+              <span className="font-bold text-brand-text-muted block text-[10px] uppercase tracking-widest">
+                {t('tasks.currentDeadline', 'Current Deadline')}
+              </span>
+              <span className="font-black text-brand-text-primary">
+                {formatDate(selectedTask?.dueDate)}
+              </span>
+            </div>
+            <div>
+              <span className="font-bold text-brand-text-muted block text-[10px] uppercase tracking-widest">
+                {t('tasks.portalState', 'Portal State')}
+              </span>
+              <span className="font-black text-brand-text-primary">
+                {selectedTask?.portalState || 'OPEN'}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-text-sub mb-1">
+              {t('tasks.newDueDate', 'New Due Date & Time')}
+            </label>
+            <input
+              type="datetime-local"
+              value={extendDueDate}
+              disabled={isExtending}
+              onChange={(e) => handleExtendDueDateChange(e.target.value)}
+              className={`mt-1 block w-full px-3.5 py-2.5 border rounded-xl outline-none text-sm transition-all ${
+                dateValidationError
+                  ? 'border-rose-400 bg-rose-50/50 dark:bg-rose-950/20 focus:ring-2 focus:ring-rose-400'
+                  : 'border-brand-border bg-brand-bg-card focus:ring-2 focus:ring-brand-primary-500'
+              }`}
+            />
+            {dateValidationError && (
+              <p className="mt-1.5 text-xs font-bold text-rose-600 flex items-center gap-1.5">
+                <AlertCircle size={14} className="shrink-0" />
+                {dateValidationError}
+              </p>
+            )}
+          </div>
+
+          <p className="text-[11px] text-brand-text-muted leading-relaxed">
+            {t('tasks.extendNotice', 'Extending the deadline will update the target due date for all enrolled students and automatically allow on-time submissions until the new date.')}
+          </p>
+
+          <div className="pt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+            <button
+              type="button"
+              disabled={isExtending}
+              onClick={() => {
+                setShowExtendModal(false);
+                setSelectedTask(null);
+                setDateValidationError(null);
+              }}
+              className="px-4 py-2.5 text-brand-text-sub hover:bg-surface-subtle rounded-xl font-bold text-xs disabled:opacity-50"
+            >
+              {t('common.cancel')}
+            </button>
+            <Button
+              onClick={onConfirmExtendDeadline}
+              disabled={isExtending || !!dateValidationError || !extendDueDate}
+              className="px-6 py-2.5 shadow-md shadow-brand-primary-500/20 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isExtending ? (
+                <>
+                  <Loader2 size={14} className="animate-spin mr-2" />
+                  {t('tasks.updatingDeadline', 'Updating Deadline...')}
+                </>
+              ) : (
+                t('tasks.confirmExtension', 'Confirm Extension')
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Task Timeline Activity Modal */}
+      <TaskTimelineModal
+        task={selectedTask}
+        isOpen={showTimelineModal}
+        onClose={() => {
+          setShowTimelineModal(false);
+          setSelectedTask(null);
+        }}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {loading ? (
@@ -950,12 +1305,30 @@ const TasksList = () => {
             >
               <div className="p-8 flex-grow">
                 <div className="flex justify-between items-start mb-6">
-                  <Badge
-                    variant="primary"
-                    className="px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-brand-navy-500 text-white border-none"
-                  >
-                    {task.course?.courseCode}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="primary"
+                      className="px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-brand-navy-500 text-white border-none"
+                    >
+                      {task.course?.courseCode}
+                    </Badge>
+                    {task.portalState && (
+                      <Badge
+                        variant={
+                          task.portalState === 'OPEN'
+                            ? 'success'
+                            : task.portalState === 'SCHEDULED'
+                            ? 'warning'
+                            : 'error'
+                        }
+                        className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider"
+                      >
+                        {task.portalState === 'MANUALLY_CLOSED'
+                          ? 'MANUALLY CLOSED'
+                          : task.portalState}
+                      </Badge>
+                    )}
+                  </div>
                   <div
                     className={`flex items-center gap-2 p-2 rounded-xl ${
                       isOverdue(task.dueDate)
@@ -1014,7 +1387,7 @@ const TasksList = () => {
                 </div>
 
                 {isDoctor && isTaskOwner(task) && (
-                  <div className="mt-6 flex items-center gap-2">
+                  <div className="mt-6 flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => {
                         setEditingTask(task);
@@ -1024,6 +1397,41 @@ const TasksList = () => {
                     >
                       <Pencil size={12} />
                       {t('tasks.editTask')}
+                    </button>
+                    <button
+                      onClick={() => onInitiateExtendDeadline(task)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                    >
+                      <Clock size={12} />
+                      Extend Deadline
+                    </button>
+                    {task.portalState === 'MANUALLY_CLOSED' ||
+                    task.isManuallyClosed ? (
+                      <button
+                        onClick={() => onInitiateTogglePortal(task, 'REOPEN')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                      >
+                        <CheckCircle size={12} />
+                        Reopen Submissions
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onInitiateTogglePortal(task, 'CLOSE')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 hover:bg-amber-100 transition-colors"
+                      >
+                        <X size={12} />
+                        Close Submissions
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setShowTimelineModal(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <History size={12} />
+                      {t('timeline.activityLog', 'Activity Log')}
                     </button>
                     <button
                       onClick={() => {
@@ -1041,7 +1449,20 @@ const TasksList = () => {
 
               <div className="px-8 py-5 bg-surface-subtle dark:bg-slate-800/30 border-t border-brand-border dark:border-brand-border mt-auto">
                 {isStudent ? (
-                  renderStudentButton(task)
+                  <div className="flex flex-col gap-2">
+                    {renderStudentButton(task)}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setShowTimelineModal(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <History size={12} />
+                      {t('timeline.activityLog', 'Activity Log')}
+                    </button>
+                  </div>
                 ) : (
                   <Button
                     variant="outline"

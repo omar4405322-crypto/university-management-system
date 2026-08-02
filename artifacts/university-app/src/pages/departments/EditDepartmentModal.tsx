@@ -97,7 +97,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ isOpen, onClo
             </label>
             <Input
               {...register('name')}
-              placeholder="e.g. Computer Science"
+              placeholder={t('departments.departmentNameEnPlaceholder', 'e.g. Computer Science')}
               className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
             />
             {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
@@ -109,7 +109,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ isOpen, onClo
             </label>
             <Input
               {...register('nameAr')}
-              placeholder="e.g. قسم علوم الحاسب"
+              placeholder={t('departments.departmentNameArPlaceholder', 'مثال: قسم علوم الحاسب')}
               className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic text-right"
               dir="rtl"
             />

@@ -317,14 +317,14 @@ const DepartmentsList = () => {
                         {/* NEW badge */}
                         {isNew && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-primary-500/10 text-brand-primary-600 me-2">
-                            جديد
+                            {t('common.new', 'جديد')}
                           </span>
                         )}
                         {canManage && (
                           <>
                             <button
                               onClick={e => { e.stopPropagation(); handleEdit(dept); }}
-                              title="تعديل"
+                              title={t('common.edit', 'تعديل')}
                               className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all">
                               <Edit2 className="w-4 h-4" />
                             </button>

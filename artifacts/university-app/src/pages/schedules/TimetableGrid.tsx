@@ -544,7 +544,7 @@ export default function TimetableGrid() {
             <div className="flex items-center justify-between border-b border-brand-border pb-3">
               <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold">
                 <AlertCircle size={20} />
-                <h3 className="text-base">تقرير فحص التعارضات في الجدول</h3>
+                <h3 className="text-base">{t('timetable.conflictReportTitle', 'تقرير فحص التعارضات في الجدول')}</h3>
               </div>
               <button
                 onClick={() => setAuditReport(null)}
@@ -555,7 +555,10 @@ export default function TimetableGrid() {
             </div>
 
             <p className="text-xs text-brand-text-muted">
-              تم اكتشاف <strong className="text-rose-600 dark:text-rose-400 font-black">{auditReport.length}</strong> تعارض دراسي يحتاج إلى مراجعة قبل الاعتماد:
+              {t('timetable.conflictDetectedNotice', {
+                count: auditReport.length,
+                defaultValue: `تم اكتشاف ${auditReport.length} تعارض دراسي يحتاج إلى مراجعة قبل الاعتماد:`,
+              })}
             </p>
 
             <div className="max-h-64 overflow-y-auto space-y-2.5 pr-1">
@@ -577,7 +580,7 @@ export default function TimetableGrid() {
                 onClick={() => setAuditReport(null)}
                 className="px-5 py-2 bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold text-xs rounded-xl shadow transition-all"
               >
-                فهمت، سأقوم بالتعديل
+                {t('timetable.understoodIWillFix', 'فهمت، سأقوم بالتعديل')}
               </button>
             </div>
           </div>

@@ -269,7 +269,7 @@ const StudentRecord: React.FC = () => {
                 <span className="text-3xl font-black text-brand-text-primary dark:text-white mt-1">
                   {data?.totalCompletedExams || 0}
                 </span>
-                <span className="text-[11px] text-brand-text-muted mt-0.5">امتحان مؤرشف</span>
+                <span className="text-[11px] text-brand-text-muted mt-0.5">{t('transcript.archivedExam', 'امتحان مؤرشف')}</span>
               </div>
             </div>
 
@@ -284,7 +284,7 @@ const StudentRecord: React.FC = () => {
                 <span className="text-3xl font-black text-brand-text-primary dark:text-white mt-1">
                   {data?.totalSubmissions || 0}
                 </span>
-                <span className="text-[11px] text-brand-text-muted mt-0.5">تسليم مؤكد</span>
+                <span className="text-[11px] text-brand-text-muted mt-0.5">{t('transcript.confirmedSubmission', 'تسليم مؤكد')}</span>
               </div>
             </div>
 
@@ -414,9 +414,9 @@ const StudentRecord: React.FC = () => {
 
                       <div className="flex items-center space-x-3 space-x-reverse w-full md:w-auto justify-between md:justify-end">
                         <div className="text-left text-xs">
-                          <span className="block text-brand-text-secondary dark:text-slate-400">التسليمات</span>
+                          <span className="block text-brand-text-secondary dark:text-slate-400">{t('transcript.submissions', 'التسليمات')}</span>
                           <span className="font-extrabold text-brand-primary-600 dark:text-brand-primary-400 text-sm">
-                            {ex.submissionsCount} طالب
+                            {ex.submissionsCount} {t('courses.students', 'طالب')}
                           </span>
                         </div>
 

@@ -42,6 +42,8 @@ model User {
   scheduleRequests         ScheduleChangeRequest[]
   resolvedScheduleRequests ScheduleChangeRequest[] @relation("ResolvedRequests")
   uploadedMaterials        CourseMaterial[]
+  closedTasks              Task[]                  @relation("TaskClosedBy")
+  timelineEvents           ActivityTimelineEvent[] @relation("TimelineActor")
   isActive                 Boolean                 @default(true)
   deactivatedAt            DateTime?
 
@@ -386,23 +388,36 @@ model QuizSubmission {
   @@index([quizId, studentId])
 }
 
+enum AssignmentState {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model Task {
-  id          Int              @id @default(autoincrement())
-  title       String
-  description String
-  courseId    Int
-  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  doctorId    Int
-  doctor      Doctor           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
-  dueDate     DateTime
-  maxScore    Int              @default(100)
-  submissions TaskSubmission[]
-  createdAt   DateTime         @default(now())
-  isDeleted   Boolean          @default(false)
-  deletedAt   DateTime?
+  id               Int              @id @default(autoincrement())
+  title            String
+  description      String
+  courseId         Int
+  course           Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  doctorId         Int
+  doctor           Doctor           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  state            AssignmentState  @default(PUBLISHED)
+  startDate        DateTime         @default(now())
+  dueDate          DateTime
+  isManuallyClosed Boolean          @default(false)
+  closedAt         DateTime?
+  closedById       Int?
+  closedBy         User?            @relation("TaskClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  maxScore         Int              @default(100)
+  submissions      TaskSubmission[]
+  createdAt        DateTime         @default(now())
+  isDeleted        Boolean          @default(false)
+  deletedAt        DateTime?
 
   @@index([courseId])
   @@index([isDeleted])
+  @@index([state])
 }
 
 model TaskSubmission {
@@ -811,5 +826,70 @@ model RfidDevice {
   isActive   Boolean   @default(true)
   lastSeenAt DateTime?
   createdAt  DateTime  @default(now())
+}
+
+enum ActivityEntityType {
+  TASK
+  QUIZ
+  EXAM
+  COURSE_MATERIAL
+  TIMETABLE_SLOT
+}
+
+enum ActivityEventType {
+  ASSIGNMENT_CREATED
+  ASSIGNMENT_PUBLISHED
+  ASSIGNMENT_UNPUBLISHED
+  ASSIGNMENT_ARCHIVED
+  TITLE_UPDATED
+  DESCRIPTION_UPDATED
+  MAX_SCORE_UPDATED
+  INSTRUCTIONS_UPDATED
+  DEADLINE_EXTENDED
+  DEADLINE_SHORTENED
+  PORTAL_OPENED
+  PORTAL_CLOSED
+  ATTACHMENT_ADDED
+  ATTACHMENT_REPLACED
+  ATTACHMENT_REMOVED
+}
+
+enum EventVisibility {
+  ADMIN_ONLY
+  INSTRUCTORS
+  STUDENTS
+  PUBLIC
+}
+
+enum EventSeverity {
+  INFO
+  WARNING
+  IMPORTANT
+  CRITICAL
+}
+
+model ActivityTimelineEvent {
+  id                  Int                @id @default(autoincrement())
+  entityType          ActivityEntityType
+  entityId            Int
+  courseId            Int
+  eventType           ActivityEventType
+  severity            EventSeverity      @default(INFO)
+  visibility          EventVisibility    @default(STUDENTS)
+  actorId             Int?
+  actor               User?              @relation("TimelineActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorRole           String             @default("SYSTEM")
+  title               String
+  summary             String
+  diffPayload         Json?
+  relatedVersionId    Int?
+  relatedAttachmentId Int?
+  relatedCommentId    Int?
+  createdAt           DateTime           @default(now())
+
+  @@index([entityType, entityId, visibility, createdAt])
+  @@index([courseId, visibility, createdAt])
+  @@index([actorId])
+  @@index([createdAt])
 }
 

@@ -6,6 +6,7 @@ import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
+import TimelineService from '../services/timeline.service';
 
 /**
  * @desc    Get all courses with advanced filtering, sorting and pagination
@@ -645,3 +646,27 @@ export const toggleCoursePublication = catchAsync(async (req: Request, res: Resp
     message: updated.isPublished ? 'Course published for students' : 'Course set to draft mode',
   });
 });
+
+export const getCourseTimeline = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { cursor, limit, eventType, severity } = req.query;
+
+    const options: any = {};
+    if (cursor) options.cursorId = parseInt(cursor as string);
+    if (limit) options.limit = parseInt(limit as string);
+    if (eventType) options.eventType = eventType as any;
+    if (severity) options.severity = severity as any;
+
+    const result = await TimelineService.getCourseTimeline(
+      req.user!,
+      parseInt(id as string),
+      options
+    );
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  }
+);

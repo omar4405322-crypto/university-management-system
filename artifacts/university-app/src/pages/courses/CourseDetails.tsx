@@ -32,6 +32,7 @@ import {
   MessageSquare,
   Pencil,
   Send,
+  History,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Card from '../../components/ui/Card';
@@ -39,6 +40,7 @@ import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
 import Modal from '../../components/ui/Modal';
+import { CourseTimelineSection } from '../../components/courses/CourseTimelineSection';
 import taskService from '../../services/task.service';
 import coursesService from '../../services/courses.service';
 import { useAuth } from '../../context/AuthContext';
@@ -49,7 +51,7 @@ interface CourseDetailsProps {
   isDrawerMode?: boolean;
 }
 
-type TabType = 'overview' | 'lectures' | 'tutorials' | 'tasks' | 'roster';
+type TabType = 'overview' | 'lectures' | 'tutorials' | 'tasks' | 'roster' | 'timeline';
 
 const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = false }) => {
   const { id } = useParams();
@@ -654,6 +656,17 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               {enrolledStudents.length}
             </span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs transition-all whitespace-nowrap ${activeTab === 'timeline'
+                ? 'bg-brand-primary-500 text-white shadow-md shadow-brand-primary-500/20'
+                : 'bg-surface-card text-brand-text-sub hover:bg-brand-primary-50 hover:text-brand-brand-green-dark border border-brand-border'
+              }`}
+          >
+            <History size={16} />
+            <span>{t('COURSES.timeline', 'سجل النشاط')}</span>
+          </button>
         </div>
 
         {/* Action Controls & Course Publication Status Indicator */}
@@ -662,12 +675,12 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           {assignedDoctors.length > 0 ? (
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 text-[11px] font-bold">
               <CheckCircle2 size={14} />
-              <span>مُسندة (د. {assignedDoctors[0].firstName} {assignedDoctors[0].lastName})</span>
+              <span>{t('courses.assignedTo', 'مُسندة')} (Dr. {assignedDoctors[0].firstName} {assignedDoctors[0].lastName})</span>
             </div>
           ) : (
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50 text-[11px] font-bold">
               <AlertCircle size={14} />
-              <span>غير مسندة</span>
+              <span>{t('courses.unassigned', 'غير مسندة')}</span>
             </div>
           )}
 
@@ -680,17 +693,16 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-600 shadow-emerald-500/20'
                   : 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-amber-500/20'
               }`}
-              title={course?.isPublished !== false ? 'المقرر منشور حالياً للطلاب - اضغط لإخفائه ووضعه كمسودة' : 'المقرر مخفي كمسودة - اضغط لنشره رسمياً للطلاب'}
             >
               {course?.isPublished !== false ? (
                 <>
                   <Eye size={16} />
-                  <span>المقرر منشور للطلاب 🟢</span>
+                  <span>{t('courses.publishedForStudents', 'المقرر منشور للطلاب 🟢')}</span>
                 </>
               ) : (
                 <>
                   <EyeOff size={16} />
-                  <span>مسودة ومخفي 🔴 (انقر للنشر)</span>
+                  <span>{t('courses.draftHidden', 'مسودة ومخفي 🔴 (انقر للنشر)')}</span>
                 </>
               )}
             </button>
@@ -1508,6 +1520,11 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             </div>
           )}
         </Card>
+      )}
+
+      {/* TAB 6: GLOBAL COURSE ACTIVITY TIMELINE */}
+      {activeTab === 'timeline' && (
+        <CourseTimelineSection courseId={course.id} />
       )}
 
       {/* UPLOAD MATERIAL MODAL */}

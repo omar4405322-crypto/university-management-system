@@ -504,17 +504,13 @@ const RegistrationRequests = () => {
             {/* Pagination / Count Separator Row */}
             <div className="border-t border-slate-100 dark:border-slate-700 pt-4 mt-4 text-center">
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {isRTL ? (
-                  <>
-                    عرض <span className="text-brand-primary-500 font-extrabold">{filteredRequests.length}</span> من{' '}
-                    <span className="text-brand-primary-500 font-extrabold">{requests.length}</span> طلبات تسجيل
-                  </>
-                ) : (
-                  <>
-                    Showing <span className="text-brand-primary-500 font-extrabold">{filteredRequests.length}</span> of{' '}
-                    <span className="text-brand-primary-500 font-extrabold">{requests.length}</span> registration requests
-                  </>
-                )}
+                {t('registration.showingRequestsCount', {
+                  count: filteredRequests.length,
+                  total: requests.length,
+                  defaultValue: isRTL
+                    ? `عرض ${filteredRequests.length} من ${requests.length} طلبات تسجيل`
+                    : `Showing ${filteredRequests.length} of ${requests.length} registration requests`,
+                })}
               </p>
             </div>
           </div>

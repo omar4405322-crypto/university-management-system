@@ -40,6 +40,29 @@ const taskService = {
 
   getMySubmission: (id: number | string): Promise<ApiResponse<any>> =>
     apiRequest(() => api.get(`/tasks/${id}/submission`)),
+
+  togglePortal: (
+    id: number | string,
+    action: 'CLOSE' | 'REOPEN'
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.patch(`/tasks/${id}/portal`, { action })),
+
+  extendDeadline: (
+    id: number | string,
+    dueDate: string
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.post(`/tasks/${id}/extend-deadline`, { dueDate })),
+
+  getTaskTimeline: (
+    id: number | string,
+    params?: {
+      cursor?: number;
+      limit?: number;
+      eventType?: string;
+      severity?: string;
+    }
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.get(`/tasks/${id}/timeline`, { params })),
 };
 
 export default taskService;

@@ -202,7 +202,7 @@ const Login = () => {
         to="/"
         className="fixed top-5 right-6 z-20 flex items-center gap-2 text-white/85 hover:text-white font-bold text-sm transition-all duration-200 hover:underline group"
       >
-        <span>العودة للرئيسية</span>
+        <span>{t('auth.backToHome', 'العودة للرئيسية')}</span>
         <ArrowRight size={18} strokeWidth={2} className="group-hover:translate-x-1 transition-transform" />
       </Link>
 
@@ -218,14 +218,14 @@ const Login = () => {
           {/* Top Center University Logo (Styled Text) */}
           <div className="text-center flex flex-col items-center justify-center">
             <h1 className="text-[18px] font-bold text-slate-800 leading-tight">
-              جامعة 6 أكتوبر التكنولوجية
+              {t('nav.universityTitle', 'جامعة 6 أكتوبر التكنولوجية')}
             </h1>
             <div className="w-10 h-[3px] bg-[#84cc16] rounded-full mx-auto mt-2.5 mb-2.5" />
             <p className="text-[12px] text-gray-400 font-semibold">
-              نظام الإدارة الأكاديمية
+              {t('auth.academicManagementSystem', 'نظام الإدارة الأكاديمية')}
             </p>
             <h2 className="text-[26px] font-black text-slate-900 tracking-tight leading-tight mt-5">
-              تسجيل الدخول
+              {t('auth.login', 'تسجيل الدخول')}
             </h2>
           </div>
 
