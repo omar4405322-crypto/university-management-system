@@ -8,7 +8,7 @@ import {
 import studentsService from '../../services/students.service';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/Button';
+import { Button } from '../../components/ui/button';
 
 interface StudentStatisticsPageProps {
   customStudentId?: string;

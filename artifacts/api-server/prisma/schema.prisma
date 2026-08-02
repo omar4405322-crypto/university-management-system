@@ -398,8 +398,11 @@ model Task {
   maxScore    Int              @default(100)
   submissions TaskSubmission[]
   createdAt   DateTime         @default(now())
+  isDeleted   Boolean          @default(false)
+  deletedAt   DateTime?
 
   @@index([courseId])
+  @@index([isDeleted])
 }
 
 model TaskSubmission {
@@ -411,9 +414,11 @@ model TaskSubmission {
   fileUrl     String?
   notes       String?
   score       Float?
+  feedback    String?
   submittedAt DateTime @default(now())
 
   @@index([taskId, studentId])
+  @@unique([taskId, studentId])
 }
 
 model Timetable {

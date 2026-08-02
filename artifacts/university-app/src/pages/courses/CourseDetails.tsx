@@ -27,12 +27,19 @@ import {
   ClipboardList,
   Eye,
   EyeOff,
+  FileUp,
+  CheckCircle,
+  MessageSquare,
+  Pencil,
+  Send,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
+import Modal from '../../components/ui/Modal';
+import taskService from '../../services/task.service';
 import coursesService from '../../services/courses.service';
 import { useAuth } from '../../context/AuthContext';
 import { logger } from '../../lib/logger';
@@ -66,10 +73,161 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // Task Modal State
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDesc, setTaskDesc] = useState('');
+  const [taskMaxScore, setTaskMaxScore] = useState(100);
+  const [taskDueDate, setTaskDueDate] = useState('');
+  const [submitNotes, setSubmitNotes] = useState('');
+  const [submitFileUrl, setSubmitFileUrl] = useState('');
+  const [taskError, setTaskError] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [submissionState, setSubmissionState] = useState<Record<number, any>>({});
+  const [courseMySubmissions, setCourseMySubmissions] = useState<Record<number, any>>({});
+
   // Roster Search State
   const [rosterSearch, setRosterSearch] = useState('');
 
   const isRTL = i18n.language === 'ar';
+
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsSubmitting(true);
+      setTaskError(null);
+      const result = await taskService.createTask({
+        title: taskTitle,
+        description: taskDesc,
+        courseId: actualId,
+        dueDate: taskDueDate,
+        maxScore: taskMaxScore,
+      });
+      if (result.success) {
+        setShowTaskModal(false);
+        setTaskTitle('');
+        setTaskDesc('');
+        setTaskDueDate('');
+        fetchCourseDetails();
+      }
+    } catch (err: any) {
+      setTaskError(err.response?.data?.message || 'حدث خطأ أثناء إضافة التكليف');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTask) return;
+    try {
+      setIsSubmitting(true);
+      setTaskError(null);
+      const result = await taskService.submitTask(selectedTask.id, {
+        notes: submitNotes,
+        fileUrl: submitFileUrl,
+      });
+      if (result.success) {
+        setShowSubmitModal(false);
+        setSubmitNotes('');
+        setSubmitFileUrl('');
+        fetchCourseDetails();
+        fetchCourseMySubmissions();
+      }
+    } catch (err: any) {
+      setTaskError(err.response?.data?.message || 'حدث خطأ أثناء تسليم التكليف');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const fetchSubmissions = async (taskId) => {
+    try {
+      setLoadingSubmissions(true);
+      const result = await taskService.getTaskSubmissions(taskId);
+      if (result.success) {
+        const data = result.data || [];
+        setSubmissions(data);
+        const initial: Record<number, any> = {};
+        data.forEach((s) => {
+          initial[s.id] = {
+            score: s.score != null ? String(s.score) : '',
+            feedback: s.feedback || '',
+          };
+        });
+        setSubmissionState(initial);
+      }
+    } catch (error) {
+      logger.error(error);
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  };
+
+  const handleSaveGrade = async (submissionId: number) => {
+    if (!selectedTask) return;
+    const st = submissionState[submissionId] || {};
+    const scoreNum = parseFloat(String(st.score));
+    const maxScore = Number(selectedTask.maxScore || 100);
+    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > maxScore) return;
+    try {
+      setSubmissionState((prev) => ({
+        ...prev,
+        [submissionId]: { ...prev[submissionId], saving: true, scoreError: undefined },
+      }));
+      const result = await taskService.gradeSubmission(
+        selectedTask.id,
+        submissionId,
+        { score: scoreNum, feedback: st.feedback }
+      );
+      if (result.success) {
+        fetchSubmissions(selectedTask.id);
+      }
+    } catch (e) {
+      logger.error(e);
+    } finally {
+      setSubmissionState((prev) => ({
+        ...prev,
+        [submissionId]: { ...prev[submissionId], saving: false },
+      }));
+    }
+  };
+
+  const fetchCourseMySubmissions = async () => {
+    if (!course || user?.role !== 'STUDENT') return;
+    const taskIds = (course.tasks || []).map((t) => t.id);
+    const map: Record<number, any> = {};
+    await Promise.all(
+      taskIds.map(async (tid) => {
+        try {
+          const r = await taskService.getMySubmission(tid);
+          if (r.success) map[tid] = r.data;
+        } catch (e) {}
+      })
+    );
+    setCourseMySubmissions(map);
+  };
+
+  useEffect(() => {
+    if (course && user?.role === 'STUDENT') {
+      fetchCourseMySubmissions();
+    }
+  }, [course, user?.role]);
+
+  const formatTaskDate = (d) =>
+    d
+      ? new Date(d).toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : '—';
 
   const fetchCourseDetails = async () => {
     try {
@@ -992,21 +1150,21 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             <div>
               <h3 className="font-black text-lg text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
                 <ClipboardList className="text-amber-600 dark:text-amber-400" size={20} />
-                {t('COURSES.assignmentsAndTasks', 'الواجبات والمهام الدراسية (Assignments & Tasks)')}
+                {t('tasks.title', 'التكاليف')}
               </h3>
               <p className="text-xs text-brand-text-muted mt-1">
-                {t('COURSES.assignmentsDesc', 'إدارة وتتبع الواجبات المنزلية والمهام المطلوبة من الطلاب وتحديد مواعيد التسليم.')}
+                إدارة وتتبع التكاليف المطلوبة من الطلاب وتحديد مواعيد التسليم.
               </p>
             </div>
 
             {(user?.role === 'DOCTOR' || user?.role === 'SUPER_ADMIN' || user?.role === 'COLLEGE_ADMIN') && (
               <Button
-                onClick={() => navigate('/tasks')}
+                onClick={() => setShowTaskModal(true)}
                 variant="primary"
                 className="flex items-center gap-2 text-xs py-2 px-4 shadow-md shadow-brand-primary-500/20"
               >
                 <Plus size={16} />
-                <span>{t('tasks.addTask', 'إضافة واجب/مهمة جديدة')}</span>
+                <span>{t('tasks.createTask', 'إضافة تكليف جديد')}</span>
               </Button>
             )}
           </div>
@@ -1015,6 +1173,8 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {course.tasks.map((task: any) => {
                 const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
+                const my = courseMySubmissions[task.id];
+                const showStatusBadge = user?.role === 'STUDENT' && (my || isOverdue);
                 return (
                   <div key={task.id} className="bg-surface-card border border-brand-border p-5 rounded-2xl shadow-card flex flex-col justify-between space-y-4">
                     <div className="space-y-3">
@@ -1026,13 +1186,30 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                           <div>
                             <h4 className="font-bold text-brand-text-primary dark:text-brand-text-main text-base">{task.title}</h4>
                             <span className="text-[10px] font-bold uppercase tracking-widest text-brand-text-muted">
-                              {task.maxPoints ? `${task.maxPoints} ${t('tasks.points', 'درجة')}` : 'واجب تحصيلي'}
+                              {task.maxScore ? `${task.maxScore} ${t('tasks.maxPoints', 'درجة')}` : 'تكليف أكاديمي'}
                             </span>
                           </div>
                         </div>
 
-                        <Badge variant={isOverdue ? 'error' : 'warning'} className="text-[10px] font-black">
-                          {isOverdue ? 'منتهي التسليم' : 'قيد التسليم'}
+                        <Badge
+                          variant={
+                            my && my.score != null
+                              ? 'success'
+                              : my
+                              ? 'primary'
+                              : isOverdue
+                              ? 'error'
+                              : 'warning'
+                          }
+                          className="text-[10px] font-black"
+                        >
+                          {my && my.score != null
+                            ? t('tasks.statusGraded', { score: my.score, maxScore: task.maxScore })
+                            : my
+                            ? t('tasks.statusSubmitted')
+                            : isOverdue
+                            ? t('tasks.statusOverdue')
+                            : 'قيد التسليم'}
                         </Badge>
                       </div>
 
@@ -1041,12 +1218,71 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                           {task.description}
                         </p>
                       )}
+
+                      {user?.role === 'STUDENT' && my && (
+                        <div className="space-y-1">
+                          <div className="text-[9px] font-bold text-brand-text-muted">
+                            {my.score != null
+                              ? t('tasks.statusGraded', { score: my.score, maxScore: task.maxScore })
+                              : t('tasks.submittedAt', { date: formatTaskDate(my.submittedAt || my.createdAt) })}
+                          </div>
+                          {my.feedback && (
+                            <div className="text-[10px] text-brand-text-sub bg-surface-subtle p-2 rounded-lg leading-relaxed flex items-start gap-1">
+                              <MessageSquare size={12} className="shrink-0 mt-0.5" />
+                              <span className="line-clamp-3">{my.feedback}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-brand-border pt-3 text-xs text-brand-text-muted font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={14} className={isOverdue ? 'text-red-500' : 'text-amber-500'} />
-                        <span>موعد التسليم: {task.dueDate ? new Date(task.dueDate).toLocaleDateString(i18n.language === 'ar' ? 'ar-EG' : 'en-US') : 'غير محدد'}</span>
+                    <div className="flex flex-col border-t border-brand-border pt-3 text-xs font-medium gap-3">
+                      <div className="flex items-center justify-between text-brand-text-muted gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Clock size={14} className={isOverdue ? 'text-red-500' : 'text-amber-500'} />
+                          <span>{t('tasks.due', 'موعد التسليم')}: {task.dueDate ? formatTaskDate(task.dueDate) : 'غير محدد'}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2">
+                        {user?.role === 'STUDENT' ? (
+                          my ? (
+                            <Button disabled className="text-[10px] py-1.5 px-3 opacity-60 w-full">
+                              <CheckCircle size={14} className="mr-1" />
+                              {t('tasks.statusSubmitted')}
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => {
+                                setSelectedTask(task);
+                                setShowSubmitModal(true);
+                              }}
+                              className={`text-[10px] py-1.5 px-3 w-full ${
+                                isOverdue
+                                  ? 'bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-500/20'
+                                  : ''
+                              }`}
+                            >
+                              <FileUp size={14} className="mr-1" />
+                              {isOverdue
+                                ? `${t('tasks.submitTask')} (${t('tasks.statusOverdue')})`
+                                : t('tasks.submitTask', 'تسليم التكليف')}
+                            </Button>
+                          )
+                        ) : (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedTask(task);
+                              fetchSubmissions(task.id);
+                              setShowSubmissionsModal(true);
+                            }}
+                            className="text-[10px] py-1.5 px-3 w-full"
+                          >
+                            <CheckCircle size={14} className="mr-1" />
+                            {t('tasks.viewSubmissions', 'معاينة التسليمات')}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1057,15 +1293,164 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             <div className="text-center py-16 bg-surface-card rounded-3xl border border-dashed border-brand-border p-8">
               <ClipboardList size={48} className="mx-auto text-brand-text-muted opacity-40 mb-3" />
               <h3 className="text-base font-bold text-brand-text-primary dark:text-brand-text-main">
-                {t('COURSES.noTasksYet', 'لا توجد واجبات أو مهام دراسية مطلوبة لهذا المقرر حالياً')}
+                لا توجد تكاليف مطلوبة لهذا المقرر حالياً
               </h3>
               <p className="text-xs text-brand-text-muted mt-1">
-                {t('COURSES.noTasksDesc', 'عند إضافة واجب جديد بواسطة أستاذ المادة يظهر هنا للطلاب للرفع والتسليم.')}
+                عند إضافة تكليف جديد بواسطة أستاذ المادة يظهر هنا للطلاب للرفع والتسليم.
               </p>
             </div>
           )}
         </div>
       )}
+
+      {/* INLINE SUBMISSIONS + GRADING MODAL (COURSE DETAILS — H-7 no navigation) */}
+      <Modal
+        isOpen={showSubmissionsModal}
+        onClose={() => setShowSubmissionsModal(false)}
+        title={t('tasks.viewSubmissions', 'معاينة التسليمات')}
+        subtitle={selectedTask?.title}
+        size="xl"
+      >
+        <div className="space-y-4 pt-2">
+          {loadingSubmissions ? (
+            <div className="flex items-center justify-center py-12 gap-3">
+              <Loader2 className="animate-spin text-brand-primary-500" size={32} />
+              <p className="text-sm font-bold text-brand-text-muted">جاري تحميل التسليمات...</p>
+            </div>
+          ) : submissions.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed border-brand-border rounded-2xl">
+              <ClipboardList size={40} className="mx-auto text-brand-text-muted opacity-40 mb-2" />
+              <p className="text-sm font-bold text-brand-text-secondary">لا توجد تسليمات لهذه المهمة حتى الآن.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-brand-border">
+              {submissions.map((sub: any) => {
+                const st = submissionState[sub.id] || {};
+                const maxScore = Number(selectedTask?.maxScore || 100);
+                const rawScore = String(st.score ?? sub.score ?? '');
+                const scoreVal = parseFloat(rawScore);
+                const exceeds = !isNaN(scoreVal) && scoreVal > maxScore;
+                return (
+                  <div key={sub.id} className="py-4 flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                    <div className="lg:max-w-[40%]">
+                      <h4 className="font-bold text-sm text-brand-text-primary dark:text-brand-text-main">
+                        {sub.student?.firstName} {sub.student?.lastName} ({sub.student?.studentId})
+                      </h4>
+                      <p className="text-[10px] text-brand-text-muted mt-0.5">
+                        {formatTaskDate(sub.submittedAt || sub.createdAt)}
+                      </p>
+                      {sub.notes && (
+                        <p className="text-xs text-brand-text-sub mt-2">{sub.notes}</p>
+                      )}
+                      {sub.fileUrl && (
+                        <a
+                          href={sub.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-brand-primary-500 hover:underline font-bold inline-flex items-center gap-1 mt-2"
+                        >
+                          <FileUp size={14} /> عرض الملف المرفق
+                        </a>
+                      )}
+                    </div>
+
+                    <div className="flex-1 lg:pl-4 lg:border-l lg:border-brand-border space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-brand-text-muted mb-1">
+                            {t('tasks.grade', 'الدرجة')} (0 - {maxScore})
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={maxScore}
+                            step={0.01}
+                            value={rawScore}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setSubmissionState((prev) => ({
+                                ...prev,
+                                [sub.id]: {
+                                  ...prev[sub.id],
+                                  score: v,
+                                  scoreError:
+                                    v && parseFloat(v) > maxScore
+                                      ? t('tasks.scoreExceedsMax', { maxScore })
+                                      : undefined,
+                                },
+                              }));
+                            }}
+                            className={`w-full px-3 py-2 text-sm rounded-xl border ${
+                              st.scoreError || exceeds
+                                ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/20 focus:ring-rose-400'
+                                : 'border-brand-border bg-brand-bg-card focus:ring-brand-primary-500'
+                            } focus:outline-none focus:ring-2`}
+                            placeholder={`0 / ${maxScore}`}
+                          />
+                          {st.scoreError && (
+                            <p className="mt-1 text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                              <AlertCircle size={12} />
+                              {st.scoreError}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1">
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-brand-text-muted mb-1">
+                              {t('tasks.feedback', 'الملاحظات')}
+                            </label>
+                            <Badge
+                              variant={sub.score != null ? 'success' : 'warning'}
+                              className="text-[10px] w-full justify-center"
+                            >
+                              {sub.score != null
+                                ? `${t('tasks.grade')}: ${sub.score} / ${maxScore}`
+                                : 'لم يتم التقييم بعد'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-brand-text-muted mb-1">
+                          {t('tasks.feedback', 'الملاحظات')}
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={st.feedback ?? sub.feedback ?? ''}
+                          onChange={(e) =>
+                            setSubmissionState((prev) => ({
+                              ...prev,
+                              [sub.id]: { ...prev[sub.id], feedback: e.target.value },
+                            }))
+                          }
+                          placeholder="اكتب ملاحظات للطالب (اختياري)..."
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:ring-2 focus:ring-brand-primary-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={() => handleSaveGrade(sub.id)}
+                          disabled={st.saving}
+                          className="text-[10px] font-black uppercase tracking-widest py-2 px-4 shadow-md shadow-brand-primary-500/20"
+                        >
+                          {st.saving ? (
+                            <Loader2 className="animate-spin" size={14} />
+                          ) : (
+                            <CheckCircle size={14} />
+                          )}
+                          {st.saving ? t('common.loading') : t('tasks.saveGrade', 'حفظ الدرجة')}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* TAB 5: STUDENTS ROSTER */}
       {activeTab === 'roster' && (
@@ -1316,6 +1701,162 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           </div>
         </div>
       )}
+
+      {/* INLINE CREATE TASK MODAL */}
+      <Modal
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        title={t('tasks.createTask', 'إضافة تكليف جديد')}
+        subtitle={course?.name}
+        size="md"
+      >
+        <form onSubmit={handleCreateTask} className="space-y-4 pt-2">
+          {taskError && (
+            <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-600 rounded-xl text-xs font-bold flex items-center gap-2">
+              <AlertCircle size={16} />
+              <span>{taskError}</span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-brand-text-main mb-1">
+              {t('tasks.taskTitle', 'عنوان التكليف')}
+            </label>
+            <input
+              type="text"
+              required
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:border-brand-primary-500"
+              placeholder="مثال: واجب الأسبوع الثالث"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-text-main mb-1">
+              {t('tasks.taskDescription', 'وصف التكليف')}
+            </label>
+            <textarea
+              rows={3}
+              required
+              value={taskDesc}
+              onChange={(e) => setTaskDesc(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:border-brand-primary-500"
+              placeholder="شرح المطلوب بالتفصيل..."
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-brand-text-main mb-1">
+                {t('tasks.maxPoints', 'الدرجة الكلية')}
+              </label>
+              <input
+                type="number"
+                min={1}
+                required
+                value={taskMaxScore}
+                onChange={(e) => setTaskMaxScore(Number(e.target.value))}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:border-brand-primary-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-brand-text-main mb-1">
+                {t('tasks.due', 'موعد التسليم')}
+              </label>
+              <input
+                type="datetime-local"
+                required
+                value={taskDueDate}
+                onChange={(e) => setTaskDueDate(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:border-brand-primary-500"
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3 border-t border-brand-border">
+            <button
+              type="button"
+              onClick={() => setShowTaskModal(false)}
+              className="px-4 py-2 text-xs font-bold text-brand-text-sub hover:bg-surface-subtle rounded-xl"
+            >
+              {t('common.cancel', 'إلغاء')}
+            </button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isSubmitting}
+              className="text-xs py-2 px-5 shadow-md shadow-brand-primary-500/20"
+            >
+              {isSubmitting ? t('common.loading', 'جاري الحفظ...') : t('tasks.createTask', 'إضافة التكليف')}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* INLINE SUBMIT TASK MODAL */}
+      <Modal
+        isOpen={showSubmitModal}
+        onClose={() => setShowSubmitModal(false)}
+        title={t('tasks.submitTask', 'تسليم التكليف')}
+        subtitle={selectedTask?.title}
+        size="md"
+      >
+        <form onSubmit={handleSubmitTask} className="space-y-4 pt-2">
+          {taskError && (
+            <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-600 rounded-xl text-xs font-bold flex items-center gap-2">
+              <AlertCircle size={16} />
+              <span>{taskError}</span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-brand-text-main mb-1">
+              {t('tasks.submissionNotes', 'ملاحظات التسليم')}
+            </label>
+            <textarea
+              rows={3}
+              value={submitNotes}
+              onChange={(e) => setSubmitNotes(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:border-brand-primary-500"
+              placeholder="اكتب أي ملاحظات موجهة لأستاذ المادة..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-brand-text-main mb-1">
+              رابط الملف / الإجابة (File URL)
+            </label>
+            <input
+              type="url"
+              required
+              value={submitFileUrl}
+              onChange={(e) => setSubmitFileUrl(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:border-brand-primary-500"
+              placeholder="https://drive.google.com/..."
+            />
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3 border-t border-brand-border">
+            <button
+              type="button"
+              onClick={() => setShowSubmitModal(false)}
+              className="px-4 py-2 text-xs font-bold text-brand-text-sub hover:bg-surface-subtle rounded-xl"
+            >
+              {t('common.cancel', 'إلغاء')}
+            </button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isSubmitting}
+              className="text-xs py-2 px-5 shadow-md shadow-brand-primary-500/20"
+            >
+              {isSubmitting ? t('common.loading', 'جاري التسليم...') : t('tasks.submitTask', 'تسليم التكليف')}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
