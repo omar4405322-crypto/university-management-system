@@ -1,4 +1,5 @@
 import { body, param } from 'express-validator';
+import { fromZonedTime } from 'date-fns-tz';
 
 export const quizValidation = [
   body('title').notEmpty().withMessage('Quiz title is required').trim(),
@@ -17,14 +18,14 @@ export const quizValidation = [
 ];
 
 export const taskValidation = [
-  body('title').notEmpty().withMessage('Task title is required').trim(),
+  body('title').notEmpty().withMessage('Title is required'),
   body('description').notEmpty().withMessage('Description is required'),
-  body('courseId').isInt().withMessage('Course ID must be an integer'),
+  body('courseId').isInt().withMessage('Valid course ID is required'),
   body('dueDate')
     .isISO8601()
     .withMessage('Valid due date is required')
     .custom(value => {
-      const due = new Date(value).getTime();
+      const due = fromZonedTime(value, 'Africa/Cairo').getTime();
       const now = Date.now();
       const TOLERANCE_MS = 60 * 60 * 1000;
       if (due < now - TOLERANCE_MS) {

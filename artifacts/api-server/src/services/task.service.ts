@@ -9,6 +9,9 @@ import {
 import { getScopeWhere } from '../utils/scope.utils';
 import { notifyStudentsInCourse } from '../utils/notification.utils';
 import { auditLog } from '../utils/audit.utils';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+
+const CAIRO_TZ = 'Africa/Cairo';
 
 class TaskService {
   private static async getDoctorOrThrow(userId: number) {
@@ -155,7 +158,7 @@ class TaskService {
       limit?: number;
     }
   ) {
-    const now = new Date();
+    const now = toZonedTime(new Date(), CAIRO_TZ);
     const where: any = { NOT: { isDeleted: true } };
 
     if (courseId) {
@@ -170,8 +173,8 @@ class TaskService {
 
     if (opts?.dueFrom || opts?.dueTo) {
       where.dueDate = where.dueDate || {};
-      if (opts.dueFrom) where.dueDate.gte = new Date(opts.dueFrom);
-      if (opts.dueTo) where.dueDate.lte = new Date(opts.dueTo);
+      if (opts.dueFrom) where.dueDate.gte = fromZonedTime(opts.dueFrom, CAIRO_TZ);
+      if (opts.dueTo) where.dueDate.lte = fromZonedTime(opts.dueTo, CAIRO_TZ);
     }
 
     if (opts?.search?.trim()) {
@@ -311,9 +314,9 @@ class TaskService {
 
     if (
       data.dueDate !== undefined &&
-      existing.dueDate.getTime() !== new Date(data.dueDate).getTime()
+      existing.dueDate.getTime() !== data.dueDate.getTime()
     ) {
-      const newDueDate = new Date(data.dueDate);
+      const newDueDate = data.dueDate;
       if (newDueDate.getTime() > existing.dueDate.getTime()) {
         const formattedNewDate = newDueDate.toLocaleString('en-US', {
           year: 'numeric',
@@ -436,7 +439,8 @@ class TaskService {
       where: { taskId_studentId: { taskId, studentId: student.id } },
     });
     if (existingSubmission) {
-      if (taskObj.dueDate && taskObj.dueDate.getTime() < new Date().getTime()) {
+      const cairoNow = toZonedTime(new Date(), CAIRO_TZ);
+      if (taskObj.dueDate && taskObj.dueDate.getTime() < cairoNow.getTime()) {
         throw new ConflictError(
           'The deadline for this task has passed. Resubmission is not allowed.'
         );
