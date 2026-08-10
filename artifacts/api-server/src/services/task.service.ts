@@ -33,6 +33,9 @@ class TaskService {
   ) {
     const courseScope: any = getScopeWhere(user, 'course');
     if (courseScope && Object.keys(courseScope).length) {
+      if (courseScope.id === -1) {
+        throw new AuthorizationError('Access denied');
+      }
       if (
         courseScope.department &&
         course.department?.collegeId !== courseScope.department.collegeId
