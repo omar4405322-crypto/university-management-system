@@ -171,8 +171,8 @@ const TasksList = () => {
     if (!task || !user) return false;
     if (user.role !== 'DOCTOR') return true;
     return (
-      String(task.doctor?.userId || task.doctorId || '') === String(user.id) ||
-      String(task.doctorId || '') === String(task.doctorId)
+      String(task.doctor?.userId || '') === String(user.id) ||
+      String(task.doctorId || '') === String(user.doctor?.id || '')
     );
   };
 

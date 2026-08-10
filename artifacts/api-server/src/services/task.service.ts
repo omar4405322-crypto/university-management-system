@@ -223,7 +223,7 @@ class TaskService {
       where,
       include: {
         course: { select: { name: true, courseCode: true, year: true } },
-        doctor: { select: { firstName: true, lastName: true } },
+        doctor: { select: { firstName: true, lastName: true, userId: true } },
         _count: { select: { submissions: true } },
       },
       orderBy,
@@ -263,8 +263,8 @@ class TaskService {
       where: { id: taskId },
       data: updateData,
       include: {
-        course: { select: { name: true, courseCode: true } },
-        doctor: { select: { firstName: true, lastName: true } },
+        course: { select: { name: true, courseCode: true, year: true } },
+        doctor: { select: { firstName: true, lastName: true, userId: true } },
         _count: { select: { submissions: true } },
       },
     });
