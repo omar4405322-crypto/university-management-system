@@ -280,7 +280,9 @@
     "searchStudentPlaceholder": "ابحث باسم الطالب أو الرقم الجامعي...",
     "doctorRole": "أستاذ المادة (دكتور)",
     "taRole": "مساعد التدريس (معيد)",
-    "noStudentsPresent": "لا يوجد طلاب حاضرون حالياً في هذه الجلسة"
+    "noStudentsPresent": "لا يوجد طلاب حاضرون حالياً في هذه الجلسة",
+    "loadCoursesError": "حدث خطأ أثناء تحميل المقررات",
+    "startSessionError": "فشل بدء الجلسة"
   },
   "auth": {
     "admin": "مدير",
@@ -921,7 +923,7 @@
     "allStatuses": "كل الحالات",
     "statusUpcoming": "قادم",
     "statusToday": "اليوم",
-    "statusCompleted": "منتهي",
+    "statusCompleted": "تم التسليم",
     "sortDateAsc": "التاريخ: الأقرب أولاً",
     "sortDateDesc": "التاريخ: الأبعد أولاً",
     "examColumn": "الامتحان",
@@ -960,7 +962,6 @@
     "submittedBannerTitle": "تم تسليم الإجابات بنجاح",
     "submittedBannerDesc": "لقد قمت بإجراء هذا الامتحان وتسليمه بنجاح. يمكنك الاطلاع على النتيجة أو انتظار الرصد النهائي.",
     "statusAvailable": "متاح للبدء",
-    "statusCompleted": "تم التسليم",
     "generalDepartment": "قسم عام",
     "yearLevel": "الفرقة",
     "yearLevel1": "الفرقة الأولى",

@@ -55,7 +55,7 @@ export function FacultyAttendanceDashboard() {
       })
       .catch((err: any) => {
         console.error('Failed to load my-courses:', err);
-        setError(t('', ''));
+        setError(t('attendance.loadCoursesError', 'حدث خطأ أثناء تحميل المقررات'));
       });
   }, [t]);
 
@@ -128,15 +128,26 @@ export function FacultyAttendanceDashboard() {
         }
       }, 500);
 
+      let currentInterval = 3000;
+      const poll = async () => {
+        const success = await fetchSessionData();
+        if (success) {
+          currentInterval = 3000;
+        } else {
+          currentInterval = Math.min(currentInterval * 2, 30000);
+        }
+        pollingRef.current = setTimeout(poll, currentInterval);
+      };
+
       // Immediate first sync of session data
       fetchSessionData();
 
-      // Poll session data (flagged records, present count, roster, instructors)
-      pollingRef.current = setInterval(fetchSessionData, 3000);
+      // Start polling
+      pollingRef.current = setTimeout(poll, currentInterval);
 
       return () => {
         if (timerRef.current) clearInterval(timerRef.current);
-        if (pollingRef.current) clearInterval(pollingRef.current);
+        if (pollingRef.current) clearTimeout(pollingRef.current);
       };
     }
     return undefined;
@@ -156,8 +167,8 @@ export function FacultyAttendanceDashboard() {
     }
   };
 
-  const fetchSessionData = async () => {
-    if (!activeSession?.sessionId) return;
+  const fetchSessionData = async (): Promise<boolean> => {
+    if (!activeSession?.sessionId) return false;
     try {
       // Fetch flagged
       const flaggedRes = await attendanceService.getFlaggedRecords(activeSession.sessionId);
@@ -167,14 +178,14 @@ export function FacultyAttendanceDashboard() {
       const rosterRes = await attendanceService.getSessionRoster(activeSession.sessionId);
       if (rosterRes.data) {
         setRoster(rosterRes.data);
-        const present = rosterRes.data.filter((s: RosterStudent) => s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE').length;
-
       }
       if (rosterRes.instructors) {
         setInstructors(rosterRes.instructors);
       }
+      return true;
     } catch (err) {
       console.error('Failed to sync session data', err);
+      return false;
     }
   };
 
@@ -229,7 +240,7 @@ export function FacultyAttendanceDashboard() {
       setActiveSession(res.data);
       setSelectedCourseId(courseId);
     } catch (err: any) {
-      setError(err.response?.data?.message || t('', ''));
+      setError(err.response?.data?.message || t('attendance.startSessionError', 'فشل بدء الجلسة'));
     } finally {
       setLoading(false);
     }
@@ -496,16 +507,6 @@ export function FacultyAttendanceDashboard() {
                       }`}
                     >
                       الكل
-                    </button>
-                    <button
-                      onClick={() => setRosterFilter('ABSENT')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        rosterFilter === 'ABSENT'
-                          ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                      }`}
-                    >
-                      {t('attendance.absent', 'الغائبون')}
                     </button>
                   </div>
                 </div>
@@ -1071,7 +1072,7 @@ export function FacultyAttendanceDashboard() {
                     className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-brand-primary-600 dark:hover:bg-brand-primary-700 text-white rounded-xl py-5 font-bold shadow-sm flex items-center justify-center gap-2"
                   >
                     <Play className="w-4 h-4" />
-                    {t('', '')}
+                    {t('attendance.startSession', 'بدء جلسة الحضور')}
                   </Button>
                 </CardContent>
               </Card>
