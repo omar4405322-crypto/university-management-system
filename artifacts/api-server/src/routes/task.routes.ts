@@ -11,7 +11,7 @@ import {
 } from '../controllers/task.controller';
 import { protect, authorize } from '../middleware/auth.middleware';
 import { taskValidation, functionalIdValidation } from '../validations/functional.validation';
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import validate from '../middleware/validate.middleware';
 
 const router = express.Router();
@@ -20,7 +20,40 @@ router.use(protect);
 
 router.post('/', authorize('DOCTOR'), taskValidation, validate, createTask);
 
-router.get('/', getTasks);
+router.get(
+  '/',
+  [
+    query('courseId').optional().isInt({ min: 1 }).withMessage('courseId must be a positive integer'),
+    query('status')
+      .optional()
+      .isIn(['ACTIVE', 'OVERDUE'])
+      .withMessage('status must be one of: ACTIVE, OVERDUE'),
+    query('dueFrom')
+      .optional()
+      .isISO8601()
+      .withMessage('dueFrom must be a valid ISO 8601 date'),
+    query('dueTo')
+      .optional()
+      .isISO8601()
+      .withMessage('dueTo must be a valid ISO 8601 date'),
+    query('sortBy')
+      .optional()
+      .isIn([
+        'DUE_DATE_ASC',
+        'DUE_DATE_DESC',
+        'CREATED_AT_ASC',
+        'CREATED_AT_DESC',
+        'SUBMISSIONS_COUNT_ASC',
+        'SUBMISSIONS_COUNT_DESC',
+      ])
+      .withMessage(
+        'sortBy must be one of: DUE_DATE_ASC, DUE_DATE_DESC, CREATED_AT_ASC, CREATED_AT_DESC, SUBMISSIONS_COUNT_ASC, SUBMISSIONS_COUNT_DESC'
+      ),
+    query('search').optional().trim(),
+  ],
+  validate,
+  getTasks
+);
 
 router.put(
   '/:id',
@@ -62,7 +95,25 @@ router.put(
 router.get(
   '/:id/submissions',
   authorize('DOCTOR', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN'),
-  functionalIdValidation,
+  [
+    ...functionalIdValidation,
+    query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
+    query('limit')
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage('limit must be an integer between 1 and 100'),
+    query('search').optional().trim(),
+    query('status')
+      .optional()
+      .isIn(['ALL', 'SUBMITTED', 'GRADED', 'UNGRADED', 'LATE', 'NOT_SUBMITTED'])
+      .withMessage(
+        'status must be one of: ALL, SUBMITTED, GRADED, UNGRADED, LATE, NOT_SUBMITTED'
+      ),
+    query('studentYear')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('studentYear must be a positive integer'),
+  ],
   validate,
   getTaskSubmissions
 );

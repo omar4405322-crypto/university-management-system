@@ -1,7 +1,8 @@
-// @ts-nocheck
-import React, { useState, useEffect, useMemo } from 'react';
-import taskService from '../../services/task.service';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import taskService, { GetTasksParams } from '../../services/task.service';
 import coursesService from '../../services/courses.service';
+import SubmissionsGradingModal from '../../components/tasks/SubmissionsGradingModal';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import {
@@ -18,6 +19,9 @@ import {
   Pencil,
   Trash2,
   MessageSquare,
+  Search,
+  Filter,
+  RotateCcw,
 } from 'lucide-react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -62,6 +66,39 @@ const TasksList = () => {
     user?.role === 'DEPARTMENT_ADMIN';
   const isStudent = user?.role === 'STUDENT';
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const courseIdParam = searchParams.get('courseId') || '';
+  const statusParam = searchParams.get('status') || '';
+  const dueFromParam = searchParams.get('dueFrom') || '';
+  const dueToParam = searchParams.get('dueTo') || '';
+  const sortByParam = searchParams.get('sortBy') || '';
+  const searchParam = searchParams.get('search') || '';
+
+  const updateParam = (key: string, val: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (val) {
+        next.set(key, val);
+      } else {
+        next.delete(key);
+      }
+      return next;
+    });
+  };
+
+  const clearAllFilters = () => {
+    setSearchParams(new URLSearchParams());
+  };
+
+  const hasActiveFilters =
+    !!courseIdParam ||
+    !!statusParam ||
+    !!dueFromParam ||
+    !!dueToParam ||
+    !!sortByParam ||
+    !!searchParam;
+
   const [tasks, setTasks] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,10 +109,7 @@ const TasksList = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [editingTask, setEditingTask] = useState<any>(null);
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [mySubmissions, setMySubmissions] = useState<Record<number, any>>({});
-  const [submissionState, setSubmissionState] = useState<Record<number, SubmissionState>>({});
 
   const {
     register: registerCreate,
@@ -126,14 +160,14 @@ const TasksList = () => {
     if (showSubmitModal) resetSubmit();
   }, [showSubmitModal, resetSubmit]);
 
-  const showToast = (message, type = 'info') => {
+  const showToast = (message: string, type = 'info') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
   };
 
-  const isOverdue = (dueDate) => new Date(dueDate) < new Date();
+  const isOverdue = (dueDate: string | Date) => new Date(dueDate) < new Date();
 
-  const isTaskOwner = (task) => {
+  const isTaskOwner = (task: any) => {
     if (!task || !user) return false;
     if (user.role !== 'DOCTOR') return true;
     return (
@@ -142,10 +176,18 @@ const TasksList = () => {
     );
   };
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
-      const result = await taskService.getTasks();
+      const params: GetTasksParams = {};
+      if (courseIdParam) params.courseId = Number(courseIdParam);
+      if (statusParam) params.status = statusParam as any;
+      if (dueFromParam) params.dueFrom = dueFromParam;
+      if (dueToParam) params.dueTo = dueToParam;
+      if (sortByParam) params.sortBy = sortByParam as any;
+      if (searchParam) params.search = searchParam;
+
+      const result = await taskService.getTasks(params);
       if (result.success) {
         setTasks(result.data || []);
       }
@@ -154,7 +196,7 @@ const TasksList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseIdParam, statusParam, dueFromParam, dueToParam, sortByParam, searchParam, t]);
 
   const fetchCourses = async () => {
     try {
@@ -167,29 +209,6 @@ const TasksList = () => {
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
-    }
-  };
-
-  const fetchSubmissions = async (taskId) => {
-    try {
-      setLoadingSubmissions(true);
-      const result = await taskService.getTaskSubmissions(taskId);
-      if (result.success) {
-        const data = result.data || [];
-        setSubmissions(data);
-        const initialState: Record<number, SubmissionState> = {};
-        data.forEach((s) => {
-          initialState[s.id] = {
-            score: s.score != null ? String(s.score) : '',
-            feedback: s.feedback || '',
-          };
-        });
-        setSubmissionState(initialState);
-      }
-    } catch (error) {
-      console.error('Error fetching submissions:', error);
-    } finally {
-      setLoadingSubmissions(false);
     }
   };
 
@@ -209,6 +228,9 @@ const TasksList = () => {
 
   useEffect(() => {
     fetchTasks();
+  }, [fetchTasks]);
+
+  useEffect(() => {
     if (isDoctor) fetchCourses();
   }, [isDoctor]);
 
@@ -218,7 +240,7 @@ const TasksList = () => {
     }
   }, [tasks, isStudent]);
 
-  const onCreateSubmit = async (data) => {
+  const onCreateSubmit = async (data: any) => {
     try {
       let result;
       if (editingTask) {
@@ -249,7 +271,7 @@ const TasksList = () => {
     }
   };
 
-  const onSubmitTask = async (data) => {
+  const onSubmitTask = async (data: any) => {
     try {
       const result = await taskService.submitTask(selectedTask.id, data);
       if (result.success) {
@@ -264,60 +286,6 @@ const TasksList = () => {
         error.response?.data?.message || t('tasks.submitError'),
         'error'
       );
-    }
-  };
-
-  const onSaveGrade = async (submissionId: number) => {
-    if (!selectedTask) return;
-    const state = submissionState[submissionId] || {};
-    const scoreNum = parseFloat(String(state.score));
-    const maxScore = Number(selectedTask.maxScore || 100);
-    if (isNaN(scoreNum) || scoreNum < 0) {
-      setSubmissionState((prev) => ({
-        ...prev,
-        [submissionId]: {
-          ...prev[submissionId],
-          scoreError: 'Invalid score',
-        },
-      }));
-      return;
-    }
-    if (scoreNum > maxScore) {
-      setSubmissionState((prev) => ({
-        ...prev,
-        [submissionId]: {
-          ...prev[submissionId],
-          scoreError: t('tasks.scoreExceedsMax', { maxScore }),
-        },
-      }));
-      return;
-    }
-    try {
-      setSubmissionState((prev) => ({
-        ...prev,
-        [submissionId]: { ...prev[submissionId], saving: true, scoreError: undefined },
-      }));
-      const result = await taskService.gradeSubmission(
-        selectedTask.id,
-        submissionId,
-        { score: scoreNum, feedback: state.feedback }
-      );
-      if (result.success) {
-        showToast(t('tasks.gradeSaved'), 'success');
-        fetchSubmissions(selectedTask.id);
-      } else {
-        showToast(result.message || t('tasks.gradeError'), 'error');
-      }
-    } catch (e: any) {
-      showToast(
-        e.response?.data?.message || t('tasks.gradeError'),
-        'error'
-      );
-    } finally {
-      setSubmissionState((prev) => ({
-        ...prev,
-        [submissionId]: { ...prev[submissionId], saving: false },
-      }));
     }
   };
 
@@ -342,7 +310,7 @@ const TasksList = () => {
   };
 
   const locale = i18n.language === 'ar' ? 'ar-EG' : 'en-US';
-  const formatDate = (d) =>
+  const formatDate = (d: any) =>
     d
       ? new Date(d).toLocaleDateString(locale, {
           year: 'numeric',
@@ -353,7 +321,7 @@ const TasksList = () => {
         })
       : '—';
 
-  const renderStudentStatusBadge = (task) => {
+  const renderStudentStatusBadge = (task: any) => {
     const my = mySubmissions[task.id];
     if (my && my.score != null) {
       return (
@@ -387,7 +355,7 @@ const TasksList = () => {
     }
     if (isOverdue(task.dueDate)) {
       return (
-        <Badge variant="error" className="text-[10px] font-black">
+        <Badge variant="danger" className="text-[10px] font-black">
           {t('tasks.statusOverdue')}
         </Badge>
       );
@@ -395,7 +363,7 @@ const TasksList = () => {
     return null;
   };
 
-  const renderStudentButton = (task) => {
+  const renderStudentButton = (task: any) => {
     const my = mySubmissions[task.id];
     if (my) {
       return (
@@ -459,9 +427,108 @@ const TasksList = () => {
                   setShowCreateModal(true);
                 },
               }
-            : null
+            : undefined
         }
       />
+
+      {/* Task Filters Bar synced with URL searchParams */}
+      <Card className="p-4 mb-6">
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* Search */}
+            <div className="relative lg:col-span-2">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-muted" />
+              <input
+                type="text"
+                value={searchParam}
+                onChange={(e) => updateParam('search', e.target.value)}
+                placeholder={t('common.search', 'Search assignments...')}
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:ring-2 focus:ring-brand-primary-500"
+              />
+            </div>
+
+            {/* Course Dropdown */}
+            {isDoctor && courses.length > 0 && (
+              <div>
+                <select
+                  value={courseIdParam}
+                  onChange={(e) => updateParam('courseId', e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:ring-2 focus:ring-brand-primary-500"
+                >
+                  <option value="">{t('tasks.allCourses', 'All Courses')}</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.courseCode})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Task Status */}
+            <div>
+              <select
+                value={statusParam}
+                onChange={(e) => updateParam('status', e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:ring-2 focus:ring-brand-primary-500"
+              >
+                <option value="">{t('tasks.allStatus', 'All Statuses')}</option>
+                <option value="ACTIVE">{t('tasks.statusActive', 'Active')}</option>
+                <option value="OVERDUE">{t('tasks.statusOverdue', 'Overdue')}</option>
+              </select>
+            </div>
+
+            {/* Sort By */}
+            <div>
+              <select
+                value={sortByParam}
+                onChange={(e) => updateParam('sortBy', e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:ring-2 focus:ring-brand-primary-500"
+              >
+                <option value="">{t('tasks.sortByDefault', 'Sort By: Default')}</option>
+                <option value="DUE_DATE_ASC">{t('tasks.sortDueAsc', 'Due Date (Earliest)')}</option>
+                <option value="DUE_DATE_DESC">{t('tasks.sortDueDesc', 'Due Date (Latest)')}</option>
+                <option value="CREATED_AT_DESC">{t('tasks.sortCreatedDesc', 'Newest First')}</option>
+                <option value="SUBMISSIONS_COUNT_DESC">{t('tasks.sortSubmissionsDesc', 'Most Submissions')}</option>
+              </select>
+            </div>
+
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <div className="flex items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="w-full text-xs py-2 gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50"
+                >
+                  <RotateCcw size={14} />
+                  {t('common.clearFilters', 'Reset')}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-brand-border text-xs text-brand-text-muted">
+            <span className="font-bold">{t('tasks.dueDateFilter', 'Due Date Range')}:</span>
+            <input
+              type="date"
+              value={dueFromParam}
+              onChange={(e) => updateParam('dueFrom', e.target.value)}
+              className="px-2 py-1 text-xs rounded-lg border border-brand-border bg-brand-bg-card"
+              title="Due From"
+            />
+            <span>→</span>
+            <input
+              type="date"
+              value={dueToParam}
+              onChange={(e) => updateParam('dueTo', e.target.value)}
+              className="px-2 py-1 text-xs rounded-lg border border-brand-border bg-brand-bg-card"
+              title="Due To"
+            />
+          </div>
+        </div>
+      </Card>
 
       {/* Create/Edit Task Modal */}
       <Modal
@@ -671,184 +738,11 @@ const TasksList = () => {
       </Modal>
 
       {/* Submissions & Grading Modal */}
-      <Modal
+      <SubmissionsGradingModal
         isOpen={showSubmissionsModal}
         onClose={() => setShowSubmissionsModal(false)}
-        title={t('tasks.viewSubmissions')}
-        subtitle={selectedTask?.title}
-        size="xl"
-      >
-        <div className="space-y-4 pt-2">
-          {loadingSubmissions ? (
-            <div className="flex items-center justify-center py-12 gap-3">
-              <Loader2
-                className="animate-spin text-brand-primary-500"
-                size={32}
-              />
-              <p className="text-sm font-bold text-brand-text-muted">
-                جاري تحميل التسليمات...
-              </p>
-            </div>
-          ) : submissions.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-brand-border rounded-2xl">
-              <ClipboardList
-                size={40}
-                className="mx-auto text-brand-text-muted opacity-40 mb-2"
-              />
-              <p className="text-sm font-bold text-brand-text-secondary">
-                لا توجد تسليمات لهذه المهمة حتى الآن.
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-brand-border">
-              {submissions.map((sub: any) => {
-                const st = submissionState[sub.id] || {};
-                const maxScore = Number(selectedTask?.maxScore || 100);
-                const rawScore = String(st.score ?? sub.score ?? '');
-                const scoreVal = parseFloat(rawScore);
-                const exceeds =
-                  !isNaN(scoreVal) && scoreVal > maxScore;
-                return (
-                  <div
-                    key={sub.id}
-                    className="py-4 flex flex-col lg:flex-row lg:items-start justify-between gap-4"
-                  >
-                    <div className="lg:max-w-[40%]">
-                      <h4 className="font-bold text-sm text-brand-text-primary dark:text-brand-text-main">
-                        {sub.student?.firstName} {sub.student?.lastName} (
-                        {sub.student?.studentId})
-                      </h4>
-                      <p className="text-[10px] text-brand-text-muted mt-0.5">
-                        {formatDate(sub.submittedAt || sub.createdAt)}
-                      </p>
-                      {sub.notes && (
-                        <p className="text-xs text-brand-text-sub mt-2">
-                          {sub.notes}
-                        </p>
-                      )}
-                      {sub.fileUrl && (
-                        <a
-                          href={sub.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-brand-primary-500 hover:underline font-bold inline-flex items-center gap-1 mt-2"
-                        >
-                          <FileUp size={14} /> عرض الملف المرفق
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="flex-1 lg:pl-4 lg:border-l lg:border-brand-border space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-brand-text-muted mb-1">
-                            {t('tasks.grade')} (0 - {maxScore})
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min={0}
-                              max={maxScore}
-                              step={0.01}
-                              value={rawScore}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setSubmissionState((prev) => ({
-                                  ...prev,
-                                  [sub.id]: {
-                                    ...prev[sub.id],
-                                    score: v,
-                                    scoreError:
-                                      v &&
-                                      parseFloat(v) > maxScore
-                                        ? t('tasks.scoreExceedsMax', {
-                                            maxScore,
-                                          })
-                                        : undefined,
-                                  },
-                                }));
-                              }}
-                              className={`w-full px-3 py-2 text-sm rounded-xl border ${
-                                st.scoreError || exceeds
-                                  ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/20 focus:ring-rose-400'
-                                  : 'border-brand-border bg-brand-bg-card focus:ring-brand-primary-500'
-                              } focus:outline-none focus:ring-2`}
-                              placeholder={`0 / ${maxScore}`}
-                            />
-                          </div>
-                          {st.scoreError && (
-                            <p className="mt-1 text-[10px] font-bold text-rose-600 flex items-center gap-1">
-                              <AlertCircle size={12} />
-                              {st.scoreError}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex items-end gap-2">
-                          <div className="flex-1">
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-brand-text-muted mb-1">
-                              {t('tasks.feedback')}
-                            </label>
-                            <Badge
-                              variant={sub.score != null ? 'success' : 'warning'}
-                              className="text-[10px] w-full justify-center"
-                            >
-                              {sub.score != null
-                                ? `${t('tasks.grade')}: ${sub.score} / ${maxScore}`
-                                : 'لم يتم التقييم بعد'}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-brand-text-muted mb-1">
-                          {t('tasks.feedback')}
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={st.feedback ?? sub.feedback ?? ''}
-                          onChange={(e) =>
-                            setSubmissionState((prev) => ({
-                              ...prev,
-                              [sub.id]: {
-                                ...prev[sub.id],
-                                feedback: e.target.value,
-                              },
-                            }))
-                          }
-                          placeholder="اكتب ملاحظات للطالب (اختياري)..."
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:ring-2 focus:ring-brand-primary-500 focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="flex justify-end">
-                        <Button
-                          onClick={() => onSaveGrade(sub.id)}
-                          disabled={st.saving}
-                          className="text-[10px] font-black uppercase tracking-widest py-2 px-4 shadow-md shadow-brand-primary-500/20"
-                        >
-                          {st.saving ? (
-                            <Loader2
-                              className="animate-spin"
-                              size={14}
-                            />
-                          ) : (
-                            <CheckCircle size={14} />
-                          )}
-                          {st.saving
-                            ? t('common.loading')
-                            : t('tasks.saveGrade')}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </Modal>
+        task={selectedTask}
+      />
 
       {/* Delete Confirmation */}
       <Modal
@@ -937,7 +831,7 @@ const TasksList = () => {
                       label: t('tasks.createTask'),
                       onClick: () => setShowCreateModal(true),
                     }
-                  : null
+                  : undefined
               }
             />
           </div>
@@ -1047,7 +941,6 @@ const TasksList = () => {
                     variant="outline"
                     onClick={() => {
                       setSelectedTask(task);
-                      fetchSubmissions(task.id);
                       setShowSubmissionsModal(true);
                     }}
                     className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 border-slate-200"

@@ -21,11 +21,25 @@ export const createTask = catchAsync(
 
 export const getTasks = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { courseId } = req.query;
+    const { courseId, status, dueFrom, dueTo, sortBy, search } = req.query;
 
     const tasks = await TaskService.getTasks(
       req.user!,
-      courseId ? parseInt(courseId as string) : undefined
+      courseId ? parseInt(courseId as string) : undefined,
+      {
+        status: status as ('ACTIVE' | 'OVERDUE') | undefined,
+        dueFrom: dueFrom ? new Date(dueFrom as string) : undefined,
+        dueTo: dueTo ? new Date(dueTo as string) : undefined,
+        sortBy: sortBy as (
+          | 'DUE_DATE_ASC'
+          | 'DUE_DATE_DESC'
+          | 'CREATED_AT_ASC'
+          | 'CREATED_AT_DESC'
+          | 'SUBMISSIONS_COUNT_ASC'
+          | 'SUBMISSIONS_COUNT_DESC'
+        ) | undefined,
+        search: search as string | undefined,
+      }
     );
 
     return res.json({ success: true, data: tasks });
@@ -118,10 +132,25 @@ export const gradeSubmission = catchAsync(
 export const getTaskSubmissions = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
+    const { page, limit, search, status, studentYear } = req.query;
 
     const submissions = await TaskService.getTaskSubmissions(
       req.user!,
-      parseInt(id as string)
+      parseInt(id as string),
+      {
+        page: page ? parseInt(page as string) : undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+        search: search as string | undefined,
+        status: status as (
+          | 'ALL'
+          | 'SUBMITTED'
+          | 'GRADED'
+          | 'UNGRADED'
+          | 'LATE'
+          | 'NOT_SUBMITTED'
+        ) | undefined,
+        studentYear: studentYear ? parseInt(studentYear as string) : undefined,
+      }
     );
 
     return res.json({ success: true, data: submissions });
