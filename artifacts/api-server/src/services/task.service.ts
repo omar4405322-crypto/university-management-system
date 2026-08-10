@@ -212,6 +212,8 @@ class TaskService {
         where.course = courseScope.department;
       } else if (courseScope.departmentId) {
         where.course = { departmentId: courseScope.departmentId };
+      } else if (courseScope.id === -1) {
+        where.course = { id: -1 };
       }
     }
 
