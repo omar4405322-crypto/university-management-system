@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import catchAsync from '../utils/catchAsync';
 import { TaskService } from '../services/task.service';
 import { ConflictError } from '../utils/appError';
+import { fromZonedTime } from 'date-fns-tz';
 
 export const createTask = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -11,7 +12,7 @@ export const createTask = catchAsync(
       title,
       description,
       courseId: parseInt(courseId as string),
-      dueDate: new Date(dueDate as string),
+      dueDate: fromZonedTime(dueDate as string, 'Africa/Cairo'),
       maxScore: parseInt(maxScore as string) || 100,
     });
 
@@ -60,7 +61,7 @@ export const updateTask = catchAsync(
       {
         title,
         description,
-        dueDate: dueDate != null ? new Date(dueDate as string) : undefined,
+        dueDate: dueDate != null ? fromZonedTime(dueDate as string, 'Africa/Cairo') : undefined,
         maxScore: maxScore != null ? parseInt(maxScore as string) : undefined,
       }
     );
