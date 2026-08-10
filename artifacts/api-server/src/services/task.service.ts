@@ -371,6 +371,21 @@ class TaskService {
     taskId: number,
     data: { notes?: string; fileUrl?: string }
   ) {
+    if (data.fileUrl) {
+      const url = data.fileUrl.trim();
+      if (url.length > 500) {
+        throw new ValidationError('File URL is too long');
+      }
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          throw new ValidationError('File URL must start with http or https');
+        }
+      } catch (e) {
+        throw new ValidationError('Invalid file URL format');
+      }
+    }
+
     const student = await TaskService.getStudentOrThrow(user.id);
 
     const taskObj = await prisma.task.findUnique({
