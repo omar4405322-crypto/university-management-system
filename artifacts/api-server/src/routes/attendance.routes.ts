@@ -271,6 +271,8 @@ router.post(
   '/scan-qr',
   protect,
   qrLimiter,
+  body('token').notEmpty().withMessage('يجب توفير رمز الاستجابة السريعة (TOTP)'),
+  validate,
   attendanceController.recordAttendanceQr
 );
 
