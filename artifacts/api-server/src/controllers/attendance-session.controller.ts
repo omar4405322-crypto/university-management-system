@@ -78,6 +78,7 @@ export const getSlotSessions = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { slotId } = req.params;
     const data = await AttendanceSessionService.getSlotSessions(
+      req.user,
       parseInt(slotId as string)
     );
     res.json({ success: true, data });

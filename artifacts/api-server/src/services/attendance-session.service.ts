@@ -485,7 +485,29 @@ class AttendanceSessionService {
     });
   }
 
-  static async getSlotSessions(slotId: number) {
+  static async getSlotSessions(user: any, slotId: number) {
+    const slot = await prisma.scheduleSlot.findUnique({
+      where: { id: slotId },
+    });
+    
+    if (!slot) {
+      throw new AppError('Schedule slot not found', 404);
+    }
+    
+    let isOwner = false;
+    if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
+      isOwner = true;
+    } else if (user.role === 'DOCTOR') {
+      const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
+      if (doctor && slot.doctorId === doctor.id) isOwner = true;
+    } else if (user.role === 'TEACHING_ASSISTANT') {
+      const ta = await prisma.teachingAssistant.findUnique({ where: { userId: user.id } });
+      if (ta && slot.teachingAssistantId === ta.id) isOwner = true;
+    }
+    
+    if (!isOwner) {
+      throw new AppError('Not authorized to view sessions for this slot', 403);
+    }
     return prisma.attendanceSession.findMany({
       where: { scheduleSlotId: slotId },
       orderBy: { createdAt: 'desc' },
