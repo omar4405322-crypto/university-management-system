@@ -74,6 +74,7 @@ const TasksList = () => {
   const dueToParam = searchParams.get('dueTo') || '';
   const sortByParam = searchParams.get('sortBy') || '';
   const searchParam = searchParams.get('search') || '';
+  const yearParam = searchParams.get('year') || '';
 
   const updateParam = (key: string, val: string) => {
     setSearchParams((prev) => {
@@ -97,7 +98,8 @@ const TasksList = () => {
     !!dueFromParam ||
     !!dueToParam ||
     !!sortByParam ||
-    !!searchParam;
+    !!searchParam ||
+    !!yearParam;
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
@@ -184,8 +186,9 @@ const TasksList = () => {
       if (statusParam) params.status = statusParam as any;
       if (dueFromParam) params.dueFrom = dueFromParam;
       if (dueToParam) params.dueTo = dueToParam;
-      if (sortByParam) params.sortBy = sortByParam as any;
+      if (sortByParam) params.sortBy = sortByParam as GetTasksParams['sortBy'];
       if (searchParam) params.search = searchParam;
+      if (yearParam) params.year = Number(yearParam);
 
       const result = await taskService.getTasks(params);
       if (result.success) {
@@ -482,6 +485,21 @@ const TasksList = () => {
                 </select>
               </div>
             )}
+
+            {/* Year Filter */}
+            <div>
+              <select
+                value={yearParam}
+                onChange={(e) => updateParam('year', e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:ring-2 focus:ring-brand-primary-500"
+              >
+                <option value="">{t('common.allYears', 'All Years')}</option>
+                <option value="1">{t('common.year1', 'First Year')}</option>
+                <option value="2">{t('common.year2', 'Second Year')}</option>
+                <option value="3">{t('common.year3', 'Third Year')}</option>
+                <option value="4">{t('common.year4', 'Fourth Year')}</option>
+              </select>
+            </div>
 
             {/* Task Status */}
             <div>

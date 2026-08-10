@@ -148,6 +148,7 @@ class TaskService {
         | 'SUBMISSIONS_COUNT_ASC'
         | 'SUBMISSIONS_COUNT_DESC';
       search?: string;
+      year?: number;
     }
   ) {
     const now = new Date();
@@ -175,6 +176,13 @@ class TaskService {
         { title: { contains: q, mode: 'insensitive' } },
         { description: { contains: q, mode: 'insensitive' } },
       ];
+    }
+    
+    if (opts?.year != null && !Number.isNaN(opts.year)) {
+      where.course = {
+        ...where.course,
+        year: Number(opts.year)
+      };
     }
 
     if (user.role === 'DOCTOR') {
