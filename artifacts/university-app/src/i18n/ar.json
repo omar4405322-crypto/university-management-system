@@ -1600,8 +1600,12 @@
     "statusInactive": "غير نشط"
   },
   "tasks": {
-    "createTask": "إضافة تكليف جديد",
+    "createTask": "إنشاء تكليف جديد",
     "editTask": "تعديل التكليف",
+    "fileUrlLabel": "رابط الملف / الإجابة (File URL)",
+    "submissionsCountLabel": "{{count}} تسليم(ات) موجود(ة)",
+    "points": "النقاط",
+    "course": "المادة",
     "deleteTask": "حذف التكليف",
     "due": "موعد التسليم",
     "gradeSubmissions": "تقييم التسليمات",

@@ -1495,6 +1495,10 @@
   "tasks": {
     "createTask": "Create Assignment",
     "editTask": "Edit Assignment",
+    "fileUrlLabel": "File URL / Answer",
+    "submissionsCountLabel": "{{count}} existing submission(s)",
+    "points": "Points",
+    "course": "Course",
     "deleteTask": "Delete Assignment",
     "due": "Due",
     "gradeSubmissions": "Grade Submissions",
