@@ -256,7 +256,18 @@ class TaskService {
     const updateData: any = {};
     if (data.title !== undefined) updateData.title = data.title;
     if (data.description !== undefined) updateData.description = data.description;
-    if (data.dueDate !== undefined) updateData.dueDate = new Date(data.dueDate);
+    if (data.dueDate !== undefined) {
+      const newDueDate = new Date(data.dueDate);
+      const earliestSubmission = await prisma.taskSubmission.findFirst({
+        where: { taskId },
+        orderBy: { submittedAt: 'asc' },
+        select: { submittedAt: true },
+      });
+      if (earliestSubmission && newDueDate.getTime() < earliestSubmission.submittedAt.getTime()) {
+        throw new ValidationError('Cannot set due date earlier than existing submissions');
+      }
+      updateData.dueDate = newDueDate;
+    }
     if (data.maxScore !== undefined) updateData.maxScore = data.maxScore;
 
     const updated = await prisma.task.update({
