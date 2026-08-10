@@ -96,7 +96,7 @@ class AttendanceEngine {
           intent.deviceId &&
           intent.ipAddress &&
           intent.sessionId &&
-          intent.method === 'QR'
+          intent.method === 'QR' // Duplicate-device check intentionally only applies to QR method, manual entry from faculty device is expected
         ) {
           const duplicate = await tx.attendance.findFirst({
             where: {
@@ -173,10 +173,9 @@ class AttendanceEngine {
           status: intent.status || 'PRESENT',
           method: intent.method,
           ...(intent.remarks !== undefined && { remarks: intent.remarks }),
-          ...(intent.recordedById !== undefined &&
-            intent.recordedById !== null && {
-              recordedById: intent.recordedById,
-            }),
+          ...(intent.recordedById !== undefined && {
+            recordedById: intent.recordedById,
+          }),
           ...(intent.ipAddress !== undefined && {
             ipAddress: intent.ipAddress,
           }),
@@ -204,15 +203,15 @@ class AttendanceEngine {
           status: intent.status || 'PRESENT',
           method: intent.method,
           ...(intent.remarks && { remarks: intent.remarks }),
-          ...(intent.recordedById && {
-            recordedBy: { connect: { id: intent.recordedById } },
+          ...(intent.recordedById !== undefined && {
+            recordedById: intent.recordedById,
           }),
           ...(intent.ipAddress && { ipAddress: intent.ipAddress }),
           ...(intent.deviceId && { deviceId: intent.deviceId }),
           ...(intent.locationData && {
             locationData: intent.locationData as any,
           }),
-          ...(intent.locationFlagged && { locationFlagged: intent.locationFlagged }),
+          ...(intent.locationFlagged !== undefined && { locationFlagged: intent.locationFlagged }),
           ...(intent.sessionId && {
             session: { connect: { id: intent.sessionId } },
           }),
