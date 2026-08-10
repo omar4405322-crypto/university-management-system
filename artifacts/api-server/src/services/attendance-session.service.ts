@@ -105,71 +105,9 @@ class AttendanceSessionService {
       }
     }
 
-    if (!slot && courseId) {
-      if (user.role === 'DOCTOR') {
-        const doctor = await prisma.doctor.findUnique({
-          where: { userId: user.id },
-        });
-        const courseCheck = await prisma.course.findUnique({
-          where: { id: parseInt(courseId as any) },
-        });
-        if (doctor && courseCheck && courseCheck.departmentId === doctor.departmentId) {
-          const days = [
-            'SUNDAY',
-            'MONDAY',
-            'TUESDAY',
-            'WEDNESDAY',
-            'THURSDAY',
-            'FRIDAY',
-            'SATURDAY',
-          ];
-          slot = await prisma.scheduleSlot.create({
-            data: {
-              courseId: courseCheck.id,
-              doctorId: doctor.id,
-              dayOfWeek: days[new Date().getDay()] as any,
-              startTime: '08:00',
-              endTime: '22:00',
-              slotType: 'LECTURE',
-            },
-            include: { course: true, roomRef: true },
-          });
-        }
-      } else if (user.role === 'TEACHING_ASSISTANT') {
-        const ta = await prisma.teachingAssistant.findUnique({
-          where: { userId: user.id },
-        });
-        const courseCheck = await prisma.course.findUnique({
-          where: { id: parseInt(courseId as any) },
-        });
-        if (ta && courseCheck && courseCheck.departmentId === ta.departmentId) {
-          const days = [
-            'SUNDAY',
-            'MONDAY',
-            'TUESDAY',
-            'WEDNESDAY',
-            'THURSDAY',
-            'FRIDAY',
-            'SATURDAY',
-          ];
-          slot = await prisma.scheduleSlot.create({
-            data: {
-              courseId: courseCheck.id,
-              teachingAssistantId: ta.id,
-              dayOfWeek: days[new Date().getDay()] as any,
-              startTime: '08:00',
-              endTime: '22:00',
-              slotType: 'LAB',
-            },
-            include: { course: true, roomRef: true },
-          });
-        }
-      }
-    }
-
     if (!slot) {
       throw new NotFoundError(
-        'Schedule slot not found for this course and user, and you are not authorized to create one ad-hoc.'
+        'لم يتم العثور على موعد محدد في الجدول الدراسي. يرجى التواصل مع الإدارة لإضافة موعد (ScheduleSlot) قبل بدء الجلسة.'
       );
     }
 
