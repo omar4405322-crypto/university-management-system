@@ -5,7 +5,7 @@ import {
   Users, CheckCircle, Clock, AlertCircle,
   Play, Square, RefreshCw, AlertTriangle, UserCheck, BookOpen,
   ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Eye, EyeOff, Search, X, ShieldCheck, GraduationCap, User, Award, Filter,
-  QrCode, CreditCard, ScanFace, MapPin
+  QrCode, CreditCard, ScanFace, MapPin, XCircle
 } from 'lucide-react';
 import attendanceService, { RosterStudent } from '../../services/attendance.service';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
@@ -749,6 +749,20 @@ export function FacultyAttendanceDashboard() {
                 <Clock className="w-4 h-4 text-amber-400" />
                 <span className="text-xs font-extrabold">{t('attendance.late', 'متأخر')}:</span>
                 <span className="text-base font-black text-white">{lateCount}</span>
+              </button>
+
+              {/* Red Pill: Absent Count (غائب) */}
+              <button 
+                onClick={() => {
+                  setRosterFilter('ABSENT');
+                  setShowRosterList(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-950/80 text-rose-300 border border-rose-500/40 hover:bg-rose-900/80 transition-all shadow-sm cursor-pointer hover:scale-105 active:scale-95"
+                title="عرض الطلاب الغائبين"
+              >
+                <XCircle className="w-4 h-4 text-rose-400" />
+                <span className="text-xs font-extrabold">{t('attendance.absent', 'غائب')}:</span>
+                <span className="text-base font-black text-white">{roster.length - presentCount - lateCount}</span>
               </button>
 
               {/* Amber Pill: Cases That Need Review */}

@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import { 
-  Camera, MapPin, CheckCircle2, AlertTriangle, ShieldCheck, 
+import {
+  Camera, MapPin, CheckCircle2, AlertTriangle, ShieldCheck,
   ScanLine, X, ArrowRight, Keyboard, Image as ImageIcon,
   Clock, AlertCircle, RefreshCw, Sparkles
 } from 'lucide-react';
@@ -17,13 +17,13 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
   const [mode, setMode] = useState<'camera' | 'keypad' | 'upload'>('camera');
   const [loading, setLoading] = useState(false);
   const [cameraBlocked, setCameraBlocked] = useState(false);
-  const [result, setResult] = useState<{ 
-    success: boolean; 
+  const [result, setResult] = useState<{
+    success: boolean;
     status?: 'PRESENT' | 'LATE' | 'ALREADY_MARKED' | 'FLAGGED' | 'ERROR';
-    message: string; 
-    flagged?: boolean 
+    message: string;
+    flagged?: boolean
   } | null>(null);
-  
+
   const [manualCode, setManualCode] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,10 +47,10 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
   // Humanize and sanitize raw server/database error messages
   const sanitizeErrorMessage = (rawMsg?: string): string => {
     if (!rawMsg) return isRTL ? 'تعذر التعرف على الرمز أو انتهت صلاحيته.' : 'Could not recognize QR code or it expired.';
-    
+
     if (/Unique constraint failed|prisma|database|SQL|foreign key/i.test(rawMsg)) {
-      return isRTL 
-        ? 'حضورك مسجل بالفعل لهذه الجلسة أو تم تحديث البيانات بنجاح.' 
+      return isRTL
+        ? 'حضورك مسجل بالفعل لهذه الجلسة أو تم تحديث البيانات بنجاح.'
         : 'Attendance has already been recorded for this session.';
     }
     if (/expired|انتهت/i.test(rawMsg)) {
@@ -65,7 +65,7 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
   const processQrPayload = async (dataString: string) => {
     try {
       setLoading(true);
-      
+
       let token = '';
       let sessionId: number | undefined = undefined;
       let step: number | undefined = undefined;
@@ -97,8 +97,8 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
       try {
         const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(
-            resolve, 
-            reject, 
+            resolve,
+            reject,
             { enableHighAccuracy: true, timeout: 4000, maximumAge: 0 }
           );
         });
@@ -107,7 +107,7 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
       } catch (e) {
         console.warn('Geolocation denied or failed', e);
       }
-      
+
       // Device ID Hardening
       let deviceId = localStorage.getItem('attendance_device_id');
       if (!deviceId) {
@@ -119,7 +119,7 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
           if (typeof crypto !== 'undefined' && crypto.randomUUID) {
             deviceId = crypto.randomUUID();
           } else {
-            deviceId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            deviceId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
               const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
               return v.toString(16);
             });
@@ -151,8 +151,8 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
           statusType = 'LATE';
         }
 
-        setResult({ 
-          success: true, 
+        setResult({
+          success: true,
           status: statusType,
           message: res.message || (isRTL ? 'تم تسجيل حضورك بنجاح.' : 'Attendance recorded successfully.'),
           flagged: isFlagged
@@ -170,8 +170,8 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
       const rawMsg = err?.response?.data?.message || err?.message;
       const sanitized = sanitizeErrorMessage(rawMsg);
       const isDuplicate = /already|سابقاً|بالفعل/i.test(rawMsg || '');
-      setResult({ 
-        success: isDuplicate, 
+      setResult({
+        success: isDuplicate,
         status: isDuplicate ? 'ALREADY_MARKED' : 'ERROR',
         message: sanitized
       });
@@ -189,7 +189,7 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
   const handleFile = (file: File) => {
     setLoading(true);
     const reader = new FileReader();
-    
+
     reader.onerror = () => {
       setLoading(false);
       setResult({
@@ -239,7 +239,7 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
           canvas.width = width;
           canvas.height = height;
           context.drawImage(img, 0, 0, width, height);
-          
+
           const imageData = context.getImageData(0, 0, width, height);
           const code = jsQR(imageData.data, imageData.width, imageData.height, {
             inversionAttempts: "dontInvert",
@@ -285,10 +285,10 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
 
   return (
     <div className="bg-brand-navy-700 text-white rounded-2xl shadow-2xl border border-brand-navy-600 overflow-hidden relative flex flex-col min-h-[520px] max-w-lg mx-auto w-full">
-      
+
       {/* Hidden Image File Input */}
-      <input 
-        type="file" 
+      <input
+        type="file"
         ref={fileInputRef}
         onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
         accept="image/*"
@@ -312,8 +312,8 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
             </div>
           </div>
           {onCancel && (
-            <button 
-              onClick={onCancel} 
+            <button
+              onClick={onCancel}
               className="w-9 h-9 rounded-xl bg-brand-navy-800 hover:bg-brand-navy-600 text-slate-300 hover:text-white flex items-center justify-center transition-colors border border-brand-navy-600"
               aria-label="Close"
             >
@@ -325,7 +325,7 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
 
       {/* Main Viewport Content */}
       <div className="flex-1 flex flex-col relative bg-brand-navy-900">
-        
+
         {/* Loading Overlay */}
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-brand-navy-900/95 backdrop-blur-xl z-30 p-6 text-center animate-fade-in">
@@ -346,7 +346,7 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
         ) : result ? (
           /* Result Outcome Screen Cards */
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-30 animate-fade-in bg-brand-navy-900 overflow-y-auto">
-            
+
             {/* Outcome 1: PRESENT (Success) */}
             {result.status === 'PRESENT' && (
               <div className="w-full flex flex-col items-center">
@@ -407,8 +407,8 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
                     {isRTL ? 'ملاحظة الموقع الجغرافي' : 'Location Note'}
                   </p>
                   <p className="text-xs text-slate-300 font-medium leading-relaxed">
-                    {isRTL 
-                      ? 'موقعك الحالي يقع خارج النطاق الجغرافي للقاعة. تم إرسال طلب حضورك للمحاضر للاعتماد اليدوي.' 
+                    {isRTL
+                      ? 'موقعك الحالي يقع خارج النطاق الجغرافي للقاعة. تم إرسال طلب حضورك للمحاضر للاعتماد اليدوي.'
                       : 'Your location is outside the classroom radius. Attendance sent for manual approval.'}
                   </p>
                 </div>
@@ -432,7 +432,7 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
 
             {/* Outcome Actions */}
             <div className="flex gap-3 w-full max-w-xs">
-              <button 
+              <button
                 onClick={() => {
                   setResult(null);
                   setMode('camera');
@@ -444,7 +444,7 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
                 <span>{isRTL ? 'مسح مرة أخرى' : 'Try Again'}</span>
               </button>
               {onCancel && (
-                <button 
+                <button
                   onClick={onCancel}
                   className="bg-brand-navy-800 hover:bg-brand-navy-600 text-slate-300 font-bold py-3.5 px-5 rounded-xl border border-brand-navy-600 transition-colors text-sm"
                 >
@@ -457,7 +457,7 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
         ) : mode === 'camera' && !cameraBlocked ? (
           /* Live Camera Feed Mode */
           <div className="flex-1 relative flex flex-col items-center justify-center min-h-[380px]">
-            <Scanner 
+            <Scanner
               onScan={handleScan}
               onError={(err) => {
                 console.warn('Scanner error:', err);
@@ -466,13 +466,13 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
               }}
               components={{ onOff: true, torch: true }}
             />
-            
+
             {/* Viewfinder Overlay with Animated Laser */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
               <div className="w-64 h-64 border-2 border-brand-primary-500/40 rounded-2xl relative shadow-[0_0_0_9999px_rgba(3,8,12,0.8)]">
                 {/* Animated scanning laser */}
                 <div className="absolute top-0 inset-x-0 h-0.5 bg-brand-primary-400 shadow-[0_0_12px_rgba(132,189,58,0.9)] animate-scan-laser"></div>
-                
+
                 {/* Corner Brackets */}
                 <div className="absolute -top-0.5 -left-0.5 w-8 h-8 border-t-4 border-l-4 border-brand-primary-500 rounded-tl-xl"></div>
                 <div className="absolute -top-0.5 -right-0.5 w-8 h-8 border-t-4 border-r-4 border-brand-primary-500 rounded-tr-xl"></div>
@@ -491,16 +491,6 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
         ) : (
           /* Native Keypad Manual Code Entry Mode */
           <div className="flex-1 flex flex-col p-6 items-center justify-between bg-brand-navy-900">
-            {cameraBlocked && (
-              <div className="w-full mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 text-xs font-semibold flex items-center gap-2 animate-fade-in">
-                <AlertCircle className="w-4 h-4 shrink-0 text-amber-500" />
-                <span className="leading-relaxed text-start">
-                  {isRTL 
-                    ? 'الكاميرا غير متاحة. يرجى التأكد من تفعيل صلاحيات الكاميرا واستخدام اتصال آمن (HTTPS) للدخول.'
-                    : 'Camera unavailable. Please check permissions and ensure you are using a secure connection (HTTPS).'}
-                </span>
-              </div>
-            )}
             <div className="w-full text-center mt-2">
               <h4 className="text-lg font-bold text-white mb-1">
                 {isRTL ? 'إدخال الرمز المكون من 6 أرقام' : 'Enter 6-Digit Code'}
@@ -512,15 +502,14 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
               {/* 6 Digit Box Displays */}
               <div className="flex justify-center gap-2 dir-ltr my-6">
                 {[0, 1, 2, 3, 4, 5].map(idx => (
-                  <div 
+                  <div
                     key={idx}
-                    className={`w-11 h-13 rounded-xl border-2 flex items-center justify-center text-xl font-mono font-black transition-all ${
-                      manualCode[idx] 
-                        ? 'border-brand-primary-500 bg-brand-primary-950/40 text-brand-primary-400 shadow-sm' 
-                        : idx === manualCode.length 
-                          ? 'border-brand-primary-400 bg-brand-navy-800 text-white animate-pulse' 
+                    className={`w-11 h-13 rounded-xl border-2 flex items-center justify-center text-xl font-mono font-black transition-all ${manualCode[idx]
+                        ? 'border-brand-primary-500 bg-brand-primary-950/40 text-brand-primary-400 shadow-sm'
+                        : idx === manualCode.length
+                          ? 'border-brand-primary-400 bg-brand-navy-800 text-white animate-pulse'
                           : 'border-brand-navy-600 bg-brand-navy-800/60 text-slate-500'
-                    }`}
+                      }`}
                   >
                     {manualCode[idx] || ''}
                   </div>
@@ -566,15 +555,12 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
         {!loading && !result && (
           <div className="p-4 bg-brand-navy-900 border-t border-brand-navy-600 flex items-center justify-around gap-2 z-20">
             <button
-              onClick={() => {
-                setCameraBlocked(false);
-                setMode('camera');
-              }}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                mode === 'camera' 
-                  ? 'bg-brand-primary-600 text-white shadow-sm' 
+              onClick={() => setMode('camera')}
+              disabled={cameraBlocked}
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${mode === 'camera'
+                  ? 'bg-brand-primary-600 text-white shadow-sm'
                   : 'bg-brand-navy-800 text-slate-300 hover:text-white border border-brand-navy-600'
-              }`}
+                }`}
             >
               <Camera className="w-4 h-4" />
               <span>{isRTL ? 'الكاميرا' : 'Camera'}</span>
@@ -582,11 +568,10 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
 
             <button
               onClick={() => setMode('keypad')}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                mode === 'keypad' 
-                  ? 'bg-brand-primary-600 text-white shadow-sm' 
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${mode === 'keypad'
+                  ? 'bg-brand-primary-600 text-white shadow-sm'
                   : 'bg-brand-navy-800 text-slate-300 hover:text-white border border-brand-navy-600'
-              }`}
+                }`}
             >
               <Keyboard className="w-4 h-4" />
               <span>{isRTL ? 'رمز يدوي' : 'Keypad'}</span>
@@ -604,7 +589,8 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
       </div>
 
       {/* Laser Keyframe Styles */}
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes scan-laser {
           0%, 100% { top: 0; opacity: 0; }
           15%, 85% { opacity: 1; }
