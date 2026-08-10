@@ -258,6 +258,7 @@
     "noStudentsPresent": "No students are currently present in this session",
     "loadCoursesError": "Failed to load courses",
     "startSessionError": "Failed to start session",
+    "noScheduleSlot": "No matching schedule slot found. Please contact administration to add a ScheduleSlot.",
     "startSession": "Start Attendance Session"
   },
   "auth": {

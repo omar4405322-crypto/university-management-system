@@ -128,9 +128,14 @@ export function FacultyAttendanceDashboard() {
         }
       }, 500);
 
+      let isMounted = true;
       let currentInterval = 3000;
+      
       const poll = async () => {
+        if (!isMounted) return;
         const success = await fetchSessionData();
+        if (!isMounted) return;
+        
         if (success) {
           currentInterval = 3000;
         } else {
@@ -146,6 +151,7 @@ export function FacultyAttendanceDashboard() {
       pollingRef.current = setTimeout(poll, currentInterval);
 
       return () => {
+        isMounted = false;
         if (timerRef.current) clearInterval(timerRef.current);
         if (pollingRef.current) clearTimeout(pollingRef.current);
       };
@@ -240,7 +246,11 @@ export function FacultyAttendanceDashboard() {
       setActiveSession(res.data);
       setSelectedCourseId(courseId);
     } catch (err: any) {
-      setError(err.response?.data?.message || t('attendance.startSessionError', 'فشل بدء الجلسة'));
+      let errorMessage = err.response?.data?.message || t('attendance.startSessionError', 'فشل بدء الجلسة');
+      if (err.response?.status === 404 && typeof errorMessage === 'string' && errorMessage.includes('ScheduleSlot')) {
+        errorMessage = t('attendance.noScheduleSlot', 'لم يتم العثور على موعد متطابق في الجدول الدراسي. يرجى التواصل مع الإدارة.');
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
