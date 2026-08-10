@@ -130,6 +130,8 @@ class TaskService {
       type: 'info',
     });
 
+    auditLog('CREATE_TASK', 'Task', String(task.id), { userId: user.id });
+
     return task;
   }
 
@@ -329,6 +331,8 @@ class TaskService {
       }
     }
 
+    auditLog('UPDATE_TASK', 'Task', String(updated.id), { userId: user.id });
+
     return updated;
   }
 
@@ -360,6 +364,7 @@ class TaskService {
       await prisma.task.delete({
         where: { id: taskId },
       });
+      auditLog('DELETE_TASK', 'Task', String(taskId), { userId: user.id, force: true });
       return {
         success: true,
         hardDeleted: true,
@@ -374,6 +379,8 @@ class TaskService {
         deletedAt: new Date(),
       },
     });
+
+    auditLog('DELETE_TASK', 'Task', String(taskId), { userId: user.id, force: false });
 
     return {
       success: true,
