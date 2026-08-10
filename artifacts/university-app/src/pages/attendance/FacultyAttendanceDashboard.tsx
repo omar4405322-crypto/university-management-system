@@ -810,12 +810,13 @@ export function FacultyAttendanceDashboard() {
               <button onClick={() => setActiveTab('MANUAL')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'MANUAL' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
                 <Users className="w-5 h-5" />يدوي (Manual)
               </button>
-              <button onClick={() => setActiveTab('RFID')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'RFID' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                <CreditCard className="w-5 h-5" />البطاقة الذكية (RFID)
-              </button>
             </div>
              
             <div className="flex flex-wrap items-center gap-2 border-slate-200 dark:border-slate-700 ltr:border-l rtl:border-r rtl:pr-4 ltr:pl-4">
+              <button disabled className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-slate-400 dark:text-slate-500 opacity-60 cursor-not-allowed">
+                <CreditCard className="w-5 h-5" />البطاقة الذكية (RFID)
+                <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 text-[9px] px-1.5 ml-1">قريباً</Badge>
+              </button>
               <button disabled className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-slate-400 dark:text-slate-500 opacity-60 cursor-not-allowed">
                 <ScanFace className="w-5 h-5" />بصمة الوجه
                 <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 text-[9px] px-1.5 ml-1">قريباً</Badge>
