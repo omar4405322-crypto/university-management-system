@@ -33,21 +33,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Modal from '../../components/ui/Modal';
 
-const createSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  description: z.string().min(1, 'Description is required'),
-  courseId: z.string().min(1, 'Course is required'),
-  dueDate: z.string().min(1, 'Due date is required'),
-  maxScore: z.coerce.number().min(1, 'Max score must be at least 1'),
-});
+type CreateFormData = {
+  title: string;
+  description: string;
+  courseId: string;
+  dueDate: string;
+  maxScore: number;
+};
 
-const submitSchema = z.object({
-  notes: z.string().optional(),
-  fileUrl: z.string().url('Must be a valid URL').min(1, 'File URL is required'),
-});
-
-type CreateFormData = z.infer<typeof createSchema>;
-type SubmitFormData = z.infer<typeof submitSchema>;
+type SubmitFormData = {
+  notes?: string;
+  fileUrl: string;
+};
 
 type SubmissionState = {
   score?: string;
@@ -112,6 +109,19 @@ const TasksList = () => {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [editingTask, setEditingTask] = useState<any>(null);
   const [mySubmissions, setMySubmissions] = useState<Record<number, any>>({});
+
+  const createSchema = useMemo(() => z.object({
+    title: z.string().min(1, t('tasks.titleRequired', 'Title is required')),
+    description: z.string().min(1, t('tasks.descriptionRequired', 'Description is required')),
+    courseId: z.string().min(1, t('tasks.courseRequired', 'Course is required')),
+    dueDate: z.string().min(1, t('tasks.dueDateRequired', 'Due date is required')),
+    maxScore: z.coerce.number().min(1, t('tasks.maxScoreMin', 'Max score must be at least 1')),
+  }), [t]);
+
+  const submitSchema = useMemo(() => z.object({
+    notes: z.string().optional(),
+    fileUrl: z.string().url(t('tasks.invalidUrl', 'Must be a valid URL')).min(1, t('tasks.fileUrlRequired', 'File URL is required')),
+  }), [t]);
 
   const {
     register: registerCreate,
