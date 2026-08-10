@@ -534,6 +534,7 @@ const AppContent = () => {
                               'DOCTOR',
                               'STUDENT',
                               'COLLEGE_ADMIN',
+                              'DEPARTMENT_ADMIN',
                             ]}
                           >
                             <PageWrapper>
