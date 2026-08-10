@@ -915,11 +915,6 @@ export function FacultyAttendanceDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {s.existingStatus === 'LATE' && (
-                          <Badge className="border border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700 text-[10px] font-black px-2 tracking-wide">
-                            ⚠️ متأخر
-                          </Badge>
-                        )}
                         {s.existingStatus === 'PRESENT' && s.method === 'RFID' && (
                           <Badge className="bg-indigo-100 text-indigo-800 text-[10px] uppercase font-bold">RFID</Badge>
                         )}
