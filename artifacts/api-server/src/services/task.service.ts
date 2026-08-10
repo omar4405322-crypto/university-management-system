@@ -387,9 +387,27 @@ class TaskService {
       where: { taskId_studentId: { taskId, studentId: student.id } },
     });
     if (existingSubmission) {
-      throw new ConflictError(
-        'You have already submitted this task. Only one submission per task is allowed.'
-      );
+      if (taskObj.dueDate && taskObj.dueDate.getTime() < new Date().getTime()) {
+        throw new ConflictError(
+          'The deadline for this task has passed. Resubmission is not allowed.'
+        );
+      }
+      
+      const updated = await prisma.taskSubmission.update({
+        where: { id: existingSubmission.id },
+        data: {
+          notes: data.notes,
+          fileUrl: data.fileUrl,
+          submittedAt: new Date(),
+          score: null,
+          feedback: null,
+        },
+      });
+      return {
+        success: true,
+        data: updated,
+        message: 'Task resubmitted successfully',
+      };
     }
 
     const submission = await prisma.taskSubmission.create({

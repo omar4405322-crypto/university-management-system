@@ -365,16 +365,34 @@ const TasksList = () => {
 
   const renderStudentButton = (task: any) => {
     const my = mySubmissions[task.id];
+    const overdue = isOverdue(task.dueDate);
+    
     if (my) {
-      return (
-        <Button
-          disabled
-          className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 opacity-60"
-        >
-          <CheckCircle size={16} />
-          {t('tasks.statusSubmitted')}
-        </Button>
-      );
+      if (overdue) {
+        return (
+          <Button
+            disabled
+            className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 opacity-60"
+          >
+            <CheckCircle size={16} />
+            {t('tasks.statusSubmitted')}
+          </Button>
+        );
+      } else {
+        return (
+          <Button
+            onClick={() => {
+              setSelectedTask(task);
+              resetSubmit({ notes: my.notes || '', fileUrl: my.fileUrl || '' });
+              setShowSubmitModal(true);
+            }}
+            className="w-full text-[10px] font-black uppercase tracking-widest py-3.5 gap-2 shadow-lg shadow-brand-primary-500/20 bg-brand-primary-500 hover:bg-brand-primary-600"
+          >
+            <RotateCcw size={16} />
+            {t('tasks.resubmitTask', 'Resubmit Task')}
+          </Button>
+        );
+      }
     }
     return (
       <Button
