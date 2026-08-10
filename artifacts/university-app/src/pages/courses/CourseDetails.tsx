@@ -40,6 +40,7 @@ import Badge from '../../components/ui/Badge';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
 import Modal from '../../components/ui/Modal';
 import taskService from '../../services/task.service';
+import SubmissionsGradingModal from '../../components/tasks/SubmissionsGradingModal';
 import coursesService from '../../services/courses.service';
 import { useAuth } from '../../context/AuthContext';
 import { logger } from '../../lib/logger';
@@ -1303,154 +1304,12 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
         </div>
       )}
 
-      {/* INLINE SUBMISSIONS + GRADING MODAL (COURSE DETAILS — H-7 no navigation) */}
-      <Modal
+      {/* SUBMISSIONS & GRADING MODAL */}
+      <SubmissionsGradingModal
         isOpen={showSubmissionsModal}
         onClose={() => setShowSubmissionsModal(false)}
-        title={t('tasks.viewSubmissions', 'معاينة التسليمات')}
-        subtitle={selectedTask?.title}
-        size="xl"
-      >
-        <div className="space-y-4 pt-2">
-          {loadingSubmissions ? (
-            <div className="flex items-center justify-center py-12 gap-3">
-              <Loader2 className="animate-spin text-brand-primary-500" size={32} />
-              <p className="text-sm font-bold text-brand-text-muted">جاري تحميل التسليمات...</p>
-            </div>
-          ) : submissions.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-brand-border rounded-2xl">
-              <ClipboardList size={40} className="mx-auto text-brand-text-muted opacity-40 mb-2" />
-              <p className="text-sm font-bold text-brand-text-secondary">لا توجد تسليمات لهذه المهمة حتى الآن.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-brand-border">
-              {submissions.map((sub: any) => {
-                const st = submissionState[sub.id] || {};
-                const maxScore = Number(selectedTask?.maxScore || 100);
-                const rawScore = String(st.score ?? sub.score ?? '');
-                const scoreVal = parseFloat(rawScore);
-                const exceeds = !isNaN(scoreVal) && scoreVal > maxScore;
-                return (
-                  <div key={sub.id} className="py-4 flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                    <div className="lg:max-w-[40%]">
-                      <h4 className="font-bold text-sm text-brand-text-primary dark:text-brand-text-main">
-                        {sub.student?.firstName} {sub.student?.lastName} ({sub.student?.studentId})
-                      </h4>
-                      <p className="text-[10px] text-brand-text-muted mt-0.5">
-                        {formatTaskDate(sub.submittedAt || sub.createdAt)}
-                      </p>
-                      {sub.notes && (
-                        <p className="text-xs text-brand-text-sub mt-2">{sub.notes}</p>
-                      )}
-                      {sub.fileUrl && (
-                        <a
-                          href={sub.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-brand-primary-500 hover:underline font-bold inline-flex items-center gap-1 mt-2"
-                        >
-                          <FileUp size={14} /> عرض الملف المرفق
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="flex-1 lg:pl-4 lg:border-l lg:border-brand-border space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[10px] font-black uppercase tracking-widest text-brand-text-muted mb-1">
-                            {t('tasks.grade', 'الدرجة')} (0 - {maxScore})
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            max={maxScore}
-                            step={0.01}
-                            value={rawScore}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setSubmissionState((prev) => ({
-                                ...prev,
-                                [sub.id]: {
-                                  ...prev[sub.id],
-                                  score: v,
-                                  scoreError:
-                                    v && parseFloat(v) > maxScore
-                                      ? t('tasks.scoreExceedsMax', { maxScore })
-                                      : undefined,
-                                },
-                              }));
-                            }}
-                            className={`w-full px-3 py-2 text-sm rounded-xl border ${
-                              st.scoreError || exceeds
-                                ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/20 focus:ring-rose-400'
-                                : 'border-brand-border bg-brand-bg-card focus:ring-brand-primary-500'
-                            } focus:outline-none focus:ring-2`}
-                            placeholder={`0 / ${maxScore}`}
-                          />
-                          {st.scoreError && (
-                            <p className="mt-1 text-[10px] font-bold text-rose-600 flex items-center gap-1">
-                              <AlertCircle size={12} />
-                              {st.scoreError}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-end gap-2">
-                          <div className="flex-1">
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-brand-text-muted mb-1">
-                              {t('tasks.feedback', 'الملاحظات')}
-                            </label>
-                            <Badge
-                              variant={sub.score != null ? 'success' : 'warning'}
-                              className="text-[10px] w-full justify-center"
-                            >
-                              {sub.score != null
-                                ? `${t('tasks.grade')}: ${sub.score} / ${maxScore}`
-                                : 'لم يتم التقييم بعد'}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-brand-text-muted mb-1">
-                          {t('tasks.feedback', 'الملاحظات')}
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={st.feedback ?? sub.feedback ?? ''}
-                          onChange={(e) =>
-                            setSubmissionState((prev) => ({
-                              ...prev,
-                              [sub.id]: { ...prev[sub.id], feedback: e.target.value },
-                            }))
-                          }
-                          placeholder="اكتب ملاحظات للطالب (اختياري)..."
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:ring-2 focus:ring-brand-primary-500 focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="flex justify-end">
-                        <Button
-                          onClick={() => handleSaveGrade(sub.id)}
-                          disabled={st.saving}
-                          className="text-[10px] font-black uppercase tracking-widest py-2 px-4 shadow-md shadow-brand-primary-500/20"
-                        >
-                          {st.saving ? (
-                            <Loader2 className="animate-spin" size={14} />
-                          ) : (
-                            <CheckCircle size={14} />
-                          )}
-                          {st.saving ? t('common.loading') : t('tasks.saveGrade', 'حفظ الدرجة')}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </Modal>
+        task={selectedTask ? { ...selectedTask, course } : null}
+      />
 
       {/* TAB 5: STUDENTS ROSTER */}
       {activeTab === 'roster' && (

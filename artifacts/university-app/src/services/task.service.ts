@@ -3,8 +3,39 @@ import { apiRequest } from '../lib/apiClient';
 import type { ApiResponse } from '../types/models';
 import api from './api';
 
+export type GetTasksParams = {
+  courseId?: number;
+  status?: 'ACTIVE' | 'OVERDUE';
+  dueFrom?: string;
+  dueTo?: string;
+  sortBy?:
+    | 'DUE_DATE_ASC'
+    | 'DUE_DATE_DESC'
+    | 'CREATED_AT_ASC'
+    | 'CREATED_AT_DESC'
+    | 'SUBMISSIONS_COUNT_ASC'
+    | 'SUBMISSIONS_COUNT_DESC';
+  search?: string;
+};
+
+export type SubmissionsStatus =
+  | 'ALL'
+  | 'SUBMITTED'
+  | 'GRADED'
+  | 'UNGRADED'
+  | 'LATE'
+  | 'NOT_SUBMITTED';
+
+export type GetTaskSubmissionsParams = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: SubmissionsStatus;
+  studentYear?: number;
+};
+
 const taskService = {
-  getTasks: (params?: Record<string, unknown>): Promise<ApiResponse<any>> =>
+  getTasks: (params?: GetTasksParams): Promise<ApiResponse<any>> =>
     apiRequest(() => api.get('/tasks', { params })),
 
   createTask: (data?: Record<string, unknown>): Promise<ApiResponse<any>> =>
@@ -35,8 +66,11 @@ const taskService = {
       api.put(`/tasks/${id}/submissions/${submissionId}/grade`, data)
     ),
 
-  getTaskSubmissions: (id: number | string): Promise<ApiResponse<any>> =>
-    apiRequest(() => api.get(`/tasks/${id}/submissions`)),
+  getTaskSubmissions: (
+    id: number | string,
+    params?: GetTaskSubmissionsParams
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.get(`/tasks/${id}/submissions`, { params })),
 
   getMySubmission: (id: number | string): Promise<ApiResponse<any>> =>
     apiRequest(() => api.get(`/tasks/${id}/submission`)),
