@@ -491,6 +491,16 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
         ) : (
           /* Native Keypad Manual Code Entry Mode */
           <div className="flex-1 flex flex-col p-6 items-center justify-between bg-brand-navy-900">
+            {cameraBlocked && (
+              <div className="w-full mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 text-xs font-semibold flex items-center gap-2 animate-fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-500" />
+                <span className="leading-relaxed text-start">
+                  {isRTL 
+                    ? 'الكاميرا غير متاحة. يرجى التأكد من تفعيل صلاحيات الكاميرا واستخدام اتصال آمن (HTTPS) للدخول.'
+                    : 'Camera unavailable. Please check permissions and ensure you are using a secure connection (HTTPS).'}
+                </span>
+              </div>
+            )}
             <div className="w-full text-center mt-2">
               <h4 className="text-lg font-bold text-white mb-1">
                 {isRTL ? 'إدخال الرمز المكون من 6 أرقام' : 'Enter 6-Digit Code'}
@@ -556,8 +566,10 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
         {!loading && !result && (
           <div className="p-4 bg-brand-navy-900 border-t border-brand-navy-600 flex items-center justify-around gap-2 z-20">
             <button
-              onClick={() => setMode('camera')}
-              disabled={cameraBlocked}
+              onClick={() => {
+                setCameraBlocked(false);
+                setMode('camera');
+              }}
               className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                 mode === 'camera' 
                   ? 'bg-brand-primary-600 text-white shadow-sm' 
