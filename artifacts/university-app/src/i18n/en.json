@@ -255,7 +255,10 @@
     "searchStudentPlaceholder": "Search student name or ID...",
     "doctorRole": "Course Instructor (Doctor)",
     "taRole": "Teaching Assistant (TA)",
-    "noStudentsPresent": "No students are currently present in this session"
+    "noStudentsPresent": "No students are currently present in this session",
+    "loadCoursesError": "Failed to load courses",
+    "startSessionError": "Failed to start session",
+    "startSession": "Start Attendance Session"
   },
   "auth": {
     "admin": "Admin",
@@ -847,7 +850,7 @@
     "allStatuses": "All Statuses",
     "statusUpcoming": "Upcoming",
     "statusToday": "Today",
-    "statusCompleted": "Completed",
+    "statusCompleted": "Submitted",
     "sortDateAsc": "Date: Earliest First",
     "sortDateDesc": "Date: Latest First",
     "examColumn": "Exam",
@@ -886,7 +889,6 @@
     "submittedBannerTitle": "Submission Received",
     "submittedBannerDesc": "You have completed and submitted this exam. You can view your results below.",
     "statusAvailable": "Available",
-    "statusCompleted": "Submitted",
     "generalDepartment": "General Department",
     "yearLevel": "Year Level",
     "yearLevel1": "1st Year",
