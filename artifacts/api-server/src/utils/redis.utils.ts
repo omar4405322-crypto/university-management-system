@@ -14,6 +14,8 @@ if (process.env.REDIS_URL && process.env.NODE_ENV?.trim() !== 'test') {
 
   redis.on('connect', () => logger.info('[REDIS] Connected to instance'));
   redis.on('error', (err: Error) => logger.error(`[REDIS] Error: ${err.message}`));
+} else if (process.env.NODE_ENV?.trim() !== 'test') {
+  logger.warn('[REDIS] REDIS_URL is not set. TOTP replay protection will not be shared across instances and relies only on in-memory process state.');
 }
 
 /**
