@@ -58,6 +58,9 @@ export const getScopeWhere = (
     return { department: { collegeId: user.managedCollegeId } };
   }
 
+  // ADMIN: Genuinely university-wide access by design, similar to SUPER_ADMIN
+  if (user.role === 'ADMIN') return {};
+
   // DOCTOR: scoped to the sections they teach or their department
   if (user.role === 'DOCTOR' && user.doctor?.id) {
     if (entity === 'course') return { scheduleSlots: { some: { doctorId: user.doctor.id } } };
