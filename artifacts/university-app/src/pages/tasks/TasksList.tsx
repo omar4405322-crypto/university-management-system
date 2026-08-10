@@ -729,7 +729,7 @@ const TasksList = () => {
 
           <div>
             <label className="block text-sm font-medium text-brand-text-sub">
-              رابط الملف / الإجابة (File URL)
+              {t('tasks.fileUrlLabel', 'File URL')}
             </label>
             <input
               type="url"
@@ -812,7 +812,7 @@ const TasksList = () => {
               </p>
             </div>
             <div className="mt-3 text-[10px] font-black text-brand-text-muted uppercase tracking-widest">
-              {selectedTask?._count?.submissions ?? 0} تسليم(ات) موجود(ة)
+              {t('tasks.submissionsCountLabel', '{{count}} existing submission(s)', { count: selectedTask?._count?.submissions ?? 0 })}
             </div>
           </div>
 
@@ -921,7 +921,7 @@ const TasksList = () => {
                     </div>
                     <div>
                       <p className="text-[8px] font-black text-brand-text-muted uppercase tracking-widest">
-                        Points
+                        {t('tasks.points', 'Points')}
                       </p>
                       <p className="text-xs font-black text-brand-text-primary dark:text-brand-text-main">
                         {task.maxScore}
@@ -934,7 +934,7 @@ const TasksList = () => {
                     </div>
                     <div className="truncate">
                       <p className="text-[8px] font-black text-brand-text-muted uppercase tracking-widest">
-                        Course
+                        {t('tasks.course', 'Course')}
                       </p>
                       <p className="text-xs font-black text-brand-text-primary dark:text-brand-text-main truncate max-w-[80px]">
                         {task.course?.name}
