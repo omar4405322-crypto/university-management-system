@@ -192,7 +192,7 @@ const TasksList = () => {
 
       const result = await taskService.getTasks(params);
       if (result.success) {
-        setTasks(result.data || []);
+        setTasks(result.data?.rows || result.data || []);
       }
     } catch (error) {
       showToast(t('tasks.fetchError'), 'error');

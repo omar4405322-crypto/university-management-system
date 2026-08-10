@@ -149,6 +149,8 @@ class TaskService {
         | 'SUBMISSIONS_COUNT_DESC';
       search?: string;
       year?: number;
+      page?: number;
+      limit?: number;
     }
   ) {
     const now = new Date();
@@ -230,17 +232,31 @@ class TaskService {
         break;
     }
 
-    const tasks = await prisma.task.findMany({
-      where,
-      include: {
-        course: { select: { name: true, courseCode: true, year: true } },
-        doctor: { select: { firstName: true, lastName: true, userId: true } },
-        _count: { select: { submissions: true } },
-      },
-      orderBy,
-    });
+    const page = Math.max(1, opts?.page ?? 1);
+    const limit = Math.min(Math.max(1, opts?.limit ?? 50), 100);
+    const skip = (page - 1) * limit;
 
-    return tasks;
+    const [tasks, totalCount] = await Promise.all([
+      prisma.task.findMany({
+        where,
+        include: {
+          course: { select: { name: true, courseCode: true, year: true } },
+          doctor: { select: { firstName: true, lastName: true, userId: true } },
+          _count: { select: { submissions: true } },
+        },
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      prisma.task.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return {
+      rows: tasks,
+      pagination: { page, limit, totalCount, totalPages },
+    };
   }
 
   static async updateTask(

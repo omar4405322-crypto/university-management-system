@@ -21,9 +21,9 @@ export const createTask = catchAsync(
 
 export const getTasks = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { courseId, status, dueFrom, dueTo, sortBy, search } = req.query;
+    const { courseId, status, dueFrom, dueTo, sortBy, search, year, page, limit } = req.query;
 
-    const tasks = await TaskService.getTasks(
+    const tasksResult = await TaskService.getTasks(
       req.user!,
       courseId ? parseInt(courseId as string) : undefined,
       {
@@ -39,10 +39,13 @@ export const getTasks = catchAsync(
           | 'SUBMISSIONS_COUNT_DESC'
         ) | undefined,
         search: search as string | undefined,
+        year: year ? parseInt(year as string) : undefined,
+        page: page ? parseInt(page as string) : undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
       }
     );
 
-    return res.json({ success: true, data: tasks });
+    return res.json({ success: true, data: tasksResult });
   }
 );
 
