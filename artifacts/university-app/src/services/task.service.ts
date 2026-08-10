@@ -16,6 +16,7 @@ export type GetTasksParams = {
     | 'SUBMISSIONS_COUNT_ASC'
     | 'SUBMISSIONS_COUNT_DESC';
   search?: string;
+  year?: number;
 };
 
 export type SubmissionsStatus =
