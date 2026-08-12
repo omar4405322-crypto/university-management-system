@@ -49,11 +49,6 @@ import swaggerSpec from './utils/swagger';
 const app: Application = express();
 app.set('trust proxy', 1);
 
-// If Sentry is configured, attach request & tracing handlers BEFORE routes
-if (process.env.SENTRY_DSN) {
-  app.use((Sentry as any).Handlers.requestHandler());
-  app.use((Sentry as any).Handlers.tracingHandler());
-}
 
 // 2. SECURITY HEADERS (Enterprise-grade)
 app.use(
@@ -235,8 +230,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Sentry error handler must be before any other error middleware
 if (process.env.SENTRY_DSN) {
-  // Use the official Express error handler from Sentry
-  app.use((Sentry as any).Handlers.errorHandler());
+  Sentry.setupExpressErrorHandler(app);
 }
 
 app.use(globalErrorHandler);

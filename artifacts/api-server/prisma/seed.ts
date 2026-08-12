@@ -196,7 +196,6 @@ async function main() {
               startTime: '09:00',
               endTime: '11:00',
               room: 'Hall A',
-              slotType: 'LECTURE',
               slotType: 'LECTURE'
             }
           });
@@ -212,7 +211,6 @@ async function main() {
               startTime: '10:00',
               endTime: '12:00',
               room: 'Lab 1',
-              slotType: 'LAB',
               slotType: 'LAB',
               teachingAssistantId: deptTAs[0].id
             }

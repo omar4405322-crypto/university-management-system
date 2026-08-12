@@ -3,6 +3,13 @@ import dotenv from 'dotenv';
 import os from 'os';
 dotenv.config();
 
+import * as Sentry from '@sentry/node';
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+  });
+}
+
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   console.error('FATAL: JWT_SECRET environment variable is not set or too short (min 32 chars). Exiting.');
   process.exit(1);
@@ -57,16 +64,20 @@ const startServer = () => {
   });
 };
 
-// Attempt to kill whatever is on the port first, then start the server.
-killPort(PORT, 'tcp')
-  .then(() => {
-    logger.info(`[SERVER] Cleared port ${PORT}`);
-    startServer();
-  })
-  .catch(() => {
-    // Port might not be in use, or we lack permissions. Just try starting anyway.
-    startServer();
-  });
+if (process.env.NODE_ENV === 'production') {
+  startServer();
+} else {
+  // Attempt to kill whatever is on the port first, then start the server.
+  killPort(PORT, 'tcp')
+    .then(() => {
+      logger.info(`[SERVER] Cleared port ${PORT}`);
+      startServer();
+    })
+    .catch(() => {
+      // Port might not be in use, or we lack permissions. Just try starting anyway.
+      startServer();
+    });
+}
 
 process.on('unhandledRejection', (err: any) => {
   console.error('[FATAL] Unhandled Rejection:', err);
