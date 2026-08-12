@@ -175,6 +175,11 @@ async function cleanOldData() {
 }
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ FATAL: This seed script contains destructive operations and cannot be run in production.');
+    process.exit(1);
+  }
+
   const commonPassword = await bcrypt.hash('Password123!', 10);
   
   await cleanOldData();
@@ -314,7 +319,6 @@ async function main() {
           startTime: '09:00',
           endTime: '11:00',
           room: lectureRoom,
-          slotType: 'LECTURE',
           slotType: 'LECTURE'
         }
       });
@@ -337,7 +341,6 @@ async function main() {
           startTime: '12:00',
           endTime: '14:00',
           room: labRoom,
-          slotType: isLab ? 'LAB' : 'SECTION',
           slotType: isLab ? 'LAB' : 'SECTION',
           teachingAssistantId: assignedTA.id
         }

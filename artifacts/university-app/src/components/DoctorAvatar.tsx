@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getDynamicBaseUrl } from '@/services/api';
 
 const sizeClasses = {
   sm: 'w-8 h-8 text-xs',
@@ -33,8 +34,9 @@ const _getAvatarColor = (name?: string) => {
 const resolveImageUrl = (imageUrl?: string) => {
   if (!imageUrl) return null;
   if (imageUrl.startsWith('http')) return imageUrl;
-  if (imageUrl.startsWith('/')) return `http://localhost:5000${imageUrl}`;
-  return `http://localhost:5000/${imageUrl}`;
+  const baseUrl = getDynamicBaseUrl().replace(/\/api$/, '');
+  const cleanPath = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+  return `${baseUrl}${cleanPath}`;
 };
 
 interface DoctorAvatarProps {

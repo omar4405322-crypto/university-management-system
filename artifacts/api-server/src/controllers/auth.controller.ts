@@ -39,10 +39,11 @@ export interface RejectRequestBody {
 
 // Helper to set cookies
 const setAuthCookies = (res: Response, accessToken: string, refreshToken: string): void => {
+  const isProd = process.env.NODE_ENV === 'production';
   res.cookie('refresh_token', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     path: '/',
   });
@@ -361,7 +362,13 @@ export const logout = catchAsync(async (req: Request, res: Response, next: NextF
     });
   }
 
-  res.clearCookie('refresh_token', { path: '/' });
+  const isProd = process.env.NODE_ENV === 'production';
+  res.clearCookie('refresh_token', {
+    path: '/',
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+  });
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
