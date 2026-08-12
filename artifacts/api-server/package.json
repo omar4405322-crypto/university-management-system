@@ -5,14 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "node ./build.mjs",
+    "build": "prisma generate && node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:push": "prisma db push",
-    "db:setup": "psql $DATABASE_URL -f prisma/setup-sequences.sql",
-    "db:push": "pnpm run db:setup && prisma db push"
+    "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

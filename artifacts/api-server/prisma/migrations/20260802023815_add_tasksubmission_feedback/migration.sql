@@ -6,11 +6,11 @@
 -- the enum.
 
 
-ALTER TYPE "AttendanceMethod" ADD VALUE 'FACE';
-ALTER TYPE "AttendanceMethod" ADD VALUE 'GPS';
+ALTER TYPE "AttendanceMethod" ADD VALUE IF NOT EXISTS 'FACE';
+ALTER TYPE "AttendanceMethod" ADD VALUE IF NOT EXISTS 'GPS';
 
 -- AlterTable
 ALTER TABLE "Doctor" ALTER COLUMN "doctorId" SET DEFAULT 'DOC-' || lpad(nextval('doctor_id_seq'::regclass)::text, 5, '0');
 
 -- AlterTable
-ALTER TABLE "TaskSubmission" ADD COLUMN     "feedback" TEXT;
+ALTER TABLE "TaskSubmission" ADD COLUMN IF NOT EXISTS "feedback" TEXT;
