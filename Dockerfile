@@ -38,4 +38,4 @@ WORKDIR /app
 EXPOSE 5000
 
 # Execute database migrations then start production server
-CMD ["sh", "-c", "pnpm --filter @workspace/api-server exec prisma migrate deploy && node --enable-source-maps ./artifacts/api-server/dist/index.mjs"]
+CMD ["sh", "-c", "pnpm --filter @workspace/api-server exec prisma migrate resolve --applied 0000_baseline_existing_database && pnpm --filter @workspace/api-server exec prisma migrate deploy && node --enable-source-maps ./artifacts/api-server/dist/index.mjs"]
