@@ -2,7 +2,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 const router = express.Router();
 import * as schedulesController from '../controllers/schedules.controller';
-import { authorize } from '../middleware/auth.middleware';
+import { authorize, protect } from '../middleware/auth.middleware';
 import overridesRouter from './overrides.routes';
 import validate from '../middleware/validate.middleware';
 import { scheduleValidation } from '../validations/functional.validation';
@@ -50,6 +50,7 @@ router.post(
 
 router.post(
   '/check-conflict',
+  protect,
   schedulesController.checkScheduleConflict
 );
 
