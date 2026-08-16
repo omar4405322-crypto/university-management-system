@@ -1,5 +1,8 @@
 import prisma from '../utils/prismaClient';
 import { ConflictError, NotFoundError } from '../utils/appError';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+
+const CAIRO_TZ = 'Africa/Cairo';
 
 export interface ConflictCheckInput {
   dayOfWeek: string;
@@ -17,6 +20,23 @@ class TimetableService {
   static async checkConflicts(input: ConflictCheckInput, tx: any = prisma) {
     const { dayOfWeek, startTime, endTime, room, doctorId, groupId, teachingAssistantId, excludeSlotId } = input;
 
+    // Active date range in Africa/Cairo timezone
+    const now = new Date();
+    const cairoNow = toZonedTime(now, CAIRO_TZ);
+    const startOfCairoToday = fromZonedTime(
+      new Date(cairoNow.getFullYear(), cairoNow.getMonth(), cairoNow.getDate(), 0, 0, 0, 0),
+      CAIRO_TZ
+    );
+    const endOfCairoToday = fromZonedTime(
+      new Date(cairoNow.getFullYear(), cairoNow.getMonth(), cairoNow.getDate(), 23, 59, 59, 999),
+      CAIRO_TZ
+    );
+
+    const activeOverrideDateRange = {
+      startDate: { lte: endOfCairoToday },
+      endDate: { gte: startOfCairoToday },
+    };
+
     // Common time overlap condition
     const timeOverlap = {
       OR: [
@@ -32,7 +52,15 @@ class TimetableService {
     if (room) {
       const baseSlotConflicts = await tx.scheduleSlot.findMany({
         where: { dayOfWeek, room, ...timeOverlap, ...excludeCondition },
-        include: { overrides: { where: { dayOfWeek, ...timeOverlap } } }
+        include: {
+          overrides: {
+            where: {
+              dayOfWeek,
+              ...timeOverlap,
+              ...activeOverrideDateRange,
+            },
+          },
+        },
       });
       const unmovedConflict = baseSlotConflicts.find((slot: any) => {
         const activeOverrideChangesRoom = slot.overrides.some(
@@ -43,7 +71,13 @@ class TimetableService {
       if (unmovedConflict) throw new ConflictError(`Time conflict in room ${room} on ${dayOfWeek}`);
       
       const overrideRoomConflict = await tx.scheduleOverride.findFirst({
-        where: { dayOfWeek, room, ...timeOverlap, ...(excludeSlotId ? { scheduleSlotId: { not: excludeSlotId } } : {}) },
+        where: {
+          dayOfWeek,
+          room,
+          ...timeOverlap,
+          ...activeOverrideDateRange,
+          ...(excludeSlotId ? { scheduleSlotId: { not: excludeSlotId } } : {}),
+        },
       });
       if (overrideRoomConflict) throw new ConflictError(`Time conflict with an active override in room ${room} on ${dayOfWeek}`);
     }
@@ -56,7 +90,13 @@ class TimetableService {
       if (doctorConflict) throw new ConflictError('Time conflict: The doctor is already scheduled at this time');
 
       const overrideDoctorConflict = await tx.scheduleOverride.findFirst({
-        where: { dayOfWeek, doctorId, ...timeOverlap, ...(excludeSlotId ? { scheduleSlotId: { not: excludeSlotId } } : {}) },
+        where: {
+          dayOfWeek,
+          doctorId,
+          ...timeOverlap,
+          ...activeOverrideDateRange,
+          ...(excludeSlotId ? { scheduleSlotId: { not: excludeSlotId } } : {}),
+        },
       });
       if (overrideDoctorConflict) throw new ConflictError('Time conflict: The doctor has an active override at this time');
     }
@@ -69,7 +109,13 @@ class TimetableService {
       if (taConflict) throw new ConflictError('Time conflict: The teaching assistant is already scheduled at this time');
       
       const overrideTaConflict = await tx.scheduleOverride.findFirst({
-        where: { dayOfWeek, teachingAssistantId, ...timeOverlap, ...(excludeSlotId ? { scheduleSlotId: { not: excludeSlotId } } : {}) },
+        where: {
+          dayOfWeek,
+          teachingAssistantId,
+          ...timeOverlap,
+          ...activeOverrideDateRange,
+          ...(excludeSlotId ? { scheduleSlotId: { not: excludeSlotId } } : {}),
+        },
       });
       if (overrideTaConflict) throw new ConflictError('Time conflict: The TA has an active override at this time');
     }
