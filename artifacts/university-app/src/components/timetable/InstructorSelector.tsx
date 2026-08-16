@@ -66,12 +66,12 @@ export default function InstructorSelector({
   const placeholderText =
     slotType === 'LECTURE'
       ? t('timetables.selectProfessor', 'Select Professor / Doctor')
-      : t('SCHEDULES.selectTA', 'Select Teaching Assistant');
+      : t('schedules.selectTA', 'Select Teaching Assistant');
 
   const emptyText =
     slotType === 'LECTURE'
       ? t('timetable.noDoctors', 'No instructors available')
-      : t('SCHEDULES.noTAAvailable', 'No TAs available');
+      : t('schedules.noTAAvailable', 'No TAs available');
 
   const options: SelectOption[] = useMemo(() => {
     if (suggestedInstructors.length > 0) {

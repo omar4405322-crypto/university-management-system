@@ -4,6 +4,7 @@ import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError } from '../utils/appError';
 import { invalidateCache } from '../utils/redis.utils';
+import { getScopeWhere } from '../utils/scope.utils';
 
 export const getAllPayments = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -30,17 +31,23 @@ export const getAllPayments = catchAsync(
       ? (sortOrder as string)
       : 'desc';
 
-    const where: any = {};
+    const scopeWhere = getScopeWhere(req.user, 'payment');
+    const where: any = { ...scopeWhere };
     if (status) where.status = status;
     if (type) where.type = type;
     if (studentId) where.studentId = parseInt(studentId as string);
     if (search) {
-      where.student = {
-        OR: [
-          { firstName: { contains: search, mode: 'insensitive' } },
-          { lastName: { contains: search, mode: 'insensitive' } },
-        ],
-      };
+      where.AND = [
+        ...(where.AND || []),
+        {
+          student: {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+            ],
+          },
+        },
+      ];
     }
 
     const [payments, total] = await Promise.all([
@@ -94,23 +101,26 @@ export const getMyPayments = catchAsync(async (req: Request, res: Response, next
 
 // FIXED: Finance stats include activePlans count and monthly revenue from real payments - Phase 2
 export const getStats = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const scopeWhere = getScopeWhere(req.user, 'payment');
+
   const [paidSum, pendingSum, overdueSum, byType, recentPayments, activePlans, totalPayments] =
     await Promise.all([
-      prisma.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
-      prisma.payment.aggregate({ where: { status: 'PENDING' }, _sum: { amount: true } }),
-      prisma.payment.aggregate({ where: { status: 'OVERDUE' }, _sum: { amount: true } }),
-      prisma.payment.groupBy({ by: ['type'], _count: { _all: true } }),
+      prisma.payment.aggregate({ where: { ...scopeWhere, status: 'PAID' }, _sum: { amount: true } }),
+      prisma.payment.aggregate({ where: { ...scopeWhere, status: 'PENDING' }, _sum: { amount: true } }),
+      prisma.payment.aggregate({ where: { ...scopeWhere, status: 'OVERDUE' }, _sum: { amount: true } }),
+      prisma.payment.groupBy({ where: scopeWhere, by: ['type'], _count: { _all: true } }),
       prisma.payment.findMany({
+        where: scopeWhere,
         take: 5,
         orderBy: { createdAt: 'desc' },
         include: { student: { select: { firstName: true, lastName: true } } },
       }),
-      prisma.payment.count({ where: { status: { in: ['PENDING', 'OVERDUE'] } } }),
-      prisma.payment.count(),
+      prisma.payment.count({ where: { ...scopeWhere, status: { in: ['PENDING', 'OVERDUE'] } } }),
+      prisma.payment.count({ where: scopeWhere }),
     ]);
 
   const paidWithDates = await prisma.payment.findMany({
-    where: { status: 'PAID', paidAt: { not: null } },
+    where: { ...scopeWhere, status: 'PAID', paidAt: { not: null } },
     select: { amount: true, paidAt: true },
   });
 
@@ -162,8 +172,12 @@ export const getStats = catchAsync(async (req: Request, res: Response, next: Nex
 
 export const getPaymentById = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const payment = await prisma.payment.findUnique({
-      where: { id: parseInt(req.params.id as string) },
+    const scopeWhere = getScopeWhere(req.user, 'payment');
+    const payment = await prisma.payment.findFirst({
+      where: {
+        id: parseInt(req.params.id as string),
+        ...scopeWhere,
+      },
       include: {
         student: {
           select: { firstName: true, lastName: true, studentId: true },
@@ -181,6 +195,16 @@ export const getPaymentById = catchAsync(
 
 export const createPayment = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { studentId, amount, type, description, dueDate } = req.body;
+
+  const studentScopeWhere = getScopeWhere(req.user, 'student');
+  const student = await prisma.student.findFirst({
+    where: { id: parseInt(studentId as string), ...studentScopeWhere },
+  });
+
+  if (!student) {
+    return next(new NotFoundError('Student not found'));
+  }
+
   const payment = await prisma.payment.create({
     data: {
       studentId: parseInt(studentId as string),
@@ -198,9 +222,20 @@ export const createPayment = catchAsync(async (req: Request, res: Response, next
 });
 
 export const updatePayment = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const scopeWhere = getScopeWhere(req.user, 'payment');
+  const paymentId = parseInt(req.params.id as string);
+
+  const existing = await prisma.payment.findFirst({
+    where: { id: paymentId, ...scopeWhere },
+  });
+
+  if (!existing) {
+    return next(new NotFoundError('Payment not found'));
+  }
+
   const { amount, type, description, dueDate, status } = req.body;
   const payment = await prisma.payment.update({
-    where: { id: parseInt(req.params.id as string) },
+    where: { id: paymentId },
     data: {
       amount: amount !== undefined ? parseFloat(amount as string) : undefined,
       type,
@@ -215,8 +250,19 @@ export const updatePayment = catchAsync(async (req: Request, res: Response, next
 });
 
 export const markAsPaid = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const scopeWhere = getScopeWhere(req.user, 'payment');
+  const paymentId = parseInt(req.params.id as string);
+
+  const existing = await prisma.payment.findFirst({
+    where: { id: paymentId, ...scopeWhere },
+  });
+
+  if (!existing) {
+    return next(new NotFoundError('Payment not found'));
+  }
+
   const payment = await prisma.payment.update({
-    where: { id: parseInt(req.params.id as string) },
+    where: { id: paymentId },
     data: {
       status: 'PAID',
       paidAt: new Date(),
@@ -228,8 +274,19 @@ export const markAsPaid = catchAsync(async (req: Request, res: Response, next: N
 });
 
 export const deletePayment = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const scopeWhere = getScopeWhere(req.user, 'payment');
+  const paymentId = parseInt(req.params.id as string);
+
+  const existing = await prisma.payment.findFirst({
+    where: { id: paymentId, ...scopeWhere },
+  });
+
+  if (!existing) {
+    return next(new NotFoundError('Payment not found'));
+  }
+
   await prisma.payment.delete({
-    where: { id: parseInt(req.params.id as string) },
+    where: { id: paymentId },
   });
 
   await invalidateCache('dashboard:*');
@@ -237,3 +294,4 @@ export const deletePayment = catchAsync(async (req: Request, res: Response, next
   auditLog('DELETE_PAYMENT', 'Payment', req.params.id as string, req);
   res.json({ success: true, message: 'Payment deleted' });
 });
+

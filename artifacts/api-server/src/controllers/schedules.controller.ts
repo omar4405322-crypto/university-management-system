@@ -389,21 +389,59 @@ export const syncGridToMaster = catchAsync(
     }
 
     let syncedCount = 0;
+    let skippedCount = 0;
+    const skippedSlots: Array<{ courseName: string; reason: string }> = [];
+
+    const parsedDeptId = departmentId ? parseInt(departmentId) : undefined;
+
     for (const slot of slots) {
       const { day, startTime, endTime, courseName, instructor, room, slotType } = slot;
-      if (!courseName) continue;
+      if (!courseName || typeof courseName !== 'string') continue;
 
-      const course = await prisma.course.findFirst({
+      const trimmedName = courseName.trim();
+      const deptFilter = parsedDeptId ? { departmentId: parsedDeptId } : {};
+
+      // 1. Exact match lookup (name or courseCode)
+      let course = await prisma.course.findFirst({
         where: {
           OR: [
-            { name: { contains: courseName, mode: 'insensitive' } },
-            { courseCode: { contains: courseName, mode: 'insensitive' } },
+            { name: { equals: trimmedName, mode: 'insensitive' } },
+            { courseCode: { equals: trimmedName, mode: 'insensitive' } },
           ],
-          ...(departmentId ? { departmentId: parseInt(departmentId) } : {}),
+          ...deptFilter,
         },
       });
 
-      if (!course) continue;
+      // 2. Contains fallback with ambiguity guard if no exact match found
+      if (!course) {
+        const candidateCourses = await prisma.course.findMany({
+          where: {
+            OR: [
+              { name: { contains: trimmedName, mode: 'insensitive' } },
+              { courseCode: { contains: trimmedName, mode: 'insensitive' } },
+            ],
+            ...deptFilter,
+          },
+        });
+
+        if (candidateCourses.length === 1) {
+          course = candidateCourses[0];
+        } else if (candidateCourses.length > 1) {
+          skippedCount++;
+          skippedSlots.push({
+            courseName: trimmedName,
+            reason: `AMBIGUOUS_COURSE_MATCH: ${candidateCourses.length} candidate courses matched '${trimmedName}'`,
+          });
+          continue;
+        } else {
+          skippedCount++;
+          skippedSlots.push({
+            courseName: trimmedName,
+            reason: `COURSE_NOT_FOUND: No course matching '${trimmedName}'`,
+          });
+          continue;
+        }
+      }
 
       let doctorId: number | null = null;
       if (instructor) {
@@ -420,10 +458,10 @@ export const syncGridToMaster = catchAsync(
       }
 
       let timetableId: number | null = null;
-      if (departmentId && academicYear && semester) {
+      if (parsedDeptId && academicYear && semester) {
         const timetable = await prisma.timetable.findFirst({
           where: {
-            departmentId: parseInt(departmentId),
+            departmentId: parsedDeptId,
             academicYear: parseInt(academicYear),
             semester: parseInt(semester)
           }
@@ -472,8 +510,8 @@ export const syncGridToMaster = catchAsync(
 
     res.json({
       success: true,
-      message: `Successfully synced ${syncedCount} slots to Master Schedule`,
-      data: { syncedCount },
+      message: `Successfully synced ${syncedCount} slots to Master Schedule${skippedCount > 0 ? ` (${skippedCount} skipped)` : ''}`,
+      data: { syncedCount, skippedCount, skippedSlots },
     });
   }
 );

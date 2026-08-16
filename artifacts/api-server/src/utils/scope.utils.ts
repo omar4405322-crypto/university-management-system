@@ -11,6 +11,8 @@ export type EntityType =
   | 'exam'
   | 'student'
   | 'timetable'
+  | 'payment'
+  | 'user'
   | string;
 
 export const getScopeWhere = (
@@ -26,26 +28,57 @@ export const getScopeWhere = (
   // SUPER_ADMIN: no filter
   if (user.role === 'SUPER_ADMIN') return {};
 
-  // COLLEGE_ADMIN: scoped to managedCollegeId
-  if (user.role === 'COLLEGE_ADMIN' && user.managedCollegeId) {
+  // COLLEGE_ADMIN: scoped to managedCollegeId (or fallback collegeId)
+  if (user.role === 'COLLEGE_ADMIN') {
+    const managedCollegeId = user.managedCollegeId || user.collegeId;
+    if (!managedCollegeId) return { id: -1 }; // Fail-closed
+
     // Most entities are related via department.collegeId; for department entity itself we filter by collegeId
-    if (entity === 'department') return { collegeId: user.managedCollegeId };
-    if (entity === 'course') return { department: { collegeId: user.managedCollegeId } };
-    if (entity === 'exam') return { course: { department: { collegeId: user.managedCollegeId } } };
-    if (entity === 'student') return { department: { collegeId: user.managedCollegeId } };
-    if (entity === 'timetable') return { department: { collegeId: user.managedCollegeId } };
-    return { department: { collegeId: user.managedCollegeId } };
+    if (entity === 'department') return { collegeId: managedCollegeId };
+    if (entity === 'course') return { department: { collegeId: managedCollegeId } };
+    if (entity === 'exam') return { course: { department: { collegeId: managedCollegeId } } };
+    if (entity === 'student') return { department: { collegeId: managedCollegeId } };
+    if (entity === 'timetable') return { department: { collegeId: managedCollegeId } };
+    if (entity === 'payment') return { student: { department: { collegeId: managedCollegeId } } };
+    if (entity === 'user') {
+      return {
+        OR: [
+          { collegeId: managedCollegeId },
+          { managedCollegeId: managedCollegeId },
+          { department: { collegeId: managedCollegeId } },
+          { student: { department: { collegeId: managedCollegeId } } },
+          { doctor: { department: { collegeId: managedCollegeId } } },
+          { teachingAssistant: { department: { collegeId: managedCollegeId } } },
+        ],
+      };
+    }
+    return { department: { collegeId: managedCollegeId } };
   }
 
-  // DEPARTMENT_ADMIN: scoped to managedDepartmentId
-  if (user.role === 'DEPARTMENT_ADMIN' && user.managedDepartmentId) {
+  // DEPARTMENT_ADMIN: scoped to managedDepartmentId (or fallback departmentId)
+  if (user.role === 'DEPARTMENT_ADMIN') {
+    const managedDepartmentId = user.managedDepartmentId || user.departmentId;
+    if (!managedDepartmentId) return { id: -1 }; // Fail-closed
+
     // For department entity, match id; for others, departmentId
-    if (entity === 'department') return { id: user.managedDepartmentId };
-    if (entity === 'course') return { departmentId: user.managedDepartmentId };
-    if (entity === 'exam') return { course: { departmentId: user.managedDepartmentId } };
-    if (entity === 'student') return { departmentId: user.managedDepartmentId };
-    if (entity === 'timetable') return { departmentId: user.managedDepartmentId };
-    return { departmentId: user.managedDepartmentId };
+    if (entity === 'department') return { id: managedDepartmentId };
+    if (entity === 'course') return { departmentId: managedDepartmentId };
+    if (entity === 'exam') return { course: { departmentId: managedDepartmentId } };
+    if (entity === 'student') return { departmentId: managedDepartmentId };
+    if (entity === 'timetable') return { departmentId: managedDepartmentId };
+    if (entity === 'payment') return { student: { departmentId: managedDepartmentId } };
+    if (entity === 'user') {
+      return {
+        OR: [
+          { departmentId: managedDepartmentId },
+          { managedDepartmentId: managedDepartmentId },
+          { student: { departmentId: managedDepartmentId } },
+          { doctor: { departmentId: managedDepartmentId } },
+          { teachingAssistant: { departmentId: managedDepartmentId } },
+        ],
+      };
+    }
+    return { departmentId: managedDepartmentId };
   }
 
   // Backwards-compat: support legacy ADMIN with managedCollegeId (temporary)
@@ -55,6 +88,7 @@ export const getScopeWhere = (
     if (entity === 'exam') return { course: { department: { collegeId: user.managedCollegeId } } };
     if (entity === 'student') return { department: { collegeId: user.managedCollegeId } };
     if (entity === 'timetable') return { department: { collegeId: user.managedCollegeId } };
+    if (entity === 'payment') return { student: { department: { collegeId: user.managedCollegeId } } };
     return { department: { collegeId: user.managedCollegeId } };
   }
 

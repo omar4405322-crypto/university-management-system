@@ -25,7 +25,19 @@ const calculateDistance = (
 };
 
 class AttendanceSessionService {
-  static async verifySessionOwnership(session: any, user: any): Promise<boolean> {
+  static async verifySlotOrSessionOwnership(
+    target: {
+      doctorId?: number | null;
+      teachingAssistantId?: string | null;
+      scheduleSlot?: {
+        doctorId?: number | null;
+        teachingAssistantId?: string | null;
+      } | null;
+    },
+    user: any
+  ): Promise<boolean> {
+    if (!user || !user.role) return false;
+
     if (
       ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(
         user.role
@@ -33,27 +45,34 @@ class AttendanceSessionService {
     ) {
       return true;
     }
+
     if (user.role === 'DOCTOR') {
       const doctor = await prisma.doctor.findUnique({
         where: { userId: user.id },
       });
-      if (
-        doctor &&
-        (session.scheduleSlot?.doctorId === doctor.id ||
-          session.doctorId === doctor.id)
-      ) {
-        return true;
-      }
+      if (!doctor) return false;
+      return (
+        target.doctorId === doctor.id ||
+        target.scheduleSlot?.doctorId === doctor.id
+      );
     }
+
     if (user.role === 'TEACHING_ASSISTANT') {
       const ta = await prisma.teachingAssistant.findUnique({
         where: { userId: user.id },
       });
-      if (ta && session.scheduleSlot?.teachingAssistantId === ta.id) {
-        return true;
-      }
+      if (!ta) return false;
+      return (
+        target.teachingAssistantId === ta.id ||
+        target.scheduleSlot?.teachingAssistantId === ta.id
+      );
     }
+
     return false;
+  }
+
+  static async verifySessionOwnership(session: any, user: any): Promise<boolean> {
+    return this.verifySlotOrSessionOwnership(session, user);
   }
 
   static async startSession(
@@ -111,24 +130,7 @@ class AttendanceSessionService {
       );
     }
 
-    let authorized = false;
-    if (
-      ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(
-        user.role
-      )
-    ) {
-      authorized = true;
-    } else if (user.role === 'DOCTOR') {
-      const doctor = await prisma.doctor.findUnique({
-        where: { userId: user.id },
-      });
-      if (doctor && slot.doctorId === doctor.id) authorized = true;
-    } else if (user.role === 'TEACHING_ASSISTANT') {
-      const ta = await prisma.teachingAssistant.findUnique({
-        where: { userId: user.id },
-      });
-      if (ta && slot.teachingAssistantId === ta.id) authorized = true;
-    }
+    const authorized = await this.verifySlotOrSessionOwnership(slot, user);
 
     if (!authorized) {
       throw new AuthorizationError(
@@ -245,30 +247,7 @@ class AttendanceSessionService {
       throw new NotFoundError('Session not found');
     }
 
-    let authorized = false;
-    if (
-      ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(
-        user.role
-      )
-    ) {
-      authorized = true;
-    } else if (user.role === 'DOCTOR') {
-      const doctor = await prisma.doctor.findUnique({
-        where: { userId: user.id },
-      });
-      if (
-        doctor &&
-        (session.scheduleSlot.doctorId === doctor.id ||
-          session.doctorId === doctor.id)
-      )
-        authorized = true;
-    } else if (user.role === 'TEACHING_ASSISTANT') {
-      const ta = await prisma.teachingAssistant.findUnique({
-        where: { userId: user.id },
-      });
-      if (ta && session.scheduleSlot.teachingAssistantId === ta.id)
-        authorized = true;
-    }
+    const authorized = await this.verifySlotOrSessionOwnership(session, user);
 
     if (!authorized) {
       throw new AuthorizationError('Not authorized');
@@ -432,16 +411,7 @@ class AttendanceSessionService {
       throw new AppError('Schedule slot not found', 404);
     }
     
-    let isOwner = false;
-    if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
-      isOwner = true;
-    } else if (user.role === 'DOCTOR') {
-      const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
-      if (doctor && slot.doctorId === doctor.id) isOwner = true;
-    } else if (user.role === 'TEACHING_ASSISTANT') {
-      const ta = await prisma.teachingAssistant.findUnique({ where: { userId: user.id } });
-      if (ta && slot.teachingAssistantId === ta.id) isOwner = true;
-    }
+    const isOwner = await this.verifySlotOrSessionOwnership(slot, user);
     
     if (!isOwner) {
       throw new AppError('Not authorized to view sessions for this slot', 403);

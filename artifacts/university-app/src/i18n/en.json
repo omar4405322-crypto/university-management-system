@@ -1,9 +1,4 @@
 {
-  "COMMON": {
-    "OF": "of",
-    "PAGE": "Page",
-    "RESET": "Reset"
-  },
   "transcript": {
     "title": "Exams Record",
     "subtitle": "Permanent record of completed exams and results",
@@ -94,55 +89,6 @@
     "deleteSuccess": "Material deleted successfully",
     "scheduleTimeline": "Weekly Schedule & Rooms"
   },
-  "DASHBOARD": {
-    "ACADEMICOVERVIEW": "Academic Overview",
-    "ACTIVITYLOG": "Activity Log",
-    "ALLSYSTEMSOPERATIONAL": "All Systems Operational",
-    "ANNOUNCEMENTS": "Announcements",
-    "BOARDMEETING": "Board Meeting",
-    "CONFERENCEROOM": "Conference Room",
-    "ENTERPRISE": "Enterprise",
-    "EXAMSCHEDULENOTE": "Please review the academic schedule for dates and halls.",
-    "EXAMSCHEDULEPUBLISHED": "Exam Schedule Published",
-    "GROWTHREND": "Growth Trend",
-    "MANAGESUBSCRIPTION": "Manage Subscription",
-    "QUICKACTIONS": "Quick Actions",
-    "QUOTAUSAGE": "Quota Usage",
-    "RECENTACTIVITY": "Recent Activity",
-    "SERVERLOAD": "Server Load",
-    "STORAGEUSAGE": "Storage Usage",
-    "SUBSCRIPTION": "Subscription",
-    "UPCOMINGEVENTS": "Upcoming Events",
-    "VIEWALLACTIVITY": "View All Activity",
-    "newStudentRegistration": "New student registration"
-  },
-  "NAV": {
-    "NOTIFICATIONS": "Notifications"
-  },
-  "SCHEDULES": {
-    "TITLE": "Schedules Management",
-    "SUBTITLE": "Manage university timetables and class assignments.",
-    "CREATE": "Create Schedule",
-    "EMPTY_TITLE": "No schedules yet",
-    "EMPTY_DESC": "There are no class schedules for this selection. Create one to get started.",
-    "EDIT_TITLE": "Edit Schedule",
-    "CREATE_TITLE": "Create New Schedule",
-    "deleteConfirm": "Are you sure you want to delete this schedule?",
-    "searchPlaceholder": "Search by course or room...",
-    "updateSuccess": "Schedule updated successfully",
-    "createSuccess": "Schedule created successfully",
-    "selectSection": "Select Course Section",
-    "slotType": "Session Type",
-    "room": "Room",
-    "teachingAssistant": "Teaching Assistant (Optional)",
-    "noTA": "—",
-    "conflictError": "Conflict detected",
-    "timetableList": "Timetables",
-    "publishTimetable": "Publish",
-    "unpublishTimetable": "Unpublish",
-    "draft": "DRAFT",
-    "published": "PUBLISHED"
-  },
   "sections": {
     "title": "Sections Management",
     "subtitle": "Manage course sections, group mappings, and student overrides.",
@@ -184,13 +130,6 @@
     "autoDivideDesc": "This will automatically divide all active students in the selected department into permanent cohorts alphabetically. Existing cohorts will be overwritten.",
     "numberOfGroups": "Number of Groups",
     "autoDivideSuccess": "Students divided successfully"
-  },
-  "STUDENTS": {
-    "YEAR1": "First Division",
-    "YEAR2": "Second Division",
-    "YEAR3": "Third Division",
-    "YEAR4": "Fourth Division",
-    "YEAR5": "Fifth Division"
   },
   "attendance": {
     "title": "Attendance Record",
@@ -1407,9 +1346,6 @@
     "section": "Section:",
     "supervisor": "Supervisor:"
   },
-  "schedules": {
-    "title": "Schedules"
-  },
   "students": {
     "defaultView": "Default View",
     "accountDetails": "Account Details",
@@ -1490,7 +1426,12 @@
     "academicYear": "Academic Division",
     "notFoundDesc": "The requested student ID does not exist or has been removed.",
     "printProfile": "Print Profile",
-    "colYear": "Division"
+    "colYear": "Division",
+    "YEAR1": "First Division",
+    "YEAR2": "Second Division",
+    "YEAR3": "Third Division",
+    "YEAR4": "Fourth Division",
+    "YEAR5": "Fifth Division"
   },
   "tasks": {
     "createTask": "Create Assignment",
@@ -1828,5 +1769,29 @@
     "deleteSuccess": "Group deleted successfully",
     "deleteFailed": "Failed to delete group",
     "course": "Course"
+  },
+  "schedules": {
+    "TITLE": "Schedules Management",
+    "SUBTITLE": "Manage university timetables and class assignments.",
+    "CREATE": "Create Schedule",
+    "EMPTY_TITLE": "No schedules yet",
+    "EMPTY_DESC": "There are no class schedules for this selection. Create one to get started.",
+    "EDIT_TITLE": "Edit Schedule",
+    "CREATE_TITLE": "Create New Schedule",
+    "deleteConfirm": "Are you sure you want to delete this schedule?",
+    "searchPlaceholder": "Search by course or room...",
+    "updateSuccess": "Schedule updated successfully",
+    "createSuccess": "Schedule created successfully",
+    "selectSection": "Select Course Section",
+    "slotType": "Session Type",
+    "room": "Room",
+    "teachingAssistant": "Teaching Assistant (Optional)",
+    "noTA": "—",
+    "conflictError": "Conflict detected",
+    "timetableList": "Timetables",
+    "publishTimetable": "Publish",
+    "unpublishTimetable": "Unpublish",
+    "draft": "DRAFT",
+    "published": "PUBLISHED"
   }
 }

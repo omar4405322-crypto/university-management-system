@@ -418,7 +418,7 @@ const StudentsList = () => {
                           </div>
                         </TableCell>
                         <TableCell hideOnMobile className="p-4 text-center font-medium">
-                          {t(`STUDENTS.YEAR${student.year}`, isRTL ? `الفرقة ${student.year}` : `Division ${student.year}`)}
+                          {t(`students.YEAR${student.year}`, isRTL ? `الفرقة ${student.year}` : `Division ${student.year}`)}
                         </TableCell>
                         <TableCell hideOnMobile className="p-4 text-start font-medium">
                           {isRTL ? (student.department?.nameAr || student.department?.name || '—') : (student.department?.name || '—')}

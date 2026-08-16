@@ -216,7 +216,7 @@ const SchedulesList = () => {
 
   const handleDelete = async (id) => {
     if (
-      window.confirm(t('SCHEDULES.deleteConfirm', 'Are you sure you want to delete this schedule?'))
+      window.confirm(t('schedules.deleteConfirm', 'Are you sure you want to delete this schedule?'))
     ) {
       try {
         const result = await schedulesService.deleteSchedule(id);
@@ -257,12 +257,12 @@ const SchedulesList = () => {
       
 
       <PageHeader
-        title={t('SCHEDULES.TITLE', 'Schedules Management')}
-        subtitle={t('SCHEDULES.SUBTITLE', 'Manage university timetables and class assignments.')}
+        title={t('schedules.TITLE', 'Schedules Management')}
+        subtitle={t('schedules.SUBTITLE', 'Manage university timetables and class assignments.')}
         action={
           canManage
             ? {
-                label: t('SCHEDULES.CREATE', 'Create Schedule'),
+                label: t('schedules.CREATE', 'Create Schedule'),
                 icon: Plus,
                 onClick: () => {
                   setEditingSchedule(null);
@@ -308,7 +308,7 @@ const SchedulesList = () => {
             <FilterBar
               search={search}
               onSearchChange={setSearch}
-              searchPlaceholder={t('SCHEDULES.searchPlaceholder', 'Search by course or room...')}
+              searchPlaceholder={t('schedules.searchPlaceholder', 'Search by course or room...')}
             >
               {!isCollegeAdmin && (
                 <>
@@ -394,11 +394,11 @@ const SchedulesList = () => {
                     <Calendar size={32} />
                   </div>
                   <h3 className="text-xl font-bold text-brand-text-primary dark:text-brand-text-main tracking-tight mb-2">
-                    {t('SCHEDULES.EMPTY_TITLE', 'No schedules yet')}
+                    {t('schedules.EMPTY_TITLE', 'No schedules yet')}
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 font-medium max-w-xs mx-auto">
                     {t(
-                      'SCHEDULES.EMPTY_DESC',
+                      'schedules.EMPTY_DESC',
                       'There are no class schedules for this selection. Create one to get started.'
                     )}
                   </p>
@@ -411,7 +411,7 @@ const SchedulesList = () => {
                       }}
                       className="mt-6 px-5 py-2.5 bg-brand-primary-500 hover:bg-brand-primary-600 text-white text-xs font-semibold rounded-xl active:scale-95 transition-all shadow-md shadow-brand-primary-500/10 hover:shadow-lg"
                     >
-                      {t('SCHEDULES.CREATE', 'Create Schedule')}
+                      {t('schedules.CREATE', 'Create Schedule')}
                     </button>
                   )}
                 </div>
@@ -429,7 +429,7 @@ const SchedulesList = () => {
                         {t('timetables.room', 'Room')}
                       </TableHead>
                       <TableHead className="text-start font-semibold text-brand-text-primary dark:text-brand-text-main py-4 px-4">
-                        {t('SCHEDULES.slotType', 'Session Type')} / {t('auth.doctor', 'Doctor')}
+                        {t('schedules.slotType', 'Session Type')} / {t('auth.doctor', 'Doctor')}
                       </TableHead>
                       <TableHead className="text-end font-semibold text-brand-text-primary dark:text-brand-text-main py-4 px-4">
                         {t('common.actions', 'Actions')}
@@ -532,8 +532,8 @@ const SchedulesList = () => {
           fetchSchedules();
           showToast(
             editingSchedule
-              ? t('SCHEDULES.updateSuccess', 'Schedule updated successfully')
-              : t('SCHEDULES.createSuccess', 'Schedule created successfully'),
+              ? t('schedules.updateSuccess', 'Schedule updated successfully')
+              : t('schedules.createSuccess', 'Schedule created successfully'),
             'success'
           );
         }}

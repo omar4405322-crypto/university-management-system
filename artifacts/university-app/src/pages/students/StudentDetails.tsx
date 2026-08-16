@@ -276,7 +276,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
               {isRTL ? 'الفرقة الدراسية' : 'Academic Division'}
             </span>
             <span className="text-lg font-black text-slate-900 dark:text-white truncate">
-              {t(`STUDENTS.YEAR${student.year}`, isRTL ? `الفرقة ${student.year || 1}` : `Division ${student.year || 1}`)}
+              {t(`students.YEAR${student.year}`, isRTL ? `الفرقة ${student.year || 1}` : `Division ${student.year || 1}`)}
             </span>
           </div>
         </div>
@@ -467,7 +467,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
               />
               <InfoTile
                 label={isRTL ? 'الفرقة الدراسية' : 'Academic Division'}
-                value={t(`STUDENTS.YEAR${student.year}`, isRTL ? `الفرقة ${student.year || 1}` : `Division ${student.year || 1}`)}
+                value={t(`students.YEAR${student.year}`, isRTL ? `الفرقة ${student.year || 1}` : `Division ${student.year || 1}`)}
               />
               <InfoTile
                 label={isRTL ? 'المجموعة الأكاديمية' : 'Student Group'}

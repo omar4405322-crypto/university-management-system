@@ -484,53 +484,84 @@ class TaskService {
     feedback?: string,
     reqSource?: any
   ) {
-    const existingSubmission = await prisma.taskSubmission.findUnique({
-      where: { id: submissionId },
-      include: { task: { include: { course: { include: { department: true } } } } },
-    });
-    if (!existingSubmission) {
-      throw new NotFoundError('Submission not found');
-    }
+    const submission = await prisma.$transaction(async (tx) => {
+      const existingSubmission = await tx.taskSubmission.findUnique({
+        where: { id: submissionId },
+        include: { task: { include: { course: { include: { department: true } } } } },
+      });
+      if (!existingSubmission) {
+        throw new NotFoundError('Submission not found');
+      }
 
-    if (existingSubmission.task.isDeleted) {
-      throw new NotFoundError('Task not found');
-    }
+      if (existingSubmission.task.isDeleted) {
+        throw new NotFoundError('Task not found');
+      }
 
-    if (user.role === 'DOCTOR') {
-      const doctor = await TaskService.getDoctorOrThrow(user.id);
-      if (existingSubmission.task.doctorId !== doctor.id) {
-        throw new AuthorizationError(
-          'Access denied: You did not create this task'
+      if (user.role === 'DOCTOR') {
+        const doctor = await TaskService.getDoctorOrThrow(user.id);
+        if (existingSubmission.task.doctorId !== doctor.id) {
+          throw new AuthorizationError(
+            'Access denied: You did not create this task'
+          );
+        }
+      }
+
+      await TaskService.validateCourseScope(user, existingSubmission.task.course);
+
+      const numericScore = parseFloat(String(score));
+      if (isNaN(numericScore)) {
+        throw new ValidationError('Invalid score value');
+      }
+      if (numericScore < 0) {
+        throw new ValidationError('Score cannot be negative');
+      }
+      if (numericScore > existingSubmission.task.maxScore) {
+        throw new ValidationError(
+          `Score ${numericScore} exceeds maximum allowed score ${existingSubmission.task.maxScore}`
         );
       }
-    }
 
-    await TaskService.validateCourseScope(user, existingSubmission.task.course);
+      const updated = await tx.taskSubmission.update({
+        where: { id: submissionId },
+        data: {
+          score: numericScore,
+          feedback: feedback != null ? String(feedback) : undefined,
+        },
+      });
 
-    const numericScore = parseFloat(String(score));
-    if (isNaN(numericScore)) {
-      throw new ValidationError('Invalid score value');
-    }
-    if (numericScore < 0) {
-      throw new ValidationError('Score cannot be negative');
-    }
-    if (numericScore > existingSubmission.task.maxScore) {
-      throw new ValidationError(
-        `Score ${numericScore} exceeds maximum allowed score ${existingSubmission.task.maxScore}`
-      );
-    }
+      if (reqSource) {
+        const userId = user?.id ?? reqSource?.user?.id ?? null;
+        const userRole = user?.role ?? reqSource?.user?.role ?? null;
+        const userEmail = user?.email ?? reqSource?.user?.email ?? null;
+        const ipAddress = reqSource?.ip ?? null;
+        const userAgent = typeof reqSource?.get === 'function'
+          ? reqSource.get('user-agent')
+          : (reqSource?.headers?.['user-agent'] ?? reqSource?.userAgent ?? null);
 
-    const submission = await prisma.taskSubmission.update({
-      where: { id: submissionId },
-      data: {
-        score: numericScore,
-        feedback: feedback != null ? String(feedback) : undefined,
-      },
+        await tx.auditLog.create({
+          data: {
+            action: 'UPDATE_GRADE',
+            entity: 'TaskSubmission',
+            entityId: String(submissionId),
+            userId: typeof userId === 'number' ? userId : (userId ? parseInt(String(userId)) : null),
+            userRole: userRole ? String(userRole) : null,
+            userEmail: userEmail ? String(userEmail) : null,
+            ipAddress,
+            userAgent,
+            details: {
+              score: numericScore,
+              previousScore: existingSubmission.score,
+              taskId: existingSubmission.taskId,
+              studentId: existingSubmission.studentId,
+            },
+          },
+        });
+
+        auditLog('UPDATE_GRADE', 'TaskSubmission', String(submissionId), reqSource);
+      }
+
+      return updated;
     });
-
-    if (reqSource) {
-      auditLog('UPDATE_GRADE', 'TaskSubmission', String(submissionId), reqSource);
-    }
 
     return submission;
   }

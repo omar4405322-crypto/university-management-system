@@ -1,10 +1,22 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 const router = express.Router();
 import * as schedulesController from '../controllers/schedules.controller';
 import { authorize } from '../middleware/auth.middleware';
 import overridesRouter from './overrides.routes';
 import validate from '../middleware/validate.middleware';
 import { scheduleValidation } from '../validations/functional.validation';
+
+const syncGridLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 5, // Limit each IP/user to 5 bulk sync requests per 15-minute window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many sync requests, please try again after 15 minutes',
+  },
+});
 
 router.get('/', schedulesController.getAllSchedules);
 router.get('/week', schedulesController.getWeeklyTimetable);
@@ -32,6 +44,7 @@ router.delete(
 router.post(
   '/sync-grid',
   authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
+  syncGridLimiter,
   schedulesController.syncGridToMaster
 );
 

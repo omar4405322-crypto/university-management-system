@@ -1,4 +1,3 @@
-// @ts-nocheck
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import bcrypt from 'bcryptjs';
@@ -8,6 +7,7 @@ import catchAsync from '../utils/catchAsync';
 import { NotFoundError, AuthenticationError, AppError } from '../utils/appError';
 import { Request, Response, NextFunction } from 'express';
 import { generateTOTPSecret, generateQRCodeURL, verifyTOTP } from '../utils/twoFactor.utils';
+import { getScopeWhere } from '../utils/scope.utils';
 
 // 1. setup2FA — Generates secret and returns QR code for scanning:
 export const setup2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -110,11 +110,6 @@ export const getProfile = catchAsync(async (req: Request, res: Response, next: N
         department: {
           include: {
             college: true,
-          },
-        },
-        courses: {
-          include: {
-            enrollments: { include: { student: true } },
           },
         },
       },
@@ -301,7 +296,10 @@ export const updateProfilePicture = catchAsync(
 );
 
 export const getAllUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const where = getScopeWhere(req.user, 'user');
+
   const users = await prisma.user.findMany({
+    where,
     select: {
       id: true,
       email: true,
@@ -401,7 +399,7 @@ export const createAdmin = catchAsync(async (req: Request, res: Response, next: 
   });
 
   auditLog('CREATE_ADMIN', 'User', admin ? admin.id.toString() : 'null', req);
-  return res.status().json({ success: true, data: admin });
+  return res.status(201).json({ success: true, data: admin });
 });
 
 export const deleteUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {

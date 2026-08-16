@@ -209,7 +209,7 @@ const TasksList = () => {
     } finally {
       setLoading(false);
     }
-  }, [courseIdParam, statusParam, dueFromParam, dueToParam, sortByParam, searchParam, t]);
+  }, [courseIdParam, statusParam, dueFromParam, dueToParam, sortByParam, searchParam, yearParam, t]);
 
   const fetchCourses = async () => {
     try {
