@@ -1,21 +1,68 @@
 import { Request, Response } from 'express';
 import catchAsync from '../utils/catchAsync';
-import { AuthorizationError, NotFoundError } from '../utils/appError';
+import { AppError, AuthorizationError, NotFoundError } from '../utils/appError';
 import { EnrollmentService } from '../services/enrollment.service';
 import prisma from '../utils/prismaClient';
+import { getScopeWhere } from '../utils/scope.utils';
 
 export const getTranscript = catchAsync(async (req: Request, res: Response) => {
-  let studentIdParam = req.params.studentId ? parseInt(req.params.studentId as string) : NaN;
+  const { studentId: studentIdParam } = req.params;
+  const user = req.user!;
   let targetStudentId: number | null = null;
 
-  if (req.user!.role === 'STUDENT') {
-    const student = await prisma.student.findUnique({ where: { userId: req.user!.id } });
+  if (studentIdParam !== undefined) {
+    if (studentIdParam === 'me') {
+      if (user.role !== 'STUDENT') {
+        throw new AuthorizationError('The "me" parameter is only available for student accounts');
+      }
+      const student = await prisma.student.findUnique({
+        where: { userId: user.id },
+        select: { id: true },
+      });
+      if (!student) {
+        throw new NotFoundError('Student profile not found');
+      }
+      targetStudentId = student.id;
+    } else {
+      const numericStudentId = parseInt(studentIdParam as string, 10);
+      if (isNaN(numericStudentId)) {
+        throw new AppError('Invalid student ID format', 400);
+      }
+
+      if (user.role === 'STUDENT') {
+        const myStudent = await prisma.student.findUnique({
+          where: { userId: user.id },
+          select: { id: true },
+        });
+        if (!myStudent || myStudent.id !== numericStudentId) {
+          throw new AuthorizationError('Access denied: You can only view your own transcript');
+        }
+        targetStudentId = myStudent.id;
+      } else {
+        const studentScope = getScopeWhere(user, 'student');
+        const studentRecord = await prisma.student.findFirst({
+          where: {
+            AND: [
+              { id: numericStudentId },
+              studentScope,
+            ],
+          },
+        });
+        if (!studentRecord) {
+          throw new AuthorizationError('Access denied: You are not authorized to view this student\'s transcript');
+        }
+        targetStudentId = numericStudentId;
+      }
+    }
+  } else if (user.role === 'STUDENT') {
+    const student = await prisma.student.findUnique({
+      where: { userId: user.id },
+      select: { id: true },
+    });
     if (!student) {
       throw new NotFoundError('Student profile not found');
     }
     targetStudentId = student.id;
-  } else if (!isNaN(studentIdParam)) {
-    targetStudentId = studentIdParam;
   }
 
   // Case 1: Student Record view (Specific student)
