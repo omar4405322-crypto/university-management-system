@@ -97,7 +97,16 @@ export class QrDriver implements IAttendanceDriver {
       };
     }
 
-    const tokenKey = `attendance:used_token:${session.id}:${cleanToken}`;
+    const studentId = ctx.studentId ?? rawPayload.studentId;
+    if (!studentId) {
+      return {
+        valid: false,
+        errorCode: 'STUDENT_REQUIRED',
+        errorMessage: 'معرف الطالب مطلوب لتسجيل الحضور.',
+      };
+    }
+
+    const tokenKey = `attendance:used_token:${session.id}:${studentId}:${cleanToken}`;
     const isUsedCache = await getCache(tokenKey);
 
     if (isUsedCache || usedTokens.has(tokenKey)) {
