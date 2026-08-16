@@ -121,6 +121,15 @@ export class RfidDriver implements IAttendanceDriver {
     const attendanceDate = new Date(session.createdAt);
     attendanceDate.setHours(0, 0, 0, 0);
 
+    let recordedById: number | null = null;
+    if (session?.scheduleSlot?.doctorId) {
+      const doctor = await prisma.doctor.findUnique({
+        where: { id: session.scheduleSlot.doctorId },
+        select: { userId: true },
+      });
+      recordedById = doctor?.userId ?? null;
+    }
+
     return {
       studentId: student.id,
       method: this.method,
@@ -128,7 +137,7 @@ export class RfidDriver implements IAttendanceDriver {
       courseId: session.scheduleSlot.courseId,
       scheduleSlotId: session.scheduleSlot.id,
       status: 'PRESENT' as AttendanceStatus,
-      recordedById: null,
+      recordedById,
       ipAddress: ctx.ipAddress || null,
       deviceId: rawPayload.deviceId || null,
       date: attendanceDate,

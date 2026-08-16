@@ -344,7 +344,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
         setError(result.message);
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || t('SCHEDULES.conflictError', 'Conflict detected');
+      const msg = err.response?.data?.message || err.message || t('schedules.conflictError', 'Conflict detected');
       setError(msg);
     }
   };
@@ -356,7 +356,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700">
         <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/10">
           <h2 className="text-lg font-bold text-brand-text-primary dark:text-brand-text-main">
-            {schedule ? t('SCHEDULES.EDIT_TITLE', 'Edit Schedule') : t('SCHEDULES.CREATE_TITLE', 'Create New Schedule')}
+            {schedule ? t('schedules.EDIT_TITLE', 'Edit Schedule') : t('schedules.CREATE_TITLE', 'Create New Schedule')}
           </h2>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-colors">
             <X size={20} />
@@ -368,7 +368,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
             <div className="p-4 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl text-sm flex items-start gap-3 border border-rose-200 dark:border-rose-500/20">
               <AlertCircle size={18} className="mt-0.5 shrink-0" />
               <div className="flex flex-col">
-                <span className="font-bold">{t('SCHEDULES.conflictError', 'Conflict detected')}</span>
+                <span className="font-bold">{t('schedules.conflictError', 'Conflict detected')}</span>
                 <span>{error}</span>
               </div>
             </div>
@@ -506,7 +506,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
-                <BookOpen size={14} className="text-slate-400" /> {t('SCHEDULES.slotType', 'Slot Type')}
+                <BookOpen size={14} className="text-slate-400" /> {t('schedules.slotType', 'Slot Type')}
               </label>
               <select
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm"
@@ -562,7 +562,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
-              <MapPin size={14} className="text-slate-400" /> {t('SCHEDULES.room', 'Room / Location')}
+              <MapPin size={14} className="text-slate-400" /> {t('schedules.room', 'Room / Location')}
             </label>
             <input
               type="text"
@@ -610,7 +610,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
               className="flex-1 bg-brand-primary-500 hover:bg-brand-primary-600 active:scale-95 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
               loading={isSubmitting}
             >
-              {schedule ? t('common.update', 'Update Schedule') : t('SCHEDULES.CREATE', 'Create Schedule')}
+              {schedule ? t('common.update', 'Update Schedule') : t('schedules.CREATE', 'Create Schedule')}
             </Button>
           </div>
         </form>

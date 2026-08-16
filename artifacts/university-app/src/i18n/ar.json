@@ -1,9 +1,4 @@
 {
-  "COMMON": {
-    "OF": "من",
-    "PAGE": "صفحة",
-    "RESET": "إعادة تعيين"
-  },
   "transcript": {
     "title": "سجل الامتحانات",
     "subtitle": "سجل دائم لجميع الامتحانات المنتهية والنتائج",
@@ -100,55 +95,6 @@
     "deleteSuccess": "تم حذف المادة بنجاح",
     "scheduleTimeline": "جدول مواعيد وقاعات المقرر الأسبوعي"
   },
-  "DASHBOARD": {
-    "ACADEMICOVERVIEW": "نظرة أكاديمية عامة",
-    "ACTIVITYLOG": "سجل النشاط",
-    "ALLSYSTEMSOPERATIONAL": "جميع الأنظمة تعمل",
-    "ANNOUNCEMENTS": "الإعلانات",
-    "BOARDMEETING": "اجتماع مجلس الإدارة",
-    "CONFERENCEROOM": "قاعة المؤتمرات",
-    "ENTERPRISE": "Enterprise",
-    "EXAMSCHEDULENOTE": "يرجى مراجعة الجدول الدراسي لمعرفة المواعيد والقاعات.",
-    "EXAMSCHEDULEPUBLISHED": "تم نشر جدول الامتحانات",
-    "GROWTHREND": "اتجاه النمو",
-    "MANAGESUBSCRIPTION": "إدارة الاشتراك",
-    "QUICKACTIONS": "إجراءات سريعة",
-    "QUOTAUSAGE": "استخدام الحصة",
-    "RECENTACTIVITY": "النشاط الأخير",
-    "SERVERLOAD": "حمل الخادم",
-    "STORAGEUSAGE": "استخدام التخزين",
-    "SUBSCRIPTION": "الاشتراك",
-    "UPCOMINGEVENTS": "الأحداث القادمة",
-    "VIEWALLACTIVITY": "عرض كل النشاط",
-    "newStudentRegistration": "تسجيل طالب جديد"
-  },
-  "NAV": {
-    "NOTIFICATIONS": "الإشعارات"
-  },
-  "SCHEDULES": {
-    "TITLE": "إدارة المحاضرات والسكاشن",
-    "SUBTITLE": "إدارة الحصص الدراسية وتوزيع القاعات والدكاترة والمعيدين.",
-    "CREATE": "إنشاء جدول",
-    "EMPTY_TITLE": "لا توجد جداول بعد",
-    "EMPTY_DESC": "لا توجد محاضرات مجدولة لهذا الاختيار. أنشئ جدولاً للبدء.",
-    "EDIT_TITLE": "تعديل الجدول",
-    "CREATE_TITLE": "إنشاء جدول جديد",
-    "deleteConfirm": "هل أنت متأكد من حذف هذا الجدول؟",
-    "searchPlaceholder": "بحث بالمقرر أو القاعة...",
-    "updateSuccess": "تم تحديث الجدول بنجاح",
-    "createSuccess": "تم إنشاء الجدول بنجاح",
-    "selectSection": "اختر شعبة المقرر",
-    "slotType": "نوع الجلسة",
-    "room": "القاعة / الغرفة",
-    "teachingAssistant": "المعيد (اختياري)",
-    "noTA": "—",
-    "conflictError": "تم اكتشاف تعارض",
-    "timetableList": "الجداول الدراسية",
-    "publishTimetable": "نشر",
-    "unpublishTimetable": "إلغاء النشر",
-    "draft": "مسودة",
-    "published": "منشور"
-  },
   "sections": {
     "title": "إدارة الشُعب",
     "subtitle": "إدارة شُعب المقررات، وتعيينات المجموعات، والاستثناءات للطلاب.",
@@ -190,13 +136,6 @@
     "autoDivideDesc": "سيقوم هذا الإجراء بتقسيم جميع الطلاب النشطين في القسم المحدد تلقائياً إلى مجموعات دائمة حسب الترتيب الأبجدي لأسماءهم. سيتم استبدال المجموعات الحالية.",
     "numberOfGroups": "عدد المجموعات",
     "autoDivideSuccess": "تم تقسيم الطلاب بنجاح"
-  },
-  "STUDENTS": {
-    "YEAR1": "الفرقة الأولى",
-    "YEAR2": "الفرقة الثانية",
-    "YEAR3": "الفرقة الثالثة",
-    "YEAR4": "الفرقة الرابعة",
-    "YEAR5": "الفرقة الخامسة"
   },
   "attendance": {
     "title": "سجل الحضور",
@@ -1499,9 +1438,6 @@
     "section": "شعبة:",
     "supervisor": "المدرب:"
   },
-  "schedules": {
-    "title": "الجداول الدراسية"
-  },
   "students": {
     "accountDetails": "تفاصيل الحساب",
     "accountRole": "دور الحساب",
@@ -1597,7 +1533,12 @@
     "colActions": "الإجراءات",
     "statusActive": "نشط",
     "statusSuspended": "معلق",
-    "statusInactive": "غير نشط"
+    "statusInactive": "غير نشط",
+    "YEAR1": "الفرقة الأولى",
+    "YEAR2": "الفرقة الثانية",
+    "YEAR3": "الفرقة الثالثة",
+    "YEAR4": "الفرقة الرابعة",
+    "YEAR5": "الفرقة الخامسة"
   },
   "tasks": {
     "createTask": "إنشاء تكليف جديد",
@@ -2011,5 +1952,29 @@
     "deleteSuccess": "تم حذف المجموعة بنجاح",
     "deleteFailed": "فشل في حذف المجموعة",
     "course": "مقرر"
+  },
+  "schedules": {
+    "TITLE": "إدارة المحاضرات والسكاشن",
+    "SUBTITLE": "إدارة الحصص الدراسية وتوزيع القاعات والدكاترة والمعيدين.",
+    "CREATE": "إنشاء جدول",
+    "EMPTY_TITLE": "لا توجد جداول بعد",
+    "EMPTY_DESC": "لا توجد محاضرات مجدولة لهذا الاختيار. أنشئ جدولاً للبدء.",
+    "EDIT_TITLE": "تعديل الجدول",
+    "CREATE_TITLE": "إنشاء جدول جديد",
+    "deleteConfirm": "هل أنت متأكد من حذف هذا الجدول؟",
+    "searchPlaceholder": "بحث بالمقرر أو القاعة...",
+    "updateSuccess": "تم تحديث الجدول بنجاح",
+    "createSuccess": "تم إنشاء الجدول بنجاح",
+    "selectSection": "اختر شعبة المقرر",
+    "slotType": "نوع الجلسة",
+    "room": "القاعة / الغرفة",
+    "teachingAssistant": "المعيد (اختياري)",
+    "noTA": "—",
+    "conflictError": "تم اكتشاف تعارض",
+    "timetableList": "الجداول الدراسية",
+    "publishTimetable": "نشر",
+    "unpublishTimetable": "إلغاء النشر",
+    "draft": "مسودة",
+    "published": "منشور"
   }
 }

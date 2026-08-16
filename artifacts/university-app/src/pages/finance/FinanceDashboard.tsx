@@ -17,6 +17,7 @@ import {
 } from 'recharts';
 import paymentsService from '../../services/payments.service';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import ChartTooltip from '../../components/ui/ChartTooltip';
 import AddPaymentModal from './AddPaymentModal';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
@@ -108,7 +109,7 @@ const FinanceDashboard = () => {
     fetchData();
   }, [filters.status, filters.type, debouncedSearch]);
 
-  const isDark = document.documentElement.classList.contains('dark');
+  const { isDark } = useTheme();
   const chartColors = {
     grid: isDark ? '#334155' : '#E2E8F0',
     tick: isDark ? '#94A3B8' : '#64748B',

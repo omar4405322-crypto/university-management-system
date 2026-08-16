@@ -96,7 +96,7 @@ class AttendanceEngine {
           intent.deviceId &&
           intent.ipAddress &&
           intent.sessionId &&
-          intent.method === 'QR' // Duplicate-device check intentionally only applies to QR method, manual entry from faculty device is expected
+          (intent.method === 'QR' || intent.method === 'GPS') // Duplicate-device check applies to student self-submission methods (QR & GPS)
         ) {
           const duplicate = await tx.attendance.findFirst({
             where: {
