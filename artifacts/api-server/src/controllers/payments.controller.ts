@@ -2,9 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
-import { NotFoundError } from '../utils/appError';
+import { AppError, NotFoundError } from '../utils/appError';
 import { invalidateCache } from '../utils/redis.utils';
 import { getScopeWhere } from '../utils/scope.utils';
+import { ReceiptService, ReceiptData } from '../services/receipt.service';
 
 export const getAllPayments = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -295,3 +296,99 @@ export const deletePayment = catchAsync(async (req: Request, res: Response, next
   res.json({ success: true, message: 'Payment deleted' });
 });
 
+export const getPaymentReceipt = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const paymentId = parseInt(req.params.id as string, 10);
+    if (isNaN(paymentId)) {
+      return next(new AppError('Invalid payment ID', 400));
+    }
+
+    let payment;
+    if (req.user?.role === 'STUDENT') {
+      const student = await prisma.student.findUnique({
+        where: { userId: req.user.id },
+      });
+      if (!student) {
+        return next(new NotFoundError('Student record not found'));
+      }
+      payment = await prisma.payment.findFirst({
+        where: {
+          id: paymentId,
+          studentId: student.id,
+        },
+        include: {
+          student: {
+            include: {
+              department: {
+                include: {
+                  college: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    } else {
+      const scopeWhere = getScopeWhere(req.user, 'payment');
+      payment = await prisma.payment.findFirst({
+        where: {
+          id: paymentId,
+          ...scopeWhere,
+        },
+        include: {
+          student: {
+            include: {
+              department: {
+                include: {
+                  college: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    if (!payment) {
+      return next(new NotFoundError('Payment not found'));
+    }
+
+    if (payment.status !== 'PAID') {
+      return next(
+        new AppError(
+          'Receipts can only be generated for completed (PAID) payments',
+          400
+        )
+      );
+    }
+
+    const receiptData: ReceiptData = {
+      receiptNumber: `REC-${String(payment.id).padStart(5, '0')}`,
+      paymentId: payment.id,
+      studentName: `${payment.student.firstName} ${payment.student.lastName}`.trim(),
+      studentCode: payment.student.studentId || undefined,
+      academicYear: payment.student.year
+        ? `السنة الدراسية ${payment.student.year}`
+        : undefined,
+      departmentName: payment.student.department?.name || undefined,
+      collegeName: payment.student.department?.college?.name || undefined,
+      universityName: 'جامعة التكنولوجيا التطبيقية والذكية',
+      feeType: payment.type,
+      amount: payment.amount,
+      currency: 'ج.م',
+      paymentDate: payment.paidAt || payment.createdAt,
+      status: payment.status,
+      description: payment.description || undefined,
+    };
+
+    const pdfBuffer = await ReceiptService.generateReceiptPdf(receiptData);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="receipt-${payment.id}.pdf"`
+    );
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.status(200).send(pdfBuffer);
+  }
+);

@@ -8,6 +8,13 @@ import validate from '../middleware/validate.middleware';
 router.get('/', authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), paymentsController.getAllPayments);
 router.get('/my', authorize('STUDENT'), paymentsController.getMyPayments);
 router.get('/stats', authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), paymentsController.getStats);
+router.get(
+  '/:id/receipt',
+  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'STUDENT'),
+  functionalIdValidation,
+  validate,
+  paymentsController.getPaymentReceipt
+);
 router.get('/:id', authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), functionalIdValidation, validate, paymentsController.getPaymentById);
 
 
