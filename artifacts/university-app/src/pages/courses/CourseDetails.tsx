@@ -290,7 +290,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!materialTitle.trim()) {
-      setUploadError(t('COURSES.materialTitlePlaceholder', 'Title is required'));
+      setUploadError(t('courses.materialTitlePlaceholder', 'Title is required'));
       return;
     }
 
@@ -597,7 +597,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               }`}
           >
             <BookOpen size={16} />
-            <span>{t('COURSES.overview', 'نظرة عامة')}</span>
+            <span>{t('courses.overview', 'نظرة عامة')}</span>
           </button>
 
           <button
@@ -608,7 +608,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               }`}
           >
             <FileText size={16} />
-            <span>{t('COURSES.lectures', 'المحاضرات')}</span>
+            <span>{t('courses.lectures', 'المحاضرات')}</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'lectures' ? 'bg-white/20 text-white' : 'bg-brand-primary-100 text-brand-primary-700'}`}>
               {lectures.length}
             </span>
@@ -622,7 +622,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               }`}
           >
             <Video size={16} />
-            <span>{t('COURSES.tutorials', 'السكاشن والتمارين')}</span>
+            <span>{t('courses.tutorials', 'السكاشن والتمارين')}</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'tutorials' ? 'bg-white/20 text-white' : 'bg-brand-primary-100 text-brand-primary-700'}`}>
               {tutorials.length}
             </span>
@@ -636,7 +636,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               }`}
           >
             <ClipboardList size={16} />
-            <span>{t('COURSES.tasks', 'الواجبات والمهام')}</span>
+            <span>{t('courses.tasks', 'الواجبات والمهام')}</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'tasks' ? 'bg-white/20 text-white' : 'bg-brand-primary-100 text-brand-primary-700'}`}>
               {course?.tasks?.length || 0}
             </span>
@@ -650,7 +650,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               }`}
           >
             <Users size={16} />
-            <span>{t('COURSES.roster', 'قائمة الطلاب')}</span>
+            <span>{t('courses.roster', 'قائمة الطلاب')}</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'roster' ? 'bg-white/20 text-white' : 'bg-brand-primary-100 text-brand-primary-700'}`}>
               {enrolledStudents.length}
             </span>
@@ -722,7 +722,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
         <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-4 flex items-center gap-3 text-amber-800 dark:text-amber-300 shadow-sm">
           <AlertCircle size={20} className="shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="text-xs font-bold leading-relaxed">
-            {t('COURSES.draftNotice', 'تنبيه: هذا المقرر الدراسي في وضع المسودة حالياً ولم يتم نشره رسمياً بعد للطلاب بواسطة أستاذ المادة.')}
+            {t('courses.draftNotice', 'تنبيه: هذا المقرر الدراسي في وضع المسودة حالياً ولم يتم نشره رسمياً بعد للطلاب بواسطة أستاذ المادة.')}
           </div>
         </div>
       )}
@@ -756,7 +756,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
             <div className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all">
               <div className="space-y-1">
-                <p className="text-xs font-bold text-brand-text-muted">{t('COURSES.lectures', 'المحاضرات المرفوعة')}</p>
+                <p className="text-xs font-bold text-brand-text-muted">{t('courses.lectures', 'المحاضرات المرفوعة')}</p>
                 <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{lectures.length}</h3>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
@@ -766,7 +766,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
             <div className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all">
               <div className="space-y-1">
-                <p className="text-xs font-bold text-brand-text-muted">{t('COURSES.tutorials', 'السكاشن والتمارين')}</p>
+                <p className="text-xs font-bold text-brand-text-muted">{t('courses.tutorials', 'السكاشن والتمارين')}</p>
                 <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{tutorials.length}</h3>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
@@ -778,7 +778,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           {/* Academic Staff Cards (Professors & TAs in Charge) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Professors Card */}
-            <Card title={t('COURSES.professorsInCharge', 'أعضاء هيئة التدريس (دكاترة المقرر)')} className="p-6">
+            <Card title={t('courses.professorsInCharge', 'أعضاء هيئة التدريس (دكاترة المقرر)')} className="p-6">
               {assignedDoctors.length > 0 ? (
                 <div className="space-y-3 mt-2">
                   {assignedDoctors.map((doc: any) => (
@@ -804,13 +804,13 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               ) : (
                 <div className="text-center py-8 text-brand-text-muted italic text-xs">
                   <UserCheck size={32} className="mx-auto mb-2 opacity-40 text-brand-text-muted" />
-                  <p>{t('COURSES.noAssignedProfessors', 'لم يتم تعيين أستاذ للمادة في الجدول بعد')}</p>
+                  <p>{t('courses.noAssignedProfessors', 'لم يتم تعيين أستاذ للمادة في الجدول بعد')}</p>
                 </div>
               )}
             </Card>
 
             {/* Teaching Assistants Card */}
-            <Card title={t('COURSES.tasInCharge', 'المعيدون والمهندسون المسؤولون')} className="p-6">
+            <Card title={t('courses.tasInCharge', 'المعيدون والمهندسون المسؤولون')} className="p-6">
               {assignedTAs.length > 0 ? (
                 <div className="space-y-3 mt-2">
                   {assignedTAs.map((ta: any) => (
@@ -836,7 +836,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               ) : (
                 <div className="text-center py-8 text-brand-text-muted italic text-xs">
                   <UserCheck size={32} className="mx-auto mb-2 opacity-40 text-brand-text-muted" />
-                  <p>{t('COURSES.noAssignedTAs', 'لم يتم تعيين معيد للمادة في الجدول بعد')}</p>
+                  <p>{t('courses.noAssignedTAs', 'لم يتم تعيين معيد للمادة في الجدول بعد')}</p>
                 </div>
               )}
             </Card>
@@ -855,7 +855,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
           {/* Weekly Timetable & Room Slots */}
           {course.scheduleSlots && course.scheduleSlots.length > 0 && (
-            <Card title={t('COURSES.scheduleTimeline', 'جدول مواعيد وقاعات المقرر الأسبوعي')} className="p-6">
+            <Card title={t('courses.scheduleTimeline', 'جدول مواعيد وقاعات المقرر الأسبوعي')} className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-2">
                 {course.scheduleSlots.map((slot: any) => (
                   <div key={slot.id} className="p-4 rounded-2xl bg-surface-subtle border border-brand-border space-y-2.5">
@@ -893,10 +893,10 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             <div>
               <h3 className="font-black text-lg text-brand-text-main flex items-center gap-2">
                 <FileText className="text-brand-primary-600" size={20} />
-                {t('COURSES.lectures', 'المحاضرات والملفات الدراسية')}
+                {t('courses.lectures', 'المحاضرات والملفات الدراسية')}
               </h3>
               <p className="text-xs text-brand-text-sub mt-1">
-                {t('COURSES.onlyInChargeCanUpload', 'تنويه: يسمح فقط لأستاذ المادة والمعيد المسؤول برفع المحاضرات والسكاشن.')}
+                {t('courses.onlyInChargeCanUpload', 'تنويه: يسمح فقط لأستاذ المادة والمعيد المسؤول برفع المحاضرات والسكاشن.')}
               </p>
             </div>
 
@@ -910,7 +910,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                 className="flex items-center gap-2"
               >
                 <Upload size={16} />
-                <span>{t('COURSES.uploadLecture', 'رفع محاضرة جديدة')}</span>
+                <span>{t('courses.uploadLecture', 'رفع محاضرة جديدة')}</span>
               </Button>
             )}
           </div>
@@ -977,7 +977,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   <div className="flex items-center justify-between border-t border-brand-border pt-4 mt-4 text-xs text-brand-text-muted">
                     <span className="flex items-center gap-1 font-medium">
                       <UserCheck size={14} className="text-brand-primary-600" />
-                      {t('COURSES.uploadedBy', 'رفع بواسطة')}: {getUploaderName(item.uploadedBy)}
+                      {t('courses.uploadedBy', 'رفع بواسطة')}: {getUploaderName(item.uploadedBy)}
                     </span>
 
                     <a
@@ -987,7 +987,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-primary-600 text-white font-bold hover:bg-brand-primary-700 transition-colors"
                     >
                       <Download size={14} />
-                      <span>{t('COURSES.download', 'تحميل / عرض')}</span>
+                      <span>{t('courses.download', 'تحميل / عرض')}</span>
                     </a>
                   </div>
                 </Card>
@@ -996,7 +996,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           ) : (
             <div className="text-center py-16 bg-brand-bg-card rounded-3xl border border-dashed border-brand-border p-8">
               <FileText size={48} className="mx-auto text-brand-text-muted opacity-40 mb-3" />
-              <h3 className="text-lg font-bold text-brand-text-main">{t('COURSES.noLecturesYet', 'لا توجد محاضرات مرفوعة لهذا المقرر بعد')}</h3>
+              <h3 className="text-lg font-bold text-brand-text-main">{t('courses.noLecturesYet', 'لا توجد محاضرات مرفوعة لهذا المقرر بعد')}</h3>
               {canUpload && (
                 <Button
                   onClick={() => {
@@ -1007,7 +1007,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   className="mt-4"
                 >
                   <Plus size={16} className="mr-2" />
-                  {t('COURSES.uploadLecture', 'رفع أول محاضرة')}
+                  {t('courses.uploadLecture', 'رفع أول محاضرة')}
                 </Button>
               )}
             </div>
@@ -1022,10 +1022,10 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             <div>
               <h3 className="font-black text-lg text-brand-text-main flex items-center gap-2">
                 <Video className="text-purple-600" size={20} />
-                {t('COURSES.tutorials', 'تمارين السكاشن والمعامل (Tutorials & Labs)')}
+                {t('courses.tutorials', 'تمارين السكاشن والمعامل (Tutorials & Labs)')}
               </h3>
               <p className="text-xs text-brand-text-sub mt-1">
-                {t('COURSES.onlyInChargeCanUpload', 'تنويه: يسمح فقط لأستاذ المادة والمعيد المسؤول برفع المحاضرات والسكاشن.')}
+                {t('courses.onlyInChargeCanUpload', 'تنويه: يسمح فقط لأستاذ المادة والمعيد المسؤول برفع المحاضرات والسكاشن.')}
               </p>
             </div>
 
@@ -1039,7 +1039,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                 className="flex items-center gap-2"
               >
                 <Upload size={16} />
-                <span>{t('COURSES.uploadTutorial', 'رفع سكشن / تمرين جديد')}</span>
+                <span>{t('courses.uploadTutorial', 'رفع سكشن / تمرين جديد')}</span>
               </Button>
             )}
           </div>
@@ -1106,7 +1106,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   <div className="flex items-center justify-between border-t border-brand-border pt-4 mt-4 text-xs text-brand-text-muted">
                     <span className="flex items-center gap-1 font-medium">
                       <UserCheck size={14} className="text-purple-600" />
-                      {t('COURSES.uploadedBy', 'رفع بواسطة')}: {item.uploadedBy?.firstName} {item.uploadedBy?.lastName}
+                      {t('courses.uploadedBy', 'رفع بواسطة')}: {item.uploadedBy?.firstName} {item.uploadedBy?.lastName}
                     </span>
 
                     <a
@@ -1116,7 +1116,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors"
                     >
                       <Download size={14} />
-                      <span>{t('COURSES.download', 'تحميل / عرض')}</span>
+                      <span>{t('courses.download', 'تحميل / عرض')}</span>
                     </a>
                   </div>
                 </Card>
@@ -1125,7 +1125,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           ) : (
             <div className="text-center py-16 bg-brand-bg-card rounded-3xl border border-dashed border-brand-border p-8">
               <Video size={48} className="mx-auto text-brand-text-muted opacity-40 mb-3" />
-              <h3 className="text-lg font-bold text-brand-text-main">{t('COURSES.noTutorialsYet', 'لا توجد سكاشن أو تمارين مرفوعة لهذه المادة بعد')}</h3>
+              <h3 className="text-lg font-bold text-brand-text-main">{t('courses.noTutorialsYet', 'لا توجد سكاشن أو تمارين مرفوعة لهذه المادة بعد')}</h3>
               {canUpload && (
                 <Button
                   onClick={() => {
@@ -1136,7 +1136,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   className="mt-4"
                 >
                   <Plus size={16} className="mr-2" />
-                  {t('COURSES.uploadTutorial', 'رفع أول سكشن')}
+                  {t('courses.uploadTutorial', 'رفع أول سكشن')}
                 </Button>
               )}
             </div>
@@ -1316,7 +1316,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
         <Card className="p-6 space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-black text-brand-text-main">{t('COURSES.roster', 'قائمة الطلاب المقيدين في المقرر')}</h3>
+              <h3 className="text-lg font-black text-brand-text-main">{t('courses.roster', 'قائمة الطلاب المقيدين في المقرر')}</h3>
               <p className="text-xs text-brand-text-sub">{t('common.total', 'الإجمالي')}: {enrolledStudents.length} {t('courses.students', 'طالب')}</p>
             </div>
 
@@ -1381,8 +1381,8 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                 <div>
                   <h3 className="font-black text-lg text-brand-text-main">
                     {uploadType === 'LECTURE'
-                      ? t('COURSES.uploadLecture', 'رفع محاضرة جديدة')
-                      : t('COURSES.uploadTutorial', 'رفع سكشن / تمرين جديد')}
+                      ? t('courses.uploadLecture', 'رفع محاضرة جديدة')
+                      : t('courses.uploadTutorial', 'رفع سكشن / تمرين جديد')}
                   </h3>
                   <p className="text-xs text-brand-text-sub font-medium">
                     {course.name} ({course.courseCode})
@@ -1409,12 +1409,12 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               {/* Title */}
               <div>
                 <label className="block text-xs font-bold text-brand-text-main mb-1">
-                  {t('COURSES.materialTitle', 'عنوان المادة أو الملف')} *
+                  {t('courses.materialTitle', 'عنوان المادة أو الملف')} *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder={t('COURSES.materialTitlePlaceholder', 'مثال: المحاضرة الأولى - مقدمة عن خوارزميات البحث')}
+                  placeholder={t('courses.materialTitlePlaceholder', 'مثال: المحاضرة الأولى - مقدمة عن خوارزميات البحث')}
                   value={materialTitle}
                   onChange={(e) => setMaterialTitle(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-2xl bg-brand-bg border border-brand-border text-sm font-medium text-brand-text-main focus:outline-none focus:border-brand-primary-500"
@@ -1424,11 +1424,11 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               {/* Description */}
               <div>
                 <label className="block text-xs font-bold text-brand-text-main mb-1">
-                  {t('COURSES.materialDescription', 'الوصف أو التعليمات (اختياري)')}
+                  {t('courses.materialDescription', 'الوصف أو التعليمات (اختياري)')}
                 </label>
                 <textarea
                   rows={2}
-                  placeholder={t('COURSES.materialDescriptionPlaceholder', 'اكتب ملاحظات أو إرشادات للطلاب...')}
+                  placeholder={t('courses.materialDescriptionPlaceholder', 'اكتب ملاحظات أو إرشادات للطلاب...')}
                   value={materialDescription}
                   onChange={(e) => setMaterialDescription(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-2xl bg-brand-bg border border-brand-border text-sm font-medium text-brand-text-main focus:outline-none focus:border-brand-primary-500"
@@ -1438,7 +1438,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               {/* Category selector */}
               <div>
                 <label className="block text-xs font-bold text-brand-text-main mb-1">
-                  {t('COURSES.materialType', 'تصنيف المادة')}
+                  {t('courses.materialType', 'تصنيف المادة')}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -1467,7 +1467,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               {/* Upload Mode Selector (File vs Link) */}
               <div>
                 <label className="block text-xs font-bold text-brand-text-main mb-1">
-                  {t('COURSES.fileOrUrl', 'طريقة تقديم المادة')}
+                  {t('courses.fileOrUrl', 'طريقة تقديم المادة')}
                 </label>
                 <div className="flex items-center gap-3 mb-2">
                   <button
@@ -1476,7 +1476,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                     className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${uploadMode === 'file' ? 'bg-brand-primary-600 text-white border-brand-primary-600' : 'bg-brand-bg text-brand-text-sub border-brand-border'
                       }`}
                   >
-                    {t('COURSES.fileUpload', 'رفع ملف من الجهاز')}
+                    {t('courses.fileUpload', 'رفع ملف من الجهاز')}
                   </button>
                   <button
                     type="button"
@@ -1484,7 +1484,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                     className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${uploadMode === 'link' ? 'bg-brand-primary-600 text-white border-brand-primary-600' : 'bg-brand-bg text-brand-text-sub border-brand-border'
                       }`}
                   >
-                    {t('COURSES.urlLink', 'رابط خارجي (Drive, Youtube)')}
+                    {t('courses.urlLink', 'رابط خارجي (Drive, Youtube)')}
                   </button>
                 </div>
 
@@ -1551,7 +1551,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   ) : (
                     <>
                       <Upload size={16} />
-                      <span>{t('COURSES.uploadMaterial', 'رفع المادة')}</span>
+                      <span>{t('courses.uploadMaterial', 'رفع المادة')}</span>
                     </>
                   )}
                 </Button>
