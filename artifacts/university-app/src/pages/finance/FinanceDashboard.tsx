@@ -149,6 +149,20 @@ const FinanceDashboard = () => {
     }
   };
 
+  const handleDownloadReceipt = async (paymentId: string | number) => {
+    try {
+      await paymentsService.downloadReceipt(paymentId);
+      showToast(t('finance.receiptDownloadSuccess', 'Receipt downloaded successfully'), 'success');
+    } catch (error: any) {
+      logger.error('Failed to download receipt', error);
+      showToast(
+        error?.message ||
+          error?.response?.data?.message ||
+          t('finance.receiptDownloadError', 'Failed to download receipt'),
+        'error'
+      );
+    }
+  };
 
   const chartData = stats
     ? Object.entries(stats.paymentsByType || {}).map(([name, value]) => ({ name, value }))
@@ -594,12 +608,16 @@ const FinanceDashboard = () => {
                               },
                             ]
                             : []),
-                          {
-                            label: 'Download Receipt',
-                            icon: Download,
-                            variant: 'default',
-                            onClick: () => { },
-                          },
+                          ...(payment.status === 'PAID'
+                            ? [
+                              {
+                                label: t('finance.downloadReceipt', 'Download Receipt'),
+                                icon: Download,
+                                variant: 'default',
+                                onClick: () => handleDownloadReceipt(payment.id),
+                              },
+                            ]
+                            : []),
                         ]}
                       />
                     </TableCell>
