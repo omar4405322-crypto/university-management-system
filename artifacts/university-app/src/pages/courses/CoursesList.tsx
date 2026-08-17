@@ -191,7 +191,7 @@ const CoursesList = () => {
       
       <PageHeader 
         title={t('courses.title')}
-        subtitle={t('COURSES.SUBTITLE')}
+        subtitle={t('courses.subtitle')}
         action={canManage ? {
           label: t('courses.addCourse'),
           onClick: () => { setSelectedCourse(null); setIsModalOpen(true); },
@@ -247,7 +247,7 @@ const CoursesList = () => {
         <FilterBar
           search={search}
           onSearchChange={(val) => { setSearch(val); setPage(1); }}
-          searchPlaceholder={t('COURSES.SEARCHPLACEHOLDER')}
+          searchPlaceholder={t('courses.searchPlaceholder')}
           onClear={search || selectedCollege || selectedDept || selectedYear || selectedSemester ? resetFilters : undefined}
         >
           {canManage && (
