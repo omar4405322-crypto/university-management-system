@@ -380,11 +380,231 @@ export const deleteSchedule = catchAsync(
   }
 );
 
+interface StaffResolveResult<T> {
+  id: T | null;
+  isAmbiguous: boolean;
+  matchCount: number;
+}
+
+async function resolveDoctorByName(
+  rawName: string,
+  departmentId?: number | null
+): Promise<StaffResolveResult<number>> {
+  const cleanName = rawName
+    .trim()
+    .replace(/^(د\.|أ\.د\.|دكتور\s+|dr\.|dr\s+|prof\.|prof\s+)\s*/i, '')
+    .trim();
+  const parts = cleanName.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { id: null, isAmbiguous: false, matchCount: 0 };
+
+  const deptFilter = departmentId ? { departmentId: Number(departmentId) } : {};
+
+  // Step 1: Scoped Exact Match
+  const exactWhere = parts.length >= 2
+    ? {
+        firstName: { equals: parts[0], mode: 'insensitive' as const },
+        lastName: { equals: parts[parts.length - 1], mode: 'insensitive' as const },
+        ...deptFilter,
+      }
+    : {
+        OR: [
+          { firstName: { equals: parts[0], mode: 'insensitive' as const } },
+          { lastName: { equals: parts[0], mode: 'insensitive' as const } },
+        ],
+        ...deptFilter,
+      };
+
+  let candidates = await prisma.doctor.findMany({ where: exactWhere });
+
+  if (candidates.length === 1) {
+    return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+  }
+  if (candidates.length > 1) {
+    return { id: null, isAmbiguous: true, matchCount: candidates.length };
+  }
+
+  // Step 2: Scoped Contains Match
+  const containsWhere = parts.length >= 2
+    ? {
+        firstName: { contains: parts[0], mode: 'insensitive' as const },
+        lastName: { contains: parts[parts.length - 1], mode: 'insensitive' as const },
+        ...deptFilter,
+      }
+    : {
+        OR: [
+          { firstName: { contains: parts[0], mode: 'insensitive' as const } },
+          { lastName: { contains: parts[0], mode: 'insensitive' as const } },
+        ],
+        ...deptFilter,
+      };
+
+  candidates = await prisma.doctor.findMany({ where: containsWhere });
+
+  if (candidates.length === 1) {
+    return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+  }
+  if (candidates.length > 1) {
+    return { id: null, isAmbiguous: true, matchCount: candidates.length };
+  }
+
+  // Step 3: Unscoped Fallback (if departmentId was provided but 0 matches found in dept)
+  if (departmentId) {
+    const exactUnscoped = parts.length >= 2
+      ? {
+          firstName: { equals: parts[0], mode: 'insensitive' as const },
+          lastName: { equals: parts[parts.length - 1], mode: 'insensitive' as const },
+        }
+      : {
+          OR: [
+            { firstName: { equals: parts[0], mode: 'insensitive' as const } },
+            { lastName: { equals: parts[0], mode: 'insensitive' as const } },
+          ],
+        };
+
+    candidates = await prisma.doctor.findMany({ where: exactUnscoped });
+    if (candidates.length === 1) {
+      return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+    }
+    if (candidates.length > 1) {
+      return { id: null, isAmbiguous: true, matchCount: candidates.length };
+    }
+
+    const containsUnscoped = parts.length >= 2
+      ? {
+          firstName: { contains: parts[0], mode: 'insensitive' as const },
+          lastName: { contains: parts[parts.length - 1], mode: 'insensitive' as const },
+        }
+      : {
+          OR: [
+            { firstName: { contains: parts[0], mode: 'insensitive' as const } },
+            { lastName: { contains: parts[0], mode: 'insensitive' as const } },
+          ],
+        };
+
+    candidates = await prisma.doctor.findMany({ where: containsUnscoped });
+    if (candidates.length === 1) {
+      return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+    }
+    if (candidates.length > 1) {
+      return { id: null, isAmbiguous: true, matchCount: candidates.length };
+    }
+  }
+
+  return { id: null, isAmbiguous: false, matchCount: 0 };
+}
+
+async function resolveTaByName(
+  rawName: string,
+  departmentId?: number | null
+): Promise<StaffResolveResult<string>> {
+  const cleanName = rawName
+    .trim()
+    .replace(/^(م\.|مهندس\s+|eng\.|eng\s+|ta\.|ta\s+|معيد\s+)\s*/i, '')
+    .trim();
+  const parts = cleanName.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { id: null, isAmbiguous: false, matchCount: 0 };
+
+  const deptFilter = departmentId ? { departmentId: Number(departmentId) } : {};
+
+  // Step 1: Scoped Exact Match
+  const exactWhere = parts.length >= 2
+    ? {
+        firstName: { equals: parts[0], mode: 'insensitive' as const },
+        lastName: { equals: parts[parts.length - 1], mode: 'insensitive' as const },
+        ...deptFilter,
+      }
+    : {
+        OR: [
+          { firstName: { equals: parts[0], mode: 'insensitive' as const } },
+          { lastName: { equals: parts[0], mode: 'insensitive' as const } },
+        ],
+        ...deptFilter,
+      };
+
+  let candidates = await prisma.teachingAssistant.findMany({ where: exactWhere });
+
+  if (candidates.length === 1) {
+    return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+  }
+  if (candidates.length > 1) {
+    return { id: null, isAmbiguous: true, matchCount: candidates.length };
+  }
+
+  // Step 2: Scoped Contains Match
+  const containsWhere = parts.length >= 2
+    ? {
+        firstName: { contains: parts[0], mode: 'insensitive' as const },
+        lastName: { contains: parts[parts.length - 1], mode: 'insensitive' as const },
+        ...deptFilter,
+      }
+    : {
+        OR: [
+          { firstName: { contains: parts[0], mode: 'insensitive' as const } },
+          { lastName: { contains: parts[0], mode: 'insensitive' as const } },
+        ],
+        ...deptFilter,
+      };
+
+  candidates = await prisma.teachingAssistant.findMany({ where: containsWhere });
+
+  if (candidates.length === 1) {
+    return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+  }
+  if (candidates.length > 1) {
+    return { id: null, isAmbiguous: true, matchCount: candidates.length };
+  }
+
+  // Step 3: Unscoped Fallback
+  if (departmentId) {
+    const exactUnscoped = parts.length >= 2
+      ? {
+          firstName: { equals: parts[0], mode: 'insensitive' as const },
+          lastName: { equals: parts[parts.length - 1], mode: 'insensitive' as const },
+        }
+      : {
+          OR: [
+            { firstName: { equals: parts[0], mode: 'insensitive' as const } },
+            { lastName: { equals: parts[0], mode: 'insensitive' as const } },
+          ],
+        };
+
+    candidates = await prisma.teachingAssistant.findMany({ where: exactUnscoped });
+    if (candidates.length === 1) {
+      return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+    }
+    if (candidates.length > 1) {
+      return { id: null, isAmbiguous: true, matchCount: candidates.length };
+    }
+
+    const containsUnscoped = parts.length >= 2
+      ? {
+          firstName: { contains: parts[0], mode: 'insensitive' as const },
+          lastName: { contains: parts[parts.length - 1], mode: 'insensitive' as const },
+        }
+      : {
+          OR: [
+            { firstName: { contains: parts[0], mode: 'insensitive' as const } },
+            { lastName: { contains: parts[0], mode: 'insensitive' as const } },
+          ],
+        };
+
+    candidates = await prisma.teachingAssistant.findMany({ where: containsUnscoped });
+    if (candidates.length === 1) {
+      return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+    }
+    if (candidates.length > 1) {
+      return { id: null, isAmbiguous: true, matchCount: candidates.length };
+    }
+  }
+
+  return { id: null, isAmbiguous: false, matchCount: 0 };
+}
+
 export const syncGridToMaster = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { collegeId, departmentId, academicYear, semester, slots } = req.body;
+    const { departmentId, academicYear, semester, slots } = req.body;
 
-    if (!slots || !Array.isArray(slots)) {
+    if (!Array.isArray(slots)) {
       return next(new ValidationError('Slots array is required for synchronization'));
     }
 
@@ -445,16 +665,17 @@ export const syncGridToMaster = catchAsync(
 
       let doctorId: number | null = null;
       if (instructor) {
-        const parts = instructor.split(' ');
-        const doctor = await prisma.doctor.findFirst({
-          where: {
-            OR: [
-              { firstName: { contains: parts[0], mode: 'insensitive' } },
-              { lastName: { contains: parts[parts.length - 1], mode: 'insensitive' } },
-            ],
-          },
-        });
-        if (doctor) doctorId = doctor.id;
+        const docResolve = await resolveDoctorByName(instructor, parsedDeptId || course.departmentId);
+        if (docResolve.isAmbiguous) {
+          skippedCount++;
+          skippedSlots.push({
+            courseName: trimmedName,
+            reason: `AMBIGUOUS_INSTRUCTOR_MATCH: ${docResolve.matchCount} instructors matched '${instructor}'`,
+          });
+          continue;
+        } else if (docResolve.id) {
+          doctorId = docResolve.id;
+        }
       }
 
       let timetableId: number | null = null;
@@ -541,7 +762,7 @@ export const checkScheduleConflict = catchAsync(
 
     const dayUpper = dayOfWeek.toUpperCase();
     const conflicts: Array<{
-      type: 'ROOM_OCCUPIED' | 'DOCTOR_BUSY' | 'TA_BUSY' | 'BATCH_OVERLAP' | 'DUPLICATE_COURSE';
+      type: 'ROOM_OCCUPIED' | 'DOCTOR_BUSY' | 'TA_BUSY' | 'BATCH_OVERLAP' | 'DUPLICATE_COURSE' | 'AMBIGUOUS_DOCTOR' | 'AMBIGUOUS_TA';
       messageAr: string;
       messageEn: string;
       conflictingSlot?: any;
@@ -556,6 +777,26 @@ export const checkScheduleConflict = catchAsync(
     };
 
     const excludeCondition = excludeSlotId ? { id: { not: Number(excludeSlotId) } } : {};
+
+    // Derive effective departmentId from payload, course, or authenticated user
+    let effectiveDeptId: number | null = departmentId ? Number(departmentId) : null;
+    if (!effectiveDeptId && courseId) {
+      const c = await prisma.course.findUnique({
+        where: { id: Number(courseId) },
+        select: { departmentId: true },
+      });
+      if (c?.departmentId) effectiveDeptId = c.departmentId;
+    }
+    if (!effectiveDeptId && courseName) {
+      const c = await prisma.course.findFirst({
+        where: { name: { equals: String(courseName).trim(), mode: 'insensitive' } },
+        select: { departmentId: true },
+      });
+      if (c?.departmentId) effectiveDeptId = c.departmentId;
+    }
+    if (!effectiveDeptId && (req as any).user?.departmentId) {
+      effectiveDeptId = (req as any).user.departmentId;
+    }
 
     // 1. Check Room Conflict
     if (room && room.trim() !== '') {
@@ -599,16 +840,16 @@ export const checkScheduleConflict = catchAsync(
     // 2. Check Doctor Conflict
     let targetDoctorId: number | null = doctorId ? Number(doctorId) : null;
     if (!targetDoctorId && doctorName) {
-      const parts = doctorName.trim().split(' ');
-      const foundDoctor = await prisma.doctor.findFirst({
-        where: {
-          OR: [
-            { firstName: { contains: parts[0], mode: 'insensitive' } },
-            { lastName: { contains: parts[parts.length - 1], mode: 'insensitive' } },
-          ],
-        },
-      });
-      if (foundDoctor) targetDoctorId = foundDoctor.id;
+      const docResolve = await resolveDoctorByName(doctorName, effectiveDeptId);
+      if (docResolve.isAmbiguous) {
+        conflicts.push({
+          type: 'AMBIGUOUS_DOCTOR',
+          messageAr: `يوجد أكثر من عضو هيئة تدريس يطابق الاسم (${doctorName}). يرجى اختيار المحاضر من القائمة أو عبر المعرّف (Doctor ID) لتفادي الالتباس.`,
+          messageEn: `Multiple faculty members match the name (${doctorName}). Please select the instructor from the list or use their numeric ID to disambiguate.`,
+        });
+      } else if (docResolve.id) {
+        targetDoctorId = docResolve.id;
+      }
     }
 
     if (targetDoctorId) {
@@ -651,16 +892,16 @@ export const checkScheduleConflict = catchAsync(
     // 3. Check Teaching Assistant Conflict
     let targetTaId: string | null = teachingAssistantId ? String(teachingAssistantId) : null;
     if (!targetTaId && taName) {
-      const parts = taName.trim().split(' ');
-      const foundTa = await prisma.teachingAssistant.findFirst({
-        where: {
-          OR: [
-            { firstName: { contains: parts[0], mode: 'insensitive' } },
-            { lastName: { contains: parts[parts.length - 1], mode: 'insensitive' } },
-          ],
-        },
-      });
-      if (foundTa) targetTaId = foundTa.id;
+      const taResolve = await resolveTaByName(taName, effectiveDeptId);
+      if (taResolve.isAmbiguous) {
+        conflicts.push({
+          type: 'AMBIGUOUS_TA',
+          messageAr: `يوجد أكثر من معيد/مدرس مساعد يطابق الاسم (${taName}). يرجى اختيار المعيد من القائمة أو عبر المعرّف (TA ID) لتفادي الالتباس.`,
+          messageEn: `Multiple teaching assistants match the name (${taName}). Please select the TA from the list or use their ID to disambiguate.`,
+        });
+      } else if (taResolve.id) {
+        targetTaId = taResolve.id;
+      }
     }
 
     if (targetTaId) {
