@@ -89,7 +89,7 @@ class AttendanceService {
               'User',
           }
         : null,
-      group: record.student.studentGroup || null,
+      group: record.student.group || null,
       recordedAt: record.createdAt,
     }));
   }
@@ -548,7 +548,7 @@ class AttendanceService {
               'User',
           }
         : null,
-      group: record.student.studentGroup || null,
+      group: record.student.group || null,
       recordedAt: record.createdAt,
     }));
 
