@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import studentsService from '../../services/students.service';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   ArrowLeft,
   User,
@@ -24,6 +25,7 @@ import {
   Hash,
   ShieldCheck,
   Users,
+  BarChart3,
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -45,6 +47,10 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { showToast } = useToast();
+  const { user } = useAuth();
+  const canViewStatistics = Boolean(
+    user && ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)
+  );
 
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -144,6 +150,17 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
           </button>
 
           <div className="flex flex-wrap items-center gap-2">
+            {canViewStatistics && (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/statistics/${student.id}`)}
+                className="border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl px-3 py-2 text-xs font-bold flex items-center gap-2 transition-all"
+              >
+                <BarChart3 size={15} />
+                <span>{t('nav.statistics', 'Academic Statistics')}</span>
+              </Button>
+            )}
+
             <Button
               variant="outline"
               onClick={handlePrint}
