@@ -9,7 +9,7 @@ export interface ConflictCheckInput {
   startTime: string;
   endTime: string;
   room: string | null;
-  courseId: number;
+  courseId?: number | null;
   doctorId?: number | null;
   groupId?: number | null;
   teachingAssistantId: string | null;
@@ -18,7 +18,7 @@ export interface ConflictCheckInput {
 
 class TimetableService {
   static async checkConflicts(input: ConflictCheckInput, tx: any = prisma) {
-    const { dayOfWeek, startTime, endTime, room, doctorId, groupId, teachingAssistantId, excludeSlotId } = input;
+    const { dayOfWeek, startTime, endTime, room, courseId, doctorId, groupId, teachingAssistantId, excludeSlotId } = input;
 
     // Active date range in Africa/Cairo timezone
     const now = new Date();
@@ -120,17 +120,149 @@ class TimetableService {
       if (overrideTaConflict) throw new ConflictError('Time conflict: The TA has an active override at this time');
     }
 
-    // 4. StudentGroup conflict — check if any slot already targets the same group
+    // 4. StudentGroup & Cohort conflict — check lineage (ancestors, descendants) and department-wide slots
     if (groupId) {
-      const groupConflict = await tx.scheduleSlot.findFirst({
-        where: {
-          dayOfWeek,
-          groupId,
-          ...timeOverlap,
-          ...excludeCondition,
-        },
+      const targetGroup = await tx.studentGroup.findUnique({
+        where: { id: groupId },
+        select: { id: true, departmentId: true, year: true, parentGroupId: true },
       });
-      if (groupConflict) throw new ConflictError('Time conflict: The student group is already scheduled at this time');
+
+      if (targetGroup) {
+        // Collect ancestor group IDs (the target group's parents up to the root)
+        const ancestorGroupIds: number[] = [];
+        let currentParentId: number | null = targetGroup.parentGroupId;
+        while (currentParentId) {
+          ancestorGroupIds.push(currentParentId);
+          const parentGroup: any = await tx.studentGroup.findUnique({
+            where: { id: currentParentId },
+            select: { parentGroupId: true },
+          });
+          currentParentId = parentGroup?.parentGroupId ?? null;
+        }
+
+        // Collect descendant group IDs (all sub-groups underneath this group)
+        const descendantGroupIds: number[] = [];
+        const queue: number[] = [groupId];
+        while (queue.length > 0) {
+          const currentId = queue.shift()!;
+          const children: any[] = await tx.studentGroup.findMany({
+            where: { parentGroupId: currentId },
+            select: { id: true },
+          });
+          for (const child of children) {
+            descendantGroupIds.push(child.id);
+            queue.push(child.id);
+          }
+        }
+
+        const lineageGroupIds = [groupId, ...ancestorGroupIds, ...descendantGroupIds];
+
+        const groupConflict = await tx.scheduleSlot.findFirst({
+          where: {
+            dayOfWeek,
+            ...timeOverlap,
+            ...excludeCondition,
+            OR: [
+              { groupId: { in: lineageGroupIds } },
+              {
+                groupId: null,
+                course: {
+                  departmentId: targetGroup.departmentId,
+                  year: targetGroup.year,
+                },
+              },
+            ],
+          },
+        });
+        if (groupConflict) {
+          throw new ConflictError('Time conflict: The student group or cohort is already scheduled at this time');
+        }
+
+        const overrideGroupConflict = await tx.scheduleOverride.findFirst({
+          where: {
+            dayOfWeek,
+            ...timeOverlap,
+            ...activeOverrideDateRange,
+            ...(excludeSlotId ? { scheduleSlotId: { not: excludeSlotId } } : {}),
+            scheduleSlot: {
+              OR: [
+                { groupId: { in: lineageGroupIds } },
+                {
+                  groupId: null,
+                  course: {
+                    departmentId: targetGroup.departmentId,
+                    year: targetGroup.year,
+                  },
+                },
+              ],
+            },
+          },
+        });
+        if (overrideGroupConflict) {
+          throw new ConflictError('Time conflict: An active override for this student group or cohort exists at this time');
+        }
+      }
+    } else if (courseId) {
+      // Scheduling a department-wide slot (groupId: null) with a known course
+      const course = await tx.course.findUnique({
+        where: { id: courseId },
+        select: { departmentId: true, year: true },
+      });
+
+      if (course && course.departmentId && course.year) {
+        const deptConflict = await tx.scheduleSlot.findFirst({
+          where: {
+            dayOfWeek,
+            ...timeOverlap,
+            ...excludeCondition,
+            OR: [
+              {
+                course: {
+                  departmentId: course.departmentId,
+                  year: course.year,
+                },
+              },
+              {
+                group: {
+                  departmentId: course.departmentId,
+                  year: course.year,
+                },
+              },
+            ],
+          },
+        });
+        if (deptConflict) {
+          throw new ConflictError('Time conflict: A cohort or group session is already scheduled for this department and year at this time');
+        }
+
+        const overrideDeptConflict = await tx.scheduleOverride.findFirst({
+          where: {
+            dayOfWeek,
+            ...timeOverlap,
+            ...activeOverrideDateRange,
+            ...(excludeSlotId ? { scheduleSlotId: { not: excludeSlotId } } : {}),
+            scheduleSlot: {
+              OR: [
+                {
+                  course: {
+                    departmentId: course.departmentId,
+                    year: course.year,
+                  },
+                },
+                {
+                  group: {
+                    departmentId: course.departmentId,
+                    year: course.year,
+                  },
+                },
+              ],
+            },
+          },
+        });
+        if (overrideDeptConflict) {
+          throw new ConflictError('Time conflict: An active override for this department and year exists at this time');
+        }
+      }
     }
   }
 
