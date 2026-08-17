@@ -576,12 +576,7 @@ const AppContent = () => {
                         element={
                           <ProtectedRoute
                             allowedRoles={[
-                              'SUPER_ADMIN',
-                              'ADMIN',
-                              'DOCTOR',
                               'STUDENT',
-                              'COLLEGE_ADMIN',
-                              'DEPARTMENT_ADMIN',
                             ]}
                           >
                             <PageWrapper>

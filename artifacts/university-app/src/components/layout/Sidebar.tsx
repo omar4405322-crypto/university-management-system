@@ -266,7 +266,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             title: 'nav.statistics',
             path: '/statistics',
             icon: BarChart3,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+            roles: ['STUDENT'],
           },
           {
             title: 'nav.tasks',
