@@ -10,13 +10,23 @@ import jsQR from 'jsqr';
 import fpPromise from '@fingerprintjs/fingerprintjs';
 import attendanceService from '../../services/attendance.service';
 
-export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }) {
+export function StudentAttendanceScanner({
+  onCancel,
+  selectedCourseId,
+  courses,
+}: {
+  onCancel?: () => void;
+  selectedCourseId?: number | null;
+  courses?: any[];
+}) {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
-  const [mode, setMode] = useState<'camera' | 'keypad' | 'upload'>('camera');
+  const [mode, setMode] = useState<'camera' | 'keypad' | 'upload' | 'gps'>('camera');
   const [loading, setLoading] = useState(false);
   const [cameraBlocked, setCameraBlocked] = useState(false);
+  const [gpsPermissionDenied, setGpsPermissionDenied] = useState(false);
+  const [activeCourseForGps, setActiveCourseForGps] = useState<number | null>(selectedCourseId || null);
   const [result, setResult] = useState<{
     success: boolean;
     status?: 'PRESENT' | 'LATE' | 'ALREADY_MARKED' | 'FLAGGED' | 'ERROR';
@@ -180,6 +190,162 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
     }
   };
 
+  const handleGpsCheckIn = async (overrideCourseId?: number) => {
+    try {
+      setLoading(true);
+      setGpsPermissionDenied(false);
+
+      if (!navigator.geolocation) {
+        setResult({
+          success: false,
+          status: 'ERROR',
+          message: isRTL ? 'متصفحك لا يدعم خاصية تحديد الموقع الجغرافي (GPS).' : 'Your browser does not support Geolocation.',
+        });
+        return;
+      }
+
+      // Step 1: Capture student location
+      let lat: number;
+      let lng: number;
+
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          });
+        });
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      } catch (geoErr: any) {
+        console.warn('Geolocation capture failed or denied:', geoErr);
+        setGpsPermissionDenied(true);
+        setResult({
+          success: false,
+          status: 'ERROR',
+          message: isRTL
+            ? 'تم رفض أو تعذر الوصول إلى إذن الموقع الجغرافي. يرجى تفعيل خدمة GPS والسماح للمتصفح بالوصول لموقعك للمتابعة.'
+            : 'Location permission denied or unavailable. Please enable GPS and allow location access in your browser settings to proceed.',
+        });
+        return;
+      }
+
+      // Step 2: Resolve active session for the course
+      const targetCourseId = overrideCourseId || activeCourseForGps || selectedCourseId;
+      let targetSessionId: number | undefined;
+
+      if (targetCourseId) {
+        try {
+          const sessionRes = await attendanceService.getActiveSession(targetCourseId);
+          if (sessionRes.data?.sessionId) {
+            targetSessionId = sessionRes.data.sessionId;
+          }
+        } catch (e) {
+          console.warn('Failed to fetch active session for course:', targetCourseId, e);
+        }
+      }
+
+      // If no course-specific active session, search student courses
+      if (!targetSessionId) {
+        const courseList = courses && courses.length > 0 ? courses : (await attendanceService.getMyCourses()).data || [];
+        for (const c of courseList) {
+          try {
+            const sRes = await attendanceService.getActiveSession(c.id);
+            if (sRes.data?.sessionId) {
+              targetSessionId = sRes.data.sessionId;
+              setActiveCourseForGps(c.id);
+              break;
+            }
+          } catch {
+            // continue
+          }
+        }
+      }
+
+      if (!targetSessionId) {
+        setResult({
+          success: false,
+          status: 'ERROR',
+          message: isRTL
+            ? 'لا توجد جلسة حضور نشطة حالياً لهذا المقرر. يرجى الانتظار حتى يبدأ المحاضر الجلسة.'
+            : 'No active attendance session currently found. Please wait until your instructor starts the session.',
+        });
+        return;
+      }
+
+      // Step 3: Device ID
+      let deviceId = localStorage.getItem('attendance_device_id');
+      if (!deviceId) {
+        try {
+          const fp = await fpPromise.load();
+          const fpRes = await fp.get();
+          deviceId = fpRes.visitorId;
+        } catch (e) {
+          if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            deviceId = crypto.randomUUID();
+          } else {
+            deviceId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+              const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+              return v.toString(16);
+            });
+          }
+        }
+        localStorage.setItem('attendance_device_id', deviceId!);
+      }
+
+      // Step 4: Submit GPS Check-In
+      const res = await attendanceService.recordGps({
+        sessionId: targetSessionId,
+        latitude: lat,
+        longitude: lng,
+        deviceId,
+      });
+
+      if (res.success || res.data) {
+        const data = res.data || res;
+        const isFlagged = data.locationFlagged;
+        const isExisting = data.status === 'ALREADY_MARKED' || (res.message && res.message.includes('سابقاً'));
+        const isLate = data.status === 'LATE';
+
+        let statusType: 'PRESENT' | 'LATE' | 'ALREADY_MARKED' | 'FLAGGED' = 'PRESENT';
+        if (isFlagged) {
+          statusType = 'FLAGGED';
+        } else if (isExisting) {
+          statusType = 'ALREADY_MARKED';
+        } else if (isLate) {
+          statusType = 'LATE';
+        }
+
+        setResult({
+          success: true,
+          status: statusType,
+          message: res.message || (isRTL ? 'تم تسجيل حضورك عبر GPS بنجاح.' : 'GPS attendance recorded successfully.'),
+          flagged: isFlagged,
+        });
+      } else {
+        const sanitized = sanitizeErrorMessage(res.message);
+        const isDuplicate = /already|سابقاً|بالفعل/i.test(res.message || '');
+        setResult({
+          success: isDuplicate,
+          status: isDuplicate ? 'ALREADY_MARKED' : 'ERROR',
+          message: sanitized,
+        });
+      }
+    } catch (err: any) {
+      const rawMsg = err?.response?.data?.message || err?.message;
+      const sanitized = sanitizeErrorMessage(rawMsg);
+      const isDuplicate = /already|سابقاً|بالفعل/i.test(rawMsg || '');
+      setResult({
+        success: isDuplicate,
+        status: isDuplicate ? 'ALREADY_MARKED' : 'ERROR',
+        message: sanitized,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleScan = async (scannedData: any) => {
     if (!scannedData || !scannedData.length || loading || result) return;
     const dataString = scannedData[0].rawValue;
@@ -307,7 +473,7 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
                 {isRTL ? 'ماسح الحضور الذكي' : 'Smart Attendance Scanner'}
               </h3>
               <p className="text-xs text-slate-300 font-medium">
-                {mode === 'camera' ? (isRTL ? 'امسح الرمز المباشر' : 'Scan live QR') : (isRTL ? 'إدخال الرمز المكون من 6 أرقام' : 'Enter 6-digit code')}
+                {mode === 'camera' ? (isRTL ? 'امسح الرمز المباشر' : 'Scan live QR') : mode === 'gps' ? (isRTL ? 'تسجيل عبر الموقع الجغرافي' : 'GPS Check-In') : (isRTL ? 'إدخال الرمز المكون من 6 أرقام' : 'Enter 6-digit code')}
               </p>
             </div>
           </div>
@@ -435,13 +601,14 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
               <button
                 onClick={() => {
                   setResult(null);
-                  setMode('camera');
+                  setMode(mode === 'gps' ? 'gps' : 'camera');
                   setManualCode('');
+                  setGpsPermissionDenied(false);
                 }}
                 className="flex-1 bg-brand-primary-600 hover:bg-brand-primary-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 text-sm"
               >
                 <RefreshCw className="w-4 h-4" />
-                <span>{isRTL ? 'مسح مرة أخرى' : 'Try Again'}</span>
+                <span>{isRTL ? 'المحاولة مرة أخرى' : 'Try Again'}</span>
               </button>
               {onCancel && (
                 <button
@@ -453,6 +620,64 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
               )}
             </div>
 
+          </div>
+        ) : mode === 'gps' ? (
+          /* Geolocation (GPS) Mode */
+          <div className="flex-1 flex flex-col p-6 items-center justify-between bg-brand-navy-900 text-center">
+            <div className="w-full flex flex-col items-center mt-2">
+              <div className="w-16 h-16 rounded-2xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(14,165,233,0.25)]">
+                <MapPin className="w-8 h-8" />
+              </div>
+              <h4 className="text-xl font-black text-white mb-1">
+                {t('attendance.gpsScannerTitle', 'تسجيل الحضور عبر الموقع الجغرافي')}
+              </h4>
+              <p className="text-xs text-slate-300 font-medium max-w-xs mb-4 leading-relaxed">
+                {t('attendance.gpsScannerDesc', 'توثيق الحضور تلقائياً بالاعتماد على إحداثيات موقعك المباشر داخل نطاق قاعة المحاضرة.')}
+              </p>
+
+              {courses && courses.length > 0 && (
+                <div className="w-full max-w-xs mb-4">
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1.5 text-start">
+                    {t('attendance.selectCourse', 'المقرر الدراسي')}
+                  </label>
+                  <select
+                    value={activeCourseForGps || ''}
+                    onChange={(e) => setActiveCourseForGps(Number(e.target.value))}
+                    className="w-full bg-brand-navy-800 border border-brand-navy-600 rounded-xl px-3 py-2.5 text-xs font-bold text-white outline-none focus:border-brand-primary-500"
+                  >
+                    {courses.map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.courseCode ? `${c.courseCode} - ` : ''}{c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {gpsPermissionDenied && (
+                <div className="w-full max-w-xs bg-rose-950/40 border border-rose-800/60 p-3.5 rounded-xl text-start mb-4">
+                  <p className="text-xs text-rose-300 font-bold mb-1 flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                    {isRTL ? 'إذن الموقع محظور' : 'Location Permission Blocked'}
+                  </p>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    {t('attendance.locationPermissionDenied', 'تم رفض إذن الوصول للموقع الجغرافي. يرجى تفعيل خدمة GPS والسماح للمتصفح بالوصول لموقعك للمتابعة.')}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="w-full max-w-xs pb-2">
+              <button
+                type="button"
+                onClick={() => handleGpsCheckIn()}
+                disabled={loading}
+                className="w-full bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm"
+              >
+                <MapPin className="w-4 h-4" />
+                <span>{t('attendance.checkInWithGps', 'تسجيل الحضور عبر GPS')}</span>
+              </button>
+            </div>
           </div>
         ) : mode === 'camera' && !cameraBlocked ? (
           /* Live Camera Feed Mode */
@@ -564,6 +789,20 @@ export function StudentAttendanceScanner({ onCancel }: { onCancel?: () => void }
             >
               <Camera className="w-4 h-4" />
               <span>{isRTL ? 'الكاميرا' : 'Camera'}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setMode('gps');
+                handleGpsCheckIn();
+              }}
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${mode === 'gps'
+                  ? 'bg-sky-600 text-white shadow-sm'
+                  : 'bg-brand-navy-800 text-slate-300 hover:text-white border border-brand-navy-600'
+                }`}
+            >
+              <MapPin className="w-4 h-4" />
+              <span>{isRTL ? 'الموقع (GPS)' : 'GPS'}</span>
             </button>
 
             <button

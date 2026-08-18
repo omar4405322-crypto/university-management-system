@@ -178,7 +178,11 @@ export function StudentAttendanceDashboard() {
       {showScanner && (
         <div className="fixed inset-0 z-50 bg-brand-navy-900/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
           <div className="max-w-lg w-full relative">
-            <StudentAttendanceScanner onCancel={() => setShowScanner(false)} />
+            <StudentAttendanceScanner
+              onCancel={() => setShowScanner(false)}
+              selectedCourseId={selectedCourseId}
+              courses={myCourses}
+            />
           </div>
         </div>
       )}
