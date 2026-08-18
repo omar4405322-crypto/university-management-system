@@ -1201,7 +1201,12 @@
     "updateError": "خطأ في تحديث الدفعة",
     "updateSuccess": "تم تحديث الدفعة بنجاح",
     "viewAll": "عرض الكل",
-    "revenueByType": "الإيرادات حسب النوع"
+    "revenueByType": "الإيرادات حسب النوع",
+    "inPersonPaymentTitle": "سداد المصروفات والرسوم",
+    "inPersonPaymentSubtitle": "تعليمات السداد المباشر بالجامعة",
+    "inPersonPaymentNotice": "الدفع الإلكتروني غير متاح حاليًا. يُرجى التوجه إلى مكتب الشؤون المالية بالجامعة لسداد المصروفات شخصيًا واستلام إيصال السداد.",
+    "receiptDownloadSuccess": "تم تحميل إيصال الدفع بنجاح",
+    "receiptDownloadError": "فشل تحميل إيصال الدفع"
   },
   "footer": {
     "universityName": "جامعة 6 أكتوبر التكنولوجية",

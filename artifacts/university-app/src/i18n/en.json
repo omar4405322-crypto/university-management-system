@@ -1175,7 +1175,12 @@
     "updateError": "Error updating payment",
     "updateSuccess": "Payment updated successfully",
     "viewAll": "View All",
-    "revenueByType": "Revenue by Type"
+    "revenueByType": "Revenue by Type",
+    "inPersonPaymentTitle": "Tuition & Fee Payment",
+    "inPersonPaymentSubtitle": "In-Person University Payment Instructions",
+    "inPersonPaymentNotice": "Online payment is not currently available. Please visit the university's Finance Office in person to settle your fees and receive an official receipt.",
+    "receiptDownloadSuccess": "Receipt downloaded successfully",
+    "receiptDownloadError": "Failed to download receipt"
   },
   "footer": {
     "universityName": "6th of October University of Technology",
