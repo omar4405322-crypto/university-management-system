@@ -814,30 +814,153 @@ export function FacultyAttendanceDashboard() {
           <div className="bg-white dark:bg-slate-800 p-2 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2 overflow-hidden mb-6">
             <div className="flex flex-wrap items-center gap-2">
               <button onClick={() => setActiveTab('QR')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'QR' ? 'bg-brand-primary-50 text-brand-primary-700 dark:bg-brand-primary-900/40 dark:text-brand-primary-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                <QrCode className="w-5 h-5" />رمز الاستجابة (QR)
+                <QrCode className="w-5 h-5" />{t('attendance.qrSession', 'رمز الاستجابة (QR)')}
+              </button>
+              <button onClick={() => setActiveTab('GPS')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'GPS' ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                <MapPin className="w-5 h-5" />{t('attendance.gpsTab', 'الموقع الجغرافي (GPS)')}
               </button>
               <button onClick={() => setActiveTab('MANUAL')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'MANUAL' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                <Users className="w-5 h-5" />يدوي (Manual)
+                <Users className="w-5 h-5" />{t('attendance.manualTab', 'يدوي (Manual)')}
               </button>
             </div>
              
             <div className="flex flex-wrap items-center gap-2 border-slate-200 dark:border-slate-700 ltr:border-l rtl:border-r rtl:pr-4 ltr:pl-4">
               <button disabled className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-slate-400 dark:text-slate-500 opacity-60 cursor-not-allowed">
-                <CreditCard className="w-5 h-5" />البطاقة الذكية (RFID)
-                <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 text-[9px] px-1.5 ml-1">قريباً</Badge>
+                <CreditCard className="w-5 h-5" />{t('attendance.rfidTab', 'البطاقة الذكية (RFID)')}
+                <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 text-[9px] px-1.5 ml-1">{t('common.comingSoon', 'قريباً')}</Badge>
               </button>
               <button disabled className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-slate-400 dark:text-slate-500 opacity-60 cursor-not-allowed">
-                <ScanFace className="w-5 h-5" />بصمة الوجه
-                <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 text-[9px] px-1.5 ml-1">قريباً</Badge>
-              </button>
-              <button disabled className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-slate-400 dark:text-slate-500 opacity-60 cursor-not-allowed">
-                <MapPin className="w-5 h-5" />الموقع (GPS)
-                <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 text-[9px] px-1.5 ml-1">قريباً</Badge>
+                <ScanFace className="w-5 h-5" />{t('attendance.faceTab', 'بصمة الوجه')}
+                <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300 text-[9px] px-1.5 ml-1">{t('common.comingSoon', 'قريباً')}</Badge>
               </button>
             </div>
           </div>
 
           {/* TAB CONTENT */}
+          {activeTab === 'GPS' && (
+            <Card className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative">
+              <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-sky-400 to-blue-600"></div>
+              <CardContent className="p-8">
+                {/* Header with Title, Description, and Update Location Button */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100 dark:border-slate-700">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                      <MapPin className="w-6 h-6 text-sky-600 dark:text-sky-400" />
+                      <span>{t('attendance.gpsSessionTitle', 'جلسة الحضور عبر النطاق الجغرافي (GPS)')}</span>
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      {t('attendance.gpsSessionDesc', 'يتيح للطلاب المتواجدين داخل النطاق الجغرافي للقاعة تسجيل حضورهم مباشرة من أجهزتهم.')}
+                    </p>
+                  </div>
+                  
+                  <Button
+                    onClick={syncLocationNow}
+                    disabled={loading}
+                    className="bg-sky-600 hover:bg-sky-700 text-white rounded-xl px-4 py-2.5 font-bold text-xs flex items-center gap-2 shadow-sm shrink-0"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    <span>{t('attendance.syncLocation', 'تحديث إحداثيات القاعة')}</span>
+                  </Button>
+                </div>
+
+                {/* Geofence Status Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                  <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-150 dark:border-slate-700">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                      {t('attendance.geofenceStatus', 'حالة النطاق الجغرافي')}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${activeSession?.latitude && activeSession?.longitude ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+                      <span className="text-sm font-black text-slate-800 dark:text-white">
+                        {activeSession?.latitude && activeSession?.longitude 
+                          ? t('attendance.geofenceActive', 'مفعّل ونشط') 
+                          : t('attendance.geofenceNotSet', 'غير محدد')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-150 dark:border-slate-700">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                      {t('attendance.sessionCoordinates', 'إحداثيات القاعة')}
+                    </span>
+                    <span className="text-sm font-mono font-bold text-slate-800 dark:text-white truncate block">
+                      {activeSession?.latitude && activeSession?.longitude 
+                        ? `${Number(activeSession.latitude).toFixed(6)}, ${Number(activeSession.longitude).toFixed(6)}`
+                        : '—'}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-150 dark:border-slate-700">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                      {t('attendance.allowedRadius', 'النطاق المسموح')}
+                    </span>
+                    <span className="text-sm font-black text-sky-600 dark:text-sky-400">
+                      {activeSession?.radius || 100} {t('attendance.meters', 'متر')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* GPS Attendance Live Roster */}
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-base font-bold text-slate-800 dark:text-white">
+                    {t('attendance.gpsAttendanceLog', 'سجل الحضور المسجل عبر GPS')}
+                  </h4>
+                  <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300 font-bold">
+                    {roster.filter((s: any) => s.method === 'GPS').length} {t('attendance.students', 'طلاب')}
+                  </Badge>
+                </div>
+
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-800/50 max-h-[400px] overflow-y-auto">
+                  {roster.filter((s: any) => s.method === 'GPS').length === 0 ? (
+                    <div className="p-8 flex flex-col items-center justify-center text-center">
+                      <div className="w-16 h-16 bg-sky-50 dark:bg-sky-950/50 rounded-full flex items-center justify-center mb-4 border border-sky-100 dark:border-sky-800 text-sky-600 dark:text-sky-400">
+                        <MapPin className="w-8 h-8" />
+                      </div>
+                      <p className="font-bold text-slate-700 dark:text-slate-300">
+                        {t('attendance.noGpsCheckinsYet', 'لا توجد تسجيلات حضور عبر GPS بعد')}
+                      </p>
+                      <p className="text-xs text-slate-400 max-w-sm mt-1">
+                        {t('attendance.noGpsCheckinsDesc', 'يمكن للطلاب المتواجدين داخل القاعة تسجيل حضورهم مباشرة عبر تحديد الموقع الجغرافي من أجهزتهم.')}
+                      </p>
+                    </div>
+                  ) : (
+                    roster
+                      .filter((s: any) => s.method === 'GPS')
+                      .sort((a: any, b: any) => new Date(b.recordedAt || 0).getTime() - new Date(a.recordedAt || 0).getTime())
+                      .map((s: any) => (
+                        <div key={s.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center font-bold text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                              {s.firstName?.[0] || 'S'}{s.lastName?.[0] || ''}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-800 dark:text-white">{s.firstName} {s.lastName}</p>
+                              <p className="text-xs text-slate-500">{s.studentId} • {s.group}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Badge className="bg-sky-100 text-sky-800 text-[10px] uppercase font-bold">GPS</Badge>
+                              <Badge className={
+                                s.existingStatus === 'PRESENT' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-bold text-[10px]' :
+                                s.existingStatus === 'LATE' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold text-[10px]' :
+                                'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 font-bold text-[10px]'
+                              }>
+                                {s.existingStatus === 'PRESENT' ? t('attendance.present', 'حاضر') : s.existingStatus === 'LATE' ? t('attendance.late', 'متأخر') : t('attendance.absent', 'غائب')}
+                              </Badge>
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {s.recordedAt ? new Date(s.recordedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {activeTab === 'QR' && (
           <Card className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden relative">
             <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-brand-primary-400 to-brand-primary-600"></div>
