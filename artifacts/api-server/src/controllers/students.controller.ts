@@ -10,6 +10,7 @@ import { invalidateCache } from '../utils/redis.utils';
 import { getScopeWhere } from '../utils/scope.utils';
 import { StudentGroupsService } from '../services/studentGroups.service';
 import { AttendanceService } from '../services/attendance.service';
+import { calculateStudentGpa } from '../utils/gpa.utils';
 
 const mapStudentStatus = (student: any) => ({
   ...student,
@@ -501,26 +502,28 @@ export const getStudentStatistics = catchAsync(
     }
 
     // Re-use AttendanceService.getStudentAttendance to ensure single source of truth for formula & metrics
-    const attendanceData = await AttendanceService.getStudentAttendance(
-      user,
-      numericStudentId,
-      undefined,
-      1,
-      1000
-    );
-
-    const studentProfile = await prisma.student.findUnique({
-      where: { id: numericStudentId },
-      select: {
-        id: true,
-        studentId: true,
-        firstName: true,
-        lastName: true,
-        year: true,
-        department: { select: { id: true, name: true, nameAr: true } },
-        user: { select: { email: true, profilePicture: true } },
-      },
-    });
+    const [attendanceData, gpaData, studentProfile] = await Promise.all([
+      AttendanceService.getStudentAttendance(
+        user,
+        numericStudentId,
+        undefined,
+        1,
+        1000
+      ),
+      calculateStudentGpa(numericStudentId),
+      prisma.student.findUnique({
+        where: { id: numericStudentId },
+        select: {
+          id: true,
+          studentId: true,
+          firstName: true,
+          lastName: true,
+          year: true,
+          department: { select: { id: true, name: true, nameAr: true } },
+          user: { select: { email: true, profilePicture: true } },
+        },
+      }),
+    ]);
 
     return res.json({
       success: true,
@@ -534,7 +537,15 @@ export const getStudentStatistics = catchAsync(
           absent: attendanceData.stats.ABSENT,
           excused: attendanceData.stats.EXCUSED,
         },
-        academics: null,
+        academics: {
+          cumulativeGpa: gpaData.cumulativeGpa,
+          gpaString: gpaData.gpaString,
+          totalCreditsEarned: gpaData.totalCreditsEarned,
+          totalCreditsAttempted: gpaData.totalCreditsAttempted,
+          totalPoints: gpaData.totalPoints,
+          coursesCount: gpaData.coursesCount,
+          courses: gpaData.courses,
+        },
         projects: null,
       },
     });

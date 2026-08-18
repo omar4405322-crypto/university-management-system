@@ -4,6 +4,7 @@ import { AppError, AuthorizationError, NotFoundError } from '../utils/appError';
 import { EnrollmentService } from '../services/enrollment.service';
 import prisma from '../utils/prismaClient';
 import { getScopeWhere } from '../utils/scope.utils';
+import { calculateStudentGpa } from '../utils/gpa.utils';
 
 export const getTranscript = catchAsync(async (req: Request, res: Response) => {
   const { studentId: studentIdParam } = req.params;
@@ -67,20 +68,10 @@ export const getTranscript = catchAsync(async (req: Request, res: Response) => {
 
   // Case 1: Student Record view (Specific student)
   if (targetStudentId) {
-    const enrollments = await EnrollmentService.getStudentTranscript(targetStudentId);
-
-    const completed = enrollments.filter(
-      (e: any) => e.status === 'COMPLETED' && e.finalGrade !== null
-    );
-    const totalPoints = completed.reduce((sum: number, e: any) => {
-      const grade = e.finalGrade;
-      const points =
-        grade >= 90 ? 4.0 : grade >= 80 ? 3.0 : grade >= 70 ? 2.0 : grade >= 60 ? 1.0 : 0;
-      return sum + points * (e.course.credits ?? 3);
-    }, 0);
-
-    const totalHours = completed.reduce((sum: number, e: any) => sum + (e.course.credits ?? 3), 0);
-    const gpa = totalHours > 0 ? (totalPoints / totalHours).toFixed(2) : '0.00';
+    const [enrollments, gpaResult] = await Promise.all([
+      EnrollmentService.getStudentTranscript(targetStudentId),
+      calculateStudentGpa(targetStudentId),
+    ]);
 
     const byYear = enrollments.reduce((acc: any, e: any) => {
       const key = `${e.academicYear}-${e.semester}`;
@@ -93,10 +84,12 @@ export const getTranscript = catchAsync(async (req: Request, res: Response) => {
       success: true,
       data: {
         studentId: targetStudentId,
-        gpa,
-        totalCreditHours: totalHours,
+        gpa: gpaResult.gpaString,
+        totalCreditHours: gpaResult.totalCreditsEarned,
+        totalCreditsAttempted: gpaResult.totalCreditsAttempted,
         totalEnrollments: enrollments.length,
         semesters: Object.values(byYear),
+        gpaBreakdown: gpaResult.courses,
         isAdminOverview: false,
       },
     });
