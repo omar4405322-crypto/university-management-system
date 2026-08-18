@@ -1,19 +1,11 @@
 import express from 'express';
-import rateLimit from 'express-rate-limit';
+import { passwordResetLimiter } from '../middleware/rateLimiter.middleware';
 const router = express.Router();
 import * as studentsController from '../controllers/students.controller';
 import { resetStudentPassword } from '../controllers/students.controller';
 import { protect, authorize } from '../middleware/auth.middleware';
 import { studentValidation, idParamValidation } from '../validations/academic.validation';
 import validate from '../middleware/validate.middleware';
-
-const passwordResetLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { success: false, message: 'Too many password reset attempts, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 // Statistics endpoint accessible by STUDENT (for self/me) and DOCTOR/ADMIN (scoped)
 router.get('/:id/statistics', protect, studentsController.getStudentStatistics);

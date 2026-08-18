@@ -118,13 +118,7 @@ app.use(
 );
 
 // 3. RATE LIMITING
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { success: false, message: 'Too many auth attempts' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+import { authLimiter } from './middleware/rateLimiter.middleware';
 
 const enrollmentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

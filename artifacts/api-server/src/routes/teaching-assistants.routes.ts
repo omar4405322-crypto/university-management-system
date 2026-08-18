@@ -10,6 +10,7 @@ import {
   getSuggestedTeachingAssistants,
 } from '../controllers/teachingAssistants.controller';
 import { protect, authorize } from '../middleware/auth.middleware';
+import { passwordResetLimiter } from '../middleware/rateLimiter.middleware';
 
 const router = Router();
 
@@ -27,7 +28,7 @@ router.use(authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'
 router.post('/', createTeachingAssistant);
 router.put('/:id', updateTeachingAssistant);
 router.delete('/:id', deleteTeachingAssistant);
-router.patch('/:id/reset-password', resetTeachingAssistantPassword);
+router.patch('/:id/reset-password', passwordResetLimiter, resetTeachingAssistantPassword);
 
 // Doctor assignment routes removed
 

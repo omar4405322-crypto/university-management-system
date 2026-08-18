@@ -19,6 +19,7 @@ import upload from '../middleware/upload.middleware';
 import { userUpdateValidation, adminIdValidation } from '../validations/admin.validation';
 import { body } from 'express-validator';
 import validate from '../middleware/validate.middleware';
+import { twoFactorLimiter, passwordResetLimiter } from '../middleware/rateLimiter.middleware';
 
 const router = express.Router();
 
@@ -49,12 +50,14 @@ router.put('/profile/picture', upload.single('profilePicture'), updateProfilePic
 router.post('/2fa/setup', setup2FA);
 router.post(
   '/2fa/enable',
+  twoFactorLimiter,
   [body('token').notEmpty().withMessage('Verification code is required')],
   validate,
   enable2FA
 );
 router.post(
   '/2fa/disable',
+  twoFactorLimiter,
   [
     body('token').notEmpty().withMessage('Verification code is required'),
     body('password').notEmpty().withMessage('Password is required'),
@@ -84,7 +87,7 @@ router.post(
 );
 
 router.put('/:id', authorize('SUPER_ADMIN'), adminIdValidation, validate, updateAdmin);
-router.patch('/:id/reset-password', authorize('SUPER_ADMIN'), adminIdValidation, validate, resetUserPassword);
+router.patch('/:id/reset-password', authorize('SUPER_ADMIN'), passwordResetLimiter, adminIdValidation, validate, resetUserPassword);
 router.delete('/:id', authorize('SUPER_ADMIN'), adminIdValidation, validate, deleteUser);
 router.delete('/:id/hard-delete', authorize('SUPER_ADMIN'), adminIdValidation, validate, hardDeleteUser);
 

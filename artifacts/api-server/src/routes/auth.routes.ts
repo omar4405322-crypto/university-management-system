@@ -17,10 +17,12 @@ import {
 } from '../validations/auth.validation';
 import validate from '../middleware/validate.middleware';
 
+import { loginLimiter } from '../middleware/rateLimiter.middleware';
+
 const router = express.Router();
 
 router.post('/register', registerValidation, validate, register);
-router.post('/login', loginValidation, validate, login);
+router.post('/login', loginLimiter, loginValidation, validate, login);
 router.post('/refresh', refresh);
 router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
