@@ -46,12 +46,14 @@ import {
   Info,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../context/LanguageContext';
 import { Select } from '../../components/ui/Select';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
 
 const FinanceDashboard = () => {
   const { t } = useTranslation();
+  const { isRTL } = useLanguage();
   const { user } = useAuth();
   const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(
     user?.role
@@ -285,7 +287,7 @@ const FinanceDashboard = () => {
                   </div>
                 </div>
                 <h3 className="heading-display !text-3xl md:!text-4xl m-0 tracking-tightest">
-                  ${Number(stats.totalCollected || 0).toLocaleString()}
+                  {isRTL ? 'ج.م ' : 'EGP '}{Number(stats.totalCollected || 0).toLocaleString()}
                 </h3>
               </div>
             </Card>
@@ -301,7 +303,7 @@ const FinanceDashboard = () => {
                   </div>
                 </div>
                 <h3 className="heading-display !text-3xl md:!text-4xl m-0 tracking-tightest text-brand-accent-yellow">
-                  ${Number(stats.totalPending || 0).toLocaleString()}
+                  {isRTL ? 'ج.م ' : 'EGP '}{Number(stats.totalPending || 0).toLocaleString()}
                 </h3>
               </div>
             </Card>
@@ -317,7 +319,7 @@ const FinanceDashboard = () => {
                   </div>
                 </div>
                 <h3 className="heading-display !text-3xl md:!text-4xl m-0 tracking-tightest text-error">
-                  ${Number(stats.totalOverdue || 0).toLocaleString()}
+                  {isRTL ? 'ج.م ' : 'EGP '}{Number(stats.totalOverdue || 0).toLocaleString()}
                 </h3>
               </div>
             </Card>
@@ -466,14 +468,14 @@ const FinanceDashboard = () => {
                 <div className="text-end">
                   <p className="text-caption text-brand-text-muted">{t('finance.totalDues')}</p>
                   <p className="text-xl font-black text-error">
-                    ${(studentStats.totalPending + studentStats.totalOverdue).toLocaleString()}
+                    {isRTL ? 'ج.م ' : 'EGP '}{(studentStats.totalPending + studentStats.totalOverdue).toLocaleString()}
                   </p>
                 </div>
                 <div className="h-10 w-px bg-brand-border"></div>
                 <div className="text-end">
                   <p className="text-caption text-brand-text-muted">{t('finance.paidSoFar')}</p>
                   <p className="text-xl font-black text-brand-primary-600">
-                    ${studentStats.totalPaid.toLocaleString()}
+                    {isRTL ? 'ج.م ' : 'EGP '}{studentStats.totalPaid.toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -539,7 +541,7 @@ const FinanceDashboard = () => {
                       </TableCell>
                     )}
                     <TableCell className="font-black text-brand-text-main">
-                      ${payment.amount.toLocaleString()}
+                      {isRTL ? 'ج.م ' : 'EGP '}{payment.amount.toLocaleString()}
                     </TableCell>
                     {isAdmin && (
                       <TableCell>
@@ -708,7 +710,7 @@ const FinanceDashboard = () => {
                   {t('finance.amount', 'Amount')}
                 </span>
                 <span className="text-base font-black text-brand-primary-600 dark:text-brand-primary-400">
-                  ${selectedPaymentForPay.amount?.toLocaleString()}
+                  {isRTL ? 'ج.م ' : 'EGP '}{selectedPaymentForPay.amount?.toLocaleString()}
                 </span>
               </div>
             </div>
