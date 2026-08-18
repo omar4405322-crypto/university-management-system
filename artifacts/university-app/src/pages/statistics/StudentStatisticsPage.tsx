@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
   BarChart3, CheckCircle2, Clock, XCircle, AlertCircle, BookOpen, 
-  Award, GraduationCap, FolderKanban, ShieldCheck, Sparkles, User, ArrowRight
+  Award, GraduationCap, FolderKanban, ShieldCheck, User, ArrowRight
 } from 'lucide-react';
 import studentsService from '../../services/students.service';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
@@ -108,11 +108,82 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
 
   const student = data?.student;
   const attendance = data?.attendance || { rate: 0, totalSessions: 0, present: 0, late: 0, absent: 0, excused: 0 };
+  const academics = data?.academics || {
+    cumulativeGpa: 0,
+    gpaString: '0.00',
+    totalCreditsEarned: 0,
+    totalCreditsAttempted: 0,
+    coursesCount: 0,
+    courses: [],
+  };
+
   const gaugeStyle = getGaugeStyle(attendance.rate);
+
+  // GPA standing style generator
+  const getGpaStanding = (gpa: number) => {
+    if (gpa >= 3.5) {
+      return {
+        label: isRTL ? 'ممتاز (مرتبة الشرف)' : 'Excellent (Honors)',
+        badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300',
+        stroke: '#10B981',
+        textClass: 'text-emerald-600 dark:text-emerald-400',
+      };
+    }
+    if (gpa >= 3.0) {
+      return {
+        label: isRTL ? 'جيد جداً' : 'Very Good',
+        badgeClass: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-sky-300',
+        stroke: '#0EA5E9',
+        textClass: 'text-sky-600 dark:text-sky-400',
+      };
+    }
+    if (gpa >= 2.0) {
+      return {
+        label: isRTL ? 'جيد' : 'Good',
+        badgeClass: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300',
+        stroke: '#6366F1',
+        textClass: 'text-indigo-600 dark:text-indigo-400',
+      };
+    }
+    if (gpa >= 1.0) {
+      return {
+        label: isRTL ? 'مقبول' : 'Fair / Pass',
+        badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300',
+        stroke: '#F59E0B',
+        textClass: 'text-amber-600 dark:text-amber-400',
+      };
+    }
+    return {
+      label: isRTL ? 'إنذار أكاديمي / تعثر' : 'Academic Warning / At Risk',
+      badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300',
+      stroke: '#EF4444',
+      textClass: 'text-rose-600 dark:text-rose-400',
+    };
+  };
+
+  const gpaStanding = getGpaStanding(academics.cumulativeGpa);
+
+  const getLetterBadge = (letterGrade: string, gradePoints: number) => {
+    switch (letterGrade) {
+      case 'A':
+        return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 font-bold">A ({gradePoints.toFixed(1)})</Badge>;
+      case 'B':
+        return <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-sky-300 font-bold">B ({gradePoints.toFixed(1)})</Badge>;
+      case 'C':
+        return <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300 font-bold">C ({gradePoints.toFixed(1)})</Badge>;
+      case 'D':
+        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 font-bold">D ({gradePoints.toFixed(1)})</Badge>;
+      case 'F':
+      default:
+        return <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300 font-bold">F (0.0)</Badge>;
+    }
+  };
 
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (attendance.rate / 100) * circumference;
+
+  const gpaProgressOffset = circumference - Math.min(1, academics.cumulativeGpa / 4.0) * circumference;
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
@@ -132,7 +203,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight">
-                  {student ? `${student.firstName} ${student.lastName}` : (isRTL ? 'الإحصائيات الأكاديمية' : 'Student Statistics')}
+                  {student ? `${student.firstName} ${student.lastName}` : (t('statistics.title') || 'Student Statistics')}
                 </h1>
                 {isAdvisorView && (
                   <Badge className="bg-sky-500/20 text-sky-200 border-sky-400/30 text-xs">
@@ -154,44 +225,37 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
               </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Badge className="bg-brand-primary-500/20 text-brand-primary-300 border-brand-primary-500/30 px-3 py-1 text-xs font-bold">
-              <BarChart3 className="w-3.5 h-3.5 mr-1.5 inline" />
-              {isRTL ? 'لوحة التحليلات الموحدة' : 'Unified Statistics Dashboard'}
-            </Badge>
-          </div>
         </div>
       </div>
 
-      {/* Grid of 4 Primary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Grid of Main Functional Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Card 1: Attendance Performance (LIVE DATA FROM CENTRALIZED BACKEND) */}
-        <Card className="border-slate-200/80 dark:border-slate-800 shadow-md hover:shadow-lg transition-all duration-300">
-          <CardHeader className="pb-2 border-b border-slate-100 dark:border-slate-800/80 flex flex-row items-center justify-between">
+        {/* Card 1: Attendance Performance */}
+        <Card className="border-slate-200/80 dark:border-slate-800 shadow-md">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800/80 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-brand-primary-500" />
-              {isRTL ? 'معدل الحضور والغياب' : 'Attendance Statistics'}
+              <BarChart3 className="w-5 h-5 text-emerald-500" />
+              {isRTL ? 'نسبة وسجل الحضور' : 'Attendance Performance'}
             </CardTitle>
-            <Badge className="bg-brand-primary-50 text-brand-primary-800 dark:bg-brand-primary-950/60 dark:text-brand-primary-300 border-brand-primary-200">
-              {isRTL ? 'بيانات مركزية موحدة' : 'Centralized Backend Data'}
-            </Badge>
+            <span className="text-xs text-slate-400 font-medium">
+              {isRTL ? 'سجل المحاضرات' : 'Lecture Registry'}
+            </span>
           </CardHeader>
-          <CardContent className="pt-4 space-y-6">
+          <CardContent className="pt-6 space-y-6">
             
-            {/* Circular Gauge Section */}
-            <div className="flex items-center gap-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
-              <div className="relative w-28 h-28 shrink-0 flex items-center justify-center">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+            {/* Main Percentage Gauge */}
+            <div className="flex items-center gap-6 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800">
+              <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                   <circle
                     cx="50"
                     cy="50"
                     r={radius}
                     stroke="currentColor"
                     strokeWidth="8"
+                    className="text-slate-200 dark:text-slate-800"
                     fill="transparent"
-                    className="text-slate-200 dark:text-slate-700"
                   />
                   <circle
                     cx="50"
@@ -223,7 +287,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
                   </span>
                 </div>
                 <p className="text-xs text-slate-400">
-                  {isRTL ? 'محسوبة من الخادم لكل المحاضرات المسجلة' : 'Calculated centrally from backend attendance records'}
+                  {isRTL ? 'محسوبة من السجلات المركزية' : 'Calculated from central records'}
                 </p>
                 <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-2">
                   {isRTL ? `إجمالي المحاضرات: ${attendance.totalSessions}` : `Total Sessions: ${attendance.totalSessions}`}
@@ -254,29 +318,154 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
           </CardContent>
         </Card>
 
-        {/* Card 2: Academic Grades & GPA (PLACEHOLDER FOR SLICE 2) */}
-        <Card className="border-slate-200/80 dark:border-slate-800 shadow-md relative overflow-hidden">
-          <CardHeader className="pb-2 border-b border-slate-100 dark:border-slate-800/80 flex flex-row items-center justify-between">
+        {/* Card 2: Academic Grades & Cumulative GPA */}
+        <Card className="border-slate-200/80 dark:border-slate-800 shadow-md">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800/80 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
               <GraduationCap className="w-5 h-5 text-sky-500" />
-              {isRTL ? 'المعدل التراكمي والدرجات' : 'Academic Grade Average & GPA'}
+              {t('statistics.gpaTitle') || (isRTL ? 'المعدل التراكمي والدرجات' : 'Academic Grade Average & GPA')}
             </CardTitle>
-            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 text-xs">
-              {isRTL ? 'قريباً (Slice 2)' : 'Coming Soon'}
-            </Badge>
+            {academics.coursesCount > 0 ? (
+              <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${gpaStanding.badgeClass}`}>
+                {gpaStanding.label}
+              </span>
+            ) : (
+              <Badge variant="secondary" className="text-xs font-medium">
+                {isRTL ? 'قيد الاحتساب' : 'In Progress'}
+              </Badge>
+            )}
           </CardHeader>
-          <CardContent className="pt-6 flex flex-col items-center justify-center text-center space-y-3 min-h-[220px]">
-            <div className="w-14 h-14 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-200 dark:border-sky-800">
-              <GraduationCap className="w-7 h-7" />
+          <CardContent className="pt-6 space-y-6">
+            
+            {/* GPA Gauge & High-level Metrics */}
+            <div className="flex items-center gap-6 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800">
+              <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r={radius}
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    className="text-slate-200 dark:text-slate-800"
+                    fill="transparent"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r={radius}
+                    stroke={gpaStanding.stroke}
+                    strokeWidth="8"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={academics.coursesCount > 0 ? gpaProgressOffset : circumference}
+                    strokeLinecap="round"
+                    fill="transparent"
+                    className="transition-all duration-1000 ease-out"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-2xl font-black text-slate-800 dark:text-white leading-none">
+                    {academics.gpaString}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400 mt-0.5">
+                    {t('statistics.scaleMax') || '/ 4.00'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-sm text-slate-800 dark:text-white">
+                    {t('statistics.cumulativeGpa') || (isRTL ? 'المعدل التراكمي (GPA)' : 'Cumulative GPA')}
+                  </h4>
+                </div>
+                <p className="text-xs text-slate-400">
+                  {t('statistics.gpaDescription') || (isRTL ? 'المعدل التراكمي الموزون لكافة المقررات المحتسبة' : 'Weighted cumulative GPA across completed courses & unretaken failures')}
+                </p>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-2">
+                  {isRTL 
+                    ? `الساعات المكتسبة: ${academics.totalCreditsEarned} من إجمالي ${academics.totalCreditsAttempted} ساعة`
+                    : `Credits Earned: ${academics.totalCreditsEarned} / ${academics.totalCreditsAttempted} hrs`}
+                </p>
+              </div>
             </div>
-            <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">
-              {isRTL ? 'معدل الدرجات والمعدل التراكمي (GPA)' : 'Cumulative GPA & Grade Summary'}
-            </h3>
-            <p className="text-xs text-slate-400 max-w-sm">
-              {isRTL 
-                ? 'سيتم تفعيل هذه البطاقة في المرحلة التالية فور تأكيد هيكل عرض المعدل التراكمي.' 
-                : 'This section will display cumulative GPA and semester averages upon Slice 2 confirmation.'}
-            </p>
+
+            {/* 3 Stat Breakdown Grid */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 bg-sky-50/60 dark:bg-sky-950/20 rounded-xl border border-sky-100 dark:border-sky-900/40 text-center">
+                <span className="text-xs font-bold text-sky-700 dark:text-sky-400 block">{t('statistics.earnedCredits') || (isRTL ? 'الساعات المكتسبة' : 'Earned Credits')}</span>
+                <span className="text-xl font-black text-sky-800 dark:text-sky-200">{academics.totalCreditsEarned}</span>
+              </div>
+              <div className="p-3 bg-slate-100/70 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">{t('statistics.attemptedCredits') || (isRTL ? 'الساعات المسجلة' : 'Attempted')}</span>
+                <span className="text-xl font-black text-slate-800 dark:text-slate-200">{academics.totalCreditsAttempted}</span>
+              </div>
+              <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900/40 text-center">
+                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 block">{t('statistics.gradedCourses') || (isRTL ? 'المقررات المرصودة' : 'Graded')}</span>
+                <span className="text-xl font-black text-emerald-800 dark:text-emerald-200">{academics.coursesCount}</span>
+              </div>
+            </div>
+
+            {/* Course Grade Breakdown List / Table */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {t('statistics.courseBreakdown') || (isRTL ? 'تفاصيل درجات المقررات' : 'Course Grade Breakdown')}
+              </h4>
+
+              {academics.courses.length === 0 ? (
+                <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-1 bg-slate-50/50 dark:bg-slate-900/20">
+                  <BookOpen className="w-8 h-8 text-slate-400 mx-auto mb-1" />
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                    {t('statistics.noCoursesGraded') || (isRTL ? 'لا توجد مقررات مرصودة الدرجات حتى الآن' : 'No graded courses recorded yet')}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {t('statistics.noCoursesGradedDesc') || (isRTL ? 'ستظهر نتائج المقررات بمجرد رصد درجات الفصول الدراسية.' : 'Grades will appear here once semester final scores are finalized.')}
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-60 overflow-y-auto pr-1">
+                  {academics.courses.map((course: any) => (
+                    <div key={course.courseId} className="py-2.5 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-xs text-slate-800 dark:text-white truncate">
+                            [{course.courseCode}] {course.courseName}
+                          </span>
+                          {course.isRetake && (
+                            <span 
+                              className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300"
+                              title={course.supersededAttempts?.map((sa: any) => t('statistics.retakeTooltip', { year: sa.academicYear, sem: sa.semester })).join(' | ')}
+                            >
+                              {t('statistics.retakeBadge') || (isRTL ? 'إعادة مقرر' : 'Retake')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {isRTL 
+                            ? `السنة ${course.countedAcademicYear} الترم ${course.countedSemester} • ${course.credits} ساعات`
+                            : `Year ${course.countedAcademicYear} Sem ${course.countedSemester} • ${course.credits} hrs`}
+                          {course.isRetake && course.supersededAttempts?.length > 0 && (
+                            <span className="text-purple-600 dark:text-purple-400 ml-1">
+                              • ({isRTL ? 'محاولة سابقة ملغاة' : 'supersedes earlier attempt'})
+                            </span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {course.finalGrade !== null && (
+                          <span className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300">
+                            {course.finalGrade}%
+                          </span>
+                        )}
+                        {getLetterBadge(course.letterGrade, course.gradePoints)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </CardContent>
         </Card>
 
