@@ -21,6 +21,7 @@ import { useTheme } from '../../context/ThemeContext';
 import ChartTooltip from '../../components/ui/ChartTooltip';
 import AddPaymentModal from './AddPaymentModal';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import Modal from '../../components/ui/Modal';
 import Card from '../../components/ui/Card';
 import Table, { TableRow, TableCell, ActionMenu } from '../../components/ui/Table';
 import Button from '../../components/ui/button';
@@ -42,6 +43,7 @@ import {
   LayoutDashboard,
   Edit,
   Trash2,
+  Info,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Select } from '../../components/ui/Select';
@@ -64,6 +66,8 @@ const FinanceDashboard = () => {
   const [confirmPaymentId, setConfirmPaymentId] = useState(null);
   const [editPayment, setEditPayment] = useState(null);
   const [paymentToDelete, setPaymentToDelete] = useState(null);
+  const [payNoticeModalOpen, setPayNoticeModalOpen] = useState(false);
+  const [selectedPaymentForPay, setSelectedPaymentForPay] = useState(null);
 
   const [filters, setFilters] = useState({
     status: 'ALL',
@@ -604,7 +608,10 @@ const FinanceDashboard = () => {
                                 label: t('finance.payNow'),
                                 icon: CreditCard,
                                 variant: 'default',
-                                onClick: () => { },
+                                onClick: () => {
+                                  setSelectedPaymentForPay(payment);
+                                  setPayNoticeModalOpen(true);
+                                },
                               },
                             ]
                             : []),
@@ -659,6 +666,79 @@ const FinanceDashboard = () => {
         title={t('finance.deleteConfirm', 'Delete Payment')}
         confirmLabel={t('common.delete', 'Delete')}
       />
+
+      <Modal
+        isOpen={payNoticeModalOpen}
+        onClose={() => {
+          setPayNoticeModalOpen(false);
+          setSelectedPaymentForPay(null);
+        }}
+        title={
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/30 text-brand-primary-600 dark:text-brand-primary-400 flex items-center justify-center shrink-0">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="block text-lg font-black text-slate-800 dark:text-white">
+                {t('finance.inPersonPaymentTitle', 'Tuition & Fee Payment')}
+              </span>
+              <span className="block text-xs font-semibold text-slate-400 dark:text-slate-400 mt-0.5">
+                {t('finance.inPersonPaymentSubtitle', 'In-Person University Payment Instructions')}
+              </span>
+            </div>
+          </div>
+        }
+        size="sm"
+      >
+        <div className="space-y-5 pt-2">
+          {selectedPaymentForPay && (
+            <div className="p-4 rounded-2xl bg-surface-subtle border border-brand-border flex items-center justify-between">
+              <div>
+                <span className="text-xs text-brand-text-sub block font-medium">
+                  {t('finance.paymentType', 'Payment Type')}: {t(`finance.${selectedPaymentForPay.type?.toLowerCase()}`, selectedPaymentForPay.type)}
+                </span>
+                {selectedPaymentForPay.description && (
+                  <span className="text-xs text-brand-text-muted block mt-0.5">
+                    {selectedPaymentForPay.description}
+                  </span>
+                )}
+              </div>
+              <div className="text-end">
+                <span className="text-xs text-brand-text-sub block font-medium">
+                  {t('finance.amount', 'Amount')}
+                </span>
+                <span className="text-base font-black text-brand-primary-600 dark:text-brand-primary-400">
+                  ${selectedPaymentForPay.amount?.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="p-4 rounded-2xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200/80 dark:border-sky-800/50 flex items-start gap-3.5">
+            <Info className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+            <p className="text-xs leading-relaxed font-semibold text-sky-900 dark:text-sky-200">
+              {t(
+                'finance.inPersonPaymentNotice',
+                "Online payment is not currently available. Please visit the university's Finance Office in person to settle your fees and receive an official receipt."
+              )}
+            </p>
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => {
+                setPayNoticeModalOpen(false);
+                setSelectedPaymentForPay(null);
+              }}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-xs"
+            >
+              {t('common.close', 'Close')}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
