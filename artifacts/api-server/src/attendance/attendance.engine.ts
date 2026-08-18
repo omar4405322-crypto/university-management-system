@@ -410,12 +410,14 @@ class AttendanceEngine {
 
     const maxAbsencePercent = policy ? policy.maxAbsencePercent : 25;
 
-    if (absencePercent >= maxAbsencePercent) {
-      const enrollment = await prisma.enrollment.findFirst({
-        where: { studentId, courseId },
-      });
+    const enrollment = await prisma.enrollment.findFirst({
+      where: { studentId, courseId },
+    });
 
-      if (enrollment && enrollment.status !== 'BLOCKED') {
+    if (!enrollment) return;
+
+    if (absencePercent >= maxAbsencePercent) {
+      if (enrollment.status !== 'BLOCKED') {
         await prisma.enrollment.update({
           where: { id: enrollment.id },
           data: { status: 'BLOCKED' },
@@ -432,6 +434,23 @@ class AttendanceEngine {
             type: 'error',
           });
         }
+      }
+    } else if (enrollment.status === 'BLOCKED') {
+      await prisma.enrollment.update({
+        where: { id: enrollment.id },
+        data: { status: 'ENROLLED' },
+      });
+
+      const student = await prisma.student.findUnique({
+        where: { id: studentId },
+      });
+      if (student) {
+        await createNotification({
+          userId: student.userId,
+          title: 'Enrollment Restored',
+          message: `Your enrollment in ${course?.name} has been restored as your absence rate (${absencePercent.toFixed(1)}%) is now below the limit (${maxAbsencePercent}%).`,
+          type: 'success',
+        });
       }
     }
   }
