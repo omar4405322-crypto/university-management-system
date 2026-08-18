@@ -53,6 +53,21 @@
     "filterNoSubmissions": "No Submissions Yet",
     "resetFilters": "Reset Filters"
   },
+  "statistics": {
+    "title": "Academic Statistics",
+    "gpaTitle": "Academic Grade Average & GPA",
+    "gpaDescription": "Weighted cumulative GPA calculated across all completed courses and unretaken failures.",
+    "cumulativeGpa": "Cumulative GPA",
+    "scaleMax": "/ 4.00",
+    "earnedCredits": "Earned Credits",
+    "attemptedCredits": "Attempted Credits",
+    "gradedCourses": "Graded Courses",
+    "courseBreakdown": "Course Grade Breakdown",
+    "noCoursesGraded": "No graded courses recorded yet",
+    "noCoursesGradedDesc": "Course grades and cumulative GPA will appear once semester grades are finalized and published.",
+    "retakeBadge": "Retake",
+    "retakeTooltip": "Supersedes prior attempt (Year {{year}} Sem {{sem}})"
+  },
   "sections": {
     "title": "Sections Management",
     "subtitle": "Manage course sections, group mappings, and student overrides.",

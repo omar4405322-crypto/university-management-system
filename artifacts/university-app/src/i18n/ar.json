@@ -53,6 +53,21 @@
     "filterNoSubmissions": "بدون تسليمات حالياً",
     "resetFilters": "إعادة تعيين الفلاتر"
   },
+  "statistics": {
+    "title": "الإحصائيات الأكاديمية",
+    "gpaTitle": "المعدل التراكمي والدرجات",
+    "gpaDescription": "المعدل التراكمي الموزون محسوباً لكافة المقررات المجتازة ومقررات الرسوب غير المعادة.",
+    "cumulativeGpa": "المعدل التراكمي (GPA)",
+    "scaleMax": "/ 4.00",
+    "earnedCredits": "الساعات المكتسبة",
+    "attemptedCredits": "الساعات المسجلة",
+    "gradedCourses": "المقررات المرصودة",
+    "courseBreakdown": "تفاصيل درجات المقررات",
+    "noCoursesGraded": "لا توجد مقررات مرصودة الدرجات حتى الآن",
+    "noCoursesGradedDesc": "ستظهر درجات المقررات والمعدل التراكمي بمجرد رصد واعتماد نتائج الفصول الدراسية.",
+    "retakeBadge": "إعادة مقرر",
+    "retakeTooltip": "تحل محل المحاولة السابقة (السنة {{year}} الترم {{sem}})"
+  },
   "validation": {
     "emailRequired": "البريد الإلكتروني مطلوب",
     "emailInvalid": "الرجاء إدخال بريد إلكتروني صحيح",
