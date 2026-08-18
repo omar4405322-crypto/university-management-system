@@ -382,9 +382,8 @@ class AttendanceEngine {
     });
 
     const activeTotal = total - excused;
-    if (activeTotal === 0) return;
-
-    const absencePercent = ((absent + late * 0.5) / activeTotal) * 100;
+    const absencePercent =
+      activeTotal > 0 ? ((absent + late * 0.5) / activeTotal) * 100 : 0;
 
     const course = await prisma.course.findUnique({
       where: { id: courseId },
