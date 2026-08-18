@@ -260,6 +260,9 @@ importers:
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
+      rate-limit-redis:
+        specifier: ^6.0.1
+        version: 6.0.1(express-rate-limit@8.5.2(express@5.2.1))
       socket.io:
         specifier: ^4.8.3
         version: 4.8.3
@@ -3850,6 +3853,12 @@ packages:
   range-parser@1.2.1:
     resolution: {integrity: sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==}
     engines: {node: '>= 0.6'}
+
+  rate-limit-redis@6.0.1:
+    resolution: {integrity: sha512-qys7ulbh5X4Bohfjm6BXFWBiyzK6r5eGdFghPWZfJwggnDFTDwCIRq1u7tmN50vLTp4Kbe1h/ZAuBOn/hVpjtQ==}
+    engines: {node: '>= 16'}
+    peerDependencies:
+      express-rate-limit: '>= 8.6.0'
 
   raw-body@3.0.2:
     resolution: {integrity: sha512-K5zQjDllxWkf7Z5xJdV0/B0WTNqx6vxG70zJE4N0kBs4LovmEYWJzQGxC9bS9RAKu3bgM40lrd5zoLJ12MQ5BA==}
@@ -7781,6 +7790,10 @@ snapshots:
   quick-format-unescaped@4.0.4: {}
 
   range-parser@1.2.1: {}
+
+  rate-limit-redis@6.0.1(express-rate-limit@8.5.2(express@5.2.1)):
+    dependencies:
+      express-rate-limit: 8.5.2(express@5.2.1)
 
   raw-body@3.0.2:
     dependencies:
