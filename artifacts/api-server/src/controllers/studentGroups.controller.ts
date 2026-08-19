@@ -206,6 +206,27 @@ export const deleteGroup = async (req: Request, res: Response) => {
   }
 };
 
+export const getAllGroups = async (req: Request, res: Response) => {
+  try {
+    const { departmentId, year } = req.query as { departmentId?: string; year?: string };
+    const where: any = {};
+    if (departmentId) where.departmentId = parseInt(departmentId);
+    if (year) where.year = parseInt(year);
+    const groups = await prisma.studentGroup.findMany({
+      where,
+      include: {
+        department: { select: { id: true, name: true, nameAr: true } },
+        parentGroup: { select: { id: true, name: true } },
+      },
+      orderBy: [{ departmentId: 'asc' }, { name: 'asc' }],
+    });
+    return res.json({ success: true, data: groups });
+  } catch (error) {
+    logger.error('Error fetching all groups: ' + (error as Error).message);
+    return res.status(500).json({ success: false, message: 'Failed to fetch student groups' });
+  }
+};
+
 export const getGroupsByDepartment = async (req: Request, res: Response) => {
   try {
     const departmentId = parseInt(req.params.departmentId as string);

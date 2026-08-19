@@ -1,6 +1,11 @@
 import api from './api';
 
 export const studentGroupsService = {
+  getAllGroups: async (params?: Record<string, unknown>) => {
+    const response = await api.get('/student-groups', { params });
+    return response.data;
+  },
+
   getDepartmentGroups: async (departmentId: number | string, year?: number) => {
     const response = await api.get(`/student-groups/departments/${departmentId}/groups`, {
       params: { year }

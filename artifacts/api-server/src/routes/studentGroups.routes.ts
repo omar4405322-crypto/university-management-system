@@ -5,6 +5,8 @@ import { protect, authorize } from '../middleware/auth.middleware';
 
 router.use(protect);
 
+router.get('/', studentGroupsController.getAllGroups);
+
 router.get(
   '/departments/:departmentId/groups',
   studentGroupsController.getGroupsByDepartment

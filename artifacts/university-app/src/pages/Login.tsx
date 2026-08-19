@@ -215,7 +215,7 @@ const Login = () => {
         >
           <div className="text-center flex flex-col items-center justify-center">
             <h1 className="text-[18px] font-bold text-slate-800 leading-tight">
-              {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October Technological University'}
+              {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
             </h1>
             <div className="w-10 h-[3px] bg-[#84cc16] rounded-full mx-auto mt-2.5 mb-2.5" />
             <p className="text-[12px] text-gray-400 font-semibold">
@@ -389,7 +389,7 @@ const Login = () => {
       <div className="branding-overlay-block absolute bottom-8 start-8 z-10 hidden md:flex flex-col gap-4 text-start items-start animate-in fade-in slide-in-from-bottom-8 duration-700">
         <div className="flex items-center gap-3">
           <h2 className="text-[22px] font-bold text-white tracking-tight leading-tight m-0">
-            {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October Technological University'}
+            {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
           </h2>
           <span className="relative flex h-3 w-3 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
