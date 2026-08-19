@@ -464,7 +464,6 @@ function cardTilt(diff: number): React.CSSProperties {
 export function FeatureShowcase() {
   const total     = CARDS.length;                                    // 5
   const extCards  = [CARDS[total - 1], ...CARDS, CARDS[0]];         // 7 items
-  console.log('extCards length:', extCards.length);
 
   const trackRef  = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(1);    // index into extCards (1 = real card 0)

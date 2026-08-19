@@ -307,7 +307,6 @@ export function FacultyAttendanceDashboard() {
 
   const handleManualToggle = async (studentId: number, status: 'PRESENT' | 'LATE' | 'ABSENT') => {
     if (!activeSession) return;
-    console.log('[handleManualToggle] fire', { studentId, targetStatus: status, sessionId: activeSession.sessionId });
     try {
       await attendanceService.markStudentAttendance(activeSession.sessionId, studentId, status);
       fetchSessionData();
