@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { ClipboardList, Eye, Check, X, AlertCircle, Search } from 'lucide-react';
+import { ClipboardList, Eye, Check, X, Search } from 'lucide-react';
 import registrationService from '../../services/registration.service';
 import { useTranslation } from 'react-i18next';
 import Modal from '../../components/ui/Modal';
@@ -11,95 +11,6 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
 import { useNotifications } from '../../context/NotificationContext';
-
-// TEMP MOCK DATA — remove after review
-const MOCK_REGISTRATION_REQUESTS = [
-  {
-    id: 'req_101',
-    firstName: 'أحمد',
-    lastName: 'محمود',
-    email: 'ahmed.mahmoud@university.edu.eg',
-    phone: '01012345678',
-    role: 'STUDENT',
-    year: '1',
-    status: 'PENDING',
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    department: {
-      name: 'هندسة البرمجيات',
-      college: {
-        name: 'كلية الهندسة'
-      }
-    }
-  },
-  {
-    id: 'req_102',
-    firstName: 'سارة',
-    lastName: 'علي',
-    email: 'sara.ali@university.edu.eg',
-    phone: '01198765432',
-    role: 'STUDENT',
-    year: '2',
-    status: 'APPROVED',
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    department: {
-      name: 'علوم الحاسب',
-      college: {
-        name: 'كلية الحاسبات والمعلومات'
-      }
-    }
-  },
-  {
-    id: 'req_103',
-    firstName: 'محمد',
-    lastName: 'عمر',
-    email: 'mohamed.omar@university.edu.eg',
-    phone: '01234567890',
-    role: 'STUDENT',
-    year: '3',
-    status: 'REJECTED',
-    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    department: {
-      name: 'نظم المعلومات',
-      college: {
-        name: 'كلية الحاسبات والمعلومات'
-      }
-    }
-  },
-  {
-    id: 'req_104',
-    firstName: 'فاطمة',
-    lastName: 'حسن',
-    email: 'fatma.hasan@university.edu.eg',
-    phone: '01511112222',
-    role: 'STUDENT',
-    year: '1',
-    status: 'PENDING',
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    department: {
-      name: 'الهندسة الطبية',
-      college: {
-        name: 'كلية الهندسة'
-      }
-    }
-  },
-  {
-    id: 'req_105',
-    firstName: 'محمود',
-    lastName: 'سليم',
-    email: 'mahmoud.selim@university.edu.eg',
-    phone: '01099998888',
-    role: 'STUDENT',
-    year: '4',
-    status: 'APPROVED',
-    createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-    department: {
-      name: 'إدارة الأعمال',
-      college: {
-        name: 'كلية التجارة'
-      }
-    }
-  }
-];
 
 const RegistrationRequests = () => {
   const { t, i18n } = useTranslation();
@@ -111,7 +22,6 @@ const RegistrationRequests = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [usingMockData, setUsingMockData] = useState(false);
   const { fetchPendingRequestsCount } = useNotifications();
 
   useEffect(() => {
@@ -132,23 +42,15 @@ const RegistrationRequests = () => {
     try {
       setLoading(true);
       const result = await registrationService.getRequests();
-      if (result.success) {
-        if (result.data && result.data.length > 0) {
-          setRequests(result.data);
-          setUsingMockData(false);
-        } else {
-          setRequests(MOCK_REGISTRATION_REQUESTS);
-          setUsingMockData(true);
-        }
+      if (result.success && Array.isArray(result.data)) {
+        setRequests(result.data);
       } else {
-        setRequests(MOCK_REGISTRATION_REQUESTS);
-        setUsingMockData(true);
+        setRequests([]);
       }
     } catch (error: any) {
       logger.error('Error fetching requests:', error);
       showToast(t('common.errorFetching'), 'error');
-      setRequests(MOCK_REGISTRATION_REQUESTS);
-      setUsingMockData(true);
+      setRequests([]);
     } finally {
       setLoading(false);
       // Synchronize the top header notification badge count
@@ -157,15 +59,6 @@ const RegistrationRequests = () => {
   };
 
   const handleApprove = async (id) => {
-    if (usingMockData) {
-      setRequests((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status: 'APPROVED' } : r))
-      );
-      showToast(t('registration.approveSuccess'), 'success');
-      setTimeout(fetchPendingRequestsCount, 0);
-      return;
-    }
-
     try {
       const result = await registrationService.approveRequest(id);
       if (result.success) {
@@ -179,15 +72,6 @@ const RegistrationRequests = () => {
 
   const handleReject = async (id) => {
     if (window.confirm(t('registration.rejectConfirm'))) {
-      if (usingMockData) {
-        setRequests((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, status: 'REJECTED' } : r))
-        );
-        showToast(t('registration.rejectSuccess'), 'success');
-        setTimeout(fetchPendingRequestsCount, 0);
-        return;
-      }
-
       try {
         const result = await registrationService.rejectRequest(id);
         if (result.success) {
@@ -367,24 +251,6 @@ const RegistrationRequests = () => {
         </div>
       </div>
 
-      {/* Preview Alert Banner */}
-      {usingMockData && (
-        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-center justify-between text-sm font-medium text-amber-800 dark:text-amber-300 gap-3">
-          <span className="flex items-center gap-2">
-            <AlertCircle size={18} className="text-amber-500 dark:text-amber-400 shrink-0" />
-            <span>{isRTL ? 'عرض بيانات تجريبية للمعاينة وتجربة الإجراءات' : 'Displaying preview data for design review and interactive testing.'}</span>
-          </span>
-          <button
-            onClick={() => {
-              setRequests([]);
-              setUsingMockData(false);
-            }}
-            className="underline hover:text-amber-900 dark:hover:text-amber-200 transition-all font-bold cursor-pointer"
-          >
-            {isRTL ? 'إخفاء المعاينة' : 'Hide Preview'}
-          </button>
-        </div>
-      )}
 
       {/* Main Content Area */}
       <div className="min-h-[400px]">
