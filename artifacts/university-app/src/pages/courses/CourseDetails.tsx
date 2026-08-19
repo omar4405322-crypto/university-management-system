@@ -293,11 +293,11 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
   }, [user]);
 
   // Permission Check: Can current user manage course roster (enroll/withdraw students)?
-  // Allowed: SUPER_ADMIN, ADMIN, COLLEGE_ADMIN, DEPARTMENT_ADMIN, DEPT_HEAD
+  // Backend enrollment.routes.ts strictly authorizes: 'SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPT_HEAD'
   const canManageRoster = useMemo(() => {
     if (!user) return false;
-    const adminRoles = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'DEPT_HEAD'];
-    return adminRoles.includes(user.role);
+    const authorizedRoles = ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPT_HEAD'];
+    return authorizedRoles.includes(user.role);
   }, [user]);
 
   // Handle Student Withdrawal from Course
