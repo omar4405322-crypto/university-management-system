@@ -249,7 +249,6 @@
     "regError": "Registration failed",
     "accountTempDisabled": "Account temporarily disabled. Try again in {{minutes}} minutes.",
     "clearLockout": "Unlock and try again now",
-    "loginHint": "Default admin: admin@university.com / Admin123!",
     "sessionExpired": "Your session expired. Please sign in again.",
     "tooManyAttempts": "Too many login attempts. Please wait and try again later.",
     "attemptsRemaining": "{{count}} failed attempt(s) remaining",
