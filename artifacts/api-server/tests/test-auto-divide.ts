@@ -1,5 +1,5 @@
-import prisma from './utils/prismaClient.js';
-import { autoDivideStudents } from './controllers/studentGroups.controller.js';
+import prisma from '../src/utils/prismaClient.js';
+import { autoDivideStudents } from '../src/controllers/studentGroups.controller.js';
 
 // Mock Express req/res
 const req: any = {
