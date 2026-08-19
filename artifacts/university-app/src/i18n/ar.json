@@ -269,7 +269,6 @@
     "submitApplication": "إرسال الطلب",
     "accountTempDisabled": "الحساب معطل مؤقتاً. حاول مرة أخرى خلال {{minutes}} دقيقة.",
     "clearLockout": "إلغاء القفل والمحاولة الآن",
-    "loginHint": "المدير الافتراضي: admin@university.com / Admin123!",
     "sessionExpired": "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.",
     "tooManyAttempts": "محاولات دخول كثيرة. انتظر قليلاً ثم حاول مجدداً.",
     "attemptsRemaining": "محاولات فاشلة متبقية: {{count}}",
