@@ -432,7 +432,12 @@ export default function AdminDashboard() {
 
       {/* === Bottom Row: Activity & Health === */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card title={t('dashboard.recentActivity')} variant="default" noPadding className="border border-brand-border/60 overflow-hidden shadow-sm bg-brand-bg-card rounded-2xl">
+        <Card variant="default" noPadding className="border border-brand-border/60 overflow-hidden shadow-sm bg-brand-bg-card rounded-2xl">
+          <div className="p-5 pb-3 border-b border-brand-border/40">
+            <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none">
+              {t('dashboard.recentActivity')}
+            </h3>
+          </div>
           <div className="divide-y divide-brand-border/40">
             {!stats?.recentActivity?.length ? (
               <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
@@ -465,8 +470,11 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        <Card title={t('dashboard.systemStatus')} variant="default" className="border border-brand-border/60 shadow-sm bg-brand-bg-card rounded-2xl">
+        <Card variant="default" className="border border-brand-border/60 shadow-sm bg-brand-bg-card rounded-2xl">
           <div className="p-2 flex flex-col gap-4">
+            <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
+              {t('dashboard.systemStatus')}
+            </h3>
             <div className="p-4 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-950/10 border border-brand-primary-100/30 dark:border-brand-primary-900/20 flex items-center gap-3">
               <div className="relative flex h-3 w-3 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary-500 opacity-75"></span>
