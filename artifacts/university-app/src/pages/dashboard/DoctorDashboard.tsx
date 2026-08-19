@@ -96,7 +96,7 @@ export default function DoctorDashboard() {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="px-3 py-0.5 rounded-full bg-brand-brand-green/20 text-brand-brand-green text-xs font-bold border border-brand-brand-green/30 flex items-center gap-1.5">
-                  <Sparkles size={12} /> {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October Technological University'}
+                  <Sparkles size={12} /> {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
                 </span>
                 <span className="text-white/60 text-xs">• {collegeName}</span>
               </div>

@@ -46,6 +46,9 @@ export const getAllStudents = catchAsync(
       sortOrder = 'desc',
       year,
       departmentId,
+      groupId,
+      status,
+      letter,
       gender,
     } = req.query as Record<string, string>;
 
@@ -55,7 +58,7 @@ export const getAllStudents = catchAsync(
     // Sorting whitelist
     const STUDENT_SORT_FIELDS = ['enrolledAt', 'firstName', 'lastName', 'year', 'studentId'];
     const safeSortBy = STUDENT_SORT_FIELDS.includes(sortBy) ? sortBy : 'enrolledAt';
-    const safeSortOrder = ['asc', 'desc'].includes(sortOrder) ? sortOrder : 'desc';
+    const safeSortOrder = ['asc', 'desc'].includes(sortOrder) ? (sortOrder as 'asc' | 'desc') : 'desc';
 
     // 1. Role-based scoping
     const scopeWhere: any = getScopeWhere(req.user!, 'student');
@@ -66,7 +69,21 @@ export const getAllStudents = catchAsync(
       ...(year !== undefined && year !== '' && { year: parseInt(year as string) }),
       ...(departmentId !== undefined &&
         departmentId !== '' && { departmentId: parseInt(departmentId as string) }),
+      ...(groupId !== undefined &&
+        groupId !== '' &&
+        (groupId === 'unassigned'
+          ? { groupId: null }
+          : { groupId: parseInt(groupId as string) })),
+      ...(status === 'active' && { isActive: true }),
+      ...(status === 'inactive' && { isActive: false }),
+      ...(status === 'suspended' && { status: 'suspended' }),
       ...(gender && { gender }),
+      ...(letter && {
+        OR: [
+          { firstName: { startsWith: letter, mode: 'insensitive' } },
+          { lastName: { startsWith: letter, mode: 'insensitive' } },
+        ],
+      }),
       ...(search && {
         OR: [
           { firstName: { contains: search, mode: 'insensitive' } },
@@ -76,6 +93,14 @@ export const getAllStudents = catchAsync(
         ],
       }),
     };
+
+    // Sort definition (multi-field for firstName/lastName)
+    const orderBy =
+      safeSortBy === 'firstName'
+        ? [{ firstName: safeSortOrder }, { lastName: safeSortOrder }]
+        : safeSortBy === 'lastName'
+        ? [{ lastName: safeSortOrder }, { firstName: safeSortOrder }]
+        : { [safeSortBy]: safeSortOrder };
 
     // 3. Optimized parallel execution
     const [students, filteredTotal] = await Promise.all([
@@ -89,7 +114,7 @@ export const getAllStudents = catchAsync(
             },
           },
           department: {
-            select: { name: true, college: { select: { name: true } } },
+            select: { id: true, name: true, nameAr: true, college: { select: { id: true, name: true, nameAr: true } } },
           },
           group: {
             include: { parentGroup: true },
@@ -97,7 +122,7 @@ export const getAllStudents = catchAsync(
         },
         skip,
         take,
-        orderBy: { [safeSortBy]: safeSortOrder },
+        orderBy,
       }),
       prisma.student.count({ where }),
     ]);

@@ -122,7 +122,7 @@ export class ReceiptService {
         const fontRegular = hasRegularFont ? 'Cairo' : 'Helvetica';
         const fontBold = hasBoldFont ? 'Cairo-Bold' : 'Helvetica-Bold';
 
-        const universityName = data.universityName || 'جامعة التكنولوجيا التطبيقية والذكية';
+        const universityName = data.universityName || 'جامعة 6 أكتوبر التكنولوجية';
         const currency = data.currency || 'ج.م';
         const formattedAmount = `${data.amount.toLocaleString('en-US', {
           minimumFractionDigits: 2,

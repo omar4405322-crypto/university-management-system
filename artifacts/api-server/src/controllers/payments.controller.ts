@@ -372,7 +372,7 @@ export const getPaymentReceipt = catchAsync(
         : undefined,
       departmentName: payment.student.department?.name || undefined,
       collegeName: payment.student.department?.college?.name || undefined,
-      universityName: 'جامعة التكنولوجيا التطبيقية والذكية',
+      universityName: 'جامعة 6 أكتوبر التكنولوجية',
       feeType: payment.type,
       amount: payment.amount,
       currency: 'ج.م',

@@ -6,9 +6,19 @@ interface UseStudentsOptions {
   initialPage?: number;
   limit?: number;
   initialSearch?: string;
+  filters?: Record<string, any>;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
-export function useStudents({ initialPage = 1, limit = 10, initialSearch = '' }: UseStudentsOptions = {}) {
+export function useStudents({
+  initialPage = 1,
+  limit = 10,
+  initialSearch = '',
+  filters = {},
+  sortBy = 'enrolledAt',
+  sortOrder = 'desc',
+}: UseStudentsOptions = {}) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,10 +27,20 @@ export function useStudents({ initialPage = 1, limit = 10, initialSearch = '' }:
   const [total, setTotal] = useState(0);
   const debouncedSearch = useDebounce(search, 400);
 
+  const filtersKey = JSON.stringify(filters);
+
   const fetchData = useCallback(async (extraParams: Record<string, unknown> = {}) => {
     setLoading(true);
     setError(null);
-    const params = { page, limit, search: debouncedSearch, ...extraParams };
+    const params = {
+      page,
+      limit,
+      search: debouncedSearch,
+      sortBy,
+      sortOrder,
+      ...filters,
+      ...extraParams,
+    };
     try {
       const res = await studentsService.getStudents(params);
       if (res.success) {
@@ -30,12 +50,12 @@ export function useStudents({ initialPage = 1, limit = 10, initialSearch = '' }:
       } else {
         setError(res.message ?? 'Failed to load data');
       }
-    } catch (err: any) {
+    } catch (_err: any) {
       setError('Error fetching data');
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch]);
+  }, [page, limit, debouncedSearch, sortBy, sortOrder, filtersKey]);
 
   useEffect(() => {
     fetchData();
