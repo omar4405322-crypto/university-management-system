@@ -778,7 +778,8 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           {/* Academic Staff Cards (Professors & TAs in Charge) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Professors Card */}
-            <Card title={t('courses.professorsInCharge', 'أعضاء هيئة التدريس (دكاترة المقرر)')} className="p-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.professorsInCharge', 'أعضاء هيئة التدريس (دكاترة المقرر)')}</h3>
               {assignedDoctors.length > 0 ? (
                 <div className="space-y-3 mt-2">
                   {assignedDoctors.map((doc: any) => (
@@ -810,7 +811,8 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             </Card>
 
             {/* Teaching Assistants Card */}
-            <Card title={t('courses.tasInCharge', 'المعيدون والمهندسون المسؤولون')} className="p-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.tasInCharge', 'المعيدون والمهندسون المسؤولون')}</h3>
               {assignedTAs.length > 0 ? (
                 <div className="space-y-3 mt-2">
                   {assignedTAs.map((ta: any) => (
@@ -843,7 +845,8 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           </div>
 
           {/* Description & Details Card */}
-          <Card title={t('courses.description', 'وصف المقرر الدراسي')} className="p-6">
+          <Card className="p-6">
+            <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.description', 'وصف المقرر الدراسي')}</h3>
             {course.description ? (
               <p className="text-brand-text-sub font-medium leading-relaxed text-sm">{course.description}</p>
             ) : (
@@ -855,7 +858,8 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
           {/* Weekly Timetable & Room Slots */}
           {course.scheduleSlots && course.scheduleSlots.length > 0 && (
-            <Card title={t('courses.scheduleTimeline', 'جدول مواعيد وقاعات المقرر الأسبوعي')} className="p-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.scheduleTimeline', 'جدول مواعيد وقاعات المقرر الأسبوعي')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-2">
                 {course.scheduleSlots.map((slot: any) => (
                   <div key={slot.id} className="p-4 rounded-2xl bg-surface-subtle border border-brand-border space-y-2.5">

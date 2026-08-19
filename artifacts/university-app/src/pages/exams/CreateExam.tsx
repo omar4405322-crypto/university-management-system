@@ -169,7 +169,8 @@ const CreateExam = () => {
 
       <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <Card title={t('exams.basicInfo', 'Basic Information')}>
+          <Card>
+            <h3 className="text-lg font-black text-brand-text-main mb-2">{t('exams.basicInfo', 'Basic Information')}</h3>
             <div className="space-y-6 pt-2">
               <div className="space-y-2">
                 <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
@@ -219,7 +220,8 @@ const CreateExam = () => {
         </div>
 
         <div className="lg:col-span-1 space-y-6">
-          <Card title={t('exams.timingLocation', 'Timing & Location')}>
+          <Card>
+            <h3 className="text-lg font-black text-brand-text-main mb-2">{t('exams.timingLocation', 'Timing & Location')}</h3>
             <div className="space-y-6 pt-2">
               <div className="space-y-2">
                 <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">

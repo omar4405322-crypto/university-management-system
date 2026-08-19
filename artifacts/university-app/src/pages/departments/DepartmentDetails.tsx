@@ -115,7 +115,10 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({ departmentId, isD
       )}
 
       {students.length > 0 && (
-        <Card title={t('nav.students')} noPadding className="border-l-0">
+        <Card noPadding className="border-l-0">
+          <div className="p-4 pb-2">
+            <h3 className="text-lg font-black text-brand-text-main mb-2">{t('nav.students')}</h3>
+          </div>
           <Table headers={[t('students.studentId'), t('students.name'), t('auth.year')]}>
             {students.map((s) => (
               <TableRow
@@ -135,8 +138,9 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({ departmentId, isD
       )}
 
       {courses.length > 0 && (
-        <Card title={t('nav.courses', 'Curriculum Courses by Year')} noPadding className="border-l-0 mb-6 overflow-hidden">
+        <Card noPadding className="border-l-0 mb-6 overflow-hidden">
           <div className="p-4 space-y-6">
+            <h3 className="text-lg font-black text-brand-text-main mb-2">{t('nav.courses', 'Curriculum Courses by Year')}</h3>
             {[1, 2, 3, 4, 5].map((yr) => {
               const yearCourses = courses.filter((c: any) => (c.year || 1) === yr);
               if (yearCourses.length === 0) return null;
@@ -175,10 +179,12 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({ departmentId, isD
 
       {doctors.length > 0 && (
         <Card
-          title={t('departments.assignedProfessors', 'Assigned professors')}
           noPadding
           className="border-l-0"
         >
+          <div className="p-4 pb-2">
+            <h3 className="text-lg font-black text-brand-text-main mb-2">{t('departments.assignedProfessors', 'Assigned professors')}</h3>
+          </div>
           <Table headers={[t('doctors.doctorId'), t('doctors.name'), t('doctors.specialty')]}>
             {doctors.map((d) => (
               <TableRow key={d.id}>

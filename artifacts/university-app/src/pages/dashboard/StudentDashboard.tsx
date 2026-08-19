@@ -224,7 +224,13 @@ export default function StudentDashboard() {
       {/* === Main Content Grid === */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 2xl:gap-8">
         <div className="lg:col-span-8 xl:col-span-9 2xl:col-span-9 min-w-0 section-gap">
-          <Card variant="elevated" title={t('dashboard.academicOverview')} subtitle={t('dashboard.growthTrend')}>
+          <Card variant="elevated">
+            <div className="mb-4">
+              <h3 className="text-lg font-black text-brand-text-main mb-1">{t('dashboard.academicOverview')}</h3>
+              <p className="text-xs text-brand-text-secondary dark:text-brand-text-sub font-medium">
+                {t('dashboard.growthTrend')}
+              </p>
+            </div>
             <div className="h-[400px] w-full overflow-hidden mt-6">
               {!academicChartData.length ? (
                 <div className="flex h-full flex-col items-center justify-center gap-2 text-brand-text-muted">
@@ -252,7 +258,10 @@ export default function StudentDashboard() {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card title={t('dashboard.recentActivity')} variant="default" noPadding>
+            <Card variant="default" noPadding>
+              <div className="p-5 pb-3 border-b border-brand-border">
+                <h3 className="text-lg font-black text-brand-text-main mb-0">{t('dashboard.recentActivity')}</h3>
+              </div>
               <div className="divide-y divide-brand-border">
                 {!stats?.recentActivity?.length ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
@@ -285,8 +294,9 @@ export default function StudentDashboard() {
               </div>
             </Card>
 
-            <Card title={t('dashboard.systemStatus')} variant="default" noPadding>
+            <Card variant="default" noPadding>
               <div className="p-6 flex flex-col items-center justify-center gap-4 min-h-[160px]">
+                <h3 className="text-lg font-black text-brand-text-main mb-2">{t('dashboard.systemStatus')}</h3>
                 <div className="p-4 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 border border-brand-primary-100 dark:border-brand-primary-900/20 flex items-center gap-3 w-full">
                   <div className="w-2.5 h-2.5 rounded-full bg-brand-brand-green-dark animate-ping shrink-0" />
                   <p className="text-xs font-black text-brand-brand-green-dark uppercase tracking-widest">{t('dashboard.allSystemsOperational')}</p>
@@ -300,8 +310,9 @@ export default function StudentDashboard() {
         </div>
 
         <div className="lg:col-span-4 xl:col-span-3 2xl:col-span-3 min-w-0 section-gap">
-          <Card title={t('dashboard.upcomingEvents')} variant="default" noPadding>
+          <Card variant="default" noPadding>
             <div className="p-6 space-y-5">
+              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('dashboard.upcomingEvents')}</h3>
               {!stats?.upcomingEvents?.length ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
                   <Calendar size={28} className="text-brand-text-muted opacity-30" />
