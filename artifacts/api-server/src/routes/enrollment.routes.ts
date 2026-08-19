@@ -9,14 +9,14 @@ import {
 
 const router = express.Router();
 
-router.post('/', protect, authorize('COLLEGE_ADMIN', 'SUPER_ADMIN', 'DEPT_HEAD'), enrollStudent);
+router.post('/', protect, authorize('COLLEGE_ADMIN', 'SUPER_ADMIN', 'DEPARTMENT_ADMIN'), enrollStudent);
 
 router.get('/', protect, getEnrollments);
 
 router.delete(
   '/:id',
   protect,
-  authorize('COLLEGE_ADMIN', 'SUPER_ADMIN', 'DEPT_HEAD', 'STUDENT'),
+  authorize('COLLEGE_ADMIN', 'SUPER_ADMIN', 'DEPARTMENT_ADMIN', 'STUDENT'),
   withdrawStudent
 );
 
