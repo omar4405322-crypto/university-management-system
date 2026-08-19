@@ -32,6 +32,7 @@ import {
   MessageSquare,
   Pencil,
   Send,
+  UserPlus,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Card from '../../components/ui/Card';
@@ -39,10 +40,14 @@ import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
 import Modal from '../../components/ui/Modal';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import taskService from '../../services/task.service';
 import SubmissionsGradingModal from '../../components/tasks/SubmissionsGradingModal';
 import coursesService from '../../services/courses.service';
+import enrollmentService from '../../services/enrollment.service';
+import EnrollStudentModal from './EnrollStudentModal';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { logger } from '../../lib/logger';
 
 interface CourseDetailsProps {
@@ -58,10 +63,16 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const [course, setCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+
+  // Enrollment and Roster State
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [withdrawTarget, setWithdrawTarget] = useState<{ id: number; name: string } | null>(null);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   // Upload Modal State
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -281,6 +292,44 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
     return adminRoles.includes(user.role);
   }, [user]);
 
+  // Permission Check: Can current user manage course roster (enroll/withdraw students)?
+  // Allowed: SUPER_ADMIN, ADMIN, COLLEGE_ADMIN, DEPARTMENT_ADMIN, DEPT_HEAD
+  const canManageRoster = useMemo(() => {
+    if (!user) return false;
+    const adminRoles = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'DEPT_HEAD'];
+    return adminRoles.includes(user.role);
+  }, [user]);
+
+  // Handle Student Withdrawal from Course
+  const handleConfirmWithdraw = async () => {
+    if (!withdrawTarget) return;
+    const targetId = withdrawTarget.id;
+    try {
+      setIsWithdrawing(true);
+      const res = await enrollmentService.withdrawStudent(targetId);
+      if (res.success) {
+        showToast(t('courses.withdrawSuccess', 'تم سحب قيد الطالب بنجاح'), 'success');
+        setWithdrawTarget(null);
+        setCourse((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            enrollments: (prev.enrollments || []).filter((e: any) => e.id !== targetId),
+          };
+        });
+        fetchCourseDetails();
+      } else {
+        showToast(res.message || (isRTL ? 'فشل سحب قيد الطالب' : 'Failed to withdraw student'), 'error');
+      }
+    } catch (err: any) {
+      logger.error('Error withdrawing student:', err);
+      const msg = err.response?.data?.message || (isRTL ? 'حدث خطأ أثناء سحب قيد الطالب' : 'Error withdrawing student');
+      showToast(msg, 'error');
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
   // Separate materials into Lectures and Tutorials
   const materials = course?.materials || [];
   const lectures = materials.filter((m: any) => m.type === 'LECTURE');
@@ -410,8 +459,10 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
     }
   };
 
-  // Filtered Roster
-  const enrolledStudents = course?.enrollments || [];
+  // Filtered Roster (active enrollments only)
+  const enrolledStudents = (course?.enrollments || []).filter(
+    (e: any) => e.status === 'ENROLLED' || !e.status
+  );
   const filteredRoster = enrolledStudents.filter((e: any) => {
     if (!rosterSearch) return true;
     const name = `${e.student?.firstName || ''} ${e.student?.lastName || ''}`.toLowerCase();
@@ -1324,44 +1375,75 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               <p className="text-xs text-brand-text-sub">{t('common.total', 'الإجمالي')}: {enrolledStudents.length} {t('courses.students', 'طالب')}</p>
             </div>
 
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute right-3 top-3 text-brand-text-muted" size={16} />
-              <input
-                type="text"
-                placeholder={t('COMMON.searchPlaceholder', 'بحث باسم الطالب أو الكود...')}
-                value={rosterSearch}
-                onChange={(e) => setRosterSearch(e.target.value)}
-                className="w-full pl-3 pr-9 py-2 rounded-xl bg-brand-bg border border-brand-border text-sm text-brand-text-main focus:outline-none focus:border-brand-primary-500"
-              />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none" size={16} />
+                <input
+                  type="text"
+                  placeholder={t('common.searchPlaceholder', 'بحث باسم الطالب أو الكود...')}
+                  value={rosterSearch}
+                  onChange={(e) => setRosterSearch(e.target.value)}
+                  className="w-full ps-9 pe-4 py-2 rounded-xl bg-brand-bg border border-brand-border text-sm text-brand-text-main focus:outline-none focus:border-brand-primary-500 font-medium"
+                />
+              </div>
+
+              {canManageRoster && (
+                <Button
+                  onClick={() => setShowEnrollModal(true)}
+                  className="rounded-xl flex items-center justify-center gap-2 text-xs font-bold shrink-0 shadow-sm"
+                >
+                  <Plus size={16} />
+                  <span>{t('courses.addStudent', 'إضافة طالب')}</span>
+                </Button>
+              )}
             </div>
           </div>
 
           {filteredRoster.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-right text-sm">
+              <table className="w-full text-start text-sm">
                 <thead className="bg-brand-bg text-brand-text-muted text-xs font-bold uppercase border-b border-brand-border">
                   <tr>
-                    <th className="py-3 px-4">#</th>
-                    <th className="py-3 px-4">{t('auth.fullName', 'اسم الطالب')}</th>
-                    <th className="py-3 px-4">{t('students.studentCode', 'كود الطالب')}</th>
-                    <th className="py-3 px-4">{t('auth.email', 'البريد الإلكتروني')}</th>
+                    <th className="py-3 px-4 text-start">#</th>
+                    <th className="py-3 px-4 text-start">{t('auth.fullName', 'اسم الطالب')}</th>
+                    <th className="py-3 px-4 text-start">{t('students.studentCode', 'كود الطالب')}</th>
+                    <th className="py-3 px-4 text-start">{t('auth.email', 'البريد الإلكتروني')}</th>
+                    {canManageRoster && (
+                      <th className="py-3 px-4 text-end">{t('common.actions', 'الإجراءات')}</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-brand-border">
-                  {filteredRoster.map((enr: any, idx: number) => (
-                    <tr key={enr.id || idx} className="hover:bg-brand-primary-50/20 transition-colors">
-                      <td className="py-3 px-4 font-bold text-brand-text-muted">{idx + 1}</td>
-                      <td className="py-3 px-4 font-bold text-brand-text-main">
-                        {enr.student?.firstName} {enr.student?.lastName}
-                      </td>
-                      <td className="py-3 px-4 font-mono text-xs font-bold text-brand-primary-600">
-                        {enr.student?.studentCode || '—'}
-                      </td>
-                      <td className="py-3 px-4 text-brand-text-sub font-medium">
-                        {enr.student?.user?.email || '—'}
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredRoster.map((enr: any, idx: number) => {
+                    const studentName = `${enr.student?.firstName || ''} ${enr.student?.lastName || ''}`.trim() || 'طالب';
+                    return (
+                      <tr key={enr.id || idx} className="hover:bg-brand-primary-50/20 transition-colors">
+                        <td className="py-3 px-4 font-bold text-brand-text-muted">{idx + 1}</td>
+                        <td className="py-3 px-4 font-bold text-brand-text-main">
+                          {studentName}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-xs font-bold text-brand-primary-600">
+                          {enr.student?.studentCode || '—'}
+                        </td>
+                        <td className="py-3 px-4 text-brand-text-sub font-medium">
+                          {enr.student?.user?.email || '—'}
+                        </td>
+                        {canManageRoster && (
+                          <td className="py-3 px-4 text-end">
+                            <button
+                              type="button"
+                              onClick={() => setWithdrawTarget({ id: enr.id, name: studentName })}
+                              className="p-2 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold"
+                              title={t('courses.withdrawStudent', 'سحب القيد')}
+                            >
+                              <Trash2 size={15} />
+                              <span className="hidden sm:inline">{t('courses.withdraw', 'سحب القيد')}</span>
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1720,6 +1802,41 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           </div>
         </form>
       </Modal>
+
+      {/* ENROLL STUDENT MODAL */}
+      {canManageRoster && (
+        <EnrollStudentModal
+          isOpen={showEnrollModal}
+          onClose={() => setShowEnrollModal(false)}
+          courseId={actualId!}
+          courseName={course?.name || ''}
+          courseCode={course?.courseCode}
+          semester={course?.semester || 1}
+          academicYear={course?.year || 1}
+          currentEnrolledStudentIds={enrolledStudents.map((e: any) => e.studentId || e.student?.id).filter(Boolean)}
+          departmentId={course?.departmentId}
+          onSuccess={fetchCourseDetails}
+        />
+      )}
+
+      {/* WITHDRAW CONFIRMATION MODAL */}
+      {canManageRoster && (
+        <ConfirmDeleteModal
+          isOpen={!!withdrawTarget}
+          onClose={() => setWithdrawTarget(null)}
+          itemName={withdrawTarget?.name || ''}
+          title={t('courses.withdrawConfirmTitle', 'سحب قيد طالب من المقرر')}
+          subtitle={t('courses.withdrawConfirmSubtitle', 'تأكيد إلغاء قيد الطالب من هذا المقرر الدراسي')}
+          message={isRTL
+            ? `هل أنت متأكد من سحب قيد الطالب (${withdrawTarget?.name}) من هذا المقرر؟ سيتم تغيير حالة القيد إلى منسحب.`
+            : `Are you sure you want to withdraw ${withdrawTarget?.name} from this course?`}
+          confirmLabel={t('courses.confirmWithdraw', 'تأكيد سحب القيد')}
+          cancelLabel={t('common.cancel', 'إلغاء')}
+          variant="danger"
+          loading={isWithdrawing}
+          onConfirm={handleConfirmWithdraw}
+        />
+      )}
     </div>
   );
 };
