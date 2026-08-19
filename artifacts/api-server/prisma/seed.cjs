@@ -169,6 +169,46 @@ async function main() {
     },
   });
 
+  // College Admin (scoped to College of Industry & Energy)
+  await prisma.user.upsert({
+    where: { email: 'collegeadmin@university.com' },
+    update: {
+      role: 'COLLEGE_ADMIN',
+      password: commonPassword,
+      managedCollegeId: industryCollege.id,
+      collegeId: industryCollege.id,
+      adminRole: null,
+    },
+    create: {
+      email: 'collegeadmin@university.com',
+      password: commonPassword,
+      role: 'COLLEGE_ADMIN',
+      managedCollegeId: industryCollege.id,
+      collegeId: industryCollege.id,
+    },
+  });
+
+  // Department Admin (scoped to Information & Communication Technology Department)
+  await prisma.user.upsert({
+    where: { email: 'deptadmin@university.com' },
+    update: {
+      role: 'DEPARTMENT_ADMIN',
+      password: commonPassword,
+      managedDepartmentId: ictDept.id,
+      departmentId: ictDept.id,
+      collegeId: industryCollege.id,
+      adminRole: null,
+    },
+    create: {
+      email: 'deptadmin@university.com',
+      password: commonPassword,
+      role: 'DEPARTMENT_ADMIN',
+      managedDepartmentId: ictDept.id,
+      departmentId: ictDept.id,
+      collegeId: industryCollege.id,
+    },
+  });
+
   console.log('Seeding Comprehensive Curriculum Courses for All Departments...');
   const coursesData = [
     // ICT (Dept 1)
