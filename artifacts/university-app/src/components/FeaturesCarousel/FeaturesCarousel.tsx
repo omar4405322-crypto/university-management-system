@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import './FeaturesCarousel.css';
 
 // ─── Unique Dark Background SVG Illustrations ─────────────────────────────────
@@ -122,39 +123,39 @@ function PerformanceSVG() {
 
 // ─── Cards Data ───────────────────────────────────────────────────────────────
 
-const FEATURES = [
+const FEATURE_KEYS = [
   {
     id: 'schedule',
-    title: 'الجداول الدراسية',
-    description: 'جداول دراسية ذكية تُحدَّث تلقائياً مع إشعارات فورية عند أي تغيير',
+    titleKey: 'landing.showcase.items.schedule.title',
+    descKey: 'landing.showcase.items.schedule.desc',
     icon: '📅',
     illustration: ScheduleSVG,
   },
   {
     id: 'exams',
-    title: 'نظام الامتحانات الإلكتروني',
-    description: 'امتحانات إلكترونية متكاملة مع نظام مكافحة الغش ومتابعة الأداء في الوقت الفعلي',
+    titleKey: 'landing.showcase.items.exams.title',
+    descKey: 'landing.showcase.items.exams.desc',
     icon: '📝',
     illustration: ExamSVG,
   },
   {
     id: 'courses',
-    title: 'إدارة المقررات',
-    description: 'استعراض وتسجيل المقررات الدراسية بكل سهولة مع المواد التعليمية المرفقة',
+    titleKey: 'landing.showcase.items.courses.title',
+    descKey: 'landing.showcase.items.courses.desc',
     icon: '📚',
     illustration: CoursesSVG,
   },
   {
     id: 'notifications',
-    title: 'الإشعارات الذكية',
-    description: 'نظام إشعارات متكامل يبقيك على اطلاع دائم بكل ما يخص مسيرتك الأكاديمية',
+    titleKey: 'landing.showcase.items.notifications.title',
+    descKey: 'landing.showcase.items.notifications.desc',
     icon: '🔔',
     illustration: NotificationSVG,
   },
   {
     id: 'performance',
-    title: 'متابعة الأداء الأكاديمي',
-    description: 'تقارير شاملة لمتابعة نتائجك وتحليل أدائك الأكاديمي',
+    titleKey: 'landing.showcase.items.performance.title',
+    descKey: 'landing.showcase.items.performance.desc',
     icon: '📊',
     illustration: PerformanceSVG,
   },
@@ -218,26 +219,28 @@ const getCardStyle = (distance: number) => {
 };
 
 export function FeaturesCarousel() {
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
   const [activeIndex, setActiveIndex] = useState(2); // Starts with middle card (index 2) active
-  const totalCards = FEATURES.length;
+  const totalCards = FEATURE_KEYS.length;
 
   const goNext = () => setActiveIndex(prev => prev + 1);
   const goPrev = () => setActiveIndex(prev => prev - 1);
 
   return (
-    <section className="features-section" id="features" aria-label="مميزات نظام إدارة الجامعة">
+    <section className="features-section" id="features" aria-label={t('landing.showcase.title')}>
       <div className="features-section__inner">
         <div className="features-carousel-container">
           {/* Header */}
           <div className="features-carousel-header">
-            <p className="features-carousel-subtitle">النظام الأكاديمي</p>
-            <h2 className="features-carousel-title">مميزات نظام إدارة الجامعة</h2>
+            <p className="features-carousel-subtitle">{t('landing.showcase.subtitle')}</p>
+            <h2 className="features-carousel-title">{t('landing.showcase.title')}</h2>
           </div>
 
           {/* Carousel Window */}
           <div className="carousel-viewport">
             <div className="carousel-track">
-              {FEATURES.map((feat, idx) => {
+              {FEATURE_KEYS.map((feat, idx) => {
                 const Illustration = feat.illustration;
                 const d = getDistance(idx, activeIndex, totalCards);
                 const distance = Math.abs(d);
@@ -247,7 +250,7 @@ export function FeaturesCarousel() {
                   <article
                     key={feat.id}
                     className="carousel-slide"
-                    aria-label={feat.title}
+                    aria-label={t(feat.titleKey)}
                     onClick={() => {
                       if (distance === 1) {
                         setActiveIndex(prev => prev + d);
@@ -270,12 +273,12 @@ export function FeaturesCarousel() {
                         <span className="features-carousel-card-icon" role="img" aria-hidden="true">
                           {feat.icon}
                         </span>
-                        <h3 className="features-carousel-card-title">{feat.title}</h3>
+                        <h3 className="features-carousel-card-title">{t(feat.titleKey)}</h3>
                       </div>
-                      <p className="features-carousel-card-desc">{feat.description}</p>
+                      <p className="features-carousel-card-desc">{t(feat.descKey)}</p>
                       <Link to="/login" className="features-carousel-card-link">
-                        <span>اعرف أكثر</span>
-                        <span>←</span>
+                        <span>{t('landing.showcase.learnMore')}</span>
+                        <span>{isRTL ? '←' : '→'}</span>
                       </Link>
                     </div>
                   </article>
@@ -289,14 +292,14 @@ export function FeaturesCarousel() {
             <button
               className="features-carousel-arrow"
               onClick={goPrev}
-              aria-label="السابق"
+              aria-label={t('landing.showcase.prev')}
             >
               ›
             </button>
             <button
               className="features-carousel-arrow"
               onClick={goNext}
-              aria-label="التالي"
+              aria-label={t('landing.showcase.next')}
             >
               ‹
             </button>
