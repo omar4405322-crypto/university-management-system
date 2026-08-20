@@ -23,10 +23,6 @@ import {
   ChevronDown,
   Menu,
   X,
-  Facebook,
-  Twitter,
-  Instagram,
-  Linkedin,
   ShieldCheck,
   CalendarRange,
   Languages,
@@ -670,44 +666,7 @@ const LandingPage: React.FC = () => {
               <p className="text-slate-400 text-sm leading-relaxed font-medium">
                 {t('landing.footer.desc')}
               </p>
-              <div className="flex items-center gap-4">
-                <a
-                  href="https://facebook.com"
-                  aria-label="Facebook"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300"
-                >
-                  <Facebook size={18} />
-                </a>
-                <a
-                  href="https://twitter.com"
-                  aria-label="Twitter / X"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300"
-                >
-                  <Twitter size={18} />
-                </a>
-                <a
-                  href="https://instagram.com"
-                  aria-label="Instagram"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300"
-                >
-                  <Instagram size={18} />
-                </a>
-                <a
-                  href="https://linkedin.com"
-                  aria-label="LinkedIn"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-brand-green hover:text-brand-navy hover:border-brand-green transition-all duration-300"
-                >
-                  <Linkedin size={18} />
-                </a>
-              </div>
+              {/* TODO: Re-add social media links once official university handles are provided */}
             </div>
 
             {/* Quick Links */}
