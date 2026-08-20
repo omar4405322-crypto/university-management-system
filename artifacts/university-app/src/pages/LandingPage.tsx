@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../context/ThemeContext';
 import { CollegesSection, collegesKeys } from '../components/CollegesSection';
 import { FeaturesCarousel } from '../components/FeaturesCarousel/FeaturesCarousel';
 import { CountUp } from '../components/ui/CountUp';
 import { useUniversityStats } from '../hooks/useUniversityStats';
 import ImageWithFallback from '../components/ui/ImageWithFallback';
 import LanguageToggle from '../components/ui/LanguageToggle';
+import ThemeToggle from '../components/ui/ThemeToggle';
 import Modal from '../components/ui/Modal';
 import {
   Search,
@@ -55,6 +57,7 @@ const VIRTUAL_TOUR_ENABLED = true;
 const LandingPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language?.startsWith('ar');
+  const { isDark } = useTheme();
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -154,7 +157,7 @@ const LandingPage: React.FC = () => {
           {/* Logo */}
           <Link to="/" className="flex-shrink-0">
             <ImageWithFallback
-              src={isScrolled ? LOGO : LOGO_WHITE}
+              src={(!isDark && isScrolled) ? LOGO : LOGO_WHITE}
               alt="University Logo"
               className="h-10 md:h-11 w-auto object-contain transition-all duration-500"
             />
@@ -213,6 +216,14 @@ const LandingPage: React.FC = () => {
             {/* Language Toggle */}
             <LanguageToggle />
 
+            {/* Theme Toggle */}
+            <ThemeToggle
+              className={isScrolled
+                ? 'text-brand-navy dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-800'
+                : 'text-white hover:bg-white/10'
+              }
+            />
+
             {/* Outline: virtual tour */}
             {VIRTUAL_TOUR_ENABLED && (
               <button
@@ -241,6 +252,12 @@ const LandingPage: React.FC = () => {
           {/* Mobile controls & hamburger */}
           <div className="flex lg:hidden items-center gap-2">
             <LanguageToggle />
+            <ThemeToggle
+              className={isScrolled
+                ? 'text-brand-navy dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-800'
+                : 'text-white hover:bg-white/10'
+              }
+            />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-expanded={isMobileMenuOpen}
