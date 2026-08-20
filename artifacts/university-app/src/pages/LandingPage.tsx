@@ -559,13 +559,7 @@ const LandingPage: React.FC = () => {
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                 </div>
-                <div className="absolute -bottom-8 -start-8 w-44 h-44 bg-brand-navy dark:bg-slate-800 rounded-3xl p-6 hidden md:flex flex-col justify-center items-center text-center shadow-2xl border border-white/5">
-                  <p className="text-brand-accent-gold font-mono font-black text-4xl mb-1">10+</p>
-                  <p className="text-white/80 text-[10px] font-black uppercase tracking-wider leading-snug">
-                    {t('landing.stats.excellence')}
-                  </p>
                 </div>
-              </div>
 
               {/* Text Column (RTL: right, LTR: left) */}
               <div className="space-y-8 order-1 lg:order-2">
