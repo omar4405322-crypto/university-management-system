@@ -512,6 +512,12 @@ export const getDoctorStats = catchAsync(
 
 export const getPublicLandingStats = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
+    const cacheKey = 'dashboard:public-landing-stats';
+    const cachedData = await getCache(cacheKey);
+    if (cachedData) {
+      return res.json({ success: true, data: cachedData, fromCache: true });
+    }
+
     const [
       totalStudents,
       totalColleges,
@@ -520,7 +526,6 @@ export const getPublicLandingStats = catchAsync(
       totalDepartments,
       totalCourses,
       collegesList,
-      sampleSlots,
     ] = await Promise.all([
       prisma.student.count(),
       prisma.college.count(),
@@ -540,48 +545,29 @@ export const getPublicLandingStats = catchAsync(
           },
         },
       }),
-      prisma.scheduleSlot.findMany({
-        take: 6,
-        include: {
-          course: { select: { name: true, courseCode: true } },
-          doctor: { select: { firstName: true, lastName: true } },
-          teachingAssistant: { select: { firstName: true, lastName: true } },
-        },
-        orderBy: { id: 'asc' },
-      }),
     ]);
+
+    const data = {
+      totalStudents,
+      totalColleges,
+      totalFaculty: totalDoctors + totalTAs,
+      totalSpecializations: totalDepartments,
+      totalCourses,
+      colleges: collegesList.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        nameAr: c.nameAr || c.name,
+        description: c.description || '',
+        departmentsCount: c.departments?.length || 0,
+        studentsCount: c.departments?.reduce((acc: number, d: any) => acc + (d._count?.students || 0), 0) || 0,
+      })),
+    };
+
+    await setCache(cacheKey, data, 300);
 
     return res.json({
       success: true,
-      data: {
-        totalStudents,
-        totalColleges,
-        totalFaculty: totalDoctors + totalTAs,
-        totalSpecializations: totalDepartments,
-        totalCourses,
-        colleges: collegesList.map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          nameAr: c.nameAr || c.name,
-          description: c.description || '',
-          departmentsCount: c.departments?.length || 0,
-          studentsCount: c.departments?.reduce((acc: number, d: any) => acc + (d._count?.students || 0), 0) || 0,
-        })),
-        sampleSlots: sampleSlots.map((s: any) => ({
-          id: s.id,
-          dayOfWeek: s.dayOfWeek,
-          startTime: s.startTime,
-          endTime: s.endTime,
-          sessionType: s.sessionType,
-          room: s.room || 'N/A',
-          course: s.course?.name || 'مادة دراسية',
-          instructor: s.doctor
-            ? `د. ${s.doctor.firstName} ${s.doctor.lastName}`
-            : s.teachingAssistant
-            ? `م. ${s.teachingAssistant.firstName} ${s.teachingAssistant.lastName}`
-            : 'أستاذ المادة',
-        })),
-      },
+      data,
     });
   }
 );
