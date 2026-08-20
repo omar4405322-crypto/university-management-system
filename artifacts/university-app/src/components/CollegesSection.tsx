@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Users } from 'lucide-react';
 import ImageWithFallback from './ui/ImageWithFallback';
@@ -64,8 +65,8 @@ export const CollegesSection: React.FC<CollegesSectionProps> = ({ colleges, isLo
             </p>
           </div>
 
-          <a
-            href="#colleges"
+          <Link
+            to="/colleges"
             className="group inline-flex items-center gap-2 text-brand-navy dark:text-brand-text-main hover:text-brand-green dark:hover:text-brand-green font-bold text-sm transition-colors flex-shrink-0 pb-1 border-b border-brand-navy/10 hover:border-brand-green"
           >
             {t('landing.colleges.viewAll')}
@@ -74,7 +75,7 @@ export const CollegesSection: React.FC<CollegesSectionProps> = ({ colleges, isLo
             ) : (
               <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
             )}
-          </a>
+          </Link>
         </div>
 
         {/* Colleges Grid */}
@@ -116,7 +117,7 @@ export const CollegesSection: React.FC<CollegesSectionProps> = ({ colleges, isLo
                   <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50">
                     <span className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-bold">
                       <Users size={14} className="text-slate-400" />
-                      <span className="font-mono">{college.departmentsCount} {isRTL ? 'أقسام أكاديمية' : 'Departments'}</span>
+                      <span className="font-mono">{college.departmentsCount} {t('landing.colleges.departments')}</span>
                     </span>
                     <span className="text-brand-green group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs font-bold">
                       {isRTL ? (
