@@ -6,7 +6,6 @@ import { Mail, Phone, MapPin } from 'lucide-react';
 import {
   UNIVERSITY_LOGO_WHITE,
   UNIVERSITY_LOGO,
-  UNIVERSITY_LOGO_PNG,
 } from '../../constants/universityAssets';
 import { useLanguage } from '../../context/LanguageContext';
 import { logger } from '../../lib/logger';
@@ -50,11 +49,7 @@ const Footer = () => {
                 className="h-12 w-12 shrink-0 object-contain"
                 onError={(e: any) => {
                   e.currentTarget.onerror = null;
-                  e.currentTarget.src = UNIVERSITY_LOGO_PNG;
-                  e.currentTarget.onerror = () => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = UNIVERSITY_LOGO;
-                  };
+                  e.currentTarget.src = UNIVERSITY_LOGO;
                 }}
               />
               <div className="flex flex-col">

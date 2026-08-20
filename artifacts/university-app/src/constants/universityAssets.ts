@@ -3,7 +3,6 @@ const BASE = '/assets/university/ne';
 
 export const UNIVERSITY_LOGO = `${BASE}/logo.svg`;
 export const UNIVERSITY_LOGO_WHITE = `${BASE}/logo-white.svg`;
-export const UNIVERSITY_LOGO_PNG = `${BASE}/logo.png`;
 
 export const CAMPUS_HERO_1 = `${BASE}/campus-hero-1.png`;
 export const CAMPUS_HERO_2 = `${BASE}/campus-hero-2.png`;
