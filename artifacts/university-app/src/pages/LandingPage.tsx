@@ -33,7 +33,11 @@ import {
   MapPin,
   Beaker,
   MonitorPlay,
-  Users2
+  Users2,
+  QrCode,
+  CheckCircle2,
+  Clock,
+  ScanLine
 } from 'lucide-react';
 
 // Assets
@@ -47,13 +51,8 @@ const AERIAL = '/assets/university/ne/campus-aerial.png';
 const WIDE = '/assets/university/ne/campus-wide.png';
 const PORTRAIT_1 = '/assets/university/ne/campus-portrait-1.png';
 
-// Timetable preview cell helper
-interface MockSlot {
-  course: string;
-  instructor: string;
-  room: string;
-  type: 'LAB' | 'LECTURE' | 'SECTION';
-}
+// Feature Flags
+const VIRTUAL_TOUR_ENABLED = false; // TODO: re-enable when tour content is ready
 
 const LandingPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -140,73 +139,6 @@ const LandingPage: React.FC = () => {
     },
   ], [statsData, t]);
 
-  const mockTimetable: Record<string, Record<string, MockSlot | null>> = {
-    sunday: {
-      slot1: {
-        course: t('landing.timetable.subjects.programming'),
-        instructor: t('landing.timetable.instructors.hassan'),
-        room: t('landing.timetable.rooms.hallA'),
-        type: 'LECTURE',
-      },
-      slot2: null,
-      slot3: {
-        course: t('landing.timetable.subjects.networks'),
-        instructor: t('landing.timetable.instructors.omar'),
-        room: t('landing.timetable.rooms.lab1'),
-        type: 'LAB',
-      },
-    },
-    monday: {
-      slot1: null,
-      slot2: {
-        course: t('landing.timetable.subjects.math'),
-        instructor: t('landing.timetable.instructors.mona'),
-        room: t('landing.timetable.rooms.hallB'),
-        type: 'LECTURE',
-      },
-      slot3: null,
-    },
-    tuesday: {
-      slot1: {
-        course: t('landing.timetable.subjects.networks'),
-        instructor: t('landing.timetable.instructors.omar'),
-        room: t('landing.timetable.rooms.lab1'),
-        type: 'LAB',
-      },
-      slot2: null,
-      slot3: {
-        course: t('landing.timetable.subjects.programming'),
-        instructor: t('landing.timetable.instructors.hassan'),
-        room: t('landing.timetable.rooms.hallA'),
-        type: 'LECTURE',
-      },
-    },
-  };
-
-  const getSessionColor = (type: 'LAB' | 'LECTURE' | 'SECTION') => {
-    switch (type) {
-      case 'LAB':
-        return 'bg-green-500/5 dark:bg-green-500/10 border-s-4 border-s-green-500 border border-y-slate-200/50 border-e-slate-200/50 dark:border-y-slate-700/50 dark:border-e-slate-700/50';
-      case 'SECTION':
-        return 'bg-purple-500/5 dark:bg-purple-500/10 border-s-4 border-s-purple-500 border border-y-slate-200/50 border-e-slate-200/50 dark:border-y-slate-700/50 dark:border-e-slate-700/50';
-      case 'LECTURE':
-      default:
-        return 'bg-brand-primary-500/5 dark:bg-brand-primary-500/10 border-s-4 border-s-brand-primary-500 border border-y-slate-200/50 border-e-slate-200/50 dark:border-y-slate-700/50 dark:border-e-slate-700/50';
-    }
-  };
-
-  const getSessionIcon = (type: 'LAB' | 'LECTURE' | 'SECTION') => {
-    switch (type) {
-      case 'LAB':
-        return <Beaker size={10} className="text-green-500" />;
-      case 'SECTION':
-        return <Users2 size={10} className="text-purple-500" />;
-      case 'LECTURE':
-      default:
-        return <MonitorPlay size={10} className="text-brand-primary-500" />;
-    }
-  };
-
   return (
     <div
       className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 font-sans selection:bg-brand-green/30 selection:text-brand-navy overflow-x-hidden"
@@ -283,17 +215,19 @@ const LandingPage: React.FC = () => {
             <LanguageToggle />
 
             {/* Outline: virtual tour */}
-            <button
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl border font-bold text-sm transition-all duration-300 ${isScrolled
-                  ? 'border-brand-navy/30 dark:border-slate-700 text-brand-navy dark:text-brand-text-main hover:border-brand-green hover:text-brand-green'
-                  : 'border-white/40 text-white hover:border-white hover:bg-white/10'
-                }`}
-            >
-              <div className="w-5 h-5 rounded-full border border-current flex items-center justify-center">
-                <Play size={8} className="fill-current" />
-              </div>
-              {t('landing.nav.virtualTour')}
-            </button>
+            {VIRTUAL_TOUR_ENABLED && (
+              <button
+                className={`flex items-center gap-2 px-5 py-2 rounded-xl border font-bold text-sm transition-all duration-300 ${isScrolled
+                    ? 'border-brand-navy/30 dark:border-slate-700 text-brand-navy dark:text-brand-text-main hover:border-brand-green hover:text-brand-green'
+                    : 'border-white/40 text-white hover:border-white hover:bg-white/10'
+                  }`}
+              >
+                <div className="w-5 h-5 rounded-full border border-current flex items-center justify-center">
+                  <Play size={8} className="fill-current" />
+                </div>
+                {t('landing.nav.virtualTour')}
+              </button>
+            )}
 
             {/* Solid green: login */}
             <Link
@@ -361,10 +295,12 @@ const LandingPage: React.FC = () => {
                   className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
                 />
               </div>
-              <button className="py-3 rounded-xl border border-brand-navy/30 dark:border-slate-700 text-brand-navy dark:text-brand-text-main font-bold text-sm text-center flex items-center justify-center gap-2">
-                <Play size={12} className="fill-current" />
-                {t('landing.nav.virtualTour')}
-              </button>
+              {VIRTUAL_TOUR_ENABLED && (
+                <button className="py-3 rounded-xl border border-brand-navy/30 dark:border-slate-700 text-brand-navy dark:text-brand-text-main font-bold text-sm text-center flex items-center justify-center gap-2">
+                  <Play size={12} className="fill-current" />
+                  {t('landing.nav.virtualTour')}
+                </button>
+              )}
               <Link
                 to="/login"
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -432,79 +368,77 @@ const LandingPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Left column (RTL: left, LTR: right) - Visual Mock Timetable Card */}
+            {/* Left column (RTL: left, LTR: right) - Smart Attendance Check-in Preview Card */}
             <div className="lg:col-span-6 flex justify-center order-2">
               <div className="w-full max-w-md relative">
                 {/* Visual card */}
                 <div
-                  className="w-full bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 p-4 md:p-6 transition-all duration-500 transform rotate-1 md:rotate-2 hover:rotate-0 hover:-translate-y-1.5 motion-reduce:hover:transform-none"
+                  className="w-full bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 p-5 md:p-6 transition-all duration-500 transform rotate-1 md:rotate-2 hover:rotate-0 hover:-translate-y-1.5 motion-reduce:hover:transform-none"
                 >
                   {/* Card header */}
                   <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-700 mb-4">
-                    <span className="text-xs md:text-sm font-black text-slate-800 dark:text-white flex items-center gap-1.5">
-                      <CalendarRange size={16} className="text-brand-green" />
-                      {t('landing.timetable.title')}
+                    <span className="text-xs md:text-sm font-black text-slate-800 dark:text-white flex items-center gap-2">
+                      <ScanLine size={16} className="text-brand-green" />
+                      {t('landing.attendance.title')}
                     </span>
-                    <span className="flex items-center gap-1 text-[10px] md:text-xs font-black text-brand-green bg-brand-primary-50 dark:bg-brand-primary-950/30 px-2.5 py-1 rounded-full">
+                    <span className="flex items-center gap-1.5 text-[10px] md:text-xs font-black text-brand-green bg-brand-primary-50 dark:bg-brand-primary-950/30 px-2.5 py-1 rounded-full">
                       <span className="w-1.5 h-1.5 bg-brand-green rounded-full animate-pulse" />
-                      {t('landing.timetable.autoValidated')}
+                      {t('landing.attendance.autoCheckIn')}
                     </span>
                   </div>
 
-                  {/* Timetable visual table */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-[10px] md:text-xs text-start">
-                      <thead>
-                        <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-                          <th className="p-2 font-black text-slate-500 dark:text-slate-400 text-start">{t('landing.nav.home')}</th>
-                          <th className="p-2 font-black text-slate-500 dark:text-slate-400 text-center">{t('landing.timetable.days.sunday')}</th>
-                          <th className="p-2 font-black text-slate-500 dark:text-slate-400 text-center">{t('landing.timetable.days.monday')}</th>
-                          <th className="p-2 font-black text-slate-500 dark:text-slate-400 text-center">{t('landing.timetable.days.tuesday')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(['slot1', 'slot2', 'slot3'] as const).map((slotKey) => (
-                          <tr key={slotKey} className="border-b border-slate-100 dark:border-slate-700/50 last:border-none">
-                            <td className="p-2 font-mono text-slate-400 font-medium whitespace-nowrap">
-                              {t(`landing.timetable.slots.${slotKey}`)}
-                            </td>
-                            {(['sunday', 'monday', 'tuesday'] as const).map((dayKey) => {
-                              const cell = mockTimetable[dayKey][slotKey];
-                              return (
-                                <td key={dayKey} className="p-2 min-w-[90px]">
-                                  {cell ? (
-                                    <div className={`p-1.5 rounded-lg text-[9px] md:text-[10px] space-y-1 shadow-sm leading-snug ${getSessionColor(cell.type)}`}>
-                                      <p className="font-extrabold text-slate-800 dark:text-slate-100 truncate flex items-center gap-1">
-                                        {getSessionIcon(cell.type)}
-                                        {cell.course}
-                                      </p>
-                                      <p className="text-slate-500 dark:text-slate-400 font-medium truncate">{cell.instructor}</p>
-                                      <p className="text-slate-400 dark:text-slate-500 font-bold truncate flex items-center gap-1">
-                                        <MapPin size={8} />
-                                        {cell.room}
-                                      </p>
-                                    </div>
-                                  ) : (
-                                    <div className="w-full py-3 flex items-center justify-center text-slate-300 dark:text-slate-700/80 border border-dashed border-slate-100 dark:border-slate-800 rounded-lg">
-                                      <span>—</span>
-                                    </div>
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  {/* Stacked Attendance Check-in rows */}
+                  <div className="space-y-3">
+                    {(['lecture1', 'lab1', 'section1'] as const).map((rowKey) => (
+                      <div
+                        key={rowKey}
+                        className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/60 bg-slate-50/70 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-750/70 transition-all duration-200 shadow-xs flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-brand-green/10 dark:bg-brand-green/20 text-brand-green flex items-center justify-center flex-shrink-0">
+                            <QrCode size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-extrabold text-xs md:text-sm text-slate-800 dark:text-slate-100 truncate">
+                              {t(`landing.attendance.rows.${rowKey}.title`)}
+                            </p>
+                            <div className="flex items-center gap-2.5 mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                              <span className="flex items-center gap-1">
+                                <MapPin size={10} className="text-brand-green" />
+                                {t(`landing.attendance.rows.${rowKey}.location`)}
+                              </span>
+                              <span className="text-slate-300 dark:text-slate-600">•</span>
+                              <span className="flex items-center gap-1">
+                                <QrCode size={10} className="text-brand-primary-500" />
+                                {t(`landing.attendance.rows.${rowKey}.mode`)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-end flex-shrink-0 gap-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black">
+                            <CheckCircle2 size={11} className="text-emerald-500" />
+                            {t('landing.attendance.statusVerified')}
+                          </span>
+                          <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400 dark:text-slate-500 font-medium">
+                            <Clock size={10} />
+                            {t(`landing.attendance.rows.${rowKey}.time`)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Floating Conflict status badge */}
+                {/* Floating Verified status badge */}
                 <div className="absolute -top-3 -end-3 bg-white dark:bg-slate-800 text-slate-800 dark:text-white px-3.5 py-2 rounded-xl shadow-lg border border-slate-200/50 dark:border-slate-700/50 flex items-center gap-2 transform -rotate-2">
-                  <div className="w-3 h-3 rounded-full bg-brand-green flex items-center justify-center">
-                    <ShieldCheck size={10} className="text-white" />
+                  <div className="w-3.5 h-3.5 rounded-full bg-brand-green flex items-center justify-center">
+                    <ShieldCheck size={11} className="text-white" />
                   </div>
-                  <span className="text-[10px] md:text-xs font-black tracking-tight font-mono">{t('landing.timetable.conflictsBadge')}</span>
+                  <span className="text-[10px] md:text-xs font-black tracking-tight font-mono">
+                    {t('landing.attendance.verifiedBadge')}
+                  </span>
                 </div>
               </div>
             </div>

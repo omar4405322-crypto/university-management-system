@@ -1731,6 +1731,32 @@
       "ctaRegister": "Start Registration Now",
       "ctaAbout": "Learn More About Us"
     },
+    "attendance": {
+      "title": "Smart Attendance Check-in",
+      "autoCheckIn": "Instant Check-in ✓",
+      "verifiedBadge": "100% Verified",
+      "statusVerified": "Confirmed",
+      "rows": {
+        "lecture1": {
+          "title": "Lecture: Main Hall",
+          "mode": "Dynamic QR Scan",
+          "location": "Campus Geofence (GPS)",
+          "time": "09:02 AM"
+        },
+        "lab1": {
+          "title": "Practical Lab: Center 1",
+          "mode": "Dynamic QR Scan",
+          "location": "Campus Geofence (GPS)",
+          "time": "11:05 AM"
+        },
+        "section1": {
+          "title": "Discussion: Seminar Room",
+          "mode": "Dynamic QR Scan",
+          "location": "Campus Geofence (GPS)",
+          "time": "01:10 PM"
+        }
+      }
+    },
     "timetable": {
       "conflictsBadge": "0 conflicts",
       "autoValidated": "Auto-validated ✓",
