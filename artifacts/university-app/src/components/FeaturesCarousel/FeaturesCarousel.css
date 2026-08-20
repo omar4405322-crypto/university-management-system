@@ -1,6 +1,6 @@
 .features-section {
   position: relative;
-  padding: 60px 0 40px;
+  padding: 80px 0 60px;
   overflow: hidden;
   direction: rtl;
   width: 100%;
@@ -14,16 +14,16 @@
   background-image: url("/assets/university/ne/campus-entrance.png");
   background-size: cover;
   background-position: center;
-  filter: brightness(0.35);
+  filter: brightness(0.28);
   z-index: 0;
 }
 
-/* Dark overlay so cards are readable */
+/* Dark gradient overlay so cards pop */
 .features-section::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--brand-navy) 60%, transparent) 0%, color-mix(in srgb, var(--brand-navy-dark) 90%, #000) 100%);
   z-index: 1;
 }
 
@@ -45,31 +45,28 @@
 }
 
 .features-carousel-subtitle {
-  color: #22c55e;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  color: var(--brand-green);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .features-carousel-title {
   color: #ffffff;
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 36px;
+  font-weight: 800;
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
 /* Card Positioning System */
 .carousel-viewport {
   position: relative;
-  height: 560px;
+  height: 540px;
   overflow: visible;
   width: 100%;
-}
-
-.features-section {
-  overflow: hidden;
 }
 
 .carousel-track {
@@ -81,12 +78,14 @@
 .carousel-slide {
   position: absolute;
   top: 0;
-  left: 50%;                /* all cards start at center */
+  left: 50%;
   width: 340px;
-  height: 520px;
-  background-color: #ffffff;
+  height: 500px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand-navy) 94%, transparent) 0%, color-mix(in srgb, var(--brand-navy-dark) 98%, transparent) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 20px 45px -12px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -96,21 +95,92 @@
   box-sizing: border-box;
 }
 
+.carousel-slide:hover {
+  border-color: color-mix(in srgb, var(--brand-green) 35%, transparent);
+}
+
+/* Card Top Hero Area (Unified Icon Badge) */
 .features-carousel-card-top {
-  height: 55%;             /* ~285px of 520px */
+  height: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--brand-green) 12%, transparent) 0%, color-mix(in srgb, var(--brand-navy) 35%, transparent) 60%, transparent 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.features-card-hero {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.features-card-hero-glow {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand-green) 28%, transparent) 0%, transparent 70%);
+  filter: blur(14px);
+  pointer-events: none;
+}
+
+.features-card-hero-ring-outer {
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in srgb, var(--brand-green) 28%, transparent);
+  animation: fs-spin 35s linear infinite;
+  pointer-events: none;
+}
+
+.features-card-hero-ring-inner {
+  position: absolute;
+  width: 106px;
+  height: 106px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--brand-navy) 35%, transparent);
+  pointer-events: none;
+}
+
+.features-card-hero-icon-wrapper {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand-green) 22%, transparent) 0%, color-mix(in srgb, var(--brand-navy) 85%, transparent) 100%);
+  border: 1px solid color-mix(in srgb, var(--brand-green) 45%, transparent);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45), 0 0 20px color-mix(in srgb, var(--brand-green) 20%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.carousel-slide:hover .features-card-hero-icon-wrapper {
+  transform: scale(1.06);
+  box-shadow: 0 10px 28px -4px rgba(0, 0, 0, 0.55), 0 0 28px color-mix(in srgb, var(--brand-green) 35%, transparent);
+}
+
+.features-card-hero-icon {
+  color: var(--brand-green);
+  filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--brand-green) 40%, transparent));
+}
+
+/* Card Bottom Content Area */
 .features-carousel-card-bottom {
   padding: 24px;
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  background-color: #ffffff;
+  background: transparent;
 }
 
 .features-carousel-card-header {
@@ -120,82 +190,126 @@
   margin-bottom: 12px;
 }
 
-.features-carousel-card-icon {
-  font-size: 24px;
+.features-carousel-card-icon-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--brand-green) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand-green) 25%, transparent);
+  color: var(--brand-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .features-carousel-card-title {
-  color: #111111;
-  font-size: 20px;
+  color: #ffffff;
+  font-size: 19px;
   font-weight: 700;
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .features-carousel-card-desc {
-  color: #6b7280;
-  font-size: 13px;
-  line-height: 1.6;
+  color: #cbd5e1;
+  font-size: 13.5px;
+  line-height: 1.65;
   margin: 0 0 20px 0;
   flex-grow: 1;
 }
 
 .features-carousel-card-link {
-  color: #22c55e;
+  color: var(--brand-green);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   align-self: flex-start;
-  transition: opacity 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .features-carousel-card-link:hover {
-  opacity: 0.8;
+  color: var(--brand-green-light);
+  transform: translateX(-3px);
 }
 
-/* Controls */
+/* Controls & Pagination */
 .features-carousel-controls {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin-top: 32px;
+  gap: 18px;
+  margin-top: 36px;
 }
 
 .features-carousel-arrow {
-  width: 48px;
-  height: 48px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  border: 1.5px solid #d1d5db;
-  background-color: #ffffff;
-  color: #374151;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--brand-navy) 85%, transparent);
+  color: #ffffff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  font-weight: 300;
-  line-height: 1;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 0;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
 .features-carousel-arrow:hover {
-  background-color: #f9fafb;
-  border-color: #9ca3af;
-  transform: scale(1.05);
+  background: var(--brand-green);
+  border-color: var(--brand-green);
+  color: var(--brand-navy);
+  transform: scale(1.08);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--brand-green) 45%, transparent);
 }
 
-/* Custom Ping Animation for Illustration 4 */
-@keyframes fs-ping {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.8;
+/* Dots Pagination */
+.features-carousel-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--brand-navy) 60%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.features-carousel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.25);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.features-carousel-dot:hover {
+  background: rgba(255, 255, 255, 0.55);
+  transform: scale(1.2);
+}
+
+.features-carousel-dot.is-active {
+  width: 28px;
+  height: 10px;
+  background: var(--brand-green);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--brand-green) 55%, transparent);
+}
+
+@keyframes fs-spin {
+  from {
+    transform: rotate(0deg);
   }
-  100% {
-    transform: scale(1.3);
-    opacity: 0;
+  to {
+    transform: rotate(360deg);
   }
 }
