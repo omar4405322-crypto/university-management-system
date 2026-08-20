@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../context/LanguageContext';
 import Button from '../components/ui/button';
 import Input from '../components/ui/input';
+import { UNIVERSITY_LOGO } from '../constants/universityAssets';
 
 // ── Zod schema ──────────────────────────────────────────────────────────────
 const registerSchema = z.object({
@@ -233,7 +234,7 @@ const Register = () => {
       <div className="w-full max-w-[560px] relative z-10">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center mb-6">
-            <img src="/assets/university/logo.svg" alt="University Logo" className="h-20 w-auto" />
+            <img src={UNIVERSITY_LOGO} alt="University Logo" className="h-20 w-auto" />
           </div>
           <h1 className="tracking-tight">{t('auth.universityName')}</h1>
           <p className="text-brand-text-sub mt-2 font-medium">
