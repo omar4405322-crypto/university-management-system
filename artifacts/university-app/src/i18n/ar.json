@@ -1872,6 +1872,32 @@
       "ctaRegister": "ابدأ التسجيل الآن",
       "ctaAbout": "تعرف علينا أكثر"
     },
+    "attendance": {
+      "title": "نظام تسجيل الحضور الذكي",
+      "autoCheckIn": "تسجيل حضور فوري ✓",
+      "verifiedBadge": "حضور موثق 100%",
+      "statusVerified": "مؤكد",
+      "rows": {
+        "lecture1": {
+          "title": "محاضرة: القاعة الرئيسية",
+          "mode": "مسح الرمز (QR)",
+          "location": "نطاق الحرم الجامعي (GPS)",
+          "time": "09:02 ص"
+        },
+        "lab1": {
+          "title": "معمل عملي: المختبر المركزي",
+          "mode": "مسح الرمز (QR)",
+          "location": "نطاق الحرم الجامعي (GPS)",
+          "time": "11:05 ص"
+        },
+        "section1": {
+          "title": "جلسة نقاشية: قاعة السمينار",
+          "mode": "مسح الرمز (QR)",
+          "location": "نطاق الحرم الجامعي (GPS)",
+          "time": "01:10 م"
+        }
+      }
+    },
     "timetable": {
       "conflictsBadge": "0 تعارضات",
       "autoValidated": "تم التحقق تلقائيًا ✓",
