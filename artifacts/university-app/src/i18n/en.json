@@ -1708,10 +1708,32 @@
   "landing": {
     "showcase": {
       "title": "University Management System Features",
-      "subtitle": "Discover how the system simplifies your academic life",
+      "subtitle": "Academic System",
       "learnMore": "Learn More",
       "prev": "Previous",
-      "next": "Next"
+      "next": "Next",
+      "items": {
+        "schedule": {
+          "title": "Study Schedules",
+          "desc": "Smart study schedules that update automatically with instant notifications on any change"
+        },
+        "exams": {
+          "title": "Electronic Examination System",
+          "desc": "Integrated online examinations with anti-cheating measures and real-time performance tracking"
+        },
+        "courses": {
+          "title": "Course Management",
+          "desc": "Browse and register academic courses with ease, complete with attached learning materials"
+        },
+        "notifications": {
+          "title": "Smart Notifications",
+          "desc": "A comprehensive notification system keeping you constantly updated on your academic journey"
+        },
+        "performance": {
+          "title": "Academic Performance Tracking",
+          "desc": "Comprehensive reports to track your results and analyze your academic progress"
+        }
+      }
     },
     "nav": {
       "home": "Home",
@@ -1810,6 +1832,7 @@
       "title": "Choose Your Academic Path",
       "desc": "We offer a range of leading specializations to meet local and international job market needs.",
       "viewAll": "View All Colleges",
+      "departments": "Departments",
       "industry": {
         "name": "College of Industry & Energy",
         "desc": "Focuses on modern industrial technologies, mechatronics, automotive technology, and renewable energy.",
