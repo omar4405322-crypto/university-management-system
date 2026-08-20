@@ -30,7 +30,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
-import { UNIVERSITY_LOGO, UNIVERSITY_LOGO_PNG, UNIVERSITY_LOGO_WHITE } from '../../constants/universityAssets';
+import { UNIVERSITY_LOGO, UNIVERSITY_LOGO_WHITE } from '../../constants/universityAssets';
 import { useNotifications } from '../../context/NotificationContext';
 
 // PERF: React.memo prevents re-render when item's own props haven't changed
@@ -376,7 +376,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   className="h-7 w-7 object-contain"
                   onError={(e) => {
                     e.currentTarget.onerror = null;
-                    e.currentTarget.src = UNIVERSITY_LOGO_PNG;
+                    e.currentTarget.src = UNIVERSITY_LOGO;
                   }}
                 />
               </div>
@@ -410,7 +410,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                     className="h-6 w-6 object-contain"
                     onError={(e) => {
                       e.currentTarget.onerror = null;
-                      e.currentTarget.src = UNIVERSITY_LOGO_PNG;
+                      e.currentTarget.src = UNIVERSITY_LOGO;
                     }}
                   />
                 </div>
