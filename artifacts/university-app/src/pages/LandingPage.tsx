@@ -7,6 +7,7 @@ import { CountUp } from '../components/ui/CountUp';
 import { useUniversityStats } from '../hooks/useUniversityStats';
 import ImageWithFallback from '../components/ui/ImageWithFallback';
 import LanguageToggle from '../components/ui/LanguageToggle';
+import Modal from '../components/ui/Modal';
 import {
   Search,
   GraduationCap,
@@ -46,9 +47,10 @@ const ENTRANCE = '/assets/university/ne/campus-entrance.png';
 const AERIAL = '/assets/university/ne/campus-aerial.png';
 const WIDE = '/assets/university/ne/campus-wide.png';
 const PORTRAIT_1 = '/assets/university/ne/campus-portrait-1.png';
+const PROMO_VIDEO = '/assets/university/ne/university-promo.mp4';
 
 // Feature Flags
-const VIRTUAL_TOUR_ENABLED = false; // TODO: re-enable when tour content is ready
+const VIRTUAL_TOUR_ENABLED = true;
 
 const LandingPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -57,6 +59,7 @@ const LandingPage: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isTourModalOpen, setIsTourModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('home');
   const { stats: universityStats, colleges, sampleSlots, isLoading: statsLoading } = useUniversityStats();
@@ -213,6 +216,7 @@ const LandingPage: React.FC = () => {
             {/* Outline: virtual tour */}
             {VIRTUAL_TOUR_ENABLED && (
               <button
+                onClick={() => setIsTourModalOpen(true)}
                 className={`flex items-center gap-2 px-5 py-2 rounded-xl border font-bold text-sm transition-all duration-300 ${isScrolled
                     ? 'border-brand-navy/30 dark:border-slate-700 text-brand-navy dark:text-brand-text-main hover:border-brand-green hover:text-brand-green'
                     : 'border-white/40 text-white hover:border-white hover:bg-white/10'
@@ -292,7 +296,13 @@ const LandingPage: React.FC = () => {
                 />
               </div>
               {VIRTUAL_TOUR_ENABLED && (
-                <button className="py-3 rounded-xl border border-brand-navy/30 dark:border-slate-700 text-brand-navy dark:text-brand-text-main font-bold text-sm text-center flex items-center justify-center gap-2">
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsTourModalOpen(true);
+                  }}
+                  className="py-3 rounded-xl border border-brand-navy/30 dark:border-slate-700 text-brand-navy dark:text-brand-text-main font-bold text-sm text-center flex items-center justify-center gap-2"
+                >
                   <Play size={12} className="fill-current" />
                   {t('landing.nav.virtualTour')}
                 </button>
@@ -743,8 +753,30 @@ const LandingPage: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* Virtual Tour Video Modal */}
+      <Modal
+        isOpen={isTourModalOpen}
+        onClose={() => setIsTourModalOpen(false)}
+        title={t('landing.nav.virtualTour')}
+        size="xl"
+      >
+        {isTourModalOpen && (
+          <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-2xl">
+            <video
+              controls
+              autoPlay
+              className="w-full h-full object-contain"
+              src={PROMO_VIDEO}
+            >
+              <source src={PROMO_VIDEO} type="video/mp4" />
+            </video>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
 
 export default LandingPage;
+
