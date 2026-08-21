@@ -1,7 +1,7 @@
-// @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import studentsService from '../../services/students.service';
+import enrollmentService from '../../services/enrollment.service';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -26,13 +26,20 @@ import {
   ShieldCheck,
   Users,
   BarChart3,
+  BookPlus,
+  UserMinus,
+  AlertTriangle,
+  Layers,
+  Loader2,
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/button';
 import LoadingState from '../../components/ui/LoadingState';
+import Modal from '../../components/ui/Modal';
 import EditStudentModal from './EditStudentModal';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
+import EnrollCourseModal from './EnrollCourseModal';
 import { useToast } from '../../context/ToastContext';
 
 interface StudentDetailsProps {
@@ -51,16 +58,30 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
   const canViewStatistics = Boolean(
     user && ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)
   );
+  const canManageEnrollments = Boolean(
+    user && ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)
+  );
 
-  const [student, setStudent] = useState(null);
+  const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'payments'>('overview');
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const [withdrawingEnrollment, setWithdrawingEnrollment] = useState<any>(null);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+
+  const enrolledCourses = useMemo(() => {
+    return (student?.enrollments || []).filter((item: any) => item.status === 'ENROLLED' || !item.status);
+  }, [student?.enrollments]);
 
   const fetchStudent = useCallback(async () => {
+    if (!actualId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const result = await studentsService.getStudentById(actualId);
@@ -79,6 +100,72 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
   useEffect(() => {
     fetchStudent();
   }, [fetchStudent]);
+
+  const handleConfirmWithdraw = async () => {
+    if (!withdrawingEnrollment) return;
+    try {
+      setIsWithdrawing(true);
+      const res = await enrollmentService.withdrawStudent(withdrawingEnrollment.id);
+      if (res.success) {
+        showToast(
+          t('students.withdrawSuccess', isRTL ? 'تم إلغاء تسجيل الطالب من المقرر بنجاح' : 'Student withdrawn from course successfully'),
+          'success'
+        );
+        setWithdrawingEnrollment(null);
+        fetchStudent();
+      } else {
+        showToast(res.message || (isRTL ? 'حدث خطأ أثناء إلغاء التسجيل' : 'Error withdrawing student'), 'error');
+      }
+    } catch (err: any) {
+      showToast(
+        err.response?.data?.message || err.message || (isRTL ? 'حدث خطأ أثناء إلغاء التسجيل' : 'Error withdrawing student'),
+        'error'
+      );
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
+  const getEnrollmentStatusBadge = (status: string) => {
+    switch (status) {
+      case 'ENROLLED':
+        return (
+          <span className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+            {t('students.statusEnrolled', isRTL ? 'مسجل' : 'Enrolled')}
+          </span>
+        );
+      case 'BLOCKED':
+        return (
+          <span className="text-xs bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 font-bold px-2.5 py-0.5 rounded-full border border-rose-500/20">
+            {t('students.statusBlocked', isRTL ? 'محظور' : 'Blocked')}
+          </span>
+        );
+      case 'WITHDRAWN':
+        return (
+          <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold px-2.5 py-0.5 rounded-full border border-slate-300 dark:border-slate-700">
+            {t('students.statusWithdrawn', isRTL ? 'منسحب' : 'Withdrawn')}
+          </span>
+        );
+      case 'COMPLETED':
+        return (
+          <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold px-2.5 py-0.5 rounded-full border border-blue-500/20">
+            {t('students.statusCompleted', isRTL ? 'مكتمل' : 'Completed')}
+          </span>
+        );
+      case 'FAILED':
+        return (
+          <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold px-2.5 py-0.5 rounded-full border border-red-500/20">
+            {t('students.statusFailed', isRTL ? 'راسب' : 'Failed')}
+          </span>
+        );
+      default:
+        return (
+          <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold px-2.5 py-0.5 rounded-full">
+            {status}
+          </span>
+        );
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -321,7 +408,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
               {isRTL ? 'المقررات المسجلة' : 'Enrolled Courses'}
             </span>
             <span className="text-lg font-black text-slate-900 dark:text-white truncate">
-              {student.enrollments?.length || 0} {isRTL ? 'مقررات' : 'Courses'}
+              {enrolledCourses.length} {isRTL ? 'مقررات' : 'Courses'}
             </span>
           </div>
         </div>
@@ -381,7 +468,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
             <BookOpen size={18} />
             <span>{isRTL ? 'المقررات المسجلة' : 'Enrolled Courses'}</span>
             <span className="ms-1 px-2 py-0.5 rounded-full text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-mono">
-              {student.enrollments?.length || 0}
+              {enrolledCourses.length}
             </span>
           </button>
 
@@ -534,57 +621,109 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
       {/* Tab 2: Enrolled Courses */}
       {activeTab === 'courses' && (
         <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-700 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-700 mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
                 <BookOpen size={20} />
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  {isRTL ? 'المقررات الأكاديمية المسجلة' : 'Enrolled Academic Courses'}
+                  {t('students.enrolledCoursesTitle', isRTL ? 'المقررات الأكاديمية المسجلة' : 'Enrolled Academic Courses')}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {isRTL ? 'المواد والمقررات التي يقوم الطالب بدراستها حالياً' : 'Courses currently registered by this student'}
+                  {t('students.enrolledCoursesDesc', isRTL ? 'المواد والمقررات التي يقوم الطالب بدراستها حالياً' : 'Courses currently registered by this student')}
                 </p>
               </div>
             </div>
+
+            {canManageEnrollments && (
+              <Button
+                onClick={() => setIsEnrollModalOpen(true)}
+                className="bg-brand-primary-500 hover:bg-brand-primary-600 text-white rounded-xl px-3.5 py-2 text-xs font-bold flex items-center gap-2 shadow-sm transition-all"
+              >
+                <BookPlus size={15} />
+                <span>{t('students.enrollCourse', isRTL ? '+ تسجيل مقرر' : '+ Enroll Course')}</span>
+              </Button>
+            )}
           </div>
 
-          {!student.enrollments || student.enrollments.length === 0 ? (
+          {enrolledCourses.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-3 text-slate-400">
                 <BookOpen size={28} />
               </div>
               <h4 className="text-base font-bold text-slate-800 dark:text-white mb-1">
-                {isRTL ? 'لا توجد مقررات مسجلة' : 'No Courses Enrolled'}
+                {t('students.noCoursesEnrolled', isRTL ? 'لا توجد مقررات مسجلة' : 'No Courses Enrolled')}
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {isRTL ? 'لم يتم تسجيل هذا الطالب في أي مقررات دراسية حتى الآن.' : 'This student has not been registered in any courses yet.'}
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                {t('students.noCoursesEnrolledDesc', isRTL ? 'لم يتم تسجيل هذا الطالب في أي مقررات دراسية حتى الآن.' : 'This student has not been registered in any courses yet.')}
               </p>
+              {canManageEnrollments && (
+                <Button
+                  onClick={() => setIsEnrollModalOpen(true)}
+                  className="bg-brand-primary-500 hover:bg-brand-primary-600 text-white rounded-xl px-4 py-2 text-xs font-bold inline-flex items-center gap-2 mx-auto"
+                >
+                  <BookPlus size={15} />
+                  <span>{t('students.enrollCourse', isRTL ? 'تسجيل مقرر الآن' : 'Enroll Course Now')}</span>
+                </Button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {student.enrollments.map((item: any, index: number) => {
+              {enrolledCourses.map((item: any, index: number) => {
                 const course = item.course || item;
+                const canWithdraw = canManageEnrollments && item.id && item.status !== 'WITHDRAWN';
                 return (
                   <div
-                    key={course.id || index}
-                    className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-3 hover:border-brand-primary-500/50 transition-all text-start"
+                    key={item.id || course.id || index}
+                    className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-3 hover:border-brand-primary-500/50 transition-all text-start"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="font-mono text-xs font-bold text-brand-primary-600 dark:text-brand-primary-400 bg-brand-primary-500/10 px-2.5 py-1 rounded-lg">
-                        {course.courseCode || `CRS-${course.id}`}
-                      </span>
-                      <span className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-0.5 rounded-full">
-                        {isRTL ? 'مسجل' : 'Enrolled'}
-                      </span>
-                    </div>
-
                     <div>
-                      <h4 className="font-bold text-slate-900 dark:text-white text-base mb-1">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className="font-mono text-xs font-bold text-brand-primary-600 dark:text-brand-primary-400 bg-brand-primary-500/10 px-2.5 py-1 rounded-lg">
+                          {course.courseCode || `CRS-${course.id}`}
+                        </span>
+                        {getEnrollmentStatusBadge(item.status || 'ENROLLED')}
+                      </div>
+
+                      <h4 className="font-bold text-slate-900 dark:text-white text-base mb-1.5 line-clamp-2">
                         {course.name}
                       </h4>
+
+                      <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                        {course.credits && (
+                          <span className="flex items-center gap-1">
+                            <BookOpen size={13} className="text-slate-400" />
+                            <span>{course.credits} {isRTL ? 'ساعات' : 'credits'}</span>
+                          </span>
+                        )}
+                        {item.semester && (
+                          <span className="flex items-center gap-1">
+                            <Layers size={13} className="text-slate-400" />
+                            <span>{t('students.semesterLabel', 'الفصل')} {item.semester}</span>
+                          </span>
+                        )}
+                        {item.academicYear && (
+                          <span className="flex items-center gap-1 font-mono">
+                            <Calendar size={13} className="text-slate-400" />
+                            <span>{item.academicYear}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
+
+                    {canWithdraw && (
+                      <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setWithdrawingEnrollment(item)}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <UserMinus size={14} />
+                          <span>{t('students.withdrawCourse', 'إلغاء التسجيل')}</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -681,6 +820,74 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
         person={student}
         type="student"
       />
+
+      {isEnrollModalOpen && (
+        <EnrollCourseModal
+          isOpen={isEnrollModalOpen}
+          onClose={() => setIsEnrollModalOpen(false)}
+          studentId={student.id}
+          studentName={`${student.firstName} ${student.lastName}`}
+          studentCode={student.studentId}
+          departmentId={student.departmentId}
+          alreadyEnrolledCourseIds={enrolledCourses.map((e: any) => e.course?.id || e.courseId).filter(Boolean)}
+          onSuccess={() => {
+            fetchStudent();
+          }}
+        />
+      )}
+
+      {withdrawingEnrollment && (
+        <Modal
+          isOpen={Boolean(withdrawingEnrollment)}
+          onClose={() => !isWithdrawing && setWithdrawingEnrollment(null)}
+          title={t('students.withdrawConfirmTitle', 'تأكيد إلغاء التسجيل في المقرر')}
+          subtitle={`${withdrawingEnrollment.course?.name || ''} (${withdrawingEnrollment.course?.courseCode || ''})`}
+          size="sm"
+        >
+          <div className="space-y-4">
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 rounded-2xl flex items-start gap-3 text-start">
+              <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
+              <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                {t(
+                  'students.withdrawConfirmDesc',
+                  `هل أنت متأكد من إلغاء تسجيل الطالب في مقرر "${withdrawingEnrollment.course?.name || ''}"؟ سيتم تحويل حالة التسجيل إلى (منسحب).`,
+                  { courseName: withdrawingEnrollment.course?.name || '' }
+                )}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setWithdrawingEnrollment(null)}
+                disabled={isWithdrawing}
+                className="rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold"
+              >
+                {t('common.cancel', 'تراجع')}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirmWithdraw}
+                disabled={isWithdrawing}
+                className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-2 min-w-[130px] justify-center"
+              >
+                {isWithdrawing ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} />
+                    <span>{isRTL ? 'جاري الإلغاء...' : 'Withdrawing...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <UserMinus size={16} />
+                    <span>{t('students.confirmWithdrawBtn', 'تأكيد الإلغاء')}</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

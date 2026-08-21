@@ -238,11 +238,19 @@ export const getStudentById = catchAsync(
           include: { parentGroup: true },
         },
         enrollments: {
+          where: { status: 'ENROLLED' },
           select: {
+            id: true,
+            status: true,
+            semester: true,
+            academicYear: true,
+            enrolledAt: true,
+            finalGrade: true,
             course: {
-              select: { id: true, name: true, courseCode: true },
+              select: { id: true, name: true, courseCode: true, credits: true },
             },
           },
+          orderBy: [{ academicYear: 'desc' }, { semester: 'desc' }, { id: 'asc' }],
         },
         payments: {
           orderBy: { createdAt: 'desc' },

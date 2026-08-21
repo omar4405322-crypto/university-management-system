@@ -16,7 +16,7 @@ router.get('/', protect, getEnrollments);
 router.delete(
   '/:id',
   protect,
-  authorize('COLLEGE_ADMIN', 'SUPER_ADMIN', 'DEPARTMENT_ADMIN', 'STUDENT'),
+  authorize('COLLEGE_ADMIN', 'SUPER_ADMIN', 'DEPARTMENT_ADMIN'),
   withdrawStudent
 );
 
