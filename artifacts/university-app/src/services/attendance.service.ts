@@ -63,6 +63,7 @@ const attendanceService = {
     courseId?: number;
     date?: string;
     records?: ManualAttendanceRecord[];
+    semester?: number;
   }) => {
     const response = await api.post('/attendance/manual', params);
     return response.data;

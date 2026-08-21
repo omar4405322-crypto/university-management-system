@@ -60,6 +60,7 @@ export class ManualDriver implements IAttendanceDriver {
       recordedById: ctx.userId || null,
       ipAddress: ctx.ipAddress || null,
       deviceId: rawPayload.deviceId || null,
+      courseId: rawPayload.courseId ? parseInt(rawPayload.courseId) : undefined,
       sessionId: rawPayload.sessionId || ctx.sessionId || null,
       date: rawPayload.date ? new Date(rawPayload.date) : undefined,
     };

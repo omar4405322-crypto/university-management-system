@@ -113,6 +113,10 @@ router.post(
       .optional()
       .isIn(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'])
       .withMessage('Invalid status'),
+    body('semester')
+      .optional()
+      .isInt({ min: 1, max: 3 })
+      .withMessage('Semester must be between 1 and 3'),
   ],
   validate,
   attendanceController.recordAttendanceManual
