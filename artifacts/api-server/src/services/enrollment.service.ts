@@ -1,5 +1,5 @@
 import prisma from '../utils/prismaClient';
-import { ConflictError, NotFoundError } from '../utils/appError';
+import { AppError, ConflictError, NotFoundError } from '../utils/appError';
 
 class EnrollmentService {
   static async enrollStudent(
@@ -8,6 +8,20 @@ class EnrollmentService {
     semester: number,
     academicYear: number
   ) {
+    const currentYear = new Date().getFullYear();
+    const minYear = currentYear - 1;
+    const maxYear = currentYear + 1;
+    if (academicYear < minYear || academicYear > maxYear) {
+      throw new AppError(
+        `Academic year must be a valid calendar year between ${minYear} and ${maxYear} (received: ${academicYear})`,
+        400
+      );
+    }
+
+    if (semester < 1 || semester > 3) {
+      throw new AppError('Semester must be between 1 and 3 (1 = First, 2 = Second, 3 = Summer)', 400);
+    }
+
     return prisma.$transaction(async (tx) => {
       const existing = await tx.enrollment.findUnique({
         where: {
@@ -98,16 +112,33 @@ class EnrollmentService {
     });
   }
 
-  static async withdrawStudent(studentId: number, courseId: number) {
-    const enrollment = await prisma.enrollment.findFirst({
-      where: { studentId, courseId, status: 'ENROLLED' },
+  static async withdrawStudent(enrollmentIdOrStudentId: number, courseId?: number) {
+    if (courseId !== undefined) {
+      const enrollment = await prisma.enrollment.findFirst({
+        where: { studentId: enrollmentIdOrStudentId, courseId, status: 'ENROLLED' },
+      });
+      if (!enrollment) {
+        throw new NotFoundError('No active enrollment found for this student and course');
+      }
+
+      return prisma.enrollment.update({
+        where: { id: enrollment.id },
+        data: { status: 'WITHDRAWN' },
+        include: {
+          course: { select: { id: true, name: true, courseCode: true } },
+        },
+      });
+    }
+
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { id: enrollmentIdOrStudentId },
     });
     if (!enrollment) {
-      throw new NotFoundError('No active enrollment found for this student and course');
+      throw new NotFoundError('Enrollment not found');
     }
 
     return prisma.enrollment.update({
-      where: { id: enrollment.id },
+      where: { id: enrollmentIdOrStudentId },
       data: { status: 'WITHDRAWN' },
       include: {
         course: { select: { id: true, name: true, courseCode: true } },

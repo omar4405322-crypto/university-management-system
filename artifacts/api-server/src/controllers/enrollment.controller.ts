@@ -1,39 +1,61 @@
 import { Request, Response } from 'express';
 import catchAsync from '../utils/catchAsync';
-import { ValidationError, AppError, AuthorizationError } from '../utils/appError';
+import { ValidationError, AppError, NotFoundError } from '../utils/appError';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import { EnrollmentService } from '../services/enrollment.service';
 
 export const enrollStudent = catchAsync(async (req: Request, res: Response) => {
   const { studentId, courseId, semester, academicYear } = req.body;
+
+  const parsedStudentId = parseInt(studentId);
+  const parsedCourseId = parseInt(courseId);
+  const parsedSemester = parseInt(semester);
+  const parsedAcademicYear = parseInt(academicYear);
+
+  if (isNaN(parsedStudentId) || isNaN(parsedCourseId) || isNaN(parsedSemester) || isNaN(parsedAcademicYear)) {
+    throw new AppError('studentId, courseId, semester, and academicYear must be valid numbers', 400);
+  }
+
+  const currentYear = new Date().getFullYear();
+  const minYear = currentYear - 1;
+  const maxYear = currentYear + 1;
+  if (parsedAcademicYear < minYear || parsedAcademicYear > maxYear) {
+    throw new AppError(
+      `Academic year must be a valid calendar year between ${minYear} and ${maxYear} (received: ${parsedAcademicYear})`,
+      400
+    );
+  }
+
+  if (parsedSemester < 1 || parsedSemester > 3) {
+    throw new AppError('Semester must be between 1 and 3 (1 = First, 2 = Second, 3 = Summer)', 400);
+  }
+
   const enrollment = await EnrollmentService.enrollStudent(
-    parseInt(studentId),
-    parseInt(courseId),
-    parseInt(semester),
-    parseInt(academicYear)
+    parsedStudentId,
+    parsedCourseId,
+    parsedSemester,
+    parsedAcademicYear
   );
   res.status(201).json({ success: true, data: enrollment });
 });
 
 export const withdrawStudent = catchAsync(async (req: Request, res: Response) => {
   // DELETE /api/enrollments/:id
+  const enrollmentId = parseInt(req.params.id as string);
+  if (isNaN(enrollmentId)) {
+    throw new AppError('Invalid enrollment ID', 400);
+  }
+
   const enrollment = await prisma.enrollment.findUnique({
-    where: { id: parseInt(req.params.id as string) },
+    where: { id: enrollmentId },
   });
 
   if (!enrollment) {
-    throw new ValidationError('Enrollment not found');
+    throw new NotFoundError('Enrollment not found');
   }
 
-  if (req.user!.role === 'STUDENT' && (req.user as any).student?.id !== enrollment.studentId) {
-    throw new AuthorizationError('You can only withdraw from your own enrollments');
-  }
-
-  const withdrawn = await EnrollmentService.withdrawStudent(
-    enrollment.studentId,
-    enrollment.courseId
-  );
+  const withdrawn = await EnrollmentService.withdrawStudent(enrollment.id);
   res.json({ success: true, data: withdrawn });
 });
 
