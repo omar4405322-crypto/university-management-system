@@ -52,10 +52,19 @@ class AttendanceEngine {
     const intent = await driver.buildIntent(payload, ctx);
     await this.validateIntent(intent, ctx);
 
+    let targetSemester: number | undefined;
+
     if (intent.sessionId) {
       const session = await prisma.attendanceSession.findUnique({
         where: { id: intent.sessionId },
-        include: { scheduleSlot: true },
+        include: {
+          scheduleSlot: {
+            include: {
+              course: true,
+              timetable: true,
+            },
+          },
+        },
       });
 
       if (!session) {
@@ -68,23 +77,45 @@ class AttendanceEngine {
 
       if (!intent.courseId) intent.courseId = session.scheduleSlot.courseId;
       if (!intent.scheduleSlotId) intent.scheduleSlotId = session.scheduleSlot.id;
+
+      targetSemester =
+        session.scheduleSlot.timetable?.semester ||
+        session.scheduleSlot.course?.semester;
+    } else if (payload?.semester !== undefined || (ctx as any)?.semester !== undefined) {
+      targetSemester = parseInt(payload?.semester ?? (ctx as any)?.semester);
+    } else {
+      throw new AppError('Semester is required for standalone attendance recording', 400);
     }
 
-    if (intent.courseId && ctx.studentId !== undefined) {
-      const enrollment = await prisma.enrollment.findFirst({
+    if (intent.courseId && intent.studentId !== undefined) {
+      const enrollments = await prisma.enrollment.findMany({
         where: {
           studentId: intent.studentId,
           courseId: intent.courseId,
+          ...(targetSemester !== undefined && { semester: targetSemester }),
         },
+        orderBy: [
+          { academicYear: 'desc' },
+          { id: 'desc' },
+        ],
       });
 
-      if (!enrollment) {
+      if (enrollments.length === 0) {
         throw new AppError('عذراً، أنت غير مسجل في هذا المقرر الدراسي.', 403);
       }
+
+      const enrollment = enrollments[0];
 
       if (enrollment.status === 'BLOCKED') {
         throw new AppError(
           'عذراً، تم حظر تسجيلك في هذا المقرر بسبب تجاوز نسبة الغياب.',
+          403
+        );
+      }
+
+      if (enrollment.status !== 'ENROLLED') {
+        throw new AppError(
+          'عذراً، لا يمكنك تسجيل الحضور لأنك غير مسجل حالياً في هذا المقرر الدراسي.',
           403
         );
       }
@@ -412,9 +443,10 @@ class AttendanceEngine {
 
     const enrollment = await prisma.enrollment.findFirst({
       where: { studentId, courseId },
+      orderBy: [{ academicYear: 'desc' }, { semester: 'desc' }, { id: 'desc' }],
     });
 
-    if (!enrollment) return;
+    if (!enrollment || (enrollment.status !== 'ENROLLED' && enrollment.status !== 'BLOCKED')) return;
 
     if (absencePercent >= maxAbsencePercent) {
       if (enrollment.status !== 'BLOCKED') {
