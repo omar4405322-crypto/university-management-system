@@ -6,6 +6,7 @@ export interface DriverValidationContext {
   sessionId?: number;
   ipAddress?: string;
   userAgent?: string;
+  semester?: number;
   prismaTransaction?: any;
 }
 

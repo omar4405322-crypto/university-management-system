@@ -6,18 +6,20 @@ import { AppError, AuthorizationError } from '../utils/appError';
 
 export const recordAttendanceManual = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { courseId, date, records, sessionId } = req.body;
+    const { courseId, date, records, sessionId, semester } = req.body;
 
     const ctx = {
       userId: req.user!.id,
       ipAddress: req.ip || req.socket.remoteAddress,
       sessionId: sessionId ? parseInt(sessionId) : undefined,
+      semester: semester ? parseInt(semester) : undefined,
     };
 
     if (records && Array.isArray(records)) {
       const createdRecords = await AttendanceService.recordBulkManual(records, {
         ...ctx,
         courseId: courseId ? parseInt(courseId) : undefined,
+        semester: semester ? parseInt(semester) : undefined,
       });
 
       res.status(201).json({ success: true, data: createdRecords });
