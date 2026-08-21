@@ -365,6 +365,7 @@ async function main() {
   });
 
   // 7. Enroll Student in Courses
+  const currentAcademicYear = new Date().getFullYear();
   const ictCourses = await prisma.course.findMany({
     where: { departmentId: ictDept.id }
   });
@@ -376,7 +377,7 @@ async function main() {
           studentId: student.id,
           courseId: c.id,
           semester: 1,
-          academicYear: 1
+          academicYear: currentAcademicYear
         }
       },
       update: {},
@@ -384,7 +385,7 @@ async function main() {
         studentId: student.id,
         courseId: c.id,
         semester: 1,
-        academicYear: 1,
+        academicYear: currentAcademicYear,
         status: 'ENROLLED'
       }
     });
