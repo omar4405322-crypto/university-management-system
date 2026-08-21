@@ -312,7 +312,7 @@ export function FacultyAttendanceDashboard() {
       fetchSessionData();
     } catch (err: any) {
       console.error('Failed to mark attendance manually:', err);
-      setError(err.response?.data?.message || 'Failed to update attendance');
+      setError(err.message || err.response?.data?.message || 'Failed to update attendance');
       fetchSessionData();
     }
   };
