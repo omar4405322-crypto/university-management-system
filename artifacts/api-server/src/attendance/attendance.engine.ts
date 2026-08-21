@@ -173,8 +173,8 @@ class AttendanceEngine {
           status: intent.status || 'PRESENT',
           method: intent.method,
           ...(intent.remarks !== undefined && { remarks: intent.remarks }),
-          ...(intent.recordedById !== undefined && {
-            recordedById: intent.recordedById,
+          ...(intent.recordedById !== undefined && intent.recordedById !== null && {
+            recordedBy: { connect: { id: intent.recordedById } },
           }),
           ...(intent.ipAddress !== undefined && {
             ipAddress: intent.ipAddress,
@@ -203,8 +203,8 @@ class AttendanceEngine {
           status: intent.status || 'PRESENT',
           method: intent.method,
           ...(intent.remarks && { remarks: intent.remarks }),
-          ...(intent.recordedById !== undefined && {
-            recordedById: intent.recordedById,
+          ...(intent.recordedById !== undefined && intent.recordedById !== null && {
+            recordedBy: { connect: { id: intent.recordedById } },
           }),
           ...(intent.ipAddress && { ipAddress: intent.ipAddress }),
           ...(intent.deviceId && { deviceId: intent.deviceId }),
