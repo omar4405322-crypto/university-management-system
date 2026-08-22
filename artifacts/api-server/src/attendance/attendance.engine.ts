@@ -219,11 +219,11 @@ class AttendanceEngine {
           }),
           ...(intent.scheduleSlotId !== undefined &&
             intent.scheduleSlotId !== null && {
-              scheduleSlotId: intent.scheduleSlotId,
+              scheduleSlot: { connect: { id: intent.scheduleSlotId } },
             }),
           ...(intent.sessionId !== undefined &&
             intent.sessionId !== null && {
-              sessionId: intent.sessionId,
+              session: { connect: { id: intent.sessionId } },
             }),
         };
 
