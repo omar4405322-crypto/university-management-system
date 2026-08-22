@@ -394,23 +394,42 @@ class AttendanceEngine {
   }
 
   async recalculateAbsence(studentId: number, courseId: number): Promise<void> {
-    const statsData = await prisma.attendance.groupBy({
-      by: ['status'],
+    const enrollment = await prisma.enrollment.findFirst({
       where: { studentId, courseId },
-      _count: true,
+      orderBy: [{ academicYear: 'desc' }, { semester: 'desc' }, { id: 'desc' }],
+      include: { exemptionPeriods: true },
     });
+
+    if (!enrollment || (enrollment.status !== 'ENROLLED' && enrollment.status !== 'BLOCKED')) return;
+
+    const attendances = await prisma.attendance.findMany({
+      where: { studentId, courseId },
+      select: { id: true, status: true, date: true },
+    });
+
+    const exemptionPeriods = enrollment.exemptionPeriods || [];
 
     let total = 0;
     let excused = 0;
     let absent = 0;
     let late = 0;
 
-    statsData.forEach((item: any) => {
-      total += item._count;
-      if (item.status === 'EXCUSED') excused += item._count;
-      if (item.status === 'ABSENT') absent += item._count;
-      if (item.status === 'LATE') late += item._count;
-    });
+    // Filter out Attendance records whose date falls within any active AbsenceExemptionPeriod for this enrollment.
+    // This calculation-only filter discounts approved exemption windows from absence totals without mutating historical Attendance rows.
+    for (const record of attendances) {
+      const recordTime = record.date.getTime();
+      const isExempt = exemptionPeriods.some(
+        (p) => recordTime >= p.startDate.getTime() && recordTime <= p.endDate.getTime()
+      );
+      if (isExempt) {
+        continue;
+      }
+
+      total += 1;
+      if (record.status === 'EXCUSED') excused += 1;
+      if (record.status === 'ABSENT') absent += 1;
+      if (record.status === 'LATE') late += 1;
+    }
 
     const activeTotal = total - excused;
     const absencePercent =
@@ -421,32 +440,31 @@ class AttendanceEngine {
       include: { department: true },
     });
 
-    const policies = await prisma.absenceThresholdPolicy.findMany({
-      where: {
-        OR: [
-          { courseId },
-          { departmentId: course?.departmentId },
-          { departmentId: null, courseId: null },
-        ],
-      },
-    });
+    let maxAbsencePercent: number;
 
-    let policy = policies.find((p: any) => p.courseId === courseId);
-    if (!policy)
-      policy = policies.find((p: any) => p.departmentId === course?.departmentId);
-    if (!policy)
-      policy = policies.find(
-        (p: any) => p.courseId === null && p.departmentId === null
-      );
+    if (enrollment.customAbsenceThreshold !== null && enrollment.customAbsenceThreshold !== undefined) {
+      maxAbsencePercent = enrollment.customAbsenceThreshold;
+    } else {
+      const policies = await prisma.absenceThresholdPolicy.findMany({
+        where: {
+          OR: [
+            { courseId },
+            { departmentId: course?.departmentId },
+            { departmentId: null, courseId: null },
+          ],
+        },
+      });
 
-    const maxAbsencePercent = policy ? policy.maxAbsencePercent : 25;
+      let policy = policies.find((p) => p.courseId === courseId);
+      if (!policy)
+        policy = policies.find((p) => p.departmentId === course?.departmentId);
+      if (!policy)
+        policy = policies.find(
+          (p) => p.courseId === null && p.departmentId === null
+        );
 
-    const enrollment = await prisma.enrollment.findFirst({
-      where: { studentId, courseId },
-      orderBy: [{ academicYear: 'desc' }, { semester: 'desc' }, { id: 'desc' }],
-    });
-
-    if (!enrollment || (enrollment.status !== 'ENROLLED' && enrollment.status !== 'BLOCKED')) return;
+      maxAbsencePercent = policy ? policy.maxAbsencePercent : 25;
+    }
 
     if (absencePercent >= maxAbsencePercent) {
       if (enrollment.status !== 'BLOCKED') {
