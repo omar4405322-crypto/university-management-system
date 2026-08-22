@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import {
@@ -9,6 +9,7 @@ import {
 import jsQR from 'jsqr';
 import fpPromise from '@fingerprintjs/fingerprintjs';
 import attendanceService from '../../services/attendance.service';
+import { SessionCountdown } from './SessionCountdown';
 
 export function StudentAttendanceScanner({
   onCancel,
@@ -34,8 +35,47 @@ export function StudentAttendanceScanner({
     flagged?: boolean
   } | null>(null);
 
+  const [activeSessionInfo, setActiveSessionInfo] = useState<any>(null);
   const [manualCode, setManualCode] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch active session info for the countdown timer
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSession = async () => {
+      const targetCourseId = activeCourseForGps || selectedCourseId;
+      if (targetCourseId) {
+        try {
+          const res = await attendanceService.getActiveSession(targetCourseId);
+          if (isMounted && res?.data) {
+            setActiveSessionInfo(res.data);
+            return;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const courseList = courses && courses.length > 0 ? courses : (await attendanceService.getMyCourses()).data || [];
+      for (const c of courseList) {
+        try {
+          const sRes = await attendanceService.getActiveSession(c.id);
+          if (isMounted && sRes?.data) {
+            setActiveSessionInfo(sRes.data);
+            if (!activeCourseForGps) setActiveCourseForGps(c.id);
+            break;
+          }
+        } catch {
+          // continue
+        }
+      }
+    };
+
+    fetchSession();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeCourseForGps, selectedCourseId, courses]);
 
   // Normalize digits from Arabic/Eastern to English
   const normalizeToken = (str: string) => {
@@ -109,7 +149,7 @@ export function StudentAttendanceScanner({
           navigator.geolocation.getCurrentPosition(
             resolve,
             reject,
-            { enableHighAccuracy: true, timeout: 4000, maximumAge: 0 }
+            { enableHighAccuracy: false, timeout: 7000, maximumAge: 30000 }
           );
         });
         lat = pos.coords.latitude;
@@ -204,30 +244,70 @@ export function StudentAttendanceScanner({
         return;
       }
 
-      // Step 1: Capture student location
+      // Step 1: Capture student location with two-tier fallback
       let lat: number;
       let lng: number;
 
       try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0,
+        let pos: GeolocationPosition;
+        try {
+          // Attempt 1: High Accuracy GPS (Mobile / GNSS)
+          pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 10000,
+            });
           });
-        });
+        } catch (highAccErr: any) {
+          // If permission was explicitly denied, do not retry
+          if (highAccErr?.code === 1) {
+            throw highAccErr;
+          }
+          console.warn('High-accuracy GPS failed or timed out, falling back to standard accuracy:', highAccErr);
+          // Attempt 2: Standard Accuracy (Wi-Fi / Cell / IP triangulation)
+          pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: false,
+              timeout: 15000,
+              maximumAge: 60000,
+            });
+          });
+        }
+
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
       } catch (geoErr: any) {
-        console.warn('Geolocation capture failed or denied:', geoErr);
-        setGpsPermissionDenied(true);
-        setResult({
-          success: false,
-          status: 'ERROR',
-          message: isRTL
-            ? 'تم رفض أو تعذر الوصول إلى إذن الموقع الجغرافي. يرجى تفعيل خدمة GPS والسماح للمتصفح بالوصول لموقعك للمتابعة.'
-            : 'Location permission denied or unavailable. Please enable GPS and allow location access in your browser settings to proceed.',
-        });
+        console.warn('Geolocation capture failed:', geoErr);
+        if (geoErr?.code === 1) {
+          // Code 1: PERMISSION_DENIED
+          setGpsPermissionDenied(true);
+          setResult({
+            success: false,
+            status: 'ERROR',
+            message: isRTL
+              ? 'تم رفض أو تعذر الوصول إلى إذن الموقع الجغرافي. يرجى تفعيل خدمة GPS والسماح للمتصفح بالوصول لموقعك للمتابعة.'
+              : 'Location permission denied or unavailable. Please enable GPS and allow location access in your browser settings to proceed.',
+          });
+        } else if (geoErr?.code === 3) {
+          // Code 3: TIMEOUT
+          setResult({
+            success: false,
+            status: 'ERROR',
+            message: isRTL
+              ? 'انتهت المهلة المحددة لتحديد الموقع الجغرافي. يرجى التأكد من تشغيل GPS والاقتراب من نافذة أو إعادة المحاولة.'
+              : 'Location request timed out. Please ensure GPS is enabled, move closer to a window, or try again.',
+          });
+        } else {
+          // Code 2: POSITION_UNAVAILABLE or other errors
+          setResult({
+            success: false,
+            status: 'ERROR',
+            message: isRTL
+              ? 'خدمة تحديد الموقع غير متاحة على هذا الجهاز حالياً. يرجى التحقق من إعدادات الموقع بالجهاز.'
+              : 'Location service is currently unavailable on this device. Please check your device location settings.',
+          });
+        }
         return;
       }
 
@@ -463,28 +543,48 @@ export function StudentAttendanceScanner({
 
       {/* Top Modal Header */}
       {!loading && !result && (
-        <div className="flex justify-between items-center p-5 bg-brand-navy-900/80 backdrop-blur-md border-b border-brand-navy-600 z-20">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-brand-primary-500/20 text-brand-primary-400 border border-brand-primary-500/30 flex items-center justify-center">
-              <ScanLine className="w-5 h-5" />
+        <div className="flex flex-col bg-brand-navy-900/80 backdrop-blur-md border-b border-brand-navy-600 z-20">
+          <div className="flex justify-between items-center p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-brand-primary-500/20 text-brand-primary-400 border border-brand-primary-500/30 flex items-center justify-center">
+                <ScanLine className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base tracking-wide text-white">
+                  {isRTL ? 'ماسح الحضور الذكي' : 'Smart Attendance Scanner'}
+                </h3>
+                <p className="text-xs text-slate-300 font-medium">
+                  {mode === 'camera' ? (isRTL ? 'امسح الرمز المباشر' : 'Scan live QR') : mode === 'gps' ? (isRTL ? 'تسجيل عبر الموقع الجغرافي' : 'GPS Check-In') : (isRTL ? 'إدخال الرمز المكون من 6 أرقام' : 'Enter 6-digit code')}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-base tracking-wide text-white">
-                {isRTL ? 'ماسح الحضور الذكي' : 'Smart Attendance Scanner'}
-              </h3>
-              <p className="text-xs text-slate-300 font-medium">
-                {mode === 'camera' ? (isRTL ? 'امسح الرمز المباشر' : 'Scan live QR') : mode === 'gps' ? (isRTL ? 'تسجيل عبر الموقع الجغرافي' : 'GPS Check-In') : (isRTL ? 'إدخال الرمز المكون من 6 أرقام' : 'Enter 6-digit code')}
-              </p>
-            </div>
+            {onCancel && (
+              <button
+                onClick={onCancel}
+                className="w-9 h-9 rounded-xl bg-brand-navy-800 hover:bg-brand-navy-600 text-slate-300 hover:text-white flex items-center justify-center transition-colors border border-brand-navy-600"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
-          {onCancel && (
-            <button
-              onClick={onCancel}
-              className="w-9 h-9 rounded-xl bg-brand-navy-800 hover:bg-brand-navy-600 text-slate-300 hover:text-white flex items-center justify-center transition-colors border border-brand-navy-600"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
+
+          {/* Active Session Countdown Pill */}
+          {activeSessionInfo?.expiresAt && (
+            <div className="px-5 py-2.5 bg-brand-navy-800/90 border-t border-brand-navy-700/80 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-slate-300 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="truncate font-semibold text-[11px]">
+                  {isRTL ? 'تسجيل الحضور مفتوح حالياً' : 'Check-in open'}
+                </span>
+              </div>
+              <SessionCountdown
+                expiresAt={activeSessionInfo.expiresAt}
+                createdAt={activeSessionInfo.createdAt}
+                gracePeriodMins={activeSessionInfo.gracePeriodMins}
+                variant="badge"
+              />
+            </div>
           )}
         </div>
       )}
@@ -634,6 +734,19 @@ export function StudentAttendanceScanner({
               <p className="text-xs text-slate-300 font-medium max-w-xs mb-4 leading-relaxed">
                 {t('attendance.gpsScannerDesc', 'توثيق الحضور تلقائياً بالاعتماد على إحداثيات موقعك المباشر داخل نطاق قاعة المحاضرة.')}
               </p>
+
+              {/* Active Session Live Countdown in GPS mode */}
+              {activeSessionInfo?.expiresAt && (
+                <div className="w-full max-w-xs mb-4">
+                  <SessionCountdown
+                    expiresAt={activeSessionInfo.expiresAt}
+                    createdAt={activeSessionInfo.createdAt}
+                    gracePeriodMins={activeSessionInfo.gracePeriodMins}
+                    variant="card"
+                    showGracePeriodStatus={true}
+                  />
+                </div>
+              )}
 
               {courses && courses.length > 0 && (
                 <div className="w-full max-w-xs mb-4">
