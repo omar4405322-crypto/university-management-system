@@ -12,6 +12,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/button';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { SessionCountdown } from '../../components/attendance/SessionCountdown';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
@@ -36,7 +37,7 @@ export function FacultyAttendanceDashboard() {
   const [roster, setRoster] = useState<any[]>([]);
   const [instructors, setInstructors] = useState<{ doctor: any; teachingAssistant: any }>({ doctor: null, teachingAssistant: null });
   const [rosterSearch, setRosterSearch] = useState('');
-  const [rosterFilter, setRosterFilter] = useState<'PRESENT' | 'LATE' | 'FLAGGED' | 'ALL' | 'ABSENT'>('PRESENT');
+  const [rosterFilter, setRosterFilter] = useState<'PRESENT' | 'LATE' | 'FLAGGED' | 'ALL' | 'ABSENT'>('ALL');
   const [gracePeriods, setGracePeriods] = useState<Record<number, number>>({});
 
   const [loading, setLoading] = useState(false);
@@ -317,8 +318,9 @@ export function FacultyAttendanceDashboard() {
     }
   };
 
-  const presentCount = roster.filter(s => s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE').length;
-  const lateCount = roster.filter(s => s.existingStatus === 'LATE').length;
+  const presentCount = roster.filter(s => (s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE') && !s.existingLocationFlagged).length;
+  const lateCount = roster.filter(s => s.existingStatus === 'LATE' && !s.existingLocationFlagged).length;
+  const absentCount = roster.filter(s => s.existingStatus === 'ABSENT').length;
 
   const filteredStudents = roster.filter(s => {
     const fullName = `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase();
@@ -331,10 +333,10 @@ export function FacultyAttendanceDashboard() {
     if (!matchesSearch) return false;
 
     if (rosterFilter === 'PRESENT') {
-      return s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE';
+      return (s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE') && !s.existingLocationFlagged;
     }
     if (rosterFilter === 'LATE') {
-      return s.existingStatus === 'LATE';
+      return s.existingStatus === 'LATE' && !s.existingLocationFlagged;
     }
     if (rosterFilter === 'ABSENT') {
       return s.existingStatus === 'ABSENT';
@@ -457,7 +459,7 @@ export function FacultyAttendanceDashboard() {
                       {t('attendance.late', 'متأخر')}: {lateCount}
                     </Badge>
                     <Badge className="bg-rose-100 text-rose-800 font-bold">
-                      {t('attendance.absent', 'غائب')}: {roster.length - presentCount - lateCount}
+                      {t('attendance.absent', 'غائب')}: {absentCount}
                     </Badge>
                   </div>
 
@@ -491,7 +493,7 @@ export function FacultyAttendanceDashboard() {
                           : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
                       }`}
                     >
-                      {t('attendance.absent', 'الغائبون')} ({roster.length - presentCount - lateCount})
+                      {t('attendance.absent', 'الغائبون')} ({absentCount})
                     </button>
                     <button
                       onClick={() => setRosterFilter('FLAGGED')}
@@ -579,14 +581,17 @@ export function FacultyAttendanceDashboard() {
                 ) : (
                   <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-800/50 max-h-[300px] overflow-y-auto">
                     {filteredStudents.map((s: any) => {
-                      const isPresent = s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE';
+                      const isFlagged = Boolean(s.existingLocationFlagged);
+                      const isPresent = (s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE') && !isFlagged;
                       return (
                         <div key={s.id} className="p-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors gap-3">
                           <div className="flex items-center gap-3 min-w-0">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-                              isPresent 
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' 
-                                : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
+                              isFlagged
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                : isPresent 
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' 
+                                  : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
                             }`}>
                               {s.firstName?.[0] || 'S'}{s.lastName?.[0] || ''}
                             </div>
@@ -603,18 +608,24 @@ export function FacultyAttendanceDashboard() {
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
-                            {isPresent && (
+                            {s.existingStatus && s.existingStatus !== 'ABSENT' && (
                               <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] uppercase font-bold">
                                 {s.method || 'QR'}
                               </Badge>
                             )}
-                            <Badge className={
-                              s.existingStatus === 'PRESENT' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-bold' :
-                              s.existingStatus === 'LATE' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold' :
-                              'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 font-bold'
-                            }>
-                              {s.existingStatus === 'PRESENT' ? 'حاضر' : s.existingStatus === 'LATE' ? 'متأخر' : 'غائب'}
-                            </Badge>
+                            {isFlagged ? (
+                              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold border border-amber-300 dark:border-amber-700">
+                                {t('attendance.pendingReviewBadge', 'قيد المراجعة')}
+                              </Badge>
+                            ) : (
+                              <Badge className={
+                                s.existingStatus === 'PRESENT' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-bold' :
+                                s.existingStatus === 'LATE' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold' :
+                                'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 font-bold'
+                              }>
+                                {s.existingStatus === 'PRESENT' ? 'حاضر' : s.existingStatus === 'LATE' ? 'متأخر' : 'غائب'}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       );
@@ -690,11 +701,21 @@ export function FacultyAttendanceDashboard() {
                 <BookOpen className="w-7 h-7" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                  <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
-                    {t('attendance.activeSession', 'جلسة حضور نشطة')}
-                  </span>
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                    <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                      {t('attendance.activeSession', 'جلسة حضور نشطة')}
+                    </span>
+                  </div>
+                  {activeSession?.expiresAt && (
+                    <SessionCountdown
+                      expiresAt={activeSession.expiresAt}
+                      createdAt={activeSession.createdAt}
+                      gracePeriodMins={activeSession.gracePeriodMins}
+                      variant="badge"
+                    />
+                  )}
                 </div>
                 <h2 className="text-xl md:text-2xl font-black text-white drop-shadow-sm truncate">
                   {courses.find(c => c.id === selectedCourseId)?.name || 'المقرر الدراسي'}
@@ -761,7 +782,7 @@ export function FacultyAttendanceDashboard() {
               >
                 <XCircle className="w-4 h-4 text-rose-400" />
                 <span className="text-xs font-extrabold">{t('attendance.absent', 'غائب')}:</span>
-                <span className="text-base font-black text-white">{roster.length - presentCount - lateCount}</span>
+                <span className="text-base font-black text-white">{absentCount}</span>
               </button>
 
               {/* Amber Pill: Cases That Need Review */}
@@ -966,6 +987,17 @@ export function FacultyAttendanceDashboard() {
             <CardContent className="p-8 md:p-10 flex flex-col items-center justify-center">
               
               <div className="text-center mb-6">
+                {activeSession?.expiresAt && (
+                  <div className="w-full max-w-md mx-auto mb-4">
+                    <SessionCountdown
+                      expiresAt={activeSession.expiresAt}
+                      createdAt={activeSession.createdAt}
+                      gracePeriodMins={activeSession.gracePeriodMins}
+                      variant="card"
+                      showGracePeriodStatus={true}
+                    />
+                  </div>
+                )}
                 <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white mb-1">
                   {t('attendance.scanQrToAttend', 'امسح الرمز لتسجيل الحضور')}
                 </h3>
@@ -1037,7 +1069,11 @@ export function FacultyAttendanceDashboard() {
                   {roster.map((s: any) => (
                     <div key={s.id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                          s.existingLocationFlagged
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                        }`}>
                           {s.firstName?.[0] || 'S'}{s.lastName?.[0] || ''}
                         </div>
                         <div>
@@ -1046,29 +1082,49 @@ export function FacultyAttendanceDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {s.existingStatus === 'PRESENT' && s.method === 'RFID' && (
-                          <Badge className="bg-indigo-100 text-indigo-800 text-[10px] uppercase font-bold">RFID</Badge>
-                        )}
-                        {s.existingStatus === 'LATE' && s.method === 'RFID' && (
-                          <Badge className="bg-indigo-100 text-indigo-800 text-[10px] uppercase font-bold">RFID</Badge>
-                        )}
-                        {s.existingStatus === 'PRESENT' && s.method === 'QR' && (
-                          <Badge className="bg-brand-primary-100 text-brand-primary-800 text-[10px] uppercase font-bold">QR</Badge>
-                        )}
-                        {s.existingStatus === 'LATE' && s.method === 'QR' && (
-                          <Badge className="bg-brand-primary-100 text-brand-primary-800 text-[10px] uppercase font-bold">QR</Badge>
+                        {s.existingLocationFlagged ? (
+                          <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[10px] font-bold border border-amber-300 dark:border-amber-700">
+                            {t('attendance.pendingReviewBadge', 'قيد المراجعة')}
+                          </Badge>
+                        ) : (
+                          <>
+                            {s.existingStatus === 'PRESENT' && s.method === 'RFID' && (
+                              <Badge className="bg-indigo-100 text-indigo-800 text-[10px] uppercase font-bold">RFID</Badge>
+                            )}
+                            {s.existingStatus === 'LATE' && s.method === 'RFID' && (
+                              <Badge className="bg-indigo-100 text-indigo-800 text-[10px] uppercase font-bold">RFID</Badge>
+                            )}
+                            {s.existingStatus === 'PRESENT' && s.method === 'QR' && (
+                              <Badge className="bg-brand-primary-100 text-brand-primary-800 text-[10px] uppercase font-bold">QR</Badge>
+                            )}
+                            {s.existingStatus === 'LATE' && s.method === 'QR' && (
+                              <Badge className="bg-brand-primary-100 text-brand-primary-800 text-[10px] uppercase font-bold">QR</Badge>
+                            )}
+                          </>
                         )}
                         <button
                           onClick={() => handleManualToggle(s.id, 'PRESENT')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${s.existingStatus === 'PRESENT' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'}`}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            s.existingStatus === 'PRESENT' && !s.existingLocationFlagged
+                              ? 'bg-emerald-500 text-white shadow-sm'
+                              : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                          }`}
                         >حاضر</button>
                         <button
                           onClick={() => handleManualToggle(s.id, 'LATE')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${s.existingStatus === 'LATE' ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'}`}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            s.existingStatus === 'LATE' && !s.existingLocationFlagged
+                              ? 'bg-amber-500 text-white shadow-sm'
+                              : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                          }`}
                         >متأخر</button>
                         <button
                           onClick={() => handleManualToggle(s.id, 'ABSENT')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${s.existingStatus === 'ABSENT' ? 'bg-rose-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'}`}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            s.existingStatus === 'ABSENT'
+                              ? 'bg-rose-500 text-white shadow-sm'
+                              : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                          }`}
                         >غائب</button>
                       </div>
                     </div>

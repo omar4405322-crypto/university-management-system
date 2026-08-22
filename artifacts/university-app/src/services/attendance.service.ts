@@ -8,6 +8,8 @@ export interface RosterStudent {
   firstName: string;
   lastName: string;
   existingStatus: string | null;
+  existingLocationFlagged?: boolean;
+  locationFlagged?: boolean;
   existingRemarks: string;
   group?: string;
   studentGroupId?: number;
@@ -137,6 +139,11 @@ const attendanceService = {
 
   getAttendanceRecords: async (params: Record<string, any>) => {
     const response = await api.get('/attendance/records', { params });
+    return response.data;
+  },
+
+  getMyWarnings: async () => {
+    const response = await api.get('/attendance/my-warnings');
     return response.data;
   },
 

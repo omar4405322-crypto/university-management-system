@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { 
@@ -11,6 +12,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StudentAttendanceScanner } from '../../components/attendance/StudentAttendanceScanner';
+import { SessionCountdown } from '../../components/attendance/SessionCountdown';
 
 export function StudentAttendanceDashboard() {
   const { t, i18n } = useTranslation();
@@ -27,6 +29,7 @@ export function StudentAttendanceDashboard() {
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [myAttendance, setMyAttendance] = useState<any[]>([]);
   const [centralStats, setCentralStats] = useState<any>(null);
+  const [activeSession, setActiveSession] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
@@ -52,14 +55,24 @@ export function StudentAttendanceDashboard() {
   }, []);
 
   useEffect(() => {
-    if (selectedCourseId !== null) {
-      setLoading(true);
-      attendanceService.getMyAttendance(selectedCourseId)
-        .then(res => setMyAttendance(res.data || []))
-        .catch((err) => console.error('Failed to load attendance records:', err))
-        .finally(() => setLoading(false));
+    setLoading(true);
+    attendanceService.getMyAttendance(selectedCourseId || undefined)
+      .then(res => setMyAttendance(res.data || []))
+      .catch((err) => console.error('Failed to load attendance records:', err))
+      .finally(() => setLoading(false));
+
+    if (selectedCourseId) {
+      attendanceService.getActiveSession(selectedCourseId)
+        .then(res => {
+          if (res?.data?.sessionId) {
+            setActiveSession(res.data);
+          } else {
+            setActiveSession(null);
+          }
+        })
+        .catch(() => setActiveSession(null));
     } else {
-      setMyAttendance([]);
+      setActiveSession(null);
     }
   }, [selectedCourseId]);
 
@@ -98,7 +111,9 @@ export function StudentAttendanceDashboard() {
     }
   };
 
-  // Calculate statistics using formula: ((present + late * 0.5) / activeTotal) * 100
+  // Calculate statistics:
+  // - For All Courses view (selectedCourseId === null): use centralStats breakdown & rate when available.
+  // - For specific course: compute strictly from that course's myAttendance array using formula ((present + late * 0.5) / activeTotal) * 100.
   const getStats = () => {
     let present = 0, absent = 0, late = 0, excused = 0;
     myAttendance.forEach(a => {
@@ -108,25 +123,48 @@ export function StudentAttendanceDashboard() {
       if (a.status === 'EXCUSED') excused++;
     });
 
-    const total = myAttendance.length;
-    const activeTotal = total - excused;
+    const isAllCourses = selectedCourseId === null;
+
+    const displayTotal = isAllCourses && centralStats?.totalSessions !== undefined
+      ? centralStats.totalSessions
+      : myAttendance.length;
+    const displayPresent = isAllCourses && centralStats?.present !== undefined
+      ? centralStats.present
+      : present;
+    const displayLate = isAllCourses && centralStats?.late !== undefined
+      ? centralStats.late
+      : late;
+    const displayAbsent = isAllCourses && centralStats?.absent !== undefined
+      ? centralStats.absent
+      : absent;
+    const displayExcused = isAllCourses && centralStats?.excused !== undefined
+      ? centralStats.excused
+      : excused;
+
+    const activeTotal = displayTotal - displayExcused;
     
-    // Use centralized backend attendance rate when available for total cumulative stats
-    let percentage = centralStats?.rate !== undefined
-      ? Math.round(centralStats.rate)
-      : (activeTotal > 0 ? Math.round(((present + late * 0.5) / activeTotal) * 100) : 0);
+    let percentage: number;
+    if (isAllCourses) {
+      percentage = centralStats?.rate !== undefined
+        ? Math.round(centralStats.rate)
+        : (activeTotal > 0 ? Math.round(((displayPresent + displayLate * 0.5) / activeTotal) * 100) : 0);
+    } else {
+      percentage = activeTotal > 0
+        ? Math.round(((present + late * 0.5) / activeTotal) * 100)
+        : 0;
+    }
 
     const currentCourse = myCourses.find(c => c.id === selectedCourseId);
     const configuredThreshold = currentCourse?.maxAbsencePercent || currentCourse?.absenceThreshold || null;
-    const absencePercent = activeTotal > 0 ? ((absent + late * 0.5) / activeTotal) * 100 : 0;
-    const isAboveThreshold = configuredThreshold !== null && absencePercent >= configuredThreshold;
+    const absencePercent = activeTotal > 0 ? ((displayAbsent + displayLate * 0.5) / activeTotal) * 100 : 0;
+    const isAboveThreshold = !isAllCourses && configuredThreshold !== null && absencePercent >= configuredThreshold;
 
     return { 
-      present, 
-      absent, 
-      late, 
-      excused,
-      total, 
+      present: displayPresent, 
+      absent: displayAbsent, 
+      late: displayLate, 
+      excused: displayExcused,
+      total: displayTotal, 
       percentage,
       configuredThreshold,
       isAboveThreshold
@@ -219,6 +257,15 @@ export function StudentAttendanceDashboard() {
               </p>
             </div>
           </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/warnings">
+              <button className="bg-brand-navy-800/90 hover:bg-brand-navy-800 text-amber-300 hover:text-amber-200 border border-amber-500/40 rounded-xl px-4 py-2.5 text-xs font-bold transition-all flex items-center gap-2 shadow-sm cursor-pointer hover:scale-105 active:scale-95">
+                <ShieldAlert className="w-4 h-4 text-amber-400" />
+                <span>{isRTL ? 'إنذارات الغياب' : 'Absence Warnings'}</span>
+              </button>
+            </Link>
+          </div>
         </div>
 
         {/* Course Selection Bar (Horizontal Chips) */}
@@ -262,6 +309,44 @@ export function StudentAttendanceDashboard() {
       {/* Main Dashboard Content */}
       <div className="space-y-5 md:space-y-6">
         
+        {/* Active Session Live Alert Banner */}
+        {activeSession?.expiresAt && (
+          <div className="bg-gradient-to-r from-slate-900 via-brand-navy-900 to-slate-900 text-white rounded-2xl p-4 md:p-5 shadow-lg border border-brand-primary-500/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 relative">
+                <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping absolute" />
+                <ScanLine className="w-5 h-5 relative" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                    {isRTL ? 'جلسة حضور نشطة الآن' : 'Active Lecture Session'}
+                  </span>
+                </div>
+                <h4 className="text-base font-black text-white truncate">
+                  {selectedCourse ? `${selectedCourse.courseCode ? `${selectedCourse.courseCode} - ` : ''}${selectedCourse.name}` : (isRTL ? 'محاضرة جارية' : 'Ongoing Lecture')}
+                </h4>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0">
+              <SessionCountdown
+                expiresAt={activeSession.expiresAt}
+                createdAt={activeSession.createdAt}
+                gracePeriodMins={activeSession.gracePeriodMins}
+                variant="badge"
+              />
+              <button
+                onClick={() => setShowScanner(true)}
+                className="bg-brand-primary-600 hover:bg-brand-primary-700 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                <ScanLine className="w-4 h-4" />
+                <span>{isRTL ? 'تسجيل الحضور' : 'Check In'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Unified Glance-able Summary Widget */}
         <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-5 md:p-6 overflow-hidden">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
