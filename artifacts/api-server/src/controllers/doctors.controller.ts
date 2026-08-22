@@ -5,7 +5,7 @@ import { auditLog } from '../utils/audit.utils';
 import bcrypt from 'bcryptjs';
 
 import catchAsync from '../utils/catchAsync';
-import { AppError, NotFoundError, AuthorizationError } from '../utils/appError';
+import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
 
 import { getScopeWhere } from '../utils/scope.utils';
 
@@ -179,6 +179,7 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
         select: {
           email: true,
           role: true,
+          profilePicture: true,
         },
       },
       department: {
@@ -187,7 +188,10 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
       scheduleSlots: {
         include: {
           course: {
-            select: { id: true, name: true, courseCode: true, year: true, semester: true }
+            include: {
+              department: { include: { college: true } },
+              _count: { select: { enrollments: true, scheduleSlots: true } }
+            }
           }
         }
       },
@@ -206,12 +210,96 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
   const courseMap = new Map<number, any>();
   doctor.scheduleSlots.forEach((slot: any) => {
     if (slot.course && !courseMap.has(slot.course.id)) {
-      courseMap.set(slot.course.id, slot.course);
+      courseMap.set(slot.course.id, {
+        ...slot.course,
+        studentCount: slot.course._count?.enrollments || 0,
+        totalScheduledSlots: slot.course._count?.scheduleSlots || 0,
+      });
     }
   });
   const taughtCourses = Array.from(courseMap.values());
 
   res.json({ success: true, data: { ...doctor, taughtCourses } });
+});
+
+export const assignDoctorCourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const doctorId = parseInt(req.params.id as string, 10);
+  const { courseId, dayOfWeek, startTime, endTime, room } = req.body;
+
+  if (!courseId) return next(new ValidationError('courseId is required'));
+
+  const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
+  if (!doctor) return next(new NotFoundError('Doctor not found'));
+
+  const course = await prisma.course.findUnique({ where: { id: parseInt(courseId as string, 10) } });
+  if (!course) return next(new NotFoundError('Course not found'));
+
+  // Check if doctor is already assigned to a slot for this course
+  const existingSlot = await prisma.scheduleSlot.findFirst({
+    where: { doctorId, courseId: course.id }
+  });
+
+  if (existingSlot) {
+    if (dayOfWeek || startTime || endTime || room) {
+      await prisma.scheduleSlot.update({
+        where: { id: existingSlot.id },
+        data: {
+          ...(dayOfWeek ? { dayOfWeek: (dayOfWeek as string).toUpperCase() } : {}),
+          ...(startTime ? { startTime } : {}),
+          ...(endTime ? { endTime } : {}),
+          ...(room ? { room } : {}),
+        }
+      });
+    }
+  } else {
+    let timetableId: number | undefined;
+    if (course.departmentId) {
+      const foundTb = await prisma.timetable.findFirst({
+        where: {
+          departmentId: course.departmentId,
+          academicYear: course.year,
+          semester: course.semester,
+        }
+      });
+      if (foundTb) timetableId = foundTb.id;
+    }
+
+    await prisma.scheduleSlot.create({
+      data: {
+        courseId: course.id,
+        doctorId,
+        slotType: 'LECTURE',
+        dayOfWeek: (dayOfWeek || 'SUNDAY').toUpperCase(),
+        startTime: startTime || '09:00',
+        endTime: endTime || '11:00',
+        room: room || 'Main Hall',
+        timetableId,
+      }
+    });
+  }
+
+  auditLog('ASSIGN_DOCTOR_COURSE', 'Doctor', String(doctorId), req);
+
+  res.json({
+    success: true,
+    message: `Successfully assigned ${doctor.firstName} ${doctor.lastName} to ${course.name} (${course.courseCode})`,
+  });
+});
+
+export const unassignDoctorCourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const doctorId = parseInt(req.params.id as string, 10);
+  const courseId = parseInt(req.params.courseId as string, 10);
+
+  const deleted = await prisma.scheduleSlot.deleteMany({
+    where: { doctorId, courseId }
+  });
+
+  auditLog('UNASSIGN_DOCTOR_COURSE', 'Doctor', String(doctorId), req);
+
+  res.json({
+    success: true,
+    message: `Removed ${deleted.count} assignments for course`,
+  });
 });
 
 export const createDoctor = catchAsync(async (req: Request, res: Response, next: NextFunction) => {

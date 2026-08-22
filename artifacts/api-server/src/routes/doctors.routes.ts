@@ -21,7 +21,8 @@ router.put(
   validate,
   doctorsController.updateDoctor
 );
-router.patch('/:id/reset-password', passwordResetLimiter, authorize('SUPER_ADMIN', 'ADMIN'), resetDoctorPassword);
+router.post('/:id/assign-course', idParamValidation, validate, doctorsController.assignDoctorCourse);
+router.delete('/:id/courses/:courseId', idParamValidation, validate, doctorsController.unassignDoctorCourse);
 router.delete('/:id', idParamValidation, validate, doctorsController.deleteDoctor);
 
 export default router;
