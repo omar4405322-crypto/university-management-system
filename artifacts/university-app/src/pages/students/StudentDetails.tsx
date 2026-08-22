@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   Layers,
   Loader2,
+  Clock,
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -40,6 +41,7 @@ import Modal from '../../components/ui/Modal';
 import EditStudentModal from './EditStudentModal';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
 import EnrollCourseModal from './EnrollCourseModal';
+import ManageAbsenceModal from './ManageAbsenceModal';
 import { useToast } from '../../context/ToastContext';
 
 interface StudentDetailsProps {
@@ -72,10 +74,9 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [withdrawingEnrollment, setWithdrawingEnrollment] = useState<any>(null);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [absenceManagingEnrollment, setAbsenceManagingEnrollment] = useState<any>(null);
 
-  const enrolledCourses = useMemo(() => {
-    return (student?.enrollments || []).filter((item: any) => item.status === 'ENROLLED' || !item.status);
-  }, [student?.enrollments]);
+  const enrolledCourses = student?.enrollments || [];
 
   const fetchStudent = useCallback(async () => {
     if (!actualId) {
@@ -712,16 +713,27 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
                       </div>
                     </div>
 
-                    {canWithdraw && (
-                      <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 flex items-center justify-end">
+                    {canManageEnrollments && (
+                      <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 flex items-center justify-end gap-2 flex-wrap">
                         <button
                           type="button"
-                          onClick={() => setWithdrawingEnrollment(item)}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                          onClick={() => setAbsenceManagingEnrollment(item)}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-primary-600 dark:text-brand-primary-400 hover:text-brand-primary-700 dark:hover:text-brand-primary-300 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/40 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
                         >
-                          <UserMinus size={14} />
-                          <span>{t('students.withdrawCourse', 'إلغاء التسجيل')}</span>
+                          <Clock size={14} />
+                          <span>{t('students.manageAbsence', isRTL ? 'إدارة الغياب' : 'Manage Absence')}</span>
                         </button>
+
+                        {canWithdraw && (
+                          <button
+                            type="button"
+                            onClick={() => setWithdrawingEnrollment(item)}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <UserMinus size={14} />
+                            <span>{t('students.withdrawCourse', 'إلغاء التسجيل')}</span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -830,6 +842,21 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
           studentCode={student.studentId}
           departmentId={student.departmentId}
           alreadyEnrolledCourseIds={enrolledCourses.map((e: any) => e.course?.id || e.courseId).filter(Boolean)}
+          onSuccess={() => {
+            fetchStudent();
+          }}
+        />
+      )}
+
+      {absenceManagingEnrollment && (
+        <ManageAbsenceModal
+          isOpen={Boolean(absenceManagingEnrollment)}
+          onClose={() => setAbsenceManagingEnrollment(null)}
+          enrollmentId={absenceManagingEnrollment.id}
+          studentName={`${student.firstName} ${student.lastName}`}
+          courseName={absenceManagingEnrollment.course?.name || ''}
+          currentCustomThreshold={absenceManagingEnrollment.customAbsenceThreshold ?? null}
+          currentStatus={absenceManagingEnrollment.status || 'ENROLLED'}
           onSuccess={() => {
             fetchStudent();
           }}

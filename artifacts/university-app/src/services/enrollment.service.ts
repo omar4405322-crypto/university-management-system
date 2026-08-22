@@ -26,6 +26,36 @@ const enrollmentService = {
 
   updateGrade: (enrollmentId: number | string, finalGrade: number): Promise<ApiResponse<any>> =>
     apiRequest(() => api.patch(`/enrollments/${enrollmentId}/grade`, { finalGrade })),
+
+  setAbsenceThreshold: (
+    enrollmentId: number | string,
+    customAbsenceThreshold: number | null
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() =>
+      api.patch(`/enrollments/${enrollmentId}/absence-threshold`, {
+        customAbsenceThreshold,
+      })
+    ),
+
+  createExemptionPeriod: (
+    enrollmentId: number | string,
+    data: { startDate: string; endDate: string; reason: string }
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.post(`/enrollments/${enrollmentId}/exemption-periods`, data)),
+
+  getExemptionPeriods: (
+    enrollmentId: number | string
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.get(`/enrollments/${enrollmentId}/exemption-periods`)),
+
+  deleteExemptionPeriod: (
+    enrollmentId: number | string,
+    exemptionId: number | string
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() =>
+      api.delete(`/enrollments/${enrollmentId}/exemption-periods/${exemptionId}`)
+    ),
 };
 
 export default enrollmentService;
+
