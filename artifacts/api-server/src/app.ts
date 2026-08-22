@@ -13,6 +13,7 @@ import prisma from './utils/prismaClient';
 // Error Handling imports
 import globalErrorHandler from './middleware/error.middleware';
 import { NotFoundError } from './utils/appError';
+import { getRedisStatus } from './utils/redis.utils';
 
 // Route imports
 import authRoutes from './routes/auth.routes';
@@ -137,11 +138,13 @@ const apiLimiter = rateLimit({
 
 // 4. HEALTH CHECK (both /api/health and /api/healthz for deployment compatibility)
 const healthHandler = async (req: Request, res: Response): Promise<void> => {
+  const redisStatus = getRedisStatus();
   try {
     await (prisma as any).$queryRaw`SELECT 1`;
     res.status(200).json({
       success: true,
       message: 'Server and Database are healthy',
+      redis: redisStatus,
       timestamp: new Date().toISOString(),
       env: process.env.NODE_ENV,
     });
@@ -149,30 +152,14 @@ const healthHandler = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({
       success: false,
       message: 'Database connection failed',
+      redis: redisStatus,
       error: err instanceof Error ? err.message : 'Unknown error',
       timestamp: new Date().toISOString(),
     });
   }
 };
 app.get('/api/healthz', healthHandler);
-app.get('/api/health', async (req: Request, res: Response): Promise<void> => {
-  try {
-    await (prisma as any).$queryRaw`SELECT 1`;
-    res.status(200).json({
-      success: true,
-      message: 'Server and Database are healthy',
-      timestamp: new Date().toISOString(),
-      env: process.env.NODE_ENV,
-    });
-  } catch (err: any) {
-    res.status(500).json({
-      success: false,
-      message: 'Database connection failed',
-      error: err instanceof Error ? err.message : 'Unknown error',
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+app.get('/api/health', healthHandler);
 
 // 5. BODY PARSERS
 app.use(express.json({ limit: '10mb' }));

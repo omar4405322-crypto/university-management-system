@@ -38,6 +38,7 @@ const adminOrTeacher = authorize(
 router.get('/my-courses', protect, attendanceController.getMyCourses);
 router.get('/my-slots', protect, attendanceController.getMySlots);
 router.get('/my-attendance', protect, attendanceController.getMyAttendance);
+router.get('/my-warnings', protect, attendanceController.getMyAbsenceWarnings);
 
 router.get(
   '/records',
