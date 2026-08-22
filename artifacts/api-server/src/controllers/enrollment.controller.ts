@@ -91,3 +91,61 @@ export const updateGrade = catchAsync(async (req: Request, res: Response) => {
 
   res.json({ success: true, data: enrollment });
 });
+
+export const setCustomAbsenceThreshold = catchAsync(async (req: Request, res: Response) => {
+  const enrollmentId = parseInt(req.params.id as string);
+  if (isNaN(enrollmentId)) {
+    throw new AppError('Invalid enrollment ID', 400);
+  }
+
+  const { customAbsenceThreshold } = req.body;
+  const result = await EnrollmentService.setCustomAbsenceThreshold(
+    req.user,
+    enrollmentId,
+    customAbsenceThreshold !== undefined ? customAbsenceThreshold : null
+  );
+
+  res.json({ success: true, data: result });
+});
+
+export const createExemptionPeriod = catchAsync(async (req: Request, res: Response) => {
+  const enrollmentId = parseInt(req.params.id as string);
+  if (isNaN(enrollmentId)) {
+    throw new AppError('Invalid enrollment ID', 400);
+  }
+
+  const { startDate, endDate, reason } = req.body;
+  const result = await EnrollmentService.createExemptionPeriod(req.user, enrollmentId, {
+    startDate,
+    endDate,
+    reason,
+  });
+
+  res.status(201).json({ success: true, data: result });
+});
+
+export const getExemptionPeriods = catchAsync(async (req: Request, res: Response) => {
+  const enrollmentId = parseInt(req.params.id as string);
+  if (isNaN(enrollmentId)) {
+    throw new AppError('Invalid enrollment ID', 400);
+  }
+
+  const result = await EnrollmentService.getExemptionPeriods(req.user, enrollmentId);
+  res.json({ success: true, data: result });
+});
+
+export const deleteExemptionPeriod = catchAsync(async (req: Request, res: Response) => {
+  const enrollmentId = parseInt(req.params.id as string);
+  const exemptionId = parseInt(req.params.exemptionId as string);
+  if (isNaN(enrollmentId) || isNaN(exemptionId)) {
+    throw new AppError('Invalid enrollment or exemption ID', 400);
+  }
+
+  const result = await EnrollmentService.deleteExemptionPeriod(
+    req.user,
+    enrollmentId,
+    exemptionId
+  );
+  res.json({ success: true, data: result });
+});
+

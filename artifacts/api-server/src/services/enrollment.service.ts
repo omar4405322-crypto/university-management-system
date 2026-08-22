@@ -1,5 +1,13 @@
 import prisma from '../utils/prismaClient';
-import { AppError, ConflictError, NotFoundError } from '../utils/appError';
+import {
+  AppError,
+  AuthorizationError,
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from '../utils/appError';
+import { getScopeWhere } from '../utils/scope.utils';
+import { attendanceEngine } from '../attendance/attendance.engine';
 
 class EnrollmentService {
   static async enrollStudent(
@@ -146,6 +154,299 @@ class EnrollmentService {
     });
   }
 
+  static async setCustomAbsenceThreshold(
+    user: any,
+    enrollmentId: number,
+    customAbsenceThreshold: number | null
+  ) {
+    if (
+      customAbsenceThreshold !== null &&
+      (typeof customAbsenceThreshold !== 'number' ||
+        isNaN(customAbsenceThreshold) ||
+        customAbsenceThreshold < 0 ||
+        customAbsenceThreshold > 100)
+    ) {
+      throw new ValidationError('customAbsenceThreshold must be null or a number between 0 and 100');
+    }
+
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+      include: { course: true, student: true },
+    });
+
+    if (!enrollment) {
+      throw new NotFoundError('Enrollment not found');
+    }
+
+    const courseScope: any = getScopeWhere(user, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      const courseCheck = await prisma.course.findFirst({
+        where: { AND: [{ id: enrollment.courseId }, courseScope] },
+      });
+      if (!courseCheck) {
+        throw new AuthorizationError(
+          'Access denied: You are not authorized for this course.'
+        );
+      }
+    }
+
+    await prisma.enrollment.update({
+      where: { id: enrollmentId },
+      data: {
+        customAbsenceThreshold,
+      },
+    });
+
+    await attendanceEngine.recalculateAbsence(enrollment.studentId, enrollment.courseId);
+
+    const finalEnrollment = await prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+      include: {
+        course: { select: { id: true, name: true, courseCode: true } },
+        student: { select: { id: true, firstName: true, lastName: true, studentId: true } },
+      },
+    });
+
+    return finalEnrollment;
+  }
+
+  static async createExemptionPeriod(
+    user: any,
+    enrollmentId: number,
+    data: { startDate: string | Date; endDate: string | Date; reason: string }
+  ) {
+    const { startDate, endDate, reason } = data;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new ValidationError('startDate and endDate must be valid dates');
+    }
+
+    if (start.getTime() > end.getTime()) {
+      throw new ValidationError('startDate must be before or equal to endDate');
+    }
+
+    if (!reason || typeof reason !== 'string' || !reason.trim()) {
+      throw new ValidationError('reason is required');
+    }
+
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+      include: { course: true, student: true },
+    });
+
+    if (!enrollment) {
+      throw new NotFoundError('Enrollment not found');
+    }
+
+    const courseScope: any = getScopeWhere(user, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      const courseCheck = await prisma.course.findFirst({
+        where: { AND: [{ id: enrollment.courseId }, courseScope] },
+      });
+      if (!courseCheck) {
+        throw new AuthorizationError(
+          'Access denied: You are not authorized for this course.'
+        );
+      }
+    }
+
+    const exemption = await prisma.absenceExemptionPeriod.create({
+      data: {
+        enrollmentId,
+        startDate: start,
+        endDate: end,
+        reason: reason.trim(),
+        createdById: user.id,
+      },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            doctor: { select: { firstName: true, lastName: true } },
+            student: { select: { firstName: true, lastName: true } },
+            teachingAssistant: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+
+    await attendanceEngine.recalculateAbsence(enrollment.studentId, enrollment.courseId);
+
+    const updatedEnrollment = await prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+      select: {
+        id: true,
+        status: true,
+        customAbsenceThreshold: true,
+      },
+    });
+
+    const firstName =
+      exemption.createdBy.doctor?.firstName ||
+      exemption.createdBy.student?.firstName ||
+      exemption.createdBy.teachingAssistant?.firstName ||
+      exemption.createdBy.email.split('@')[0];
+    const lastName =
+      exemption.createdBy.doctor?.lastName ||
+      exemption.createdBy.student?.lastName ||
+      exemption.createdBy.teachingAssistant?.lastName ||
+      '';
+
+    return {
+      exemptionPeriod: {
+        id: exemption.id,
+        enrollmentId: exemption.enrollmentId,
+        startDate: exemption.startDate,
+        endDate: exemption.endDate,
+        reason: exemption.reason,
+        createdById: exemption.createdById,
+        createdAt: exemption.createdAt,
+        createdBy: {
+          id: exemption.createdBy.id,
+          email: exemption.createdBy.email,
+          firstName,
+          lastName,
+        },
+      },
+      enrollment: updatedEnrollment,
+    };
+  }
+
+  static async getExemptionPeriods(user: any, enrollmentId: number) {
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+      include: { course: true, student: true },
+    });
+
+    if (!enrollment) {
+      throw new NotFoundError('Enrollment not found');
+    }
+
+    if (user.role === 'STUDENT') {
+      const studentId = user.student?.id;
+      if (enrollment.studentId !== studentId && enrollment.student?.userId !== user.id) {
+        throw new AuthorizationError('Access denied: You can only view your own exemption periods.');
+      }
+    } else if (['SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
+      const courseScope: any = getScopeWhere(user, 'course');
+      if (courseScope && Object.keys(courseScope).length) {
+        const courseCheck = await prisma.course.findFirst({
+          where: { AND: [{ id: enrollment.courseId }, courseScope] },
+        });
+        if (!courseCheck) {
+          throw new AuthorizationError(
+            'Access denied: You are not authorized for this course.'
+          );
+        }
+      }
+    } else {
+      throw new AuthorizationError(
+        'Access denied: You are not authorized to view exemption periods.'
+      );
+    }
+
+    const exemptionPeriods = await prisma.absenceExemptionPeriod.findMany({
+      where: { enrollmentId },
+      orderBy: { startDate: 'desc' },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            doctor: { select: { firstName: true, lastName: true } },
+            student: { select: { firstName: true, lastName: true } },
+            teachingAssistant: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+
+    return exemptionPeriods.map((p) => {
+      const firstName =
+        p.createdBy.doctor?.firstName ||
+        p.createdBy.student?.firstName ||
+        p.createdBy.teachingAssistant?.firstName ||
+        p.createdBy.email.split('@')[0];
+      const lastName =
+        p.createdBy.doctor?.lastName ||
+        p.createdBy.student?.lastName ||
+        p.createdBy.teachingAssistant?.lastName ||
+        '';
+
+      return {
+        id: p.id,
+        enrollmentId: p.enrollmentId,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        reason: p.reason,
+        createdById: p.createdById,
+        createdAt: p.createdAt,
+        createdBy: {
+          id: p.createdBy.id,
+          email: p.createdBy.email,
+          firstName,
+          lastName,
+        },
+      };
+    });
+  }
+
+  static async deleteExemptionPeriod(user: any, enrollmentId: number, exemptionId: number) {
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+      include: { course: true, student: true },
+    });
+
+    if (!enrollment) {
+      throw new NotFoundError('Enrollment not found');
+    }
+
+    const courseScope: any = getScopeWhere(user, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      const courseCheck = await prisma.course.findFirst({
+        where: { AND: [{ id: enrollment.courseId }, courseScope] },
+      });
+      if (!courseCheck) {
+        throw new AuthorizationError(
+          'Access denied: You are not authorized for this course.'
+        );
+      }
+    }
+
+    const exemption = await prisma.absenceExemptionPeriod.findFirst({
+      where: { id: exemptionId, enrollmentId },
+    });
+
+    if (!exemption) {
+      throw new NotFoundError('Exemption period not found for this enrollment');
+    }
+
+    await prisma.absenceExemptionPeriod.delete({
+      where: { id: exemption.id },
+    });
+
+    await attendanceEngine.recalculateAbsence(enrollment.studentId, enrollment.courseId);
+
+    const updatedEnrollment = await prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+      select: {
+        id: true,
+        status: true,
+        customAbsenceThreshold: true,
+      },
+    });
+
+    return {
+      message: 'Exemption period deleted successfully',
+      enrollment: updatedEnrollment,
+    };
+  }
+
   static async getStudentTranscript(studentId: number) {
     const [enrollments, examSubmissions, quizSubmissions, taskSubmissions] = await Promise.all([
       prisma.enrollment.findMany({
@@ -246,3 +547,4 @@ class EnrollmentService {
 }
 
 export { EnrollmentService };
+
