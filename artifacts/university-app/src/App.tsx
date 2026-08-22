@@ -68,6 +68,7 @@ const StudentRecord = lazy(() => import('./pages/records/StudentRecord'));
 const DegreeAudit = lazy(() => import('./pages/degree-audit/DegreeAudit'));
 const GroupManagement = lazy(() => import('./pages/groups/GroupManagement'));
 const StudentStatisticsPage = lazy(() => import('./pages/statistics/StudentStatisticsPage'));
+const StudentWarningsPage = lazy(() => import('./pages/attendance/StudentWarningsPage'));
 
 const LazyRoute = ({ children }: { children: React.ReactNode }) => (
   <ErrorBoundary>
@@ -566,6 +567,27 @@ const AppContent = () => {
                             <PageWrapper>
                               <LazyRoute>
                                 <AttendancePage />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="warnings"
+                        element={
+                          <ProtectedRoute
+                            allowedRoles={[
+                              'STUDENT',
+                              'SUPER_ADMIN',
+                              'ADMIN',
+                              'DOCTOR',
+                              'COLLEGE_ADMIN',
+                              'DEPARTMENT_ADMIN',
+                            ]}
+                          >
+                            <PageWrapper>
+                              <LazyRoute>
+                                <StudentWarningsPage />
                               </LazyRoute>
                             </PageWrapper>
                           </ProtectedRoute>
