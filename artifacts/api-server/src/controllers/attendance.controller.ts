@@ -192,15 +192,18 @@ export const getMyAttendance = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { courseId } = req.query;
 
-    if (!courseId) {
-      return next(new AppError('courseId is required', 400));
-    }
-
     const data = await AttendanceService.getMyAttendance(
       req.user!.id,
-      parseInt(courseId as string)
+      courseId ? parseInt(courseId as string) : undefined
     );
 
+    return res.json({ success: true, data });
+  }
+);
+
+export const getMyAbsenceWarnings = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const data = await AttendanceService.getMyAbsenceWarnings(req.user!);
     return res.json({ success: true, data });
   }
 );

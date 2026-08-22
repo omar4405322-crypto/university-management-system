@@ -7,7 +7,6 @@ if (process.env.REDIS_URL && process.env.NODE_ENV?.trim() !== 'test') {
   redis = new Redis(process.env.REDIS_URL, {
     maxRetriesPerRequest: 3,
     retryStrategy(times: number) {
-      if (times > 3) return null;
       return Math.min(times * 50, 2000);
     },
   });
@@ -17,6 +16,17 @@ if (process.env.REDIS_URL && process.env.NODE_ENV?.trim() !== 'test') {
 } else if (process.env.NODE_ENV?.trim() !== 'test') {
   logger.warn('[REDIS] REDIS_URL is not set. TOTP replay protection will not be shared across instances and relies only on in-memory process state.');
 }
+
+/**
+ * Get current Redis connection and configuration status
+ */
+export const getRedisStatus = () => {
+  return {
+    configured: Boolean(process.env.REDIS_URL),
+    connected: redis ? redis.status === 'ready' : false,
+    status: redis ? redis.status : 'disabled',
+  };
+};
 
 /**
  * Cache data with a TTL

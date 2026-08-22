@@ -225,6 +225,8 @@ class AttendanceSessionService {
     return {
       sessionId: session.id,
       expiresAt: session.expiresAt,
+      createdAt: session.createdAt,
+      gracePeriodMins: session.gracePeriodMins,
       latitude: session.latitude,
       longitude: session.longitude,
       radius: session.radius,
@@ -307,12 +309,13 @@ class AttendanceSessionService {
       scheduleSlotId: session.scheduleSlotId,
       doctorId: session.doctorId,
       expiresAt: session.expiresAt,
+      createdAt: session.createdAt,
+      gracePeriodMins: session.gracePeriodMins,
       latitude: session.latitude,
       longitude: session.longitude,
       radius: session.radius,
       codeStepSeconds: session.codeStepSeconds,
       isActive: session.isActive,
-      createdAt: session.createdAt,
     }));
   }
 
@@ -474,6 +477,7 @@ class AttendanceSessionService {
         studentId: true,
         status: true,
         method: true,
+        locationFlagged: true,
         remarks: true,
         recordedBy: { select: { email: true, role: true } },
         createdAt: true,
@@ -492,6 +496,8 @@ class AttendanceSessionService {
         lastName: s.lastName,
         group: s.group?.name || '-',
         existingStatus: record ? record.status : 'ABSENT',
+        existingLocationFlagged: Boolean(record?.locationFlagged),
+        locationFlagged: Boolean(record?.locationFlagged),
         method: record?.method || 'MANUAL',
         existingRemarks: record?.remarks || '',
         recordedBy: record?.recordedBy,
