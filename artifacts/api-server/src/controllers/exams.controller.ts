@@ -362,6 +362,30 @@ export const startExamSession = catchAsync(async (req: Request, res: Response, n
   const exam = await prisma.exam.findUnique({ where: { id: examId } });
   if (!exam) return next(new NotFoundError('Exam not found'));
 
+  // Verify student enrollment eligibility
+  const enrollment = await prisma.enrollment.findFirst({
+    where: {
+      studentId: student.id,
+      courseId: exam.courseId,
+    },
+    orderBy: [{ academicYear: 'desc' }, { semester: 'desc' }, { id: 'desc' }],
+  });
+
+  if (!enrollment || enrollment.status !== 'ENROLLED') {
+    if (enrollment?.status === 'BLOCKED') {
+      return next(
+        new AuthorizationError(
+          'عذراً، تم حظر تسجيلك في هذا المقرر بسبب تجاوز نسبة الغياب، ولا يمكنك دخول الامتحان. يرجى مراجعة إدارة الكلية.'
+        )
+      );
+    }
+    return next(
+      new AuthorizationError(
+        'عذراً، لا يمكنك دخول هذا الامتحان لأنك غير مسجل حالياً في هذا المقرر الدراسي.'
+      )
+    );
+  }
+
   // Ensure exam is active based on date and time
   const now = new Date();
   
@@ -449,6 +473,33 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
   
   const student = await prisma.student.findUnique({ where: { userId: req.user!.id } });
   if (!student) return next(new AuthorizationError('Only students can submit exams'));
+
+  const exam = await prisma.exam.findUnique({ where: { id: examId } });
+  if (!exam) return next(new NotFoundError('Exam not found'));
+
+  // Verify student enrollment eligibility
+  const enrollment = await prisma.enrollment.findFirst({
+    where: {
+      studentId: student.id,
+      courseId: exam.courseId,
+    },
+    orderBy: [{ academicYear: 'desc' }, { semester: 'desc' }, { id: 'desc' }],
+  });
+
+  if (!enrollment || enrollment.status !== 'ENROLLED') {
+    if (enrollment?.status === 'BLOCKED') {
+      return next(
+        new AuthorizationError(
+          'عذراً، تم حظر تسجيلك في هذا المقرر بسبب تجاوز نسبة الغياب، ولا يمكنك دخول الامتحان. يرجى مراجعة إدارة الكلية.'
+        )
+      );
+    }
+    return next(
+      new AuthorizationError(
+        'عذراً، لا يمكنك دخول هذا الامتحان لأنك غير مسجل حالياً في هذا المقرر الدراسي.'
+      )
+    );
+  }
 
   let submission = await prisma.examSubmission.findUnique({
     where: { examId_studentId: { examId, studentId: student.id } }
