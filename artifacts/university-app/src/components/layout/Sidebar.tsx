@@ -20,6 +20,7 @@ import {
   Bell,
   LogOut,
   ShieldCheck,
+  ShieldAlert,
   Layers,
   CheckSquare,
   Activity,
@@ -260,6 +261,12 @@ const Sidebar = ({ isOpen, onClose }) => {
             title: 'nav.attendance',
             path: '/attendance',
             icon: UserCheck,
+            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
+          },
+          {
+            title: 'nav.warnings',
+            path: '/warnings',
+            icon: ShieldAlert,
             roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
           },
           {
