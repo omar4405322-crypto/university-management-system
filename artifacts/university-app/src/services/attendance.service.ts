@@ -56,6 +56,23 @@ export interface RfidAttendanceParams {
   secret: string;
 }
 
+export interface RecordAttendanceResponse {
+  success: boolean;
+  data?: any;
+  existingStatus?: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
+  alreadyRecorded?: boolean;
+  recordedAt?: string;
+  overlapBlocked?: boolean;
+  conflictingCourse?: {
+    courseCode: string;
+    name: string;
+    startTime: string;
+    endTime: string;
+  };
+  message?: string;
+  flagged?: boolean;
+}
+
 const attendanceService = {
   recordManual: async (params: {
     studentId?: number;
@@ -71,22 +88,22 @@ const attendanceService = {
     return response.data;
   },
 
-  recordQr: async (params: QrAttendanceParams) => {
+  recordQr: async (params: QrAttendanceParams): Promise<RecordAttendanceResponse> => {
     const response = await api.post('/attendance/qr', params);
     return response.data;
   },
 
-  recordRfid: async (params: RfidAttendanceParams) => {
+  recordRfid: async (params: RfidAttendanceParams): Promise<RecordAttendanceResponse> => {
     const response = await api.post('/attendance/rfid', params);
     return response.data;
   },
 
-  recordFace: async (params: Record<string, any>) => {
+  recordFace: async (params: Record<string, any>): Promise<RecordAttendanceResponse> => {
     const response = await api.post('/attendance/face', params);
     return response.data;
   },
 
-  recordGps: async (params: Record<string, any>) => {
+  recordGps: async (params: Record<string, any>): Promise<RecordAttendanceResponse> => {
     const response = await api.post('/attendance/gps', params);
     return response.data;
   },
@@ -170,12 +187,12 @@ const attendanceService = {
     return response.data;
   },
 
-  recordAttendanceWithQR: async (payload: { sessionId: number; token: string; step?: number }, location?: { latitude: number; longitude: number }) => {
+  recordAttendanceWithQR: async (payload: { sessionId: number; token: string; step?: number }, location?: { latitude: number; longitude: number }): Promise<RecordAttendanceResponse> => {
     const data = { ...payload, ...location };
     return attendanceService.recordQr(data as any);
   },
 
-  scanQr: async (data: QrAttendanceParams) => {
+  scanQr: async (data: QrAttendanceParams): Promise<RecordAttendanceResponse> => {
     return attendanceService.recordQr(data);
   },
 

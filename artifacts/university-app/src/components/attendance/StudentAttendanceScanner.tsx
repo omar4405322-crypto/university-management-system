@@ -30,9 +30,16 @@ export function StudentAttendanceScanner({
   const [activeCourseForGps, setActiveCourseForGps] = useState<number | null>(selectedCourseId || null);
   const [result, setResult] = useState<{
     success: boolean;
-    status?: 'PRESENT' | 'LATE' | 'ALREADY_MARKED' | 'FLAGGED' | 'ERROR';
+    status?: 'PRESENT' | 'LATE' | 'ALREADY_MARKED' | 'FLAGGED' | 'ERROR' | 'OVERLAP_BLOCKED';
     message: string;
-    flagged?: boolean
+    flagged?: boolean;
+    recordedAt?: string;
+    conflictingCourse?: {
+      courseCode: string;
+      name: string;
+      startTime: string;
+      endTime: string;
+    };
   } | null>(null);
 
   const [activeSessionInfo, setActiveSessionInfo] = useState<any>(null);
@@ -187,9 +194,19 @@ export function StudentAttendanceScanner({
         deviceId
       });
 
+      if (res.overlapBlocked) {
+        setResult({
+          success: false,
+          status: 'OVERLAP_BLOCKED',
+          message: res.message || (isRTL ? 'لديك محاضرة أخرى مسجل حضورها في نفس التوقيت' : 'You have an overlapping lecture recorded at this time.'),
+          conflictingCourse: res.conflictingCourse
+        });
+        return;
+      }
+
       if (res.success) {
         const isFlagged = res.flagged || res.data?.locationFlagged;
-        const isExisting = res.existingStatus || (res.message && res.message.includes('سابقاً'));
+        const isExisting = res.alreadyRecorded || res.existingStatus || (res.message && res.message.includes('سابقاً'));
         const isLate = res.data?.status === 'LATE' || res.existingStatus === 'LATE';
 
         let statusType: 'PRESENT' | 'LATE' | 'ALREADY_MARKED' | 'FLAGGED' = 'PRESENT';
@@ -205,15 +222,17 @@ export function StudentAttendanceScanner({
           success: true,
           status: statusType,
           message: res.message || (isRTL ? 'تم تسجيل حضورك بنجاح.' : 'Attendance recorded successfully.'),
-          flagged: isFlagged
+          flagged: isFlagged,
+          recordedAt: res.recordedAt
         });
       } else {
         const sanitized = sanitizeErrorMessage(res.message);
-        const isDuplicate = /already|سابقاً|بالفعل/i.test(res.message || '');
+        const isDuplicate = res.alreadyRecorded || /already|سابقاً|بالفعل/i.test(res.message || '');
         setResult({
           success: isDuplicate,
           status: isDuplicate ? 'ALREADY_MARKED' : 'ERROR',
-          message: sanitized
+          message: sanitized,
+          recordedAt: res.recordedAt
         });
       }
     } catch (err: any) {
@@ -382,10 +401,20 @@ export function StudentAttendanceScanner({
         deviceId,
       });
 
+      if (res.overlapBlocked) {
+        setResult({
+          success: false,
+          status: 'OVERLAP_BLOCKED',
+          message: res.message || (isRTL ? 'لديك محاضرة أخرى مسجل حضورها في نفس التوقيت' : 'You have an overlapping lecture recorded at this time.'),
+          conflictingCourse: res.conflictingCourse
+        });
+        return;
+      }
+
       if (res.success || res.data) {
         const data = res.data || res;
         const isFlagged = data.locationFlagged;
-        const isExisting = data.status === 'ALREADY_MARKED' || (res.message && res.message.includes('سابقاً'));
+        const isExisting = data.status === 'ALREADY_MARKED' || res.alreadyRecorded || res.existingStatus || (res.message && res.message.includes('سابقاً'));
         const isLate = data.status === 'LATE';
 
         let statusType: 'PRESENT' | 'LATE' | 'ALREADY_MARKED' | 'FLAGGED' = 'PRESENT';
@@ -402,14 +431,16 @@ export function StudentAttendanceScanner({
           status: statusType,
           message: res.message || (isRTL ? 'تم تسجيل حضورك عبر GPS بنجاح.' : 'GPS attendance recorded successfully.'),
           flagged: isFlagged,
+          recordedAt: res.recordedAt || data.recordedAt
         });
       } else {
         const sanitized = sanitizeErrorMessage(res.message);
-        const isDuplicate = /already|سابقاً|بالفعل/i.test(res.message || '');
+        const isDuplicate = res.alreadyRecorded || /already|سابقاً|بالفعل/i.test(res.message || '');
         setResult({
           success: isDuplicate,
           status: isDuplicate ? 'ALREADY_MARKED' : 'ERROR',
           message: sanitized,
+          recordedAt: res.recordedAt
         });
       }
     } catch (err: any) {
@@ -622,9 +653,16 @@ export function StudentAttendanceScanner({
                 <h3 className="text-2xl font-black text-brand-primary-400 mb-2">
                   {isRTL ? 'تم تأكيد حضورك بنجاح!' : 'Attendance Confirmed!'}
                 </h3>
-                <p className="text-sm text-slate-300 font-medium max-w-sm mb-6 leading-relaxed bg-brand-navy-800 border border-brand-navy-600 p-4 rounded-xl">
-                  {result.message}
-                </p>
+                <div className="bg-brand-navy-800 border border-brand-navy-600 p-4 rounded-xl max-w-sm w-full mb-6 text-center">
+                  <p className="text-sm text-slate-300 font-medium leading-relaxed">
+                    {result.message}
+                  </p>
+                  {result.recordedAt && (
+                    <p className="mt-2 text-xs text-slate-400 font-mono">
+                      {new Date(result.recordedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -637,9 +675,16 @@ export function StudentAttendanceScanner({
                 <h3 className="text-2xl font-black text-amber-400 mb-2">
                   {isRTL ? 'تم تسجيل الحضور (متأخر)' : 'Attendance Recorded (Late)'}
                 </h3>
-                <p className="text-sm text-slate-300 font-medium max-w-sm mb-6 leading-relaxed bg-brand-navy-800 border border-brand-navy-600 p-4 rounded-xl">
-                  {result.message || (isRTL ? 'تم تسجيل حضورك بنجاح ولكن بعد انقضاء وقت المحاضرة المحدد.' : 'Attendance recorded after the grace period.')}
-                </p>
+                <div className="bg-brand-navy-800 border border-brand-navy-600 p-4 rounded-xl max-w-sm w-full mb-6 text-center">
+                  <p className="text-sm text-slate-300 font-medium leading-relaxed">
+                    {result.message || (isRTL ? 'تم تسجيل حضورك بنجاح ولكن بعد انقضاء وقت المحاضرة المحدد.' : 'Attendance recorded after the grace period.')}
+                  </p>
+                  {result.recordedAt && (
+                    <p className="mt-2 text-xs text-amber-500/80 font-mono">
+                      {new Date(result.recordedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -652,9 +697,16 @@ export function StudentAttendanceScanner({
                 <h3 className="text-2xl font-black text-sky-400 mb-2">
                   {isRTL ? 'حضورك مسجل بالفعل' : 'Already Registered'}
                 </h3>
-                <p className="text-sm text-slate-300 font-medium max-w-sm mb-6 leading-relaxed bg-brand-navy-800 border border-brand-navy-600 p-4 rounded-xl">
-                  {result.message || (isRTL ? 'لقد قمت بتسجيل حضورك لهذه المحاضرة مسبقاً.' : 'Your attendance was already submitted for this lecture.')}
-                </p>
+                <div className="bg-brand-navy-800 border border-brand-navy-600 p-4 rounded-xl max-w-sm w-full mb-6 text-center">
+                  <p className="text-sm text-slate-300 font-medium leading-relaxed">
+                    {result.message || (isRTL ? 'لقد قمت بتسجيل حضورك لهذه المحاضرة مسبقاً.' : 'Your attendance was already submitted for this lecture.')}
+                  </p>
+                  {result.recordedAt && (
+                    <p className="mt-2 text-xs text-sky-500/80 font-mono">
+                      {new Date(result.recordedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -693,6 +745,37 @@ export function StudentAttendanceScanner({
                 <p className="text-sm text-slate-300 font-medium max-w-sm mb-6 leading-relaxed bg-brand-navy-800 border border-brand-navy-600 p-4 rounded-xl">
                   {result.message}
                 </p>
+              </div>
+            )}
+
+            {/* Outcome 6: OVERLAP_BLOCKED (Schedule Conflict) */}
+            {result.status === 'OVERLAP_BLOCKED' && (
+              <div className="w-full flex flex-col items-center">
+                <div className="w-20 h-20 rounded-full bg-rose-500/20 text-rose-400 border-2 border-rose-500/40 flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(244,63,94,0.3)]">
+                  <AlertTriangle className="w-10 h-10" />
+                </div>
+                <h3 className="text-2xl font-black text-rose-400 mb-2">
+                  {isRTL ? 'تعارض في التوقيت' : 'Schedule Conflict'}
+                </h3>
+                <div className="bg-rose-950/40 border border-rose-800/60 p-4 rounded-xl max-w-sm w-full mb-6 text-start">
+                  <p className="text-xs text-rose-300 font-bold mb-1 flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {isRTL ? 'محاضرة متعارضة مسجلة مسبقاً' : 'Overlapping lecture already attended'}
+                  </p>
+                  <p className="text-xs text-slate-300 font-medium leading-relaxed mb-2">
+                    {result.message}
+                  </p>
+                  {result.conflictingCourse && (
+                    <div className="bg-brand-navy-900/50 p-3 rounded-lg border border-brand-navy-700/50">
+                      <p className="text-sm font-bold text-slate-200">
+                        {result.conflictingCourse.courseCode} - {result.conflictingCourse.name}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1 font-mono">
+                        {result.conflictingCourse.startTime} - {result.conflictingCourse.endTime}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

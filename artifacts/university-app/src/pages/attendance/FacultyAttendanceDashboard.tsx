@@ -618,13 +618,20 @@ export function FacultyAttendanceDashboard() {
                                 {t('attendance.pendingReviewBadge', 'قيد المراجعة')}
                               </Badge>
                             ) : (
-                              <Badge className={
-                                s.existingStatus === 'PRESENT' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-bold' :
-                                s.existingStatus === 'LATE' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold' :
-                                'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 font-bold'
-                              }>
-                                {s.existingStatus === 'PRESENT' ? 'حاضر' : s.existingStatus === 'LATE' ? 'متأخر' : 'غائب'}
-                              </Badge>
+                              <div className="flex flex-col items-end">
+                                <Badge className={
+                                  s.existingStatus === 'PRESENT' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-bold mb-1' :
+                                  s.existingStatus === 'LATE' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold mb-1' :
+                                  'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 font-bold mb-1'
+                                }>
+                                  {s.existingStatus === 'PRESENT' ? 'حاضر' : s.existingStatus === 'LATE' ? 'متأخر' : 'غائب'}
+                                </Badge>
+                                {(s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE') && (
+                                  <span className="text-[10px] text-slate-400 font-mono">
+                                    {s.recordedAt ? new Date(s.recordedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>
