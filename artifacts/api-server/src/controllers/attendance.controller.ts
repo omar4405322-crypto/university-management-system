@@ -62,6 +62,14 @@ export const recordAttendanceQr = catchAsync(
         userAgent: req.get('User-Agent'),
       }
     );
+    if (result.overlapBlocked) {
+      return res.json({
+        success: true,
+        overlapBlocked: true,
+        message: 'لديك محاضرة أخرى مسجل حضورها في نفس التوقيت',
+        conflictingCourse: result.conflictingCourse,
+      });
+    }
 
     if (result.alreadyRecorded) {
       return res.json({
@@ -107,6 +115,15 @@ export const recordAttendanceRfid = catchAsync(
       }
     );
 
+    if (result.overlapBlocked) {
+      return res.json({
+        success: true,
+        overlapBlocked: true,
+        message: 'لديك محاضرة أخرى مسجل حضورها في نفس التوقيت',
+        conflictingCourse: result.conflictingCourse,
+      });
+    }
+
     if (result.alreadyRecorded) {
       return res.json({
         success: true,
@@ -131,6 +148,14 @@ export const recordAttendanceFace = catchAsync(
         ipAddress: req.ip || req.socket.remoteAddress,
       }
     );
+    if (result.overlapBlocked) {
+      return res.json({
+        success: true,
+        overlapBlocked: true,
+        message: 'لديك محاضرة أخرى مسجل حضورها في نفس التوقيت',
+        conflictingCourse: result.conflictingCourse,
+      });
+    }
 
     return res.json({ success: true, data: result.attendance });
   }
@@ -156,6 +181,15 @@ export const recordAttendanceGps = catchAsync(
         ipAddress: req.ip || req.socket.remoteAddress,
       }
     );
+
+    if (result.overlapBlocked) {
+      return res.json({
+        success: true,
+        overlapBlocked: true,
+        message: 'لديك محاضرة أخرى مسجل حضورها في نفس التوقيت',
+        conflictingCourse: result.conflictingCourse,
+      });
+    }
 
     if (result.alreadyRecorded) {
       return res.json({
