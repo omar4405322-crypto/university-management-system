@@ -22,6 +22,9 @@ export interface RecordAttendanceResult {
   existingStatus?: AttendanceStatus;
   warnings?: string[];
   message?: string;
+  wasChange?: boolean;
+  alreadyRecorded?: boolean;
+  recordedAt?: Date;
 }
 
 export interface BulkManualRecord {
@@ -121,7 +124,16 @@ class AttendanceEngine {
       }
     }
 
-    const txResult = await prisma.$transaction(
+    interface TransactionResult {
+      attendance: any;
+      isNew: boolean;
+      existingStatus?: AttendanceStatus;
+      wasChange?: boolean;
+      alreadyRecorded?: boolean;
+      recordedAt?: Date;
+    }
+
+    const txResult = await prisma.$transaction<TransactionResult>(
       async (tx) => {
         if (
           intent.deviceId &&
@@ -166,6 +178,20 @@ class AttendanceEngine {
             existingIsPresentOrLate =
               existing.status === 'PRESENT' || existing.status === 'LATE';
 
+            // Hard-block: self-service methods cannot overwrite an existing PRESENT/LATE record
+            if (
+              existingIsPresentOrLate &&
+              ['QR', 'RFID', 'GPS', 'FACE'].includes(intent.method)
+            ) {
+              return {
+                attendance: existing,
+                isNew: false,
+                existingStatus,
+                alreadyRecorded: true,
+                recordedAt: existing.createdAt,
+              };
+            }
+
             const targetStatus: AttendanceStatus =
               (intent.status as AttendanceStatus) || 'PRESENT';
 
@@ -204,9 +230,9 @@ class AttendanceEngine {
           status: intent.status || 'PRESENT',
           method: intent.method,
           ...(intent.remarks !== undefined && { remarks: intent.remarks }),
-          ...(intent.recordedById !== undefined && intent.recordedById !== null && {
-            recordedBy: { connect: { id: intent.recordedById } },
-          }),
+          ...(intent.recordedById !== undefined && intent.recordedById !== null
+            ? { recordedBy: { connect: { id: intent.recordedById } } }
+            : { recordedBy: { disconnect: true } }),
           ...(intent.ipAddress !== undefined && {
             ipAddress: intent.ipAddress,
           }),
@@ -262,12 +288,12 @@ class AttendanceEngine {
         const wasChange =
           existingStatus === undefined || existingStatus !== attendance.status;
 
-        return { attendance, isNew: wasChange, existingStatus };
+        return { attendance, isNew: existingId === undefined, existingStatus, wasChange };
       },
       { isolationLevel: 'Serializable' }
     );
 
-    if (txResult.isNew) {
+    if (txResult.wasChange) {
       setImmediate(() => {
         this.postProcessAsync(intent).catch((err) =>
           logger.error(

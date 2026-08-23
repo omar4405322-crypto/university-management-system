@@ -63,6 +63,20 @@ export const recordAttendanceQr = catchAsync(
       }
     );
 
+    if (result.alreadyRecorded) {
+      return res.json({
+        success: true,
+        alreadyRecorded: true,
+        message:
+          result.existingStatus === 'LATE'
+            ? 'تم تسجيل حضورك سابقاً (متأخر)'
+            : 'تم تسجيل حضورك سابقاً',
+        data: result.attendance,
+        existingStatus: result.existingStatus,
+        recordedAt: result.recordedAt,
+      });
+    }
+
     if (result.existingStatus) {
       return res.json({
         success: true,
@@ -74,7 +88,7 @@ export const recordAttendanceQr = catchAsync(
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: result.attendance,
       flagged: result.attendance?.locationFlagged,
@@ -93,7 +107,17 @@ export const recordAttendanceRfid = catchAsync(
       }
     );
 
-    res.json({ success: true, data: result.attendance });
+    if (result.alreadyRecorded) {
+      return res.json({
+        success: true,
+        alreadyRecorded: true,
+        data: result.attendance,
+        existingStatus: result.existingStatus,
+        recordedAt: result.recordedAt,
+      });
+    }
+
+    return res.json({ success: true, data: result.attendance });
   }
 );
 
@@ -108,7 +132,7 @@ export const recordAttendanceFace = catchAsync(
       }
     );
 
-    res.json({ success: true, data: result.attendance });
+    return res.json({ success: true, data: result.attendance });
   }
 );
 
@@ -133,7 +157,17 @@ export const recordAttendanceGps = catchAsync(
       }
     );
 
-    res.json({ success: true, data: result.attendance });
+    if (result.alreadyRecorded) {
+      return res.json({
+        success: true,
+        alreadyRecorded: true,
+        data: result.attendance,
+        existingStatus: result.existingStatus,
+        recordedAt: result.recordedAt,
+      });
+    }
+
+    return res.json({ success: true, data: result.attendance });
   }
 );
 
