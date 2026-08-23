@@ -1,4 +1,4 @@
-import { AttendanceMethod, AttendanceStatus, Prisma } from '@prisma/client';
+import { AttendanceMethod, AttendanceStatus, Prisma, Attendance } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { AppError, ConflictError } from '../utils/appError';
 import { createNotification } from '../utils/notification.utils';
@@ -17,7 +17,7 @@ export interface RecordAttendanceOptions {
 }
 
 export interface RecordAttendanceResult {
-  attendance: any;
+  attendance: Attendance | null;
   isNew: boolean;
   existingStatus?: AttendanceStatus;
   warnings?: string[];
@@ -25,6 +25,13 @@ export interface RecordAttendanceResult {
   wasChange?: boolean;
   alreadyRecorded?: boolean;
   recordedAt?: Date;
+  overlapBlocked?: boolean;
+  conflictingCourse?: {
+    courseCode: string;
+    name: string;
+    startTime: string;
+    endTime: string;
+  };
 }
 
 export interface BulkManualRecord {
@@ -125,12 +132,19 @@ class AttendanceEngine {
     }
 
     interface TransactionResult {
-      attendance: any;
+      attendance: Attendance | null;
       isNew: boolean;
       existingStatus?: AttendanceStatus;
       wasChange?: boolean;
       alreadyRecorded?: boolean;
       recordedAt?: Date;
+      overlapBlocked?: boolean;
+      conflictingCourse?: {
+        courseCode: string;
+        name: string;
+        startTime: string;
+        endTime: string;
+      };
     }
 
     const txResult = await prisma.$transaction<TransactionResult>(
@@ -208,6 +222,65 @@ class AttendanceEngine {
 
         const attendanceDate = intent.date || new Date();
         attendanceDate.setHours(0, 0, 0, 0);
+
+        // Hard-block: prevent self-service check-in to overlapping lectures on the same day
+        if (
+          ['QR', 'RFID', 'GPS', 'FACE'].includes(intent.method) &&
+          intent.scheduleSlotId
+        ) {
+          const currentSlot = await tx.scheduleSlot.findUnique({
+            where: { id: intent.scheduleSlotId }
+          });
+
+          if (currentSlot && currentSlot.startTime && currentSlot.endTime) {
+            const parseTime = (timeStr: string) => {
+              const [hours, minutes] = timeStr.split(':').map(Number);
+              return hours * 60 + minutes;
+            };
+
+            const currentStart = parseTime(currentSlot.startTime);
+            const currentEnd = parseTime(currentSlot.endTime);
+
+            const otherAttendances = await tx.attendance.findMany({
+              where: {
+                studentId: intent.studentId,
+                date: attendanceDate,
+                scheduleSlotId: { not: intent.scheduleSlotId },
+                status: { in: ['PRESENT', 'LATE'] }
+              },
+              include: {
+                scheduleSlot: {
+                  include: { course: true }
+                }
+              }
+            });
+
+            for (const other of otherAttendances) {
+              if (
+                other.scheduleSlot &&
+                other.scheduleSlot.startTime &&
+                other.scheduleSlot.endTime
+              ) {
+                const otherStart = parseTime(other.scheduleSlot.startTime);
+                const otherEnd = parseTime(other.scheduleSlot.endTime);
+
+                if (currentStart < otherEnd && otherStart < currentEnd) {
+                  return {
+                    attendance: null,
+                    isNew: false,
+                    overlapBlocked: true,
+                    conflictingCourse: {
+                      courseCode: other.scheduleSlot.course.courseCode,
+                      name: other.scheduleSlot.course.name,
+                      startTime: other.scheduleSlot.startTime,
+                      endTime: other.scheduleSlot.endTime
+                    }
+                  };
+                }
+              }
+            }
+          }
+        }
 
         if (existingId === undefined && intent.courseId) {
           const existingByDate = await tx.attendance.findFirst({
