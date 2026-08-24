@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -22,6 +23,8 @@ export function FacultyAttendanceDashboard() {
 
   const [courses, setCourses] = useState<any[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [activeSession, setActiveSession] = useState<any>(null);
   const [qrToken, setQrToken] = useState('');
@@ -53,11 +56,21 @@ export function FacultyAttendanceDashboard() {
       .then(res => {
         const loadedCourses = res.data || [];
         setCourses(loadedCourses);
+        
+        const urlCourseId = searchParams.get('courseId');
+        if (urlCourseId) {
+          const parsedId = parseInt(urlCourseId, 10);
+          const courseExists = loadedCourses.some((c: any) => c.id === parsedId);
+          if (courseExists) {
+            setSelectedCourseId(parsedId);
+          }
+        }
       })
       .catch((err: any) => {
         console.error('Failed to load my-courses:', err);
         setError(t('attendance.loadCoursesError', 'حدث خطأ أثناء تحميل المقررات'));
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t]);
 
   // 2. Load active session if course selected
@@ -246,6 +259,12 @@ export function FacultyAttendanceDashboard() {
       });
       setActiveSession(res.data);
       setSelectedCourseId(courseId);
+      
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('courseId', courseId.toString());
+        return next;
+      });
     } catch (err: any) {
       let errorMessage = err.response?.data?.message || t('attendance.startSessionError', 'فشل بدء الجلسة');
       if (err.response?.status === 404 && typeof errorMessage === 'string' && errorMessage.includes('ScheduleSlot')) {
@@ -290,6 +309,12 @@ export function FacultyAttendanceDashboard() {
       setSelectedCourseId(null);
       setQrToken('');
       setFlaggedRecords([]);
+      
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('courseId');
+        return next;
+      });
     } catch (err) {
       console.error(err);
     } finally {
