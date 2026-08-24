@@ -14,6 +14,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SessionCountdown } from '../../components/attendance/SessionCountdown';
+import { ElapsedSessionTimer } from '../../components/attendance/ElapsedSessionTimer';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
@@ -740,6 +741,11 @@ export function FacultyAttendanceDashboard() {
                       {t('attendance.activeSession', 'جلسة حضور نشطة')}
                     </span>
                   </div>
+                  {activeSession?.createdAt && (
+                    <ElapsedSessionTimer
+                      createdAt={activeSession.createdAt}
+                    />
+                  )}
                   {activeSession?.expiresAt && (
                     <SessionCountdown
                       expiresAt={activeSession.expiresAt}
