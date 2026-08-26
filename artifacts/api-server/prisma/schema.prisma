@@ -62,11 +62,12 @@ model RefreshToken {
 }
 
 model AuditLog {
-  id        Int      @id @default(autoincrement())
-  userId    Int?
-  user      User?    @relation(fields: [userId], references: [id])
-  userEmail String?
-  userRole  String?
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id])
+  userEmail  String?
+  actorEmail String?
+  userRole   String?
   action    String // e.g., "CREATE_STUDENT", "UPDATE_PAYMENT"
   entity    String // e.g., "Student", "Payment"
   entityId  String?
@@ -218,7 +219,7 @@ model Attendance {
   method          AttendanceMethod @default(MANUAL)
   remarks         String?
   recordedById    Int?
-  recordedBy      User?            @relation(fields: [recordedById], references: [id])
+  recordedBy      User?            @relation(fields: [recordedById], references: [id], onDelete: SetNull)
   semester        Int?
   academicYear    Int?
   ipAddress       String?
@@ -699,8 +700,8 @@ model ScheduleOverride {
   teachingAssistant   TeachingAssistant? @relation(fields: [teachingAssistantId], references: [id], onDelete: SetNull)
 
   reason        String? // Optional admin note explaining the override
-  createdBy     Int // userId of Admin who created this
-  createdByUser User     @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  createdBy     Int? // userId of Admin who created this
+  createdByUser User?    @relation(fields: [createdBy], references: [id], onDelete: SetNull)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -726,8 +727,8 @@ model AbsenceExemptionPeriod {
   startDate    DateTime
   endDate      DateTime
   reason       String
-  createdById  Int
-  createdBy    User       @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdById  Int?
+  createdBy    User?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt    DateTime   @default(now())
 
   @@index([enrollmentId])
@@ -746,8 +747,8 @@ model ScheduleChangeRequest {
   type   ScheduleRequestType
   status RequestStatus       @default(PENDING)
 
-  requesterId Int
-  requester   User @relation(fields: [requesterId], references: [id], onDelete: Restrict)
+  requesterId Int?
+  requester   User? @relation(fields: [requesterId], references: [id], onDelete: SetNull)
 
   courseId       Int
   course         Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -759,7 +760,7 @@ model ScheduleChangeRequest {
   reason       String?
   adminComment String?
   resolvedById Int?
-  resolvedBy   User?   @relation("ResolvedRequests", fields: [resolvedById], references: [id], onDelete: Restrict)
+  resolvedBy   User?   @relation("ResolvedRequests", fields: [resolvedById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
