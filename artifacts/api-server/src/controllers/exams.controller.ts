@@ -1,9 +1,8 @@
-// FIXED: Exam fields align with DB (room, no title/location column) - schema sync
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
-import { NotFoundError, AuthorizationError } from '../utils/appError';
+import { NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
 import { sendToUser } from '../utils/socket';
 
@@ -87,6 +86,23 @@ export const createExam = catchAsync(async (req: Request, res: Response, next: N
     if (courseScope.departmentId && course.departmentId !== courseScope.departmentId) {
       return next(new AuthorizationError('Access denied'));
     }
+  }
+
+  // Validate exam date is not in the past
+  if (date) {
+    const examDate = new Date(date as string);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const examDay = new Date(examDate);
+    examDay.setHours(0, 0, 0, 0);
+    if (isNaN(examDate.getTime()) || examDay.getTime() < today.getTime()) {
+      return next(new ValidationError('Exam date cannot be in the past'));
+    }
+  }
+
+  // Validate start time precedes end time
+  if (startTime && endTime && String(startTime) >= String(endTime)) {
+    return next(new ValidationError('Start time must be before end time'));
   }
 
   const exam = await prisma.exam.create({
