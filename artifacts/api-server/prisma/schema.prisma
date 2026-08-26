@@ -523,6 +523,7 @@ enum ExamQuestionType {
 enum ExamSubmissionStatus {
   PENDING
   GRADED
+  CANCELLED_CHEATING
 }
 
 enum ExamViolationType {
