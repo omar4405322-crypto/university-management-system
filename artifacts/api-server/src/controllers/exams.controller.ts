@@ -5,6 +5,9 @@ import catchAsync from '../utils/catchAsync';
 import { NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
 import { sendToUser } from '../utils/socket';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+
+const CAIRO_TZ = 'Africa/Cairo';
 
 export const getAllExams = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { type, upcoming } = req.query;
@@ -417,8 +420,9 @@ export const startExamSession = catchAsync(async (req: Request, res: Response, n
     if (exam.startTime) {
       const [h, m] = String(exam.startTime).split(':').map(Number);
       if (!isNaN(h) && !isNaN(m)) {
-        const startDateTime = new Date(exam.date);
-        startDateTime.setHours(h, m, 0, 0);
+        const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
+        zonedDate.setHours(h, m, 0, 0);
+        const startDateTime = fromZonedTime(zonedDate, CAIRO_TZ);
         if (now.getTime() < startDateTime.getTime()) {
           return next(new AuthorizationError('Exam has not started yet'));
         }
@@ -429,8 +433,9 @@ export const startExamSession = catchAsync(async (req: Request, res: Response, n
     if (exam.endTime) {
       const [h, m] = String(exam.endTime).split(':').map(Number);
       if (!isNaN(h) && !isNaN(m)) {
-        const endDateTime = new Date(exam.date);
-        endDateTime.setHours(h, m, 0, 0);
+        const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
+        zonedDate.setHours(h, m, 0, 0);
+        const endDateTime = fromZonedTime(zonedDate, CAIRO_TZ);
         if (now.getTime() > endDateTime.getTime()) {
           return next(new AuthorizationError('Exam time has expired'));
         }
@@ -587,8 +592,9 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
   if (exam.date && exam.endTime) {
     const [h, m] = String(exam.endTime).split(':').map(Number);
     if (!isNaN(h) && !isNaN(m)) {
-      const endDateTime = new Date(exam.date);
-      endDateTime.setHours(h, m, 0, 0);
+      const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
+      zonedDate.setHours(h, m, 0, 0);
+      const endDateTime = fromZonedTime(zonedDate, CAIRO_TZ);
       const gracePeriodMs = 3 * 60 * 1000;
       if (Date.now() > endDateTime.getTime() + gracePeriodMs) {
         return next(new AuthorizationError('Exam submission window has closed'));
