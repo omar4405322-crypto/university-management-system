@@ -662,32 +662,20 @@ export const getExamSubmissions = catchAsync(async (req: Request, res: Response,
     orderBy: { submittedAt: 'desc' }
   });
 
-  // Auto-calculate & backfill score for any submission missing score
-  const updatedSubmissions = await Promise.all(
-    submissions.map(async (sub: any) => {
-      if (sub.score === null || sub.score === undefined || sub.status === 'PENDING') {
-        const answersMap: Record<string, string> =
-          typeof sub.answers === 'object' && sub.answers !== null
-            ? (sub.answers as Record<string, string>)
-            : {};
+  // Auto-calculate score for display for any submission missing score without persisting side-effects
+  const updatedSubmissions = submissions.map((sub: any) => {
+    if (sub.score === null || sub.score === undefined || sub.status === 'PENDING') {
+      const answersMap: Record<string, string> =
+        typeof sub.answers === 'object' && sub.answers !== null
+          ? (sub.answers as Record<string, string>)
+          : {};
 
-        const { score: calcScore, maxScore: totalMax } = calculateExamScore(questions, answersMap);
+      const { score: calcScore, maxScore: totalMax } = calculateExamScore(questions, answersMap);
 
-        // Persist computed score into DB
-        await prisma.examSubmission.update({
-          where: { id: sub.id },
-          data: {
-            score: calcScore,
-            maxScore: totalMax || 10,
-            status: 'GRADED',
-          },
-        });
-
-        return { ...sub, score: calcScore, maxScore: totalMax || 10, status: 'GRADED' };
-      }
-      return sub;
-    })
-  );
+      return { ...sub, score: calcScore, maxScore: totalMax || 10, status: 'GRADED' };
+    }
+    return sub;
+  });
 
   res.json({ success: true, data: updatedSubmissions });
 });
