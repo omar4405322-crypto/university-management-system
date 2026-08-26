@@ -525,7 +525,9 @@ export function calculateExamScore(
           score += qPoints;
         }
       } else if (qType === 'SHORT_ANSWER' || qType === 'ESSAY' || qType === 'TEXT') {
-        if (cAnsStr && (sAnsStr.toLowerCase().includes(cAnsStr.toLowerCase()) || cAnsStr.toLowerCase().includes(sAnsStr.toLowerCase()))) {
+        const normStudent = sAnsStr.replace(/\s+/g, ' ').trim();
+        const normCorrect = cAnsStr.replace(/\s+/g, ' ').trim();
+        if (normCorrect && normStudent === normCorrect) {
           score += qPoints;
         }
       }
