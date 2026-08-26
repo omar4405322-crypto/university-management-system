@@ -741,6 +741,71 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
   res.json({ success: true, data: updatedSubmission });
 });
 
+export const cancelExam = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const examId = parseInt(req.params.id as string);
+  const { reason, antiCheatLogs, answers } = req.body;
+
+  const student = await prisma.student.findUnique({ where: { userId: req.user!.id } });
+  if (!student) return next(new AuthorizationError('Only students can cancel their own exam sessions'));
+
+  const exam = await prisma.exam.findUnique({ where: { id: examId } });
+  if (!exam) return next(new NotFoundError('Exam not found'));
+
+  const submission = await prisma.examSubmission.findUnique({
+    where: { examId_studentId: { examId, studentId: student.id } }
+  });
+
+  if (!submission) {
+    return next(new NotFoundError('No active exam session found'));
+  }
+
+  if (submission.status !== 'PENDING') {
+    return next(new AuthorizationError('Exam already submitted'));
+  }
+
+  const questions = await prisma.examQuestion.findMany({ where: { examId } });
+  const maxScore = questions.reduce((sum: number, q: any) => sum + (Number(q.points) || 1), 0);
+
+  // Normalize answers if provided, otherwise preserve existing submission.answers
+  let answersMap = submission.answers as Record<string, string>;
+  if (answers !== undefined && answers !== null) {
+    answersMap = Array.isArray(answers)
+      ? answers.reduce((acc: any, curr: any) => ({ ...acc, [String(curr.questionId)]: String(curr.answer || '') }), {})
+      : (typeof answers === 'object' ? answers : answersMap);
+  }
+
+  const updatedSubmission = await prisma.$transaction(async (tx) => {
+    const sub = await tx.examSubmission.update({
+      where: { id: submission.id },
+      data: {
+        answers: answersMap,
+        score: 0,
+        maxScore: maxScore || 10,
+        status: 'CANCELLED_CHEATING',
+        submittedAt: new Date(),
+        antiCheatLogs: antiCheatLogs || []
+      }
+    });
+
+    // Handle violations if any
+    if (Array.isArray(antiCheatLogs) && antiCheatLogs.length > 0) {
+      const violationRecords = antiCheatLogs.map((log: any) => ({
+        submissionId: sub.id,
+        type: log.type,
+        details: log.details || (reason ? `Auto-cancelled: ${reason}` : null),
+        occurredAt: log.occurredAt ? new Date(log.occurredAt) : new Date()
+      }));
+      await tx.examViolation.createMany({ data: violationRecords });
+    }
+
+    return sub;
+  });
+
+  auditLog('CANCEL_EXAM_CHEATING', 'ExamSubmission', submission.id.toString(), req);
+
+  res.json({ success: true, data: updatedSubmission });
+});
+
 export const getExamSubmissions = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const examId = parseInt(req.params.id as string);
   
