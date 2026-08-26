@@ -278,7 +278,12 @@ const ExamSubmissions = () => {
                       </span>
                     )}
 
-                    {isGraded ? (
+                    {sub.status === 'CANCELLED_CHEATING' ? (
+                      <span className="px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700 text-xs font-extrabold flex items-center gap-1.5 shadow-sm">
+                        <ShieldAlert size={14} className="text-rose-600 dark:text-rose-400" />
+                        {t('exams.cancelledByCheating')}
+                      </span>
+                    ) : isGraded ? (
                       <div className="flex items-center gap-2">
                         <div className="text-end">
                           <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400">
