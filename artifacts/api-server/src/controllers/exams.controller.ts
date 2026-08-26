@@ -338,7 +338,10 @@ export const getExamQuestions = catchAsync(async (req: Request, res: Response, n
   // If user is STUDENT, strip the correctAnswer and shuffle MCQ option letters per student
   if (req.user?.role === 'STUDENT') {
     const student = await prisma.student.findUnique({ where: { userId: req.user.id } });
-    const studentId = student?.id || req.user.id;
+    if (!student) {
+      return next(new AuthorizationError('Access denied'));
+    }
+    const studentId = student.id;
 
     const processedQuestions = questions.map((q: any) => {
       const { correctAnswer, ...rest } = q;
@@ -348,7 +351,7 @@ export const getExamQuestions = catchAsync(async (req: Request, res: Response, n
         (l) => q[`option${l}`] !== undefined && q[`option${l}`] !== null && String(q[`option${l}`]).trim().length > 0
       );
 
-      const isMcq = qType === 'MCQ' || qType === 'MULTIPLE_CHOICE' || availableLetters.length > 0;
+      const isMcq = qType === 'MCQ' || qType === 'MULTIPLE_CHOICE' || (!qType && availableLetters.length > 0);
 
       if (isMcq && availableLetters.length > 1) {
         const mapping = getMcqOptionMapping(studentId, q.id, availableLetters);
@@ -596,7 +599,7 @@ export function calculateExamScore(
       const availableLetters = ['A', 'B', 'C', 'D'].filter(
         (l) => q[`option${l}`] !== undefined && q[`option${l}`] !== null && String(q[`option${l}`]).trim().length > 0
       );
-      const isMcq = qType === 'MCQ' || qType === 'MULTIPLE_CHOICE' || availableLetters.length > 0;
+      const isMcq = qType === 'MCQ' || qType === 'MULTIPLE_CHOICE' || (!qType && availableLetters.length > 0);
 
       if (isMcq) {
         let normS = normalizeMcq(studentAnswer, q);
