@@ -356,6 +356,20 @@ const TakeExam = () => {
   // Device info formatted for display
   const deviceInfoItems = useMemo(() => formatDeviceInfo(deviceInfo, t), [deviceInfo, t]);
 
+  // Per-student watermark text (displayed during IN_PROGRESS)
+  const watermarkText = useMemo(() => {
+    if (!user) return '';
+    const studentName =
+      user.name ||
+      (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '') ||
+      user.firstName ||
+      '';
+    const studentIdentifier = user.studentId || user.academicNumber || (user.id ? `ID: ${user.id}` : '');
+    const userEmail = user.email || '';
+    const parts = [studentName, studentIdentifier, userEmail].filter(Boolean);
+    return parts.join(' • ');
+  }, [user]);
+
   // ── MULTI-TAB BLOCKED SCREEN ───────────────────────────────────────────────
   if (multiTabBlocked) {
     return (
@@ -429,6 +443,23 @@ const TakeExam = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12 relative">
+      {/* ── Per-Student Anti-Screenshot Watermark Overlay ─────────────────── */}
+      {status === 'IN_PROGRESS' && watermarkText && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 pointer-events-none select-none z-[15] overflow-hidden flex flex-wrap content-between justify-between p-8 opacity-[0.06] dark:opacity-[0.08]"
+        >
+          {Array.from({ length: 16 }).map((_, i) => (
+            <div
+              key={i}
+              className="transform -rotate-12 text-xs md:text-sm font-black tracking-widest text-slate-900 dark:text-white whitespace-nowrap m-6 select-none"
+            >
+              {watermarkText} • {exam?.course?.courseCode || ''} • {new Date().toLocaleDateString()}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── LEAVE COUNTDOWN OVERLAY ─────────────────────────────────────────── */}
       {isCountdownActive && status === 'IN_PROGRESS' && (
         <div className="fixed inset-0 z-[9999] bg-rose-900/95 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-300">
