@@ -292,6 +292,39 @@ export const getExamById = catchAsync(async (req: Request, res: Response, next: 
 
 // --- EXAM QUESTIONS ---
 
+export function seededRandom(seed: number): () => number {
+  let s = seed | 0;
+  if (s === 0) s = 1;
+  return () => {
+    s ^= s << 13;
+    s ^= s >> 17;
+    s ^= s << 5;
+    return (s >>> 0) / 4294967296;
+  };
+}
+
+export function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+export function getMcqOptionMapping(studentId: number, questionId: number, optionLetters: string[]): string[] {
+  if (!optionLetters || optionLetters.length <= 1) return [...optionLetters];
+  const seed = hashString(`${studentId}-${questionId}`);
+  const rng = seededRandom(seed);
+  const shuffled = [...optionLetters];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export const getExamQuestions = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const examId = parseInt(req.params.id as string);
   const exam = await prisma.exam.findUnique({ where: { id: examId } });
@@ -302,13 +335,46 @@ export const getExamQuestions = catchAsync(async (req: Request, res: Response, n
     orderBy: { order: 'asc' },
   });
 
-  // If user is STUDENT, strip the correctAnswer
+  // If user is STUDENT, strip the correctAnswer and shuffle MCQ option letters per student
   if (req.user?.role === 'STUDENT') {
-    const stripped = questions.map((q: any) => {
+    const student = await prisma.student.findUnique({ where: { userId: req.user.id } });
+    const studentId = student?.id || req.user.id;
+
+    const processedQuestions = questions.map((q: any) => {
       const { correctAnswer, ...rest } = q;
+      const qType = (q.type || '').toUpperCase().replace('-', '_');
+
+      const availableLetters = ['A', 'B', 'C', 'D'].filter(
+        (l) => q[`option${l}`] !== undefined && q[`option${l}`] !== null && String(q[`option${l}`]).trim().length > 0
+      );
+
+      const isMcq = qType === 'MCQ' || qType === 'MULTIPLE_CHOICE' || availableLetters.length > 0;
+
+      if (isMcq && availableLetters.length > 1) {
+        const mapping = getMcqOptionMapping(studentId, q.id, availableLetters);
+        const displayLetters = ['A', 'B', 'C', 'D'].slice(0, availableLetters.length);
+        const shuffledOptions: Record<string, string | null> = {
+          optionA: null,
+          optionB: null,
+          optionC: null,
+          optionD: null,
+        };
+
+        displayLetters.forEach((dispLetter, idx) => {
+          const origLetter = mapping[idx];
+          shuffledOptions[`option${dispLetter}`] = q[`option${origLetter}`];
+        });
+
+        return {
+          ...rest,
+          ...shuffledOptions,
+        };
+      }
+
       return rest;
     });
-    return res.json({ success: true, data: stripped });
+
+    return res.json({ success: true, data: processedQuestions });
   }
 
   res.json({ success: true, data: questions });
@@ -510,7 +576,8 @@ function normalizeTF(val: any): string {
 
 export function calculateExamScore(
   questions: any[],
-  answersMap: Record<string, string>
+  answersMap: Record<string, string>,
+  studentId?: number
 ): { score: number; maxScore: number } {
   let score = 0;
   let maxScore = 0;
@@ -526,11 +593,28 @@ export function calculateExamScore(
 
       const qType = (q.type || '').toUpperCase().replace('-', '_');
 
-      if (qType === 'MCQ' || qType === 'MULTIPLE_CHOICE') {
-        const normS = normalizeMcq(studentAnswer, q);
+      const availableLetters = ['A', 'B', 'C', 'D'].filter(
+        (l) => q[`option${l}`] !== undefined && q[`option${l}`] !== null && String(q[`option${l}`]).trim().length > 0
+      );
+      const isMcq = qType === 'MCQ' || qType === 'MULTIPLE_CHOICE' || availableLetters.length > 0;
+
+      if (isMcq) {
+        let normS = normalizeMcq(studentAnswer, q);
         const normC = normalizeMcq(q.correctAnswer, q);
-        // Direct string match or normalized match
-        if (normS === normC || sAnsStr === cAnsStr || sAnsStr === cAnsStr.replace('OPTION', '')) {
+
+        if (studentId !== undefined && availableLetters.length > 1) {
+          const mapping = getMcqOptionMapping(studentId, q.id, availableLetters);
+          const displayLetters = ['A', 'B', 'C', 'D'].slice(0, availableLetters.length);
+          const dispIdx = displayLetters.indexOf(normS);
+          if (dispIdx !== -1 && dispIdx < mapping.length) {
+            normS = mapping[dispIdx];
+          }
+        }
+
+        // Compare mapped letter against correct answer
+        if (normS && normC && normS === normC) {
+          score += qPoints;
+        } else if (!studentId && (sAnsStr === cAnsStr || sAnsStr === cAnsStr.replace('OPTION', ''))) {
           score += qPoints;
         }
       } else if (qType === 'TRUE_FALSE' || qType === 'TRUEFALSE' || qType === 'TF') {
@@ -622,7 +706,7 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
     ? answers.reduce((acc: any, curr: any) => ({ ...acc, [String(curr.questionId)]: String(curr.answer || '') }), {})
     : (typeof answers === 'object' && answers !== null ? answers : {});
 
-  const { score, maxScore } = calculateExamScore(questions, answersMap);
+  const { score, maxScore } = calculateExamScore(questions, answersMap, student.id);
 
   const updatedSubmission = await prisma.$transaction(async (tx) => {
     const sub = await tx.examSubmission.update({
@@ -691,7 +775,7 @@ export const getExamSubmissions = catchAsync(async (req: Request, res: Response,
           ? (sub.answers as Record<string, string>)
           : {};
 
-      const { score: calcScore, maxScore: totalMax } = calculateExamScore(questions, answersMap);
+      const { score: calcScore, maxScore: totalMax } = calculateExamScore(questions, answersMap, sub.studentId);
 
       return { ...sub, score: calcScore, maxScore: totalMax || 10, status: 'GRADED' };
     }
