@@ -730,10 +730,37 @@ export const gradeSubmission = catchAsync(async (req: Request, res: Response, ne
     return next(new NotFoundError('Submission not found'));
   }
 
+  // Scope check on parent exam
+  const examScope: any = getScopeWhere(req.user!, 'exam');
+  const exam = await prisma.exam.findFirst({
+    where: {
+      id: submission.examId,
+      ...(examScope && Object.keys(examScope).length ? examScope : {}),
+    },
+  });
+
+  if (!exam) {
+    return next(new AuthorizationError('Access denied'));
+  }
+
+  // Score validation
+  const numericScore = Number(score);
+  if (
+    score === undefined ||
+    score === null ||
+    score === '' ||
+    isNaN(numericScore) ||
+    !Number.isFinite(numericScore) ||
+    numericScore < 0 ||
+    numericScore > submission.maxScore
+  ) {
+    return next(new ValidationError('Invalid score value'));
+  }
+
   const updated = await prisma.examSubmission.update({
     where: { id: submissionId },
     data: {
-      score: Number(score),
+      score: numericScore,
       status: 'GRADED',
     },
   });
