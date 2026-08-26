@@ -467,6 +467,51 @@ function normalizeTF(val: any): string {
   return str;
 }
 
+export function calculateExamScore(
+  questions: any[],
+  answersMap: Record<string, string>
+): { score: number; maxScore: number } {
+  let score = 0;
+  let maxScore = 0;
+
+  questions.forEach((q: any) => {
+    const qPoints = Number(q.points) || 1;
+    maxScore += qPoints;
+
+    const studentAnswer = answersMap[q.id.toString()] || answersMap[q.id];
+    if (studentAnswer !== undefined && studentAnswer !== null) {
+      const sAnsStr = String(studentAnswer).trim().toUpperCase();
+      const cAnsStr = String(q.correctAnswer || '').trim().toUpperCase();
+
+      const qType = (q.type || '').toUpperCase().replace('-', '_');
+
+      if (qType === 'MCQ' || qType === 'MULTIPLE_CHOICE') {
+        const normS = normalizeMcq(studentAnswer, q);
+        const normC = normalizeMcq(q.correctAnswer, q);
+        // Direct string match or normalized match
+        if (normS === normC || sAnsStr === cAnsStr || sAnsStr === cAnsStr.replace('OPTION', '')) {
+          score += qPoints;
+        }
+      } else if (qType === 'TRUE_FALSE' || qType === 'TRUEFALSE' || qType === 'TF') {
+        const normS = normalizeTF(studentAnswer);
+        const normC = normalizeTF(q.correctAnswer);
+        // Check for common variations if normalize fails
+        const isStudentTrue = normS === 'TRUE' || sAnsStr === 'TRUE' || sAnsStr === 'A' || sAnsStr === '1' || sAnsStr === 'صواب' || sAnsStr === 'صح';
+        const isCorrectTrue = normC === 'TRUE' || cAnsStr === 'TRUE' || cAnsStr === 'A' || cAnsStr === '1' || cAnsStr === 'صواب' || cAnsStr === 'صح';
+        if (isStudentTrue === isCorrectTrue) {
+          score += qPoints;
+        }
+      } else if (qType === 'SHORT_ANSWER' || qType === 'ESSAY' || qType === 'TEXT') {
+        if (cAnsStr && (sAnsStr.toLowerCase().includes(cAnsStr.toLowerCase()) || cAnsStr.toLowerCase().includes(sAnsStr.toLowerCase()))) {
+          score += qPoints;
+        }
+      }
+    }
+  });
+
+  return { score, maxScore };
+}
+
 export const submitExam = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const examId = parseInt(req.params.id as string);
   const { answers, antiCheatLogs } = req.body;
@@ -527,48 +572,13 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
   }
 
   const questions = await prisma.examQuestion.findMany({ where: { examId } });
-  let score = 0;
-  let maxScore = 0;
 
   // answers format: { questionId: string, answer: string }[] OR { [questionId]: string }
   const answersMap: Record<string, string> = Array.isArray(answers) 
     ? answers.reduce((acc: any, curr: any) => ({ ...acc, [String(curr.questionId)]: String(curr.answer || '') }), {})
     : (typeof answers === 'object' && answers !== null ? answers : {});
 
-  questions.forEach((q: any) => {
-    const qPoints = Number(q.points) || 1;
-    maxScore += qPoints;
-
-    const studentAnswer = answersMap[q.id.toString()] || answersMap[q.id];
-    if (studentAnswer !== undefined && studentAnswer !== null) {
-      const sAnsStr = String(studentAnswer).trim().toUpperCase();
-      const cAnsStr = String(q.correctAnswer || '').trim().toUpperCase();
-
-      const qType = (q.type || '').toUpperCase().replace('-', '_');
-
-      if (qType === 'MCQ' || qType === 'MULTIPLE_CHOICE') {
-        const normS = normalizeMcq(studentAnswer, q);
-        const normC = normalizeMcq(q.correctAnswer, q);
-        // Direct string match or normalized match
-        if (normS === normC || sAnsStr === cAnsStr || sAnsStr === cAnsStr.replace('OPTION', '')) {
-          score += qPoints;
-        }
-      } else if (qType === 'TRUE_FALSE' || qType === 'TRUEFALSE' || qType === 'TF') {
-        const normS = normalizeTF(studentAnswer);
-        const normC = normalizeTF(q.correctAnswer);
-        // Check for common variations if normalize fails
-        const isStudentTrue = normS === 'TRUE' || sAnsStr === 'TRUE' || sAnsStr === 'A' || sAnsStr === '1' || sAnsStr === 'صواب' || sAnsStr === 'صح';
-        const isCorrectTrue = normC === 'TRUE' || cAnsStr === 'TRUE' || cAnsStr === 'A' || cAnsStr === '1' || cAnsStr === 'صواب' || cAnsStr === 'صح';
-        if (isStudentTrue === isCorrectTrue) {
-          score += qPoints;
-        }
-      } else if (qType === 'SHORT_ANSWER' || qType === 'ESSAY' || qType === 'TEXT') {
-        if (cAnsStr && (sAnsStr.toLowerCase().includes(cAnsStr.toLowerCase()) || cAnsStr.toLowerCase().includes(sAnsStr.toLowerCase()))) {
-          score += qPoints;
-        }
-      }
-    }
-  });
+  const { score, maxScore } = calculateExamScore(questions, answersMap);
 
   const updatedSubmission = await prisma.$transaction(async (tx) => {
     const sub = await tx.examSubmission.update({
@@ -603,6 +613,19 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
 export const getExamSubmissions = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const examId = parseInt(req.params.id as string);
   
+  // Scope check
+  const examScope: any = getScopeWhere(req.user!, 'exam');
+  const exam = await prisma.exam.findFirst({
+    where: {
+      id: examId,
+      ...(examScope && Object.keys(examScope).length ? examScope : {}),
+    },
+  });
+
+  if (!exam) {
+    return next(new AuthorizationError('Access denied'));
+  }
+
   const questions = await prisma.examQuestion.findMany({ where: { examId } });
 
   const submissions = await prisma.examSubmission.findMany({
@@ -620,41 +643,12 @@ export const getExamSubmissions = catchAsync(async (req: Request, res: Response,
   const updatedSubmissions = await Promise.all(
     submissions.map(async (sub: any) => {
       if (sub.score === null || sub.score === undefined || sub.status === 'PENDING') {
-        let calcScore = 0;
-        let totalMax = 0;
-
         const answersMap: Record<string, string> =
           typeof sub.answers === 'object' && sub.answers !== null
             ? (sub.answers as Record<string, string>)
             : {};
 
-        questions.forEach((q: any) => {
-          const qPoints = Number(q.points) || 1;
-          totalMax += qPoints;
-
-          const studentAns = answersMap[q.id.toString()] || answersMap[q.id];
-          if (studentAns !== undefined && studentAns !== null) {
-            const sAnsStr = String(studentAns).trim().toUpperCase();
-            const cAnsStr = String(q.correctAnswer || '').trim().toUpperCase();
-            const qType = (q.type || '').toUpperCase().replace('-', '_');
-
-            if (qType === 'MCQ' || qType === 'MULTIPLE_CHOICE') {
-              if (sAnsStr === cAnsStr || sAnsStr === cAnsStr.replace('OPTION', '')) {
-                calcScore += qPoints;
-              }
-            } else if (qType === 'TRUE_FALSE' || qType === 'TRUEFALSE' || qType === 'TF') {
-              const normS = sAnsStr === 'TRUE' || sAnsStr === 'A' || sAnsStr === '1' ? 'TRUE' : 'FALSE';
-              const normC = cAnsStr === 'TRUE' || cAnsStr === 'A' || cAnsStr === '1' ? 'TRUE' : 'FALSE';
-              if (normS === normC) {
-                calcScore += qPoints;
-              }
-            } else if (qType === 'SHORT_ANSWER' || qType === 'ESSAY' || qType === 'TEXT') {
-              if (cAnsStr && sAnsStr.toLowerCase().includes(cAnsStr.toLowerCase())) {
-                calcScore += qPoints;
-              }
-            }
-          }
-        });
+        const { score: calcScore, maxScore: totalMax } = calculateExamScore(questions, answersMap);
 
         // Persist computed score into DB
         await prisma.examSubmission.update({
