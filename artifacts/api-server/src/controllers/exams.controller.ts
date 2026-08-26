@@ -453,14 +453,27 @@ export const startExamSession = catchAsync(async (req: Request, res: Response, n
   }
 
   if (!submission) {
-    submission = await prisma.examSubmission.create({
-      data: {
-        examId,
-        studentId: student.id,
-        answers: [],
-        status: 'PENDING',
+    try {
+      submission = await prisma.examSubmission.create({
+        data: {
+          examId,
+          studentId: student.id,
+          answers: [],
+          status: 'PENDING',
+        }
+      });
+    } catch (err: any) {
+      if (err.code === 'P2002') {
+        submission = await prisma.examSubmission.findUnique({
+          where: { examId_studentId: { examId, studentId: student.id } }
+        });
+        if (submission && submission.status !== 'PENDING') {
+          return next(new AuthorizationError('You have already completed this exam'));
+        }
+      } else {
+        throw err;
       }
-    });
+    }
   }
 
   res.status(201).json({ success: true, data: submission });
