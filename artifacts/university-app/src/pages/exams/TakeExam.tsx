@@ -66,28 +66,39 @@ const TakeExam = () => {
     return t('exams.defaultLeaveWarning', { seconds: antiCheatSettings.leaveGraceSeconds });
   }, [antiCheatSettings, t]);
 
+  const [answers, setAnswers] = useState(() => {
+    const saved = localStorage.getItem(`exam_answers_${id}`);
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const saved = localStorage.getItem(`exam_timer_${id}`);
+    return saved ? parseInt(saved) : 0;
+  });
+
   // ── Anti-Cheat Hook ──────────────────────────────────────────────────────────
   const handleExamCancelled = useCallback(async () => {
     setStatus('CANCELLED');
     try {
-      // Auto-submit with cancelled status
       const answersArray = Object.keys(answers).map(qId => ({
         questionId: qId,
         answer: answers[qId]
       }));
-      await examsService.submitExam(id, {
-        answers: answersArray,
+      await examsService.cancelExam(id, {
+        reason: `Student left exam and did not return within ${antiCheatSettings.leaveGraceSeconds} seconds.`,
         antiCheatLogs: violations,
-        status: 'CANCELLED_CHEATING',
+        answers: answersArray,
         deviceInfo: deviceInfo,
       });
-      await examsService.cancelExam(id, `Student left exam and did not return within ${antiCheatSettings.leaveGraceSeconds} seconds.`);
     } catch (err) {
       logger.error('Failed to cancel exam', err);
     }
     localStorage.removeItem(`exam_answers_${id}`);
     localStorage.removeItem(`exam_timer_${id}`);
-  }, [id, antiCheatSettings.leaveGraceSeconds]);
+    localStorage.removeItem(`exam_violations_${id}`);
+    localStorage.removeItem(`exam_device_${id}`);
+    localStorage.removeItem(`exam_leaves_${id}`);
+  }, [id, answers, violations, deviceInfo, antiCheatSettings.leaveGraceSeconds]);
 
   const {
     violations,
@@ -125,16 +136,6 @@ const TakeExam = () => {
       onExamCancelled: handleExamCancelled,
     }
   );
-
-  const [answers, setAnswers] = useState(() => {
-    const saved = localStorage.getItem(`exam_answers_${id}`);
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [timeLeft, setTimeLeft] = useState(() => {
-    const saved = localStorage.getItem(`exam_timer_${id}`);
-    return saved ? parseInt(saved) : 0;
-  });
 
   // Save answers to localStorage
   useEffect(() => {
