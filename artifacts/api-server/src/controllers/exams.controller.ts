@@ -513,6 +513,19 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
     return next(new AuthorizationError('Exam already submitted'));
   }
 
+  // Check if exam submission window has closed (allowing 3-minute grace period)
+  if (exam.date && exam.endTime) {
+    const [h, m] = String(exam.endTime).split(':').map(Number);
+    if (!isNaN(h) && !isNaN(m)) {
+      const endDateTime = new Date(exam.date);
+      endDateTime.setHours(h, m, 0, 0);
+      const gracePeriodMs = 3 * 60 * 1000;
+      if (Date.now() > endDateTime.getTime() + gracePeriodMs) {
+        return next(new AuthorizationError('Exam submission window has closed'));
+      }
+    }
+  }
+
   const questions = await prisma.examQuestion.findMany({ where: { examId } });
   let score = 0;
   let maxScore = 0;
@@ -557,28 +570,32 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
     }
   });
 
-  const updatedSubmission = await prisma.examSubmission.update({
-    where: { id: submission.id },
-    data: {
-      answers: answersMap,
-      score: score,
-      maxScore: maxScore || 10,
-      status: 'GRADED',
-      submittedAt: new Date(),
-      antiCheatLogs: antiCheatLogs || []
-    }
-  });
+  const updatedSubmission = await prisma.$transaction(async (tx) => {
+    const sub = await tx.examSubmission.update({
+      where: { id: submission.id },
+      data: {
+        answers: answersMap,
+        score: score,
+        maxScore: maxScore || 10,
+        status: 'GRADED',
+        submittedAt: new Date(),
+        antiCheatLogs: antiCheatLogs || []
+      }
+    });
 
-  // Handle violations if any
-  if (Array.isArray(antiCheatLogs) && antiCheatLogs.length > 0) {
-    const violationRecords = antiCheatLogs.map((log: any) => ({
-      submissionId: updatedSubmission.id,
-      type: log.type,
-      details: log.details || null,
-      occurredAt: log.occurredAt ? new Date(log.occurredAt) : new Date()
-    }));
-    await prisma.examViolation.createMany({ data: violationRecords });
-  }
+    // Handle violations if any
+    if (Array.isArray(antiCheatLogs) && antiCheatLogs.length > 0) {
+      const violationRecords = antiCheatLogs.map((log: any) => ({
+        submissionId: sub.id,
+        type: log.type,
+        details: log.details || null,
+        occurredAt: log.occurredAt ? new Date(log.occurredAt) : new Date()
+      }));
+      await tx.examViolation.createMany({ data: violationRecords });
+    }
+
+    return sub;
+  });
 
   res.json({ success: true, data: updatedSubmission });
 });
