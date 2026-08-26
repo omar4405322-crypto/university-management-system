@@ -191,25 +191,16 @@ export const updateExam = catchAsync(async (req: Request, res: Response, next: N
   const { type, date, startTime, endTime, room } = req.body;
   const id = parseInt(req.params.id as string);
 
-  const exam = await prisma.exam.findUnique({
-    where: { id },
-    include: { course: { include: { department: true } } },
+  const examScope: any = getScopeWhere(req.user!, 'exam');
+  const exam = await prisma.exam.findFirst({
+    where: {
+      id,
+      ...(examScope && Object.keys(examScope).length ? examScope : {}),
+    },
   });
 
   if (!exam) {
-    return next(new NotFoundError('Exam not found'));
-  }
-
-  // Enforce scope via helper
-  const examCourseScope: any = getScopeWhere(req.user!, 'course');
-  if (examCourseScope && Object.keys(examCourseScope).length) {
-    if (
-      examCourseScope.department &&
-      exam.course?.department?.collegeId !== examCourseScope.department.collegeId
-    )
-      return next(new AuthorizationError('Access denied'));
-    if (examCourseScope.departmentId && exam.course?.departmentId !== examCourseScope.departmentId)
-      return next(new AuthorizationError('Access denied'));
+    return next(new AuthorizationError('Access denied'));
   }
 
   const updatedExam = await prisma.exam.update({
@@ -228,25 +219,17 @@ export const updateExam = catchAsync(async (req: Request, res: Response, next: N
 
 export const deleteExam = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const id = parseInt(req.params.id as string);
-  const exam = await prisma.exam.findUnique({
-    where: { id },
-    include: { course: { include: { department: true } } },
+
+  const examScope: any = getScopeWhere(req.user!, 'exam');
+  const exam = await prisma.exam.findFirst({
+    where: {
+      id,
+      ...(examScope && Object.keys(examScope).length ? examScope : {}),
+    },
   });
 
   if (!exam) {
-    return next(new NotFoundError('Exam not found'));
-  }
-
-  // Enforce scope via helper
-  const examCourseScope: any = getScopeWhere(req.user!, 'course');
-  if (examCourseScope && Object.keys(examCourseScope).length) {
-    if (
-      examCourseScope.department &&
-      exam.course?.department?.collegeId !== examCourseScope.department.collegeId
-    )
-      return next(new AuthorizationError('Access denied'));
-    if (examCourseScope.departmentId && exam.course?.departmentId !== examCourseScope.departmentId)
-      return next(new AuthorizationError('Access denied'));
+    return next(new AuthorizationError('Access denied'));
   }
 
   await prisma.exam.delete({
@@ -332,8 +315,14 @@ export const addExamQuestion = catchAsync(async (req: Request, res: Response, ne
   const examId = parseInt(req.params.id as string);
   const { text, type, optionA, optionB, optionC, optionD, correctAnswer, points, order } = req.body;
 
-  const exam = await prisma.exam.findUnique({ where: { id: examId } });
-  if (!exam) return next(new NotFoundError('Exam not found'));
+  const examScope: any = getScopeWhere(req.user!, 'exam');
+  const exam = await prisma.exam.findFirst({
+    where: {
+      id: examId,
+      ...(examScope && Object.keys(examScope).length ? examScope : {}),
+    },
+  });
+  if (!exam) return next(new AuthorizationError('Access denied'));
 
   const question = await prisma.examQuestion.create({
     data: {
@@ -351,6 +340,15 @@ export const updateExamQuestion = catchAsync(async (req: Request, res: Response,
   const question = await prisma.examQuestion.findUnique({ where: { id: questionId } });
   if (!question) return next(new NotFoundError('Question not found'));
 
+  const examScope: any = getScopeWhere(req.user!, 'exam');
+  const exam = await prisma.exam.findFirst({
+    where: {
+      id: question.examId,
+      ...(examScope && Object.keys(examScope).length ? examScope : {}),
+    },
+  });
+  if (!exam) return next(new AuthorizationError('Access denied'));
+
   const updated = await prisma.examQuestion.update({
     where: { id: questionId },
     data: { text, type, optionA, optionB, optionC, optionD, correctAnswer, points, order }
@@ -363,6 +361,15 @@ export const deleteExamQuestion = catchAsync(async (req: Request, res: Response,
   const questionId = parseInt(req.params.questionId as string);
   const question = await prisma.examQuestion.findUnique({ where: { id: questionId } });
   if (!question) return next(new NotFoundError('Question not found'));
+
+  const examScope: any = getScopeWhere(req.user!, 'exam');
+  const exam = await prisma.exam.findFirst({
+    where: {
+      id: question.examId,
+      ...(examScope && Object.keys(examScope).length ? examScope : {}),
+    },
+  });
+  if (!exam) return next(new AuthorizationError('Access denied'));
 
   await prisma.examQuestion.delete({ where: { id: questionId } });
   res.json({ success: true, message: 'Question deleted' });
