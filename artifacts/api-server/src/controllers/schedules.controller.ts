@@ -9,7 +9,7 @@ import { Prisma } from '@prisma/client';
 
 export const getWeeklyTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { departmentId, year, semester, timetableId, doctorId, teachingAssistantId } = req.query as Record<string, string>;
+    const { departmentId, collegeId, year, semester, timetableId, doctorId, teachingAssistantId } = req.query as Record<string, string>;
     const { user } = req;
 
     const filterYear = year ? parseInt(year) : undefined;
@@ -119,10 +119,6 @@ export const getWeeklyTimetable = catchAsync(
       }
       // Prevent year/semester from being re-applied below for students (already baked in above)
       Object.defineProperty(whereClause, '__studentScopedFiltersApplied', { value: true, enumerable: false });
-    } else if (doctorId) {
-      whereClause = { doctorId: parseInt(doctorId) };
-    } else if (teachingAssistantId) {
-      whereClause = { teachingAssistantId: teachingAssistantId };
     } else if (user!.role === 'DOCTOR') {
       const doctor = await prisma.doctor.findUnique({ where: { userId: user!.id } });
       if (!doctor) return res.json({ success: true, data: [] });
@@ -133,9 +129,20 @@ export const getWeeklyTimetable = catchAsync(
       whereClause = { teachingAssistantId: ta.id };
     } else {
       // Admin roles
+      const scopeWhere: any = getScopeWhere(req.user!, 'course');
       whereClause = {};
+      if (doctorId) {
+        whereClause.doctorId = parseInt(doctorId);
+      } else if (teachingAssistantId) {
+        whereClause.teachingAssistantId = teachingAssistantId;
+      }
       if (departmentId) {
         whereClause.course = { departmentId: parseInt(departmentId) };
+      } else if (collegeId) {
+        whereClause.course = { department: { collegeId: parseInt(collegeId) } };
+      }
+      if (scopeWhere && Object.keys(scopeWhere).length > 0) {
+        whereClause.course = { ...whereClause.course, ...scopeWhere };
       }
     }
 
@@ -186,7 +193,10 @@ export const createSchedule = catchAsync(
 
     if (!courseId) return next(new ValidationError('courseId is required'));
 
-    const course = await prisma.course.findUnique({ where: { id: parseInt(courseId as string) } });
+    const course = await prisma.course.findUnique({
+      where: { id: parseInt(courseId as string) },
+      include: { department: true }
+    });
     if (!course) return next(new NotFoundError('Course not found'));
 
     const parsedDoctorId = doctorId ? parseInt(doctorId as string) : null;
@@ -197,9 +207,18 @@ export const createSchedule = catchAsync(
       if (!myDoctor || (parsedDoctorId && parsedDoctorId !== myDoctor.id)) {
         return next(new AuthorizationError('You can only schedule classes for yourself'));
       }
-    }
-    if (req.user!.role === 'TEACHING_ASSISTANT' && teachingAssistantId !== req.user!.teachingAssistant?.id) {
-      return next(new AuthorizationError('You can only schedule classes assigned to you'));
+    } else if (req.user!.role === 'TEACHING_ASSISTANT') {
+      if (teachingAssistantId !== req.user!.teachingAssistant?.id) {
+        return next(new AuthorizationError('You can only schedule classes assigned to you'));
+      }
+    } else {
+      const deptScope: any = getScopeWhere(req.user!, 'department');
+      if (deptScope && Object.keys(deptScope).length) {
+        if (deptScope.collegeId && course.department?.collegeId !== deptScope.collegeId)
+          return next(new AuthorizationError('Access denied'));
+        if (deptScope.id && course.departmentId !== deptScope.id)
+          return next(new AuthorizationError('Access denied'));
+      }
     }
 
     if (timetableId) {
@@ -272,7 +291,7 @@ export const updateSchedule = catchAsync(
 
     const existing = await prisma.scheduleSlot.findUnique({
       where: { id: slotId },
-      include: { course: true }
+      include: { course: { include: { department: true } } }
     });
     if (!existing) return next(new NotFoundError('ScheduleSlot not found'));
 
@@ -286,21 +305,39 @@ export const updateSchedule = catchAsync(
       if (!myDoctor || existing.doctorId !== myDoctor.id) {
         return next(new AuthorizationError('You can only modify slots for your own sections'));
       }
-    }
-    if (req.user!.role === 'TEACHING_ASSISTANT') {
+    } else if (req.user!.role === 'TEACHING_ASSISTANT') {
       if (existing.teachingAssistantId !== req.user!.teachingAssistant?.id) {
         return next(new AuthorizationError('You can only modify slots assigned to you'));
       }
       if (newTeachingAssistantId !== req.user!.teachingAssistant?.id) {
         return next(new AuthorizationError('You cannot reassign to another TA'));
       }
+    } else {
+      const deptScope: any = getScopeWhere(req.user!, 'department');
+      if (deptScope && Object.keys(deptScope).length) {
+        if (deptScope.collegeId && existing.course?.department?.collegeId !== deptScope.collegeId)
+          return next(new AuthorizationError('Access denied'));
+        if (deptScope.id && existing.course?.departmentId !== deptScope.id)
+          return next(new AuthorizationError('Access denied'));
+      }
     }
 
     let targetTimetableId = existing.timetableId;
 
     if (courseId && newCourseId !== existing.courseId) {
-      const course = await prisma.course.findUnique({ where: { id: newCourseId } });
+      const course = await prisma.course.findUnique({
+        where: { id: newCourseId },
+        include: { department: true }
+      });
       if (!course) return next(new NotFoundError('Course not found'));
+
+      const deptScope: any = getScopeWhere(req.user!, 'department');
+      if (deptScope && Object.keys(deptScope).length) {
+        if (deptScope.collegeId && course.department?.collegeId !== deptScope.collegeId)
+          return next(new AuthorizationError('Access denied'));
+        if (deptScope.id && course.departmentId !== deptScope.id)
+          return next(new AuthorizationError('Access denied'));
+      }
 
       const foundTb = await prisma.timetable.findFirst({
         where: {
@@ -361,6 +398,7 @@ export const deleteSchedule = catchAsync(
     const slotId = parseInt(req.params.id as string);
     const existing = await prisma.scheduleSlot.findUnique({
       where: { id: slotId },
+      include: { course: { include: { department: true } } }
     });
     if (!existing) return next(new NotFoundError('ScheduleSlot not found'));
 
@@ -369,9 +407,18 @@ export const deleteSchedule = catchAsync(
       if (!myDoctor || existing.doctorId !== myDoctor.id) {
         return next(new AuthorizationError('You can only delete slots for your own sections'));
       }
-    }
-    if (req.user!.role === 'TEACHING_ASSISTANT' && existing.teachingAssistantId !== req.user!.teachingAssistant?.id) {
-      return next(new AuthorizationError('You can only delete slots assigned to you'));
+    } else if (req.user!.role === 'TEACHING_ASSISTANT') {
+      if (existing.teachingAssistantId !== req.user!.teachingAssistant?.id) {
+        return next(new AuthorizationError('You can only delete slots assigned to you'));
+      }
+    } else {
+      const deptScope: any = getScopeWhere(req.user!, 'department');
+      if (deptScope && Object.keys(deptScope).length) {
+        if (deptScope.collegeId && existing.course?.department?.collegeId !== deptScope.collegeId)
+          return next(new AuthorizationError('Access denied'));
+        if (deptScope.id && existing.course?.departmentId !== deptScope.id)
+          return next(new AuthorizationError('Access denied'));
+      }
     }
 
     await prisma.scheduleSlot.delete({ where: { id: slotId } });
@@ -608,11 +655,31 @@ export const syncGridToMaster = catchAsync(
       return next(new ValidationError('Slots array is required for synchronization'));
     }
 
+    const parsedDeptId = departmentId ? parseInt(departmentId) : undefined;
+
+    // Enforce Admin Scope
+    const deptScope: any = getScopeWhere(req.user!, 'department');
+    if (deptScope && Object.keys(deptScope).length) {
+      if (!parsedDeptId) {
+        return next(new AuthorizationError('Access denied'));
+      }
+      if (deptScope.id && parsedDeptId !== deptScope.id) {
+        return next(new AuthorizationError('Access denied'));
+      }
+      if (deptScope.collegeId) {
+        const dept = await prisma.department.findUnique({
+          where: { id: parsedDeptId },
+          select: { collegeId: true },
+        });
+        if (!dept || dept.collegeId !== deptScope.collegeId) {
+          return next(new AuthorizationError('Access denied'));
+        }
+      }
+    }
+
     let syncedCount = 0;
     let skippedCount = 0;
     const skippedSlots: Array<{ courseName: string; reason: string }> = [];
-
-    const parsedDeptId = departmentId ? parseInt(departmentId) : undefined;
 
     for (const slot of slots) {
       const { day, startTime, endTime, courseName, instructor, room, slotType } = slot;
