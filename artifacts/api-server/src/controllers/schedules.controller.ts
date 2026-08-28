@@ -820,6 +820,7 @@ export const checkScheduleConflict = catchAsync(
       departmentId,
       academicYear,
       semester,
+      groupId,
       excludeSlotId,
     } = req.body;
 
@@ -827,89 +828,39 @@ export const checkScheduleConflict = catchAsync(
       return res.json({ success: true, hasConflict: false, conflicts: [] });
     }
 
-    const dayUpper = dayOfWeek.toUpperCase();
-    const conflicts: Array<{
-      type: 'ROOM_OCCUPIED' | 'DOCTOR_BUSY' | 'TA_BUSY' | 'BATCH_OVERLAP' | 'DUPLICATE_COURSE' | 'AMBIGUOUS_DOCTOR' | 'AMBIGUOUS_TA';
-      messageAr: string;
-      messageEn: string;
-      conflictingSlot?: any;
-    }> = [];
-
-    const timeOverlap = {
-      OR: [
-        { AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }] },
-        { AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }] },
-        { AND: [{ startTime: { gte: startTime } }, { endTime: { lte: endTime } }] },
-      ],
-    };
-
-    const excludeCondition = excludeSlotId ? { id: { not: Number(excludeSlotId) } } : {};
-
     // Derive effective departmentId from payload, course, or authenticated user
     let effectiveDeptId: number | null = departmentId ? Number(departmentId) : null;
-    if (!effectiveDeptId && courseId) {
-      const c = await prisma.course.findUnique({
-        where: { id: Number(courseId) },
-        select: { departmentId: true },
-      });
-      if (c?.departmentId) effectiveDeptId = c.departmentId;
-    }
-    if (!effectiveDeptId && courseName) {
+    let resolvedCourseId: number | null = courseId ? Number(courseId) : null;
+
+    if (!resolvedCourseId && courseName) {
       const c = await prisma.course.findFirst({
         where: { name: { equals: String(courseName).trim(), mode: 'insensitive' } },
+        select: { id: true, departmentId: true },
+      });
+      if (c) {
+        resolvedCourseId = c.id;
+        if (!effectiveDeptId && c.departmentId) effectiveDeptId = c.departmentId;
+      }
+    } else if (resolvedCourseId && !effectiveDeptId) {
+      const c = await prisma.course.findUnique({
+        where: { id: resolvedCourseId },
         select: { departmentId: true },
       });
       if (c?.departmentId) effectiveDeptId = c.departmentId;
     }
+
     if (!effectiveDeptId && (req as any).user?.departmentId) {
       effectiveDeptId = (req as any).user.departmentId;
     }
 
-    // 1. Check Room Conflict
-    if (room && room.trim() !== '') {
-      const trimmedRoom = room.trim();
-      const roomSlot = await prisma.scheduleSlot.findFirst({
-        where: {
-          dayOfWeek: dayUpper,
-          room: { equals: trimmedRoom, mode: 'insensitive' },
-          ...timeOverlap,
-          ...excludeCondition,
-        },
-        include: {
-          course: {
-            select: { name: true, courseCode: true, department: { select: { name: true } } },
-          },
-          doctor: { select: { firstName: true, lastName: true } },
-        },
-      });
+    // Disambiguation checks for name-based lookup
+    const initialConflicts: any[] = [];
 
-      if (roomSlot) {
-        const courseStr = roomSlot.course?.name || 'مادة أخرى';
-        const deptStr = roomSlot.course?.department?.name || '';
-        const docStr = roomSlot.doctor
-          ? `د. ${roomSlot.doctor.firstName} ${roomSlot.doctor.lastName}`
-          : '';
-        conflicts.push({
-          type: 'ROOM_OCCUPIED',
-          messageAr: `القاعة/المعمل (${trimmedRoom}) محجوزة بالفعل لمادة (${courseStr}) ${deptStr ? `بقسم ${deptStr}` : ''} ${docStr ? `مع ${docStr}` : ''} في الفترة (${roomSlot.startTime} - ${roomSlot.endTime}).`,
-          messageEn: `Room/Lab (${trimmedRoom}) is already booked for (${courseStr}) ${deptStr ? `[${deptStr}]` : ''} at (${roomSlot.startTime} - ${roomSlot.endTime}).`,
-          conflictingSlot: {
-            courseName: courseStr,
-            doctorName: docStr,
-            departmentName: deptStr,
-            time: `${roomSlot.startTime} - ${roomSlot.endTime}`,
-            room: trimmedRoom,
-          },
-        });
-      }
-    }
-
-    // 2. Check Doctor Conflict
     let targetDoctorId: number | null = doctorId ? Number(doctorId) : null;
     if (!targetDoctorId && doctorName) {
       const docResolve = await resolveDoctorByName(doctorName, effectiveDeptId);
       if (docResolve.isAmbiguous) {
-        conflicts.push({
+        initialConflicts.push({
           type: 'AMBIGUOUS_DOCTOR',
           messageAr: `يوجد أكثر من عضو هيئة تدريس يطابق الاسم (${doctorName}). يرجى اختيار المحاضر من القائمة أو عبر المعرّف (Doctor ID) لتفادي الالتباس.`,
           messageEn: `Multiple faculty members match the name (${doctorName}). Please select the instructor from the list or use their numeric ID to disambiguate.`,
@@ -919,49 +870,11 @@ export const checkScheduleConflict = catchAsync(
       }
     }
 
-    if (targetDoctorId) {
-      const docSlot = await prisma.scheduleSlot.findFirst({
-        where: {
-          dayOfWeek: dayUpper,
-          doctorId: targetDoctorId,
-          ...timeOverlap,
-          ...excludeCondition,
-        },
-        include: {
-          course: {
-            select: { name: true, courseCode: true, department: { select: { name: true } } },
-          },
-          doctor: { select: { firstName: true, lastName: true } },
-        },
-      });
-
-      if (docSlot) {
-        const docNameStr = docSlot.doctor
-          ? `د. ${docSlot.doctor.firstName} ${docSlot.doctor.lastName}`
-          : doctorName || 'المحاضر';
-        const courseStr = docSlot.course?.name || 'مادة أخرى';
-        const deptStr = docSlot.course?.department?.name || '';
-        conflicts.push({
-          type: 'DOCTOR_BUSY',
-          messageAr: `المحاضر (${docNameStr}) لديه محاضرة أخرى (${courseStr}) ${deptStr ? `بقسم ${deptStr}` : ''} بقاعة (${docSlot.room || 'غير محددة'}) في نفس الوقت (${docSlot.startTime} - ${docSlot.endTime}).`,
-          messageEn: `Instructor (${docNameStr}) is already teaching (${courseStr}) in room (${docSlot.room || 'N/A'}) at (${docSlot.startTime} - ${docSlot.endTime}).`,
-          conflictingSlot: {
-            courseName: courseStr,
-            doctorName: docNameStr,
-            departmentName: deptStr,
-            time: `${docSlot.startTime} - ${docSlot.endTime}`,
-            room: docSlot.room,
-          },
-        });
-      }
-    }
-
-    // 3. Check Teaching Assistant Conflict
     let targetTaId: string | null = teachingAssistantId ? String(teachingAssistantId) : null;
     if (!targetTaId && taName) {
       const taResolve = await resolveTaByName(taName, effectiveDeptId);
       if (taResolve.isAmbiguous) {
-        conflicts.push({
+        initialConflicts.push({
           type: 'AMBIGUOUS_TA',
           messageAr: `يوجد أكثر من معيد/مدرس مساعد يطابق الاسم (${taName}). يرجى اختيار المعيد من القائمة أو عبر المعرّف (TA ID) لتفادي الالتباس.`,
           messageEn: `Multiple teaching assistants match the name (${taName}). Please select the TA from the list or use their ID to disambiguate.`,
@@ -971,79 +884,27 @@ export const checkScheduleConflict = catchAsync(
       }
     }
 
-    if (targetTaId) {
-      const taSlot = await prisma.scheduleSlot.findFirst({
-        where: {
-          dayOfWeek: dayUpper,
-          teachingAssistantId: targetTaId,
-          ...timeOverlap,
-          ...excludeCondition,
-        },
-        include: {
-          course: {
-            select: { name: true, department: { select: { name: true } } },
-          },
-          teachingAssistant: { select: { firstName: true, lastName: true } },
-        },
-      });
+    const serviceConflicts = await TimetableService.findConflicts({
+      dayOfWeek,
+      startTime,
+      endTime,
+      room,
+      doctorId: targetDoctorId,
+      teachingAssistantId: targetTaId,
+      courseId: resolvedCourseId,
+      departmentId: effectiveDeptId,
+      academicYear: academicYear ? Number(academicYear) : null,
+      semester: semester ? Number(semester) : null,
+      groupId: groupId ? Number(groupId) : null,
+      excludeSlotId: excludeSlotId ? Number(excludeSlotId) : undefined,
+    });
 
-      if (taSlot) {
-        const taNameStr = taSlot.teachingAssistant
-          ? `م. ${taSlot.teachingAssistant.firstName} ${taSlot.teachingAssistant.lastName}`
-          : taName || 'المعيد';
-        const courseStr = taSlot.course?.name || 'سكشن آخر';
-        conflicts.push({
-          type: 'TA_BUSY',
-          messageAr: `المعيد (${taNameStr}) لديه سكشن آخر (${courseStr}) في بقاعة (${taSlot.room || 'غير محددة'}) في نفس الفترة (${taSlot.startTime} - ${taSlot.endTime}).`,
-          messageEn: `Teaching Assistant (${taNameStr}) is already assigned to (${courseStr}) at (${taSlot.startTime} - ${taSlot.endTime}).`,
-          conflictingSlot: {
-            courseName: courseStr,
-            doctorName: taNameStr,
-            time: `${taSlot.startTime} - ${taSlot.endTime}`,
-            room: taSlot.room,
-          },
-        });
-      }
-    }
-
-    // 4. Check Batch/Department Overlap
-    if (departmentId && academicYear && semester) {
-      const batchSlot = await prisma.scheduleSlot.findFirst({
-        where: {
-          dayOfWeek: dayUpper,
-          ...timeOverlap,
-          ...excludeCondition,
-          course: {
-            departmentId: Number(departmentId),
-            year: Number(academicYear),
-            semester: Number(semester),
-          },
-        },
-        include: {
-          course: { select: { name: true, courseCode: true } },
-          doctor: { select: { firstName: true, lastName: true } },
-        },
-      });
-
-      if (batchSlot) {
-        const existingCourse = batchSlot.course?.name || 'مادة أخرى';
-        conflicts.push({
-          type: 'BATCH_OVERLAP',
-          messageAr: `توجد بالفعل مادة أخرى (${existingCourse}) مجدولة لنفس السنة والقسم في هذه الفترة الزمنية (${batchSlot.startTime} - ${batchSlot.endTime}).`,
-          messageEn: `Another course (${existingCourse}) is already scheduled for this batch in this time slot (${batchSlot.startTime} - ${batchSlot.endTime}).`,
-          conflictingSlot: {
-            courseName: existingCourse,
-            time: `${batchSlot.startTime} - ${batchSlot.endTime}`,
-            room: batchSlot.room,
-          },
-        });
-      }
-    }
+    const allConflicts = [...initialConflicts, ...serviceConflicts];
 
     return res.json({
       success: true,
-      hasConflict: conflicts.length > 0,
-      conflicts,
+      hasConflict: allConflicts.length > 0,
+      conflicts: allConflicts,
     });
   }
 );
