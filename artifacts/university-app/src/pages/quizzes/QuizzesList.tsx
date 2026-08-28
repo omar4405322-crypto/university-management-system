@@ -1,9 +1,8 @@
-// @ts-nocheck
-// FIXED: View submissions opens modal with API results - Phase 5
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import quizService from '../../services/quiz.service';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from 'react-i18next';
 import {
   BookOpen,
@@ -13,6 +12,11 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
+  Search,
+  X,
+  Plus,
+  Layers,
+  GraduationCap,
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -24,6 +28,7 @@ import { useToast } from '../../context/ToastContext';
 
 const QuizzesList = () => {
   const { t } = useTranslation();
+  const { isRTL } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
   const isDoctor = user?.role === 'DOCTOR';
@@ -31,6 +36,8 @@ const QuizzesList = () => {
 
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('latest');
   const { showToast } = useToast();
   const [submissionsQuiz, setSubmissionsQuiz] = useState(null);
 
@@ -39,7 +46,7 @@ const QuizzesList = () => {
       setLoading(true);
       const result = await quizService.getQuizzes({});
       if (result.success) {
-        setQuizzes(result.data);
+        setQuizzes(result.data || []);
       }
     } catch (_error) {
       showToast('Error fetching quizzes', 'error');
@@ -52,37 +59,191 @@ const QuizzesList = () => {
     fetchQuizzes();
   }, []);
 
+  const totalQuestions = useMemo(
+    () => (Array.isArray(quizzes) ? quizzes : []).reduce((acc, q) => acc + (q._count?.questions || q.questions?.length || 0), 0),
+    [quizzes]
+  );
+  const activeCoursesCount = useMemo(
+    () => new Set((Array.isArray(quizzes) ? quizzes : []).map((q) => q.courseId || q.course?.id).filter(Boolean)).size,
+    [quizzes]
+  );
+  const avgDuration = useMemo(() => {
+    const list = Array.isArray(quizzes) ? quizzes : [];
+    if (!list.length) return 0;
+    return Math.round(list.reduce((acc, q) => acc + (Number(q.duration) || 0), 0) / list.length);
+  }, [quizzes]);
+
+  const filteredQuizzes = useMemo(() => {
+    const list = Array.isArray(quizzes) ? quizzes : [];
+    return list
+      .filter((q) => {
+        const query = search.trim().toLowerCase();
+        if (!query) return true;
+        const titleMatch = (q.title || '').toLowerCase().includes(query);
+        const descMatch = (q.description || '').toLowerCase().includes(query);
+        const codeMatch = (q.course?.courseCode || '').toLowerCase().includes(query);
+        const nameMatch = (q.course?.name || '').toLowerCase().includes(query);
+        return titleMatch || descMatch || codeMatch || nameMatch;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'duration') return (Number(b.duration) || 0) - (Number(a.duration) || 0);
+        if (sortBy === 'questions') return (b._count?.questions || 0) - (a._count?.questions || 0);
+        return (a.title || '').localeCompare(b.title || '');
+      });
+  }, [quizzes, search, sortBy]);
 
   return (
-    <div className="section-gap animate-page">
+    <div className="section-gap animate-page pt-4">
       <PageHeader
-        title={t('quizzes.title')}
-        subtitle={isDoctor ? t('quizzes.subtitleDoctor') : t('quizzes.subtitleStudent')}
+        title={t('quizzes.title', 'Quizzes')}
+        subtitle={
+          isDoctor
+            ? t('quizzes.subtitleDoctor', 'Manage your course quizzes')
+            : t('quizzes.subtitleStudent', 'View and take your course quizzes')
+        }
         action={
           isDoctor
             ? {
-                label: t('quizzes.createQuiz'),
+                label: t('quizzes.createQuiz', 'Create Quiz'),
                 onClick: () => navigate('/quizzes/create'),
+                icon: Plus,
+                className:
+                  'bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2',
               }
-            : null
+            : undefined
         }
       />
 
-      
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        {/* Total Quizzes */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'إجمالي الاختبارات' : 'Total Quizzes'}
+            </span>
+            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
+              {quizzes.length}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
+            <FileText size={16} />
+          </div>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {/* Active Courses */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'المقررات النشطة' : 'Active Courses'}
+            </span>
+            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
+              {activeCoursesCount}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
+            <BookOpen size={16} />
+          </div>
+        </div>
+
+        {/* Total Questions */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'بنك الأسئلة المتاحة' : 'Total Questions'}
+            </span>
+            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
+              {totalQuestions}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
+            <HelpCircle size={16} />
+          </div>
+        </div>
+
+        {/* Avg Duration */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'متوسط المدة' : 'Avg Duration'}
+            </span>
+            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
+              {avgDuration} {isRTL ? 'د' : 'min'}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+            <Clock size={16} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. UNIFIED COMPACT FILTER TOOLBAR                                         */}
+      {/* ========================================================================= */}
+      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-6">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={isRTL ? 'البحث بعنوان الاختبار أو المقرر...' : 'Search by quiz title or course...'}
+            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* Sort Select */}
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="latest">{isRTL ? 'ترتيب: أبجدياً' : 'Sort: Alphabetical'}</option>
+          <option value="duration">{isRTL ? 'ترتيب: حسب المدة' : 'Sort: Duration'}</option>
+          <option value="questions">{isRTL ? 'ترتيب: حسب عدد الأسئلة' : 'Sort: Questions'}</option>
+        </select>
+
+        {/* Clear Filters */}
+        {(search || sortBy !== 'latest') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              setSortBy('latest');
+            }}
+            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
+          >
+            <X size={13} className="me-1" />
+            {isRTL ? 'مسح' : 'Clear'}
+          </Button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           <div className="col-span-full flex flex-col items-center justify-center py-24 gap-4">
             <Loader2 className="animate-spin text-brand-primary-600" size={48} />
-            <p className="label-stat">Syncing assessments...</p>
+            <p className="label-stat">{isRTL ? 'جاري تحميل الاختبارات...' : 'Syncing assessments...'}</p>
           </div>
-        ) : quizzes.length === 0 ? (
+        ) : filteredQuizzes.length === 0 ? (
           <div className="col-span-full">
             <EmptyState
               icon={<BookOpen size={48} />}
               title={t('quizzes.noQuizzes')}
               subtitle={isDoctor ? t('quizzes.subtitleDoctor') : t('quizzes.subtitleStudent')}
-                            action={
+              action={
                 isDoctor
                   ? {
                       label: t('quizzes.createQuiz'),
@@ -93,7 +254,7 @@ const QuizzesList = () => {
             />
           </div>
         ) : (
-          quizzes.map((quiz) => (
+          filteredQuizzes.map((quiz) => (
             <Card
               key={quiz.id}
               noPadding

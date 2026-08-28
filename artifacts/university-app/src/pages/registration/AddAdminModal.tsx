@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Mail, Lock, ShieldCheck, Building2, Users, Loader2 } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, Building2, Users, Loader2, User } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
@@ -26,6 +26,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({
   const isRTL = i18n.language === 'ar';
   const { showToast } = useToast();
 
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('SUPER_ADMIN');
@@ -37,6 +39,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setFirstName('');
+      setLastName('');
       setEmail('');
       setPassword('');
       setRole('SUPER_ADMIN');
@@ -72,7 +76,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password) {
+    if (!firstName || !lastName || !email || !password) {
       showToast(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Please fill in required fields', 'error');
       return;
     }
@@ -95,6 +99,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({
     try {
       setSubmitting(true);
       const payload: any = {
+        firstName,
+        lastName,
         email,
         password,
         role,
@@ -108,6 +114,8 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({
         showToast(isRTL ? 'تم إنشاء حساب المسؤول بنجاح' : 'Admin account created successfully', 'success');
         onSuccess();
         onClose();
+      } else {
+        showToast(res.message || (isRTL ? 'فشل إنشاء حساب المسؤول' : 'Failed to create admin'), 'error');
       }
     } catch (error: any) {
       showToast(error.response?.data?.message || (isRTL ? 'فشل إنشاء حساب المسؤول' : 'Failed to create admin'), 'error');
@@ -125,6 +133,36 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-start pt-2">
+        {/* Name Fields */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-black uppercase tracking-wider text-brand-text-muted flex items-center gap-2">
+              <User size={14} className="text-brand-primary-500" />
+              {isRTL ? 'الاسم الأول' : 'First Name'} *
+            </label>
+            <Input
+              type="text"
+              placeholder={isRTL ? 'أحمد' : 'John'}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-black uppercase tracking-wider text-brand-text-muted flex items-center gap-2">
+              <User size={14} className="text-brand-primary-500" />
+              {isRTL ? 'اسم العائلة' : 'Last Name'} *
+            </label>
+            <Input
+              type="text"
+              placeholder={isRTL ? 'محمد' : 'Doe'}
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+
         {/* Email */}
         <div className="space-y-1.5">
           <label className="text-xs font-black uppercase tracking-wider text-brand-text-muted flex items-center gap-2">

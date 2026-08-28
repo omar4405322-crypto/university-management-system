@@ -46,6 +46,7 @@ export const getAllStudents = catchAsync(
       sortOrder = 'desc',
       year,
       departmentId,
+      collegeId,
       groupId,
       status,
       letter,
@@ -63,12 +64,30 @@ export const getAllStudents = catchAsync(
     // 1. Role-based scoping
     const scopeWhere: any = getScopeWhere(req.user!, 'student');
 
+    const parsedCollegeId = collegeId && collegeId !== '' ? parseInt(collegeId as string, 10) : undefined;
+    const parsedDepartmentId = departmentId && departmentId !== '' ? parseInt(departmentId as string, 10) : undefined;
+
+    let collegeOrDeptWhere: any = {};
+    if (parsedCollegeId && parsedDepartmentId) {
+      collegeOrDeptWhere = {
+        departmentId: parsedDepartmentId,
+        department: { collegeId: parsedCollegeId }
+      };
+    } else if (parsedDepartmentId) {
+      collegeOrDeptWhere = {
+        departmentId: parsedDepartmentId
+      };
+    } else if (parsedCollegeId) {
+      collegeOrDeptWhere = {
+        department: { collegeId: parsedCollegeId }
+      };
+    }
+
     // 2. Advanced Filtering
     const where: any = {
       ...scopeWhere,
+      ...collegeOrDeptWhere,
       ...(year !== undefined && year !== '' && { year: parseInt(year as string) }),
-      ...(departmentId !== undefined &&
-        departmentId !== '' && { departmentId: parseInt(departmentId as string) }),
       ...(groupId !== undefined &&
         groupId !== '' &&
         (groupId === 'unassigned'

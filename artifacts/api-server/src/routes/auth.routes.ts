@@ -8,6 +8,7 @@ import {
   getRequests,
   approveRequest,
   rejectRequest,
+  deleteRequest,
 } from '../controllers/auth.controller';
 import { protect, authorize } from '../middleware/auth.middleware';
 import {
@@ -49,6 +50,14 @@ router.put(
   requestIdValidation,
   validate,
   rejectRequest
+);
+router.delete(
+  '/requests/:id',
+  protect,
+  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
+  requestIdValidation,
+  validate,
+  deleteRequest
 );
 
 export default router;

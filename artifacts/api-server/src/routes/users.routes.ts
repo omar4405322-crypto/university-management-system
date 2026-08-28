@@ -13,10 +13,11 @@ import {
   hardDeleteUser,
   updateAdmin,
   resetUserPassword,
+  reactivateUser,
 } from '../controllers/user.controller';
 import { protect, authorize } from '../middleware/auth.middleware';
 import upload from '../middleware/upload.middleware';
-import { userUpdateValidation, adminIdValidation } from '../validations/admin.validation';
+import { userUpdateValidation, adminIdValidation, adminCreateValidation, adminUpdateValidation } from '../validations/admin.validation';
 import { body } from 'express-validator';
 import validate from '../middleware/validate.middleware';
 import { twoFactorLimiter, passwordResetLimiter } from '../middleware/rateLimiter.middleware';
@@ -71,24 +72,15 @@ router.get('/', authorize('SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), g
 router.post(
   '/admins',
   authorize('SUPER_ADMIN'),
-  [
-    body('email').isEmail().withMessage('Invalid email format').normalizeEmail(),
-    body('password')
-      .isLength({ min: 8 })
-      .withMessage('Password must be at least 8 characters long'),
-    body('role').isIn(['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN']),
-    body('collegeId').optional().isInt(),
-    body('departmentId').optional().isInt(),
-    body('managedCollegeId').optional().isInt(),
-    body('managedDepartmentId').optional().isInt(),
-  ],
+  adminCreateValidation,
   validate,
   createAdmin
 );
 
-router.put('/:id', authorize('SUPER_ADMIN'), adminIdValidation, validate, updateAdmin);
+router.put('/:id', authorize('SUPER_ADMIN'), adminIdValidation, adminUpdateValidation, validate, updateAdmin);
 router.patch('/:id/reset-password', authorize('SUPER_ADMIN'), passwordResetLimiter, adminIdValidation, validate, resetUserPassword);
+router.patch('/:id/reactivate', authorize('SUPER_ADMIN'), adminIdValidation, validate, reactivateUser);
 router.delete('/:id', authorize('SUPER_ADMIN'), adminIdValidation, validate, deleteUser);
-router.delete('/:id/hard-delete', authorize('SUPER_ADMIN'), adminIdValidation, validate, hardDeleteUser);
+router.delete('/:id/permanent', authorize('SUPER_ADMIN'), adminIdValidation, validate, hardDeleteUser);
 
 export default router;

@@ -308,7 +308,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
       setIsWithdrawing(true);
       const res = await enrollmentService.withdrawStudent(targetId);
       if (res.success) {
-        showToast(t('courses.withdrawSuccess', 'تم سحب قيد الطالب بنجاح'), 'success');
+        showToast(t('courses.withdrawSuccess', 'Student withdrawn from course successfully'), 'success');
         setWithdrawTarget(null);
         setCourse((prev: any) => {
           if (!prev) return prev;
@@ -536,7 +536,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
         <Loader2 className="animate-spin text-brand-primary-600" size={48} />
-        <p className="text-sm font-bold text-brand-text-muted">{t('common.loading', 'جاري التحميل...')}</p>
+        <p className="text-sm font-bold text-brand-text-muted">{t('common.loading', 'Loading...')}</p>
       </div>
     );
   }
@@ -545,10 +545,10 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
     return (
       <div className="text-center py-20">
         <AlertCircle size={40} className="text-brand-text-muted mx-auto mb-4" />
-        <h2 className="text-2xl font-bold">{t('courses.noCourses', 'المقرر غير موجود')}</h2>
+        <h2 className="text-2xl font-bold">{t('courses.noCourses', 'No courses found')}</h2>
         {!isDrawerMode && (
           <Button variant="outline" className="mt-6" onClick={() => navigate('/courses')}>
-            <ArrowLeft size={18} className={isRTL ? 'ml-2 rotate-180' : 'mr-2'} /> {t('common.back', 'العودة')}
+            <ArrowLeft size={18} className={isRTL ? 'ml-2 rotate-180' : 'mr-2'} /> {t('common.back', 'Back')}
           </Button>
         )}
       </div>
@@ -556,7 +556,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
   }
 
   const breadcrumbItems = [
-    { label: t('nav.courses', 'المقررات الدراسية'), link: '/courses' },
+    { label: t('nav.courses', 'Courses'), link: '/courses' },
     ...(course.department?.college?.name
       ? [
         {
@@ -588,7 +588,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                 type="button"
                 onClick={() => navigate('/courses')}
                 className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-colors mt-1"
-                title={t('common.back', 'العودة')}
+                title={t('common.back', 'Back')}
               >
                 <ArrowLeft size={22} className={isRTL ? 'rotate-180' : ''} />
               </button>
@@ -599,15 +599,15 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   {course.courseCode}
                 </Badge>
                 <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-semibold text-white/80">
-                  {t('auth.year', 'الفرقة')} {course.year}
+                  {t('auth.year', 'Year')} {course.year}
                 </span>
                 <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-semibold text-white/80">
-                  {t('transcript.semester', 'الترم')} {course.semester}
+                  {t('transcript.semester', 'Semester')} {course.semester}
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight">{course.name}</h1>
               <p className="text-xs sm:text-sm text-white/70 font-medium mt-2 flex flex-wrap items-center gap-2">
-                <span>{course.department?.name || t('courses.noDepartment', 'قسم أخصائي')}</span>
+                <span>{course.department?.name || t('courses.noDepartment', 'No Department')}</span>
                 {course.department?.college?.name && (
                   <>
                     <span>•</span>
@@ -622,12 +622,12 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           <div className="flex flex-wrap md:flex-col items-start md:items-end justify-between md:justify-center gap-3 border-t md:border-t-0 border-white/10 pt-4 md:pt-0">
             <div className="flex items-center gap-2.5 bg-white/10 px-4 py-2 rounded-2xl backdrop-blur-md border border-white/10">
               <Users size={18} className="text-brand-primary-400" />
-              <span className="text-xs font-medium text-white/70">{t('courses.students', 'الطلاب')}:</span>
+              <span className="text-xs font-medium text-white/70">{t('courses.students', 'Students')}:</span>
               <span className="font-black text-base text-white">{course._count?.enrollments ?? course.enrollments?.length ?? 0}</span>
             </div>
             <div className="flex items-center gap-2.5 bg-white/10 px-4 py-2 rounded-2xl backdrop-blur-md border border-white/10">
               <BookOpen size={18} className="text-emerald-400" />
-              <span className="text-xs font-medium text-white/70">{t('courses.credits', 'ساعات معتمدة')}:</span>
+              <span className="text-xs font-medium text-white/70">{t('courses.credits', 'Credits')}:</span>
               <span className="font-black text-base text-white">{course.credits}</span>
             </div>
           </div>
@@ -648,7 +648,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               }`}
           >
             <BookOpen size={16} />
-            <span>{t('courses.overview', 'نظرة عامة')}</span>
+            <span>{t('courses.overview', 'Overview')}</span>
           </button>
 
           <button
@@ -659,7 +659,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               }`}
           >
             <FileText size={16} />
-            <span>{t('courses.lectures', 'المحاضرات')}</span>
+            <span>{t('courses.lectures', 'Lectures')}</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'lectures' ? 'bg-white/20 text-white' : 'bg-brand-primary-100 text-brand-primary-700'}`}>
               {lectures.length}
             </span>
@@ -673,7 +673,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               }`}
           >
             <Video size={16} />
-            <span>{t('courses.tutorials', 'السكاشن والتمارين')}</span>
+            <span>{t('courses.tutorials', 'Tutorials & Labs')}</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'tutorials' ? 'bg-white/20 text-white' : 'bg-brand-primary-100 text-brand-primary-700'}`}>
               {tutorials.length}
             </span>
@@ -687,7 +687,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               }`}
           >
             <ClipboardList size={16} />
-            <span>{t('courses.tasks', 'الواجبات والمهام')}</span>
+            <span>{t('courses.tasks', 'Tasks & Assignments')}</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'tasks' ? 'bg-white/20 text-white' : 'bg-brand-primary-100 text-brand-primary-700'}`}>
               {course?.tasks?.length || 0}
             </span>
@@ -701,7 +701,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               }`}
           >
             <Users size={16} />
-            <span>{t('courses.roster', 'قائمة الطلاب')}</span>
+            <span>{t('courses.roster', 'Enrolled Students')}</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'roster' ? 'bg-white/20 text-white' : 'bg-brand-primary-100 text-brand-primary-700'}`}>
               {enrolledStudents.length}
             </span>
@@ -773,7 +773,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
         <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-4 flex items-center gap-3 text-amber-800 dark:text-amber-300 shadow-sm">
           <AlertCircle size={20} className="shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="text-xs font-bold leading-relaxed">
-            {t('courses.draftNotice', 'تنبيه: هذا المقرر الدراسي في وضع المسودة حالياً ولم يتم نشره رسمياً بعد للطلاب بواسطة أستاذ المادة.')}
+            {t('courses.draftNotice', 'Notice: This course is currently in draft mode and has not yet been officially published to students by the instructor.')}
           </div>
         </div>
       )}
@@ -785,7 +785,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
             <div className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all">
               <div className="space-y-1">
-                <p className="text-xs font-bold text-brand-text-muted">{t('courses.students', 'الطلاب المقيدون')}</p>
+                <p className="text-xs font-bold text-brand-text-muted">{t('courses.students', 'Students')}</p>
                 <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">
                   {course._count?.enrollments ?? course.enrollments?.length ?? 0}
                 </h3>
@@ -797,7 +797,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
             <div className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all">
               <div className="space-y-1">
-                <p className="text-xs font-bold text-brand-text-muted">{t('courses.credits', 'الساعات المعتمدة')}</p>
+                <p className="text-xs font-bold text-brand-text-muted">{t('courses.credits', 'Credits')}</p>
                 <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{course.credits}</h3>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-brand-green-dark flex items-center justify-center shrink-0">
@@ -807,7 +807,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
             <div className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all">
               <div className="space-y-1">
-                <p className="text-xs font-bold text-brand-text-muted">{t('courses.lectures', 'المحاضرات المرفوعة')}</p>
+                <p className="text-xs font-bold text-brand-text-muted">{t('courses.lectures', 'Lectures')}</p>
                 <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{lectures.length}</h3>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
@@ -817,7 +817,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
             <div className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all">
               <div className="space-y-1">
-                <p className="text-xs font-bold text-brand-text-muted">{t('courses.tutorials', 'السكاشن والتمارين')}</p>
+                <p className="text-xs font-bold text-brand-text-muted">{t('courses.tutorials', 'Tutorials & Labs')}</p>
                 <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{tutorials.length}</h3>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
@@ -830,7 +830,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Professors Card */}
             <Card className="p-6">
-              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.professorsInCharge', 'أعضاء هيئة التدريس (دكاترة المقرر)')}</h3>
+              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.professorsInCharge', 'Professors in Charge')}</h3>
               {assignedDoctors.length > 0 ? (
                 <div className="space-y-3 mt-2">
                   {assignedDoctors.map((doc: any) => (
@@ -856,14 +856,14 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               ) : (
                 <div className="text-center py-8 text-brand-text-muted italic text-xs">
                   <UserCheck size={32} className="mx-auto mb-2 opacity-40 text-brand-text-muted" />
-                  <p>{t('courses.noAssignedProfessors', 'لم يتم تعيين أستاذ للمادة في الجدول بعد')}</p>
+                  <p>{t('courses.noAssignedProfessors', 'No professor assigned to this course yet')}</p>
                 </div>
               )}
             </Card>
 
             {/* Teaching Assistants Card */}
             <Card className="p-6">
-              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.tasInCharge', 'المعيدون والمهندسون المسؤولون')}</h3>
+              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.tasInCharge', 'Teaching Assistants in Charge')}</h3>
               {assignedTAs.length > 0 ? (
                 <div className="space-y-3 mt-2">
                   {assignedTAs.map((ta: any) => (
@@ -889,7 +889,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               ) : (
                 <div className="text-center py-8 text-brand-text-muted italic text-xs">
                   <UserCheck size={32} className="mx-auto mb-2 opacity-40 text-brand-text-muted" />
-                  <p>{t('courses.noAssignedTAs', 'لم يتم تعيين معيد للمادة في الجدول بعد')}</p>
+                  <p>{t('courses.noAssignedTAs', 'No teaching assistant assigned to this course yet')}</p>
                 </div>
               )}
             </Card>
@@ -897,7 +897,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
           {/* Description & Details Card */}
           <Card className="p-6">
-            <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.description', 'وصف المقرر الدراسي')}</h3>
+            <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.description', 'Description')}</h3>
             {course.description ? (
               <p className="text-brand-text-sub font-medium leading-relaxed text-sm">{course.description}</p>
             ) : (
@@ -910,7 +910,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           {/* Weekly Timetable & Room Slots */}
           {course.scheduleSlots && course.scheduleSlots.length > 0 && (
             <Card className="p-6">
-              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.scheduleTimeline', 'جدول مواعيد وقاعات المقرر الأسبوعي')}</h3>
+              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.scheduleTimeline', 'Weekly Schedule & Rooms')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-2">
                 {course.scheduleSlots.map((slot: any) => (
                   <div key={slot.id} className="p-4 rounded-2xl bg-surface-subtle border border-brand-border space-y-2.5">
@@ -948,10 +948,10 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             <div>
               <h3 className="font-black text-lg text-brand-text-main flex items-center gap-2">
                 <FileText className="text-brand-primary-600" size={20} />
-                {t('courses.lectures', 'المحاضرات والملفات الدراسية')}
+                {t('courses.lectures', 'Lectures')}
               </h3>
               <p className="text-xs text-brand-text-sub mt-1">
-                {t('courses.onlyInChargeCanUpload', 'تنويه: يسمح فقط لأستاذ المادة والمعيد المسؤول برفع المحاضرات والسكاشن.')}
+                {t('courses.onlyInChargeCanUpload', 'Notice: Only the assigned professor or teaching assistant in charge of this course can upload materials.')}
               </p>
             </div>
 
@@ -965,7 +965,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                 className="flex items-center gap-2"
               >
                 <Upload size={16} />
-                <span>{t('courses.uploadLecture', 'رفع محاضرة جديدة')}</span>
+                <span>{t('courses.uploadLecture', 'Upload New Lecture')}</span>
               </Button>
             )}
           </div>
@@ -1013,7 +1013,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                             <button
                               onClick={() => handleDeleteMaterial(item.id)}
                               className="p-1.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-                              title={t('common.delete', 'حذف')}
+                              title={t('common.delete', 'Delete')}
                             >
                               <Trash2 size={18} />
                             </button>
@@ -1032,7 +1032,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   <div className="flex items-center justify-between border-t border-brand-border pt-4 mt-4 text-xs text-brand-text-muted">
                     <span className="flex items-center gap-1 font-medium">
                       <UserCheck size={14} className="text-brand-primary-600" />
-                      {t('courses.uploadedBy', 'رفع بواسطة')}: {getUploaderName(item.uploadedBy)}
+                      {t('courses.uploadedBy', 'Uploaded by')}: {getUploaderName(item.uploadedBy)}
                     </span>
 
                     <a
@@ -1042,7 +1042,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-primary-600 text-white font-bold hover:bg-brand-primary-700 transition-colors"
                     >
                       <Download size={14} />
-                      <span>{t('courses.download', 'تحميل / عرض')}</span>
+                      <span>{t('courses.download', 'Download / View')}</span>
                     </a>
                   </div>
                 </Card>
@@ -1051,7 +1051,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           ) : (
             <div className="text-center py-16 bg-brand-bg-card rounded-3xl border border-dashed border-brand-border p-8">
               <FileText size={48} className="mx-auto text-brand-text-muted opacity-40 mb-3" />
-              <h3 className="text-lg font-bold text-brand-text-main">{t('courses.noLecturesYet', 'لا توجد محاضرات مرفوعة لهذا المقرر بعد')}</h3>
+              <h3 className="text-lg font-bold text-brand-text-main">{t('courses.noLecturesYet', 'No lectures uploaded for this course yet')}</h3>
               {canUpload && (
                 <Button
                   onClick={() => {
@@ -1062,7 +1062,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   className="mt-4"
                 >
                   <Plus size={16} className="mr-2" />
-                  {t('courses.uploadLecture', 'رفع أول محاضرة')}
+                  {t('courses.uploadLecture', 'Upload New Lecture')}
                 </Button>
               )}
             </div>
@@ -1077,10 +1077,10 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             <div>
               <h3 className="font-black text-lg text-brand-text-main flex items-center gap-2">
                 <Video className="text-purple-600" size={20} />
-                {t('courses.tutorials', 'تمارين السكاشن والمعامل (Tutorials & Labs)')}
+                {t('courses.tutorials', 'Tutorials & Labs')}
               </h3>
               <p className="text-xs text-brand-text-sub mt-1">
-                {t('courses.onlyInChargeCanUpload', 'تنويه: يسمح فقط لأستاذ المادة والمعيد المسؤول برفع المحاضرات والسكاشن.')}
+                {t('courses.onlyInChargeCanUpload', 'Notice: Only the assigned professor or teaching assistant in charge of this course can upload materials.')}
               </p>
             </div>
 
@@ -1094,7 +1094,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                 className="flex items-center gap-2"
               >
                 <Upload size={16} />
-                <span>{t('courses.uploadTutorial', 'رفع سكشن / تمرين جديد')}</span>
+                <span>{t('courses.uploadTutorial', 'Upload New Tutorial')}</span>
               </Button>
             )}
           </div>
@@ -1142,7 +1142,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                             <button
                               onClick={() => handleDeleteMaterial(item.id)}
                               className="p-1.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-                              title={t('common.delete', 'حذف')}
+                              title={t('common.delete', 'Delete')}
                             >
                               <Trash2 size={18} />
                             </button>
@@ -1161,7 +1161,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   <div className="flex items-center justify-between border-t border-brand-border pt-4 mt-4 text-xs text-brand-text-muted">
                     <span className="flex items-center gap-1 font-medium">
                       <UserCheck size={14} className="text-purple-600" />
-                      {t('courses.uploadedBy', 'رفع بواسطة')}: {item.uploadedBy?.firstName} {item.uploadedBy?.lastName}
+                      {t('courses.uploadedBy', 'Uploaded by')}: {item.uploadedBy?.firstName} {item.uploadedBy?.lastName}
                     </span>
 
                     <a
@@ -1171,7 +1171,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors"
                     >
                       <Download size={14} />
-                      <span>{t('courses.download', 'تحميل / عرض')}</span>
+                      <span>{t('courses.download', 'Download / View')}</span>
                     </a>
                   </div>
                 </Card>
@@ -1180,7 +1180,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           ) : (
             <div className="text-center py-16 bg-brand-bg-card rounded-3xl border border-dashed border-brand-border p-8">
               <Video size={48} className="mx-auto text-brand-text-muted opacity-40 mb-3" />
-              <h3 className="text-lg font-bold text-brand-text-main">{t('courses.noTutorialsYet', 'لا توجد سكاشن أو تمارين مرفوعة لهذه المادة بعد')}</h3>
+              <h3 className="text-lg font-bold text-brand-text-main">{t('courses.noTutorialsYet', 'No tutorials uploaded for this course yet')}</h3>
               {canUpload && (
                 <Button
                   onClick={() => {
@@ -1191,7 +1191,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   className="mt-4"
                 >
                   <Plus size={16} className="mr-2" />
-                  {t('courses.uploadTutorial', 'رفع أول سكشن')}
+                  {t('courses.uploadTutorial', 'Upload New Tutorial')}
                 </Button>
               )}
             </div>
@@ -1206,7 +1206,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             <div>
               <h3 className="font-black text-lg text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
                 <ClipboardList className="text-amber-600 dark:text-amber-400" size={20} />
-                {t('tasks.title', 'التكاليف')}
+                {t('tasks.title', 'Tasks & Assignments')}
               </h3>
               <p className="text-xs text-brand-text-muted mt-1">
                 إدارة وتتبع التكاليف المطلوبة من الطلاب وتحديد مواعيد التسليم.
@@ -1220,7 +1220,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                 className="flex items-center gap-2 text-xs py-2 px-4 shadow-md shadow-brand-primary-500/20"
               >
                 <Plus size={16} />
-                <span>{t('tasks.createTask', 'إضافة تكليف جديد')}</span>
+                <span>{t('tasks.createTask', 'Create Assignment')}</span>
               </Button>
             )}
           </div>
@@ -1242,7 +1242,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                           <div>
                             <h4 className="font-bold text-brand-text-primary dark:text-brand-text-main text-base">{task.title}</h4>
                             <span className="text-[10px] font-bold uppercase tracking-widest text-brand-text-muted">
-                              {task.maxScore ? `${task.maxScore} ${t('tasks.maxPoints', 'درجة')}` : 'تكليف أكاديمي'}
+                              {task.maxScore ? `${task.maxScore} ${t('tasks.maxPoints', 'Total Points')}` : 'تكليف أكاديمي'}
                             </span>
                           </div>
                         </div>
@@ -1296,7 +1296,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                       <div className="flex items-center justify-between text-brand-text-muted gap-2">
                         <div className="flex items-center gap-1.5">
                           <Clock size={14} className={isOverdue ? 'text-red-500' : 'text-amber-500'} />
-                          <span>{t('tasks.due', 'موعد التسليم')}: {task.dueDate ? formatTaskDate(task.dueDate) : 'غير محدد'}</span>
+                          <span>{t('tasks.due', 'Submission Deadline')}: {task.dueDate ? formatTaskDate(task.dueDate) : 'غير محدد'}</span>
                         </div>
                       </div>
 
@@ -1322,7 +1322,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                               <FileUp size={14} className="mr-1" />
                               {isOverdue
                                 ? `${t('tasks.submitTask')} (${t('tasks.statusOverdue')})`
-                                : t('tasks.submitTask', 'تسليم التكليف')}
+                                : t('tasks.submitTask', 'Submit Assignment')}
                             </Button>
                           )
                         ) : (
@@ -1336,7 +1336,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                             className="text-[10px] py-1.5 px-3 w-full"
                           >
                             <CheckCircle size={14} className="mr-1" />
-                            {t('tasks.viewSubmissions', 'معاينة التسليمات')}
+                            {t('tasks.viewSubmissions', 'View Submissions')}
                           </Button>
                         )}
                       </div>
@@ -1371,8 +1371,8 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
         <Card className="p-6 space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-black text-brand-text-main">{t('courses.roster', 'قائمة الطلاب المقيدين في المقرر')}</h3>
-              <p className="text-xs text-brand-text-sub">{t('common.total', 'الإجمالي')}: {enrolledStudents.length} {t('courses.students', 'طالب')}</p>
+              <h3 className="text-lg font-black text-brand-text-main">{t('courses.roster', 'Enrolled Students')}</h3>
+              <p className="text-xs text-brand-text-sub">{t('common.total', 'common.total')}: {enrolledStudents.length} {t('courses.students', 'Students')}</p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
@@ -1380,7 +1380,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                 <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none" size={16} />
                 <input
                   type="text"
-                  placeholder={t('common.searchPlaceholder', 'بحث باسم الطالب أو الكود...')}
+                  placeholder={t('common.searchPlaceholder', 'Search...')}
                   value={rosterSearch}
                   onChange={(e) => setRosterSearch(e.target.value)}
                   className="w-full ps-9 pe-4 py-2 rounded-xl bg-brand-bg border border-brand-border text-sm text-brand-text-main focus:outline-none focus:border-brand-primary-500 font-medium"
@@ -1393,7 +1393,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   className="rounded-xl flex items-center justify-center gap-2 text-xs font-bold shrink-0 shadow-sm"
                 >
                   <Plus size={16} />
-                  <span>{t('courses.addStudent', 'إضافة طالب')}</span>
+                  <span>{t('courses.addStudent', 'Add Student')}</span>
                 </Button>
               )}
             </div>
@@ -1405,11 +1405,11 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                 <thead className="bg-brand-bg text-brand-text-muted text-xs font-bold uppercase border-b border-brand-border">
                   <tr>
                     <th className="py-3 px-4 text-start">#</th>
-                    <th className="py-3 px-4 text-start">{t('auth.fullName', 'اسم الطالب')}</th>
-                    <th className="py-3 px-4 text-start">{t('students.studentCode', 'كود الطالب')}</th>
-                    <th className="py-3 px-4 text-start">{t('auth.email', 'البريد الإلكتروني')}</th>
+                    <th className="py-3 px-4 text-start">{t('auth.fullName', 'auth.fullName')}</th>
+                    <th className="py-3 px-4 text-start">{t('students.studentCode', 'students.studentCode')}</th>
+                    <th className="py-3 px-4 text-start">{t('auth.email', 'Email address')}</th>
                     {canManageRoster && (
-                      <th className="py-3 px-4 text-end">{t('common.actions', 'الإجراءات')}</th>
+                      <th className="py-3 px-4 text-end">{t('common.actions', 'Actions')}</th>
                     )}
                   </tr>
                 </thead>
@@ -1434,10 +1434,10 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                               type="button"
                               onClick={() => setWithdrawTarget({ id: enr.id, name: studentName })}
                               className="p-2 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold"
-                              title={t('courses.withdrawStudent', 'سحب القيد')}
+                              title={t('courses.withdrawStudent', 'Withdraw Student')}
                             >
                               <Trash2 size={15} />
-                              <span className="hidden sm:inline">{t('courses.withdraw', 'سحب القيد')}</span>
+                              <span className="hidden sm:inline">{t('courses.withdraw', 'Withdraw')}</span>
                             </button>
                           </td>
                         )}
@@ -1449,7 +1449,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
             </div>
           ) : (
             <div className="text-center py-10 text-brand-text-muted italic text-sm">
-              {t('common.noResults', 'لا يوجد طلاب مطابقون للبحث')}
+              {t('common.noResults', 'common.noResults')}
             </div>
           )}
         </Card>
@@ -1467,8 +1467,8 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                 <div>
                   <h3 className="font-black text-lg text-brand-text-main">
                     {uploadType === 'LECTURE'
-                      ? t('courses.uploadLecture', 'رفع محاضرة جديدة')
-                      : t('courses.uploadTutorial', 'رفع سكشن / تمرين جديد')}
+                      ? t('courses.uploadLecture', 'Upload New Lecture')
+                      : t('courses.uploadTutorial', 'Upload New Tutorial')}
                   </h3>
                   <p className="text-xs text-brand-text-sub font-medium">
                     {course.name} ({course.courseCode})
@@ -1495,12 +1495,12 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               {/* Title */}
               <div>
                 <label className="block text-xs font-bold text-brand-text-main mb-1">
-                  {t('courses.materialTitle', 'عنوان المادة أو الملف')} *
+                  {t('courses.materialTitle', 'Title')} *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder={t('courses.materialTitlePlaceholder', 'مثال: المحاضرة الأولى - مقدمة عن خوارزميات البحث')}
+                  placeholder={t('courses.materialTitlePlaceholder', 'e.g. Lecture 1 - Introduction to Algorithms')}
                   value={materialTitle}
                   onChange={(e) => setMaterialTitle(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-2xl bg-brand-bg border border-brand-border text-sm font-medium text-brand-text-main focus:outline-none focus:border-brand-primary-500"
@@ -1510,11 +1510,11 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               {/* Description */}
               <div>
                 <label className="block text-xs font-bold text-brand-text-main mb-1">
-                  {t('courses.materialDescription', 'الوصف أو التعليمات (اختياري)')}
+                  {t('courses.materialDescription', 'Description (Optional)')}
                 </label>
                 <textarea
                   rows={2}
-                  placeholder={t('courses.materialDescriptionPlaceholder', 'اكتب ملاحظات أو إرشادات للطلاب...')}
+                  placeholder={t('courses.materialDescriptionPlaceholder', 'Add notes or instructions for students...')}
                   value={materialDescription}
                   onChange={(e) => setMaterialDescription(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-2xl bg-brand-bg border border-brand-border text-sm font-medium text-brand-text-main focus:outline-none focus:border-brand-primary-500"
@@ -1524,7 +1524,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               {/* Category selector */}
               <div>
                 <label className="block text-xs font-bold text-brand-text-main mb-1">
-                  {t('courses.materialType', 'تصنيف المادة')}
+                  {t('courses.materialType', 'Material Category')}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -1553,7 +1553,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               {/* Upload Mode Selector (File vs Link) */}
               <div>
                 <label className="block text-xs font-bold text-brand-text-main mb-1">
-                  {t('courses.fileOrUrl', 'طريقة تقديم المادة')}
+                  {t('courses.fileOrUrl', 'File or External Link')}
                 </label>
                 <div className="flex items-center gap-3 mb-2">
                   <button
@@ -1562,7 +1562,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                     className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${uploadMode === 'file' ? 'bg-brand-primary-600 text-white border-brand-primary-600' : 'bg-brand-bg text-brand-text-sub border-brand-border'
                       }`}
                   >
-                    {t('courses.fileUpload', 'رفع ملف من الجهاز')}
+                    {t('courses.fileUpload', 'Upload File')}
                   </button>
                   <button
                     type="button"
@@ -1570,7 +1570,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                     className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${uploadMode === 'link' ? 'bg-brand-primary-600 text-white border-brand-primary-600' : 'bg-brand-bg text-brand-text-sub border-brand-border'
                       }`}
                   >
-                    {t('courses.urlLink', 'رابط خارجي (Drive, Youtube)')}
+                    {t('courses.urlLink', 'External Link (Drive, Youtube, etc.)')}
                   </button>
                 </div>
 
@@ -1621,7 +1621,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   onClick={() => setIsUploadModalOpen(false)}
                   disabled={isSubmitting}
                 >
-                  {t('common.cancel', 'إلغاء')}
+                  {t('common.cancel', 'Cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -1632,12 +1632,12 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                   {isSubmitting ? (
                     <>
                       <Loader2 className="animate-spin" size={16} />
-                      <span>{t('common.uploading', 'جاري الرفع...')}</span>
+                      <span>{t('common.uploading', 'Uploading...')}</span>
                     </>
                   ) : (
                     <>
                       <Upload size={16} />
-                      <span>{t('courses.uploadMaterial', 'رفع المادة')}</span>
+                      <span>{t('courses.uploadMaterial', 'Upload Course Material')}</span>
                     </>
                   )}
                 </Button>
@@ -1651,7 +1651,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
       <Modal
         isOpen={showTaskModal}
         onClose={() => setShowTaskModal(false)}
-        title={t('tasks.createTask', 'إضافة تكليف جديد')}
+        title={t('tasks.createTask', 'Create Assignment')}
         subtitle={course?.name}
         size="md"
       >
@@ -1665,7 +1665,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
           <div>
             <label className="block text-xs font-bold text-brand-text-main mb-1">
-              {t('tasks.taskTitle', 'عنوان التكليف')}
+              {t('tasks.taskTitle', 'Assignment Title')}
             </label>
             <input
               type="text"
@@ -1679,7 +1679,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
           <div>
             <label className="block text-xs font-bold text-brand-text-main mb-1">
-              {t('tasks.taskDescription', 'وصف التكليف')}
+              {t('tasks.taskDescription', 'Assignment Instructions & Description')}
             </label>
             <textarea
               rows={3}
@@ -1694,7 +1694,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-brand-text-main mb-1">
-                {t('tasks.maxPoints', 'الدرجة الكلية')}
+                {t('tasks.maxPoints', 'Total Points')}
               </label>
               <input
                 type="number"
@@ -1708,7 +1708,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
             <div>
               <label className="block text-xs font-bold text-brand-text-main mb-1">
-                {t('tasks.due', 'موعد التسليم')}
+                {t('tasks.due', 'Submission Deadline')}
               </label>
               <input
                 type="datetime-local"
@@ -1726,7 +1726,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               onClick={() => setShowTaskModal(false)}
               className="px-4 py-2 text-xs font-bold text-brand-text-sub hover:bg-surface-subtle rounded-xl"
             >
-              {t('common.cancel', 'إلغاء')}
+              {t('common.cancel', 'Cancel')}
             </button>
             <Button
               type="submit"
@@ -1734,7 +1734,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               disabled={isSubmitting}
               className="text-xs py-2 px-5 shadow-md shadow-brand-primary-500/20"
             >
-              {isSubmitting ? t('common.loading', 'جاري الحفظ...') : t('tasks.createTask', 'إضافة التكليف')}
+              {isSubmitting ? t('common.loading', 'Loading...') : t('tasks.createTask', 'Create Assignment')}
             </Button>
           </div>
         </form>
@@ -1744,7 +1744,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
       <Modal
         isOpen={showSubmitModal}
         onClose={() => setShowSubmitModal(false)}
-        title={t('tasks.submitTask', 'تسليم التكليف')}
+        title={t('tasks.submitTask', 'Submit Assignment')}
         subtitle={selectedTask?.title}
         size="md"
       >
@@ -1758,7 +1758,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
 
           <div>
             <label className="block text-xs font-bold text-brand-text-main mb-1">
-              {t('tasks.submissionNotes', 'ملاحظات التسليم')}
+              {t('tasks.submissionNotes', 'Additional Notes for Instructor (Optional)')}
             </label>
             <textarea
               rows={3}
@@ -1789,7 +1789,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               onClick={() => setShowSubmitModal(false)}
               className="px-4 py-2 text-xs font-bold text-brand-text-sub hover:bg-surface-subtle rounded-xl"
             >
-              {t('common.cancel', 'إلغاء')}
+              {t('common.cancel', 'Cancel')}
             </button>
             <Button
               type="submit"
@@ -1797,7 +1797,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
               disabled={isSubmitting}
               className="text-xs py-2 px-5 shadow-md shadow-brand-primary-500/20"
             >
-              {isSubmitting ? t('common.loading', 'جاري التسليم...') : t('tasks.submitTask', 'تسليم التكليف')}
+              {isSubmitting ? t('common.loading', 'Loading...') : t('tasks.submitTask', 'Submit Assignment')}
             </Button>
           </div>
         </form>
@@ -1825,13 +1825,13 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           isOpen={!!withdrawTarget}
           onClose={() => setWithdrawTarget(null)}
           itemName={withdrawTarget?.name || ''}
-          title={t('courses.withdrawConfirmTitle', 'سحب قيد طالب من المقرر')}
-          subtitle={t('courses.withdrawConfirmSubtitle', 'تأكيد إلغاء قيد الطالب من هذا المقرر الدراسي')}
+          title={t('courses.withdrawConfirmTitle', 'Withdraw Student from Course')}
+          subtitle={t('courses.withdrawConfirmSubtitle', 'Confirm student withdrawal from this course')}
           message={isRTL
             ? `هل أنت متأكد من سحب قيد الطالب (${withdrawTarget?.name}) من هذا المقرر؟ سيتم تغيير حالة القيد إلى منسحب.`
             : `Are you sure you want to withdraw ${withdrawTarget?.name} from this course?`}
-          confirmLabel={t('courses.confirmWithdraw', 'تأكيد سحب القيد')}
-          cancelLabel={t('common.cancel', 'إلغاء')}
+          confirmLabel={t('courses.confirmWithdraw', 'Confirm Withdrawal')}
+          cancelLabel={t('common.cancel', 'Cancel')}
           variant="danger"
           loading={isWithdrawing}
           onConfirm={handleConfirmWithdraw}

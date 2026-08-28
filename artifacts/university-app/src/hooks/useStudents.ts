@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import studentsService from '../services/students.service';
 import { useDebounce } from './useDebounce';
 
@@ -28,6 +28,7 @@ export function useStudents({
   const debouncedSearch = useDebounce(search, 400);
 
   const filtersKey = JSON.stringify(filters);
+  const parsedFilters = useMemo(() => JSON.parse(filtersKey), [filtersKey]);
 
   const fetchData = useCallback(async (extraParams: Record<string, unknown> = {}) => {
     setLoading(true);
@@ -38,7 +39,7 @@ export function useStudents({
       search: debouncedSearch,
       sortBy,
       sortOrder,
-      ...filters,
+      ...parsedFilters,
       ...extraParams,
     };
     try {
@@ -55,7 +56,7 @@ export function useStudents({
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch, sortBy, sortOrder, filtersKey]);
+  }, [page, limit, debouncedSearch, sortBy, sortOrder, parsedFilters]);
 
   useEffect(() => {
     fetchData();

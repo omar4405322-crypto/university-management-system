@@ -78,14 +78,16 @@ const TimeSlotCell = memo(function TimeSlotCell({
     <div
       className={`rounded-xl p-3 text-xs space-y-2 border transition-all shadow-sm ${colorClass} relative group`}
     >
-      {/* Delete button — only visible on hover */}
-      <button
-        onClick={handleDelete}
-        aria-label={t('timetable.deleteSlot', 'Delete slot')}
-        className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} p-1 text-brand-text-muted hover:text-rose-500 bg-white/50 hover:bg-rose-50 dark:bg-rose-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100`}
-      >
-        <X size={14} />
-      </button>
+      {/* Delete button — only visible on hover when canEdit */}
+      {canEdit && (
+        <button
+          onClick={handleDelete}
+          aria-label={t('timetable.deleteSlot', 'Delete slot')}
+          className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} p-1 text-brand-text-muted hover:text-rose-500 bg-white/50 hover:bg-rose-50 dark:bg-rose-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100`}
+        >
+          <X size={14} />
+        </button>
+      )}
 
       {/* Course name */}
       <p
@@ -127,22 +129,24 @@ const TimeSlotCell = memo(function TimeSlotCell({
             </span>
           )}
         </div>
-        <div className="flex flex-col gap-1 items-end">
-          <button
-            onClick={handleEdit}
-            className="text-brand-primary-500 hover:text-brand-primary-600 font-black text-[10px] uppercase tracking-wider transition-colors shrink-0"
-          >
-            {t('common.edit', 'Edit')}
-          </button>
-          {onEditOverride && (
+        {canEdit && (
+          <div className="flex flex-col gap-1 items-end">
             <button
-              onClick={() => onEditOverride(entry)}
-              className="text-amber-600 hover:text-amber-700 font-black text-[9px] uppercase tracking-wider transition-colors shrink-0"
+              onClick={handleEdit}
+              className="text-brand-primary-500 hover:text-brand-primary-600 font-black text-[10px] uppercase tracking-wider transition-colors shrink-0"
             >
-              Override
+              {t('common.edit', 'Edit')}
             </button>
-          )}
-        </div>
+            {onEditOverride && (
+              <button
+                onClick={() => onEditOverride(entry)}
+                className="text-amber-600 hover:text-amber-700 font-black text-[9px] uppercase tracking-wider transition-colors shrink-0"
+              >
+                Override
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

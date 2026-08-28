@@ -28,14 +28,19 @@ export const getDoctorStats = catchAsync(
     const scopeWhere: any = getScopeWhere(req.user!, 'doctor');
     const courseWhere: any = getScopeWhere(req.user!, 'course');
 
+    const doctorWhere: any = {
+      ...scopeWhere,
+      user: { role: 'DOCTOR' },
+    };
+
     const [totalFaculty, activeProfessors, totalCourses, researchProjects] = await Promise.all([
-      prisma.doctor.count({ where: scopeWhere }),
+      prisma.doctor.count({ where: doctorWhere }),
       prisma.doctor.count({
-        where: { ...scopeWhere, courses: { some: {} } },
+        where: { ...doctorWhere, courses: { some: {} } },
       }),
       prisma.course.count({ where: courseWhere }),
       prisma.task.count({
-        where: Object.keys(scopeWhere).length ? { doctor: scopeWhere } : {},
+        where: Object.keys(scopeWhere).length ? { doctor: doctorWhere } : {},
       }),
     ]);
 
@@ -69,7 +74,10 @@ export const getSuggestedDoctors = catchAsync(async (req: Request, res: Response
   const scopeWhere: any = getScopeWhere(req.user!);
 
   const allDoctors = await prisma.doctor.findMany({
-    where: scopeWhere,
+    where: {
+      ...scopeWhere,
+      user: { role: 'DOCTOR' },
+    },
     include: {
       user: {
         select: {
@@ -117,14 +125,37 @@ export const getSuggestedDoctors = catchAsync(async (req: Request, res: Response
 });
 
 export const getAllDoctors = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { search = '', page = 1, limit = 10 } = req.query as Record<string, string>;
+  const { search = '', page = 1, limit = 10, collegeId, departmentId } = req.query as Record<string, string>;
   const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
   const take = parseInt(limit as string);
 
   const scopeWhere: any = getScopeWhere(req.user!);
 
+  const parsedCollegeId = collegeId && collegeId !== '' ? parseInt(collegeId as string, 10) : undefined;
+  const parsedDepartmentId = departmentId && departmentId !== '' ? parseInt(departmentId as string, 10) : undefined;
+
+  let collegeOrDeptWhere: any = {};
+  if (parsedCollegeId && parsedDepartmentId) {
+    collegeOrDeptWhere = {
+      departmentId: parsedDepartmentId,
+      department: { collegeId: parsedCollegeId }
+    };
+  } else if (parsedDepartmentId) {
+    collegeOrDeptWhere = {
+      departmentId: parsedDepartmentId
+    };
+  } else if (parsedCollegeId) {
+    collegeOrDeptWhere = {
+      department: { collegeId: parsedCollegeId }
+    };
+  }
+
   const where: any = {
     ...scopeWhere,
+    ...collegeOrDeptWhere,
+    user: {
+      role: 'DOCTOR',
+    },
     ...(search
       ? {
           OR: [

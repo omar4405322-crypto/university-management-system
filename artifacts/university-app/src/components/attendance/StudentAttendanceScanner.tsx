@@ -812,10 +812,10 @@ export function StudentAttendanceScanner({
                 <MapPin className="w-8 h-8" />
               </div>
               <h4 className="text-xl font-black text-white mb-1">
-                {t('attendance.gpsScannerTitle', 'تسجيل الحضور عبر الموقع الجغرافي')}
+                {t('attendance.gpsScannerTitle', 'GPS Attendance Check-In')}
               </h4>
               <p className="text-xs text-slate-300 font-medium max-w-xs mb-4 leading-relaxed">
-                {t('attendance.gpsScannerDesc', 'توثيق الحضور تلقائياً بالاعتماد على إحداثيات موقعك المباشر داخل نطاق قاعة المحاضرة.')}
+                {t('attendance.gpsScannerDesc', 'Verify attendance automatically using your device\'s live coordinates within the classroom radius.')}
               </p>
 
               {/* Active Session Live Countdown in GPS mode */}
@@ -834,7 +834,7 @@ export function StudentAttendanceScanner({
               {courses && courses.length > 0 && (
                 <div className="w-full max-w-xs mb-4">
                   <label className="text-[11px] font-bold text-slate-400 block mb-1.5 text-start">
-                    {t('attendance.selectCourse', 'المقرر الدراسي')}
+                    {t('attendance.selectCourse', 'Select course')}
                   </label>
                   <select
                     value={activeCourseForGps || ''}
@@ -857,7 +857,7 @@ export function StudentAttendanceScanner({
                     {isRTL ? 'إذن الموقع محظور' : 'Location Permission Blocked'}
                   </p>
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    {t('attendance.locationPermissionDenied', 'تم رفض إذن الوصول للموقع الجغرافي. يرجى تفعيل خدمة GPS والسماح للمتصفح بالوصول لموقعك للمتابعة.')}
+                    {t('attendance.locationPermissionDenied', 'Location permission denied. Please allow location access in your browser settings to continue.')}
                   </p>
                 </div>
               )}
@@ -871,7 +871,7 @@ export function StudentAttendanceScanner({
                 className="w-full bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm"
               >
                 <MapPin className="w-4 h-4" />
-                <span>{t('attendance.checkInWithGps', 'تسجيل الحضور عبر GPS')}</span>
+                <span>{t('attendance.checkInWithGps', 'Check In with GPS')}</span>
               </button>
             </div>
           </div>

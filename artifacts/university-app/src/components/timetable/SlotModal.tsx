@@ -134,7 +134,7 @@ export default function SlotModal({
       <div className="p-2 rounded-xl bg-brand-primary-500/10 text-brand-primary-600 dark:text-brand-primary-400">
         <Sparkles size={18} />
       </div>
-      <span>{isEditing ? t('common.edit', 'تعديل الحصة الدراسية') : t('timetable.addSlot', 'إضافة حصة دراسية جديدة')}</span>
+      <span>{isEditing ? t('common.edit', 'Edit') : t('timetable.addSlot', 'Add Class Slot')}</span>
     </div>
   );
 
@@ -153,7 +153,7 @@ export default function SlotModal({
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
               <BookOpen size={14} className="text-brand-primary-500" />
-              {t('courses.course', 'المقرر الدراسي')} *
+              {t('courses.course', 'Course')} *
             </label>
             <SearchableSelect
               options={courseOptions}
@@ -165,8 +165,8 @@ export default function SlotModal({
                   doctorName: form.doctorName,
                 });
               }}
-              placeholder={loadingCourses ? t('common.loading', 'جاري التحميل...') : t('schedule.selectCourse', 'اختر المقرر الدراسي...')}
-              searchPlaceholder={t('common.searchCoursePlaceholder', 'ابحث برمز أو اسم المقرر...')}
+              placeholder={loadingCourses ? t('common.loading', 'Loading...') : t('schedule.selectCourse', 'Select Course')}
+              searchPlaceholder={t('common.searchCoursePlaceholder', 'common.searchCoursePlaceholder')}
               disabled={loadingCourses}
               isRTL={isRTL}
               icon={<BookOpen size={16} />}
@@ -176,9 +176,9 @@ export default function SlotModal({
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
               <Users size={14} className="text-brand-primary-500" />
-              {t('common.group', 'المجموعة / الشعبة')}
+              {t('common.group', 'Group')}
               <span className="text-[10px] font-normal text-brand-text-muted ml-1">
-                ({t('schedule.groupOptional', 'اختياري — فارغ = جميع الطلاب')})
+                ({t('schedule.groupOptional', 'schedule.groupOptional')})
               </span>
             </label>
             <select
@@ -186,12 +186,12 @@ export default function SlotModal({
               value={form.groupName || ''}
               onChange={(e) => onChange({ ...form, groupName: e.target.value })}
             >
-              <option value="">{t('schedule.allStudents', '📢 جميع الطلاب (دفعة عامة)')}</option>
-              <option value="Group A">{t('schedule.groupA', 'المجموعة أ (Group A)')}</option>
-              <option value="Group B">{t('schedule.groupB', 'المجموعة ب (Group B)')}</option>
-              <option value="Section 1">{t('schedule.sec1', 'سكشن 1')}</option>
-              <option value="Section 2">{t('schedule.sec2', 'سكشن 2')}</option>
-              <option value="Section 3">{t('schedule.sec3', 'سكشن 3')}</option>
+              <option value="">{t('schedule.allStudents', 'schedule.allStudents')}</option>
+              <option value="Group A">{t('schedule.groupA', 'schedule.groupA')}</option>
+              <option value="Group B">{t('schedule.groupB', 'schedule.groupB')}</option>
+              <option value="Section 1">{t('schedule.sec1', 'schedule.sec1')}</option>
+              <option value="Section 2">{t('schedule.sec2', 'schedule.sec2')}</option>
+              <option value="Section 3">{t('schedule.sec3', 'schedule.sec3')}</option>
             </select>
           </div>
         </div>
@@ -202,7 +202,7 @@ export default function SlotModal({
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
                 <BookOpen size={14} className="text-brand-primary-500" />
-                {t('schedule.slotType', 'نوع الجلسة')}
+                {t('schedule.slotType', 'Session Type')}
               </label>
               <select
                 className={FIELD_CLASS}
@@ -220,7 +220,7 @@ export default function SlotModal({
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
                 <Calendar size={14} className="text-brand-primary-500" />
-                {t('timetables.day', 'اليوم')}
+                {t('timetables.day', 'Day of Week')}
               </label>
               <select
                 className={FIELD_CLASS}
@@ -240,7 +240,7 @@ export default function SlotModal({
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
                 <Clock size={14} className="text-brand-primary-500" />
-                {t('timetables.startTime', 'وقت البدء')}
+                {t('timetables.startTime', 'Start Time')}
               </label>
               <input
                 type="time"
@@ -253,7 +253,7 @@ export default function SlotModal({
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
                 <Clock size={14} className="text-brand-primary-500" />
-                {t('timetables.endTime', 'وقت الانتهاء')}
+                {t('timetables.endTime', 'End Time')}
               </label>
               <input
                 type="time"
@@ -270,7 +270,7 @@ export default function SlotModal({
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
               <MapPin size={14} className="text-brand-primary-500" />
-              {t('timetables.room', 'القاعة / المدرج / الغرفة')} *
+              {t('timetables.room', 'Room / Hall')} *
             </label>
             <div className="relative">
               <MapPin
@@ -279,7 +279,7 @@ export default function SlotModal({
               />
               <input
                 className={`${FIELD_CLASS} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
-                placeholder={t('schedule.roomPlaceholder', 'مثال: قاعة 302, معمل الحاسب 1')}
+                placeholder={t('schedule.roomPlaceholder', 'e.g. A101')}
                 value={form.room}
                 onChange={(e) => onChange({ ...form, room: e.target.value })}
                 aria-label={t('timetables.room', 'Room')}
@@ -314,7 +314,7 @@ export default function SlotModal({
           <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-2xl space-y-2 text-xs animate-in fade-in duration-200 shadow-soft">
             <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold">
               <AlertTriangle size={18} className="shrink-0 text-rose-600 dark:text-rose-400" />
-              <span>{t('timetable.conflictWarning', 'تنبيه: تم اكتشاف تعارض في الجداول!')}</span>
+              <span>{t('timetable.conflictWarning', 'timetable.conflictWarning')}</span>
             </div>
             <ul className="space-y-1.5 list-disc list-inside text-rose-700/90 dark:text-rose-300 font-medium">
               {conflicts.map((c, i) => (
@@ -334,7 +334,7 @@ export default function SlotModal({
         {/* ── Actions ── */}
         <div className="flex items-center gap-3 pt-3">
           <Button type="button" variant="ghost" className="flex-1 rounded-xl text-xs font-bold py-3" onClick={onClose}>
-            {t('common.cancel', 'إلغاء')}
+            {t('common.cancel', 'Cancel')}
           </Button>
           <Button
             type="button"
@@ -342,7 +342,7 @@ export default function SlotModal({
             onClick={onSubmit}
           >
             {!isEditing && <Plus size={16} />}
-            {isEditing ? t('common.save', 'حفظ التغييرات') : t('timetable.addSlot', 'إضافة الحصة')}
+            {isEditing ? t('common.save', 'Save') : t('timetable.addSlot', 'Add Class Slot')}
           </Button>
         </div>
       </div>

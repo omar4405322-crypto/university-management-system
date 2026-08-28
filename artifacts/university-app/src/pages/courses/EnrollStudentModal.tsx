@@ -133,7 +133,7 @@ const EnrollStudentModal: React.FC<EnrollStudentModalProps> = ({
 
       if (res.success) {
         showToast(
-          t('courses.enrollSuccess', 'تم تسجيل الطالب في المقرر بنجاح'),
+          t('courses.enrollSuccess', 'Student enrolled in course successfully'),
           'success'
         );
         onSuccess();
@@ -161,7 +161,7 @@ const EnrollStudentModal: React.FC<EnrollStudentModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={t('courses.addStudentToRoster', 'تسجيل طالب في المقرر')}
+      title={t('courses.addStudentToRoster', 'Enroll Student in Course')}
       subtitle={`${courseName} ${courseCode ? `(${courseCode})` : ''}`}
       size="lg"
     >
@@ -304,7 +304,7 @@ const EnrollStudentModal: React.FC<EnrollStudentModalProps> = ({
             disabled={submitting}
             className="rounded-2xl"
           >
-            {t('common.cancel', 'إلغاء')}
+            {t('common.cancel', 'Cancel')}
           </Button>
           <Button
             type="submit"
@@ -319,7 +319,7 @@ const EnrollStudentModal: React.FC<EnrollStudentModalProps> = ({
             ) : (
               <>
                 <UserPlus size={16} />
-                <span>{t('courses.confirmEnrollment', 'تأكيد التسجيل')}</span>
+                <span>{t('courses.confirmEnrollment', 'Confirm Enrollment')}</span>
               </>
             )}
           </Button>

@@ -131,7 +131,7 @@ export default function InstructorSelector({
       value={value}
       onChange={onChange}
       placeholder={placeholderText}
-      searchPlaceholder={t('common.searchPlaceholder', 'ابحث بالاسم أو التخصص...')}
+      searchPlaceholder={t('common.searchPlaceholder', 'Search...')}
       emptyText={emptyText}
       disabled={disabled || !courseId}
       isRTL={isRTL}

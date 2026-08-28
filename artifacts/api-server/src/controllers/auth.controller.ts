@@ -539,3 +539,36 @@ export const rejectRequest = catchAsync(async (req: Request, res: Response, next
 
   res.json({ success: true, message: 'Request rejected' });
 });
+
+export const deleteRequest = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params;
+
+  const request = await prisma.registrationRequest.findUnique({
+    where: { id: parseInt(id as string) },
+    include: { department: { select: { collegeId: true } } },
+  });
+
+  if (!request) {
+    return next(new NotFoundError('Request not found'));
+  }
+
+  if (
+    req.user!.role === 'COLLEGE_ADMIN' &&
+    req.user!.managedCollegeId !== request.department?.collegeId
+  ) {
+    return res.status(403).json({ message: 'Access denied: request belongs to a different college' });
+  }
+  if (
+    req.user!.role === 'DEPARTMENT_ADMIN' &&
+    req.user!.managedDepartmentId !== request.departmentId
+  ) {
+    return res.status(403).json({ message: 'Access denied: request belongs to a different department' });
+  }
+
+  await prisma.registrationRequest.delete({
+    where: { id: parseInt(id as string) },
+  });
+
+  res.json({ success: true, message: 'Request deleted successfully' });
+});
+

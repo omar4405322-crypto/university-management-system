@@ -13,7 +13,12 @@ export interface RosterStudent {
   existingRemarks: string;
   group?: string;
   studentGroupId?: number;
-  recordedBy?: any;
+  recordedBy?: {
+    id: number;
+    role: string;
+    firstName: string;
+    lastName: string;
+  } | null;
   recordedAt?: string;
   method?: string;
 }

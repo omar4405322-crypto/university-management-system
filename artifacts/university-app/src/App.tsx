@@ -250,6 +250,34 @@ const AppContent = () => {
                         }
                       />
                       <Route
+                        path="schedules/timetable"
+                        element={
+                          <ProtectedRoute
+                            allowedRoles={[
+                              'SUPER_ADMIN',
+                              'ADMIN',
+                              'COLLEGE_ADMIN',
+                              'DEPARTMENT_ADMIN',
+                              'DOCTOR',
+                              'TEACHING_ASSISTANT',
+                              'STUDENT',
+                            ]}
+                          >
+                            <PageWrapper>
+                              <LazyRoute>
+                                <TimetableGrid />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="timetables"
+                        element={
+                          <Navigate to="/schedules/timetable" replace />
+                        }
+                      />
+                      <Route
                         path="timetables-management"
                         element={
                           <ProtectedRoute

@@ -35,20 +35,58 @@ import {
   Plus,
   Search,
   Calendar,
+  X,
 } from 'lucide-react';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import collegeService from '../../services/college.service';
+import departmentService from '../../services/department.service';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
 
 const DoctorsList = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { scopeParams, _isCollegeAdmin } = useScope();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const { data: doctors, loading, error, search, setSearch, page, setPage, total, refetch } = useDoctors();
+
+  const [selectedCollege, setSelectedCollege] = useState(() => searchParams.get('collegeId') || '');
+  const [selectedDept, setSelectedDept] = useState(() => searchParams.get('departmentId') || '');
+  const [colleges, setColleges] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const cId = searchParams.get('collegeId');
+    const dId = searchParams.get('departmentId');
+    if (cId !== null) setSelectedCollege(cId);
+    if (dId !== null) setSelectedDept(dId);
+  }, [searchParams]);
+
+  useEffect(() => {
+    collegeService.getColleges().then((res) => {
+      if (res.success) setColleges(Array.isArray(res.data) ? res.data : res.data?.data || []);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    departmentService.getDepartments(selectedCollege ? { collegeId: selectedCollege } : {}).then((res) => {
+      if (res.success) setDepartments(Array.isArray(res.data) ? res.data : res.data?.data || []);
+    }).catch(() => {});
+  }, [selectedCollege]);
+
+  const activeFilters = useMemo(() => {
+    const obj: Record<string, any> = {};
+    if (selectedCollege) obj.collegeId = selectedCollege;
+    if (selectedDept) obj.departmentId = selectedDept;
+    return obj;
+  }, [selectedCollege, selectedDept]);
+
+  const { data: doctors, loading, error, search, setSearch, page, setPage, total, refetch } = useDoctors({
+    filters: activeFilters,
+  });
   const limit = 10;
   const totalPages = Math.ceil(total / limit);
   const totalRecords = total;
@@ -84,6 +122,7 @@ const DoctorsList = () => {
   const filteredDoctors = useMemo(() => {
     const list = Array.isArray(doctors) ? doctors : [];
     return list.filter((d) => {
+      if (d.user?.role && d.user.role !== 'DOCTOR') return false;
       if (statusFilter === 'all') return true;
       if (statusFilter === 'active') return d.status === 'active';
       if (statusFilter === 'inactive') return d.status === 'inactive';
@@ -253,65 +292,187 @@ const DoctorsList = () => {
         }}
       />
 
-      {/* Filter & Search Bar Card */}
-      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex overflow-x-auto pb-1.5 md:pb-0 custom-scrollbar gap-2 w-full md:w-auto" dir={isRTL ? 'rtl' : 'ltr'}>
-            {[
-              { id: 'all', label: t('doctors.filterAll') },
-              { id: 'active', label: t('doctors.filterActive') },
-              { id: 'onleave', label: t('doctors.filterOnLeave') },
-              { id: 'inactive', label: t('doctors.filterInactive') },
-            ].map((tab) => {
-              const isActive = statusFilter === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setStatusFilter(tab.id)}
-                  className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 text-sm font-medium rounded-xl transition-all ${
-                    isActive
-                      ? 'bg-brand-primary-500 text-white shadow-sm'
-                      : 'text-brand-text-secondary dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        {/* Total Doctors */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('doctors.totalDoctors', 'Total Doctors')}
+            </span>
+            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
+              {stats[0]?.value || filteredDoctors.length}
+            </span>
           </div>
-
-          <div className="flex flex-1 md:max-w-md items-center gap-3 w-full">
-            <div className="relative flex-1">
-              <Search
-                className="absolute start-3 top-1/2 -translate-y-1/2 text-brand-text-muted"
-                size={18}
-              />
-              <input
-                type="text"
-                placeholder={t('doctors.searchPlaceholder')}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl ps-10 pe-3 py-2 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-primary-500"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
-
-            <Button
-              variant="outline"
-              disabled={exporting}
-              onClick={handleExportCsv}
-              className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 transition-all shrink-0"
-            >
-              <Download size={14} />
-              <span className="hidden md:inline">
-                {exporting ? t('common.loading') : t('doctors.exportCsv')}
-              </span>
-            </Button>
+          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
+            <Users size={16} />
           </div>
         </div>
-      </Card>
+
+        {/* Active Faculty */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('doctors.activeDoctors', 'Active Faculty')}
+            </span>
+            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
+              {stats[1]?.value || filteredDoctors.filter((d: any) => d.status === 'active' || !d.status).length}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
+            <UserCheck size={16} />
+          </div>
+        </div>
+
+        {/* Total Courses Assigned */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('doctors.totalCourses', 'Assigned Courses')}
+            </span>
+            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
+              {stats[2]?.value || '0'}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
+            <BookOpen size={16} />
+          </div>
+        </div>
+
+        {/* Research / Projects */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('doctors.researchProjects', 'Research & Depts')}
+            </span>
+            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
+              {stats[3]?.value || '0'}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+            <Briefcase size={16} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. UNIFIED COMPACT FILTER TOOLBAR                                         */}
+      {/* ========================================================================= */}
+      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-4">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder={t('doctors.searchPlaceholder', 'Search by name, email, or specialization...')}
+            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+          />
+          {search && (
+            <button
+              onClick={() => {
+                setSearch('');
+                setPage(1);
+              }}
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* College Dropdown */}
+        {isSuperAdmin && (
+          <select
+            value={selectedCollege}
+            onChange={(e) => {
+              setSelectedCollege(e.target.value);
+              setSelectedDept('');
+              setPage(1);
+              if (e.target.value) {
+                setSearchParams({ collegeId: e.target.value });
+              } else {
+                setSearchParams({});
+              }
+            }}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('colleges.allColleges', 'All Colleges')}</option>
+            {colleges.map((c) => (
+              <option key={c.id} value={c.id}>
+                {isRTL ? c.nameAr || c.name : c.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Department Dropdown */}
+        <select
+          value={selectedDept}
+          onChange={(e) => {
+            setSelectedDept(e.target.value);
+            setPage(1);
+          }}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="">{t('departments.allDepartments', 'All Departments')}</option>
+          {departments.map((d) => (
+            <option key={d.id} value={d.id}>
+              {isRTL ? d.nameAr || d.name : d.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Status Dropdown */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="all">{t('doctors.filterAll', 'All Statuses')}</option>
+          <option value="active">{t('doctors.filterActive', 'Active')}</option>
+          <option value="onleave">{t('doctors.filterOnLeave', 'On Leave')}</option>
+          <option value="inactive">{t('doctors.filterInactive', 'Inactive')}</option>
+        </select>
+
+        {/* Clear Filters Button */}
+        {(search || selectedCollege || selectedDept || statusFilter !== 'all') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              setSelectedCollege('');
+              setSelectedDept('');
+              setStatusFilter('all');
+              setSearchParams({});
+              setPage(1);
+            }}
+            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
+          >
+            <X size={13} className="me-1" />
+            {isRTL ? 'مسح' : 'Clear'}
+          </Button>
+        )}
+
+        {/* Export CSV Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={exporting}
+          onClick={handleExportCsv}
+          className="h-8.5 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer shadow-2xs ms-auto"
+        >
+          <Download size={13} className="text-slate-500" />
+          <span>{exporting ? t('common.loading') : t('doctors.exportCsv', 'Export CSV')}</span>
+        </Button>
+      </div>
 
       {/* Table Content / Empty States */}
       <div className="min-h-0">

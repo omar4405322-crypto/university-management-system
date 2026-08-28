@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { AlertCircle, CheckCircle, Loader2, ChevronRight, ChevronLeft, Calendar } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
 import { useTimetableData } from '../../hooks/useTimetableData';
@@ -11,6 +11,7 @@ import SlotModal from '../../components/timetable/SlotModal';
 import { OverrideModal } from '../../components/timetable/OverrideModal';
 import { SkeletonTable } from '../../components/ui/skeleton';
 import { TimeRange } from '../../components/ui/TimeRange';
+import { PageHeader } from '../../components/ui/PageHeader';
 import timetableService from '../../services/timetable.service';
 import schedulesService from '../../services/schedules.service';
 import { notifyScheduleChange, subscribeToScheduleChanges } from '../../utils/scheduleSync';
@@ -29,9 +30,14 @@ const EMPTY_FORM: SlotFormValues = {
   slotType: 'LECTURE',
 };
 
-export default function TimetableGrid() {
+interface TimetableGridProps {
+  showHeader?: boolean;
+}
+
+export default function TimetableGrid({ showHeader = true }: TimetableGridProps) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { scopeParams, isCollegeAdmin } = useScope();
   const isRTL = i18n.language?.startsWith('ar');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -106,7 +112,8 @@ export default function TimetableGrid() {
     setOverrideModalOpen(true);
   }, []);
 
-  // ── Scope helpers ────────────────────────────────────────────────────────────
+  // ── Scope helpers & Permissions ─────────────────────────────────────────────
+  const canManage = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role || '');
   const collegeId = user?.managedCollegeId ?? user?.collegeId ?? scopeParams?.collegeId;
   const deptId = user?.managedDepartmentId ?? user?.departmentId ?? scopeParams?.departmentId;
   const isDeptAdminLocked = user?.role === 'DEPARTMENT_ADMIN';
@@ -188,7 +195,9 @@ export default function TimetableGrid() {
     );
     if (sameCourseConflict) {
       showToast(
-        t('timetables.duplicateError', `المادة "${form.courseName}" مجدولة بالفعل في هذا اليوم`),
+        isRTL
+          ? `المادة "${form.courseName}" مجدولة بالفعل في هذا اليوم`
+          : `Course "${form.courseName}" is already scheduled on this day`,
         'error'
       );
       return;
@@ -201,7 +210,9 @@ export default function TimetableGrid() {
       );
       if (sameDoctorConflict) {
         showToast(
-          t('timetables.doctorLocalConflict', `المحاضر "${form.doctorName}" محجوز بالفعل في هذا الوقت`),
+          isRTL
+            ? `المحاضر "${form.doctorName}" محجوز بالفعل في هذا الوقت`
+            : `Instructor "${form.doctorName}" is already booked for this slot`,
           'error'
         );
         return;
@@ -215,7 +226,9 @@ export default function TimetableGrid() {
       );
       if (sameRoomConflict) {
         showToast(
-          t('timetables.roomLocalConflict', `القاعة "${form.room}" محجوزة بالفعل في هذه الفترة`),
+          isRTL
+            ? `القاعة "${form.room}" محجوزة بالفعل في هذه الفترة`
+            : `Room "${form.room}" is already reserved for this slot`,
           'error'
         );
         return;
@@ -234,7 +247,7 @@ export default function TimetableGrid() {
   const handleAuditConflicts = useCallback(async () => {
     const entries = Object.entries(slots);
     if (entries.length === 0) {
-      showToast(t('timetables.emptyGridAudit', 'لا توجد حصص مضافة في الجدول لفحصها'), 'error');
+      showToast(t('timetables.emptyGridAudit', 'timetables.emptyGridAudit'), 'error');
       return;
     }
 
@@ -277,7 +290,7 @@ export default function TimetableGrid() {
 
       if (foundConflicts.length === 0) {
         showToast(
-          t('timetables.noConflictsFound', 'رائع! تم فحص كامل الجدول ولا يوجد أي تعارض بالقاعات أو المحاضرين ✅'),
+          t('timetables.noConflictsFound', 'timetables.noConflictsFound'),
           'success'
         );
         setAuditReport(null);
@@ -286,7 +299,7 @@ export default function TimetableGrid() {
       }
     } catch (err) {
       console.error('Audit error:', err);
-      showToast(t('common.errorOccurred', 'حدث خطأ أثناء فحص التعارضات'), 'error');
+      showToast(t('common.errorOccurred', 'An error occurred'), 'error');
     } finally {
       setAuditingConflicts(false);
     }
@@ -304,10 +317,7 @@ export default function TimetableGrid() {
 
     // Ask user if they want to sync directly to Master Schedule (Tables Management)
     const shouldSyncToMaster = window.confirm(
-      t(
-        'timetables.syncConfirmPrompt',
-        'تطبيق وتزامن التغييرات مع إدارة الجداول (الجدول الرئيسي)؟\n\n• موافق (OK): تطبيق وتزامن متبادل مع صفحة إدارة الجداول.\n• إلغاء (Cancel): الحفظ في شبكة الجداول فقط.'
-      )
+      t('timetables.syncConfirmPrompt', 'timetables.syncConfirmPrompt')
     );
 
     setSaving(true);
@@ -352,7 +362,7 @@ export default function TimetableGrid() {
         });
         notifyScheduleChange();
         showToast(
-          t('timetables.syncSuccess', 'تم حفظ الجدول وتزامنه بنجاح مع إدارة الجداول ✅'),
+          t('timetables.syncSuccess', 'timetables.syncSuccess'),
           'success'
         );
       } else {
@@ -366,8 +376,33 @@ export default function TimetableGrid() {
     }
   }, [filters, slots, departments, collegeId, timetableId, showToast, t]);
 
+  const selectedDeptObj = departments.find((d) => String(d.id) === String(filters.departmentId));
+  const selectedCollegeObj = colleges.find((c) => String(c.id) === String(filters.collegeId || selectedDeptObj?.collegeId));
+
+  const pageTitle = selectedDeptObj
+    ? (isRTL ? `جدول ${selectedDeptObj.nameAr || selectedDeptObj.name}` : `${selectedDeptObj.name} Timetable`)
+    : t('timetables.title', 'Department Timetable');
+
+  const pageSubtitle = selectedCollegeObj
+    ? `${isRTL ? selectedCollegeObj.nameAr || selectedCollegeObj.name : selectedCollegeObj.name} • ${t('timetables.subtitle', 'Manage weekly department class schedules')}`
+    : t('timetables.subtitle', 'Manage weekly department class schedules');
+
   return (
     <div className="section-gap animate-in fade-in duration-500">
+      {/* Page Header when rendered standalone */}
+      {showHeader && (
+        <PageHeader
+          title={pageTitle}
+          subtitle={pageSubtitle}
+          action={{
+            label: isRTL ? 'العودة للأقسام' : 'Back to Departments',
+            icon: isRTL ? ChevronRight : ChevronLeft,
+            onClick: () => navigate('/departments'),
+            className: '!bg-slate-100 dark:!bg-slate-800 !text-slate-700 dark:!text-slate-200 hover:!bg-slate-200 dark:hover:!bg-slate-700 !rounded-xl !border !border-slate-200 dark:!border-slate-700 transition-all font-bold text-xs',
+          }}
+        />
+      )}
+
       {/* Toast */}
       {toast && (
         <div className={toast.type === 'error' ? 'toast-error' : 'toast-success'}>
@@ -390,6 +425,7 @@ export default function TimetableGrid() {
         saving={saving}
         loadingSlots={loadingSlots}
         auditingConflicts={auditingConflicts}
+        canManage={canManage}
         onChange={handleFilterChange}
         onSave={handleSaveTimetable}
         onAuditConflicts={handleAuditConflicts}
@@ -439,7 +475,7 @@ export default function TimetableGrid() {
                           day={day}
                           slot={slot}
                           entry={entry}
-                          canEdit={true}
+                          canEdit={canManage}
                           onAdd={() => handleOpenAdd(day as Day, slot)}
                           onEdit={handleOpenEdit}
                           onDelete={handleDeleteSlot}
@@ -493,7 +529,7 @@ export default function TimetableGrid() {
                   day={selectedDay}
                   slot={slot}
                   entry={entry}
-                  canEdit={true}
+                  canEdit={canManage}
                   onAdd={() => handleOpenAdd(selectedDay as Day, slot)}
                   onEdit={handleOpenEdit}
                   onDelete={handleDeleteSlot}

@@ -235,7 +235,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
           },
           {
-            title: 'teachingAssistants.title',
+            title: 'nav.teachingAssistants',
             path: '/teaching-assistants',
             icon: GraduationCap,
             roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
@@ -367,7 +367,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         <div className="flex h-20 items-center justify-between border-b border-white/10 px-4"
           style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.25) 0%, rgba(255,255,255,0.03) 100%)' }}
         >
-          {/* Expanded state: logo + Arabic name */}
+          {/* Expanded state: logo + bilingual name */}
           <Link
             to="/dashboard"
             onClick={() => navigate('/dashboard')}
@@ -379,7 +379,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20 shadow-lg backdrop-blur-sm">
                 <img
                   src={UNIVERSITY_LOGO_WHITE}
-                  alt="جامعة 6 أكتوبر التكنولوجية"
+                  alt={isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
                   className="h-7 w-7 object-contain"
                   onError={(e) => {
                     e.currentTarget.onerror = null;
@@ -390,13 +390,13 @@ const Sidebar = ({ isOpen, onClose }) => {
             </div>
 
             {/* Text identity */}
-            <div className="flex min-w-0 flex-col" dir="rtl">
+            <div className="flex min-w-0 flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
               <span className="truncate text-sm font-black leading-tight text-white"
                 style={{ letterSpacing: '0.01em' }}>
-                جامعة 6 أكتوبر التكنولوجية
+                {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
               </span>
               <span className="text-[10px] font-bold leading-tight tracking-wide text-brand-primary-400 mt-0.5">
-                نظام الإدارة
+                {isRTL ? 'نظام الإدارة' : 'Management System'}
               </span>
             </div>
           </Link>
@@ -413,7 +413,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 shadow-md">
                   <img
                     src={UNIVERSITY_LOGO_WHITE}
-                    alt="جامعة 6 أكتوبر التكنولوجية"
+                    alt={isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
                     className="h-6 w-6 object-contain"
                     onError={(e) => {
                       e.currentTarget.onerror = null;
@@ -453,7 +453,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               {({ isActive }) => (
                 <>
                   <LayoutDashboard size={20} className={`shrink-0 transition-all duration-150 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-white/90 group-hover:scale-110'}`} />
-                  {!isCollapsed && <span className={`font-black uppercase tracking-widest transition-all ${isActive ? 'translate-x-1 rtl:-translate-x-1' : ''}`}>{t('nav.dashboard', 'الرئيسية')}</span>}
+                  {!isCollapsed && <span className={`font-black uppercase tracking-widest transition-all ${isActive ? 'translate-x-1 rtl:-translate-x-1' : ''}`}>{t('nav.dashboard', 'Dashboard')}</span>}
                 </>
               )}
             </NavLink>

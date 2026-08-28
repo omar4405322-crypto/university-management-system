@@ -158,7 +158,7 @@ const CollegeDetails = () => {
                 onClick={() => navigate(`/schedules-management?collegeId=${college.id}`)}
               >
                 <Calendar size={14} className="text-brand-primary-400" />
-                <span>{t('nav.schedule')}</span>
+                <span>{isRTL ? 'جدول الكلية الأسبوعي' : t('nav.schedule')}</span>
               </Button>
             )}
 
@@ -204,14 +204,24 @@ const CollegeDetails = () => {
         </div>
 
         {/* Students Stat */}
-        <div className="bg-brand-bg-card border border-brand-border/40 p-5 rounded-2xl flex flex-col gap-2 shadow-sm group hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-[0_8px_30px_rgba(59,130,246,0.15)] transition-all duration-300">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate(`/students?collegeId=${college.id}`)}
+          onKeyDown={(e) => e.key === 'Enter' && navigate(`/students?collegeId=${college.id}`)}
+          className="bg-brand-bg-card border border-brand-border/40 p-5 rounded-2xl flex flex-col gap-2 shadow-sm group hover:-translate-y-1 hover:border-blue-500/40 hover:shadow-[0_8px_30px_rgba(59,130,246,0.15)] transition-all duration-300 cursor-pointer"
+          title={isRTL ? 'عرض طلاب هذه الكلية' : 'View college students'}
+        >
           <div className="h-12 w-12 rounded-2xl bg-blue-500/10 text-blue-600 group-hover:bg-blue-500 group-hover:text-white flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.2)] group-hover:shadow-[0_0_25px_rgba(59,130,246,0.5)] scale-100 group-hover:scale-110 transition-all duration-300">
             <GraduationCap size={22} />
           </div>
           <div className="mt-2 text-start">
-            <p className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">
-              {t('nav.students')}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">
+                {t('nav.students')}
+              </p>
+              <ExternalLink size={12} className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <h3 className="text-2xl font-black text-brand-text-main mt-1">
               {college._count?.students || 0}
             </h3>
@@ -219,14 +229,24 @@ const CollegeDetails = () => {
         </div>
 
         {/* Doctors Stat */}
-        <div className="bg-brand-bg-card border border-brand-border/40 p-5 rounded-2xl flex flex-col gap-2 shadow-sm group hover:-translate-y-1 hover:border-indigo-500/40 hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] transition-all duration-300">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate(`/doctors?collegeId=${college.id}`)}
+          onKeyDown={(e) => e.key === 'Enter' && navigate(`/doctors?collegeId=${college.id}`)}
+          className="bg-brand-bg-card border border-brand-border/40 p-5 rounded-2xl flex flex-col gap-2 shadow-sm group hover:-translate-y-1 hover:border-indigo-500/40 hover:shadow-[0_8px_30px_rgba(99,102,241,0.15)] transition-all duration-300 cursor-pointer"
+          title={isRTL ? 'عرض دكاترة هذه الكلية' : 'View college faculty'}
+        >
           <div className="h-12 w-12 rounded-2xl bg-indigo-500/10 text-indigo-600 group-hover:bg-indigo-500 group-hover:text-white flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.2)] group-hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] scale-100 group-hover:scale-110 transition-all duration-300">
             <Users size={22} />
           </div>
           <div className="mt-2 text-start">
-            <p className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">
-              {t('nav.doctors')}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-brand-text-muted uppercase tracking-wider">
+                {t('nav.doctors')}
+              </p>
+              <ExternalLink size={12} className="text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
             <h3 className="text-2xl font-black text-brand-text-main mt-1">
               {college._count?.doctors || 0}
             </h3>

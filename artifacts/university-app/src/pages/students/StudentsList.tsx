@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useStudents } from '../../hooks/useStudents';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Card from '../../components/ui/Card';
 import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody, ActionMenu } from '../../components/ui/Table';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -22,9 +22,11 @@ import {
   X,
   Filter,
   ChevronDown,
+  GraduationCap,
 } from 'lucide-react';
 import studentService from '../../services/students.service';
 import departmentService from '../../services/department.service';
+import collegeService from '../../services/college.service';
 import studentGroupsService from '../../services/studentGroups.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
@@ -54,6 +56,7 @@ const defaultView: SavedView = {
 const StudentsList = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { scopeParams } = useScope();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -61,20 +64,23 @@ const StudentsList = () => {
 
   const [exporting, setExporting] = useState(false);
   const [departments, setDepartments] = useState<any[]>([]);
+  const [colleges, setColleges] = useState<any[]>([]);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
 
   // Filter States
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedCollege, setSelectedCollege] = useState(() => searchParams.get('collegeId') || '');
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [sortBy, setSortBy] = useState('firstName');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  // Popover state
-  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
-  const [sortPopoverOpen, setSortPopoverOpen] = useState(false);
-  const filterRef = useRef<HTMLDivElement>(null);
-  const sortRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const cId = searchParams.get('collegeId');
+    if (cId !== null) {
+      setSelectedCollege(cId);
+    }
+  }, [searchParams]);
 
   const { activeView, activeViewId, updateActiveView } = useSavedViews('students_views', defaultView);
   const limit = activeView?.pageSize || 10;
@@ -83,10 +89,11 @@ const StudentsList = () => {
   const activeFiltersObj = useMemo(() => {
     const obj: Record<string, any> = {};
     if (statusFilter !== 'all') obj.status = statusFilter;
+    if (selectedCollege) obj.collegeId = selectedCollege;
     if (selectedDept) obj.departmentId = selectedDept;
     if (selectedYear) obj.year = selectedYear;
     return obj;
-  }, [statusFilter, selectedDept, selectedYear]);
+  }, [statusFilter, selectedCollege, selectedDept, selectedYear]);
 
   const {
     data: students,
@@ -109,14 +116,20 @@ const StudentsList = () => {
   const totalPages = Math.ceil(total / limit) || 1;
   const totalRecords = total;
 
-  // Fetch departments metadata
+  // Fetch metadata
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
         setLoadingMetadata(true);
-        const deptRes = await departmentService.getDepartments();
+        const [deptRes, collRes] = await Promise.all([
+          departmentService.getDepartments(selectedCollege ? { collegeId: selectedCollege } : {}),
+          collegeService.getColleges(),
+        ]);
         if (deptRes?.success && Array.isArray(deptRes.data)) {
           setDepartments(deptRes.data);
+        }
+        if (collRes?.success) {
+          setColleges(Array.isArray(collRes.data) ? collRes.data : collRes.data?.data || []);
         }
       } catch (_err) {
         // Fallback gracefully
@@ -125,7 +138,7 @@ const StudentsList = () => {
       }
     };
     fetchMetadata();
-  }, []);
+  }, [selectedCollege]);
 
   useEffect(() => {
     setSearch(activeView.search || '');
@@ -153,17 +166,7 @@ const StudentsList = () => {
     };
   }, []);
 
-  // Close popovers on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (filterRef.current && !filterRef.current.contains(e.target as Node))
-        setFilterPopoverOpen(false);
-      if (sortRef.current && !sortRef.current.contains(e.target as Node))
-        setSortPopoverOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -329,224 +332,215 @@ const StudentsList = () => {
         }}
       />
 
-      {/* Filter & Search Toolbar */}
-      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm px-4 py-3 sm:px-5 mb-6 space-y-0">
-        {/* Row 1: Full-width search bar */}
-        <div className="relative">
-          <Search
-            className="absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-            size={16}
-          />
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        {/* Total Students */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('dashboard.totalStudents', 'Total Students')}
+            </span>
+            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
+              {total}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
+            <Users size={16} />
+          </div>
+        </div>
+
+        {/* Active Students */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'الطلاب النشطون' : 'Active Students'}
+            </span>
+            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
+              {Array.isArray(students) ? students.filter((s: any) => s.isActive).length : 0}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
+            <UserCheck size={16} />
+          </div>
+        </div>
+
+        {/* Inactive / Suspended */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'الحسابات المعطلة' : 'Inactive / Suspended'}
+            </span>
+            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
+              {Array.isArray(students) ? students.filter((s: any) => !s.isActive).length : 0}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+            <UserX size={16} />
+          </div>
+        </div>
+
+        {/* Assigned Departments */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'الأقسام الأكاديمية' : 'Academic Depts'}
+            </span>
+            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
+              {departments.length}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
+            <GraduationCap size={16} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. UNIFIED COMPACT FILTER TOOLBAR                                         */}
+      {/* ========================================================================= */}
+      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-4">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder={t('students.searchPlaceholder')}
-            className="w-full h-11 border border-slate-200 dark:border-slate-700 rounded-xl ps-10 pe-9 text-sm bg-slate-50/60 dark:bg-slate-900/40 text-brand-text-primary dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-primary-500/25 focus:border-brand-primary-500 transition-all"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
+            placeholder={t('students.searchPlaceholder', 'Search by name, student ID, or email...')}
+            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
           />
           {search && (
             <button
-              onClick={() => { setSearch(''); setPage(1); }}
-              className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-              aria-label="Clear search"
+              onClick={() => {
+                setSearch('');
+                setPage(1);
+              }}
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
             >
-              <X size={14} />
+              <X size={12} />
             </button>
           )}
         </div>
 
-        {/* Row 2: Status tabs (start) + Icon buttons (end) */}
-        <div className="flex items-center justify-between pt-1 mt-2 border-t border-slate-100 dark:border-slate-700/60">
+        {/* College Dropdown */}
+        {isSuperAdmin && (
+          <select
+            value={selectedCollege}
+            onChange={(e) => {
+              setSelectedCollege(e.target.value);
+              setSelectedDept('');
+              setPage(1);
+              if (e.target.value) {
+                setSearchParams({ collegeId: e.target.value });
+              } else {
+                setSearchParams({});
+              }
+            }}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('colleges.allColleges', 'All Colleges')}</option>
+            {Array.isArray(colleges) &&
+              colleges.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {isRTL ? c.nameAr || c.name : c.name}
+                </option>
+              ))}
+          </select>
+        )}
 
-          {/* Status underline tabs — scrollable on narrow viewports */}
-          <div className="flex overflow-x-auto custom-scrollbar gap-0 min-w-0">
-            {[
-              { id: 'all',       label: t('students.filterAll') },
-              { id: 'active',    label: t('students.filterActive') },
-              { id: 'inactive',  label: t('students.filterInactive') },
-              { id: 'suspended', label: t('students.filterSuspended') },
-            ].map((tab) => {
-              const isActive = statusFilter === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => { setStatusFilter(tab.id); setPage(1); }}
-                  className={`flex-shrink-0 whitespace-nowrap px-3.5 py-2.5 text-sm border-b-2 transition-all cursor-pointer ${
-                    isActive
-                      ? 'border-brand-primary-500 text-brand-primary-500 font-medium'
-                      : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-normal'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+        {/* Department Dropdown */}
+        <select
+          value={selectedDept}
+          onChange={(e) => {
+            setSelectedDept(e.target.value);
+            setPage(1);
+          }}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="">{t('students.allDepartments', 'All Departments')}</option>
+          {Array.isArray(departments) &&
+            departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {isRTL ? d.nameAr || d.name : d.name}
+              </option>
+            ))}
+        </select>
 
-          {/* Icon button group: Filters | Sort | Export */}
-          <div className="flex items-center gap-1 ps-3 shrink-0">
+        {/* Academic Year Dropdown */}
+        <select
+          value={selectedYear}
+          onChange={(e) => {
+            setSelectedYear(e.target.value);
+            setPage(1);
+          }}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="">{t('students.allYears', 'All Years')}</option>
+          <option value="1">{isRTL ? 'الفرقة الأولى' : 'Year 1'}</option>
+          <option value="2">{isRTL ? 'الفرقة الثانية' : 'Year 2'}</option>
+          <option value="3">{isRTL ? 'الفرقة الثالثة' : 'Year 3'}</option>
+          <option value="4">{isRTL ? 'الفرقة الرابعة' : 'Year 4'}</option>
+        </select>
 
-            {/* ── Filters popover ── */}
-            <div className="relative" ref={filterRef}>
-              <button
-                onClick={() => { setFilterPopoverOpen((o) => !o); setSortPopoverOpen(false); }}
-                className={`relative h-[34px] w-[34px] flex items-center justify-center rounded-xl border transition-all ${
-                  filterPopoverOpen
-                    ? 'bg-brand-primary-50 dark:bg-brand-primary-900/30 border-brand-primary-300 dark:border-brand-primary-600 text-brand-primary-600 dark:text-brand-primary-400'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-                title={t('common.filters', 'تصفية')}
-                aria-label={t('common.filters', 'Filters')}
-                aria-expanded={filterPopoverOpen}
-              >
-                <Filter size={15} />
-                {/* Active badge */}
-                {(selectedDept || selectedYear) && (
-                  <span className="absolute -top-0.5 -end-0.5 w-2 h-2 rounded-full bg-brand-primary-500 border-2 border-white dark:border-slate-800" />
-                )}
-              </button>
+        {/* Status Dropdown */}
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          }}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="all">{t('students.filterAll', 'All Statuses')}</option>
+          <option value="active">{t('students.filterActive', 'Active')}</option>
+          <option value="inactive">{t('students.filterInactive', 'Inactive')}</option>
+          <option value="suspended">{t('students.filterSuspended', 'Suspended')}</option>
+        </select>
 
-              {/* Filters popover panel */}
-              {filterPopoverOpen && (
-                <div className="absolute end-0 top-full mt-2 z-50 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
-                  {/* Department */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      {t('students.department', 'القسم')}
-                    </label>
-                    <select
-                      value={selectedDept}
-                      onChange={(e) => { setSelectedDept(e.target.value); setPage(1); }}
-                      className="w-full h-9 px-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-brand-text-primary dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 cursor-pointer"
-                    >
-                      <option value="">{t('students.allDepartments', 'جميع الأقسام')}</option>
-                      {Array.isArray(departments) &&
-                        departments.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {isRTL ? d.nameAr || d.name : d.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
+        {/* Sort Select */}
+        <select
+          value={sortBy}
+          onChange={(e) => {
+            setSortBy(e.target.value);
+            setPage(1);
+          }}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="firstName">{t('students.sortAlphabeticalAsc', 'Name')}</option>
+          <option value="studentId">{t('students.sortIdAsc', 'Student ID')}</option>
+          <option value="year">{t('students.sortYearAsc', 'Year')}</option>
+          <option value="enrolledAt">{t('students.sortNewest', 'Enrollment Date')}</option>
+        </select>
 
-                  {/* Academic Year */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      {t('students.year', 'الفرقة الدراسية')}
-                    </label>
-                    <select
-                      value={selectedYear}
-                      onChange={(e) => { setSelectedYear(e.target.value); setPage(1); }}
-                      className="w-full h-9 px-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-brand-text-primary dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 cursor-pointer"
-                    >
-                      <option value="">{t('students.allYears', 'جميع الفرق')}</option>
-                      <option value="1">{isRTL ? 'الفرقة الأولى' : 'Year 1'}</option>
-                      <option value="2">{isRTL ? 'الفرقة الثانية' : 'Year 2'}</option>
-                      <option value="3">{isRTL ? 'الفرقة الثالثة' : 'Year 3'}</option>
-                      <option value="4">{isRTL ? 'الفرقة الرابعة' : 'Year 4'}</option>
-                    </select>
-                  </div>
+        {/* Clear Filters Button */}
+        {(search || selectedCollege || selectedDept || selectedYear || statusFilter !== 'all') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleResetFilters}
+            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
+          >
+            <X size={13} className="me-1" />
+            {isRTL ? 'مسح' : 'Clear'}
+          </Button>
+        )}
 
-                  {/* Reset link */}
-                  {(selectedDept || selectedYear) && (
-                    <button
-                      onClick={() => { setSelectedDept(''); setSelectedYear(''); setPage(1); }}
-                      className="flex items-center gap-1.5 text-xs text-rose-500 hover:text-rose-600 font-medium transition-colors"
-                    >
-                      <RotateCcw size={11} />
-                      {t('students.resetFilters', 'إعادة ضبط الفلاتر')}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* ── Sort popover ── */}
-            <div className="relative" ref={sortRef}>
-              <button
-                onClick={() => { setSortPopoverOpen((o) => !o); setFilterPopoverOpen(false); }}
-                className={`h-[34px] w-[34px] flex items-center justify-center rounded-xl border transition-all ${
-                  sortPopoverOpen
-                    ? 'bg-brand-primary-50 dark:bg-brand-primary-900/30 border-brand-primary-300 dark:border-brand-primary-600 text-brand-primary-600 dark:text-brand-primary-400'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-                title={t('students.sortBy', 'ترتيب')}
-                aria-label={t('students.sortBy', 'Sort')}
-                aria-expanded={sortPopoverOpen}
-              >
-                <ArrowUpDown size={15} />
-              </button>
-
-              {/* Sort popover panel */}
-              {sortPopoverOpen && (
-                <div className="absolute end-0 top-full mt-2 z-50 w-52 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-2">
-                  {/* Sort field options */}
-                  {[
-                    { value: 'firstName',  label: t('students.sortAlphabeticalAsc', 'الاسم') },
-                    { value: 'studentId', label: t('students.sortIdAsc', 'الرقم الجامعي') },
-                    { value: 'year',      label: t('students.sortYearAsc', 'الفرقة الدراسية') },
-                    { value: 'enrolledAt', label: t('students.sortNewest', 'تاريخ التسجيل') },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => { setSortBy(opt.value); setPage(1); setSortPopoverOpen(false); }}
-                      className={`w-full text-start px-3 py-2 rounded-xl text-sm flex items-center gap-2 transition-colors ${
-                        sortBy === opt.value
-                          ? 'bg-brand-primary-50 dark:bg-brand-primary-900/30 text-brand-primary-600 dark:text-brand-primary-400 font-medium'
-                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
-                      }`}
-                    >
-                      {sortBy === opt.value && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-brand-primary-500 shrink-0" />
-                      )}
-                      {opt.label}
-                    </button>
-                  ))}
-
-                  {/* Direction divider */}
-                  <div className="my-1.5 border-t border-slate-100 dark:border-slate-700" />
-                  <div className="flex gap-1 px-1 pb-1">
-                    <button
-                      onClick={() => { setSortOrder('asc'); setPage(1); setSortPopoverOpen(false); }}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        sortOrder === 'asc'
-                          ? 'bg-brand-primary-500 text-white'
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
-                      }`}
-                    >
-                      {isRTL ? '↑ تصاعدي' : '↑ Asc'}
-                    </button>
-                    <button
-                      onClick={() => { setSortOrder('desc'); setPage(1); setSortPopoverOpen(false); }}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        sortOrder === 'desc'
-                          ? 'bg-brand-primary-500 text-white'
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
-                      }`}
-                    >
-                      {isRTL ? '↓ تنازلي' : '↓ Desc'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ── Export button ── */}
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="h-[34px] w-[34px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              title={t('students.exportCsv', 'تصدير CSV')}
-              aria-label={t('students.exportCsv', 'Export CSV')}
-            >
-              <Download size={15} />
-            </button>
-          </div>
-        </div>
-      </Card>
+        {/* Export CSV Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExport}
+          className="h-8.5 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer shadow-2xs ms-auto"
+        >
+          <Download size={13} className="text-slate-500" />
+          <span>{t('common.exportCsv', 'Export CSV')}</span>
+        </Button>
+      </div>
 
       {/* Table Content / Empty States */}
       <div className="min-h-0">
@@ -564,7 +558,7 @@ const StudentsList = () => {
             </h3>
             <p className="text-sm text-brand-text-secondary dark:text-slate-400 mb-6 max-w-md">
               {activeFilterCount > 0
-                ? t('students.noSearchResultsDesc', 'جرّب كلمة بحث أخرى أو قم بإعادة ضبط الفلاتر الحالية.')
+                ? t('students.noSearchResultsDesc', 'Try a different search term or clear your filters.')
                 : t('students.noStudentsDesc')}
             </p>
             {activeFilterCount > 0 && (
@@ -574,7 +568,7 @@ const StudentsList = () => {
                 className="rounded-xl flex items-center gap-2 text-xs font-bold"
               >
                 <RotateCcw size={14} />
-                <span>{t('students.resetFilters', 'إعادة ضبط الفلاتر')}</span>
+                <span>{t('students.resetFilters', 'Reset Filters')}</span>
               </Button>
             )}
           </div>

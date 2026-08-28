@@ -14,6 +14,11 @@ import {
   Loader2,
   Plus,
   Layers,
+  Search,
+  Users,
+  GraduationCap,
+  X,
+  Download,
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import collegeService from '../../services/college.service';
@@ -36,6 +41,8 @@ const CollegesList = () => {
   const { isRTL } = useLanguage();
   const [colleges, setColleges] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('name');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState(null);
@@ -61,6 +68,28 @@ const CollegesList = () => {
         : []
       : colleges;
 
+  const filteredColleges = (Array.isArray(visibleColleges) ? visibleColleges : [])
+    .filter((c) => {
+      const q = search.trim().toLowerCase();
+      if (!q) return true;
+      const name = (c.name || '').toLowerCase();
+      const nameAr = (c.nameAr || '').toLowerCase();
+      return name.includes(q) || nameAr.includes(q);
+    })
+    .sort((a, b) => {
+      if (sortBy === 'departments') {
+        return (b._count?.departments ?? b.departments?.length ?? 0) - (a._count?.departments ?? a.departments?.length ?? 0);
+      }
+      if (sortBy === 'students') {
+        return (b._count?.students ?? 0) - (a._count?.students ?? 0);
+      }
+      return (isRTL ? a.nameAr || a.name : a.name).localeCompare(isRTL ? b.nameAr || b.name : b.name);
+    });
+
+  const totalDepts = colleges.reduce((acc, c) => acc + (c._count?.departments ?? c.departments?.length ?? 0), 0);
+  const totalStudents = colleges.reduce((acc, c) => acc + (c._count?.students ?? 0), 0);
+  const totalFaculty = colleges.reduce((acc, c) => acc + (c._count?.doctors ?? c._count?.faculty ?? 0), 0);
+
   const fetchColleges = async () => {
     try {
       setLoading(true);
@@ -75,7 +104,6 @@ const CollegesList = () => {
       setLoading(false);
     }
   };
-
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -101,32 +129,137 @@ const CollegesList = () => {
   };
 
   return (
-    <div className="section-gap animate-page">
-      {/* Toast Notification */}
-      
+    <div className="section-gap animate-page pt-4">
+      <PageHeader
+        title={t('colleges.title', 'University Colleges')}
+        subtitle={t('colleges.subtitle', 'Overview of all academic divisions and their performance.')}
+        action={
+          user?.role === 'SUPER_ADMIN'
+            ? {
+                label: t('colleges.addCollege', 'Add New College'),
+                onClick: () => setIsAddModalOpen(true),
+                icon: Plus,
+                className:
+                  'bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2',
+              }
+            : undefined
+        }
+      />
 
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 text-start">
-        <div className="flex flex-col">
-          <h1 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main mb-1">
-            {t('colleges.title')}
-          </h1>
-          <p className="text-sm text-brand-text-muted font-medium leading-relaxed">
-            {t('colleges.subtitle')}
-          </p>
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        {/* Total Colleges */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'إجمالي الكليات' : 'Total Colleges'}
+            </span>
+            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
+              {colleges.length}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
+            <Building2 size={16} />
+          </div>
         </div>
 
-        {user?.role === 'SUPER_ADMIN' && (
-          <div className="flex items-center gap-3 shrink-0">
-            <Button
-              onClick={() => setIsAddModalOpen(true)}
-              variant="primary"
-              size="md"
-              className="font-bold text-xs uppercase tracking-widest px-6 py-2.5 shadow-sm"
-            >
-              <Plus size={16} className="mr-2 rtl:ml-2 rtl:mr-0" />
-              <span>{t('colleges.addCollege')}</span>
-            </Button>
+        {/* Total Departments */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'إجمالي الأقسام' : 'Total Departments'}
+            </span>
+            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
+              {totalDepts}
+            </span>
           </div>
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
+            <Layers size={16} />
+          </div>
+        </div>
+
+        {/* Total Students */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'إجمالي الطلاب' : 'Total Students'}
+            </span>
+            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
+              {totalStudents}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
+            <Users size={16} />
+          </div>
+        </div>
+
+        {/* Total Faculty */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'الكادر الأكاديمي' : 'Faculty Members'}
+            </span>
+            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
+              {totalFaculty}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+            <GraduationCap size={16} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. UNIFIED COMPACT FILTER TOOLBAR                                         */}
+      {/* ========================================================================= */}
+      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-6">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('colleges.searchPlaceholder', 'Search by college name or code...')}
+            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* Sort Select */}
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="name">{isRTL ? 'ترتيب: أبجدياً' : 'Sort: Name'}</option>
+          <option value="departments">{isRTL ? 'ترتيب: حسب عدد الأقسام' : 'Sort: Departments'}</option>
+          <option value="students">{isRTL ? 'ترتيب: حسب عدد الطلاب' : 'Sort: Students'}</option>
+        </select>
+
+        {/* Clear Filters */}
+        {(search || sortBy !== 'name') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              setSortBy('name');
+            }}
+            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
+          >
+            <X size={13} className="me-1" />
+            {isRTL ? 'مسح' : 'Clear'}
+          </Button>
         )}
       </div>
 
@@ -135,12 +268,12 @@ const CollegesList = () => {
           <Loader2 className="animate-spin text-brand-primary-600" size={48} />
           <p className="text-caption">{t('common.loading')}</p>
         </div>
-      ) : !Array.isArray(visibleColleges) || visibleColleges.length === 0 ? (
+      ) : !Array.isArray(filteredColleges) || filteredColleges.length === 0 ? (
         <EmptyState
           icon={<Building2 size={40} />}
           title={t('colleges.noColleges')}
           subtitle={t('colleges.noCollegesDesc')}
-                    action={
+          action={
             user?.role === 'SUPER_ADMIN'
               ? { label: t('colleges.addFirstCollege'), onClick: () => setIsAddModalOpen(true) }
               : null
@@ -148,7 +281,7 @@ const CollegesList = () => {
         />
       ) : (
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {(Array.isArray(visibleColleges) ? visibleColleges : []).map((college) => (
+          {filteredColleges.map((college) => (
             <Card
               key={college.id}
               noPadding
