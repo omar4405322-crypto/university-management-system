@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -23,6 +22,8 @@ import Input from '../../components/ui/input';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import timetableService from '../../services/timetable.service';
+import type { College, Department } from '../../types/timetable.types';
+import type { TimetableItem } from './TimetableManagement';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 
@@ -38,15 +39,22 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
+export interface TimetableModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  timetable?: TimetableItem | null;
+  onSuccess: (timetable?: TimetableItem) => void;
+}
+
+const TimetableModal: React.FC<TimetableModalProps> = ({ isOpen, onClose, timetable, onSuccess }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language?.startsWith('ar');
   const { user } = useAuth();
   const isCollegeAdmin = user?.role === 'COLLEGE_ADMIN';
   const managedCollegeId = user?.managedCollegeId;
   const managedCollegeName = isRTL ? user?.managedCollege?.nameAr || user?.managedCollege?.name : user?.managedCollege?.name;
-  const [colleges, setColleges] = useState([]);
-  const [departments, setDepartments] = useState([]);
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [error, setError] = useState('');
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -121,7 +129,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
     }
   };
 
-  const fetchDepartments = async (collegeId) => {
+  const fetchDepartments = async (collegeId: string) => {
     try {
       const res = await departmentService.getDepartments({ collegeId });
       if (res.success) {
@@ -149,7 +157,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
       };
 
       if (timetable) {
-        await timetableService.updateTimetable(timetable.id, payload);
+        await timetableService.updateTimetable(String(timetable.id), payload);
         onSuccess(timetable);
       } else {
         const created = await timetableService.createTimetable(payload);
@@ -160,7 +168,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
     }
   };
 
-  const SELECT_CLASS = WatchCollegeId =>
+  const SELECT_CLASS =
     "w-full h-11 px-4 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer disabled:opacity-50";
 
   return (
@@ -196,7 +204,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
                   </div>
                 ) : (
                   <select
-                    className={SELECT_CLASS(true)}
+                    className={SELECT_CLASS}
                     {...register('collegeId', {
                       onChange: (e) => {
                         setValue('departmentId', '');
@@ -214,7 +222,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.selectDept')} *</label>
                 <select
-                  className={SELECT_CLASS(true)}
+                  className={SELECT_CLASS}
                   {...register('departmentId')}
                   disabled={!watchCollegeId}
                 >
@@ -228,7 +236,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.academicYear')} *</label>
                   <select
-                    className={SELECT_CLASS(true)}
+                    className={SELECT_CLASS}
                     {...register('academicYear')}
                   >
                     {[1, 2, 3, 4, 5].map(y => <option key={y} value={y}>{t('auth.year')} {y}</option>)}
@@ -238,7 +246,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.semester')} *</label>
                   <select
-                    className={SELECT_CLASS(true)}
+                    className={SELECT_CLASS}
                     {...register('semester')}
                   >
                     <option value="1">{t('schedule.semester1', 'Semester 1')}</option>
@@ -256,9 +264,9 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
               {t('timetables.details')}
             </h3>
             <div className="space-y-4">
-              <div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('common.title')} *</label>
                 <Input
-                  label={t('common.title') + " *"}
                   placeholder={t('timetables.titlePlaceholder', 'e.g. CS Year 2 - Fall 2026')}
                   {...register('title')}
                 />
@@ -276,7 +284,7 @@ const TimetableModal = ({ isOpen, onClose, timetable, onSuccess }) => {
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('finance.status')}</label>
                 <select
-                  className={SELECT_CLASS(true)}
+                  className={SELECT_CLASS}
                   {...register('status')}
                 >
                   <option value="DRAFT">{t('timetables.draft')}</option>
