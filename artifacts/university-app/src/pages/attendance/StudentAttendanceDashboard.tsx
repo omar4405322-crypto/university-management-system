@@ -82,28 +82,28 @@ export function StudentAttendanceDashboard() {
         return (
           <Badge className="bg-brand-primary-50 text-brand-primary-800 dark:bg-brand-primary-950/60 dark:text-brand-primary-300 border-brand-primary-200 dark:border-brand-primary-800 px-3 py-0.5 text-[11px] font-bold shadow-xs flex items-center gap-1 shrink-0">
             <CheckCircle2 className="w-3 h-3" />
-            {txt('attendance.present', 'حاضر')}
+            {txt('attendance.present', 'Present')}
           </Badge>
         );
       case 'ABSENT': 
         return (
           <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800 px-3 py-0.5 text-[11px] font-bold shadow-xs flex items-center gap-1 shrink-0">
             <XCircle className="w-3 h-3" />
-            {txt('attendance.absent', 'غائب')}
+            {txt('attendance.absent', 'Absent')}
           </Badge>
         );
       case 'LATE': 
         return (
           <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800 px-3 py-0.5 text-[11px] font-bold shadow-xs flex items-center gap-1 shrink-0">
             <Clock className="w-3 h-3" />
-            {txt('attendance.late', 'متأخر')}
+            {txt('attendance.late', 'Late')}
           </Badge>
         );
       case 'EXCUSED': 
         return (
           <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800 px-3 py-0.5 text-[11px] font-bold shadow-xs flex items-center gap-1 shrink-0">
             <AlertCircle className="w-3 h-3" />
-            {txt('attendance.excused', 'عذر')}
+            {txt('attendance.excused', 'Excused')}
           </Badge>
         );
       default: 
@@ -230,11 +230,11 @@ export function StudentAttendanceDashboard() {
         <button 
           onClick={() => setShowScanner(true)}
           className="bg-brand-primary-600 hover:bg-brand-primary-700 active:scale-95 text-white shadow-xl hover:shadow-2xl rounded-full h-14 w-14 md:w-auto md:px-6 flex items-center justify-center gap-2.5 transition-all border border-brand-primary-400/30 font-bold"
-          aria-label={txt('attendance.studentScanner', 'تسجيل الحضور الآن')}
+          aria-label={txt('attendance.studentScanner', 'Student QR Scanner')}
         >
           <ScanLine className="w-6 h-6 shrink-0" />
           <span className="hidden md:inline text-sm tracking-wide">
-            {txt('attendance.studentScanner', 'تسجيل الحضور الآن')}
+            {txt('attendance.studentScanner', 'Student QR Scanner')}
           </span>
         </button>
       </div>
@@ -248,7 +248,7 @@ export function StudentAttendanceDashboard() {
             </div>
             <div>
               <h1 className="text-xl md:text-2xl font-black text-white tracking-tight mb-1 drop-shadow-xs">
-                {txt('attendance.studentDashboard', 'بوابة الحضور والانصراف')}
+                {txt('attendance.studentDashboard', 'Attendance Portal')}
               </h1>
               <p className="text-slate-100 dark:text-white/95 font-medium text-xs md:text-sm leading-relaxed opacity-95">
                 {isRTL 
@@ -386,7 +386,7 @@ export function StudentAttendanceDashboard() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-bold text-sm text-slate-800 dark:text-white">
-                    {txt('attendance.attendanceRate', 'نسبة الحضور التراكمية')}
+                    {txt('attendance.attendanceRate', 'Attendance Rate')}
                   </h3>
                   <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${gaugeStyle.badgeClass}`}>
                     {gaugeStyle.label}
@@ -414,7 +414,7 @@ export function StudentAttendanceDashboard() {
                 </div>
                 <div>
                   <span className="text-[11px] text-slate-500 font-bold block leading-tight">
-                    {txt('attendance.heldSessions', 'المحاضرات')}
+                    {txt('attendance.heldSessions', 'Held Sessions')}
                   </span>
                   <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
                     {stats.total}
@@ -429,7 +429,7 @@ export function StudentAttendanceDashboard() {
                 </div>
                 <div>
                   <span className="text-[11px] text-brand-primary-800 dark:text-brand-primary-300 font-bold block leading-tight">
-                    {txt('attendance.present', 'حاضر')}
+                    {txt('attendance.present', 'Present')}
                   </span>
                   <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
                     {stats.present}
@@ -444,7 +444,7 @@ export function StudentAttendanceDashboard() {
                 </div>
                 <div>
                   <span className="text-[11px] text-amber-800 dark:text-amber-300 font-bold block leading-tight">
-                    {txt('attendance.late', 'متأخر')}
+                    {txt('attendance.late', 'Late')}
                   </span>
                   <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
                     {stats.late}
@@ -459,7 +459,7 @@ export function StudentAttendanceDashboard() {
                 </div>
                 <div>
                   <span className="text-[11px] text-rose-800 dark:text-rose-300 font-bold block leading-tight">
-                    {txt('attendance.absent', 'غائب')}
+                    {txt('attendance.absent', 'Absent')}
                   </span>
                   <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
                     {stats.absent}
@@ -481,7 +481,7 @@ export function StudentAttendanceDashboard() {
               </div>
               <div>
                 <CardTitle className="text-sm md:text-base font-bold">
-                  {txt('attendance.history', 'سجل الحضور التفصيلي')}
+                  {txt('attendance.history', 'Attendance History')}
                 </CardTitle>
                 <p className="text-xs text-slate-400 font-medium">
                   {selectedCourseName || (isRTL ? 'عرض أحدث السجلات الحالية' : 'Showing recent records')}
@@ -505,7 +505,7 @@ export function StudentAttendanceDashboard() {
               <div className="py-14 px-4">
                 <EmptyState 
                   icon={<Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600" />} 
-                  title={txt('attendance.noRecords', 'لا توجد سجلات حضور حتى الآن')} 
+                  title={txt('attendance.noRecords', 'No attendance records yet')} 
                   subtitle={isRTL ? 'عند تسجيل الحضور في المحاضرات القادمة، ستظهر جميع السجلات هنا تفصيلياً.' : 'When you check into upcoming lectures, your records will appear here.'} 
                 />
               </div>

@@ -17,6 +17,7 @@ interface TimetableFiltersBarProps {
   saving: boolean;
   loadingSlots: boolean;
   auditingConflicts?: boolean;
+  canManage?: boolean;
   onChange: (next: TimetableFilters) => void;
   onSave: () => void;
   onAuditConflicts?: () => void;
@@ -41,6 +42,7 @@ export default function TimetableFiltersBar({
   saving,
   loadingSlots,
   auditingConflicts = false,
+  canManage = true,
   onChange,
   onSave,
   onAuditConflicts,
@@ -51,6 +53,10 @@ export default function TimetableFiltersBar({
   const update = (field: keyof TimetableFilters, value: string) => {
     if (field === 'collegeId') {
       onChange({ ...filters, collegeId: value, departmentId: '' });
+    } else if (field === 'departmentId') {
+      const selectedDept = departments.find((d) => String(d.id) === value);
+      const newCollegeId = selectedDept?.collegeId ? String(selectedDept.collegeId) : filters.collegeId;
+      onChange({ ...filters, departmentId: value, collegeId: newCollegeId });
     } else {
       onChange({ ...filters, [field]: value });
     }
@@ -85,7 +91,7 @@ export default function TimetableFiltersBar({
           className={`w-full md:w-56 ${SELECT_CLASS}`}
           value={filters.departmentId}
           onChange={(e) => update('departmentId', e.target.value)}
-          disabled={isDeptAdminLocked || (!isCollegeAdmin && !filters.collegeId)}
+          disabled={isDeptAdminLocked || (!isCollegeAdmin && !filters.collegeId && departments.length === 0)}
           aria-label={t('timetables.selectDept', 'Select Department')}
         >
           <option value="">
@@ -131,7 +137,7 @@ export default function TimetableFiltersBar({
 
       {/* ── Actions ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
-        {onAuditConflicts && (
+        {canManage && onAuditConflicts && (
           <button
             onClick={onAuditConflicts}
             disabled={auditingConflicts || loadingSlots}
@@ -143,7 +149,7 @@ export default function TimetableFiltersBar({
             ) : (
               <ShieldAlert size={16} className="text-amber-600 dark:text-amber-400" />
             )}
-            {t('timetable.auditConflicts', 'فحص التعارضات')}
+            {t('timetable.auditConflicts', 'timetable.auditConflicts')}
           </button>
         )}
 
@@ -156,15 +162,17 @@ export default function TimetableFiltersBar({
           {t('common.print', 'Print')}
         </button>
 
-        <button
-          onClick={onSave}
-          disabled={saving || loadingSlots}
-          aria-label={t('common.save', 'Save Timetable')}
-          className="print:hidden px-6 py-2.5 bg-brand-primary-500 hover:bg-brand-primary-600 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-md flex items-center gap-2"
-        >
-          {saving && <Loader2 size={16} className="animate-spin" />}
-          {t('common.save', 'Save Timetable')}
-        </button>
+        {canManage && (
+          <button
+            onClick={onSave}
+            disabled={saving || loadingSlots}
+            aria-label={t('common.save', 'Save Timetable')}
+            className="print:hidden px-6 py-2.5 bg-brand-primary-500 hover:bg-brand-primary-600 disabled:opacity-50 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-md flex items-center gap-2"
+          >
+            {saving && <Loader2 size={16} className="animate-spin" />}
+            {t('common.save', 'Save Timetable')}
+          </button>
+        )}
       </div>
     </div>
   );

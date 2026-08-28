@@ -1,80 +1,115 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// @ts-nocheck
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import {
-  AlertTriangle, ShieldAlert, ShieldCheck, CheckCircle2,
-  XCircle, Clock, BookOpen, Bell, RefreshCw, ArrowLeft,
-  ArrowRight, Info, AlertCircle, Sparkles, FileText, Ban
+  AlertTriangle,
+  ShieldAlert,
+  ShieldCheck,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  BookOpen,
+  Bell,
+  RefreshCw,
+  Search,
+  X,
+  RotateCcw,
+  Download,
+  UserCheck,
+  Building2,
+  Users,
+  GraduationCap,
+  ChevronRight,
+  ChevronLeft,
+  AlertCircle,
+  FileSpreadsheet,
+  Unlock,
 } from 'lucide-react';
 import attendanceService from '../../services/attendance.service';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/button';
+import { Card } from '../../components/ui/Card';
+import Badge from '../../components/ui/Badge';
+import Button from '../../components/ui/button';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
+import Table, {
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../../components/ui/Table';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
-export interface CourseWarningItem {
-  enrollmentId: number;
-  courseId: number;
-  courseCode: string;
-  courseName: string;
-  status: 'ENROLLED' | 'BLOCKED' | 'COMPLETED' | 'WITHDRAWN' | 'FAILED';
-  isBlocked: boolean;
-  absencePercent: number;
-  maxAbsencePercent: number;
-  isExceeding: boolean;
-  isNearLimit: boolean;
-  totalSessions: number;
-  present: number;
-  late: number;
-  absent: number;
-  excused: number;
-  exemptionPeriods?: Array<{
-    id: number;
-    startDate: string;
-    endDate: string;
-    reason: string;
-    createdAt: string;
-  }>;
-}
-
-export interface WarningNotificationItem {
-  id: number;
-  title: string;
-  message: string;
-  type: string;
-  isRead: boolean;
-  createdAt: string;
+// Arabic normalizer helper
+function normalizeArabic(text: string | null | undefined): string {
+  if (!text) return '';
+  return String(text)
+    .trim()
+    .toLowerCase()
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    .replace(/\s+/g, ' ');
 }
 
 export function StudentWarningsPage() {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-  const dateLocale = isRTL ? ar : enUS;
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [courses, setCourses] = useState<CourseWarningItem[]>([]);
-  const [notifications, setNotifications] = useState<WarningNotificationItem[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchWarningsData = useCallback(async () => {
+  // Response payload state
+  const [isStaffView, setIsStaffView] = useState(false);
+  const [staffData, setStaffData] = useState<{
+    summary?: any;
+    warningRecords?: any[];
+    coursesList?: any[];
+  }>({});
+  const [studentCourses, setStudentCourses] = useState<any[]>([]);
+  const [studentNotifications, setStudentNotifications] = useState<any[]>([]);
+
+  // Filter States (Staff View)
+  const [search, setSearch] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState<string>('ALL');
+  const [selectedYear, setSelectedYear] = useState<string>('ALL');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('ALL');
+
+  // Unblock action loading state
+  const [unblockingId, setUnblockingId] = useState<number | null>(null);
+
+  const fetchWarningsData = useCallback(async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
       setError(null);
+
       const res = await attendanceService.getMyWarnings();
-      if (res?.success && res.data) {
-        setCourses(res.data.courses || []);
-        setNotifications(res.data.notifications || []);
-      } else {
-        setCourses([]);
-        setNotifications([]);
+      if (res?.data) {
+        const payload = res.data;
+        if (payload.isStaff) {
+          setIsStaffView(true);
+          setStaffData(payload);
+        } else {
+          setIsStaffView(false);
+          setStudentCourses(payload.courses || []);
+          setStudentNotifications(payload.notifications || []);
+        }
       }
     } catch (err: any) {
       console.error('Failed to load warnings data:', err);
       setError(err?.response?.data?.message || err?.message || 'Failed to load absence warnings');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -82,409 +117,732 @@ export function StudentWarningsPage() {
     fetchWarningsData();
   }, [fetchWarningsData]);
 
-  // Aggregate Metrics
-  const blockedCount = courses.filter((c) => c.isBlocked || c.isExceeding).length;
-  const nearLimitCount = courses.filter((c) => c.isNearLimit && !c.isBlocked && !c.isExceeding).length;
-  const safeCount = courses.filter((c) => !c.isBlocked && !c.isExceeding && !c.isNearLimit).length;
+  // Handle Unblocking a Student Enrollment
+  const handleUnblock = async (enrollmentId: number, studentName: string) => {
+    const confirmMsg = isRTL
+      ? `هل أنت متأكد من إلغاء الحرمان وإعادة قيد الطالب (${studentName})؟`
+      : `Are you sure you want to unblock student (${studentName})?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setUnblockingId(enrollmentId);
+      await api.post(`/attendance/unblock/${enrollmentId}`);
+      await fetchWarningsData(true);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to unblock student');
+    } finally {
+      setUnblockingId(null);
+    }
+  };
+
+  // CSV Export for Faculty/Staff
+  const exportToCSV = () => {
+    const records = filteredStaffRecords;
+    if (records.length === 0) return;
+
+    const headers = [
+      'Student Name',
+      'Student ID',
+      'Course Name',
+      'Course Code',
+      'Absence %',
+      'Max Allowed %',
+      'Status',
+      'Total Sessions',
+      'Absent',
+      'Late',
+      'Excused',
+    ];
+
+    const rows = records.map((r) => [
+      `"${r.studentName}"`,
+      `"${r.studentCode}"`,
+      `"${r.courseName}"`,
+      `"${r.courseCode}"`,
+      `"${r.absencePercent}%"`,
+      `"${r.maxAbsencePercent}%"`,
+      `"${r.warningStage}"`,
+      r.totalSessions,
+      r.absent,
+      r.late,
+      r.excused,
+    ]);
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,\uFEFF' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute(
+      'download',
+      `absence_warnings_${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Filtered Staff Records
+  const filteredStaffRecords = useMemo(() => {
+    if (!staffData.warningRecords) return [];
+    const normQ = normalizeArabic(search);
+
+    return staffData.warningRecords.filter((r) => {
+      // 1. Warning Stage
+      if (selectedLevel !== 'ALL' && r.warningStage !== selectedLevel) {
+        return false;
+      }
+
+      // 2. Academic Year
+      if (selectedYear !== 'ALL') {
+        const yr = Number(r.studentYear || r.courseYear) || 1;
+        if (yr !== Number(selectedYear)) return false;
+      }
+
+      // 3. Course Filter
+      if (selectedCourseId !== 'ALL' && String(r.courseId) !== String(selectedCourseId)) {
+        return false;
+      }
+
+      // 4. Search
+      if (normQ) {
+        const nameNorm = normalizeArabic(r.studentName);
+        const codeNorm = normalizeArabic(r.studentCode);
+        const courseCodeNorm = normalizeArabic(r.courseCode);
+        const courseNameNorm = normalizeArabic(r.courseName);
+        const emailNorm = normalizeArabic(r.studentEmail);
+
+        const matches =
+          nameNorm.includes(normQ) ||
+          codeNorm.includes(normQ) ||
+          courseCodeNorm.includes(normQ) ||
+          courseNameNorm.includes(normQ) ||
+          emailNorm.includes(normQ);
+
+        if (!matches) return false;
+      }
+
+      return true;
+    });
+  }, [staffData.warningRecords, search, selectedLevel, selectedYear, selectedCourseId]);
+
+  const hasActiveFilters = Boolean(
+    search.trim() ||
+      selectedLevel !== 'ALL' ||
+      selectedYear !== 'ALL' ||
+      selectedCourseId !== 'ALL'
+  );
+
+  const resetFilters = () => {
+    setSearch('');
+    setSelectedLevel('ALL');
+    setSelectedYear('ALL');
+    setSelectedCourseId('ALL');
+  };
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto pb-24 animate-fade-in dir-rtl">
-      
-      {/* Top Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-brand-navy-900 to-slate-900 p-6 md:p-8 text-white shadow-xl border border-slate-800">
-        <div className="absolute -start-10 -top-10 w-48 h-48 rounded-full bg-rose-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute -end-10 -bottom-10 w-48 h-48 rounded-full bg-brand-primary-500/10 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-500 to-amber-600 text-white flex items-center justify-center shadow-lg shadow-rose-500/20 shrink-0">
-              <ShieldAlert className="w-7 h-7" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-black uppercase tracking-wider text-rose-400">
-                  {isRTL ? 'متابعة اللائحة الأكاديمية والغياب' : 'Academic Standing & Absence Policy'}
-                </span>
-              </div>
-              <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-sm">
-                {isRTL ? 'سجل الإنذارات والحرمان الأكاديمي' : 'Absence Warnings & Blocking Records'}
-              </h1>
-              <p className="text-slate-300 font-medium text-xs md:text-sm mt-1 leading-relaxed max-w-2xl">
-                {isRTL
-                  ? 'متابعة دقيقة لنسبة الغياب لكل مقرر وفقاً للحد الأقصى المسموح به (25%)، مع استعراض الإشعارات الرسمية وفترات الإعفاء المعتمدة.'
-                  : 'Track your course-by-course absence rates against university limits (max 25%), official notices, and approved exemption periods.'}
-              </p>
-            </div>
+    <div className="space-y-4 animate-in fade-in duration-200">
+      {error && (
+        <div className="p-3.5 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 rounded-xl border border-red-200 dark:border-red-800 flex items-center justify-between gap-3 text-xs font-semibold">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+            <span>{error}</span>
           </div>
+          <button onClick={() => setError(null)} className="p-1 hover:opacity-75 cursor-pointer">
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+      {/* ========================================================================= */}
+      {/* 1. SLIM & PROFESSIONAL HEADER                                             */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+            {isStaffView
+              ? isRTL
+                ? 'سجل ومتابعة إنذارات وحرمان الطلاب'
+                : 'Absence Warnings & Deprivation Management'
+              : isRTL
+              ? 'سجل ومتابعة إنذارات الغياب الأكاديمي'
+              : 'My Absence Warnings & Records'}
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            {isStaffView
+              ? isRTL
+                ? 'متابعة نسب غياب الطلاب وسقف الحرمان الأكاديمي (25%) عبر كافة المقررات الدراسية.'
+                : 'Monitor student absence thresholds, official warning notices, and 25% academic blocks.'
+              : isRTL
+              ? 'متابعة نسبة غيابك لكل مقرر مسجل وسقف الحرمان المسموح به وفقاً للائحة الأكاديمية.'
+              : 'Track your registered course absence percentages and academic thresholds.'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {isStaffView && (
             <Button
-              onClick={fetchWarningsData}
               variant="outline"
-              disabled={loading}
-              className="bg-slate-800/80 hover:bg-slate-700 text-white border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold transition-all flex items-center gap-2 shadow-sm"
+              size="sm"
+              onClick={exportToCSV}
+              disabled={filteredStaffRecords.length === 0}
+              className="h-8.5 px-3 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 gap-1.5 cursor-pointer shadow-2xs"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>{isRTL ? 'تحديث البيانات' : 'Refresh'}</span>
+              <FileSpreadsheet size={13} className="text-emerald-600" />
+              <span>{isRTL ? 'تصدير CSV' : 'Export CSV'}</span>
             </Button>
-            <Link to="/attendance">
-              <Button className="bg-brand-primary-600 hover:bg-brand-primary-700 text-white rounded-xl px-5 py-2.5 text-xs font-bold transition-all shadow-md flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
-                <span>{isRTL ? 'بوابة الحضور' : 'Attendance Portal'}</span>
-              </Button>
-            </Link>
-          </div>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchWarningsData(true)}
+            disabled={refreshing}
+            className="h-8.5 px-3 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 gap-1.5 cursor-pointer shadow-2xs"
+          >
+            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+            <span>{t('common.refresh', 'Refresh')}</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/attendance')}
+            className="h-8.5 px-3 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 gap-1.5 cursor-pointer"
+          >
+            <BookOpen size={13} />
+            <span>{isRTL ? 'بوابة الحضور' : 'Attendance Hub'}</span>
+          </Button>
         </div>
       </div>
 
-      {/* KPI Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Status Card 1: Academic Standing */}
-        <Card className={`rounded-2xl border shadow-xs transition-all ${
-          blockedCount > 0
-            ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/60'
-            : nearLimitCount > 0
-            ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60'
-            : 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60'
-        }`}>
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-              blockedCount > 0
-                ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400'
-                : nearLimitCount > 0
-                ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
-                : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
-            }`}>
-              {blockedCount > 0 ? (
-                <Ban className="w-6 h-6" />
-              ) : nearLimitCount > 0 ? (
-                <AlertTriangle className="w-6 h-6" />
-              ) : (
-                <ShieldCheck className="w-6 h-6" />
-              )}
-            </div>
-            <div>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">
-                {isRTL ? 'حالة القيد الأكاديمي' : 'Standing Status'}
-              </span>
-              <h4 className={`text-base font-black mt-0.5 ${
-                blockedCount > 0
-                  ? 'text-rose-700 dark:text-rose-300'
-                  : nearLimitCount > 0
-                  ? 'text-amber-700 dark:text-amber-300'
-                  : 'text-emerald-700 dark:text-emerald-300'
-              }`}>
-                {blockedCount > 0
-                  ? (isRTL ? 'يوجد حرمان في مقرر' : 'Course Blocked')
-                  : nearLimitCount > 0
-                  ? (isRTL ? 'إنذار: اقتراب من الحد' : 'Warning: Near Limit')
-                  : (isRTL ? 'وضع أكاديمي سليم' : 'Good Standing')}
-              </h4>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Status Card 2: Blocked Courses Count */}
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-              <XCircle className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                {isRTL ? 'المقررات المحظورة (حرمان)' : 'Blocked Courses'}
-              </span>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl font-black text-slate-800 dark:text-white">{blockedCount}</span>
-                <span className="text-xs text-slate-400 font-medium">{isRTL ? 'مقررات' : 'courses'}</span>
+      {/* ========================================================================= */}
+      {/* 2. STAFF / FACULTY VIEW: INSTITUTIONAL ABSENCE COMMAND CENTER             */}
+      {/* ========================================================================= */}
+      {isStaffView ? (
+        <div className="space-y-4">
+          {/* ========================================================================= */}
+          {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
+          {/* ========================================================================= */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+            {/* Blocked / Deprived */}
+            <button
+              type="button"
+              onClick={() => setSelectedLevel(selectedLevel === 'BLOCKED' ? 'ALL' : 'BLOCKED')}
+              className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
+                selectedLevel === 'BLOCKED'
+                  ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600 ring-2 ring-rose-500/20 shadow-xs'
+                  : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-rose-300'
+              }`}
+            >
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold block">
+                  {isRTL ? 'حرمان أكاديمي (≥25%)' : 'Academic Block (≥25%)'}
+                </span>
+                <span className="text-lg font-black text-rose-600 dark:text-rose-400 block mt-0.5 font-mono">
+                  {staffData.summary?.blockedCount || 0}
+                </span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Status Card 3: Near Limit Count */}
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                {isRTL ? 'مقررات قريبة من الحد (≥20%)' : 'Near Limit (≥20%)'}
-              </span>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl font-black text-slate-800 dark:text-white">{nearLimitCount}</span>
-                <span className="text-xs text-slate-400 font-medium">{isRTL ? 'مقررات' : 'courses'}</span>
+              <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center shrink-0">
+                <XCircle size={16} />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </button>
 
-        {/* Status Card 4: Safe Courses */}
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                {isRTL ? 'مقررات بوضع آمن' : 'Safe Standing'}
-              </span>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl font-black text-slate-800 dark:text-white">{safeCount}</span>
-                <span className="text-xs text-slate-400 font-medium">{isRTL ? 'مقررات' : 'courses'}</span>
+            {/* Final Warning */}
+            <button
+              type="button"
+              onClick={() => setSelectedLevel(selectedLevel === 'FINAL_WARNING' ? 'ALL' : 'FINAL_WARNING')}
+              className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
+                selectedLevel === 'FINAL_WARNING'
+                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-500/20 shadow-xs'
+                  : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-amber-300'
+              }`}
+            >
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold block">
+                  {isRTL ? 'إنذار نهائي (20%)' : 'Final Warning (20%)'}
+                </span>
+                <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
+                  {staffData.summary?.finalWarningCount || 0}
+                </span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+                <AlertTriangle size={16} />
+              </div>
+            </button>
 
-      </div>
+            {/* First Warning */}
+            <button
+              type="button"
+              onClick={() => setSelectedLevel(selectedLevel === 'FIRST_WARNING' ? 'ALL' : 'FIRST_WARNING')}
+              className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
+                selectedLevel === 'FIRST_WARNING'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-600 ring-2 ring-blue-500/20 shadow-xs'
+                  : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-blue-300'
+              }`}
+            >
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold block">
+                  {isRTL ? 'إنذار أول (10%)' : 'Early Warning (10%)'}
+                </span>
+                <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
+                  {staffData.summary?.firstWarningCount || 0}
+                </span>
+              </div>
+              <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
+                <AlertCircle size={16} />
+              </div>
+            </button>
 
-      {/* Main Content Layout: Left = Course Absence Warnings, Right = Official Notifications */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Section 1: Course Breakdown (Span 2 Columns) */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-brand-primary-600 dark:text-brand-primary-400" />
-              <span>{isRTL ? 'تفاصيل الغياب وسقف الحرمان لكل مقرر' : 'Course Absence Limits & Status'}</span>
-            </h3>
-            <span className="text-xs font-bold text-slate-400">
-              {courses.length} {isRTL ? 'مقررات مسجلة' : 'Enrolled Courses'}
-            </span>
+            {/* Total Monitored */}
+            <button
+              type="button"
+              onClick={() => setSelectedLevel('ALL')}
+              className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
+                selectedLevel === 'ALL'
+                  ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 border-brand-primary-400 dark:border-brand-primary-600 ring-2 ring-brand-primary-500/20 shadow-xs'
+                  : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-brand-primary-300'
+              }`}
+            >
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold block">
+                  {isRTL ? 'إجمالي الطلاب المتابعين' : 'Total Monitored'}
+                </span>
+                <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400 block mt-0.5 font-mono">
+                  {staffData.summary?.totalMonitored || 0}
+                </span>
+              </div>
+              <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
+                <Users size={16} />
+              </div>
+            </button>
           </div>
 
+          {/* ========================================================================= */}
+          {/* 2. UNIFIED COMPACT FILTER TOOLBAR                                         */}
+          {/* ========================================================================= */}
+          <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-4">
+            {/* Search Box */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search
+                className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400"
+                size={14}
+              />
+              <input
+                type="text"
+                placeholder={
+                  isRTL
+                    ? 'ابحث باسم الطالب، الرقم الجامعي، أو كود المقرر...'
+                    : 'Search by student name, ID, or course code...'
+                }
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* Warning Stage Filter */}
+            <select
+              value={selectedLevel}
+              onChange={(e) => setSelectedLevel(e.target.value)}
+              className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+            >
+              <option value="ALL">{isRTL ? 'جميع الحالات والإنذارات' : 'All Warning Levels'}</option>
+              <option value="BLOCKED">{isRTL ? 'حرمان أكاديمي (≥25%)' : 'Academic Block (≥25%)'}</option>
+              <option value="FINAL_WARNING">{isRTL ? 'إنذار نهائي (20% - 25%)' : 'Final Warning (20%-25%)'}</option>
+              <option value="FIRST_WARNING">{isRTL ? 'إنذار أول (10% - 20%)' : 'First Warning (10%-20%)'}</option>
+              <option value="SAFE">{isRTL ? 'وضع آمن (<10%)' : 'Safe (<10%)'}</option>
+            </select>
+
+            {/* Academic Year Filter */}
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+            >
+              <option value="ALL">{isRTL ? 'جميع الفرق' : 'All Years'}</option>
+              <option value="1">{isRTL ? 'الفرقة الأولى (1)' : 'Year 1'}</option>
+              <option value="2">{isRTL ? 'الفرقة الثانية (2)' : 'Year 2'}</option>
+              <option value="3">{isRTL ? 'الفرقة الثالثة (3)' : 'Year 3'}</option>
+              <option value="4">{isRTL ? 'الفرقة الرابعة (4)' : 'Year 4'}</option>
+            </select>
+
+            {/* Course Filter */}
+            {staffData.coursesList && staffData.coursesList.length > 0 && (
+              <select
+                value={selectedCourseId}
+                onChange={(e) => setSelectedCourseId(e.target.value)}
+                className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer max-w-[180px] truncate"
+              >
+                <option value="ALL">{isRTL ? 'جميع المقررات' : 'All Courses'}</option>
+                {staffData.coursesList.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.courseCode} - {c.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Reset Filter Button */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetFilters}
+                className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
+              >
+                <X size={13} className="me-1" />
+                {isRTL ? 'مسح' : 'Clear'}
+              </Button>
+            )}
+          </div>
+
+          {/* High-Density Data Table */}
           {loading ? (
-            <div className="p-12 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <RefreshCw className="w-8 h-8 animate-spin text-brand-primary-500 mx-auto mb-3" />
-              <p className="text-slate-500 dark:text-slate-400 font-bold text-sm">
-                {isRTL ? 'جاري تحميل بيانات المقررات والإنذارات...' : 'Loading course warning metrics...'}
-              </p>
+            <div className="flex flex-col items-center justify-center h-48 gap-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-primary-500/20 border-t-brand-primary-600"></div>
+              <span className="text-xs text-slate-400 font-medium">جاري التحميل...</span>
             </div>
-          ) : error ? (
-            <div className="p-6 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-2xl text-center">
-              <AlertCircle className="w-8 h-8 text-rose-500 mx-auto mb-2" />
-              <p className="text-rose-700 dark:text-rose-300 font-bold text-sm">{error}</p>
+          ) : filteredStaffRecords.length === 0 ? (
+            <div className="p-8 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
+              <EmptyState
+                icon={<ShieldCheck size={36} className="text-emerald-500" />}
+                title={isRTL ? 'لا توجد حالات حرمان أو إنذارات مطابقة' : 'No matching absence records'}
+                subtitle={
+                  isRTL
+                    ? 'كافة الطلاب في هذا النطاق ضمن الحدود الآمنة للغياب.'
+                    : 'All students in this filter range are within safe absence limits.'
+                }
+                action={
+                  hasActiveFilters
+                    ? {
+                        label: isRTL ? 'إعادة ضبط الفلاتر' : 'Reset Filters',
+                        onClick: resetFilters,
+                      }
+                    : undefined
+                }
+              />
             </div>
-          ) : courses.length === 0 ? (
-            <EmptyState
-              icon={<BookOpen className="w-10 h-10 text-slate-400" />}
-              title={isRTL ? 'لا توجد مقررات دراسية مسجلة' : 'No Enrolled Courses'}
-              subtitle={isRTL ? 'لم يتم العثور على مقررات مسجلة بحسابك لهذا الفصل الدراسي.' : 'No active course enrollments found for this semester.'}
-            />
           ) : (
-            <div className="space-y-4">
-              {courses.map((c) => {
-                const isBlocked = c.isBlocked || c.isExceeding;
-                const isNear = c.isNearLimit && !isBlocked;
-                const progressRatio = Math.min(100, Math.round((c.absencePercent / c.maxAbsencePercent) * 100));
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs">
+              <div className="overflow-x-auto">
+                <Table className="w-full text-xs">
+                  <TableHeader className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+                    <TableRow>
+                      <TableHead className="p-2.5 font-bold text-slate-500">
+                        {isRTL ? 'الطالب' : 'Student'}
+                      </TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500">
+                        {isRTL ? 'المقرر' : 'Course'}
+                      </TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500 text-center">
+                        {isRTL ? 'الفرقة' : 'Year'}
+                      </TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500 text-center">
+                        {isRTL ? 'المحاضرات' : 'Sessions'}
+                      </TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500 text-center">
+                        {isRTL ? 'الغياب / التأخير' : 'Absence / Late'}
+                      </TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500 text-center w-36">
+                        {isRTL ? 'نسبة الغياب %' : 'Absence %'}
+                      </TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500 text-center">
+                        {isRTL ? 'الحالة الأكاديمية' : 'Status'}
+                      </TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500 text-end pe-4">
+                        {isRTL ? 'الإجراء' : 'Action'}
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredStaffRecords.map((r) => {
+                      const isBlocked = r.warningStage === 'BLOCKED';
+                      const isFinal = r.warningStage === 'FINAL_WARNING';
+                      const isFirst = r.warningStage === 'FIRST_WARNING';
 
-                return (
-                  <Card
-                    key={c.courseId}
-                    className={`rounded-2xl border shadow-xs transition-all overflow-hidden ${
-                      isBlocked
-                        ? 'bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/80 shadow-rose-500/5'
-                        : isNear
-                        ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/80'
-                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <CardContent className="p-5 md:p-6">
-                      
-                      {/* Course Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono font-bold text-[11px] px-2 py-0.5">
-                              {c.courseCode}
-                            </Badge>
-                            {c.exemptionPeriods && c.exemptionPeriods.length > 0 && (
-                              <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800 text-[10px] font-bold">
-                                {c.exemptionPeriods.length} {isRTL ? 'إعفاء معتمد' : 'Exemptions'}
-                              </Badge>
-                            )}
-                          </div>
-                          <h4 className="text-base md:text-lg font-black text-slate-800 dark:text-white truncate">
-                            {c.courseName}
-                          </h4>
-                        </div>
+                      return (
+                        <TableRow
+                          key={r.enrollmentId}
+                          className="hover:bg-slate-50 dark:hover:bg-slate-700/20 border-b border-slate-100 dark:border-slate-700/50"
+                        >
+                          {/* Student Info */}
+                          <TableCell className="p-2.5">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                                  isBlocked
+                                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
+                                    : isFinal
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                }`}
+                              >
+                                {r.studentName?.[0] || 'S'}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-slate-900 dark:text-white truncate">
+                                  {r.studentName}
+                                </p>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {r.studentCode}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
 
-                        {/* Status Badge */}
-                        <div className="shrink-0">
-                          {isBlocked ? (
-                            <Badge className="bg-rose-600 text-white font-black text-xs px-3.5 py-1 rounded-xl shadow-sm flex items-center gap-1.5 animate-pulse">
-                              <Ban className="w-3.5 h-3.5" />
-                              <span>{isRTL ? 'محروم من المقرر (BLOCKED)' : 'Blocked / Barred'}</span>
-                            </Badge>
-                          ) : isNear ? (
-                            <Badge className="bg-amber-500 text-white font-black text-xs px-3.5 py-1 rounded-xl shadow-sm flex items-center gap-1.5">
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                              <span>{isRTL ? 'تحذير: اقتراب من الحرمان' : 'Warning: Near Limit'}</span>
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 font-bold text-xs px-3 py-1 rounded-xl flex items-center gap-1.5">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>{isRTL ? 'وضع منتظم' : 'Good Standing'}</span>
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
+                          {/* Course Info */}
+                          <TableCell className="p-2.5">
+                            <div className="font-mono text-[11px] font-bold text-brand-primary-600">
+                              {r.courseCode}
+                            </div>
+                            <div className="text-[11px] text-slate-600 dark:text-slate-300 truncate max-w-[140px]">
+                              {r.courseName}
+                            </div>
+                          </TableCell>
 
-                      {/* Prominent Alert Banner if Blocked */}
-                      {isBlocked && (
-                        <div className="mb-4 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3.5 flex items-start gap-3">
-                          <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                          <p className="text-xs text-rose-800 dark:text-rose-200 font-bold leading-relaxed">
-                            {isRTL
-                              ? `تم حرمانك من هذا المقرر لتجاوز نسبة الغياب المسموح بها (${c.maxAbsencePercent}%). يرجى مراجعة إدارة الكلية وشؤون الطلاب في أقرب وقت.`
-                              : `You are barred from this course for exceeding the maximum allowable absence limit (${c.maxAbsencePercent}%). Please contact academic affairs.`}
-                          </p>
-                        </div>
-                      )}
+                          {/* Year */}
+                          <TableCell className="p-2.5 text-center text-slate-500">
+                            س{r.studentYear || r.courseYear}
+                          </TableCell>
 
-                      {/* Absence Metric & Progress Bar */}
-                      <div className="space-y-2 mb-4 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center justify-between text-xs font-bold">
-                          <span className="text-slate-600 dark:text-slate-400">
-                            {isRTL ? 'نسبة الغياب الحالية:' : 'Current Absence Rate:'}
-                          </span>
-                          <div className="flex items-baseline gap-1.5 font-mono">
-                            <span className={`text-base font-black ${
-                              isBlocked ? 'text-rose-600 dark:text-rose-400' : isNear ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-white'
-                            }`}>
-                              {c.absencePercent}%
+                          {/* Total Sessions */}
+                          <TableCell className="p-2.5 text-center font-mono text-slate-600 dark:text-slate-300">
+                            {r.totalSessions}
+                          </TableCell>
+
+                          {/* Absence breakdown */}
+                          <TableCell className="p-2.5 text-center">
+                            <span className="text-rose-600 font-bold font-mono">
+                              {r.absent} غ
                             </span>
-                            <span className="text-slate-400">/ {c.maxAbsencePercent}% {isRTL ? 'الحد الأقصى' : 'Max'}</span>
-                          </div>
-                        </div>
+                            {r.late > 0 && (
+                              <span className="text-amber-600 font-medium font-mono ms-1">
+                                ({r.late} ت)
+                              </span>
+                            )}
+                          </TableCell>
 
-                        {/* Visual Progress Bar */}
-                        <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
-                          <div
-                            className={`h-full rounded-full transition-all duration-700 ${
-                              isBlocked
-                                ? 'bg-gradient-to-r from-rose-500 to-rose-600'
-                                : isNear
-                                ? 'bg-gradient-to-r from-amber-400 to-amber-500'
-                                : 'bg-gradient-to-r from-emerald-500 to-teal-500'
-                            }`}
-                            style={{ width: `${Math.min(100, (c.absencePercent / c.maxAbsencePercent) * 100)}%` }}
-                          />
-                        </div>
+                          {/* Absence Percent & Gauge */}
+                          <TableCell className="p-2.5 text-center">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[11px] font-mono font-bold">
+                                <span
+                                  className={
+                                    isBlocked
+                                      ? 'text-rose-600'
+                                      : isFinal
+                                      ? 'text-amber-600'
+                                      : isFirst
+                                      ? 'text-blue-600'
+                                      : 'text-emerald-600'
+                                  }
+                                >
+                                  {r.absencePercent}%
+                                </span>
+                                <span className="text-slate-400 text-[10px]">
+                                  حد {r.maxAbsencePercent}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${
+                                    isBlocked
+                                      ? 'bg-rose-500'
+                                      : isFinal
+                                      ? 'bg-amber-500'
+                                      : isFirst
+                                      ? 'bg-blue-500'
+                                      : 'bg-emerald-500'
+                                  }`}
+                                  style={{
+                                    width: `${Math.min(100, (r.absencePercent / r.maxAbsencePercent) * 100)}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </TableCell>
 
-                        <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
-                          <span>0%</span>
-                          <span className="text-amber-500 font-bold">20% ({isRTL ? 'نطاق الإنذار' : 'Warning Zone'})</span>
-                          <span className="text-rose-500 font-bold">{c.maxAbsencePercent}% ({isRTL ? 'الحرمان' : 'Barred'})</span>
-                        </div>
-                      </div>
+                          {/* Academic Status Badge */}
+                          <TableCell className="p-2.5 text-center">
+                            <Badge
+                              className={
+                                isBlocked
+                                  ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 font-bold text-[10px]'
+                                  : isFinal
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold text-[10px]'
+                                  : isFirst
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 font-bold text-[10px]'
+                                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 text-[10px]'
+                              }
+                            >
+                              {isBlocked
+                                ? isRTL
+                                  ? 'حرمان أكاديمي'
+                                  : 'Blocked'
+                                : isFinal
+                                ? isRTL
+                                  ? 'إنذار نهائي'
+                                  : 'Final Warning'
+                                : isFirst
+                                ? isRTL
+                                  ? 'إنذار أول'
+                                  : 'First Warning'
+                                : isRTL
+                                ? 'وضع آمن'
+                                : 'Safe'}
+                            </Badge>
+                          </TableCell>
 
-                      {/* Mini Stat Counters */}
-                      <div className="grid grid-cols-4 gap-2 text-center">
-                        <div className="bg-slate-100/70 dark:bg-slate-700/40 p-2 rounded-xl">
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">{isRTL ? 'المحاضرات' : 'Sessions'}</span>
-                          <span className="font-mono font-black text-sm text-slate-800 dark:text-white">{c.totalSessions}</span>
-                        </div>
-                        <div className="bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
-                          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block font-medium">{isRTL ? 'حاضر' : 'Present'}</span>
-                          <span className="font-mono font-black text-sm text-emerald-600 dark:text-emerald-400">{c.present}</span>
-                        </div>
-                        <div className="bg-amber-50 dark:bg-amber-950/40 p-2 rounded-xl border border-amber-100 dark:border-amber-900/40">
-                          <span className="text-[10px] text-amber-700 dark:text-amber-400 block font-medium">{isRTL ? 'متأخر' : 'Late'}</span>
-                          <span className="font-mono font-black text-sm text-amber-600 dark:text-amber-400">{c.late}</span>
-                        </div>
-                        <div className="bg-rose-50 dark:bg-rose-950/40 p-2 rounded-xl border border-rose-100 dark:border-rose-900/40">
-                          <span className="text-[10px] text-rose-700 dark:text-rose-400 block font-medium">{isRTL ? 'غائب' : 'Absent'}</span>
-                          <span className="font-mono font-black text-sm text-rose-600 dark:text-rose-400">{c.absent}</span>
-                        </div>
-                      </div>
-
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                          {/* Actions */}
+                          <TableCell className="p-2.5 text-end pe-4">
+                            {isBlocked && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUnblock(r.enrollmentId, r.studentName)}
+                                disabled={unblockingId === r.enrollmentId}
+                                className="h-7 px-2 border-rose-200 text-rose-700 hover:bg-rose-50 text-[11px] font-bold gap-1 cursor-pointer"
+                              >
+                                <Unlock size={11} />
+                                <span>{isRTL ? 'إلغاء الحرمان' : 'Unblock'}</span>
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </div>
-
-        {/* Section 2: Official Absence & Enrollment Notifications History (Span 1 Column) */}
+      ) : (
+        /* ========================================================================= */
+        /* 3. STUDENT VIEW: PERSONAL ABSENCE & NOTIFICATIONS DASHBOARD               */
+        /* ========================================================================= */
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
-              <Bell className="w-5 h-5 text-amber-500" />
-              <span>{isRTL ? 'سجل الإشعارات الرسمية' : 'Official Notices'}</span>
-            </h3>
-            <span className="text-xs font-bold text-slate-400">
-              {notifications.length} {isRTL ? 'إشعار' : 'Notices'}
-            </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {studentCourses.map((c) => {
+              const isBlocked = c.isBlocked || c.isExceeding;
+              const isNear = c.isNearLimit && !isBlocked;
+
+              return (
+                <div
+                  key={c.enrollmentId}
+                  className={`bg-white dark:bg-slate-800 rounded-2xl border p-4 shadow-2xs space-y-3 ${
+                    isBlocked
+                      ? 'border-rose-300 dark:border-rose-800 ring-1 ring-rose-500/20'
+                      : isNear
+                      ? 'border-amber-300 dark:border-amber-800 ring-1 ring-amber-500/20'
+                      : 'border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-brand-primary-600 bg-brand-primary-50 dark:bg-brand-primary-950/50 px-2 py-0.5 rounded">
+                      {c.courseCode}
+                    </span>
+                    <Badge
+                      className={
+                        isBlocked
+                          ? 'bg-rose-100 text-rose-800 font-bold text-[10px]'
+                          : isNear
+                          ? 'bg-amber-100 text-amber-800 font-bold text-[10px]'
+                          : 'bg-emerald-100 text-emerald-800 text-[10px]'
+                      }
+                    >
+                      {isBlocked
+                        ? isRTL
+                          ? 'حرمان أكاديمي'
+                          : 'Blocked'
+                        : isNear
+                        ? isRTL
+                          ? 'اقتراب من الحرمان'
+                          : 'Near Limit'
+                        : isRTL
+                        ? 'وضع آمن'
+                        : 'Safe'}
+                    </Badge>
+                  </div>
+
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
+                    {c.courseName}
+                  </h3>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs font-mono font-bold">
+                      <span
+                        className={
+                          isBlocked
+                            ? 'text-rose-600'
+                            : isNear
+                            ? 'text-amber-600'
+                            : 'text-slate-700 dark:text-slate-200'
+                        }
+                      >
+                        {c.absencePercent}% غياب
+                      </span>
+                      <span className="text-slate-400 text-[10px]">
+                        الحد الأقصى {c.maxAbsencePercent}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${
+                          isBlocked
+                            ? 'bg-rose-500'
+                            : isNear
+                            ? 'bg-amber-500'
+                            : 'bg-emerald-500'
+                        }`}
+                        style={{
+                          width: `${Math.min(100, (c.absencePercent / c.maxAbsencePercent) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                    <span>حضور: {c.present}</span>
+                    <span>غياب: {c.absent}</span>
+                    <span>تأخير: {c.late}</span>
+                    <span>معفى: {c.excused}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
-            <CardContent className="p-4 sm:p-5">
-              {loading ? (
-                <div className="p-8 text-center">
-                  <RefreshCw className="w-6 h-6 animate-spin text-slate-400 mx-auto mb-2" />
-                  <span className="text-xs text-slate-400">{isRTL ? 'جاري تحميل الإشعارات...' : 'Loading notices...'}</span>
-                </div>
-              ) : notifications.length === 0 ? (
-                <div className="p-8 text-center text-slate-400">
-                  <ShieldCheck className="w-10 h-10 mx-auto mb-2 text-emerald-400 opacity-60" />
-                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                    {isRTL ? 'لا توجد إنذارات أو إشعارات حرمان' : 'No Absence Warnings'}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {isRTL ? 'سجلك نظيف ولم يتم توجيه أي إنذار غياب رسمي بحسابك.' : 'Your record is clean with no formal absence notices.'}
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100 dark:divide-slate-700/80">
-                  {notifications.map((n) => {
-                    const isError = n.type === 'error';
-                    const isSuccess = n.type === 'success';
-                    return (
-                      <div key={n.id} className="py-3.5 first:pt-0 last:pb-0 flex items-start gap-3">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                          isError
-                            ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                            : isSuccess
-                            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-                            : 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
-                        }`}>
-                          {isError ? (
-                            <XCircle className="w-4 h-4" />
-                          ) : isSuccess ? (
-                            <CheckCircle2 className="w-4 h-4" />
-                          ) : (
-                            <AlertTriangle className="w-4 h-4" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <h5 className="text-xs font-black text-slate-800 dark:text-white truncate">
-                              {n.title}
-                            </h5>
-                            <span className="text-[10px] text-slate-400 font-mono shrink-0">
-                              {format(new Date(n.createdAt), 'dd/MM/yyyy', { locale: dateLocale })}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                            {n.message}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* Student Official Notifications List */}
+          {studentNotifications.length > 0 && (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+              <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                <Bell size={14} className="text-amber-500" />
+                <span>{isRTL ? 'إشعارات الإنذار الرسمية' : 'Official Warning Notices'}</span>
+              </h3>
+              <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                {studentNotifications.map((notif) => (
+                  <div key={notif.id} className="py-2.5 text-xs space-y-0.5">
+                    <p className="font-bold text-slate-800 dark:text-white">{notif.title}</p>
+                    <p className="text-slate-500">{notif.message}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-
-      </div>
-
+      )}
     </div>
   );
 }

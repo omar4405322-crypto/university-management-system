@@ -128,7 +128,7 @@ const EnrollCourseModal: React.FC<EnrollCourseModalProps> = ({
 
       if (res.success) {
         showToast(
-          t('students.enrollSuccess', 'تم تسجيل الطالب في المقرر بنجاح'),
+          t('students.enrollSuccess', 'Student enrolled in course successfully'),
           'success'
         );
         onSuccess();
@@ -156,7 +156,7 @@ const EnrollCourseModal: React.FC<EnrollCourseModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={t('students.enrollCourse', 'تسجيل مقرر')}
+      title={t('students.enrollCourse', 'Enroll in Course')}
       subtitle={`${studentName} (${studentCode})`}
       size="lg"
     >
@@ -175,7 +175,7 @@ const EnrollCourseModal: React.FC<EnrollCourseModalProps> = ({
           <div className="space-y-1.5 text-start">
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
               <Calendar size={14} className="text-brand-primary-500" />
-              <span>{t('students.academicYearLabel', 'العام الأكاديمي (التقويم)')}</span>
+              <span>{t('students.academicYearLabel', 'Academic Year (Calendar)')}</span>
             </label>
             <div className="relative">
               <input
@@ -198,16 +198,16 @@ const EnrollCourseModal: React.FC<EnrollCourseModalProps> = ({
           <div className="space-y-1.5 text-start">
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
               <Layers size={14} className="text-brand-primary-500" />
-              <span>{t('students.semesterLabel', 'الفصل الدراسي')}</span>
+              <span>{t('students.semesterLabel', 'Semester')}</span>
             </label>
             <select
               value={selectedSemester}
               onChange={(e) => setSelectedSemester(parseInt(e.target.value, 10))}
               className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer"
             >
-              <option value={1}>{t('students.semester1', 'الفصل الدراسي الأول')}</option>
-              <option value={2}>{t('students.semester2', 'الفصل الدراسي الثاني')}</option>
-              <option value={3}>{t('students.semester3', 'الفصل الدراسي الصيفي')}</option>
+              <option value={1}>{t('students.semester1', 'First Semester')}</option>
+              <option value={2}>{t('students.semester2', 'Second Semester')}</option>
+              <option value={3}>{t('students.semester3', 'Summer Semester')}</option>
             </select>
             <p className="text-[11px] text-slate-400 dark:text-slate-500">
               {isRTL ? 'حدد الفصل الدراسي لتسجيل المقرر' : 'Select target semester for enrollment'}
@@ -220,7 +220,7 @@ const EnrollCourseModal: React.FC<EnrollCourseModalProps> = ({
           <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
           <input
             type="text"
-            placeholder={t('students.searchCoursesPlaceholder', 'ابحث باسم أو كود المقرر...')}
+            placeholder={t('students.searchCoursesPlaceholder', 'Search by course code or name...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full ps-10 pe-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all font-medium text-start"
@@ -268,7 +268,7 @@ const EnrollCourseModal: React.FC<EnrollCourseModalProps> = ({
               <p className="text-xs font-bold">
                 {searchQuery
                   ? (isRTL ? 'لا توجد مقررات مطابقة لمعايير البحث' : 'No courses match your search')
-                  : t('students.alreadyEnrolled', 'الطالب مسجل بالفعل في كافة المقررات المتاحة')}
+                  : t('students.alreadyEnrolled', 'Already enrolled in all available courses')}
               </p>
             </div>
           ) : (
@@ -349,7 +349,7 @@ const EnrollCourseModal: React.FC<EnrollCourseModalProps> = ({
             disabled={submitting}
             className="rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold"
           >
-            {t('common.cancel', 'إلغاء')}
+            {t('common.cancel', 'Cancel')}
           </Button>
           <Button
             type="submit"
@@ -364,7 +364,7 @@ const EnrollCourseModal: React.FC<EnrollCourseModalProps> = ({
             ) : (
               <>
                 <BookPlus size={16} />
-                <span>{t('students.enrollCourse', 'تسجيل مقرر')}</span>
+                <span>{t('students.enrollCourse', 'Enroll in Course')}</span>
               </>
             )}
           </Button>

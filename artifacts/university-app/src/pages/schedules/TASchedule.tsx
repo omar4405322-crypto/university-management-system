@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import {
   Calendar,
@@ -15,68 +16,107 @@ import {
   RotateCw,
   Sparkles,
   Building,
-  AlertCircle
+  AlertCircle,
+  Search,
+  X,
+  GraduationCap,
+  Layers,
 } from 'lucide-react';
 import schedulesService from '../../services/schedules.service';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
-import Card from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
+import collegeService from '../../services/college.service';
+import departmentService from '../../services/department.service';
 import SearchableSelect from '../../components/ui/SearchableSelect';
 import { ScheduleView } from '../../components/timetable/ScheduleView';
 import { generateHourlyTimes } from '../../utils/scheduleConfig';
 import { logger } from '../../lib/logger';
+import Button from '../../components/ui/button';
+import Badge from '../../components/ui/Badge';
 
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
-const TASchedule = () => {
+export function TASchedule() {
   const { t, i18n } = useTranslation();
+  const { isRTL } = useLanguage();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const isAr = i18n.language?.startsWith('ar');
 
-  const [loading, setLoading] = useState(true);
-  const [timetable, setTimetable] = useState({});
-  const [error, setError] = useState(null);
-
+  // Metadata Lists
   const [taList, setTaList] = useState<any[]>([]);
+  const [collegesList, setCollegesList] = useState<any[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<any[]>([]);
+
+  // Filter States
   const [selectedTAId, setSelectedTAId] = useState<string>(
-    searchParams.get('taId') || ''
+    searchParams.get('taId') || (user?.role === 'TEACHING_ASSISTANT' ? String(user.teachingAssistant?.id || user.id) : 'all')
   );
+  const [selectedCollegeId, setSelectedCollegeId] = useState<string>('all');
+  const [selectedDeptId, setSelectedDeptId] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedSemester, setSelectedSemester] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Raw Schedule Data
+  const [rawSlots, setRawSlots] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
 
+  // 1. Fetch TA, College, and Department Metadata
   useEffect(() => {
-    if (isAdmin || searchParams.get('taId')) {
-      teachingAssistantsService.getTeachingAssistants({ limit: 100 }).then((res: any) => {
-        if (res.success && res.data) {
-          const list = Array.isArray(res.data) ? res.data : res.data.tas || res.data.data || [];
-          setTaList(list);
-          if (!selectedTAId && list.length > 0) {
-            setSelectedTAId(String(list[0].id));
-          }
-        }
-      }).catch(() => {});
-    }
-  }, [isAdmin, searchParams]);
+    Promise.all([
+      teachingAssistantsService.getTeachingAssistants({ limit: 200 }).catch(() => ({ data: [] })),
+      collegeService.getColleges({ limit: 100 }).catch(() => ({ data: [] })),
+      departmentService.getDepartments({ limit: 200 }).catch(() => ({ data: [] })),
+    ]).then(([taRes, colRes, deptRes]) => {
+      const tas = Array.isArray(taRes?.data)
+        ? taRes.data
+        : taRes?.data?.teachingAssistants || taRes?.data?.tas || taRes?.data?.data || [];
+      const cols = Array.isArray(colRes?.data) ? colRes.data : colRes?.data?.data || [];
+      const depts = Array.isArray(deptRes?.data) ? deptRes.data : [];
+
+      setTaList(tas);
+      setCollegesList(cols);
+      setDepartmentsList(depts);
+
+      // Auto-set TA if logged in as TA
+      if (user?.role === 'TEACHING_ASSISTANT') {
+        const myTA = tas.find((t: any) => t.userId === user.id || t.id === user.teachingAssistant?.id);
+        if (myTA) setSelectedTAId(String(myTA.id));
+      }
+    });
+  }, [user]);
+
+  // TA Select Options
+  const taOptions = useMemo(() => {
+    const opts = [
+      {
+        label: isRTL ? 'الكل — الجدول الشامل لجميع المعيدين' : 'All TAs (University Master TA Schedule)',
+        value: 'all',
+      },
+    ];
+    taList.forEach((ta) => {
+      opts.push({
+        label: `${ta.firstName} ${ta.lastName}`,
+        value: String(ta.id),
+        sublabel: ta.department?.name || '',
+        group: ta.department?.name || (isRTL ? 'معيد / مساعد تدريس' : 'Teaching Assistant'),
+      });
+    });
+    return opts;
+  }, [taList, isRTL]);
 
   const activeTA = useMemo(() => {
-    if (selectedTAId && taList.length > 0) {
+    if (selectedTAId && selectedTAId !== 'all' && taList.length > 0) {
       return taList.find((t) => String(t.id) === String(selectedTAId));
     }
     return null;
   }, [selectedTAId, taList]);
 
-  const taOptions = useMemo(() => {
-    return taList.map((ta) => ({
-      value: String(ta.id),
-      label: `${ta.firstName} ${ta.lastName}`,
-      sublabel: ta.department?.name || '',
-      group: ta.department?.name || t('schedule.taTitle', 'معيد / مساعد تدريس')
-    }));
-  }, [taList, t]);
-
-  const days = isAr
+  // Days & Time configuration
+  const days = isRTL
     ? ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
     : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -106,39 +146,37 @@ const TASchedule = () => {
     if (!timeStr) return '';
     const [hours, minutes] = timeStr.split(':');
     const hour = parseInt(hours);
-    const ampm = hour >= 12 ? t('common.pm') || 'مساءً' : t('common.am') || 'صباحاً';
+    const ampm = hour >= 12 ? (isRTL ? 'مساءً' : 'PM') : (isRTL ? 'صباحاً' : 'AM');
     const displayHour = hour % 12 || 12;
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  // Filter state
-  const [selectedYear, setSelectedYear] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState('');
-
-  const fetchTargetedTimetable = useCallback(async () => {
+  // 2. Fetch Raw Timetable Data
+  const fetchScheduleData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const params: Record<string, unknown> = {};
-      if (selectedTAId) params.teachingAssistantId = selectedTAId;
+      if (selectedTAId && selectedTAId !== 'all') {
+        params.teachingAssistantId = selectedTAId;
+      }
       if (selectedYear) params.year = selectedYear;
       if (selectedSemester) params.semester = selectedSemester;
 
       const result = await schedulesService.getWeeklyTimetable(params);
       let data = result?.data || result || {};
+
+      let slots: any[] = [];
       if (Array.isArray(data)) {
-        data = data.reduce((acc: any, slot: any) => {
-          if (!slot.dayOfWeek) return acc;
-          const dayName = slot.dayOfWeek.charAt(0).toUpperCase() + slot.dayOfWeek.slice(1).toLowerCase();
-          if (!acc[dayName]) acc[dayName] = [];
-          acc[dayName].push(slot);
-          return acc;
-        }, {});
+        slots = data;
+      } else if (typeof data === 'object' && data !== null) {
+        slots = Object.values(data).flat().filter(Boolean);
       }
-      setTimetable(data);
+
+      setRawSlots(slots);
     } catch (err: any) {
-      logger.error('Error fetching timetable:', err);
+      logger.error('Error fetching TA schedule:', err);
       setError(err.message || t('common.fetchError', 'Failed to load schedule'));
     } finally {
       setLoading(false);
@@ -146,263 +184,372 @@ const TASchedule = () => {
   }, [selectedTAId, selectedYear, selectedSemester, t]);
 
   useEffect(() => {
-    fetchTargetedTimetable();
-  }, [fetchTargetedTimetable]);
+    fetchScheduleData();
+  }, [fetchScheduleData]);
 
-  const allSlots = useMemo(() => {
-    return Object.values(timetable || {}).flat().filter(Boolean);
-  }, [timetable]);
+  // 3. Client-Side Filtering
+  const filteredSlots = useMemo(() => {
+    return rawSlots.filter((slot) => {
+      // If specific TA selected
+      if (selectedTAId && selectedTAId !== 'all') {
+        const slotTaId = String(slot.teachingAssistantId || slot.teachingAssistant?.id || '');
+        if (slotTaId !== selectedTAId) return false;
+      }
 
-  const totalSlots = allSlots.length;
-  const distinctCourses = useMemo(() => new Set(allSlots.map((s: any) => s.course?.id || s.course?.name).filter(Boolean)).size, [allSlots]);
-  const distinctRooms = useMemo(() => new Set(allSlots.map((s: any) => s.room).filter(Boolean)).size, [allSlots]);
-  const distinctGroups = useMemo(() => new Set(allSlots.map((s: any) => s.groupId || s.group?.name).filter(Boolean)).size, [allSlots]);
+      // College Filter
+      if (selectedCollegeId && selectedCollegeId !== 'all') {
+        const colId = slot.course?.department?.collegeId || slot.course?.department?.college?.id;
+        if (String(colId) !== String(selectedCollegeId)) return false;
+      }
+
+      // Department Filter
+      if (selectedDeptId && selectedDeptId !== 'all') {
+        const deptId = slot.course?.departmentId || slot.course?.department?.id;
+        if (String(deptId) !== String(selectedDeptId)) return false;
+      }
+
+      // Academic Year Filter
+      if (selectedYear) {
+        const yr = parseInt(selectedYear, 10);
+        if (slot.course?.year !== yr && slot.year !== yr) return false;
+      }
+
+      // Semester Filter
+      if (selectedSemester) {
+        const sem = parseInt(selectedSemester, 10);
+        if (slot.course?.semester !== sem && slot.semester !== sem) return false;
+      }
+
+      // Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const courseName = (slot.course?.name || '').toLowerCase();
+        const courseCode = (slot.course?.courseCode || '').toLowerCase();
+        const taFull = `${slot.teachingAssistant?.firstName || ''} ${slot.teachingAssistant?.lastName || ''}`.toLowerCase();
+        const roomName = (slot.room || '').toLowerCase();
+        const groupName = (slot.group?.name || '').toLowerCase();
+
+        const matches =
+          courseName.includes(q) ||
+          courseCode.includes(q) ||
+          taFull.includes(q) ||
+          roomName.includes(q) ||
+          groupName.includes(q);
+
+        if (!matches) return false;
+      }
+
+      return true;
+    });
+  }, [rawSlots, selectedTAId, selectedCollegeId, selectedDeptId, selectedYear, selectedSemester, searchQuery]);
+
+  // Group filtered slots into Days Record for ScheduleView
+  const timetableRecord = useMemo(() => {
+    return filteredSlots.reduce((acc: Record<string, any[]>, slot: any) => {
+      if (!slot.dayOfWeek) return acc;
+      const dayName = slot.dayOfWeek.charAt(0).toUpperCase() + slot.dayOfWeek.slice(1).toLowerCase();
+      if (!acc[dayName]) acc[dayName] = [];
+      acc[dayName].push(slot);
+      return acc;
+    }, {});
+  }, [filteredSlots]);
+
+  // Statistics
+  const totalSlots = filteredSlots.length;
+  const distinctCourses = useMemo(
+    () => new Set(filteredSlots.map((s) => s.course?.id || s.course?.name).filter(Boolean)).size,
+    [filteredSlots]
+  );
+  const distinctRooms = useMemo(
+    () => new Set(filteredSlots.map((s) => s.room).filter(Boolean)).size,
+    [filteredSlots]
+  );
+  const distinctGroups = useMemo(
+    () => new Set(filteredSlots.map((s) => s.groupId || s.group?.name).filter(Boolean)).size,
+    [filteredSlots]
+  );
 
   const taNameDisplay = activeTA
     ? `${activeTA.firstName} ${activeTA.lastName}`
+    : selectedTAId === 'all'
+    ? isRTL ? 'الجدول الشامل لسكاشن ومعامل المعيدين' : 'Master Teaching Assistants Schedule'
     : `${user?.firstName || ''} ${user?.lastName || ''}`;
 
-  const deptNameDisplay = activeTA?.department?.name || user?.department?.name || user?.managedDepartmentName || '';
+  const deptNameDisplay =
+    activeTA?.department?.name ||
+    (selectedTAId === 'all'
+      ? isRTL ? 'جميع الكليات والأقسام التكنولوجية' : 'All Departments & Labs'
+      : user?.department?.name || '');
+
+  const resetFilters = () => {
+    setSelectedTAId(user?.role === 'TEACHING_ASSISTANT' ? String(user.teachingAssistant?.id || user.id) : 'all');
+    setSelectedCollegeId('all');
+    setSelectedDeptId('all');
+    setSelectedYear('');
+    setSelectedSemester('');
+    setSearchQuery('');
+  };
 
   return (
-    <div className="section-gap animate-in fade-in duration-700 space-y-6">
-      {/* 👑 PRO TA PROFILE BANNER (Clean Light/Dark Theme Matched) */}
-      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 text-slate-800 dark:text-white">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            {/* Avatar Badge */}
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl font-black text-white shadow-md shadow-purple-500/20 shrink-0">
-              {taNameDisplay.charAt(0)}
+    <div className="space-y-4 animate-in fade-in duration-200">
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE IDENTITY HERO CARD                                           */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-primary-500 to-brand-primary-700 text-white font-bold text-lg flex items-center justify-center shadow-xs shrink-0">
+              {activeTA ? activeTA.firstName?.[0] : <Calendar size={22} />}
             </div>
             <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-800 dark:text-white">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
                   {taNameDisplay}
                 </h1>
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1.5">
-                  <Sparkles size={12} className="text-amber-500" />
-                  {t('schedule.taTitle', 'معيد / مساعد تدريس')}
-                </span>
+                <Badge variant="info" className="text-[10px] font-bold">
+                  {isRTL ? 'معيد / مساعد تدريس' : 'Teaching Assistant'}
+                </Badge>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1 flex items-center gap-2">
-                <Building size={14} className="text-purple-500" />
-                {deptNameDisplay ? `${deptNameDisplay}` : t('schedule.universityFaculty', 'جامعة 6 أكتوبر التكنولوجية')}
+              <p className="text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5">
+                <Building size={13} className="text-brand-primary-500" />
+                <span>{deptNameDisplay || (isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October Technological University')}</span>
               </p>
             </div>
           </div>
 
-          {/* Controls & Searchable TA Switcher */}
-          <div className="flex items-center gap-3 flex-wrap">
-            {(isAdmin || taList.length > 0) && (
-              <div className="min-w-[240px] sm:min-w-[280px]">
-                <SearchableSelect
-                  options={taOptions}
-                  value={selectedTAId}
-                  onChange={(val) => {
-                    setSelectedTAId(val);
-                    setSearchParams({ taId: val });
-                  }}
-                  placeholder={t('teachingAssistants.selectTA', 'اختر المعيد')}
-                  searchPlaceholder={t('teachingAssistants.searchTA', 'ابحث عن اسم المعيد...')}
-                  emptyText={t('teachingAssistants.noTAsFound', 'لم يتم العثور على أي معيد')}
-                  icon={<User size={16} />}
-                  isRTL={isAr}
-                />
-              </div>
-            )}
-
-            <button
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => window.print()}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs flex items-center gap-2 transition-all border border-slate-200 dark:border-slate-600 shadow-xs active:scale-95 cursor-pointer"
+              className="h-8 px-3 rounded-lg text-xs font-semibold border-slate-200 dark:border-slate-700 gap-1.5 cursor-pointer shadow-2xs"
             >
-              <Printer size={15} />
-              <span className="hidden sm:inline">{t('common.print', 'طباعة الجدول')}</span>
-            </button>
+              <Printer size={13} />
+              <span>{isRTL ? 'طباعة' : 'Print'}</span>
+            </Button>
 
             <button
-              onClick={fetchTargetedTimetable}
-              className="p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all border border-slate-200 dark:border-slate-600 shadow-xs active:scale-95 cursor-pointer"
-              title={t('common.refresh', 'تحديث')}
+              onClick={fetchScheduleData}
+              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 cursor-pointer shadow-2xs"
+              title={isRTL ? 'تحديث' : 'Refresh'}
             >
-              <RotateCw size={15} className={loading ? 'animate-spin' : ''} />
+              <RotateCw size={13} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* 📊 SUMMARY STATS DASHBOARD BAR (4 CARDS) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm relative overflow-hidden group hover:border-purple-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                {t('schedule.totalSessions', 'إجمالي الحصص والمعامل')}
-              </p>
-              <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white mt-1">
-                {loading ? '...' : totalSlots}
-              </h3>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center font-bold text-xl shrink-0">
-              <Calendar size={24} />
-            </div>
+      {/* ========================================================================= */}
+      {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {/* Total Sessions */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'إجمالي السكاشن والمعامل' : 'Total Sessions'}
+            </span>
+            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5">
+              {loading ? '...' : totalSlots}
+            </span>
           </div>
-        </Card>
+          <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center shrink-0">
+            <Calendar size={16} />
+          </div>
+        </div>
 
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm relative overflow-hidden group hover:border-indigo-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                {t('schedule.assignedCourses', 'المقررات المسندة')}
-              </p>
-              <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white mt-1">
-                {loading ? '...' : distinctCourses}
-              </h3>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold text-xl shrink-0">
-              <BookOpen size={24} />
-            </div>
+        {/* Assigned Courses */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'المقررات المسندة' : 'Assigned Courses'}
+            </span>
+            <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400 block mt-0.5">
+              {loading ? '...' : distinctCourses}
+            </span>
           </div>
-        </Card>
+          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
+            <BookOpen size={16} />
+          </div>
+        </div>
 
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm relative overflow-hidden group hover:border-amber-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                {t('schedule.assignedRooms', 'المعامل والقاعات')}
-              </p>
-              <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white mt-1">
-                {loading ? '...' : distinctRooms}
-              </h3>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold text-xl shrink-0">
-              <MapPin size={24} />
-            </div>
+        {/* Assigned Labs / Rooms */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'المعامل والقاعات' : 'Assigned Labs'}
+            </span>
+            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5">
+              {loading ? '...' : distinctRooms}
+            </span>
           </div>
-        </Card>
+          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+            <MapPin size={16} />
+          </div>
+        </div>
 
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm relative overflow-hidden group hover:border-blue-500/40 transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                {t('schedule.targetGroups', 'المجموعات الطلابية')}
-              </p>
-              <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white mt-1">
-                {loading ? '...' : distinctGroups > 0 ? distinctGroups : t('common.all', 'الكل')}
-              </h3>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-xl shrink-0">
-              <Users size={24} />
-            </div>
+        {/* Student Cohorts */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'المجموعات والسكاشن' : 'Student Groups'}
+            </span>
+            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5">
+              {loading ? '...' : distinctGroups > 0 ? distinctGroups : isRTL ? 'الكل' : 'All'}
+            </span>
           </div>
-        </Card>
+          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
+            <Users size={16} />
+          </div>
+        </div>
       </div>
 
-      {/* 🎛️ CUSTOM FILTER BAR */}
-      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-widest me-2">
-              <Filter size={16} className="text-purple-500" />
-              {t('common.filters', 'التصفية')}
-            </div>
-
-            {/* Academic Year */}
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
-            >
-              <option value="">{t('schedule.academicYear', 'جميع السنوات الأكاديمية')}</option>
-              {yearOptions.map((yr) => (
-                <option key={yr} value={yr}>
-                  {t('common.year', 'سنة')} {yr}
-                </option>
-              ))}
-            </select>
-
-            {/* Semester */}
-            <select
-              value={selectedSemester}
-              onChange={(e) => setSelectedSemester(e.target.value)}
-              className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
-            >
-              <option value="">{t('schedule.allSemesters', 'جميع الفصول الدراسية')}</option>
-              <option value="1">{t('schedule.semester1', 'الفصل الدراسي الأول')}</option>
-              <option value="2">{t('schedule.semester2', 'الفصل الدراسي الثاني')}</option>
-              <option value="3">{t('schedule.semester3', 'الفصل الصيفي')}</option>
-            </select>
-          </div>
-
-          {(selectedYear || selectedSemester) && (
+      {/* ========================================================================= */}
+      {/* 3. UNIFIED 44px COMPACT FILTER TOOLBAR                                    */}
+      {/* ========================================================================= */}
+      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[180px]">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={isRTL ? 'بحث بالمقرر، المعيد، القاعة أو السكشن...' : 'Search course, TA, room, or group...'}
+            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+          />
+          {searchQuery && (
             <button
-              onClick={() => {
-                setSelectedYear('');
-                setSelectedSemester('');
-              }}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 transition-colors"
+              onClick={() => setSearchQuery('')}
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
             >
-              ✕ {t('common.resetFilters', 'إلغاء الفلترة')}
+              <X size={12} />
             </button>
           )}
         </div>
-      </Card>
 
-      {/* Loading */}
-      {loading && (
-        <Card className="p-16 flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <Loader2 size={36} className="animate-spin text-purple-500 mb-3" />
-          <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
-            {t('common.loadingSchedule', 'جاري تحميل جدول المعيد...')}
-          </p>
-        </Card>
-      )}
-
-      {/* Error */}
-      {!loading && error && (
-        <Card className="p-16 flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center mb-4 border border-rose-200 dark:border-rose-800">
-            <AlertCircle size={32} />
+        {/* Searchable TA Switcher (Admins & Staff) */}
+        {(isAdmin || user?.role !== 'TEACHING_ASSISTANT') && (
+          <div className="w-56">
+            <SearchableSelect
+              options={taOptions}
+              value={selectedTAId}
+              onChange={(val) => {
+                setSelectedTAId(val);
+                setSearchParams(val !== 'all' ? { taId: val } : {});
+              }}
+              placeholder={isRTL ? 'اختر المعيد' : 'Select TA'}
+              searchPlaceholder={isRTL ? 'ابحث عن اسم المعيد...' : 'Search TA...'}
+              emptyText={isRTL ? 'لم يتم العثور على أي معيد' : 'No TAs found'}
+              icon={<User size={14} />}
+              isRTL={isRTL}
+            />
           </div>
-          <p className="text-red-500 font-bold mb-3">{error}</p>
-          <button
-            onClick={fetchTargetedTimetable}
-            className="px-5 py-2 bg-purple-500 text-white font-bold rounded-xl text-xs hover:bg-purple-600 transition-all shadow-md"
+        )}
+
+        {/* College Filter */}
+        <select
+          value={selectedCollegeId}
+          onChange={(e) => {
+            setSelectedCollegeId(e.target.value);
+            setSelectedDeptId('all');
+          }}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="all">{isRTL ? 'كل الكليات' : 'All Colleges'}</option>
+          {collegesList.map((col) => (
+            <option key={col.id} value={col.id}>
+              {isRTL ? col.nameAr || col.name : col.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Academic Year */}
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="">{isRTL ? 'كل السنوات' : 'All Years'}</option>
+          {[1, 2, 3, 4].map((yr) => (
+            <option key={yr} value={yr}>
+              {isRTL ? `الفرقة ${yr}` : `Year ${yr}`}
+            </option>
+          ))}
+        </select>
+
+        {/* Semester */}
+        <select
+          value={selectedSemester}
+          onChange={(e) => setSelectedSemester(e.target.value)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="">{isRTL ? 'كل الفصول' : 'All Semesters'}</option>
+          <option value="1">{isRTL ? 'الفصل 1' : 'Sem 1'}</option>
+          <option value="2">{isRTL ? 'الفصل 2' : 'Sem 2'}</option>
+          <option value="3">{isRTL ? 'الصيفي' : 'Summer'}</option>
+        </select>
+
+        {/* Clear Filters */}
+        {(selectedTAId !== 'all' || selectedCollegeId !== 'all' || selectedDeptId !== 'all' || selectedYear || selectedSemester || searchQuery) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetFilters}
+            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
           >
-            {t('common.retry', 'إعادة المحاولة')}
-          </button>
-        </Card>
-      )}
+            <X size={13} className="me-1" />
+            {isRTL ? 'مسح' : 'Clear'}
+          </Button>
+        )}
+      </div>
 
-      {/* No schedule */}
-      {!loading && !error && totalSlots === 0 && (
-        <Card className="p-16 flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
-          <div className="w-20 h-20 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-500 flex items-center justify-center text-3xl mb-4 border border-purple-200 dark:border-purple-800">
-            📅
-          </div>
-          <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-1">
-            {t('schedule.noSchedule', 'لا توجد سكاشن أو معامل مجدولة لهاته الفترة')}
-          </h3>
-          <p className="text-xs text-slate-400 font-medium max-w-sm">
-            {t('schedule.noScheduleDesc', 'لم يتم العثور على أي جلسات تدريس مسندة للمعيد حسب الفلاتر المحددة.')}
+      {/* ========================================================================= */}
+      {/* 4. SCHEDULE TIMETABLE GRID                                                */}
+      {/* ========================================================================= */}
+      {loading ? (
+        <div className="p-12 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
+          <Loader2 size={32} className="animate-spin text-brand-primary-600 mx-auto mb-2" />
+          <p className="text-xs text-slate-400 font-semibold">
+            {isRTL ? 'جاري تحميل جدول المعيد...' : 'Fetching TA schedule...'}
           </p>
-        </Card>
-      )}
-
-      {/* Schedule Grid */}
-      {!loading && !error && Number(totalSlots) > 0 && (
-        <ScheduleView 
-          timetable={timetable} 
-          role="TA" 
-          selectedDay={selectedDay} 
-          setSelectedDay={setSelectedDay} 
-          days={days} 
-          times={times} 
-          formatTime={formatTime} 
-          canManage={false} 
+        </div>
+      ) : error ? (
+        <div className="p-8 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs text-center">
+          <AlertCircle size={32} className="text-rose-500 mx-auto mb-2" />
+          <p className="text-xs font-bold text-rose-600 mb-3">{error}</p>
+          <Button size="sm" onClick={fetchScheduleData} className="text-xs font-bold">
+            {isRTL ? 'إعادة المحاولة' : 'Retry'}
+          </Button>
+        </div>
+      ) : totalSlots === 0 ? (
+        <div className="p-12 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center mx-auto mb-3">
+            <Calendar size={24} />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+            {isRTL ? 'لا توجد سكاشن أو معامل مسجلة' : 'No Scheduled Sections Found'}
+          </h3>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            {isRTL
+              ? 'لم يتم العثور على أي حصص أو معامل مسندة للمعيد وفقاً لمعايير التصفية الحالية.'
+              : 'No scheduled labs or section sessions were found matching your current filters.'}
+          </p>
+        </div>
+      ) : (
+        <ScheduleView
+          timetable={timetableRecord}
+          role="TA"
+          selectedDay={selectedDay}
+          setSelectedDay={setSelectedDay}
+          days={days}
+          times={times}
+          formatTime={formatTime}
+          canManage={false}
         />
       )}
     </div>
   );
-};
+}
 
 export default TASchedule;

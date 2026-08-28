@@ -147,7 +147,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
             newStatus === 'ENROLLED' ? 'success' : 'warning'
           );
         } else {
-          showToast(t('students.thresholdUpdated', 'تم تحديث حد الغياب بنجاح'), 'success');
+          showToast(t('students.thresholdUpdated', 'Absence threshold updated successfully'), 'success');
         }
 
         onSuccess();
@@ -191,7 +191,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
       });
 
       if (res.success) {
-        showToast(t('students.exemptionAdded', 'تمت إضافة فترة الإعفاء بنجاح'), 'success');
+        showToast(t('students.exemptionAdded', 'Exemption period added successfully'), 'success');
         const newStatus = res.data?.enrollment?.status;
         if (newStatus && newStatus !== activeStatus) {
           setActiveStatus(newStatus);
@@ -224,7 +224,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
       setDeletingId(exemptionId);
       const res = await enrollmentService.deleteExemptionPeriod(enrollmentId, exemptionId);
       if (res.success) {
-        showToast(t('students.exemptionDeleted', 'تم حذف فترة الإعفاء بنجاح'), 'success');
+        showToast(t('students.exemptionDeleted', 'Exemption period deleted successfully'), 'success');
         const newStatus = res.data?.enrollment?.status;
         if (newStatus && newStatus !== activeStatus) {
           setActiveStatus(newStatus);
@@ -269,7 +269,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={t('students.manageAbsence', 'إدارة الغياب')}
+      title={t('students.manageAbsence', 'Manage Absence')}
       subtitle={`${studentName} — ${courseName}`}
       size="lg"
     >
@@ -282,7 +282,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
             </div>
             <div>
               <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {t('students.currentStatusLabel', 'الحالة الحالية')}
+                {t('students.currentStatusLabel', 'Current Status')}
               </div>
               <div className="mt-0.5">{getStatusBadge(activeStatus)}</div>
             </div>
@@ -291,12 +291,12 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
           <div className="flex items-center gap-3">
             <div className="text-end">
               <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {t('students.currentThresholdLabel', 'الحد الفعلي المطبق')}
+                {t('students.currentThresholdLabel', 'Effective Threshold')}
               </div>
               <div className="text-sm font-bold font-mono text-slate-900 dark:text-white mt-0.5">
                 {activeThreshold !== null
-                  ? `${activeThreshold}% (${t('students.customOverride', 'مخصص')})`
-                  : t('students.defaultPolicyBadge', 'السياسة الافتراضية (25%)')}
+                  ? `${activeThreshold}% (${t('students.customOverride', 'Custom Override')})`
+                  : t('students.defaultPolicyBadge', 'System Policy (25%)')}
               </div>
             </div>
           </div>
@@ -307,14 +307,11 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
           <div className="flex items-center gap-2 mb-3">
             <Clock className="text-brand-primary-500" size={18} />
             <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-              {t('students.customThreshold', 'حد الغياب المخصص')}
+              {t('students.customThreshold', 'Custom Absence Threshold')}
             </h4>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-            {t(
-              'students.customThresholdDesc',
-              'تجاوز حد الغياب الافتراضي لهذا التسجيل (0-100%). اتركه فارغاً لاستخدام السياسة العامة للجامعة/القسم.'
-            )}
+            {t('students.customThresholdDesc', 'Override the standard absence limit for this enrollment (0-100%). Leave blank or clear to use system policy.')}
           </p>
 
           <form onSubmit={handleSaveThreshold} className="space-y-4">
@@ -330,7 +327,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
                   }}
                   className="text-brand-primary-600 focus:ring-brand-primary-500 h-4 w-4"
                 />
-                <span>{t('students.useDefaultPolicy', 'استخدام السياسة الافتراضية (25%)')}</span>
+                <span>{t('students.useDefaultPolicy', 'Use System Policy')}</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-300">
@@ -344,7 +341,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
                   }}
                   className="text-brand-primary-600 focus:ring-brand-primary-500 h-4 w-4"
                 />
-                <span>{t('students.customOverride', 'تحديد نسبة مخصصة')}</span>
+                <span>{t('students.customOverride', 'Custom Override')}</span>
               </label>
             </div>
 
@@ -381,12 +378,12 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
                 {savingThreshold ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    <span>{t('students.saving', 'جاري الحفظ...')}</span>
+                    <span>{t('students.saving', 'Saving...')}</span>
                   </>
                 ) : (
                   <>
                     <CheckCircle2 size={14} />
-                    <span>{t('students.saveThreshold', 'حفظ النسبة المخصصة')}</span>
+                    <span>{t('students.saveThreshold', 'Save Threshold')}</span>
                   </>
                 )}
               </Button>
@@ -400,7 +397,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
             <div className="flex items-center gap-2">
               <Calendar className="text-blue-500" size={18} />
               <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                {t('students.exemptionPeriods', 'فترات الإعفاء من الغياب')}
+                {t('students.exemptionPeriods', 'Absence Exemption Periods')}
               </h4>
             </div>
             <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
@@ -409,10 +406,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
           </div>
 
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-            {t(
-              'students.exemptionPeriodsDesc',
-              'تواريخ الحضور الواقعة ضمن فترات الإعفاء المعتمدة يتم استبعادها تلقائياً من احتساب نسبة الغياب دون تعديل سجلات الحضور الأصلية.'
-            )}
+            {t('students.exemptionPeriodsDesc', 'Attendance dates falling within approved exemption windows are automatically excluded from absence calculations without modifying raw logs.')}
           </p>
 
           {loadingExemptions ? (
@@ -423,7 +417,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
           ) : exemptions.length === 0 ? (
             <div className="p-6 text-center bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {t('students.noExemptions', 'لا توجد فترات إعفاء مسجلة لهذا التسجيل.')}
+                {t('students.noExemptions', 'No exemption periods recorded for this enrollment.')}
               </p>
             </div>
           ) : (
@@ -456,7 +450,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
                           {startFormatted} → {endFormatted}
                         </span>
                         <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <span>{t('students.createdBy', 'تم الاعتماد بواسطة')}:</span>
+                          <span>{t('students.createdBy', 'Approved By')}:</span>
                           <span className="font-semibold text-slate-600 dark:text-slate-300">
                             {creatorName}
                           </span>
@@ -508,14 +502,14 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
           <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
             <h5 className="text-xs font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-1.5">
               <Plus size={14} className="text-brand-primary-500" />
-              <span>{t('students.addExemptionPeriod', 'إضافة فترة إعفاء جديدة')}</span>
+              <span>{t('students.addExemptionPeriod', 'Add Exemption Period')}</span>
             </h5>
 
             <form onSubmit={handleCreateExemption} className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    {t('students.startDate', 'تاريخ البدء')} *
+                    {t('students.startDate', 'Start Date')} *
                   </label>
                   <input
                     type="date"
@@ -527,7 +521,7 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    {t('students.endDate', 'تاريخ الانتهاء')} *
+                    {t('students.endDate', 'End Date')} *
                   </label>
                   <input
                     type="date"
@@ -541,16 +535,13 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                  {t('students.reason', 'السبب / المبرر')} *
+                  {t('students.reason', 'Reason / Justification')} *
                 </label>
                 <textarea
                   rows={2}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder={t(
-                    'students.reasonPlaceholder',
-                    'مثال: عذر طبي معتمد، تمثيل رسمي للجامعة...'
-                  )}
+                  placeholder={t('students.reasonPlaceholder', 'e.g. Approved medical leave, official athletic representation...')}
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-primary-500 focus:outline-hidden resize-none"
                   required
                 />
@@ -565,12 +556,12 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
                   {addingExemption ? (
                     <>
                       <Loader2 size={13} className="animate-spin" />
-                      <span>{t('students.adding', 'جاري الإضافة...')}</span>
+                      <span>{t('students.adding', 'Adding...')}</span>
                     </>
                   ) : (
                     <>
                       <Plus size={14} />
-                      <span>{t('students.addExemptionPeriod', 'إضافة فترة إعفاء')}</span>
+                      <span>{t('students.addExemptionPeriod', 'Add Exemption Period')}</span>
                     </>
                   )}
                 </Button>

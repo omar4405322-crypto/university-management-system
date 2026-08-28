@@ -191,11 +191,11 @@ const CreateExam = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
-                  {t('exams.customTypeLabel', 'مسمى / نوع الامتحان المخصص')}
+                  {t('exams.customTypeLabel', 'Custom Exam Type')}
                 </label>
                 <input
                   type="text"
-                  placeholder={t('exams.customTypePlaceholder', 'اكتب مسمى الامتحان (مثال: اختبار شهر أكتوبر، امتحان عملي...)')}
+                  placeholder={t('exams.customTypePlaceholder', 'e.g. Practical Lab Exam')}
                   className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all placeholder:font-medium placeholder:text-slate-400"
                   {...register('title')}
                 />
@@ -203,7 +203,7 @@ const CreateExam = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
-                  {t('exams.examTypeCategory', 'فئة الامتحان (التصنيف العام)')} *
+                  {t('exams.examTypeCategory', 'Exam Category')} *
                 </label>
                 <select
                   className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer"

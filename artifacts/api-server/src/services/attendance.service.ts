@@ -293,16 +293,75 @@ class AttendanceService {
   static async getMyCourses(user: any) {
     const userRole = user.role;
 
+    const courseSelect = {
+      id: true,
+      name: true,
+      courseCode: true,
+      credits: true,
+      year: true,
+      semester: true,
+      departmentId: true,
+      department: {
+        select: {
+          id: true,
+          name: true,
+          nameAr: true,
+          collegeId: true,
+          college: {
+            select: {
+              id: true,
+              name: true,
+              nameAr: true,
+            },
+          },
+        },
+      },
+      scheduleSlots: {
+        select: {
+          id: true,
+          dayOfWeek: true,
+          startTime: true,
+          endTime: true,
+          slotType: true,
+          groupId: true,
+          group: {
+            select: {
+              id: true,
+              name: true,
+              year: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          enrollments: true,
+          scheduleSlots: true,
+        },
+      },
+    };
+
+    const mapCourseSlots = (courseList: any[]) =>
+      courseList.map((c: any) => ({
+        ...c,
+        scheduleSlots: c.scheduleSlots?.map((slot: any) => ({
+          ...slot,
+          studentGroupId: slot.groupId,
+          studentGroup: slot.group,
+        })),
+      }));
+
     if (
       ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(
         userRole
       )
     ) {
       const courseScope = getScopeWhere(user, 'course');
-      return prisma.course.findMany({
+      const courses = await prisma.course.findMany({
         where: courseScope,
-        select: { id: true, name: true, courseCode: true },
+        select: courseSelect,
       });
+      return mapCourseSlots(courses);
     }
 
     if (userRole === 'STUDENT') {
@@ -324,10 +383,11 @@ class AttendanceService {
         return [];
       }
 
-      return prisma.course.findMany({
+      const courses = await prisma.course.findMany({
         where: { id: { in: enrolledCourseIds } },
-        select: { id: true, name: true, courseCode: true },
+        select: courseSelect,
       });
+      return mapCourseSlots(courses);
     }
 
     if (userRole === 'TEACHING_ASSISTANT') {
@@ -346,17 +406,17 @@ class AttendanceService {
       );
       let courses = await prisma.course.findMany({
         where: { id: { in: courseIds } },
-        select: { id: true, name: true, courseCode: true },
+        select: courseSelect,
       });
 
       if (courses.length === 0 && myTA.departmentId) {
         courses = await prisma.course.findMany({
           where: { departmentId: myTA.departmentId },
-          select: { id: true, name: true, courseCode: true },
+          select: courseSelect,
         });
       }
 
-      return courses;
+      return mapCourseSlots(courses);
     }
 
     if (userRole === 'DOCTOR') {
@@ -375,17 +435,17 @@ class AttendanceService {
       );
       let courses = await prisma.course.findMany({
         where: { id: { in: courseIds } },
-        select: { id: true, name: true, courseCode: true },
+        select: courseSelect,
       });
 
       if (courses.length === 0 && myDoctor.departmentId) {
         courses = await prisma.course.findMany({
           where: { departmentId: myDoctor.departmentId },
-          select: { id: true, name: true, courseCode: true },
+          select: courseSelect,
         });
       }
 
-      return courses;
+      return mapCourseSlots(courses);
     }
 
     return [];
@@ -812,6 +872,10 @@ class AttendanceService {
   }
 
   static async getMyAbsenceWarnings(user: any) {
+    if (user.role !== 'STUDENT') {
+      return this.getStaffAbsenceWarnings(user);
+    }
+
     const student = await prisma.student.findUnique({
       where: { userId: user.id },
       include: {
@@ -843,7 +907,11 @@ class AttendanceService {
     });
 
     if (!student) {
-      throw new AuthorizationError('Student profile not found.');
+      return {
+        isStaff: false,
+        courses: [],
+        notifications: [],
+      };
     }
 
     const coursesData = await Promise.all(
@@ -946,8 +1014,275 @@ class AttendanceService {
     });
 
     return {
+      isStaff: false,
       courses: coursesData,
       notifications,
+    };
+  }
+
+  static async getStaffAbsenceWarnings(user: any) {
+    const userRole = user.role;
+    let courseIds: number[] = [];
+
+    if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(userRole)) {
+      const courseScope = getScopeWhere(user, 'course');
+      const courses = await prisma.course.findMany({
+        where: courseScope,
+        select: { id: true },
+      });
+      courseIds = courses.map((c) => c.id);
+    } else if (userRole === 'DOCTOR') {
+      const doctor = await prisma.doctor.findUnique({ where: { userId: user.id } });
+      if (doctor) {
+        const slots = await prisma.scheduleSlot.findMany({
+          where: { doctorId: doctor.id },
+          select: { courseId: true },
+        });
+        courseIds = Array.from(new Set(slots.map((s) => s.courseId)));
+        if (courseIds.length === 0 && doctor.departmentId) {
+          const deptCourses = await prisma.course.findMany({
+            where: { departmentId: doctor.departmentId },
+            select: { id: true },
+          });
+          courseIds = deptCourses.map((c) => c.id);
+        }
+      }
+    } else if (userRole === 'TEACHING_ASSISTANT') {
+      const ta = await prisma.teachingAssistant.findUnique({ where: { userId: user.id } });
+      if (ta) {
+        const slots = await prisma.scheduleSlot.findMany({
+          where: { teachingAssistantId: ta.id },
+          select: { courseId: true },
+        });
+        courseIds = Array.from(new Set(slots.map((s) => s.courseId)));
+        if (courseIds.length === 0 && ta.departmentId) {
+          const deptCourses = await prisma.course.findMany({
+            where: { departmentId: ta.departmentId },
+            select: { id: true },
+          });
+          courseIds = deptCourses.map((c) => c.id);
+        }
+      }
+    }
+
+    if (courseIds.length === 0) {
+      return {
+        isStaff: true,
+        summary: {
+          totalMonitored: 0,
+          blockedCount: 0,
+          finalWarningCount: 0,
+          firstWarningCount: 0,
+          safeCount: 0,
+        },
+        warningRecords: [],
+        coursesList: [],
+      };
+    }
+
+    const enrollments = await prisma.enrollment.findMany({
+      where: {
+        courseId: { in: courseIds },
+        status: { in: ['ENROLLED', 'BLOCKED'] },
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            studentId: true,
+            firstName: true,
+            lastName: true,
+            year: true,
+            department: {
+              select: {
+                id: true,
+                name: true,
+                nameAr: true,
+                college: {
+                  select: { id: true, name: true, nameAr: true },
+                },
+              },
+            },
+            user: { select: { email: true } },
+          },
+        },
+        course: {
+          select: {
+            id: true,
+            courseCode: true,
+            name: true,
+            credits: true,
+            year: true,
+            semester: true,
+            departmentId: true,
+          },
+        },
+        exemptionPeriods: {
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            reason: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    const slots = await prisma.scheduleSlot.findMany({
+      where: { courseId: { in: courseIds } },
+      select: { id: true, courseId: true },
+    });
+    const slotToCourseMap = new Map<number, number>();
+    slots.forEach((s) => slotToCourseMap.set(s.id, s.courseId));
+
+    const sessions = await prisma.attendanceSession.findMany({
+      where: { scheduleSlotId: { in: slots.map((s) => s.id) } },
+      select: { id: true, scheduleSlotId: true },
+    });
+    const courseSessionsCountMap = new Map<number, number>();
+
+    sessions.forEach((sess) => {
+      const cId = slotToCourseMap.get(sess.scheduleSlotId!);
+      if (cId) {
+        courseSessionsCountMap.set(cId, (courseSessionsCountMap.get(cId) || 0) + 1);
+      }
+    });
+
+    const studentIds = Array.from(new Set(enrollments.map((e) => e.studentId)));
+    const attendances = await prisma.attendance.findMany({
+      where: {
+        studentId: { in: studentIds },
+        courseId: { in: courseIds },
+      },
+      select: {
+        studentId: true,
+        courseId: true,
+        status: true,
+      },
+    });
+
+    const attendanceStatsMap = new Map<string, { present: number; late: number; absent: number; excused: number; total: number }>();
+    attendances.forEach((att) => {
+      const key = `${att.studentId}_${att.courseId}`;
+      let stat = attendanceStatsMap.get(key);
+      if (!stat) {
+        stat = { present: 0, late: 0, absent: 0, excused: 0, total: 0 };
+        attendanceStatsMap.set(key, stat);
+      }
+      stat.total++;
+      if (att.status === 'PRESENT') stat.present++;
+      else if (att.status === 'LATE') stat.late++;
+      else if (att.status === 'ABSENT') stat.absent++;
+      else if (att.status === 'EXCUSED') stat.excused++;
+    });
+
+    const policies = await prisma.absenceThresholdPolicy.findMany({
+      where: {
+        OR: [
+          { courseId: { in: courseIds } },
+          { departmentId: null, courseId: null },
+        ],
+      },
+    });
+
+    let blockedCount = 0;
+    let finalWarningCount = 0;
+    let firstWarningCount = 0;
+    let safeCount = 0;
+
+    const warningRecords = enrollments.map((enrollment) => {
+      const courseId = enrollment.courseId;
+      const studentId = enrollment.studentId;
+      const key = `${studentId}_${courseId}`;
+      const stat = attendanceStatsMap.get(key) || { present: 0, late: 0, absent: 0, excused: 0, total: 0 };
+
+      const totalHeld = Math.max(stat.total, courseSessionsCountMap.get(courseId) || 0);
+      const activeTotal = totalHeld - stat.excused;
+
+      let maxAbsencePercent = enrollment.customAbsenceThreshold ?? 25.0;
+      if (enrollment.customAbsenceThreshold === null || enrollment.customAbsenceThreshold === undefined) {
+        const policy = policies.find((p) => p.courseId === courseId) || policies.find((p) => !p.courseId && !p.departmentId);
+        if (policy) maxAbsencePercent = policy.maxAbsencePercent;
+      }
+
+      const calculatedAbsenceCount = stat.absent + stat.late * 0.5;
+      const absencePercent =
+        activeTotal > 0 ? Math.round((calculatedAbsenceCount / activeTotal) * 1000) / 10 : 0;
+
+      const isBlocked = enrollment.status === 'BLOCKED' || absencePercent >= maxAbsencePercent;
+      const isFinalWarning = !isBlocked && absencePercent >= Math.max(0, maxAbsencePercent - 5);
+      const isFirstWarning = !isBlocked && !isFinalWarning && absencePercent >= 10.0;
+
+      let warningStage: 'BLOCKED' | 'FINAL_WARNING' | 'FIRST_WARNING' | 'SAFE' = 'SAFE';
+      if (isBlocked) {
+        warningStage = 'BLOCKED';
+        blockedCount++;
+      } else if (isFinalWarning) {
+        warningStage = 'FINAL_WARNING';
+        finalWarningCount++;
+      } else if (isFirstWarning) {
+        warningStage = 'FIRST_WARNING';
+        firstWarningCount++;
+      } else {
+        safeCount++;
+      }
+
+      return {
+        enrollmentId: enrollment.id,
+        studentId: enrollment.student.id,
+        studentCode: enrollment.student.studentId,
+        studentName: `${enrollment.student.firstName} ${enrollment.student.lastName}`.trim(),
+        studentEmail: enrollment.student.user?.email,
+        studentYear: enrollment.student.year || enrollment.course.year || 1,
+        departmentName: enrollment.student.department?.name,
+        departmentNameAr: enrollment.student.department?.nameAr,
+        collegeName: enrollment.student.department?.college?.name,
+        collegeNameAr: enrollment.student.department?.college?.nameAr,
+        courseId: enrollment.course.id,
+        courseCode: enrollment.course.courseCode,
+        courseName: enrollment.course.name,
+        courseYear: enrollment.course.year,
+        courseSemester: enrollment.course.semester,
+        status: enrollment.status,
+        warningStage,
+        absencePercent,
+        maxAbsencePercent,
+        totalSessions: totalHeld,
+        present: stat.present,
+        late: stat.late,
+        absent: stat.absent,
+        excused: stat.excused,
+        exemptionPeriods: enrollment.exemptionPeriods || [],
+      };
+    });
+
+    const coursesList = Array.from(
+      new Map(
+        enrollments.map((e) => [
+          e.course.id,
+          {
+            id: e.course.id,
+            courseCode: e.course.courseCode,
+            name: e.course.name,
+            year: e.course.year,
+            semester: e.course.semester,
+          },
+        ])
+      ).values()
+    );
+
+    return {
+      isStaff: true,
+      summary: {
+        totalMonitored: enrollments.length,
+        blockedCount,
+        finalWarningCount,
+        firstWarningCount,
+        safeCount,
+      },
+      warningRecords,
+      coursesList,
     };
   }
 }

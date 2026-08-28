@@ -1,5 +1,4 @@
 // @ts-nocheck
-// FIXED: Phase 4 — full i18n for tabs, labels, validation, and placeholders
 import React, { useState, useEffect } from 'react';
 import {
   User,
@@ -15,8 +14,11 @@ import {
   Sun,
   Moon,
   Smartphone,
-  Video,
   Clock,
+  KeyRound,
+  Check,
+  Sparkles,
+  Sliders,
 } from 'lucide-react';
 import {
   getScheduleStartTime,
@@ -28,24 +30,24 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import Card from '../../components/ui/Card';
 import Button from '../../components/ui/button';
-import Input from '../../components/ui/input';
 import Badge from '../../components/ui/Badge';
 import api from '../../services/api';
-import { CAMPUS_HERO_2, UNIVERSITY_PROMO_VIDEO } from '../../constants/universityAssets';
 import { useToast } from '../../context/ToastContext';
 import { FEATURE_FLAGS } from '../../constants/featureFlags';
 
-const SettingsPage = () => {
+export function SettingsPage() {
   const { t } = useTranslation();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, isRTL } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('account');
-  const [videoError, setVideoError] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
+  const { showToast } = useToast();
 
+  const [activeTab, setActiveTab] = useState<'account' | 'security' | 'appearance' | 'system'>('account');
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<any>({});
+
+  // Account Data
   const [accountData, setAccountData] = useState({
     firstName: '',
     lastName: '',
@@ -55,721 +57,467 @@ const SettingsPage = () => {
   useEffect(() => {
     if (user) {
       setAccountData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        phone: user.phone || '',
+        firstName: user.profile?.firstName || user.firstName || '',
+        lastName: user.profile?.lastName || user.lastName || '',
+        phone: user.profile?.phone || user.phone || '',
       });
     }
   }, [user]);
+
+  // Password Data
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
-  const [loading, setLoading] = useState(false);
-  const { showToast } = useToast();
-  const [errors, setErrors] = useState<any>({});
+
+  // Schedule Config State
   const [scheduleStartTime, setScheduleStartTimeState] = useState(getScheduleStartTime);
   const [scheduleTimeStep, setScheduleTimeStepState] = useState(getScheduleTimeStep);
-
-  const handleSaveScheduleConfig = (e) => {
-    e.preventDefault();
-    setScheduleStartTime(scheduleStartTime);
-    setScheduleTimeStep(scheduleTimeStep);
-    showToast(t('settings.scheduleConfigSaved', 'Schedule start time and step settings saved successfully!'), 'success');
-  };
 
   const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(user?.role);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const twoFactorEnabled = Boolean(user?.twoFactorEnabled);
 
-  useEffect(() => {
-    const handler = (e) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [isDirty]);
-
-
-  const validateAccount = () => {
-    const newErrors: Record<string, unknown> = {};
-    if (!accountData.firstName.trim()) newErrors.firstName = t('settings.firstNameRequired');
-    if (!accountData.lastName.trim()) newErrors.lastName = t('settings.lastNameRequired');
-    if (accountData.phone && !/^\+?[\d\s-]{8,}$/.test(accountData.phone)) {
-      newErrors.phone = t('settings.phoneInvalid');
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleAccountUpdate = async (e) => {
+  const handleAccountUpdate = async (e: any) => {
     e.preventDefault();
-    if (!validateAccount()) return;
+    if (!accountData.firstName.trim() || !accountData.lastName.trim()) {
+      showToast(isRTL ? 'يرجى إدخال الاسم الأول واسم العائلة' : 'Please enter both first and last name', 'error');
+      return;
+    }
 
     setLoading(true);
     try {
       await api.put('/users/profile', accountData);
-      showToast(t('settings.profileUpdated'), 'success');
-      setIsDirty(false);
+      showToast(t('settings.profileUpdated', 'Profile updated successfully'), 'success');
     } catch (error: any) {
-      showToast(error.response?.data?.message || t('settings.profileUpdateError'), 'error');
+      showToast(error.response?.data?.message || t('settings.profileUpdateError', 'Error updating profile'), 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const validatePassword = () => {
-    const newErrors: Record<string, unknown> = {};
-    if (!passwordData.currentPassword)
-      newErrors.currentPassword = t('settings.currentPasswordRequired');
-    if (passwordData.newPassword.length < 6) newErrors.newPassword = t('settings.newPasswordMin');
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      newErrors.confirmPassword = t('settings.passwordMismatch');
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handlePasswordChange = async (e) => {
+  const handlePasswordChange = async (e: any) => {
     e.preventDefault();
-    if (!validatePassword()) return;
+    if (!passwordData.currentPassword) {
+      showToast(isRTL ? 'يرجى إدخال كلمة المرور الحالية' : 'Current password is required', 'error');
+      return;
+    }
+    if (passwordData.newPassword.length < 8) {
+      showToast(isRTL ? 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' : 'Password must be at least 8 characters', 'error');
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      showToast(isRTL ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match', 'error');
+      return;
+    }
 
     setLoading(true);
     try {
-      await api.put('/users/profile/password', passwordData);
-      showToast(t('settings.passwordUpdated'), 'success');
+      await api.patch('/users/profile/password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      showToast(t('settings.passwordUpdated', 'Password updated successfully'), 'success');
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setErrors({});
-      setIsDirty(false);
     } catch (error: any) {
-      showToast(error.response?.data?.message || t('settings.passwordUpdateError'), 'error');
+      showToast(error.response?.data?.message || t('settings.passwordUpdateError', 'Error updating password'), 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSaveScheduleConfig = (e: any) => {
+    e.preventDefault();
+    setScheduleStartTime(scheduleStartTime);
+    setScheduleTimeStep(scheduleTimeStep);
+    showToast(t('settings.scheduleConfigSaved', 'Schedule settings saved successfully'), 'success');
+  };
+
+  const roleLabel = user?.role
+    ? user.role === 'SUPER_ADMIN'
+      ? isRTL ? 'مدير عام النظام' : 'Super Admin'
+      : user.role === 'ADMIN'
+      ? isRTL ? 'مدير النظام' : 'System Admin'
+      : user.role === 'DOCTOR'
+      ? isRTL ? 'عضو هيئة تدريس' : 'Faculty Doctor'
+      : user.role === 'TEACHING_ASSISTANT'
+      ? isRTL ? 'مساعد تدريس' : 'Teaching Assistant'
+      : isRTL ? 'طالب جامعي' : 'Student'
+    : '';
+
   const tabs = [
-    { id: 'account', label: t('settings.account'), icon: User },
-    { id: 'security', label: t('settings.security'), icon: Shield },
-    { id: 'appearance', label: t('settings.appearance'), icon: Palette },
-    ...(isAdmin ? [{ id: 'system', label: t('settings.system'), icon: Database }] : []),
+    { id: 'account', label: isRTL ? 'الحساب والبيانات' : 'Account & Info', icon: User },
+    { id: 'security', label: isRTL ? 'الأمان وكلمة المرور' : 'Security & Password', icon: Shield },
+    { id: 'appearance', label: isRTL ? 'المظهر واللغة' : 'Appearance & Theme', icon: Palette },
+    ...(isAdmin ? [{ id: 'system', label: isRTL ? 'إعدادات النظام والجدول' : 'System & Timetable', icon: Sliders }] : []),
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      
-
+    <div className="space-y-4 animate-in fade-in duration-200">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-brand-text-primary tracking-tight m-0">
-            {t('nav.settings')}
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+            {t('nav.settings', 'Settings')}
           </h1>
-          <p className="text-brand-text-sub font-bold mt-1.5">{t('settings.subtitle')}</p>
+          <p className="text-xs text-slate-400 font-semibold mt-0.5">
+            {t('settings.subtitle', 'Manage your account and platform preferences')}
+          </p>
         </div>
-        <Badge variant="info" className="px-3 py-1.5 text-xs font-black uppercase tracking-widest">
-          {user?.role?.replace('_', ' ')}
+        <Badge variant="info" className="text-xs font-bold">
+          {roleLabel}
         </Badge>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-        {/* Sidebar Tabs — compact card */}
-        <div className="lg:col-span-1 space-y-4">
-          <Card className="p-1.5">
-            <nav className="space-y-0.5">
-              {tabs.map((tab) => (
+      {/* Modern Segmented Navigation Tabs */}
+      <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-fit">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === tab.id
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Icon size={14} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Tab 1: Account Information ── */}
+      {activeTab === 'account' && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs">
+          <form onSubmit={handleAccountUpdate} className="space-y-4">
+            <div className="border-b border-slate-100 dark:border-slate-700/60 pb-3">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                {t('settings.accountInfo', 'Account Information')}
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {t('settings.accountInfoDesc', 'Update your personal details and contact info')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+              {/* First Name */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('auth.firstName', 'First Name')}
+                </label>
+                <input
+                  type="text"
+                  value={accountData.firstName}
+                  onChange={(e) => setAccountData({ ...accountData, firstName: e.target.value })}
+                  placeholder={t('settings.firstNamePlaceholder', 'Enter your first name')}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              {/* Last Name */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('auth.lastName', 'Last Name')}
+                </label>
+                <input
+                  type="text"
+                  value={accountData.lastName}
+                  onChange={(e) => setAccountData({ ...accountData, lastName: e.target.value })}
+                  placeholder={t('settings.lastNamePlaceholder', 'Enter your last name')}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('profile.phone', 'Phone Number')}
+                </label>
+                <input
+                  type="tel"
+                  value={accountData.phone}
+                  onChange={(e) => setAccountData({ ...accountData, phone: e.target.value })}
+                  placeholder="010XXXXXXXX"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              {/* Email (Read-only) */}
+              <div className="sm:col-span-2 md:col-span-3">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('auth.emailAddress', 'Email Address')}
+                </label>
+                <input
+                  type="email"
+                  value={user?.email || ''}
+                  disabled
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-900/60 text-slate-500 font-mono cursor-not-allowed opacity-80"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  {t('settings.emailCannotBeChanged', 'Email cannot be changed')}
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => (window.location.href = '/profile')}
+                className="text-xs font-semibold"
+              >
+                {t('settings.viewProfile', 'View Full Profile')}
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={loading}
+                className="bg-brand-primary-600 hover:bg-brand-primary-700 text-white text-xs font-bold cursor-pointer"
+              >
+                {loading ? t('common.loading', 'Loading...') : t('common.saveChanges', 'Save Changes')}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ── Tab 2: Security & Password ── */}
+      {activeTab === 'security' && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs">
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <div className="border-b border-slate-100 dark:border-slate-700/60 pb-3">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                {t('settings.password', 'Change Password')}
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {t('settings.passwordDesc', 'Update your account password')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              {/* Current Password */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('settings.currentPassword', 'Current Password')}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              {/* New Password */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('settings.newPassword', 'New Password')}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  placeholder="8 أحرف على الأقل"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('settings.confirmPassword', 'Confirm New Password')}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  placeholder="تأكيد الكلمة"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex justify-end">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={loading}
+                className="bg-brand-primary-600 hover:bg-brand-primary-700 text-white text-xs font-bold cursor-pointer"
+              >
+                {loading ? t('common.loading', 'Loading...') : t('settings.updatePassword', 'Update Password')}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ── Tab 3: Appearance & Language ── */}
+      {activeTab === 'appearance' && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs space-y-4">
+          <div className="border-b border-slate-100 dark:border-slate-700/60 pb-3">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+              {t('settings.appearanceTitle', 'Appearance & Localization')}
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {t('settings.appearanceDesc', 'Customize your visual experience and language')}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Dark Mode Toggle */}
+            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-2xs">
+                  {isDark ? <Moon size={18} className="text-brand-primary-400" /> : <Sun size={18} className="text-amber-500" />}
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                    {t('settings.darkMode', 'Dark Mode')}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {isDark ? (isRTL ? 'الوضع الليلي مفعل حالياً' : 'Dark mode is active') : (isRTL ? 'الوضع النهاري مفعل حالياً' : 'Light mode is active')}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={toggleTheme}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                  isDark ? 'bg-brand-primary-600' : 'bg-slate-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform ${
+                    isDark ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Language Switcher */}
+            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-2xs">
+                  <Globe size={18} className="text-brand-primary-500" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                    {t('settings.language', 'Display Language')}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {language === 'ar' ? 'العربية (Arabic)' : 'English (الإنجليزية)'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
-                    activeTab === tab.id
-                      ? 'bg-brand-primary-600 text-white shadow-sm shadow-brand-primary-600/20'
-                      : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-surface-subtle'
+                  type="button"
+                  onClick={() => setLanguage('ar')}
+                  className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                    language === 'ar' ? 'bg-brand-primary-600 text-white' : 'text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  <tab.icon
-                    size={16}
-                    className={`shrink-0 ${activeTab === tab.id ? 'text-white' : 'text-brand-text-muted'}`}
-                  />
-                  <span className="text-xs font-black uppercase tracking-widest">{tab.label}</span>
+                  عربي
                 </button>
-              ))}
-            </nav>
-          </Card>
-
-          <Button
-            variant="outline"
-            className="w-full justify-start gap-3 text-error border-error/20 hover:bg-error/5 hover:border-error/30 text-xs font-black uppercase tracking-widest"
-            onClick={logout}
-          >
-            <LogOut size={16} className="rtl:-scale-x-100" /> {t('nav.logout')}
-          </Button>
-        </div>
-
-        {/* Content Area */}
-        <div className="lg:col-span-4 xl:col-span-5 space-y-6">
-          {/* ── Account Tab ── */}
-          {activeTab === 'account' && (
-            <Card>
-              <div className="px-6 py-5 border-b border-brand-border">
-                <h2 className="text-lg font-black text-brand-text-primary tracking-tight m-0">
-                  {t('settings.accountInfo')}
-                </h2>
-                <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                  {t('settings.accountInfoDesc')}
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setLanguage('en')}
+                  className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                    language === 'en' ? 'bg-brand-primary-600 text-white' : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  English
+                </button>
               </div>
-
-              <div className="p-6 bg-gradient-to-r from-brand-primary-50/50 to-transparent border-b border-brand-border">
-                <div className="flex items-center gap-5">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-brand-primary-500 to-brand-primary-600 flex items-center justify-center text-white text-xl font-black shadow-lg shrink-0">
-                    {user?.firstName?.[0]}
-                    {user?.lastName?.[0]}
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-black text-brand-text-primary">
-                      {user?.firstName} {user?.lastName}
-                    </h3>
-                    <p className="text-sm font-semibold text-brand-text-muted">{user?.email}</p>
-                    <Badge
-                      variant="info"
-                      className="mt-1.5 text-[10px] px-2.5 py-0.5 font-black uppercase tracking-widest"
-                    >
-                      {user?.role?.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              <form onSubmit={handleAccountUpdate}>
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">
-                        {t('auth.firstName')}
-                      </label>
-                      <input
-                        value={accountData.firstName}
-                        onChange={(e) => {
-                          setAccountData({ ...accountData, firstName: e.target.value });
-                          setIsDirty(true);
-                          if (errors.firstName) setErrors({ ...errors, firstName: null });
-                        }}
-                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.firstName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
-                        placeholder={t('settings.firstNamePlaceholder')}
-                      />
-                      {errors.firstName && (
-                        <p className="text-[10px] font-bold text-error uppercase tracking-widest">
-                          {errors.firstName}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">
-                        {t('auth.lastName')}
-                      </label>
-                      <input
-                        value={accountData.lastName}
-                        onChange={(e) => {
-                          setAccountData({ ...accountData, lastName: e.target.value });
-                          setIsDirty(true);
-                          if (errors.lastName) setErrors({ ...errors, lastName: null });
-                        }}
-                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.lastName ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
-                        placeholder={t('settings.lastNamePlaceholder')}
-                      />
-                      {errors.lastName && (
-                        <p className="text-[10px] font-bold text-error uppercase tracking-widest">
-                          {errors.lastName}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">
-                        {t('profile.phone')}
-                      </label>
-                      <input
-                        value={accountData.phone}
-                        onChange={(e) => {
-                          setAccountData({ ...accountData, phone: e.target.value });
-                          setIsDirty(true);
-                          if (errors.phone) setErrors({ ...errors, phone: null });
-                        }}
-                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.phone ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
-                        placeholder={t('settings.phonePlaceholder')}
-                      />
-                      {errors.phone && (
-                        <p className="text-[10px] font-bold text-error uppercase tracking-widest">
-                          {errors.phone}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">
-                        {t('auth.emailAddress')}
-                      </label>
-                      <input
-                        value={user?.email || ''}
-                        disabled
-                        className="w-full px-4 py-2.5 bg-surface-subtle/50 dark:bg-slate-800/50 border border-brand-border rounded-xl text-sm font-bold text-brand-text-muted cursor-not-allowed"
-                      />
-                      <p className="text-[10px] font-bold text-brand-text-muted uppercase tracking-widest">
-                        {t('settings.emailCannotBeChanged')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="px-6 py-4 bg-surface-subtle/50 border-t border-brand-border flex justify-end gap-3">
-                  <Button
-                    variant="outline"
-                    type="button"
-                    onClick={() => (window.location.href = '/profile')}
-                    className="text-xs font-black uppercase tracking-widest"
-                  >
-                    {t('settings.viewProfile')}
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="text-xs font-black uppercase tracking-widest"
-                  >
-                    {loading ? (
-                      <Loader2 className="animate-spin" size={16} />
-                    ) : (
-                      t('common.saveChanges')
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </Card>
-          )}
-
-          {/* ── Security Tab ── */}
-          {activeTab === 'security' && (
-            <div className="space-y-6">
-              <Card>
-                <div className="px-6 py-5 border-b border-brand-border">
-                  <h2 className="text-lg font-black text-brand-text-primary tracking-tight m-0">
-                    {t('settings.password')}
-                  </h2>
-                  <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                    {t('settings.passwordDesc')}
-                  </p>
-                </div>
-                <form onSubmit={handlePasswordChange}>
-                  <div className="p-6 space-y-5">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">
-                        {t('settings.currentPassword')}
-                      </label>
-                      <input
-                        type="password"
-                        value={passwordData.currentPassword}
-                        onChange={(e) => {
-                          setPasswordData({ ...passwordData, currentPassword: e.target.value });
-                          setIsDirty(true);
-                          if (errors.currentPassword)
-                            setErrors({ ...errors, currentPassword: null });
-                        }}
-                        className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.currentPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
-                        placeholder={t('auth.passwordPlaceholder')}
-                      />
-                      {errors.currentPassword && (
-                        <p className="text-[10px] font-bold text-error uppercase tracking-widest">
-                          {errors.currentPassword}
-                        </p>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">
-                          {t('settings.newPassword')}
-                        </label>
-                        <input
-                          type="password"
-                          value={passwordData.newPassword}
-                          onChange={(e) => {
-                            setPasswordData({ ...passwordData, newPassword: e.target.value });
-                            setIsDirty(true);
-                            if (errors.newPassword) setErrors({ ...errors, newPassword: null });
-                          }}
-                          className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.newPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
-                          placeholder={t('settings.minPasswordPlaceholder')}
-                        />
-                        {errors.newPassword && (
-                          <p className="text-[10px] font-bold text-error uppercase tracking-widest">
-                            {errors.newPassword}
-                          </p>
-                        )}
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">
-                          {t('settings.confirmPassword')}
-                        </label>
-                        <input
-                          type="password"
-                          value={passwordData.confirmPassword}
-                          onChange={(e) => {
-                            setPasswordData({ ...passwordData, confirmPassword: e.target.value });
-                            setIsDirty(true);
-                            if (errors.confirmPassword)
-                              setErrors({ ...errors, confirmPassword: null });
-                          }}
-                          className={`w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border rounded-xl text-sm font-bold text-brand-text-primary placeholder:text-brand-text-muted focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all ${errors.confirmPassword ? 'border-error focus:ring-error/20' : 'border-brand-border'}`}
-                          placeholder={t('settings.repeatPasswordPlaceholder')}
-                        />
-                        {errors.confirmPassword && (
-                          <p className="text-[10px] font-bold text-error uppercase tracking-widest">
-                            {errors.confirmPassword}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="px-6 py-4 bg-surface-subtle/50 border-t border-brand-border flex justify-end">
-                    <Button
-                      type="submit"
-                      disabled={loading}
-                      className="text-xs font-black uppercase tracking-widest"
-                    >
-                      {loading ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : (
-                        t('settings.updatePassword')
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </Card>
-
-              <Card>
-                <div className="px-6 py-5 border-b border-brand-border">
-                  <h2 className="text-lg font-black text-brand-text-primary tracking-tight m-0">
-                    {t('settings.twoFactor')}
-                  </h2>
-                  <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                    {t('settings.twoFactorDesc')}
-                  </p>
-                </div>
-                <div className="p-6 space-y-4">
-                  {FEATURE_FLAGS.REQUIRE_2FA && isSuperAdmin && !twoFactorEnabled && (
-                    <div className="p-4 rounded-xl border-2 border-brand-accent-yellow bg-brand-accent-yellow/10 flex items-start gap-3">
-                      <AlertCircle className="text-brand-accent-yellow shrink-0 mt-0.5" size={20} />
-                      <p className="text-sm font-bold text-brand-text-primary">
-                        {t('settings.twoFactorWarning')}
-                      </p>
-                    </div>
-                  )}
-                  <div
-                    className={`flex items-center justify-between p-4 rounded-xl border bg-brand-bg-page/30 hover:bg-brand-bg-page/50 transition-all ${
-                      FEATURE_FLAGS.REQUIRE_2FA && isSuperAdmin && !twoFactorEnabled
-                        ? 'border-brand-accent-yellow'
-                        : 'border-brand-border'
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center text-brand-text-sub shadow-sm">
-                        <Smartphone size={18} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-brand-text-primary">
-                          {t('settings.authenticatorApp')}
-                        </p>
-                        <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                          {t('settings.authenticatorDesc')}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="text-xs font-black uppercase tracking-widest"
-                    >
-                      {t('common.setup')}
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-xl border border-brand-border bg-brand-bg-page/30 opacity-60">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center text-brand-text-sub shadow-sm">
-                        <Lock size={18} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-brand-text-primary">
-                          {t('settings.securityKeys')}
-                        </p>
-                        <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                          {t('settings.securityKeysDesc')}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge
-                      variant="neutral"
-                      className="text-[10px] font-black uppercase tracking-widest"
-                    >
-                      {t('common.comingSoon')}
-                    </Badge>
-                  </div>
-                </div>
-              </Card>
             </div>
-          )}
-
-          {/* ── Appearance Tab ── */}
-          {activeTab === 'appearance' && (
-            <Card>
-              <div className="px-6 py-5 border-b border-brand-border">
-                <h2 className="text-lg font-black text-brand-text-primary tracking-tight m-0">
-                  {t('settings.appearanceTitle')}
-                </h2>
-                <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                  {t('settings.appearanceDesc')}
-                </p>
-              </div>
-              <div className="p-6 space-y-6">
-                <div className="flex items-center justify-between p-4 rounded-xl border border-brand-border bg-brand-bg-page/30">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center shadow-sm">
-                      {isDark ? (
-                        <Moon size={18} className="text-brand-navy-500" />
-                      ) : (
-                        <Sun size={18} className="text-brand-accent-yellow" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-brand-text-primary">
-                        {t('settings.darkMode')}
-                      </p>
-                      <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                        {t('settings.darkModeDesc')}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={toggleTheme}
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary-600/30 shrink-0 ${isDark ? 'bg-brand-primary-600' : 'bg-slate-200'}`}
-                  >
-                    <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${isDark ? 'translate-x-6' : 'translate-x-1'}`}
-                    />
-                  </button>
-                </div>
-                <p className="text-xs text-brand-text-muted mt-2">
-                  {t('settings.themeNote') || 'You can also toggle theme from the header toolbar.'}
-                </p>
-
-                <div className="flex items-center justify-between p-4 rounded-xl border border-brand-border bg-brand-bg-page/30">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center shadow-sm">
-                      <Globe size={18} className="text-brand-primary-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-brand-text-primary">
-                        {t('settings.language')}
-                      </p>
-                      <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                        {t('settings.languageDesc')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setLanguage('en')}
-                      className={`px-3.5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${language === 'en' ? 'bg-brand-navy-500 text-white shadow-sm' : 'bg-surface-subtle text-brand-text-secondary hover:bg-brand-navy-500/10'}`}
-                    >
-                      EN
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLanguage('ar')}
-                      className={`px-3.5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${language === 'ar' ? 'bg-brand-navy-500 text-white shadow-sm' : 'bg-surface-subtle text-brand-text-secondary hover:bg-brand-navy-500/10'}`}
-                    >
-                      AR
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {/* ── System Tab ── */}
-          {activeTab === 'system' && isAdmin && (
-            <div className="space-y-6">
-              <Card>
-                <div className="px-6 py-5 border-b border-brand-border flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-black text-brand-text-primary tracking-tight m-0">
-                      {t('settings.scheduleTimingConfig', 'إعدادات توقيت المحاضرات والجدول')}
-                    </h2>
-                    <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                      {t('settings.scheduleTimingConfigDesc', 'تعديل توقيت بداية جدول المحاضرات والمرونة الزمنية بسهولة')}
-                    </p>
-                  </div>
-                  <Badge variant="primary" className="text-[10px] font-black uppercase tracking-widest">
-                    SUPER ADMIN
-                  </Badge>
-                </div>
-                <form onSubmit={handleSaveScheduleConfig} className="p-6 space-y-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">
-                        {t('settings.lectureStartTime', 'توقيت بداية المحاضرات الرسمية')}
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <Clock size={18} className="text-brand-primary-500 shrink-0" />
-                        <select
-                          value={scheduleStartTime}
-                          onChange={(e) => {
-                            setScheduleStartTimeState(e.target.value);
-                            setIsDirty(true);
-                          }}
-                          className="w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-xl text-sm font-bold text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all cursor-pointer"
-                        >
-                          <option value="07:00">07:00 AM</option>
-                          <option value="08:00">08:00 AM</option>
-                          <option value="09:00">09:00 AM ({t('common.recommended', 'مستحسن')})</option>
-                          <option value="10:00">10:00 AM</option>
-                          <option value="11:00">11:00 AM</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-black text-brand-text-muted uppercase tracking-widest ms-1">
-                        {t('settings.scheduleStepMinutes', 'خطوة المرونة الزمنية (كل 3 دقائق)')}
-                      </label>
-                      <select
-                        value={scheduleTimeStep}
-                        onChange={(e) => {
-                          setScheduleTimeStepState(Number(e.target.value));
-                          setIsDirty(true);
-                        }}
-                        className="w-full px-4 py-2.5 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border rounded-xl text-sm font-bold text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary-600/20 transition-all cursor-pointer"
-                      >
-                        <option value="3">كل 3 دقائق (Every 3 mins)</option>
-                        <option value="5">كل 5 دقائق (Every 5 mins)</option>
-                        <option value="15">كل 15 دقيقة (Every 15 mins)</option>
-                        <option value="30">كل 30 دقيقة (Every 30 mins)</option>
-                        <option value="60">كل 60 دقيقة (Every hour)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-3 border-t border-brand-border">
-                    <Button type="submit" className="text-xs font-black uppercase tracking-widest">
-                      {t('common.saveChanges', 'حفظ التغييرات')}
-                    </Button>
-                  </div>
-                </form>
-              </Card>
-
-              <Card>
-                <div className="px-6 py-5 border-b border-brand-border">
-                  <h2 className="text-lg font-black text-brand-text-primary tracking-tight m-0">
-                    {t('settings.systemAdmin')}
-                  </h2>
-                  <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                    {t('settings.systemAdminDesc')}
-                  </p>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-xl border border-brand-border bg-brand-bg-page/30 hover:bg-brand-bg-page/50 transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center shadow-sm">
-                        <Database size={18} className="text-brand-navy-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-brand-text-primary">
-                          {t('settings.maintenanceMode')}
-                        </p>
-                        <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                          {t('settings.maintenanceDesc')}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge
-                      variant="info"
-                      className="text-[10px] font-black uppercase tracking-widest"
-                    >
-                      {t('common.disabled')}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-xl border border-brand-border bg-brand-bg-page/30 hover:bg-brand-bg-page/50 transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-brand-bg-card border border-brand-border flex items-center justify-center shadow-sm">
-                        <Shield size={18} className="text-brand-green" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-brand-text-primary">
-                          {t('settings.registrationLock')}
-                        </p>
-                        <p className="text-xs font-semibold text-brand-text-muted mt-0.5">
-                          {t('settings.registrationDesc')}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge
-                      variant="success"
-                      className="text-[10px] font-black uppercase tracking-widest"
-                    >
-                      {t('common.open')}
-                    </Badge>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-[2rem] shadow-elevated border border-brand-border">
-        {!videoError ? (
-          <video
-            className="w-full max-h-[480px] bg-black object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            onError={() => setVideoError(true)}
-            poster={CAMPUS_HERO_2}
-          >
-            <source src={UNIVERSITY_PROMO_VIDEO} type="video/mp4" />
-            <track kind="captions" />
-            <p className="p-4 text-sm text-brand-text-muted">
-              {t('settings.videoUnsupported', 'Your browser does not support video playback.')}
-            </p>
-          </video>
-        ) : (
-          <div className="w-full aspect-video rounded-2xl bg-surface-subtle border border-brand-border flex flex-col items-center justify-center gap-3 text-brand-text-muted">
-            <Video size={48} className="opacity-30" />
-            <p className="text-sm font-bold">
-              {t('settings.videoUnavailable') || 'Video currently unavailable'}
-            </p>
-          </div>
-        )}
-        <div className="bg-brand-navy-500 px-6 py-5">
-          <h3 className="text-lg font-black text-white">{t('settings.universityPromoTitle')}</h3>
-          <div className="mt-1 flex items-start gap-4">
-            <p className="text-sm font-medium text-white/60 flex-1">
-              {t('settings.universityPromoDesc')}
-            </p>
-            <img
-              src={CAMPUS_HERO_2}
-              alt=""
-              className="h-12 w-20 rounded-lg object-cover opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Tab 4: System & Timetable Config (Admin Only) ── */}
+      {activeTab === 'system' && isAdmin && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs space-y-4">
+          <div className="border-b border-slate-100 dark:border-slate-700/60 pb-3 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                {t('settings.scheduleTimingConfig', 'Schedule Timing Configuration')}
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {t('settings.scheduleTimingConfigDesc', 'Configure daily lecture start time and duration intervals across the university.')}
+              </p>
+            </div>
+            <Badge variant="primary" className="text-xs font-bold">
+              SUPER ADMIN
+            </Badge>
+          </div>
+
+          <form onSubmit={handleSaveScheduleConfig} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Lecture Start Time */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('settings.lectureStartTime', 'Daily Schedule Start Time')}
+                </label>
+                <div className="flex items-center gap-2">
+                  <Clock size={16} className="text-brand-primary-500 shrink-0" />
+                  <select
+                    value={scheduleStartTime}
+                    onChange={(e) => setScheduleStartTimeState(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer"
+                  >
+                    <option value="07:00">07:00 AM</option>
+                    <option value="08:00">08:00 AM</option>
+                    <option value="09:00">09:00 AM ({isRTL ? 'مستحسن' : 'Recommended'})</option>
+                    <option value="10:00">10:00 AM</option>
+                    <option value="11:00">11:00 AM</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Schedule Time Step */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('settings.scheduleStepMinutes', 'Session Interval (Minutes)')}
+                </label>
+                <select
+                  value={scheduleTimeStep}
+                  onChange={(e) => setScheduleTimeStepState(Number(e.target.value))}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer"
+                >
+                  <option value="3">كل 3 دقائق (Every 3 mins)</option>
+                  <option value="5">كل 5 دقائق (Every 5 mins)</option>
+                  <option value="15">كل 15 دقيقة (Every 15 mins)</option>
+                  <option value="30">كل 30 دقيقة (Every 30 mins)</option>
+                  <option value="60">كل 60 دقيقة (Every hour)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex justify-end">
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-brand-primary-600 hover:bg-brand-primary-700 text-white text-xs font-bold cursor-pointer"
+              >
+                {t('common.saveChanges', 'Save Changes')}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
-};
+}
 
 export default SettingsPage;

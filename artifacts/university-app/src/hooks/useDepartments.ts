@@ -6,9 +6,10 @@ interface UseDepartmentsOptions {
   initialPage?: number;
   limit?: number;
   initialSearch?: string;
+  collegeId?: string | number;
 }
 
-export function useDepartments({ initialPage = 1, limit = 10, initialSearch = '' }: UseDepartmentsOptions = {}) {
+export function useDepartments({ initialPage = 1, limit = 50, initialSearch = '', collegeId }: UseDepartmentsOptions = {}) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +21,10 @@ export function useDepartments({ initialPage = 1, limit = 10, initialSearch = ''
   const fetchData = useCallback(async (extraParams: Record<string, unknown> = {}) => {
     setLoading(true);
     setError(null);
-    const params = { page, limit, search: debouncedSearch, ...extraParams };
+    const params: Record<string, any> = { page, limit, search: debouncedSearch, ...extraParams };
+    if (collegeId) {
+      params.collegeId = collegeId;
+    }
     try {
       const res = await departmentService.getDepartments(params);
       if (res.success) {
@@ -35,7 +39,7 @@ export function useDepartments({ initialPage = 1, limit = 10, initialSearch = ''
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch]);
+  }, [page, limit, debouncedSearch, collegeId]);
 
   useEffect(() => {
     fetchData();

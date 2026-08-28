@@ -19,6 +19,7 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
     limit = '10',
     sortBy = 'createdAt',
     sortOrder = 'desc',
+    collegeId,
     departmentId,
     year,
     semester,
@@ -41,9 +42,10 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
 
   const where: any = {
     ...scopeWhere,
-    ...(departmentId && { departmentId: parseInt(departmentId as string) }),
-    ...(year && { year: parseInt(year as string) }),
-    ...(semester && { semester: parseInt(semester as string) }),
+    ...(collegeId && { department: { collegeId: parseInt(collegeId as string, 10) } }),
+    ...(departmentId && { departmentId: parseInt(departmentId as string, 10) }),
+    ...(year && { year: parseInt(year as string, 10) }),
+    ...(semester && { semester: parseInt(semester as string, 10) }),
     ...(search && {
       OR: [
         { name: { contains: search as string, mode: 'insensitive' } },
@@ -56,7 +58,14 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
     prisma.course.findMany({
       where,
       include: {
-        department: { select: { name: true, nameAr: true } },
+        department: {
+          select: {
+            id: true,
+            name: true,
+            nameAr: true,
+            college: { select: { id: true, name: true, nameAr: true } },
+          },
+        },
         scheduleSlots: {
           include: {
             doctor: { select: { id: true, firstName: true, lastName: true } },
@@ -380,10 +389,11 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
  */
 export const deleteCourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
+  const courseId = parseInt(id as string, 10);
 
   // Ensure scoped ADMIN can only delete within their managed college
   const existingCourse = await prisma.course.findUnique({
-    where: { id: parseInt(id as string) },
+    where: { id: courseId },
     include: { department: { select: { collegeId: true } } },
   });
   if (!existingCourse) return next(new NotFoundError('Course not found'));
@@ -393,10 +403,97 @@ export const deleteCourse = catchAsync(async (req: Request, res: Response, next:
     }
   }
 
-  await prisma.$transaction([
-    prisma.attendance.deleteMany({ where: { courseId: parseInt(id as string) } }),
-    prisma.course.delete({ where: { id: parseInt(id as string) } }),
-  ]);
+  await prisma.$transaction(async (tx) => {
+    // 1. Delete Attendance records linked directly or via schedule slots
+    const slots = await tx.scheduleSlot.findMany({
+      where: { courseId },
+      select: { id: true },
+    });
+    const slotIds = slots.map((s) => s.id);
+
+    await tx.attendance.deleteMany({
+      where: {
+        OR: [
+          { courseId },
+          ...(slotIds.length > 0 ? [{ scheduleSlotId: { in: slotIds } }] : []),
+        ],
+      },
+    });
+
+    // 2. Delete Quizzes and submissions
+    const quizzes = await tx.quiz.findMany({
+      where: { courseId },
+      select: { id: true },
+    });
+    if (quizzes.length > 0) {
+      const quizIds = quizzes.map((q) => q.id);
+      await tx.quizSubmission.deleteMany({ where: { quizId: { in: quizIds } } });
+      await tx.question.deleteMany({ where: { quizId: { in: quizIds } } });
+      await tx.quiz.deleteMany({ where: { courseId } });
+    }
+
+    // 3. Delete Tasks and submissions
+    const tasks = await tx.task.findMany({
+      where: { courseId },
+      select: { id: true },
+    });
+    if (tasks.length > 0) {
+      const taskIds = tasks.map((t) => t.id);
+      await tx.taskSubmission.deleteMany({ where: { taskId: { in: taskIds } } });
+      await tx.task.deleteMany({ where: { courseId } });
+    }
+
+    // 4. Delete Exams and submissions
+    const exams = await tx.exam.findMany({
+      where: { courseId },
+      select: { id: true },
+    });
+    if (exams.length > 0) {
+      const examIds = exams.map((e) => e.id);
+      await tx.examViolation.deleteMany({
+        where: { submission: { examId: { in: examIds } } },
+      });
+      await tx.examSubmission.deleteMany({ where: { examId: { in: examIds } } });
+      await tx.examQuestion.deleteMany({ where: { examId: { in: examIds } } });
+      await tx.exam.deleteMany({ where: { courseId } });
+    }
+
+    // 5. Delete Course Materials
+    await tx.courseMaterial.deleteMany({ where: { courseId } });
+
+    // 6. Delete Schedule Change Requests
+    await tx.scheduleChangeRequest.deleteMany({ where: { courseId } });
+
+    // 7. Delete Absence Threshold Policies
+    await tx.absenceThresholdPolicy.deleteMany({ where: { courseId } });
+
+    // 8. Delete Enrollments & Exemption Periods
+    const enrollments = await tx.enrollment.findMany({
+      where: { courseId },
+      select: { id: true },
+    });
+    if (enrollments.length > 0) {
+      const enrollmentIds = enrollments.map((en) => en.id);
+      await tx.absenceExemptionPeriod.deleteMany({
+        where: { enrollmentId: { in: enrollmentIds } },
+      });
+      await tx.enrollment.deleteMany({ where: { courseId } });
+    }
+
+    // 9. Delete Schedule Slots and their overrides/sessions
+    if (slotIds.length > 0) {
+      await tx.scheduleOverride.deleteMany({
+        where: { scheduleSlotId: { in: slotIds } },
+      });
+      await tx.attendanceSession.deleteMany({
+        where: { scheduleSlotId: { in: slotIds } },
+      });
+      await tx.scheduleSlot.deleteMany({ where: { courseId } });
+    }
+
+    // 10. Delete the Course itself
+    await tx.course.delete({ where: { id: courseId } });
+  });
 
   auditLog('DELETE_COURSE', 'Course', req.params.id as string, req);
   res.json({

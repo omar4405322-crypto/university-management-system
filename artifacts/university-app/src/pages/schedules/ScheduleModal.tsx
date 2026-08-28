@@ -385,7 +385,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
                 value={selectedCollegeId}
                 onChange={handleCollegeChange}
                 placeholder={loadingColleges ? t('common.loading', 'Loading...') : t('timetables.selectCollege', 'All Colleges')}
-                searchPlaceholder={t('common.searchCollege', 'ابحث باسم الكلية...')}
+                searchPlaceholder={t('common.searchCollege', 'common.searchCollege')}
                 disabled={!!schedule || loadingColleges}
                 isRTL={isRTL}
                 icon={<Building2 size={16} />}
@@ -401,7 +401,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
                 value={selectedDepartmentId}
                 onChange={handleDepartmentChange}
                 placeholder={loadingDepts ? t('common.loading', 'Loading...') : t('timetables.selectDept', 'Select Department')}
-                searchPlaceholder={t('common.searchDept', 'ابحث باسم القسم...')}
+                searchPlaceholder={t('common.searchDept', 'common.searchDept')}
                 disabled={!selectedCollegeId || loadingDepts || !!schedule}
                 isRTL={isRTL}
                 icon={<GraduationCap size={16} />}
@@ -424,7 +424,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
                 }}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">{t('common.allYears', 'جميع السنوات الدراسية')}</option>
+                <option value="">{t('common.allYears', 'All Years')}</option>
                 {[1, 2, 3, 4, 5].map(y => (
                   <option key={y} value={y.toString()}>{t('common.year', 'Year')} {y}</option>
                 ))}
@@ -444,7 +444,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
                 }}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">{t('schedule.allSemesters', 'جميع الفصول الدراسية')}</option>
+                <option value="">{t('schedule.allSemesters', 'Semester')}</option>
                 <option value="1">{t('schedule.semester1', 'Semester 1')}</option>
                 <option value="2">{t('schedule.semester2', 'Semester 2')}</option>
                 <option value="3">{t('schedule.semester3', 'Summer')}</option>
@@ -465,9 +465,9 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
                 setValue('groupId', '');
                 setValue('doctorId', '');
               }}
-              placeholder={loadingCourses ? t('common.loading', 'Loading...') : t('courses.selectCourse', 'اختر المقرر الدراسـي...')}
-              searchPlaceholder={t('common.searchCoursePlaceholder', 'ابحث برمز أو اسم المقرر...')}
-              emptyText={t('courses.noCoursesFound', 'لا توجد مقررات مطابقة')}
+              placeholder={loadingCourses ? t('common.loading', 'Loading...') : t('courses.selectCourse', 'Select a course')}
+              searchPlaceholder={t('common.searchCoursePlaceholder', 'common.searchCoursePlaceholder')}
+              emptyText={t('courses.noCoursesFound', 'No matching courses found')}
               disabled={!selectedDepartmentId || loadingCourses || !!schedule}
               isRTL={isRTL}
               icon={<BookOpen size={16} />}

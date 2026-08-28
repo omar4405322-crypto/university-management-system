@@ -1,11 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  /* Font Families */
-  --font-sans: 'Inter', 'Poppins', 'Cairo', 'system-ui', 'sans-serif';
-  --font-display: 'Cairo', 'Inter', 'Poppins', 'system-ui', 'sans-serif';
-  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Fira Code', 'monospace';
-  --font-arabic: 'Cairo', 'sans-serif';
+  /* Font Families — Official Academic & Enterprise Hierarchy */
+  --font-sans: 'Plus Jakarta Sans', 'IBM Plex Sans Arabic', 'Inter', 'Almarai', 'system-ui', sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'IBM Plex Sans Arabic', 'Almarai', 'system-ui', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-arabic: 'IBM Plex Sans Arabic', 'Almarai', 'Cairo', sans-serif;
+  --font-academic: 'Plus Jakarta Sans', 'IBM Plex Sans Arabic', sans-serif;
 
   /* Brand Primary Green — official: #9EBC48 */
   --color-brand-primary-50: #f2f7e8;
@@ -85,12 +86,12 @@
   --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
 
   /* Letter Spacing — hierarchy scale */
-  --tracking-display: -.04em;
+  --tracking-display: -.035em;
   --tracking-heading: -.02em;
   --tracking-body: 0em;
-  --tracking-caption: 0.08em;
-  --tracking-label: 0.12em;
-  --tracking-tightest: -.075em;
+  --tracking-caption: 0.06em;
+  --tracking-label: 0.08em;
+  --tracking-tightest: -.05em;
 
   /* Font weight scale */
   --font-weight-normal: 400;
@@ -164,14 +165,17 @@
     background-color: var(--brand-bg-page);
     color: var(--brand-text-main);
     transition: background-color 0.3s ease, color 0.3s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  [dir="rtl"] {
-    font-family: 'Cairo', 'Inter', sans-serif;
+  [dir="rtl"], html[dir="rtl"], html[lang="ar"], html[lang="ar"] body {
+    font-family: 'IBM Plex Sans Arabic', 'Almarai', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
-  [dir="ltr"] {
-    font-family: 'Inter', 'Poppins', sans-serif;
+  [dir="ltr"], html[dir="ltr"], html[lang="en"], html[lang="en"] body {
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   /* Headings — display-driven hierarchy */

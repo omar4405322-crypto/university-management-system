@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
@@ -7,191 +7,179 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
-  CheckCircle,
   Building2,
-  FileText,
-  ChevronLeft,
-  ChevronRight,
-  Grid,
+  LayoutGrid,
   List,
   Eye,
   Plus,
   BookOpen,
+  Search,
+  RotateCcw,
+  RotateCw,
+  Globe,
+  Clock,
+  X,
+  CheckSquare,
+  Square,
+  MinusSquare,
+  CheckCircle2,
+  Layers,
+  GraduationCap
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/button';
-import Badge from '../../components/ui/Badge';
-import Table, { TableRow, TableCell, TableHeader, TableBody, TableHead } from '../../components/ui/Table';
-import LoadingState from '../../components/ui/LoadingState';
-import ErrorState from '../../components/ui/ErrorState';
-import FilterBar from '../../components/ui/FilterBar';
+import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 import timetableService from '../../services/timetable.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
-import { PageHeader } from '../../components/ui/PageHeader';
 import TimetableModal from './TimetableModal';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
+import { useLanguage } from '../../context/LanguageContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../components/ui/alert-dialog';
 
 const TimetableManagement = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { scopeParams, isCollegeAdmin } = useScope();
-  const isRTL = i18n.language?.startsWith('ar');
+  const { isRTL } = useLanguage();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
-  // Page background setup
-  useEffect(() => {
-    const mainEl = document.querySelector('main');
-    if (mainEl) {
-      mainEl.classList.add('bg-slate-50', 'dark:bg-slate-900');
-      return () => {
-        mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
-      };
-    }
-  }, []);
+  // View Mode: 'CARD' | 'LIST'
+  const [viewMode, setViewMode] = useState<'CARD' | 'LIST'>('CARD');
 
-  // State
+  // Loading & Data States
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [timetables, setTimetables] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [_colleges, setColleges] = useState([]);
-  const [_departments, setDepartments] = useState([]);
+  const [timetables, setTimetables] = useState<any[]>([]);
+  const [colleges, setColleges] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'single'; id: number | string } | { type: 'bulk' } | null>(null);
 
-  // Filters & Views
+  // Filter States
+  const [search, setSearch] = useState('');
   const [selectedCollege, setSelectedCollege] = useState('');
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
-  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [viewMode, setViewMode] = useState('LIST');
 
-  // UI State
+  // Multi-Selection State
+  const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTimetable, setEditingTimetable] = useState(null);
-  const { showToast } = useToast();
+  const [editingTimetable, setEditingTimetable] = useState<any>(null);
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const canManage = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(
-        user?.role
-  );
+  const canManage = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
 
-  const fetchInitialData = async () => {
-    try {
-      const collegesRes = await collegeService.getColleges();
-      if (collegesRes.success) {
-        setColleges(Array.isArray(collegesRes.data) ? collegesRes.data : []);
-      }
-    } catch (err: any) {
-      logger.error('Error fetching colleges:', err);
-    }
-  };
-
-  const fetchDepartments = async (collegeId) => {
-    if (!collegeId) {
-      setDepartments([]);
-      return;
-    }
-    try {
-      const result = await departmentService.getDepartments({ collegeId });
-      if (result.success) {
-        setDepartments(Array.isArray(result.data) ? result.data : []);
-      }
-    } catch (err: any) {
-      logger.error('Error fetching departments:', err);
-    }
-  };
-
-  const fetchTimetables = useCallback(
-    async (pageParam = currentPage) => {
-      const pageNum = typeof pageParam === 'number' ? pageParam : currentPage;
-      try {
-        setLoading(true);
-        setError(null);
-        const params = { ...scopeParams, page: pageNum, limit: 10 };
-        if (!isCollegeAdmin) {
-          if (selectedCollege) params.collegeId = selectedCollege;
-          if (selectedDept) params.departmentId = selectedDept;
-        }
-        if (selectedYear) params.academicYear = selectedYear;
-        if (selectedSemester) params.semester = selectedSemester;
-        const result = await timetableService.getTimetables(params);
-        if (result.success) {
-          const data = result.data;
-          setTimetables(
-            Array.isArray(data.timetables) ? data.timetables : Array.isArray(data) ? data : []
-          );
-          if (data.pagination) {
-            setCurrentPage(data.pagination.page);
-            setTotalPages(data.pagination.totalPages);
-            setTotal(data.pagination.total);
-          }
-        }
-      } catch (err: any) {
-        logger.error('Error fetching timetables:', err);
-        setError(
-          err.message ||
-            t('common.fetchError', 'Failed to load timetables. Please check your connection.')
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [
-      selectedCollege,
-      selectedDept,
-      selectedYear,
-      selectedSemester,
-      scopeParams,
-      isCollegeAdmin,
-      currentPage,
-    ]
-  );
-
+  // 1. Fetch Metadata (Colleges & Departments)
   useEffect(() => {
-    fetchInitialData();
+    const fetchMetadata = async () => {
+      try {
+        const [collegesRes, deptsRes] = await Promise.all([
+          collegeService.getColleges({ limit: 100 }).catch(() => ({ data: [] })),
+          departmentService.getDepartments({ limit: 200 }).catch(() => ({ data: [] })),
+        ]);
+
+        if (collegesRes.success || collegesRes.data) {
+          const arr = Array.isArray(collegesRes.data)
+            ? collegesRes.data
+            : collegesRes.data?.colleges || collegesRes.data?.data || [];
+          setColleges(arr);
+        }
+
+        if (deptsRes.success || deptsRes.data) {
+          const arr = Array.isArray(deptsRes.data)
+            ? deptsRes.data
+            : deptsRes.data?.departments || deptsRes.data?.data || [];
+          setDepartments(arr);
+        }
+      } catch (err) {
+        logger.error('Error fetching metadata:', err);
+      }
+    };
+
+    fetchMetadata();
   }, []);
 
-  useEffect(() => {
-    fetchTimetables(1);
-    setCurrentPage(1);
-  }, [selectedCollege, selectedDept, selectedYear, selectedSemester, scopeParams, isCollegeAdmin]);
+  // Cascading departments for selected college
+  const filteredDepartments = useMemo(() => {
+    if (!selectedCollege) return departments;
+    const colId = parseInt(selectedCollege, 10);
+    return departments.filter((d) => d.collegeId === colId);
+  }, [departments, selectedCollege]);
 
-  const _handleCollegeChange = (e) => {
-    const val = e.target.value;
-    setSelectedCollege(val);
-    setSelectedDept('');
-    fetchDepartments(val);
+  // 2. Fetch Master Timetable Records
+  const fetchTimetables = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const params: Record<string, any> = { ...scopeParams, limit: 100 };
+      const result = await timetableService.getTimetables(params);
+      const data = result?.data || result || {};
+      const arr = Array.isArray(data.timetables)
+        ? data.timetables
+        : Array.isArray(data)
+        ? data
+        : [];
+      setTimetables(arr);
+    } catch (err: any) {
+      logger.error('Error fetching timetables:', err);
+      setError(err.message || t('common.fetchError', 'Failed to load timetables.'));
+    } finally {
+      setLoading(false);
+    }
+  }, [scopeParams, t]);
+
+  useEffect(() => {
+    fetchTimetables();
+  }, [fetchTimetables]);
+
+  // Delete Timetable
+  const handleDelete = (id: number | string) => {
+    setDeleteTarget({ type: 'single', id });
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm(t('timetables.deleteConfirm'))) return;
+  const confirmDelete = async (id: number | string) => {
     try {
-      const result = await timetableService.deleteTimetable(id);
-      if (result.success) {
-        showToast(t('common.deleteSuccess'), 'success');
+      const result = await timetableService.deleteTimetable(String(id));
+      if (result.success || result) {
+        showToast(t('common.deleteSuccess', 'Timetable deleted successfully'), 'success');
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
         fetchTimetables();
       }
     } catch (err: any) {
-      showToast(err.message || t('common.deleteError'), 'error');
+      showToast(err.message || t('common.deleteError', 'Error deleting timetable'), 'error');
     }
   };
 
-  const handlePublish = async (id, currentStatus) => {
+  // Toggle Publish / Unpublish Status
+  const handleTogglePublish = async (id: number | string, currentStatus: string) => {
     try {
       if (currentStatus === 'PUBLISHED') {
-        await timetableService.unpublishTimetable(id);
+        await timetableService.unpublishTimetable(String(id));
         showToast(t('timetables.unpublished', 'Timetable unpublished'), 'success');
       } else {
-        await timetableService.publishTimetable(id);
-        showToast(t('timetables.publishSuccess', 'Timetable published'), 'success');
+        await timetableService.publishTimetable(String(id));
+        showToast(t('timetables.publishSuccess', 'Timetable published successfully'), 'success');
       }
       fetchTimetables();
     } catch (err: any) {
@@ -200,502 +188,875 @@ const TimetableManagement = () => {
     }
   };
 
+  // 3. Multi-Dimensional Filter Logic
+  const filteredTimetables = useMemo(() => {
+    return timetables.filter((ti) => {
+      // College Filter
+      if (selectedCollege && String(ti.collegeId) !== String(selectedCollege)) return false;
 
-  const _resetFilters = () => {
+      // Department Filter
+      if (selectedDept && String(ti.departmentId) !== String(selectedDept)) return false;
+
+      // Academic Year Filter
+      if (selectedYear) {
+        const yr = parseInt(selectedYear, 10);
+        if (ti.academicYear !== yr) return false;
+      }
+
+      // Semester Filter
+      if (selectedSemester) {
+        const sem = parseInt(selectedSemester, 10);
+        if (ti.semester !== sem) return false;
+      }
+
+      // Status Filter
+      if (statusFilter !== 'ALL') {
+        if (ti.status !== statusFilter) return false;
+      }
+
+      // Search Query Filter
+      if (search.trim()) {
+        const q = search.toLowerCase().trim();
+        const title = (ti.title || '').toLowerCase();
+        const desc = (ti.description || '').toLowerCase();
+        const deptName = (ti.department?.name || ti.department?.nameAr || '').toLowerCase();
+        const colName = (ti.college?.name || ti.college?.nameAr || '').toLowerCase();
+
+        const matches = title.includes(q) || desc.includes(q) || deptName.includes(q) || colName.includes(q);
+        if (!matches) return false;
+      }
+
+      return true;
+    });
+  }, [timetables, selectedCollege, selectedDept, selectedYear, selectedSemester, statusFilter, search]);
+
+  // Multi-Selection Logic
+  const allFilteredIds = useMemo(() => filteredTimetables.map((t) => t.id), [filteredTimetables]);
+  const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
+  const isSomeSelected = allFilteredIds.some((id) => selectedIds.has(id)) && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        allFilteredIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        allFilteredIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  };
+
+  const handleToggleSelect = (id: number | string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Bulk Delete
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return;
+    setDeleteTarget({ type: 'bulk' });
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    try {
+      setIsBulkDeleting(true);
+      const deletePromises = Array.from(selectedIds).map((id) =>
+        timetableService.deleteTimetable(String(id)).catch((err) => ({ error: err }))
+      );
+      await Promise.allSettled(deletePromises);
+      showToast(t('timetables.bulkDeleteSuccess', `Successfully deleted ${count} timetables`, { count }), 'success');
+      setSelectedIds(new Set());
+      fetchTimetables();
+    } catch (err) {
+      showToast(t('timetables.bulkDeleteError', 'An error occurred during bulk deletion'), 'error');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  // Live Counts for Status Tabs
+  const totalCount = timetables.length;
+  const publishedCount = useMemo(() => timetables.filter((t) => t.status === 'PUBLISHED').length, [timetables]);
+  const draftCount = totalCount - publishedCount;
+  const coveredDeptsCount = useMemo(
+    () => new Set(timetables.map((t) => t.departmentId).filter(Boolean)).size,
+    [timetables]
+  );
+
+  // Reset Filters
+  const handleResetFilters = () => {
+    setSearch('');
     setSelectedCollege('');
     setSelectedDept('');
     setSelectedYear('');
     setSelectedSemester('');
-    setSearch('');
-    setDepartments([]);
-    setCurrentPage(1);
+    setStatusFilter('ALL');
   };
 
-  const handlePageChange = (newPage) => {
-    if (newPage < 1 || newPage > totalPages) return;
-    setCurrentPage(newPage);
-    fetchTimetables(newPage);
-  };
-
-  const searchFiltered = (timetables || []).filter(
-    (ti) =>
-      (ti.title || '').toLowerCase().includes((search || '').toLowerCase()) ||
-      (ti.description || '').toLowerCase().includes((search || '').toLowerCase())
-  );
-
-  const finalTimetables = searchFiltered.filter(
-    (ti) => statusFilter === 'ALL' || ti.status === statusFilter
-  );
-
-  // Compute Subtitle Text Properly
-  const collegeName = isRTL
-    ? (user?.college?.nameAr || user?.managedCollege?.nameAr || user?.college?.name || user?.managedCollege?.name || user?.managedCollegeName || user?.collegeName || '')
-    : (user?.college?.name || user?.managedCollege?.name || user?.managedCollegeName || user?.collegeName || '');
-  const deptName = isRTL
-    ? (user?.department?.nameAr || user?.managedDepartment?.nameAr || user?.department?.name || user?.managedDepartment?.name || '')
-    : (user?.department?.name || user?.managedDepartment?.name || '');
-
-  let subtitleText = '';
-  if (isSuperAdmin) subtitleText = t('timetables.allColleges');
-  else if (user?.role === 'DEPARTMENT_ADMIN')
-    subtitleText = `${t('timetables.deptPrefix')} ${deptName}`;
-  else subtitleText = `${t('timetables.collegePrefix')} ${collegeName}`;
-
-  // Stats
-  const statsAllCount = searchFiltered.length;
-  const statsPublishedCount = searchFiltered.filter((t) => t.status === 'PUBLISHED').length;
-  const statsDraftCount = searchFiltered.filter((t) => t.status === 'DRAFT').length;
+  const hasActiveFilters =
+    search.trim() !== '' ||
+    selectedCollege !== '' ||
+    selectedDept !== '' ||
+    selectedYear !== '' ||
+    selectedSemester !== '' ||
+    statusFilter !== 'ALL';
 
   return (
-    <div className="pt-6 section-gap animate-in fade-in duration-700">
-      {/* Toast Notification */}
-      
+    <div className="section-gap animate-in fade-in duration-500 space-y-4 w-full min-w-0 pb-20">
+      {/* 1. Sleek Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-brand-primary-500/10 text-brand-primary-600 dark:text-brand-primary-400">
+              <Calendar size={22} />
+            </span>
+            {t('timetables.managementTitle', 'General Timetable Records')}
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+            {t('timetables.managementSubtitle', 'Manage and publish master class timetables')}
+          </p>
+        </div>
 
-      {/* HEADER SECTION */}
-      <PageHeader
-        title={t('timetables.title')}
-        subtitle={subtitleText}
-        action={
-          canManage
-            ? {
-                label: t('timetables.create'),
-                icon: Plus,
-                onClick: () => {
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* View Mode Switcher (Cards vs List) */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setViewMode('CARD')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'CARD'
+                  ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              <LayoutGrid size={14} />
+              <span>{t('timetables.viewCardView', 'Cards')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('LIST')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'LIST'
+                  ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              <List size={14} />
+              <span>{t('timetables.viewListView', 'List')}</span>
+            </button>
+          </div>
+
+          {/* Refresh Button */}
+          <button
+            type="button"
+            onClick={fetchTimetables}
+            className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all border border-slate-200 dark:border-slate-700 active:scale-95 shadow-2xs"
+            title={t('common.refresh', 'Refresh')}
+          >
+            <RotateCw size={15} className={loading ? 'animate-spin' : ''} />
+          </button>
+
+          {/* Create Timetable Button */}
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingTimetable(null);
+                setIsModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold text-xs shadow-sm shadow-brand-primary-500/20 active:scale-95 transition-all"
+            >
+              <Plus size={15} />
+              <span>{t('timetables.createTimetable', 'New Timetable')}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        {/* Total Master Timetables */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter('ALL')}
+          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
+            statusFilter === 'ALL'
+              ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 border-brand-primary-400 dark:border-brand-primary-600 ring-2 ring-brand-primary-500/20 shadow-xs'
+              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-brand-primary-300'
+          }`}
+        >
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('timetables.totalTimetables', 'Total Timetables')}
+            </span>
+            <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400 block mt-0.5 font-mono">
+              {totalCount}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
+            <Calendar size={16} />
+          </div>
+        </button>
+
+        {/* Published Timetables */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'PUBLISHED' ? 'ALL' : 'PUBLISHED')}
+          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
+            statusFilter === 'PUBLISHED'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-500/20 shadow-xs'
+              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-emerald-300'
+          }`}
+        >
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('timetables.publishedStatus', 'Published')}
+            </span>
+            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
+              {publishedCount}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
+            <CheckCircle2 size={16} />
+          </div>
+        </button>
+
+        {/* Drafts in Progress */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === 'DRAFT' ? 'ALL' : 'DRAFT')}
+          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
+            statusFilter === 'DRAFT'
+              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-500/20 shadow-xs'
+              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-amber-300'
+          }`}
+        >
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('timetables.draftStatus', 'Draft')}
+            </span>
+            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
+              {draftCount}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+            <Clock size={16} />
+          </div>
+        </button>
+
+        {/* Covered Departments */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('groups.allDepartments', 'Departments Covered')}
+            </span>
+            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
+              {coveredDeptsCount}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
+            <Layers size={16} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. UNIFIED COMPACT FILTER TOOLBAR                                         */}
+      {/* ========================================================================= */}
+      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-4">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder={t('timetables.searchPlaceholder', 'Search by title, college, or department...')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* College Selector */}
+        {!isCollegeAdmin && (
+          <select
+            value={selectedCollege}
+            onChange={(e) => {
+              setSelectedCollege(e.target.value);
+              setSelectedDept('');
+            }}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('common.allColleges', 'All Colleges')}</option>
+            {colleges.map((c) => (
+              <option key={c.id} value={c.id}>
+                {isRTL ? c.nameAr || c.name : c.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Department Selector */}
+        <select
+          value={selectedDept}
+          onChange={(e) => setSelectedDept(e.target.value)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="">{t('common.allDepartments', 'All Departments')}</option>
+          {filteredDepartments.map((d) => (
+            <option key={d.id} value={d.id}>
+              {isRTL ? d.nameAr || d.name : d.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Academic Year */}
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="">{t('schedules.academicDivision', 'Year')}: {t('common.all', 'All')}</option>
+          <option value="1">{t('common.year', 'Year')} 1</option>
+          <option value="2">{t('common.year', 'Year')} 2</option>
+          <option value="3">{t('common.year', 'Year')} 3</option>
+          <option value="4">{t('common.year', 'Year')} 4</option>
+        </select>
+
+        {/* Semester */}
+        <select
+          value={selectedSemester}
+          onChange={(e) => setSelectedSemester(e.target.value)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="">{t('schedule.allSemesters', 'Semester')}: {t('common.all', 'All')}</option>
+          <option value="1">{t('schedule.semester1', 'Sem 1')}</option>
+          <option value="2">{t('schedule.semester2', 'Sem 2')}</option>
+          <option value="3">{t('schedule.semester3', 'Summer')}</option>
+        </select>
+
+        {/* Status Filter */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="ALL">{t('common.all', 'All Statuses')}</option>
+          <option value="PUBLISHED">{t('timetables.publishedStatus', 'Published')}</option>
+          <option value="DRAFT">{t('timetables.draftStatus', 'Draft')}</option>
+        </select>
+
+        {/* Clear Filters */}
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleResetFilters}
+            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
+          >
+            <X size={13} className="me-1" />
+            {t('common.clear', 'Clear')}
+          </Button>
+        )}
+      </div>
+
+      {/* 3. Main Content: Responsive Cards or Structured Table */}
+      {loading ? (
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center gap-3 text-center">
+          <Loader2 className="animate-spin text-brand-primary-500" size={32} />
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+            {t('common.loading', 'Loading timetables...')}
+          </p>
+        </Card>
+      ) : error ? (
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
+          <AlertCircle size={36} className="text-rose-500 mb-2" />
+          <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2">{error}</h3>
+          <button
+            type="button"
+            onClick={fetchTimetables}
+            className="px-4 py-1.5 rounded-xl bg-brand-primary-500 text-white font-bold text-xs shadow-xs"
+          >
+            {t('common.retry', 'Retry')}
+          </button>
+        </Card>
+      ) : filteredTimetables.length === 0 ? (
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
+          <div className="w-14 h-14 rounded-full bg-brand-primary-500/10 text-brand-primary-500 flex items-center justify-center text-2xl mb-3">
+            <Calendar size={28} />
+          </div>
+          <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
+            {hasActiveFilters ? t('schedules.noResultsFound', 'No Timetables Found') : t('timetables.emptyTitle', 'No timetables yet')}
+          </h3>
+          <p className="text-xs text-slate-400 font-medium max-w-sm mb-4">
+            {hasActiveFilters
+              ? t('schedules.noResultsFoundDesc', 'Try adjusting your search criteria or resetting filters.')
+              : t('timetables.emptySubtitle', 'Get started by creating your first timetable record.')}
+          </p>
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="px-4 py-1.5 bg-brand-primary-500 text-white font-bold rounded-xl text-xs shadow-xs flex items-center gap-1.5"
+            >
+              <RotateCcw size={13} />
+              <span>{t('groups.resetFilters', 'Reset Filters')}</span>
+            </button>
+          ) : (
+            canManage && (
+              <button
+                type="button"
+                onClick={() => {
                   setEditingTimetable(null);
                   setIsModalOpen(true);
-                },
-                className: 'bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl px-4 py-2 active:scale-95 transition-all flex items-center gap-2',
-              }
-            : null
-        }
-      />
-
-      <div className="w-full space-y-6">
-        {/* TOP CONTROLS: Stats Bar, Search, and View Toggle */}
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 md:p-6 mb-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            {/* STATS BAR */}
-            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900/50 p-1 rounded-2xl overflow-x-auto w-full md:w-auto">
-              <button
-                onClick={() => setStatusFilter('ALL')}
-                className={`flex flex-col items-center justify-center px-6 py-2 rounded-xl transition-all min-w-[90px] border ${statusFilter === 'ALL' ? 'bg-white dark:bg-slate-700 shadow-sm text-brand-text-main dark:text-white font-black border-slate-200 dark:border-slate-600' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 font-bold border-transparent'}`}
+                }}
+                className="px-4 py-2 rounded-xl bg-brand-primary-500 text-white font-bold text-xs shadow-xs flex items-center gap-1.5"
               >
-                <span className="text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1 opacity-80">
-                  📊 {t('timetables.statsAll')}
-                </span>
-                <span className="text-xl leading-none">{statsAllCount}</span>
+                <Plus size={15} />
+                <span>{t('timetables.createTimetable', 'New Timetable')}</span>
               </button>
-              <button
-                onClick={() => setStatusFilter('PUBLISHED')}
-                className={`flex flex-col items-center justify-center px-6 py-2 rounded-xl transition-all min-w-[90px] border ${statusFilter === 'PUBLISHED' ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 font-black border-green-200 dark:border-green-800' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 font-bold border-transparent'}`}
-              >
-                <span className="text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1 opacity-80">
-                  ✅ {t('timetables.statsPublished')}
-                </span>
-                <span className="text-xl leading-none">{statsPublishedCount}</span>
-              </button>
-              <button
-                onClick={() => setStatusFilter('DRAFT')}
-                className={`flex flex-col items-center justify-center px-6 py-2 rounded-xl transition-all min-w-[90px] border ${statusFilter === 'DRAFT' ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 font-black border-amber-200 dark:border-amber-800' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 font-bold border-transparent'}`}
-              >
-                <span className="text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1 opacity-80">
-                  📝 {t('timetables.statsDraft')}
-                </span>
-                <span className="text-xl leading-none">{statsDraftCount}</span>
-              </button>
-            </div>
-
-            {/* SEARCH & TOGGLE */}
-            <div className="flex items-center gap-3 flex-1 md:justify-end">
-              <div className="w-full md:max-w-xs relative">
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={t('timetables.searchPlaceholder')}
-                  className={`w-full h-11 ${isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'} bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all shadow-sm`}
-                />
-                <div
-                  className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-4' : 'left-4'} text-slate-400 dark:text-slate-500`}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
-                </div>
-              </div>
-              <div className="flex items-center bg-slate-100 dark:bg-slate-900/50 p-1 rounded-2xl border border-transparent">
-                <button
-                  onClick={() => setViewMode('LIST')}
-                  className={`p-2.5 rounded-xl transition-all flex items-center gap-2 text-sm font-bold border ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-brand-text-main dark:text-white border-slate-200 dark:border-slate-600' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-transparent'}`}
-                >
-                  <List size={18} />{' '}
-                  <span className="hidden sm:inline">{t('timetables.viewListView')}</span>
-                </button>
-                <button
-                  onClick={() => setViewMode('CARD')}
-                  className={`p-2.5 rounded-xl transition-all flex items-center gap-2 text-sm font-bold border ${viewMode === 'CARD' ? 'bg-white dark:bg-slate-700 shadow-sm text-brand-text-main dark:text-white border-slate-200 dark:border-slate-600' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-transparent'}`}
-                >
-                  <Grid size={18} />{' '}
-                  <span className="hidden sm:inline">{t('timetables.viewCardView')}</span>
-                </button>
-              </div>
-            </div>
-          </div>
+            )
+          )}
         </Card>
+      ) : viewMode === 'CARD' ? (
+        /* MODE A: RESPONSIVE CARDS GRID VIEW */
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {filteredTimetables.map((item) => {
+              const isPublished = item.status === 'PUBLISHED';
+              const isSelected = selectedIds.has(item.id);
 
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0 bg-transparent">
-          {loading ? (
-            <LoadingState message={t('common.loading', 'Fetching institutional schedules...')} />
-          ) : error ? (
-            <ErrorState message={error} onRetry={fetchTimetables} />
-          ) : finalTimetables.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="h-16 w-16 rounded-full bg-brand-primary-500/10 dark:bg-brand-primary-500/20 flex items-center justify-center mb-5 text-brand-primary-600 dark:text-brand-primary-400 shrink-0">
-                <Calendar size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-brand-text-primary dark:text-brand-text-main tracking-tight mb-2">
-                {t('timetables.emptyTitle')}
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium max-w-xs mx-auto">
-                {t('timetables.emptySubtitle')}
-              </p>
-              {search || statusFilter !== 'ALL' ? (
-                <Button
-                  variant="ghost"
-                  className="mt-6 text-brand-primary-600 font-bold uppercase tracking-widest text-xs"
-                  onClick={() => {
-                    setSearch('');
-                    setStatusFilter('ALL');
-                  }}
+              return (
+                <Card
+                  key={item.id}
+                  className={`rounded-2xl border p-4 shadow-2xs hover:shadow-sm transition-all relative flex flex-col justify-between group ${
+                    isSelected
+                      ? 'border-brand-primary-500 ring-2 ring-brand-primary-500/20 bg-brand-primary-500/[0.02] dark:bg-brand-primary-500/[0.04]'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+                  }`}
                 >
-                  {t('common.clearSearch', 'Clear Search')}
-                </Button>
-              ) : (
-                canManage && (
-                  <Button
-                    variant="primary"
-                    className="mt-6 shadow-md shadow-brand-primary-500/10 hover:shadow-lg bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl px-5 py-2.5 active:scale-95 transition-all flex items-center gap-2"
-                    onClick={() => {
-                      setEditingTimetable(null);
-                      setIsModalOpen(true);
-                    }}
-                  >
-                    <Plus size={18} />
-                    {t('timetables.emptyButton')}
-                  </Button>
-                )
-              )}
-            </div>
-          ) : viewMode === 'LIST' ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
-                    <TableHead className="text-start font-semibold text-brand-text-primary dark:text-brand-text-main py-4 px-6">
-                      {t('timetables.details')}
-                    </TableHead>
-                    <TableHead className="text-start font-semibold text-brand-text-primary dark:text-brand-text-main py-4 px-6">
-                      {t('timetables.targetCohort')}
-                    </TableHead>
-                    <TableHead className="text-center font-semibold text-brand-text-primary dark:text-brand-text-main py-4 px-6">
-                      {t('timetables.status')}
-                    </TableHead>
-                    <TableHead className="text-end font-semibold text-brand-text-primary dark:text-brand-text-main py-4 px-6">
-                      {t('timetables.actions')}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {finalTimetables.map((ti) => {
-                    const statusClass = ti.status === 'PUBLISHED'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-
-                    return (
-                      <TableRow
-                        key={ti.id}
-                        className="border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                      >
-                        <TableCell className="text-start py-4 px-6">
-                          <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-xl bg-brand-primary-500/10 dark:bg-brand-primary-500/20 text-brand-primary-600 dark:text-brand-primary-400 flex items-center justify-center border border-brand-primary-500/20 shadow-inner flex-shrink-0">
-                              <Calendar size={24} />
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <p className="text-base font-semibold text-brand-text-primary dark:text-brand-text-main tracking-tight truncate max-w-[280px]">
-                                {ti.title}
-                              </p>
-                              {ti.description && (
-                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 truncate max-w-[280px]">
-                                  {ti.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-start py-4 px-6">
-                          <div className="space-y-1.5">
-                            <p className="text-xs font-semibold text-brand-text-primary dark:text-brand-text-main flex items-center gap-1.5">
-                              <Building2 size={14} className="text-slate-400 dark:text-slate-500" />
-                              {(isRTL ? ti.department?.nameAr || ti.department?.name : ti.department?.name) || t('common.general', 'General')}
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200/50 dark:border-slate-600/50">
-                                {t('auth.year')} {ti.academicYear}
-                              </span>
-                              <span className="text-slate-400 dark:text-slate-500">•</span>
-                              <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200/50 dark:border-slate-600/50">
-                                {t(`schedule.semester${ti.semester}`, `Sem ${ti.semester}`)}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center py-4 px-6">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${statusClass}`}>
-                            {ti.status === 'PUBLISHED'
-                              ? t('timetables.published')
-                              : t('timetables.draft')}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-end py-4 px-6">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() =>
-                                navigate(
-                                  `/schedules-management?collegeId=${ti.department?.collegeId || ''}&departmentId=${ti.departmentId}&academicYear=${ti.academicYear}&semester=${ti.semester}&view=grid`
-                                )
-                              }
-                              className="p-2 text-slate-400 dark:text-slate-500 hover:text-brand-primary-500 dark:hover:text-brand-primary-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all"
-                              title={t('timetables.viewDetails')}
-                            >
-                              <Eye size={18} />
-                            </button>
-                            {canManage && (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    setEditingTimetable(ti);
-                                    setIsModalOpen(true);
-                                  }}
-                                  className="p-2 text-slate-400 dark:text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all"
-                                  title={t('timetables.editBasicInfo')}
-                                >
-                                  <Edit2 size={18} />
-                                </button>
-                                <button
-                                  onClick={() => handlePublish(ti.id, ti.status)}
-                                  className={`p-2 rounded-xl transition-all ${ti.status === 'PUBLISHED' ? 'text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20' : 'text-slate-400 dark:text-slate-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-                                  title={
-                                    ti.status === 'PUBLISHED'
-                                      ? t('timetables.unpublish', 'Unpublish')
-                                      : t('timetables.publish', 'Publish')
-                                  }
-                                >
-                                  <CheckCircle size={18} />
-                                </button>
-                                {isSuperAdmin && (
-                                  <button
-                                    onClick={() => handleDelete(ti.id)}
-                                    className="p-2 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all"
-                                    title={t('common.delete')}
-                                  >
-                                    <Trash2 size={18} />
-                                  </button>
-                                )}
-                              </>
+                  <div>
+                    {/* Header: Checkbox, Status Badge, College */}
+                    <div className="flex items-center justify-between gap-2 mb-2.5">
+                      <div className="flex items-center gap-2">
+                        {canManage && (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSelect(item.id)}
+                            className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
+                          >
+                            {isSelected ? (
+                              <CheckSquare size={16} className="text-brand-primary-600" />
+                            ) : (
+                              <Square size={16} />
                             )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            // CARD VIEW
-            <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {finalTimetables.map((ti) => {
-                const statusClass = ti.status === 'PUBLISHED'
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200/50 dark:border-green-800/30'
-                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200/50 dark:border-amber-800/30';
-
-                return (
-                  <div
-                    key={ti.id}
-                    className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col group relative overflow-hidden"
-                  >
-                    <div className="p-6 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900/30 flex-1 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                        <Calendar size={120} className="text-brand-navy-500" />
-                      </div>
-                      <div className="relative z-10 text-start">
-                        <div className="flex justify-between items-start mb-5">
-                          <div className="h-12 w-12 rounded-xl bg-brand-primary-500/10 text-brand-primary-500 flex items-center justify-center border border-brand-primary-500/20 shadow-sm flex-shrink-0">
-                            <Calendar size={24} />
-                          </div>
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${statusClass}`}>
-                            {ti.status === 'PUBLISHED'
-                              ? t('timetables.published')
-                              : t('timetables.draft')}
+                          </button>
+                        )}
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                            isPublished
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                              : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                          }`}
+                        >
+                          {isPublished ? <CheckCircle2 size={11} /> : <Clock size={11} />}
+                          <span>
+                            {isPublished
+                              ? t('timetables.publishedStatus', 'Published')
+                              : t('timetables.draftStatus', 'Draft')}
                           </span>
-                        </div>
-                        <h3 className="text-lg font-bold text-brand-text-primary dark:text-brand-text-main group-hover:text-brand-primary-600 transition-colors leading-tight mb-4 truncate">
-                          {ti.title}
-                        </h3>
-
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                            <Building2 size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
-                            <span className="truncate">{(isRTL ? ti.department?.nameAr || ti.department?.name : ti.department?.name) || t('common.general', 'General')}</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-widest shadow-sm border border-slate-200 dark:border-slate-600">
-                              {t('auth.year')} {ti.academicYear}
-                            </span>
-                            <span className="bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-widest shadow-sm border border-slate-200 dark:border-slate-600 flex items-center gap-1.5">
-                              <BookOpen size={14} /> {t(`schedule.semester${ti.semester}`, `Sem ${ti.semester}`)}
-                            </span>
-                          </div>
-                        </div>
+                        </span>
                       </div>
+
+                      {item.college?.name && (
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 truncate max-w-[130px]">
+                          {item.college.name}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="p-4 bg-white dark:bg-slate-800 flex items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-700/50">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() =>
-                          navigate(
-                            `/schedules-management?collegeId=${ti.department?.collegeId || ''}&departmentId=${ti.departmentId}&academicYear=${ti.academicYear}&semester=${ti.semester}&view=grid`
-                          )
-                        }
-                        className="flex-1 rounded-xl font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
-                      >
-                        <Eye size={16} className="mr-2" /> {t('timetables.viewDetails')}
-                      </Button>
+                    {/* Timetable Title */}
+                    <h3 className="text-sm md:text-base font-bold text-slate-900 dark:text-white leading-snug mb-1">
+                      {item.title}
+                    </h3>
 
-                      {canManage && (
-                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900/50 p-1 rounded-2xl border border-transparent">
-                          <button
-                            onClick={() => {
-                              setEditingTimetable(ti);
-                              setIsModalOpen(true);
-                            }}
-                            className="p-2 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-white dark:hover:bg-slate-850 rounded-xl transition-all hover:shadow-sm"
-                            title={t('timetables.editBasicInfo')}
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handlePublish(ti.id, ti.status)}
-                            className={`p-2 rounded-xl transition-all hover:bg-white dark:hover:bg-slate-850 ${ti.status === 'PUBLISHED' ? 'text-green-600 hover:border-green-300' : 'text-slate-500 dark:text-slate-400 hover:text-green-600'}`}
-                            title={
-                              ti.status === 'PUBLISHED'
-                                ? t('timetables.unpublish', 'Unpublish')
-                                : t('timetables.publish', 'Publish')
-                            }
-                          >
-                            <CheckCircle size={16} />
-                          </button>
-                          {isSuperAdmin && (
-                            <button
-                              onClick={() => handleDelete(ti.id)}
-                              className="p-2 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-850 rounded-xl transition-all hover:shadow-sm"
-                              title={t('common.delete')}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-                        </div>
+                    {/* Department */}
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium mb-3">
+                      <Building2 size={12} className="text-brand-primary-500 shrink-0" />
+                      <span className="truncate">
+                        {item.department?.nameAr || item.department?.name || t('common.generalDept', 'Department')}
+                      </span>
+                    </div>
+
+                    {/* Year & Semester Badges */}
+                    <div className="flex items-center gap-1.5 flex-wrap mb-3.5">
+                      {item.academicYear && (
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 text-[11px] font-bold flex items-center gap-1">
+                          <Calendar size={11} className="text-slate-400" />
+                          <span>{t('common.year', 'Year')} {item.academicYear}</span>
+                        </span>
+                      )}
+                      {item.semester && (
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 text-[11px] font-bold flex items-center gap-1">
+                          <BookOpen size={11} className="text-slate-400" />
+                          <span>{t(`schedule.semester${item.semester}`, `Sem ${item.semester}`)}</span>
+                        </span>
                       )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
 
-          {/* Pagination */}
-          {!loading && !error && totalPages > 0 && finalTimetables.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-6 mt-4 gap-4 border-t border-slate-100 dark:border-slate-700/50">
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                {t('common.page', 'Page')}{' '}
-                <span className="text-brand-text-main dark:text-white">{currentPage}</span> {t('common.of', 'of')}{' '}
-                <span className="text-brand-text-main dark:text-white">{totalPages}</span> •{' '}
-                {t('timetables.showing', 'Showing')}{' '}
-                <span className="text-brand-text-main dark:text-white">{finalTimetables.length}</span>{' '}
-                {t('common.of', 'of')} <span className="text-brand-text-main dark:text-white">{total}</span>{' '}
-                {t('timetables.timetables', 'Timetables')}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage <= 1}
-                  className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-all"
-                >
-                  {isRTL ? (
-                    <ChevronRight size={16} className="rtl:-scale-x-100" />
-                  ) : (
-                    <ChevronLeft size={16} className="rtl:-scale-x-100" />
+                  {/* Actions Footer */}
+                  <div className="pt-2.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-2">
+                    {/* View Schedule Button */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/schedules/timetable?collegeId=${item.collegeId || ''}&departmentId=${
+                            item.departmentId || ''
+                          }&academicYear=${item.academicYear || 1}&semester=${item.semester || 1}`
+                        )
+                      }
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/40 hover:bg-brand-primary-100 dark:hover:bg-brand-primary-900/40 text-brand-primary-700 dark:text-brand-primary-300 text-xs font-bold transition-colors"
+                    >
+                      <Eye size={13} />
+                      <span>{t('timetables.viewTimetableSchedule', 'View Schedule')}</span>
+                    </button>
+
+                    {/* Admin Actions */}
+                    {canManage && (
+                      <div className="flex items-center gap-1">
+                        {/* Publish/Unpublish */}
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePublish(item.id, item.status)}
+                          className={`p-1.5 rounded-lg border transition-all ${
+                            isPublished
+                              ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100'
+                              : 'text-slate-500 bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-200'
+                          }`}
+                          title={isPublished ? t('timetables.unpublishAction', 'Unpublish') : t('timetables.publishAction', 'Publish')}
+                        >
+                          <Globe size={13} />
+                        </button>
+
+                        {/* Edit */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingTimetable(item);
+                            setIsModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-600"
+                          title={t('common.edit', 'Edit')}
+                        >
+                          <Edit2 size={13} />
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item.id)}
+                          className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 transition-colors border border-rose-200 dark:border-rose-800"
+                          title={t('common.delete', 'Delete')}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Footer Count */}
+          <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 font-bold">
+            <span>
+              {t('common.showing', 'Showing')} {filteredTimetables.length} {t('common.of', 'of')} {timetables.length}{' '}
+              {t('timetables.totalTimetablesKpi', 'Timetables')}
+            </span>
+          </div>
+        </div>
+      ) : (
+        /* MODE B: TABLE LIST VIEW */
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden p-0">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full border-collapse text-start">
+              <thead>
+                <tr className="bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {canManage && (
+                    <th className="p-3.5 text-center w-12">
+                      <button
+                        type="button"
+                        onClick={handleToggleSelectAll}
+                        className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
+                        title={isAllSelected ? t('schedules.deselectAll', 'Deselect All') : t('schedules.selectAll', 'Select All')}
+                      >
+                        {isAllSelected ? (
+                          <CheckSquare size={16} className="text-brand-primary-600" />
+                        ) : isSomeSelected ? (
+                          <MinusSquare size={16} className="text-brand-primary-600" />
+                        ) : (
+                          <Square size={16} />
+                        )}
+                      </button>
+                    </th>
                   )}
-                </Button>
-                <span className="px-4 py-2 rounded-xl bg-brand-primary-500 text-white text-xs font-bold shadow-md shadow-brand-primary-500/10">
-                  {currentPage}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage >= totalPages}
-                  className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-all"
-                >
-                  {isRTL ? (
-                    <ChevronLeft size={16} className="rtl:-scale-x-100" />
-                  ) : (
-                    <ChevronRight size={16} className="rtl:-scale-x-100" />
-                  )}
-                </Button>
-              </div>
+                  <th className="p-3.5 text-start min-w-[240px]">{t('timetables.colTitleDept', 'Timetable & Department')}</th>
+                  <th className="p-3.5 text-start min-w-[160px]">{t('timetables.colYearSem', 'Division & Semester')}</th>
+                  <th className="p-3.5 text-start min-w-[130px]">{t('timetables.colStatus', 'Status')}</th>
+                  <th className="p-3.5 text-start min-w-[140px]">{t('timetables.colUpdatedAt', 'Last Updated')}</th>
+                  <th className="p-3.5 text-center w-32">{t('timetables.colActions', 'Actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-xs">
+                {filteredTimetables.map((item) => {
+                  const isPublished = item.status === 'PUBLISHED';
+                  const isSelected = selectedIds.has(item.id);
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`group hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors ${
+                        isSelected ? 'bg-brand-primary-500/[0.04] dark:bg-brand-primary-500/[0.08]' : ''
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      {canManage && (
+                        <td className="p-3.5 align-middle text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSelect(item.id)}
+                            className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
+                          >
+                            {isSelected ? (
+                              <CheckSquare size={16} className="text-brand-primary-600" />
+                            ) : (
+                              <Square size={16} />
+                            )}
+                          </button>
+                        </td>
+                      )}
+
+                      {/* Title & Department */}
+                      <td className="p-3.5 align-middle">
+                        <div className="space-y-0.5">
+                          <span className="font-bold text-slate-900 dark:text-white text-xs">
+                            {item.title}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                            <Building2 size={11} className="text-brand-primary-500 shrink-0" />
+                            <span>
+                              {item.department?.nameAr || item.department?.name || t('common.generalDept', 'Department')}
+                            </span>
+                            {item.college?.name && (
+                              <>
+                                <span>•</span>
+                                <span>{item.college.name}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Year & Semester */}
+                      <td className="p-3.5 align-middle whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {item.academicYear && (
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-bold text-[11px]">
+                              {t('common.year', 'Year')} {item.academicYear}
+                            </span>
+                          )}
+                          {item.semester && (
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-bold text-[11px]">
+                              {t(`schedule.semester${item.semester}`, `Sem ${item.semester}`)}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="p-3.5 align-middle whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                            isPublished
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                              : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                          }`}
+                        >
+                          {isPublished ? <CheckCircle2 size={11} /> : <Clock size={11} />}
+                          <span>
+                            {isPublished
+                              ? t('timetables.publishedStatus', 'Published')
+                              : t('timetables.draftStatus', 'Draft')}
+                          </span>
+                        </span>
+                      </td>
+
+                      {/* Last Updated */}
+                      <td className="p-3.5 align-middle whitespace-nowrap text-slate-500 dark:text-slate-400 font-medium text-[11px]">
+                        {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString(isRTL ? 'ar-EG' : 'en-US') : '—'}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="p-3.5 align-middle text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          {/* View */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(
+                                `/schedules/timetable?collegeId=${item.collegeId || ''}&departmentId=${
+                                  item.departmentId || ''
+                                }&academicYear=${item.academicYear || 1}&semester=${item.semester || 1}`
+                              )
+                            }
+                            className="p-1.5 rounded-lg text-brand-primary-600 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/40 transition-colors"
+                            title={t('timetables.viewTimetableSchedule', 'View Schedule')}
+                          >
+                            <Eye size={14} />
+                          </button>
+
+                          {canManage && (
+                            <>
+                              {/* Publish Toggle */}
+                              <button
+                                type="button"
+                                onClick={() => handleTogglePublish(item.id, item.status)}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  isPublished
+                                    ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                }`}
+                                title={isPublished ? t('timetables.unpublishAction', 'Unpublish') : t('timetables.publishAction', 'Publish')}
+                              >
+                                <Globe size={14} />
+                              </button>
+
+                              {/* Edit */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingTimetable(item);
+                                  setIsModalOpen(true);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-brand-primary-600 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/40 transition-colors"
+                                title={t('common.edit', 'Edit')}
+                              >
+                                <Edit2 size={14} />
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(item.id)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                title={t('common.delete', 'Delete')}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Table Footer */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 font-bold">
+              <span>
+                {t('common.showing', 'Showing')} {filteredTimetables.length} {t('common.of', 'of')} {timetables.length}{' '}
+                {t('timetables.totalTimetablesKpi', 'Timetables')}
+              </span>
             </div>
-          )}
+          </div>
         </Card>
-      </div>
+      )}
 
-      {/* Modal */}
+      {/* 4. Standard Bottom Floating BulkActionToolbar */}
+      {canManage && (
+        <BulkActionToolbar
+          selectedCount={selectedIds.size}
+          onClear={() => setSelectedIds(new Set())}
+          onDelete={handleBulkDelete}
+        />
+      )}
+
+      {/* Timetable Edit / Create Modal */}
       {isModalOpen && (
         <TimetableModal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          timetable={editingTimetable}
-          onSuccess={(createdTimetable) => {
+          onClose={() => {
             setIsModalOpen(false);
+            setEditingTimetable(null);
+          }}
+          timetable={editingTimetable}
+          onSuccess={() => {
+            setIsModalOpen(false);
+            setEditingTimetable(null);
             fetchTimetables();
-            showToast(
-              editingTimetable ? t('timetables.saveSuccess') : t('timetables.saveSuccess'),
-              'success'
-            );
-            if (!editingTimetable && createdTimetable) {
-              navigate(
-                `/schedules-management?collegeId=${createdTimetable.department?.collegeId || ''}&departmentId=${createdTimetable.departmentId}&academicYear=${createdTimetable.academicYear}&semester=${createdTimetable.semester}&view=grid`
-              );
-            }
           }}
         />
       )}
+
+      {/* Confirmation Alert Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteTarget?.type === 'bulk'
+                ? t('timetables.bulkDeleteTitle', 'Delete Selected Timetables')
+                : t('timetables.deleteTitle', 'Delete Timetable')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.type === 'bulk'
+                ? t('timetables.bulkDeleteConfirm', `Are you sure you want to delete ${selectedIds.size} selected timetables?`, { count: selectedIds.size })
+                : t('timetables.deleteConfirm', 'Are you sure you want to delete this timetable?')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel', 'Cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteTarget?.type === 'single') {
+                  confirmDelete(deleteTarget.id);
+                } else if (deleteTarget?.type === 'bulk') {
+                  confirmBulkDelete();
+                }
+                setDeleteTarget(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('common.delete', 'Delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

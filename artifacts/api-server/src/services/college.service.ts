@@ -20,12 +20,12 @@ export const getAllColleges = async () => {
         ...college,
         assignedAdmin: admin
           ? {
-              id: admin.id,
-              email: admin.email,
-              name: admin.doctor
-                ? `${admin.doctor.firstName} ${admin.doctor.lastName}`.trim()
-                : null,
-            }
+            id: admin.id,
+            email: admin.email,
+            name: admin.doctor
+              ? `${admin.doctor.firstName} ${admin.doctor.lastName}`.trim()
+              : null,
+          }
           : null,
       };
     })
@@ -74,10 +74,10 @@ export const getCollegeById = async (collegeId: number, user: any) => {
     ...college,
     assignedAdmin: admin
       ? {
-          id: admin.id,
-          email: admin.email,
-          name: admin.doctor ? `${admin.doctor.firstName} ${admin.doctor.lastName}`.trim() : null,
-        }
+        id: admin.id,
+        email: admin.email,
+        name: admin.doctor ? `${admin.doctor.firstName} ${admin.doctor.lastName}`.trim() : null,
+      }
       : null,
     _count: {
       departments: college.departments.length,

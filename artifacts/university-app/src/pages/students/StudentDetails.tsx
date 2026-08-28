@@ -701,7 +701,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
                         {item.semester && (
                           <span className="flex items-center gap-1">
                             <Layers size={13} className="text-slate-400" />
-                            <span>{t('students.semesterLabel', 'الفصل')} {item.semester}</span>
+                            <span>{t('students.semesterLabel', 'Semester')} {item.semester}</span>
                           </span>
                         )}
                         {item.academicYear && (
@@ -731,7 +731,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
                             className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
                           >
                             <UserMinus size={14} />
-                            <span>{t('students.withdrawCourse', 'إلغاء التسجيل')}</span>
+                            <span>{t('students.withdrawCourse', 'Withdraw Course')}</span>
                           </button>
                         )}
                       </div>
@@ -867,7 +867,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
         <Modal
           isOpen={Boolean(withdrawingEnrollment)}
           onClose={() => !isWithdrawing && setWithdrawingEnrollment(null)}
-          title={t('students.withdrawConfirmTitle', 'تأكيد إلغاء التسجيل في المقرر')}
+          title={t('students.withdrawConfirmTitle', 'Confirm Course Withdrawal')}
           subtitle={`${withdrawingEnrollment.course?.name || ''} (${withdrawingEnrollment.course?.courseCode || ''})`}
           size="sm"
         >
@@ -877,7 +877,9 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
               <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
                 {t(
                   'students.withdrawConfirmDesc',
-                  `هل أنت متأكد من إلغاء تسجيل الطالب في مقرر "${withdrawingEnrollment.course?.name || ''}"؟ سيتم تحويل حالة التسجيل إلى (منسحب).`,
+                  isRTL
+                    ? `هل أنت متأكد من إلغاء تسجيل الطالب في مقرر "${withdrawingEnrollment.course?.name || ''}"؟ سيتم تحويل حالة التسجيل إلى (منسحب).`
+                    : `Are you sure you want to withdraw the student from "${withdrawingEnrollment.course?.name || ''}"? The enrollment status will be marked as Withdrawn.`,
                   { courseName: withdrawingEnrollment.course?.name || '' }
                 )}
               </p>
@@ -891,7 +893,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
                 disabled={isWithdrawing}
                 className="rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold"
               >
-                {t('common.cancel', 'تراجع')}
+                {t('common.cancel', 'Cancel')}
               </Button>
               <Button
                 type="button"
@@ -907,7 +909,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
                 ) : (
                   <>
                     <UserMinus size={16} />
-                    <span>{t('students.confirmWithdrawBtn', 'تأكيد الإلغاء')}</span>
+                    <span>{t('students.confirmWithdrawBtn', 'Confirm Withdrawal')}</span>
                   </>
                 )}
               </Button>

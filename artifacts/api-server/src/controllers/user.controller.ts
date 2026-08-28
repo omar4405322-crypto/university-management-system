@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import bcrypt from 'bcryptjs';
@@ -296,7 +297,13 @@ export const updateProfilePicture = catchAsync(
 );
 
 export const getAllUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const where = getScopeWhere(req.user, 'user');
+  const scopeWhere = getScopeWhere(req.user, 'user');
+  const includeInactive = req.query.includeInactive === 'true';
+
+  const where: any = {
+    ...scopeWhere,
+    ...(!includeInactive && { isActive: true }),
+  };
 
   const users = await prisma.user.findMany({
     where,
@@ -308,6 +315,8 @@ export const getAllUsers = catchAsync(async (req: Request, res: Response, next: 
       managedCollegeId: true,
       createdAt: true,
       profilePicture: true,
+      isActive: true,
+      deactivatedAt: true,
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -418,20 +427,92 @@ export const deleteUser = catchAsync(async (req: Request, res: Response, next: N
   return res.json({ success: true, message: 'User deactivated successfully' });
 });
 
+export const reactivateUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params;
+  const targetId = parseInt(id as string, 10);
+
+  const user = await prisma.user.findUnique({
+    where: { id: targetId },
+  });
+
+  if (!user) {
+    return next(new NotFoundError('User not found'));
+  }
+
+  if (user.isActive) {
+    return next(new AppError('User is already active', 400));
+  }
+
+  await prisma.user.update({
+    where: { id: targetId },
+    data: { isActive: true, deactivatedAt: null },
+  });
+
+  auditLog('REACTIVATE_USER', 'User', targetId.toString(), req);
+  return res.json({ success: true, message: 'User reactivated successfully' });
+});
+
 export const hardDeleteUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
+  const targetId = parseInt(id as string, 10);
+  const { confirmEmail } = req.body;
 
   if (req.user!.role !== 'SUPER_ADMIN') {
     return next(new AppError('Only SUPER_ADMIN can hard-delete users', 403));
   }
 
-  if (parseInt(id as string) === req.user!.id) {
+  if (targetId === req.user!.id) {
     return next(new AppError('You cannot delete your own account', 400));
   }
 
-  await prisma.user.delete({ where: { id: parseInt(id as string) } });
+  if (!confirmEmail) {
+    return next(new AppError('Confirmation email is required', 400));
+  }
 
-  auditLog('HARD_DELETE_USER', 'User', req.params.id as string, req);
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetId },
+    select: { email: true, role: true }
+  });
+
+  if (!targetUser) {
+    return next(new NotFoundError('User not found'));
+  }
+
+  const adminRoles = ['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN'];
+  if (!adminRoles.includes(targetUser.role)) {
+    return next(new AppError('Target is not an admin account. Cannot hard-delete.', 400));
+  }
+
+  if (targetUser.email !== confirmEmail) {
+    return next(new AppError('Confirmation email does not match the target user\'s email', 400));
+  }
+
+  const auditCount = await prisma.auditLog.count({
+    where: { userId: targetId }
+  });
+
+  if (auditCount > 0) {
+    return res.status(409).json({
+      success: false,
+      message: 'Cannot permanently delete: this account has audit history. Deactivate the account instead.'
+    });
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.user.delete({ where: { id: targetId } });
+      await auditLog('HARD_DELETE_USER', 'User', targetId.toString(), req, {
+        deletedUserEmail: targetUser.email,
+        deletedUserId: targetId
+      }, tx);
+    });
+  } catch (err: any) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003') {
+      return next(new AppError('Cannot permanently delete: this account is linked to existing records. Deactivate the account instead.', 409));
+    }
+    throw err;
+  }
+
   return res.json({ success: true, message: 'User hard-deleted successfully' });
 });
 
@@ -439,21 +520,34 @@ export const updateAdmin = catchAsync(async (req: Request, res: Response, next: 
   const { id } = req.params;
   const { email, role, managedCollegeId, managedDepartmentId } = req.body;
 
+  const adminId = parseInt(id as string);
+  const existingUser = await prisma.user.findUnique({
+    where: { id: adminId },
+    select: { role: true, managedCollegeId: true, managedDepartmentId: true },
+  });
+
+  if (!existingUser) {
+    return next(new NotFoundError('User not found'));
+  }
+
   const data: any = {};
   if (email) data.email = email;
-  if (role) data.role = role;
 
-  data.managedCollegeId =
-    (role === 'COLLEGE_ADMIN' || role === 'ADMIN') && managedCollegeId
-      ? parseInt(managedCollegeId as string)
-      : null;
-  data.managedDepartmentId =
-    role === 'DEPARTMENT_ADMIN' && managedDepartmentId
-      ? parseInt(managedDepartmentId as string)
-      : null;
+  if (role !== undefined) {
+    data.role = role;
+
+    data.managedCollegeId =
+      (role === 'COLLEGE_ADMIN' || role === 'ADMIN') && managedCollegeId
+        ? parseInt(managedCollegeId as string)
+        : null;
+    data.managedDepartmentId =
+      role === 'DEPARTMENT_ADMIN' && managedDepartmentId
+        ? parseInt(managedDepartmentId as string)
+        : null;
+  }
 
   const updatedAdmin = await prisma.user.update({
-    where: { id: parseInt(id as string) },
+    where: { id: adminId },
     data,
     select: {
       id: true,

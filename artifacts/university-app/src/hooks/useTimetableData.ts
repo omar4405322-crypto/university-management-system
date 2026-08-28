@@ -167,6 +167,21 @@ export function useTimetableData(
             };
           });
           setSlots(mapped);
+        } else if (timetable?.scheduleData?.slots && Array.isArray(timetable.scheduleData.slots)) {
+          const mapped: SlotsMap = {};
+          timetable.scheduleData.slots.forEach((slot: any) => {
+            const rawDay = slot.day || slot.dayOfWeek || '';
+            const dayFormatted = rawDay ? rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase() : '';
+            const key = `${dayFormatted}_${slot.startTime}-${slot.endTime}`;
+            mapped[key] = {
+              courseName: slot.courseName || '',
+              doctorName: slot.instructor || slot.doctorName || '',
+              room: slot.room || '',
+              slotType: slot.slotType || 'LECTURE',
+              timetableId: timetable.id,
+            };
+          });
+          setSlots(mapped);
         } else {
           setSlots({});
         }

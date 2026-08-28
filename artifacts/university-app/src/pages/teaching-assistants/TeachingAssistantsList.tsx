@@ -29,11 +29,14 @@ import {
   GraduationCap,
   Link,
   Calendar,
+  X,
+  BookOpen,
 } from 'lucide-react';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
 import { useNavigate } from 'react-router-dom';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
+import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 
 const TeachingAssistantsList = () => {
   const { t, i18n } = useTranslation();
@@ -59,6 +62,7 @@ const TeachingAssistantsList = () => {
   const [exporting, setExporting] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
 
   useEffect(() => {
     const mainEl = document.querySelector('main');
@@ -84,6 +88,50 @@ const TeachingAssistantsList = () => {
       return true;
     });
   }, [tas, statusFilter]);
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredTAs.map((ta: any) => ta.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string | number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkClear = () => setSelectedIds([]);
+
+  const handleBulkExport = () => {
+    const selectedList = filteredTAs.filter((ta: any) => selectedIds.includes(ta.id));
+    const exportData = selectedList.map((ta: any) => ({
+      EmployeeID: ta.employeeId,
+      Specialization: ta.specialization || 'N/A',
+      Department: ta.department?.name || 'N/A',
+      Email: ta.user?.email || 'N/A',
+      Status: ta.status,
+    }));
+    downloadCsv(exportData, `teaching_assistants_selected_${new Date().toISOString().split('T')[0]}.csv`);
+    showToast(isRTL ? 'تم تصدير المعيدين المحددين' : 'Exported selected records', 'success');
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(isRTL ? `هل أنت متأكد من حذف ${selectedIds.length} معيد محدد؟` : `Are you sure you want to delete ${selectedIds.length} selected assistant(s)?`)) return;
+    try {
+      for (const id of selectedIds) {
+        await teachingAssistantsService.deleteTeachingAssistant(id);
+      }
+      showToast(isRTL ? 'تم حذف المعيدين المحددين' : 'Deleted selected teaching assistants', 'success');
+      setSelectedIds([]);
+      fetchTAs();
+      fetchStats();
+    } catch (_err: any) {
+      showToast(t('common.error'), 'error');
+    }
+  };
 
   const [stats, setStats] = useState([
     { label: t('teachingAssistants.totalTAs'), value: '0', icon: Users, bgClass: 'bg-brand-primary-500/10 text-brand-primary-500' },
@@ -189,65 +237,142 @@ const TeachingAssistantsList = () => {
         }}
       />
 
-      {/* Filter & Search Bar Card */}
-      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex overflow-x-auto pb-1.5 md:pb-0 custom-scrollbar gap-2 w-full md:w-auto" dir={isRTL ? 'rtl' : 'ltr'}>
-            {[
-              { id: 'all', label: t('teachingAssistants.filterAll') },
-              { id: 'active', label: t('teachingAssistants.filterActive') },
-              { id: 'onleave', label: t('teachingAssistants.filterOnLeave') },
-              { id: 'inactive', label: t('teachingAssistants.filterInactive') },
-            ].map((tab) => {
-              const isActive = statusFilter === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setStatusFilter(tab.id)}
-                  className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 text-sm font-medium rounded-xl transition-all ${
-                    isActive
-                      ? 'bg-brand-primary-500 text-white shadow-sm'
-                      : 'text-brand-text-secondary dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        {/* Total TAs */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('teachingAssistants.totalTAs', 'Total TAs')}
+            </span>
+            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
+              {stats[0]?.value || (tas || []).length}
+            </span>
           </div>
-
-          <div className="flex flex-1 md:max-w-md items-center gap-3 w-full">
-            <div className="relative flex-1">
-              <Search
-                className="absolute start-3 top-1/2 -translate-y-1/2 text-brand-text-muted"
-                size={18}
-              />
-              <input
-                type="text"
-                placeholder={t('teachingAssistants.searchPlaceholder')}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl ps-10 pe-3 py-2 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-primary-500"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
-
-            <Button
-              variant="outline"
-              disabled={exporting}
-              onClick={handleExportCsv}
-              className="border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 transition-all shrink-0"
-            >
-              <Download size={14} />
-              <span className="hidden md:inline">
-                {exporting ? t('common.loading') : t('teachingAssistants.exportCsv')}
-              </span>
-            </Button>
+          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
+            <Users size={16} />
           </div>
         </div>
-      </Card>
+
+        {/* Active TAs */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('teachingAssistants.activeTAs', 'Active TAs')}
+            </span>
+            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
+              {stats[1]?.value || (tas || []).filter((ta: any) => ta.status === 'ACTIVE' || !ta.status).length}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
+            <UserCheck size={16} />
+          </div>
+        </div>
+
+        {/* On Leave TAs */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {t('teachingAssistants.onLeaveTAs', 'On Leave')}
+            </span>
+            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
+              {stats[2]?.value || (tas || []).filter((ta: any) => ta.status === 'ON_LEAVE').length}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+            <Briefcase size={16} />
+          </div>
+        </div>
+
+        {/* Inactive / Suspended */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'غير نشط' : 'Inactive'}
+            </span>
+            <span className="text-lg font-black text-rose-600 dark:text-rose-400 block mt-0.5 font-mono">
+              {(tas || []).filter((ta: any) => ta.status === 'INACTIVE').length}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center shrink-0">
+            <GraduationCap size={16} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. UNIFIED COMPACT FILTER TOOLBAR                                         */}
+      {/* ========================================================================= */}
+      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-4">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder={t('teachingAssistants.searchPlaceholder', 'Search by name, email, or department...')}
+            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+          />
+          {search && (
+            <button
+              onClick={() => {
+                setSearch('');
+                setPage(1);
+              }}
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* Status Dropdown */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="all">{t('teachingAssistants.filterAll', 'All Statuses')}</option>
+          <option value="active">{t('teachingAssistants.filterActive', 'Active')}</option>
+          <option value="onleave">{t('teachingAssistants.filterOnLeave', 'On Leave')}</option>
+          <option value="inactive">{t('teachingAssistants.filterInactive', 'Inactive')}</option>
+        </select>
+
+        {/* Clear Filters */}
+        {(search || statusFilter !== 'all') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              setStatusFilter('all');
+              setPage(1);
+            }}
+            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
+          >
+            <X size={13} className="me-1" />
+            {isRTL ? 'مسح' : 'Clear'}
+          </Button>
+        )}
+
+        {/* Export CSV Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={exporting}
+          onClick={handleExportCsv}
+          className="h-8.5 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer shadow-2xs ms-auto"
+        >
+          <Download size={13} className="text-slate-500" />
+          <span>{exporting ? t('common.loading') : t('teachingAssistants.exportCsv', 'Export CSV')}</span>
+        </Button>
+      </div>
 
       {/* Table Content / Empty States */}
       <div className="min-h-0">
@@ -276,6 +401,15 @@ const TeachingAssistantsList = () => {
               <Table className="w-full">
                 <TableHeader className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
                   <TableRow>
+                    <TableHead className="w-12 text-center p-4">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
+                        checked={filteredTAs.length > 0 && selectedIds.length === filteredTAs.length}
+                        onChange={handleSelectAll}
+                        title={isRTL ? 'تحديد الكل' : 'Select All'}
+                      />
+                    </TableHead>
                     <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {t('teachingAssistants.colTA')}
                     </TableHead>
@@ -299,6 +433,7 @@ const TeachingAssistantsList = () => {
                 <TableBody>
                   {filteredTAs.map((ta: any) => {
                     const initials = ta.specialization?.[0]?.toUpperCase() || 'TA';
+                    const isSelected = selectedIds.includes(ta.id);
                     
                     let statusClass = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
                     let statusLabel = t('teachingAssistants.statusActive');
@@ -314,8 +449,18 @@ const TeachingAssistantsList = () => {
                     return (
                       <TableRow 
                         key={ta.id} 
-                        className="hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors"
+                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors ${
+                          isSelected ? 'bg-brand-primary-500/5 dark:bg-brand-primary-500/10' : ''
+                        }`}
                       >
+                        <TableCell className="w-12 text-center p-4" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
+                            checked={isSelected}
+                            onChange={() => handleSelectOne(ta.id)}
+                          />
+                        </TableCell>
                         <TableCell className="p-4 text-start">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-brand-primary-500/10 flex items-center justify-center text-sm font-bold text-brand-primary-600 flex-shrink-0">
@@ -421,6 +566,13 @@ const TeachingAssistantsList = () => {
           </Card>
         )}
       </div>
+
+      <BulkActionToolbar
+        selectedCount={selectedIds.length}
+        onClear={handleBulkClear}
+        onExport={handleBulkExport}
+        onDelete={handleBulkDelete}
+      />
 
       <ConfirmDeleteModal
         isOpen={Boolean(deleteTarget)}

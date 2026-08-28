@@ -34,6 +34,9 @@ import {
   Loader2,
   Shield,
   X,
+  AlertTriangle,
+  UserX,
+  UserCheck,
 } from 'lucide-react';
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'];
@@ -50,6 +53,7 @@ const AdminsList = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -64,7 +68,14 @@ const AdminsList = () => {
   const [resetPasswordAdmin, setResetPasswordAdmin] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [reactivateTarget, setReactivateTarget] = useState<any>(null);
+  const [reactivateLoading, setReactivateLoading] = useState(false);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showBulkReactivateModal, setShowBulkReactivateModal] = useState(false);
+  const [showBulkHardDeleteModal, setShowBulkHardDeleteModal] = useState(false);
+  const [bulkHardDeleteConfirmText, setBulkHardDeleteConfirmText] = useState('');
+  const [hardDeleteTarget, setHardDeleteTarget] = useState<any>(null);
+  const [hardDeleteConfirmEmail, setHardDeleteConfirmEmail] = useState('');
 
   useEffect(() => {
     const mainEl = document.querySelector('main');
@@ -81,7 +92,7 @@ const AdminsList = () => {
   const fetchAdmins = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await usersService.getUsers({ role: ADMIN_ROLES });
+      const res = await usersService.getUsers({ role: ADMIN_ROLES, includeInactive: 'true' });
       if (res.success) {
         const list = Array.isArray(res.data) ? res.data : [];
         setAdmins(list.filter((u: any) => ADMIN_ROLES.includes(u.role)));
@@ -111,10 +122,12 @@ const AdminsList = () => {
   // Reset page when filter or search changes
   useEffect(() => {
     setPage(1);
-  }, [search, roleFilter]);
+  }, [search, roleFilter, statusFilter]);
 
   // Derived Statistics
   const totalAdminsCount = (admins || []).length;
+  const activeAdminsCount = (admins || []).filter((a) => a.isActive !== false).length;
+  const inactiveAdminsCount = (admins || []).filter((a) => a.isActive === false).length;
   const universityAdminsCount = (admins || []).filter(
     (a) => a.role === 'SUPER_ADMIN' || a.role === 'ADMIN' || (!a.managedCollege && !a.college)
   ).length;
@@ -126,6 +139,10 @@ const AdminsList = () => {
     const query = search.trim().toLowerCase();
 
     return list.filter((admin) => {
+      // Status filter
+      if (statusFilter === 'active' && admin.isActive === false) return false;
+      if (statusFilter === 'inactive' && admin.isActive !== false) return false;
+
       // Role filter
       if (roleFilter === 'super' && admin.role !== 'SUPER_ADMIN' && admin.role !== 'ADMIN') return false;
       if (roleFilter === 'college' && admin.role !== 'COLLEGE_ADMIN') return false;
@@ -142,7 +159,7 @@ const AdminsList = () => {
 
       return true;
     });
-  }, [admins, roleFilter, search]);
+  }, [admins, statusFilter, roleFilter, search]);
 
   // Paginated Admins
   const totalRecords = filteredAdmins.length;
@@ -229,25 +246,119 @@ const AdminsList = () => {
     }
   }, [deleteTarget, fetchAdmins, isRTL, showToast]);
 
-  // Bulk Delete Confirmation
-  const confirmBulkDelete = useCallback(async () => {
+  // Single Reactivate Confirmation
+  const confirmReactivate = useCallback(async () => {
+    if (!reactivateTarget) return;
+    try {
+      setReactivateLoading(true);
+      const res = await usersService.reactivateUser(reactivateTarget.id);
+      if (res.success) {
+        showToast(isRTL ? 'تمت إعادة تفعيل حساب المسؤول بنجاح' : 'Admin account reactivated successfully', 'success');
+        setReactivateTarget(null);
+        fetchAdmins();
+      } else {
+        showToast(res.message || (isRTL ? 'فشل إعادة تفعيل المسؤول' : 'Failed to reactivate admin'), 'error');
+      }
+    } catch (error: any) {
+      showToast(error.response?.data?.message || (isRTL ? 'فشل إعادة تفعيل المسؤول' : 'Failed to reactivate admin'), 'error');
+    } finally {
+      setReactivateLoading(false);
+    }
+  }, [reactivateTarget, fetchAdmins, isRTL, showToast]);
+
+  const confirmHardDelete = useCallback(async () => {
+    if (!hardDeleteTarget) return;
+    if (hardDeleteConfirmEmail !== hardDeleteTarget.email) return;
+    setDeleteLoading(true);
+    try {
+      const res = await usersService.hardDeleteUser(hardDeleteTarget.id, hardDeleteConfirmEmail);
+      if (res.success) {
+        showToast(isRTL ? 'تم حذف المسؤول نهائياً بنجاح' : 'Admin permanently deleted', 'success');
+        fetchAdmins();
+      }
+    } catch (err: any) {
+      console.error('Hard delete error:', err);
+      const status = err.response?.status;
+      const msg = err.response?.data?.message;
+      if (status === 409) {
+        showToast(msg || (isRTL ? 'هذا الحساب لديه سجلات نظام. قم بإلغاء تنشيطه بدلاً من الحذف النهائي.' : 'This account has audit history. Deactivate it instead.'), 'error');
+      } else {
+        showToast(msg || (isRTL ? 'حدث خطأ أثناء الحذف' : 'Failed to permanently delete admin'), 'error');
+      }
+    } finally {
+      setDeleteLoading(false);
+      setHardDeleteTarget(null);
+      setHardDeleteConfirmEmail('');
+    }
+  }, [hardDeleteTarget, hardDeleteConfirmEmail, isRTL, showToast, fetchAdmins]);
+
+  // Bulk Deactivate Confirmation
+  const confirmBulkDeactivate = useCallback(async () => {
     try {
       setDeleteLoading(true);
+      let count = 0;
       for (const id of selectedIds) {
         if (id !== user?.id) {
           await usersService.deleteUser(id);
+          count++;
         }
       }
-      showToast(isRTL ? 'تم حذف المسؤولين المحددين بنجاح' : 'Deleted selected admins successfully', 'success');
+      showToast(isRTL ? `تم تعطيل ${count} من حسابات المسؤولين بنجاح` : `Deactivated ${count} admin accounts successfully`, 'success');
       setSelectedIds([]);
       setShowBulkDeleteModal(false);
       fetchAdmins();
     } catch (error: any) {
-      showToast(isRTL ? 'حدث خطأ أثناء حذف بعض الحسابات' : 'Error deleting some accounts', 'error');
+      showToast(isRTL ? 'حدث خطأ أثناء تعطيل بعض الحسابات' : 'Error deactivating some accounts', 'error');
     } finally {
       setDeleteLoading(false);
     }
   }, [selectedIds, user, fetchAdmins, isRTL, showToast]);
+
+  // Bulk Reactivate Confirmation
+  const confirmBulkReactivate = useCallback(async () => {
+    try {
+      setDeleteLoading(true);
+      let count = 0;
+      for (const id of selectedIds) {
+        const res = await usersService.reactivateUser(id);
+        if (res.success) count++;
+      }
+      showToast(isRTL ? `تمت إعادة تفعيل ${count} من حسابات المسؤولين بنجاح` : `Reactivated ${count} admin accounts successfully`, 'success');
+      setSelectedIds([]);
+      setShowBulkReactivateModal(false);
+      fetchAdmins();
+    } catch (error: any) {
+      showToast(isRTL ? 'حدث خطأ أثناء إعادة تفعيل بعض الحسابات' : 'Error reactivating some accounts', 'error');
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [selectedIds, fetchAdmins, isRTL, showToast]);
+
+  // Bulk Hard Delete Confirmation
+  const confirmBulkHardDelete = useCallback(async () => {
+    try {
+      setDeleteLoading(true);
+      let count = 0;
+      for (const id of selectedIds) {
+        if (id !== user?.id) {
+          const adminObj = (admins || []).find((a: any) => a.id === id);
+          if (adminObj) {
+            const res = await usersService.hardDeleteUser(id, adminObj.email);
+            if (res.success) count++;
+          }
+        }
+      }
+      showToast(isRTL ? `تم حذف ${count} من حسابات المسؤولين نهائياً` : `Permanently deleted ${count} admin accounts`, 'success');
+      setSelectedIds([]);
+      setShowBulkHardDeleteModal(false);
+      fetchAdmins();
+    } catch (error: any) {
+      showToast(isRTL ? 'حدث خطأ أثناء الحذف النهائي لبعض الحسابات' : 'Error permanently deleting some accounts', 'error');
+    } finally {
+      setDeleteLoading(false);
+      setBulkHardDeleteConfirmText('');
+    }
+  }, [selectedIds, user, admins, fetchAdmins, isRTL, showToast]);
 
   return (
     <div className="pt-6 section-gap animate-in fade-in duration-700 space-y-6">
@@ -268,79 +379,160 @@ const AdminsList = () => {
         }
       />
 
-      {/* Filter & Search Bar Card */}
-      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Role Filter Tabs */}
-          <div className="flex overflow-x-auto pb-1.5 md:pb-0 custom-scrollbar gap-2 w-full md:w-auto" dir={isRTL ? 'rtl' : 'ltr'}>
-            {[
-              { id: 'all', label: isRTL ? 'الكل' : 'All' },
-              { id: 'super', label: isRTL ? 'مسؤولو الجامعة' : 'University Admins' },
-              { id: 'college', label: isRTL ? 'مسؤولو الكليات' : 'College Admins' },
-              { id: 'department', label: isRTL ? 'مسؤولو الأقسام' : 'Dept Admins' },
-            ].map((tab) => {
-              const isActive = roleFilter === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setRoleFilter(tab.id)}
-                  className={`flex-shrink-0 whitespace-nowrap px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all ${
-                    isActive
-                      ? 'bg-brand-primary-500 text-white shadow-sm'
-                      : 'text-brand-text-secondary dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        {/* Total Admins */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'إجمالي المسؤولين' : 'Total Admins'}
+            </span>
+            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
+              {totalAdminsCount}
+            </span>
           </div>
-
-          {/* Search & Export Buttons */}
-          <div className="flex flex-1 md:max-w-md items-center gap-3 w-full">
-            <div className="relative flex-1">
-              <Search
-                className="absolute start-3.5 top-1/2 -translate-y-1/2 text-brand-text-muted"
-                size={16}
-              />
-              <input
-                type="text"
-                placeholder={isRTL ? 'البحث بالبريد أو الصلاحية أو الكلية...' : 'Search by email, role, college...'}
-                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl ps-10 pe-9 py-2 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-primary-500 dark:text-white"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch('')}
-                  className="absolute end-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-brand-text-muted hover:text-brand-text-primary transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={handleExportCsv}
-              className="border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 transition-all shrink-0"
-            >
-              <Download size={14} />
-              <span className="hidden sm:inline">
-                {isRTL ? 'تصدير CSV' : 'Export CSV'}
-              </span>
-            </Button>
+          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
+            <ShieldCheck size={16} />
           </div>
         </div>
-      </Card>
+
+        {/* Active Admins */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'الحسابات النشطة' : 'Active Admins'}
+            </span>
+            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
+              {activeAdminsCount}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
+            <UserCheck size={16} />
+          </div>
+        </div>
+
+        {/* University Admins */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'مسؤولو الجامعة' : 'University Admins'}
+            </span>
+            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
+              {universityAdminsCount}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
+            <Shield size={16} />
+          </div>
+        </div>
+
+        {/* College & Dept Admins */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'مسؤولو الكليات والأقسام' : 'Faculty & Dept Admins'}
+            </span>
+            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
+              {collegeAndDeptAdminsCount}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+            <Building2 size={16} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. UNIFIED COMPACT FILTER TOOLBAR                                         */}
+      {/* ========================================================================= */}
+      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-4">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={isRTL ? 'البحث بالبريد أو الصلاحية أو الكلية أو القسم...' : 'Search by email, role, college, department...'}
+            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* Role Filter */}
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="all">{isRTL ? 'جميع الصلاحيات (الكل)' : 'All Roles'}</option>
+          <option value="super">{isRTL ? 'مسؤولو الجامعة' : 'University Admins'}</option>
+          <option value="college">{isRTL ? 'مسؤولو الكليات' : 'College Admins'}</option>
+          <option value="department">{isRTL ? 'مسؤولو الأقسام' : 'Dept Admins'}</option>
+        </select>
+
+        {/* Status Filter */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as any)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="all">{isRTL ? 'جميع الحسابات' : 'All Status'}</option>
+          <option value="active">{isRTL ? 'الحسابات النشطة' : 'Active Only'}</option>
+          <option value="inactive">{isRTL ? 'الحسابات المعطلة' : 'Deactivated Only'}</option>
+        </select>
+
+        {/* Clear Filters Button */}
+        {(search || roleFilter !== 'all' || statusFilter !== 'all') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              setRoleFilter('all');
+              setStatusFilter('all');
+              setPage(1);
+            }}
+            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
+          >
+            <X size={13} className="me-1" />
+            {isRTL ? 'مسح' : 'Clear'}
+          </Button>
+        )}
+
+        {/* Export CSV Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportCsv}
+          className="h-8.5 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer shadow-2xs ms-auto"
+        >
+          <Download size={13} className="text-slate-500" />
+          <span>{isRTL ? 'تصدير CSV' : 'Export CSV'}</span>
+        </Button>
+      </div>
 
       {/* Bulk Action Toolbar */}
-      {selectedIds.length > 0 && (
+      {selectedIds.length > 0 && isSuperAdmin && (
         <BulkActionToolbar
           selectedCount={selectedIds.length}
-          onClearSelection={() => setSelectedIds([])}
-          onExportSelected={handleBulkExport}
-          onDeleteSelected={() => setShowBulkDeleteModal(true)}
+          onClear={() => setSelectedIds([])}
+          onExport={handleBulkExport}
+          onDeactivate={statusFilter !== 'inactive' ? () => setShowBulkDeleteModal(true) : undefined}
+          onReactivate={statusFilter !== 'active' ? () => setShowBulkReactivateModal(true) : undefined}
+          onHardDelete={() => {
+            setShowBulkHardDeleteModal(true);
+            setBulkHardDeleteConfirmText('');
+          }}
         />
       )}
 
@@ -355,11 +547,19 @@ const AdminsList = () => {
           </div>
         ) : filteredAdmins.length === 0 ? (
           <EmptyState
-            icon={<ShieldCheck className="w-10 h-10 text-brand-primary-500" />}
-            title={isRTL ? 'لم يتم العثور على مسؤولين' : 'No Admins Found'}
-            subtitle={isRTL ? 'لم ينطبق أي مسؤول على الفلتر أو البحث المحدد' : 'No administrators matched your filter or search query.'}
+            icon={statusFilter === 'inactive' ? <UserCheck className="w-10 h-10 text-emerald-500" /> : <ShieldCheck className="w-10 h-10 text-brand-primary-500" />}
+            title={
+              statusFilter === 'inactive' && !search && roleFilter === 'all'
+                ? (isRTL ? 'لا توجد حسابات معطلة' : 'No Deactivated Admins')
+                : (isRTL ? 'لم يتم العثور على مسؤولين' : 'No Admins Found')
+            }
+            subtitle={
+              statusFilter === 'inactive' && !search && roleFilter === 'all'
+                ? (isRTL ? 'جميع حسابات مسؤولي الجامعة والكليات والأقسام نشطة وتعمل بشكل طبيعي.' : 'All administrator accounts are currently active and functioning normally.')
+                : (isRTL ? 'لم ينطبق أي مسؤول على الفلتر أو البحث المحدد' : 'No administrators matched your filter or search query.')
+            }
             action={
-              isSuperAdmin
+              isSuperAdmin && statusFilter !== 'inactive'
                 ? {
                     label: isRTL ? 'إضافة مسؤول جديد' : 'Add New Admin',
                     onClick: () => setShowAddModal(true),
@@ -389,6 +589,9 @@ const AdminsList = () => {
                     </TableHead>
                     <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {isRTL ? 'الصلاحية' : 'Role'}
+                    </TableHead>
+                    <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {isRTL ? 'الحالة' : 'Status'}
                     </TableHead>
                     <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {isRTL ? 'النطاق' : 'Scope'}
@@ -424,26 +627,58 @@ const AdminsList = () => {
                     const scopeLabel =
                       admin.managedCollege?.name || admin.college?.name || (isRTL ? 'جميع الكليات والجامعة' : 'All University');
 
-                    const actions = [
-                      {
+                    const isInactive = admin.isActive === false;
+                    const actions = [];
+
+                    if (isInactive) {
+                      if (isSuperAdmin) {
+                        actions.push({
+                          label: isRTL ? 'إعادة تفعيل الحساب' : 'Reactivate Admin',
+                          icon: UserCheck,
+                          variant: 'edit',
+                          onClick: () => setReactivateTarget(admin),
+                        });
+                        if (!isSelf) {
+                          actions.push({
+                            label: isRTL ? 'حذف الحساب نهائياً' : 'Permanent Delete',
+                            icon: Trash2,
+                            variant: 'delete',
+                            onClick: () => {
+                              setHardDeleteTarget(admin);
+                              setHardDeleteConfirmEmail('');
+                            },
+                          });
+                        }
+                      }
+                    } else {
+                      actions.push({
                         label: isRTL ? 'تعديل البيانات' : 'Edit Admin',
                         icon: Edit2,
                         onClick: () => setEditingAdmin(admin),
-                      },
-                      {
+                      });
+                      actions.push({
                         label: isRTL ? 'إعادة تعيين كلمة المرور' : 'Reset Password',
                         icon: KeyRound,
                         onClick: () => setResetPasswordAdmin(admin),
-                      },
-                    ];
-
-                    if (isSuperAdmin && !isSelf) {
-                      actions.push({
-                        label: isRTL ? 'حذف الحساب' : 'Delete Admin',
-                        icon: Trash2,
-                        variant: 'delete',
-                        onClick: () => setDeleteTarget(admin),
                       });
+
+                      if (isSuperAdmin && !isSelf) {
+                        actions.push({
+                          label: isRTL ? 'تعطيل الحساب' : 'Deactivate Admin',
+                          icon: UserX,
+                          variant: 'delete',
+                          onClick: () => setDeleteTarget(admin),
+                        });
+                        actions.push({
+                          label: isRTL ? 'حذف الحساب نهائياً' : 'Permanent Delete',
+                          icon: Trash2,
+                          variant: 'delete',
+                          onClick: () => {
+                            setHardDeleteTarget(admin);
+                            setHardDeleteConfirmEmail('');
+                          },
+                        });
+                      }
                     }
 
                     return (
@@ -451,7 +686,7 @@ const AdminsList = () => {
                         key={admin.id}
                         className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors ${
                           isSelected ? 'bg-brand-primary-500/5 dark:bg-brand-primary-500/10' : ''
-                        }`}
+                        } ${isInactive ? 'opacity-75 bg-slate-50/50 dark:bg-slate-900/30' : ''}`}
                       >
                         {/* Checkbox */}
                         <TableCell className="w-12 text-center p-4">
@@ -466,8 +701,10 @@ const AdminsList = () => {
                         {/* Admin Name & Avatar */}
                         <TableCell className="p-4 text-start">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-brand-primary-500/10 text-brand-primary-600 flex items-center justify-center flex-shrink-0 font-bold">
-                              <Shield className="w-5 h-5 text-brand-primary-600" />
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 font-bold ${
+                              isInactive ? 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400' : 'bg-brand-primary-500/10 text-brand-primary-600'
+                            }`}>
+                              <Shield className="w-5 h-5" />
                             </div>
                             <div className="flex flex-col">
                               <span className="font-bold text-brand-text-primary dark:text-white flex items-center gap-1.5">
@@ -495,6 +732,21 @@ const AdminsList = () => {
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold ${roleClass}`}>
                             {roleLabel}
                           </span>
+                        </TableCell>
+
+                        {/* Status Badge */}
+                        <TableCell className="p-4 text-center">
+                          {!isInactive ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                              {isRTL ? 'نشط' : 'Active'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                              {isRTL ? 'معطل' : 'Inactive'}
+                            </span>
+                          )}
                         </TableCell>
 
                         {/* Scope */}
@@ -576,27 +828,193 @@ const AdminsList = () => {
         type="admin"
       />
 
-      {/* Single Delete Confirmation Modal */}
+      {/* Single Deactivate Confirmation Modal */}
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         itemName={deleteTarget?.email || ''}
         onConfirm={confirmDelete}
         loading={deleteLoading}
-        title={isRTL ? 'تأكيد حذف المسؤول' : 'Confirm Delete Admin'}
-        message={isRTL ? `هل أنت تأكد من إغلاق وحذف حساب المسؤول "${deleteTarget?.email}"؟ لا يمكن التراجع عن هذا الإجراء.` : `Are you sure you want to delete admin account "${deleteTarget?.email}"? This action cannot be undone.`}
+        variant="warning"
+        title={isRTL ? 'تأكيد تعطيل المسؤول' : 'Confirm Deactivate Admin'}
+        confirmLabel={isRTL ? 'تعطيل الحساب' : 'Deactivate Admin'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من تعطيل حساب المسؤول "${deleteTarget?.email}"؟ سيتم إيقاف صلاحيات الوصول لهذا الحساب ويمكنك إعادة تفعيله لاحقاً.`
+            : `Are you sure you want to deactivate admin account "${deleteTarget?.email}"? Access permissions will be paused and this account can be reactivated later.`
+        }
       />
 
-      {/* Bulk Delete Confirmation Modal */}
+      {/* Single Reactivate Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!reactivateTarget}
+        onClose={() => setReactivateTarget(null)}
+        itemName={reactivateTarget?.email || ''}
+        onConfirm={confirmReactivate}
+        loading={reactivateLoading}
+        variant="warning"
+        title={isRTL ? 'تأكيد إعادة تفعيل المسؤول' : 'Confirm Reactivate Admin'}
+        confirmLabel={isRTL ? 'تفعيل الحساب' : 'Reactivate Account'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من إعادة تفعيل حساب المسؤول "${reactivateTarget?.email}"؟ سيتم استعادة جميع صلاحيات الوصول الخاصة به فوراً.`
+            : `Are you sure you want to reactivate admin account "${reactivateTarget?.email}"? All account access permissions will be restored immediately.`
+        }
+      />
+
+      {/* Bulk Deactivate Confirmation Modal */}
       <ConfirmDeleteModal
         isOpen={showBulkDeleteModal}
         onClose={() => setShowBulkDeleteModal(false)}
         itemName={`${selectedIds.length} ${isRTL ? 'مسؤولين' : 'admins'}`}
-        onConfirm={confirmBulkDelete}
+        onConfirm={confirmBulkDeactivate}
         loading={deleteLoading}
-        title={isRTL ? 'تأكيد حذف الحسابات المحددة' : 'Confirm Delete Selected Admins'}
-        message={isRTL ? `هل أنت متأكد من حذف ${selectedIds.length} من حسابات المسؤولين المحددة؟` : `Are you sure you want to delete ${selectedIds.length} selected admin accounts?`}
+        variant="warning"
+        title={isRTL ? 'تأكيد تعطيل الحسابات المحددة' : 'Confirm Deactivate Selected Admins'}
+        confirmLabel={isRTL ? 'تعطيل الحسابات' : 'Deactivate Accounts'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من تعطيل ${selectedIds.length} من حسابات المسؤولين المحددة؟ سيتم إيقاف صلاحيات الوصول لهذه الحسابات ويمكنك إعادة تفعيلها لاحقاً.`
+            : `Are you sure you want to deactivate ${selectedIds.length} selected admin accounts? Access permissions will be paused and these accounts can be reactivated later.`
+        }
       />
+
+      {/* Bulk Reactivate Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={showBulkReactivateModal}
+        onClose={() => setShowBulkReactivateModal(false)}
+        itemName={`${selectedIds.length} ${isRTL ? 'مسؤولين' : 'admins'}`}
+        onConfirm={confirmBulkReactivate}
+        loading={deleteLoading}
+        variant="warning"
+        title={isRTL ? 'تأكيد إعادة تفعيل الحسابات المحددة' : 'Confirm Reactivate Selected Admins'}
+        confirmLabel={isRTL ? 'تفعيل الحسابات' : 'Reactivate Accounts'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من إعادة تفعيل ${selectedIds.length} من حسابات المسؤولين المحددة؟ سيتم استعادة جميع صلاحيات الوصول الخاصة بهم فوراً.`
+            : `Are you sure you want to reactivate ${selectedIds.length} selected admin accounts? All account access permissions will be restored immediately.`
+        }
+      />
+
+      {/* Bulk Permanent Hard Delete Confirmation Modal */}
+      {showBulkHardDeleteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowBulkHardDeleteModal(false)} />
+          <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="flex items-center gap-4 text-rose-600 dark:text-rose-500 mb-4">
+                <div className="p-3 bg-rose-100 dark:bg-rose-900/30 rounded-full">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold">
+                  {isRTL ? 'حذف نهائي للحسابات المحددة' : 'Permanent Delete Selected Admins'}
+                </h3>
+              </div>
+              
+              <div className="space-y-4">
+                <p className="text-slate-600 dark:text-slate-300">
+                  {isRTL 
+                    ? `هل أنت متأكد أنك تريد الحذف النهائي لـ ${selectedIds.length} من حسابات المسؤولين المحددة؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذف جميع البيانات المرتبطة بها بشكل دائم.`
+                    : `Are you sure you want to permanently delete ${selectedIds.length} selected admin accounts? This action cannot be undone and will permanently remove all associated data.`}
+                </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    {isRTL ? 'لتأكيد الحذف النهائي، يرجى كتابة "DELETE":' : 'To confirm permanent delete, please type "DELETE":'}
+                  </label>
+                  <input
+                    type="text"
+                    value={bulkHardDeleteConfirmText}
+                    onChange={(e) => setBulkHardDeleteConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none uppercase font-mono tracking-widest text-center"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck="false"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowBulkHardDeleteModal(false)}
+                disabled={deleteLoading}
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={confirmBulkHardDelete}
+                disabled={bulkHardDeleteConfirmText.trim().toUpperCase() !== 'DELETE' || deleteLoading}
+              >
+                {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isRTL ? 'حذف نهائي للكل' : 'Delete All Permanently'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permanent Hard Delete Confirmation Modal */}
+      {hardDeleteTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setHardDeleteTarget(null)} />
+          <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="flex items-center gap-4 text-rose-600 dark:text-rose-500 mb-4">
+                <div className="p-3 bg-rose-100 dark:bg-rose-900/30 rounded-full">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold">
+                  {isRTL ? 'حذف نهائي' : 'Permanent Delete'}
+                </h3>
+              </div>
+              
+              <div className="space-y-4">
+                <p className="text-slate-600 dark:text-slate-300">
+                  {isRTL 
+                    ? `هل أنت متأكد أنك تريد الحذف النهائي لحساب المسؤول "${hardDeleteTarget.email}"؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذف جميع البيانات المرتبطة بهذا الحساب بشكل دائم.`
+                    : `Are you sure you want to permanently delete admin account "${hardDeleteTarget.email}"? This action cannot be undone and will permanently remove all associated data.`}
+                </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    {isRTL ? 'لتأكيد الحذف، يرجى كتابة البريد الإلكتروني للحساب:' : 'To confirm, please type the admin email:'}
+                  </label>
+                  <input
+                    type="text"
+                    value={hardDeleteConfirmEmail}
+                    onChange={(e) => setHardDeleteConfirmEmail(e.target.value)}
+                    placeholder={hardDeleteTarget.email}
+                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck="false"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setHardDeleteTarget(null)}
+                disabled={deleteLoading}
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={confirmHardDelete}
+                disabled={hardDeleteConfirmEmail !== hardDeleteTarget.email || deleteLoading}
+              >
+                {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isRTL ? 'حذف نهائي' : 'Delete Permanently'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

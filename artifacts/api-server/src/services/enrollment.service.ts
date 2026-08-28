@@ -286,14 +286,15 @@ class EnrollmentService {
     });
 
     const firstName =
-      exemption.createdBy.doctor?.firstName ||
-      exemption.createdBy.student?.firstName ||
-      exemption.createdBy.teachingAssistant?.firstName ||
-      exemption.createdBy.email.split('@')[0];
+      exemption.createdBy?.doctor?.firstName ||
+      exemption.createdBy?.student?.firstName ||
+      exemption.createdBy?.teachingAssistant?.firstName ||
+      exemption.createdBy?.email?.split('@')[0] ||
+      '';
     const lastName =
-      exemption.createdBy.doctor?.lastName ||
-      exemption.createdBy.student?.lastName ||
-      exemption.createdBy.teachingAssistant?.lastName ||
+      exemption.createdBy?.doctor?.lastName ||
+      exemption.createdBy?.student?.lastName ||
+      exemption.createdBy?.teachingAssistant?.lastName ||
       '';
 
     return {
@@ -305,12 +306,14 @@ class EnrollmentService {
         reason: exemption.reason,
         createdById: exemption.createdById,
         createdAt: exemption.createdAt,
-        createdBy: {
-          id: exemption.createdBy.id,
-          email: exemption.createdBy.email,
-          firstName,
-          lastName,
-        },
+        createdBy: exemption.createdBy
+          ? {
+              id: exemption.createdBy.id,
+              email: exemption.createdBy.email,
+              firstName,
+              lastName,
+            }
+          : null,
       },
       enrollment: updatedEnrollment,
     };
@@ -368,14 +371,15 @@ class EnrollmentService {
 
     return exemptionPeriods.map((p) => {
       const firstName =
-        p.createdBy.doctor?.firstName ||
-        p.createdBy.student?.firstName ||
-        p.createdBy.teachingAssistant?.firstName ||
-        p.createdBy.email.split('@')[0];
+        p.createdBy?.doctor?.firstName ||
+        p.createdBy?.student?.firstName ||
+        p.createdBy?.teachingAssistant?.firstName ||
+        p.createdBy?.email?.split('@')[0] ||
+        '';
       const lastName =
-        p.createdBy.doctor?.lastName ||
-        p.createdBy.student?.lastName ||
-        p.createdBy.teachingAssistant?.lastName ||
+        p.createdBy?.doctor?.lastName ||
+        p.createdBy?.student?.lastName ||
+        p.createdBy?.teachingAssistant?.lastName ||
         '';
 
       return {
@@ -386,12 +390,14 @@ class EnrollmentService {
         reason: p.reason,
         createdById: p.createdById,
         createdAt: p.createdAt,
-        createdBy: {
-          id: p.createdBy.id,
-          email: p.createdBy.email,
-          firstName,
-          lastName,
-        },
+        createdBy: p.createdBy
+          ? {
+              id: p.createdBy.id,
+              email: p.createdBy.email,
+              firstName,
+              lastName,
+            }
+          : null,
       };
     });
   }

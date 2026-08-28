@@ -21,7 +21,8 @@ import {
   ExternalLink,
   ChevronDown,
   Users,
-  BookOpen
+  BookOpen,
+  X,
 } from 'lucide-react';
 import FilterBar from '../../components/ui/FilterBar';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -57,26 +58,44 @@ const DepartmentsList = () => {
   const isRTL = i18n.language === 'ar';
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const initialCollegeId = searchParams.get('collegeId') || '';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlCollegeId = searchParams.get('collegeId') || '';
 
-  const canManage = user?.role === 'SUPER_ADMIN' || user?.role === 'COLLEGE_ADMIN';
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isCollegeAdmin = user?.role === 'COLLEGE_ADMIN';
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const canManage = isSuperAdmin || isCollegeAdmin;
 
+  // Determine effective college ID (scoped college admin or URL query param)
+  const defaultCollegeId = isCollegeAdmin && user?.managedCollegeId
+    ? String(user.managedCollegeId)
+    : (urlCollegeId || '');
 
-  const [colleges, setColleges] = useState([]);
+  const [colleges, setColleges] = useState<any[]>([]);
+  const [selectedCollegeId, setSelectedCollegeId] = useState<string>(defaultCollegeId);
 
   const { views, activeView, activeViewId, setActiveViewId, saveView, deleteView, setDefaultView, updateActiveView } = useSavedViews('departments_views', defaultView);
-  const { data: departments, loading, error, search, setSearch, page, setPage, total, refetch } = useDepartments({ initialSearch: activeView?.search || '', limit: activeView?.pageSize || 10 });
-  const limit = activeView?.pageSize || 10;
-  const totalPages = Math.ceil(total / limit);
+  
+  const { data: departments, loading, error, search, setSearch, page, setPage, total, refetch } = useDepartments({
+    initialSearch: activeView?.search || '',
+    limit: activeView?.pageSize || 50,
+    collegeId: selectedCollegeId || undefined,
+  });
+
+  const limit = activeView?.pageSize || 50;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
   const totalRecords = total;
   const fetchDepartments = refetch;
 
-
-  const [selectedCollegeId, setSelectedCollegeId] = useState(activeView.filters?.collegeId || initialCollegeId);
   const [sortBy, setSortBy] = useState<'name' | 'students' | 'courses'>(activeView.filters?.sortBy || 'name');
+
+  // React to URL changes (e.g. clicking "Manage Departments" from a college card)
+  useEffect(() => {
+    if (isCollegeAdmin && user?.managedCollegeId) {
+      setSelectedCollegeId(String(user.managedCollegeId));
+    } else if (urlCollegeId) {
+      setSelectedCollegeId(urlCollegeId);
+    }
+  }, [urlCollegeId, isCollegeAdmin, user?.managedCollegeId]);
 
   const handleSelectView = (viewId: string) => {
     if (viewId === activeViewId) {
@@ -84,7 +103,7 @@ const DepartmentsList = () => {
       if (view) {
         setSearch(view.search || '');
         setSortBy(view.filters?.sortBy || 'name');
-        if (!isCollegeAdmin) {
+        if (!isCollegeAdmin && !urlCollegeId) {
           setSelectedCollegeId(view.filters?.collegeId || '');
         }
       }
@@ -96,10 +115,10 @@ const DepartmentsList = () => {
   useEffect(() => {
     setSearch(activeView.search || '');
     setSortBy(activeView.filters?.sortBy || 'name');
-    if (!isCollegeAdmin) {
-      setSelectedCollegeId(activeView.filters?.collegeId !== undefined ? activeView.filters.collegeId : initialCollegeId);
+    if (!isCollegeAdmin && !urlCollegeId && activeView.filters?.collegeId !== undefined) {
+      setSelectedCollegeId(activeView.filters.collegeId);
     }
-  }, [activeViewId, isCollegeAdmin]);
+  }, [activeViewId, isCollegeAdmin, urlCollegeId]);
 
   useEffect(() => {
     updateActiveView({
@@ -126,8 +145,6 @@ const DepartmentsList = () => {
   const [activeDrawerId, setActiveDrawerId] = useState<string | null>(null);
   const { showToast } = useToast();
 
-
-
   const fetchColleges = async () => {
     try {
       const result = await collegeService.getColleges();
@@ -140,19 +157,7 @@ const DepartmentsList = () => {
   };
 
   useEffect(() => {
-    // If user is college or department admin, apply scope
-    if (user?.role === 'COLLEGE_ADMIN' && user?.managedCollegeId) {
-      setSelectedCollegeId(String(user.managedCollegeId));
-      fetchDepartments(user.managedCollegeId);
-    } else if (user?.role === 'DEPARTMENT_ADMIN' && user?.managedDepartmentId) {
-      // If department admin, show only their department
-      setSelectedCollegeId('');
-      setDepartments([]);
-      // Optionally, fetch single department data
-    } else {
-      fetchDepartments();
-      fetchColleges();
-    }
+    fetchColleges();
   }, []);
 
 
@@ -179,7 +184,7 @@ const DepartmentsList = () => {
   };
 
   const filteredDepartments = (Array.isArray(departments) ? departments : []).filter((dept) => {
-    const matchesSearch = 
+    const matchesSearch =
       (dept.name?.toLowerCase().includes(search.toLowerCase())) ||
       (dept.nameAr?.toLowerCase().includes(search.toLowerCase()));
     const matchesCollege = selectedCollegeId ? String(dept.collegeId) === selectedCollegeId : true;
@@ -187,88 +192,184 @@ const DepartmentsList = () => {
   });
 
   const isDirty = search !== (activeView.search || '') ||
-                  selectedCollegeId !== (activeView.filters?.collegeId || '') ||
-                  sortBy !== (activeView.filters?.sortBy || 'name');
+    selectedCollegeId !== (activeView.filters?.collegeId || '') ||
+    sortBy !== (activeView.filters?.sortBy || 'name');
 
 
 
   const sortedDepartments = [...filteredDepartments].sort((a, b) => {
     if (sortBy === 'students') return (b._count?.students ?? 0) - (a._count?.students ?? 0);
-    if (sortBy === 'courses')  return (b._count?.courses  ?? 0) - (a._count?.courses  ?? 0);
+    if (sortBy === 'courses') return (b._count?.courses ?? 0) - (a._count?.courses ?? 0);
     return (isRTL ? a.nameAr || a.name : a.name).localeCompare(
-             isRTL ? b.nameAr || b.name : b.name, isRTL ? 'ar' : 'en');
+      isRTL ? b.nameAr || b.name : b.name, isRTL ? 'ar' : 'en');
   });
 
 
 
+  const totalStudents = (Array.isArray(departments) ? departments : []).reduce((acc, d) => acc + (d._count?.students ?? 0), 0);
+  const totalCourses = (Array.isArray(departments) ? departments : []).reduce((acc, d) => acc + (d._count?.courses ?? 0), 0);
+
   return (
-    <div className="section-gap animate-page">
-      {/* Toast Notification */}
-
-
+    <div className="section-gap animate-page pt-4">
       <PageHeader
-        title={t('departments.title')}
-        subtitle={t('departments.subtitle')}
-        action={canManage ? {
-          label: t('departments.addDept'),
-          onClick: () => setIsAddModalOpen(true),
-          icon: Plus,
-          className: "!bg-[#84cc16] !text-white !rounded-lg hover:!bg-[#65a30d] hover:!scale-[1.02] active:!bg-[#4d7c0f] active:!scale-[0.98] transition-all duration-200 border-none shadow-none",
-        } : undefined}
+        title={t('departments.title', 'Academic Departments')}
+        subtitle={t('departments.subtitle', 'Manage academic departments across colleges')}
+        action={
+          canManage
+            ? {
+                label: t('departments.addDept', 'Add Department'),
+                onClick: () => setIsAddModalOpen(true),
+                icon: Plus,
+                className:
+                  'bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2',
+              }
+            : undefined
+        }
       />
 
-      <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-0 mb-6">
-        <FilterBar
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder={t('departments.searchPlaceholder')}
-          onClear={search || selectedCollegeId ? () => { setSearch(''); setSelectedCollegeId(''); } : undefined}
-        >
-          {/* College filter — hidden for college admins */}
-          {!isCollegeAdmin && (
-            <select
-              value={selectedCollegeId}
-              onChange={e => setSelectedCollegeId(e.target.value)}
-              className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+        {/* Total Departments */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'إجمالي الأقسام' : 'Total Departments'}
+            </span>
+            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
+              {departments.length}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
+            <Layers size={16} />
+          </div>
+        </div>
+
+        {/* Affiliated Colleges */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'الكليات التابعة' : 'Affiliated Colleges'}
+            </span>
+            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
+              {colleges.length}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
+            <Building size={16} />
+          </div>
+        </div>
+
+        {/* Enrolled Students */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'الطلاب المقيدون' : 'Enrolled Students'}
+            </span>
+            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
+              {totalStudents}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
+            <Users size={16} />
+          </div>
+        </div>
+
+        {/* Total Courses */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold block">
+              {isRTL ? 'المقررات الدراسية' : 'Academic Courses'}
+            </span>
+            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
+              {totalCourses}
+            </span>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+            <BookOpen size={16} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. UNIFIED COMPACT FILTER TOOLBAR                                         */}
+      {/* ========================================================================= */}
+      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-6">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('departments.searchPlaceholder', 'Search by department name, code, or college...')}
+            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
             >
-              <option value="">{t('colleges.allColleges')}</option>
-              {Array.isArray(colleges) && colleges.map(c => (
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* College Filter */}
+        {!isCollegeAdmin && (
+          <select
+            value={selectedCollegeId}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedCollegeId(val);
+              if (val) {
+                setSearchParams({ collegeId: val });
+              } else {
+                setSearchParams({});
+              }
+            }}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('colleges.allColleges', 'All Colleges')}</option>
+            {Array.isArray(colleges) &&
+              colleges.map((c) => (
                 <option key={c.id} value={c.id}>
                   {isRTL ? c.nameAr || c.name : c.name}
                 </option>
               ))}
-            </select>
-          )}
-
-          {/* Sort select */}
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value as any)}
-            className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
-          >
-            <option value="name">{t('departments.sortByName', 'Sort: Name')}</option>
-            <option value="students">{t('departments.sortByStudents', 'Sort: Students')}</option>
-            <option value="courses">{t('departments.sortByCourses', 'Sort: Courses')}</option>
           </select>
+        )}
 
-          {/* ViewManager stays */}
-          <ViewManager
-            views={views}
-            activeViewId={activeViewId}
-            onSelectView={handleSelectView}
-            onSaveView={saveView}
-            onDeleteView={deleteView}
-            onSetDefault={setDefaultView}
-            isDirty={isDirty}
-            currentViewState={{
-              search,
-              filters: { collegeId: selectedCollegeId, sortBy },
-              density: activeView.density,
-              pageSize: 10
+        {/* Sort Select */}
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as any)}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="name">{t('departments.sortByName', 'Sort: Name')}</option>
+          <option value="students">{t('departments.sortByStudents', 'Sort: Students')}</option>
+          <option value="courses">{t('departments.sortByCourses', 'Sort: Courses')}</option>
+        </select>
+
+        {/* Clear Filters */}
+        {(search || selectedCollegeId || sortBy !== 'name') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              setSelectedCollegeId('');
+              setSortBy('name');
+              setSearchParams({});
             }}
-          />
-        </FilterBar>
-      </Card>
+            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
+          >
+            <X size={13} className="me-1" />
+            {isRTL ? 'مسح' : 'Clear'}
+          </Button>
+        )}
+      </div>
 
       {loading ? (
         <div className="flex flex-col justify-center items-center h-96 gap-4">
