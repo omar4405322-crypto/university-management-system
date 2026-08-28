@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -27,10 +26,13 @@ import {
   GraduationCap
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
+import Button from '../../components/ui/button';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 import timetableService from '../../services/timetable.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
+import type { College, Department } from '../../types/timetable.types';
+import type { ApiResponse } from '../../types/models';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
@@ -49,6 +51,35 @@ import {
   AlertDialogTitle,
 } from '../../components/ui/alert-dialog';
 
+export interface TimetableItem {
+  id: number;
+  title?: string;
+  description?: string;
+  departmentId: number;
+  collegeId: number;
+  academicYear: number;
+  semester: number;
+  status?: 'PUBLISHED' | 'DRAFT' | string;
+  college?: {
+    id: number;
+    name: string;
+    nameAr?: string;
+  };
+  department?: {
+    id: number;
+    name: string;
+    nameAr?: string;
+    collegeId?: number;
+    college?: { id: number; name: string };
+  };
+  slots?: any[];
+  _count?: {
+    slots?: number;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 const TimetableManagement = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -62,10 +93,10 @@ const TimetableManagement = () => {
 
   // Loading & Data States
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [timetables, setTimetables] = useState<any[]>([]);
-  const [colleges, setColleges] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [timetables, setTimetables] = useState<TimetableItem[]>([]);
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'single'; id: number | string } | { type: 'bulk' } | null>(null);
 
   // Filter States
@@ -82,30 +113,32 @@ const TimetableManagement = () => {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTimetable, setEditingTimetable] = useState<any>(null);
+  const [editingTimetable, setEditingTimetable] = useState<TimetableItem | null>(null);
 
-  const canManage = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
+  const canManage = user?.role ? ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) : false;
 
   // 1. Fetch Metadata (Colleges & Departments)
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
         const [collegesRes, deptsRes] = await Promise.all([
-          collegeService.getColleges({ limit: 100 }).catch(() => ({ data: [] })),
-          departmentService.getDepartments({ limit: 200 }).catch(() => ({ data: [] })),
+          collegeService.getColleges({ limit: 100 }).catch((): ApiResponse<any> => ({ success: false, data: [] })),
+          departmentService.getDepartments({ limit: 200 }).catch((): ApiResponse<any> => ({ success: false, data: [] })),
         ]);
 
         if (collegesRes.success || collegesRes.data) {
-          const arr = Array.isArray(collegesRes.data)
-            ? collegesRes.data
-            : collegesRes.data?.colleges || collegesRes.data?.data || [];
+          const raw = collegesRes.data;
+          const arr = Array.isArray(raw)
+            ? raw
+            : raw?.colleges || raw?.data || [];
           setColleges(arr);
         }
 
         if (deptsRes.success || deptsRes.data) {
-          const arr = Array.isArray(deptsRes.data)
-            ? deptsRes.data
-            : deptsRes.data?.departments || deptsRes.data?.data || [];
+          const raw = deptsRes.data;
+          const arr = Array.isArray(raw)
+            ? raw
+            : raw?.departments || raw?.data || [];
           setDepartments(arr);
         }
       } catch (err) {
@@ -172,7 +205,7 @@ const TimetableManagement = () => {
   };
 
   // Toggle Publish / Unpublish Status
-  const handleTogglePublish = async (id: number | string, currentStatus: string) => {
+  const handleTogglePublish = async (id: number | string, currentStatus?: string) => {
     try {
       if (currentStatus === 'PUBLISHED') {
         await timetableService.unpublishTimetable(String(id));
