@@ -91,7 +91,7 @@ const TimeSlotCell = memo(function TimeSlotCell({
 
       {/* Course name */}
       <p
-        className={`font-black text-brand-text-main tracking-tight line-clamp-2 ${isRTL ? 'pl-6' : 'pr-6'} flex items-start gap-1.5`}
+        className="font-black text-brand-text-main tracking-tight line-clamp-2 pe-6 flex items-start gap-1.5"
       >
         <BookOpen size={14} className="mt-0.5 shrink-0 text-brand-primary-500" />
         {entry.courseName}

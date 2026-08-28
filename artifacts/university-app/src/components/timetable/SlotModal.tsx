@@ -177,7 +177,7 @@ export default function SlotModal({
             <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
               <Users size={14} className="text-brand-primary-500" />
               {t('common.group', 'Group')}
-              <span className="text-[10px] font-normal text-brand-text-muted ml-1">
+              <span className="text-[10px] font-normal text-brand-text-muted ms-1">
                 ({t('schedule.groupOptional', 'schedule.groupOptional')})
               </span>
             </label>
@@ -278,7 +278,7 @@ export default function SlotModal({
                 className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none`}
               />
               <input
-                className={`${FIELD_CLASS} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
+                className={`${FIELD_CLASS} ps-10 pe-4`}
                 placeholder={t('schedule.roomPlaceholder', 'e.g. A101')}
                 value={form.room}
                 onChange={(e) => onChange({ ...form, room: e.target.value })}

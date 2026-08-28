@@ -594,7 +594,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
               تم اكتشاف <strong className="text-rose-600 dark:text-rose-400 font-black">{auditReport.length}</strong> تعارض دراسي يحتاج إلى مراجعة قبل الاعتماد:
             </p>
 
-            <div className="max-h-64 overflow-y-auto space-y-2.5 pr-1">
+            <div className="max-h-64 overflow-y-auto space-y-2.5 pe-1">
               {auditReport.map((item, idx) => (
                 <div key={idx} className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-xl space-y-1 text-xs">
                   <div className="flex justify-between items-center text-rose-800 dark:text-rose-300 font-bold">

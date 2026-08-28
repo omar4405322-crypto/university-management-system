@@ -101,11 +101,11 @@ export function OverrideModal({ isOpen, onClose, entry, onSuccess }: OverrideMod
                 : t('schedule.createOverride', 'Set Temporary Override')}
             </h2>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 ml-11">
+          <p className="text-sm text-slate-500 dark:text-slate-400 ms-11">
             {entry.courseName} &bull; {entry.room || 'No room'}
           </p>
           {entry.isTemporarilyModified && (
-            <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 ml-11 mt-1">
+            <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 ms-11 mt-1">
               ⚠ This slot is currently modified by an active override
             </p>
           )}

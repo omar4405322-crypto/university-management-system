@@ -479,7 +479,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
               <Users size={14} className="text-slate-400" /> {t('common.group', 'Group')}
-              <span className="text-[10px] font-normal text-slate-400 ml-1">({t('schedule.groupOptional', 'optional — empty = all students')})</span>
+              <span className="text-[10px] font-normal text-slate-400 ms-1">({t('schedule.groupOptional', 'optional — empty = all students')})</span>
             </label>
             <select
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm disabled:opacity-50"
