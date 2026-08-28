@@ -97,7 +97,7 @@ const CreateQuiz = () => {
 
       <form onSubmit={handleSubmit(onSubmit)} className="form-section">
         <div className="bg-brand-bg-card p-6 rounded-xl shadow-sm border border-brand-border space-y-4">
-          <h2 className="text-lg font-semibold text-brand-text-primary border-b border-brand-border pb-2">Basic Information</h2>
+          <h2 className="text-lg font-bold text-brand-text-primary border-b border-brand-border pb-2">Basic Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-sm font-medium text-brand-text-primary">Quiz Title</label>
