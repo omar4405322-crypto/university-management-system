@@ -213,7 +213,7 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
 });
 
 // Map to track recently rotated refresh tokens to avoid multi-tab logout races
-const rotatedTokens = new Map<string, { userId: number; tokenVersion: number; rotatedAt: number }>();
+const rotatedTokens = new Map<string, { userId: number; tokenVersion: number; rotatedAt: number; user?: Record<string, any> }>();
 
 // Periodically clean up expired keys (keep for 30s)
 setInterval(() => {
@@ -249,7 +249,7 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
     const accessToken = generateAccessToken(rotatedInfo.userId, rotatedInfo.tokenVersion);
     return res.json({
       success: true,
-      data: { accessToken },
+      data: { accessToken, user: rotatedInfo.user },
     });
   }
 
@@ -260,7 +260,15 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
     const result = await prisma.$transaction(async (tx) => {
       const tokenDoc = await tx.refreshToken.findUnique({
         where: { token: refresh_token },
-        include: { user: true },
+        include: {
+          user: {
+            include: {
+              student: true,
+              doctor: true,
+              managedCollege: { select: { id: true, name: true, nameAr: true } },
+            },
+          },
+        },
       });
 
       if (!tokenDoc) {
@@ -297,7 +305,11 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
 
       const accessToken = generateAccessToken(tokenDoc.user.id, tokenDoc.user.tokenVersion);
 
-      return { accessToken, newRefreshToken };
+      // Strip sensitive fields (matches getMe shape exactly)
+      const { password: _password, twoFactorSecret: _secret, ...safeUser } = tokenDoc.user;
+      const userData = { ...safeUser, twoFactorEnabled: tokenDoc.user.twoFactorEnabled };
+
+      return { accessToken, newRefreshToken, user: userData };
     });
 
     // Successfully rotated - add to rotatedTokens map for concurrent protection
@@ -306,6 +318,7 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
         userId,
         tokenVersion: tokenVersion || 0,
         rotatedAt: Date.now(),
+        user: result.user,
       });
     }
 
@@ -313,15 +326,16 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
 
     return res.json({
       success: true,
-      data: { accessToken: result.accessToken },
+      data: { accessToken: result.accessToken, user: result.user },
     });
   } catch (error: any) {
     if (error instanceof ConcurrentRotationError) {
       logger.info(`[AUTH] Concurrent refresh lookup detected for user: ${error.userId}. Returning fresh access token.`);
       const accessToken = generateAccessToken(error.userId, error.tokenVersion);
+      const cachedInfo = rotatedTokens.get(refresh_token);
       return res.json({
         success: true,
-        data: { accessToken },
+        data: { accessToken, user: cachedInfo?.user },
       });
     }
 
@@ -339,7 +353,7 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
       const accessToken = generateAccessToken(userId, tokenVersion || 0);
       return res.json({
         success: true,
-        data: { accessToken },
+        data: { accessToken, user: undefined },
       });
     }
 
