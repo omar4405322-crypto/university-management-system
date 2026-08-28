@@ -56,6 +56,12 @@ export interface ScheduleSlot {
     firstName?: string;
     lastName?: string;
   } | null;
+  teachingAssistantId?: string | number;
+  teachingAssistant?: {
+    id?: string | number;
+    firstName?: string;
+    lastName?: string;
+  } | null;
   courseId?: number | string;
   course?: {
     id?: number | string;

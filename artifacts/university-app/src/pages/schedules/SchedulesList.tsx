@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Calendar,
@@ -28,11 +27,15 @@ import {
   MinusSquare
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
+import Button from '../../components/ui/button';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 import schedulesService from '../../services/schedules.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import coursesService from '../../services/courses.service';
+import type { ApiResponse } from '../../types/models';
+import type { College, Department, Course } from '../../types/timetable.types';
+import type { ScheduleSlot, TimetableDayRecord } from './DoctorSchedule';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
@@ -61,18 +64,13 @@ const getSessionBadgeStyle = (type: string) => {
 const SchedulesList = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { isRTL } = useLanguage();
   const { scopeParams, isCollegeAdmin } = useScope();
+  const { isRTL } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
 
-  // View Modes: 'LIST' | 'CARD' | 'GRID'
-  const [viewMode, setViewMode] = useState<'LIST' | 'CARD' | 'GRID'>(() => {
-    const v = searchParams.get('view');
-    if (v === 'card') return 'CARD';
-    if (v === 'grid') return 'GRID';
-    return 'LIST';
-  });
+  // View Mode: 'LIST' | 'CARD' | 'GRID'
+  const [viewMode, setViewMode] = useState<'LIST' | 'CARD' | 'GRID'>('CARD');
 
   useEffect(() => {
     const v = searchParams.get('view');
@@ -91,11 +89,11 @@ const SchedulesList = () => {
   };
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [schedules, setSchedules] = useState<any[]>([]);
-  const [colleges, setColleges] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
-  const [courses, setCourses] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [schedules, setSchedules] = useState<ScheduleSlot[]>([]);
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
 
   // Filter States
   const [search, setSearch] = useState('');
@@ -114,18 +112,18 @@ const SchedulesList = () => {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingSchedule, setEditingSchedule] = useState<any>(null);
+  const [editingSchedule, setEditingSchedule] = useState<ScheduleSlot | null>(null);
 
-  const canManage = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
+  const canManage = user?.role ? ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) : false;
 
   // 1. Fetch Metadata
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
         const [collegesRes, deptsRes, coursesRes] = await Promise.all([
-          collegeService.getColleges({ limit: 100 }).catch(() => ({ data: [] })),
-          departmentService.getDepartments({ limit: 200 }).catch(() => ({ data: [] })),
-          coursesService.getCourses({ limit: 300 }).catch(() => ({ data: [] })),
+          collegeService.getColleges({ limit: 100 }).catch((): ApiResponse<any> => ({ success: false, data: [] })),
+          departmentService.getDepartments({ limit: 200 }).catch((): ApiResponse<any> => ({ success: false, data: [] })),
+          coursesService.getCourses({ limit: 300 }).catch((): ApiResponse<any> => ({ success: false, data: [] })),
         ]);
 
         if (collegesRes.success || collegesRes.data) {
@@ -210,7 +208,7 @@ const SchedulesList = () => {
   };
 
   // Format Time (12-hour AM/PM)
-  const formatTime = (timeStr: string) => {
+  const formatTime = (timeStr?: string) => {
     if (!timeStr) return '';
     const [hours, minutes] = timeStr.split(':');
     const hour = parseInt(hours, 10);
@@ -301,7 +299,7 @@ const SchedulesList = () => {
 
       // Filter: Conflicts Only
       if (filterConflictsOnly) {
-        if (!conflictSlotIds.has(s.id)) return false;
+        if (s.id === undefined || !conflictSlotIds.has(s.id)) return false;
       }
 
       // Search Query Filter
@@ -344,7 +342,7 @@ const SchedulesList = () => {
   ]);
 
   // Multi-Selection Logic
-  const allFilteredIds = useMemo(() => filteredSchedules.map((s) => s.id), [filteredSchedules]);
+  const allFilteredIds = useMemo(() => filteredSchedules.map((s) => s.id).filter((id): id is number | string => id !== undefined), [filteredSchedules]);
   const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
   const isSomeSelected = allFilteredIds.some((id) => selectedIds.has(id)) && !isAllSelected;
 
@@ -400,11 +398,11 @@ const SchedulesList = () => {
   const totalCount = schedules.length;
   const missingRoomCount = useMemo(() => schedules.filter((s) => !s.room || s.room.trim() === '').length, [schedules]);
   const missingDoctorCount = useMemo(() => schedules.filter((s) => !s.doctor && !s.doctorId).length, [schedules]);
-  const conflictsCount = useMemo(() => schedules.filter((s) => conflictSlotIds.has(s.id)).length, [schedules, conflictSlotIds]);
+  const conflictsCount = useMemo(() => schedules.filter((s) => s.id !== undefined && conflictSlotIds.has(s.id)).length, [schedules, conflictSlotIds]);
 
   // Group filtered slots for the Grid matrix view
-  const timetableRecord = useMemo(() => {
-    return filteredSchedules.reduce((acc: Record<string, any[]>, slot: any) => {
+  const timetableRecord = useMemo<TimetableDayRecord>(() => {
+    return filteredSchedules.reduce((acc: TimetableDayRecord, slot: ScheduleSlot) => {
       if (!slot.dayOfWeek) return acc;
       const dayName = slot.dayOfWeek.charAt(0).toUpperCase() + slot.dayOfWeek.slice(1).toLowerCase();
       if (!acc[dayName]) acc[dayName] = [];
@@ -830,11 +828,12 @@ const SchedulesList = () => {
         /* MODE B: RESPONSIVE CARDS VIEW */
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {filteredSchedules.map((slot) => {
+            {filteredSchedules.map((slot, index) => {
               const course = slot.course || {};
-              const hasConflict = conflictSlotIds.has(slot.id);
+              const slotId = slot.id;
+              const hasConflict = slotId !== undefined && conflictSlotIds.has(slotId);
               const isMissingRoom = !slot.room || slot.room.trim() === '';
-              const isSelected = selectedIds.has(slot.id);
+              const isSelected = slotId !== undefined && selectedIds.has(slotId);
 
               const docName = slot.doctor
                 ? `${slot.doctor.firstName || ''} ${slot.doctor.lastName || ''}`.replace(/^(Dr\.|د\.)\s*/i, '').trim()
@@ -846,7 +845,7 @@ const SchedulesList = () => {
 
               return (
                 <Card
-                  key={slot.id}
+                  key={slotId ?? index}
                   className={`rounded-2xl border p-4 shadow-2xs hover:shadow-sm transition-all relative flex flex-col justify-between group ${
                     isSelected
                       ? 'border-brand-primary-500 ring-2 ring-brand-primary-500/20 bg-brand-primary-500/[0.02] dark:bg-brand-primary-500/[0.04]'
@@ -859,10 +858,10 @@ const SchedulesList = () => {
                     {/* Header */}
                     <div className="flex items-center justify-between gap-2 mb-2.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {canManage && (
+                        {canManage && slotId !== undefined && (
                           <button
                             type="button"
-                            onClick={() => handleToggleSelect(slot.id)}
+                            onClick={() => handleToggleSelect(slotId)}
                             className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
                           >
                             {isSelected ? (
@@ -874,10 +873,10 @@ const SchedulesList = () => {
                         )}
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${getSessionBadgeStyle(
-                            slot.slotType
+                            slot.slotType || ''
                           )}`}
                         >
-                          {t(`schedule.${(slot.slotType || '').toLowerCase()}`, slot.slotType)}
+                          {String(t(`schedule.${(slot.slotType || '').toLowerCase()}`, slot.slotType || ''))}
                         </span>
                         {hasConflict && (
                           <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black animate-pulse flex items-center gap-1">
@@ -900,14 +899,16 @@ const SchedulesList = () => {
                           >
                             <Edit2 size={13} />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(slot.id)}
-                            className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                            title={t('schedules.deleteSession', 'Delete')}
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          {slotId !== undefined && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(slotId)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                              title={t('schedules.deleteSession', 'Delete')}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -936,7 +937,7 @@ const SchedulesList = () => {
                       <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-semibold">
                         <div className="flex items-center gap-1.5">
                           <Calendar size={12} className="text-brand-primary-500 shrink-0" />
-                          <span>{t(`days.${(slot.dayOfWeek || '').toLowerCase()}`, slot.dayOfWeek)}</span>
+                          <span>{String(t(`days.${(slot.dayOfWeek || '').toLowerCase()}`, slot.dayOfWeek))}</span>
                         </div>
                         <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 font-bold">
                           <Clock size={11} className="text-slate-400 shrink-0" />
@@ -1039,11 +1040,12 @@ const SchedulesList = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-xs">
-                {filteredSchedules.map((slot) => {
+                {filteredSchedules.map((slot, index) => {
                   const course = slot.course || {};
-                  const hasConflict = conflictSlotIds.has(slot.id);
+                  const slotId = slot.id;
+                  const hasConflict = slotId !== undefined && conflictSlotIds.has(slotId);
                   const isMissingRoom = !slot.room || slot.room.trim() === '';
-                  const isSelected = selectedIds.has(slot.id);
+                  const isSelected = slotId !== undefined && selectedIds.has(slotId);
 
                   const docName = slot.doctor
                     ? `${slot.doctor.firstName || ''} ${slot.doctor.lastName || ''}`.replace(/^(Dr\.|د\.)\s*/i, '').trim()
@@ -1055,7 +1057,7 @@ const SchedulesList = () => {
 
                   return (
                     <tr
-                      key={slot.id}
+                      key={slotId ?? index}
                       className={`group hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors ${
                         isSelected
                           ? 'bg-brand-primary-500/[0.04] dark:bg-brand-primary-500/[0.08]'
@@ -1067,17 +1069,19 @@ const SchedulesList = () => {
                       {/* Checkbox */}
                       {canManage && (
                         <td className="p-3.5 align-middle text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleSelect(slot.id)}
-                            className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
-                          >
-                            {isSelected ? (
-                              <CheckSquare size={16} className="text-brand-primary-600" />
-                            ) : (
-                              <Square size={16} />
-                            )}
-                          </button>
+                          {slotId !== undefined && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSelect(slotId)}
+                              className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
+                            >
+                              {isSelected ? (
+                                <CheckSquare size={16} className="text-brand-primary-600" />
+                              ) : (
+                                <Square size={16} />
+                              )}
+                            </button>
+                          )}
                         </td>
                       )}
 
@@ -1113,7 +1117,7 @@ const SchedulesList = () => {
                         <div className="space-y-0.5">
                           <div className="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
                             <Calendar size={12} className="text-brand-primary-500 shrink-0" />
-                            <span>{t(`days.${(slot.dayOfWeek || '').toLowerCase()}`, slot.dayOfWeek)}</span>
+                            <span>{String(t(`days.${(slot.dayOfWeek || '').toLowerCase()}`, slot.dayOfWeek))}</span>
                           </div>
                           <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
                             <Clock size={11} className="text-slate-400 shrink-0" />
@@ -1145,10 +1149,10 @@ const SchedulesList = () => {
                           <div className="flex items-center gap-1.5">
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${getSessionBadgeStyle(
-                                slot.slotType
+                                slot.slotType || ''
                               )}`}
                             >
-                              {t(`schedule.${(slot.slotType || '').toLowerCase()}`, slot.slotType)}
+                              {String(t(`schedule.${(slot.slotType || '').toLowerCase()}`, slot.slotType || ''))}
                             </span>
                             {hasConflict && (
                               <span className="px-1.5 py-0.5 rounded-md bg-rose-500 text-white text-[9px] font-black animate-pulse">
@@ -1200,14 +1204,16 @@ const SchedulesList = () => {
                             >
                               <Edit2 size={14} />
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(slot.id)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                              title={t('schedules.deleteSession', 'Delete Session')}
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            {slotId !== undefined && (
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(slotId)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                title={t('schedules.deleteSession', 'Delete Session')}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>
