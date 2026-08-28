@@ -34,12 +34,12 @@ const QuizzesList = () => {
   const isDoctor = user?.role === 'DOCTOR';
   const isStudent = user?.role === 'STUDENT';
 
-  const [quizzes, setQuizzes] = useState([]);
+  const [quizzes, setQuizzes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('latest');
   const { showToast } = useToast();
-  const [submissionsQuiz, setSubmissionsQuiz] = useState(null);
+  const [submissionsQuiz, setSubmissionsQuiz] = useState<any>(null);
 
   const fetchQuizzes = async () => {
     try {
@@ -249,7 +249,7 @@ const QuizzesList = () => {
                       label: t('quizzes.createQuiz'),
                       onClick: () => navigate('/quizzes/create'),
                     }
-                  : null
+                  : undefined
               }
             />
           </div>
