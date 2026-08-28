@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -27,6 +26,8 @@ import { ScheduleView } from '../../components/timetable/ScheduleView';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import useScope from '../../hooks/useScope';
+import type { College, Department } from '../../types/timetable.types';
+import type { ScheduleSlot, TimetableDayRecord } from './DoctorSchedule';
 
 const getSessionBadgeColor = (type: string) => {
   switch (type) {
@@ -41,17 +42,17 @@ const WeeklySchedule = () => {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [timetable, setTimetable] = useState(null);
-  const [error, setError] = useState(null);
+  const [timetable, setTimetable] = useState<TimetableDayRecord | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const { scopeParams, isCollegeAdmin } = useScope();
-  const [colleges, setColleges] = useState([]);
-  const [departments, setDepartments] = useState([]);
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedCollege, setSelectedCollege] = useState('');
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
-  const canManage = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
+  const canManage = user?.role ? ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) : false;
 
   const isRTL = i18n.language === 'ar';
   const days = isRTL
@@ -92,7 +93,7 @@ const WeeklySchedule = () => {
     }
   }, [canManage]);
 
-  const handleCollegeChange = (val) => {
+  const handleCollegeChange = (val: string) => {
     setSelectedCollege(val);
     setSelectedDept('');
     if (val) {
@@ -117,12 +118,11 @@ const WeeklySchedule = () => {
 
   useEffect(() => {
     const mainEl = document.querySelector('main');
-    if (mainEl) {
-      mainEl.classList.add('bg-slate-50', 'dark:bg-slate-900');
-      return () => {
-        mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
-      };
-    }
+    if (!mainEl) return;
+    mainEl.classList.add('bg-slate-50', 'dark:bg-slate-900');
+    return () => {
+      mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
+    };
   }, []);
 
   const fetchTargetedTimetable = async (isPolling = false) => {
@@ -140,7 +140,7 @@ const WeeklySchedule = () => {
 
       const result = await schedulesService.getWeeklyTimetable(params);
       if (result.success && result.data && Array.isArray(result.data)) {
-        const grouped = result.data.reduce((acc: any, slot: any) => {
+        const grouped = result.data.reduce((acc: TimetableDayRecord, slot: ScheduleSlot) => {
           if (!slot.dayOfWeek) return acc;
           const dayName = slot.dayOfWeek.charAt(0).toUpperCase() + slot.dayOfWeek.slice(1).toLowerCase();
           if (!acc[dayName]) acc[dayName] = [];
@@ -159,7 +159,7 @@ const WeeklySchedule = () => {
     }
   };
 
-  const formatTime = (timeStr) => {
+  const formatTime = (timeStr: string) => {
     if (!timeStr) return '';
     const [hours, minutes] = timeStr.split(':');
     const hour = parseInt(hours);
@@ -168,10 +168,10 @@ const WeeklySchedule = () => {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  const getEntriesForTimeSlot = (day, time) => {
+  const getEntriesForTimeSlot = (day: string, time: string): ScheduleSlot[] => {
     if (!timetable || !timetable[day]) return [];
 
-    return timetable[day].filter((s) => {
+    return timetable[day].filter((s: ScheduleSlot) => {
       const startHour = parseInt(s.startTime.split(':')[0]);
       const currentHour = parseInt(time.split(':')[0]);
       return startHour === currentHour;
@@ -200,7 +200,7 @@ const WeeklySchedule = () => {
           </div>
           <h3 className="text-2xl font-black text-brand-text-main">{error}</h3>
           <button
-            onClick={fetchTargetedTimetable}
+            onClick={() => fetchTargetedTimetable()}
             className="mt-4 px-6 py-2.5 rounded-xl bg-brand-primary-500 text-white font-semibold text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
           >
             {t('common.retry', 'Retry')}
@@ -211,7 +211,8 @@ const WeeklySchedule = () => {
   }
 
   // Extract metadata from first available schedule entry
-  const firstEntry = timetable ? Object.values(timetable).flat().find(Boolean) as any : null;
+  const allSlots = timetable ? Object.values(timetable).flat() : [];
+  const firstEntry = allSlots.find((s): s is ScheduleSlot => Boolean(s)) || null;
   const departmentName = firstEntry?.course?.department?.name;
   const academicYear = firstEntry?.course?.year;
   const semester = firstEntry?.course?.semester;
@@ -245,7 +246,7 @@ const WeeklySchedule = () => {
                   className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
                 >
                   <option value="">{t('common.allColleges', 'All Colleges')}</option>
-                  {colleges.map((c: any) => (
+                  {colleges.map((c) => (
                     <option key={c.id} value={c.id}>
                       {isRTL ? c.nameAr || c.name : c.name}
                     </option>
@@ -258,7 +259,7 @@ const WeeklySchedule = () => {
                   className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0 disabled:opacity-50"
                 >
                   <option value="">{t('common.allDepartments', 'All Departments')}</option>
-                  {departments.map((d: any) => (
+                  {departments.map((d) => (
                     <option key={d.id} value={d.id}>
                       {isRTL ? d.nameAr || d.name : d.name}
                     </option>
