@@ -72,13 +72,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         // Try to get a new access token via the httpOnly refresh cookie
         const refreshResponse = await api.post('/auth/refresh');
-        const { accessToken } = refreshResponse.data.data;
+        const { accessToken, user: userData } = refreshResponse.data.data;
         setToken(accessToken);
 
-        // Now fetch the user profile
-        const meResponse = await api.get('/auth/me');
-        const me = meResponse.data.data;
-        setUser({ ...me, twoFactorEnabled: Boolean(me.twoFactorEnabled) });
+        if (userData) {
+          // User profile returned directly from /auth/refresh — skip /auth/me
+          setUser({ ...userData, twoFactorEnabled: Boolean(userData.twoFactorEnabled) });
+        } else {
+          // Fallback: concurrent-rotation edge case may not include user data
+          const meResponse = await api.get('/auth/me');
+          const me = meResponse.data.data;
+          setUser({ ...me, twoFactorEnabled: Boolean(me.twoFactorEnabled) });
+        }
       } catch (err) {
         // No valid refresh cookie — user must log in
         setToken(null);
