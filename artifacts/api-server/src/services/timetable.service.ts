@@ -275,30 +275,54 @@ class TimetableService {
       });
 
       if (targetGroup) {
-        // Collect ancestor group IDs (the target group's parents up to the root)
-        const ancestorGroupIds: number[] = [];
-        let currentParentId: number | null = targetGroup.parentGroupId;
-        while (currentParentId) {
-          ancestorGroupIds.push(currentParentId);
-          const parentGroup: any = await tx.studentGroup.findUnique({
-            where: { id: currentParentId },
-            select: { parentGroupId: true },
-          });
-          currentParentId = parentGroup?.parentGroupId ?? null;
+        // Single query: Fetch all groups in this department to build lineage in-memory
+        const allDeptGroups = await tx.studentGroup.findMany({
+          where: { departmentId: targetGroup.departmentId },
+          select: { id: true, parentGroupId: true },
+        });
+
+        // 1. Build lookup map: id -> parentGroupId
+        const parentMap = new Map<number, number | null>();
+        // 2. Build adjacency list: parentId -> childIds[]
+        const childrenMap = new Map<number, number[]>();
+
+        for (const g of allDeptGroups) {
+          parentMap.set(g.id, g.parentGroupId);
+          if (g.parentGroupId) {
+            const list = childrenMap.get(g.parentGroupId);
+            if (list) {
+              list.push(g.id);
+            } else {
+              childrenMap.set(g.parentGroupId, [g.id]);
+            }
+          }
         }
 
-        // Collect descendant group IDs (all sub-groups underneath this group)
+        // Collect ancestors in-memory (guard against cycles)
+        const ancestorGroupIds: number[] = [];
+        let currentParentId: number | null = targetGroup.parentGroupId;
+        const visitedAncestors = new Set<number>();
+        while (currentParentId && !visitedAncestors.has(currentParentId)) {
+          visitedAncestors.add(currentParentId);
+          ancestorGroupIds.push(currentParentId);
+          currentParentId = parentMap.get(currentParentId) ?? null;
+        }
+
+        // Collect descendants in-memory via BFS
         const descendantGroupIds: number[] = [];
         const queue: number[] = [Number(groupId)];
+        const visitedDescendants = new Set<number>([Number(groupId)]);
         while (queue.length > 0) {
           const currentId = queue.shift()!;
-          const children: any[] = await tx.studentGroup.findMany({
-            where: { parentGroupId: currentId },
-            select: { id: true },
-          });
-          for (const child of children) {
-            descendantGroupIds.push(child.id);
-            queue.push(child.id);
+          const children = childrenMap.get(currentId);
+          if (children) {
+            for (const childId of children) {
+              if (!visitedDescendants.has(childId)) {
+                visitedDescendants.add(childId);
+                descendantGroupIds.push(childId);
+                queue.push(childId);
+              }
+            }
           }
         }
 
