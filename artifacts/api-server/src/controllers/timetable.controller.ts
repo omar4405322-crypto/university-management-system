@@ -249,9 +249,20 @@ export const deleteTimetable = catchAsync(
 
 export const publishTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
+    const id = parseInt(req.params.id as string);
+    const existing = await prisma.timetable.findUnique({ where: { id } });
+    if (!existing) return next(new NotFoundError('Timetable not found'));
+    const deptScope: any = getScopeWhere(req.user!, 'department');
+    if (deptScope && Object.keys(deptScope).length) {
+      if (deptScope.collegeId && existing.collegeId !== deptScope.collegeId)
+        return next(new AuthorizationError('Access denied'));
+      if (deptScope.id && existing.departmentId !== deptScope.id)
+        return next(new AuthorizationError('Access denied'));
+    }
+
     const timetable = await prisma.$transaction(async (tx) => {
       const updated = await tx.timetable.update({
-        where: { id: parseInt(req.params.id as string) },
+        where: { id },
         data: { status: 'PUBLISHED' },
       });
       return updated;
@@ -262,9 +273,20 @@ export const publishTimetable = catchAsync(
 
 export const unpublishTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
+    const id = parseInt(req.params.id as string);
+    const existing = await prisma.timetable.findUnique({ where: { id } });
+    if (!existing) return next(new NotFoundError('Timetable not found'));
+    const deptScope: any = getScopeWhere(req.user!, 'department');
+    if (deptScope && Object.keys(deptScope).length) {
+      if (deptScope.collegeId && existing.collegeId !== deptScope.collegeId)
+        return next(new AuthorizationError('Access denied'));
+      if (deptScope.id && existing.departmentId !== deptScope.id)
+        return next(new AuthorizationError('Access denied'));
+    }
+
     const timetable = await prisma.$transaction(async (tx) => {
       const updated = await tx.timetable.update({
-        where: { id: parseInt(req.params.id as string) },
+        where: { id },
         data: { status: 'DRAFT' },
       });
       return updated;
