@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -26,7 +25,7 @@ import schedulesService from '../../services/schedules.service';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
-import SearchableSelect from '../../components/ui/SearchableSelect';
+import SearchableSelect, { SelectOption } from '../../components/ui/SearchableSelect';
 import { ScheduleView } from '../../components/timetable/ScheduleView';
 import { generateHourlyTimes } from '../../utils/scheduleConfig';
 import { logger } from '../../lib/logger';
@@ -35,6 +34,46 @@ import Badge from '../../components/ui/Badge';
 
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+export interface TAScheduleSlot {
+  id?: number | string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime?: string;
+  room?: string | null;
+  slotType?: string;
+  year?: number;
+  semester?: number;
+  teachingAssistantId?: string;
+  teachingAssistant?: {
+    id?: string | number;
+    firstName?: string;
+    lastName?: string;
+  } | null;
+  courseId?: number | string;
+  course?: {
+    id?: number | string;
+    name?: string;
+    courseCode?: string;
+    year?: number;
+    semester?: number;
+    departmentId?: number;
+    department?: {
+      id?: number;
+      name?: string;
+      nameAr?: string;
+      collegeId?: number;
+      college?: { id?: number; name?: string };
+    } | null;
+  } | null;
+  groupId?: number | string | null;
+  group?: {
+    id?: number | string;
+    name?: string;
+  } | null;
+}
+
+export type TATimetableDayRecord = Record<string, TAScheduleSlot[]>;
 
 export function TASchedule() {
   const { t, i18n } = useTranslation();
@@ -58,11 +97,11 @@ export function TASchedule() {
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Raw Schedule Data
-  const [rawSlots, setRawSlots] = useState<any[]>([]);
+  const [rawSlots, setRawSlots] = useState<TAScheduleSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
+  const isAdmin = user?.role ? ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) : false;
 
   // 1. Fetch TA, College, and Department Metadata
   useEffect(() => {
@@ -91,7 +130,7 @@ export function TASchedule() {
 
   // TA Select Options
   const taOptions = useMemo(() => {
-    const opts = [
+    const opts: SelectOption[] = [
       {
         label: isRTL ? 'الكل — الجدول الشامل لجميع المعيدين' : 'All TAs (University Master TA Schedule)',
         value: 'all',
@@ -244,8 +283,8 @@ export function TASchedule() {
   }, [rawSlots, selectedTAId, selectedCollegeId, selectedDeptId, selectedYear, selectedSemester, searchQuery]);
 
   // Group filtered slots into Days Record for ScheduleView
-  const timetableRecord = useMemo(() => {
-    return filteredSlots.reduce((acc: Record<string, any[]>, slot: any) => {
+  const timetableRecord = useMemo<TATimetableDayRecord>(() => {
+    return filteredSlots.reduce((acc: TATimetableDayRecord, slot: TAScheduleSlot) => {
       if (!slot.dayOfWeek) return acc;
       const dayName = slot.dayOfWeek.charAt(0).toUpperCase() + slot.dayOfWeek.slice(1).toLowerCase();
       if (!acc[dayName]) acc[dayName] = [];
