@@ -1,7 +1,8 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import { logger } from '../lib/logger';
 import { StudentGroupsService } from '../services/studentGroups.service';
+import { AuthorizationError } from '../utils/appError';
 
 function toBase26(num: number): string {
   let res = '';
@@ -12,7 +13,7 @@ function toBase26(num: number): string {
   return res;
 }
 
-export const autoDivideStudents = async (req: Request, res: Response) => {
+export const autoDivideStudents = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const departmentId = parseInt(req.params.departmentId as string);
     let { numberOfGroups, maxGroupSize, confirmed, year } = req.body || {};
@@ -26,6 +27,13 @@ export const autoDivideStudents = async (req: Request, res: Response) => {
 
     const department = await prisma.department.findUnique({ where: { id: departmentId } });
     if (!department) return res.status(404).json({ success: false, message: 'Department not found' });
+
+    // Verify Admin Scope
+    if (req.user!.role === 'DEPARTMENT_ADMIN' && req.user!.managedDepartmentId) {
+      if (departmentId !== req.user!.managedDepartmentId) return next(new AuthorizationError('Out of scope'));
+    } else if ((req.user!.role === 'ADMIN' || req.user!.role === 'COLLEGE_ADMIN') && req.user!.managedCollegeId) {
+      if (department.collegeId !== req.user!.managedCollegeId) return next(new AuthorizationError('Out of scope'));
+    }
 
     const students = await prisma.student.findMany({
       where: { departmentId, year: academicYear, isActive: true },
@@ -215,10 +223,18 @@ export const getAllGroups = async (req: Request, res: Response) => {
     const groups = await prisma.studentGroup.findMany({
       where,
       include: {
-        department: { select: { id: true, name: true, nameAr: true } },
+        department: {
+          select: {
+            id: true,
+            name: true,
+            nameAr: true,
+            college: { select: { id: true, name: true, nameAr: true } },
+          },
+        },
         parentGroup: { select: { id: true, name: true } },
+        _count: { select: { students: true, children: true } },
       },
-      orderBy: [{ departmentId: 'asc' }, { name: 'asc' }],
+      orderBy: [{ departmentId: 'asc' }, { year: 'asc' }, { name: 'asc' }],
     });
     return res.json({ success: true, data: groups });
   } catch (error) {
