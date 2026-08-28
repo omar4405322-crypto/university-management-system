@@ -202,6 +202,16 @@ export const rejectRequest = catchAsync(async (req: Request, res: Response, next
   if (!changeReq) return next(new NotFoundError('Request not found'));
   if (changeReq.status !== 'PENDING') return next(new AppError('Request is not pending', 400));
 
+  // Verify Admin Scope
+  if (req.user!.role === 'DEPARTMENT_ADMIN' && req.user!.managedDepartmentId) {
+    if (changeReq.course.departmentId !== req.user!.managedDepartmentId) return next(new AuthorizationError('Out of scope'));
+  } else if ((req.user!.role === 'ADMIN' || req.user!.role === 'COLLEGE_ADMIN') && req.user!.managedCollegeId) {
+    const dept = changeReq.course.departmentId
+      ? await prisma.department.findUnique({ where: { id: changeReq.course.departmentId } })
+      : null;
+    if (dept?.collegeId !== req.user!.managedCollegeId) return next(new AuthorizationError('Out of scope'));
+  }
+
   await prisma.scheduleChangeRequest.update({
     where: { id: changeReq.id },
     data: { status: 'REJECTED', adminComment, resolvedById: req.user!.id }
