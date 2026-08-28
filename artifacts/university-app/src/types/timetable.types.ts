@@ -50,8 +50,20 @@ export interface Department {
 export interface Course {
   id: number;
   name: string;
-  courseCode: string;
-
+  nameAr?: string;
+  code?: string;
+  courseCode?: string;
+  year?: number;
+  semester?: number;
+  departmentId?: number;
+  collegeId?: number;
+  department?: {
+    id?: number;
+    name?: string;
+    nameAr?: string;
+    collegeId?: number;
+    college?: { id?: number; name?: string };
+  } | null;
 }
 
 export interface Doctor {

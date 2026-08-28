@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -17,6 +16,8 @@ import InstructorSelector from '../../components/timetable/InstructorSelector';
 import SearchableSelect, { SelectOption } from '../../components/ui/SearchableSelect';
 import { getScheduleStartTime } from '../../utils/scheduleConfig';
 import { notifyScheduleChange } from '../../utils/scheduleSync';
+import type { College, Department, Course } from '../../types/timetable.types';
+import type { ScheduleSlot } from './DoctorSchedule';
 
 const schema = z.object({
   courseId: z.string().min(1, 'Course is required'),
@@ -32,25 +33,48 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+export interface ScheduleModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  schedule?: ScheduleSlot | null;
+  courses?: Course[];
+  onSuccess: () => void;
+}
+
+interface StudentGroupNode {
+  id?: number | string;
+  name?: string;
+  year?: number;
+  section?: string;
+  children?: StudentGroupNode[];
+}
+
+interface TAUser {
+  id: number | string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}
+
 const defaultStart = getScheduleStartTime();
 const defaultStartHour = parseInt(defaultStart.split(':')[0], 10) || 9;
 const defaultEnd = `${(defaultStartHour + 2).toString().padStart(2, '0')}:00`;
 
-const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) => {
+const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule, courses = [], onSuccess }) => {
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   
-  const [colleges, setColleges] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [fetchedCourses, setFetchedCourses] = useState([]);
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [fetchedCourses, setFetchedCourses] = useState<Course[]>([]);
   const [selectedCollegeId, setSelectedCollegeId] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
   
-  const [groups, setGroups] = useState([]);
-  const [tas, setTas] = useState([]);
+  const [groups, setGroups] = useState<StudentGroupNode[]>([]);
+  const [tas, setTas] = useState<TAUser[]>([]);
   const [loadingColleges, setLoadingColleges] = useState(false);
   const [loadingDepts, setLoadingDepts] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -258,7 +282,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
 
     const departmentId = (course.departmentId || course.department?.id)?.toString();
     const collegeId = (course.collegeId || course.department?.collegeId || course.department?.college?.id)?.toString();
-    const courseYear = course.year ? parseInt(course.year) : undefined;
+    const courseYear = course.year ? Number(course.year) : undefined;
 
     if (collegeId && !selectedCollegeId) {
       setSelectedCollegeId(collegeId);
@@ -331,8 +355,8 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
 
     try {
       let result;
-      if (schedule) {
-        result = await schedulesService.updateSchedule(schedule.id, payload);
+      if (schedule && schedule.id !== undefined) {
+        result = await schedulesService.updateSchedule(String(schedule.id), payload);
       } else {
         result = await schedulesService.createSchedule(payload);
       }
@@ -341,7 +365,7 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
         notifyScheduleChange();
         onSuccess();
       } else {
-        setError(result.message);
+        setError(result.message || 'Failed to save schedule');
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || t('schedules.conflictError', 'Conflict detected');
@@ -607,10 +631,10 @@ const ScheduleModal = ({ isOpen, onClose, schedule, courses = [], onSuccess }) =
             </Button>
             <Button 
               type="submit" 
+              disabled={isSubmitting}
               className="flex-1 bg-brand-primary-500 hover:bg-brand-primary-600 active:scale-95 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
-              loading={isSubmitting}
             >
-              {schedule ? t('common.update', 'Update Schedule') : t('schedules.CREATE', 'Create Schedule')}
+              {isSubmitting ? t('common.saving', 'Saving...') : schedule ? t('common.update', 'Update Schedule') : t('schedules.CREATE', 'Create Schedule')}
             </Button>
           </div>
         </form>
