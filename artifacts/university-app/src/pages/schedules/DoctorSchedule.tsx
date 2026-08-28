@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +30,7 @@ import schedulesService from '../../services/schedules.service';
 import doctorsService from '../../services/doctors.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
-import SearchableSelect from '../../components/ui/SearchableSelect';
+import SearchableSelect, { SelectOption } from '../../components/ui/SearchableSelect';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
@@ -41,6 +40,46 @@ import { logger } from '../../lib/logger';
 
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+export interface ScheduleSlot {
+  id?: number | string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime?: string;
+  room?: string | null;
+  slotType?: string;
+  year?: number;
+  semester?: number;
+  doctorId?: number | string;
+  doctor?: {
+    id?: number | string;
+    firstName?: string;
+    lastName?: string;
+  } | null;
+  courseId?: number | string;
+  course?: {
+    id?: number | string;
+    name?: string;
+    courseCode?: string;
+    year?: number;
+    semester?: number;
+    departmentId?: number;
+    department?: {
+      id?: number;
+      name?: string;
+      nameAr?: string;
+      collegeId?: number;
+      college?: { id?: number; name?: string };
+    } | null;
+  } | null;
+  groupId?: number | string | null;
+  group?: {
+    id?: number | string;
+    name?: string;
+  } | null;
+}
+
+export type TimetableDayRecord = Record<string, ScheduleSlot[]>;
 
 export function DoctorSchedule() {
   const { user } = useAuth();
@@ -67,11 +106,11 @@ export function DoctorSchedule() {
   const [showConflictsOnly, setShowConflictsOnly] = useState<boolean>(false);
 
   // Raw Schedule Data
-  const [rawSlots, setRawSlots] = useState<any[]>([]);
+  const [rawSlots, setRawSlots] = useState<ScheduleSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role);
+  const isAdmin = user?.role ? ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) : false;
 
   // 1. Fetch Doctor, College, and Department Metadata
   useEffect(() => {
@@ -106,7 +145,7 @@ export function DoctorSchedule() {
   };
 
   const doctorOptions = useMemo(() => {
-    const opts = [
+    const opts: SelectOption[] = [
       {
         label: isRTL ? 'الكل — الجدول الشامل لجميع أعضاء هيئة التدريس' : 'All Faculty Members (University Master Schedule)',
         value: 'all',
@@ -233,8 +272,8 @@ export function DoctorSchedule() {
   ]);
 
   // Group filtered slots into Days Record for ScheduleView
-  const timetableRecord = useMemo(() => {
-    return filteredSlots.reduce((acc: Record<string, any[]>, slot: any) => {
+  const timetableRecord = useMemo<TimetableDayRecord>(() => {
+    return filteredSlots.reduce((acc: TimetableDayRecord, slot: ScheduleSlot) => {
       if (!slot.dayOfWeek) return acc;
       const dayName = slot.dayOfWeek.charAt(0).toUpperCase() + slot.dayOfWeek.slice(1).toLowerCase();
       if (!acc[dayName]) acc[dayName] = [];
@@ -246,9 +285,9 @@ export function DoctorSchedule() {
   // Conflict calculation
   const conflictCount = useMemo(() => {
     let count = 0;
-    Object.values(timetableRecord).forEach((slots) => {
+    Object.values(timetableRecord).forEach((slots: ScheduleSlot[]) => {
       const hourCounts: Record<string, number> = {};
-      slots.forEach((s) => {
+      slots.forEach((s: ScheduleSlot) => {
         const hour = s.startTime?.split(':')[0] || '0';
         hourCounts[hour] = (hourCounts[hour] || 0) + 1;
       });
@@ -260,18 +299,18 @@ export function DoctorSchedule() {
   }, [timetableRecord]);
 
   // Filter for Conflicting slots only if toggled
-  const displayTimetable = useMemo(() => {
+  const displayTimetable = useMemo<TimetableDayRecord>(() => {
     if (!showConflictsOnly) return timetableRecord;
 
-    const conflictRecord: Record<string, any[]> = {};
-    Object.entries(timetableRecord).forEach(([day, slots]) => {
+    const conflictRecord: TimetableDayRecord = {};
+    Object.entries(timetableRecord).forEach(([day, slots]: [string, ScheduleSlot[]]) => {
       const hourCounts: Record<string, number> = {};
-      slots.forEach((s) => {
+      slots.forEach((s: ScheduleSlot) => {
         const hour = s.startTime?.split(':')[0] || '0';
         hourCounts[hour] = (hourCounts[hour] || 0) + 1;
       });
 
-      const conflictingSlots = slots.filter((s) => {
+      const conflictingSlots = slots.filter((s: ScheduleSlot) => {
         const hour = s.startTime?.split(':')[0] || '0';
         return hourCounts[hour] > 1;
       });
