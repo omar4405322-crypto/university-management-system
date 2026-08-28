@@ -7,7 +7,7 @@ import { getScopeWhere } from '../utils/scope.utils';
 import { AppError, NotFoundError } from '../utils/appError';
 
 const getTodayDayOfWeek = () => {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
   return days[new Date().getDay()];
 };
 
