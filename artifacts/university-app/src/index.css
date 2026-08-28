@@ -163,12 +163,11 @@
   }
 
   body {
-    @apply font-sans antialiased text-base leading-relaxed overflow-x-clip;
+    @apply font-sans font-medium text-base leading-relaxed overflow-x-clip;
+    font-weight: 500;
     background-color: var(--brand-bg-page);
     color: var(--brand-text-main);
     transition: background-color 0.3s ease, color 0.3s ease;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 
   [dir="rtl"], html[dir="rtl"], html[lang="ar"], html[lang="ar"] body {
