@@ -14,7 +14,10 @@ export const createOverride = catchAsync(async (req: Request, res: Response, nex
     return next(new ValidationError('startDate must be before or equal to endDate'));
   }
 
-  const slot = await prisma.scheduleSlot.findUnique({ where: { id: slotId } });
+  const slot = await prisma.scheduleSlot.findUnique({
+    where: { id: slotId },
+    include: { course: true }
+  });
   if (!slot) return next(new NotFoundError('ScheduleSlot not found'));
 
   if (req.user!.role === 'DOCTOR') {
@@ -25,6 +28,16 @@ export const createOverride = catchAsync(async (req: Request, res: Response, nex
   }
   if (req.user!.role === 'TEACHING_ASSISTANT' && slot.teachingAssistantId !== req.user!.teachingAssistant?.id) {
     return next(new AuthorizationError('You can only override slots assigned to you'));
+  }
+
+  // Verify Admin Scope
+  if (req.user!.role === 'DEPARTMENT_ADMIN' && req.user!.managedDepartmentId) {
+    if (slot.course.departmentId !== req.user!.managedDepartmentId) return next(new AuthorizationError('Out of scope'));
+  } else if ((req.user!.role === 'ADMIN' || req.user!.role === 'COLLEGE_ADMIN') && req.user!.managedCollegeId) {
+    const dept = slot.course.departmentId
+      ? await prisma.department.findUnique({ where: { id: slot.course.departmentId } })
+      : null;
+    if (dept?.collegeId !== req.user!.managedCollegeId) return next(new AuthorizationError('Out of scope'));
   }
 
   // Ensure no overlapping overrides for this specific slot
