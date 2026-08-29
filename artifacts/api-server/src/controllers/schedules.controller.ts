@@ -92,29 +92,49 @@ export const getWeeklyTimetable = catchAsync(
         }
 
         // Build enrolled course filter (with optional semester)
-        const enrolledCourseFilter: any = { id: { in: enrolledCourseIds } };
+        const enrolledCourseFilter: any = { id: { in: enrolledCourseIds }, isPublished: true };
         if (filterSemester !== undefined) enrolledCourseFilter.semester = filterSemester;
 
         whereClause = {
-          OR: [
-            // Slots assigned to this student's group (or parent groups)
-            { groupId: { in: groupIds } },
-            // Department-wide slots (no group) matching student's year (+ semester if filtered)
-            { groupId: null, course: { ...baseCourseFilter } },
-            // Slots for explicitly enrolled courses (no group) with optional semester
-            { groupId: null, course: enrolledCourseFilter },
-          ]
+          AND: [
+            {
+              OR: [
+                { timetable: { status: 'PUBLISHED' } },
+                { timetableId: null },
+              ],
+            },
+            {
+              OR: [
+                // Slots assigned to this student's group (or parent groups)
+                { groupId: { in: groupIds }, course: { isPublished: true } },
+                // Department-wide slots (no group) matching student's year (+ semester if filtered)
+                { groupId: null, course: { ...baseCourseFilter, isPublished: true } },
+                // Slots for explicitly enrolled courses (no group) with optional semester
+                { groupId: null, course: enrolledCourseFilter },
+              ],
+            },
+          ],
         };
       } else {
         // Student has no group — show all slots for their department/year and enrolled courses
-        const enrolledCourseFilter: any = { id: { in: enrolledCourseIds } };
+        const enrolledCourseFilter: any = { id: { in: enrolledCourseIds }, isPublished: true };
         if (filterSemester !== undefined) enrolledCourseFilter.semester = filterSemester;
 
         whereClause = {
-          OR: [
-            { course: { ...baseCourseFilter } },
-            { course: enrolledCourseFilter },
-          ]
+          AND: [
+            {
+              OR: [
+                { timetable: { status: 'PUBLISHED' } },
+                { timetableId: null },
+              ],
+            },
+            {
+              OR: [
+                { course: { ...baseCourseFilter, isPublished: true } },
+                { course: enrolledCourseFilter },
+              ],
+            },
+          ],
         };
       }
       // Prevent year/semester from being re-applied below for students (already baked in above)
@@ -677,62 +697,177 @@ export const syncGridToMaster = catchAsync(
       }
     }
 
+    // 1. Pre-fetch Timetable (single lookup)
+    let timetableId: number | null = null;
+    if (parsedDeptId && academicYear && semester) {
+      const timetable = await prisma.timetable.findFirst({
+        where: {
+          departmentId: parsedDeptId,
+          academicYear: parseInt(academicYear),
+          semester: parseInt(semester),
+        },
+        select: { id: true },
+      });
+      if (timetable) timetableId = timetable.id;
+    }
+
+    // 2. Pre-fetch Courses for the department (or all courses if unscoped)
+    const deptFilter = parsedDeptId ? { departmentId: parsedDeptId } : {};
+    const allCourses = await prisma.course.findMany({
+      where: deptFilter,
+      select: { id: true, name: true, courseCode: true, departmentId: true },
+    });
+
+    // 3. Pre-fetch Staff (Doctors) in a single query, and group by departmentId in memory for slot-scoped matching
+    const globalDoctors = await prisma.doctor.findMany({
+      select: { id: true, firstName: true, lastName: true, departmentId: true },
+    });
+    const doctorsByDept = new Map<number, typeof globalDoctors>();
+    for (const doc of globalDoctors) {
+      if (doc.departmentId) {
+        let list = doctorsByDept.get(doc.departmentId);
+        if (!list) {
+          list = [];
+          doctorsByDept.set(doc.departmentId, list);
+        }
+        list.push(doc);
+      }
+    }
+
+    // 4. Pre-fetch Existing ScheduleSlots for matched courses
+    const allCourseIds = allCourses.map(c => c.id);
+    const existingSlots = allCourseIds.length > 0
+      ? await prisma.scheduleSlot.findMany({
+          where: {
+            courseId: { in: allCourseIds },
+            ...(timetableId ? { timetableId } : {}),
+          },
+          select: {
+            id: true,
+            courseId: true,
+            dayOfWeek: true,
+            startTime: true,
+            endTime: true,
+            room: true,
+            slotType: true,
+            doctorId: true,
+            timetableId: true,
+          },
+        })
+      : [];
+
+    const existingSlotMap = new Map<string, typeof existingSlots[0]>();
+    for (const s of existingSlots) {
+      const key = `${s.courseId}-${s.dayOfWeek.toUpperCase()}-${s.startTime}`;
+      existingSlotMap.set(key, s);
+    }
+
+    // In-memory Course matcher
+    const matchCourse = (rawName: string) => {
+      const trimmed = rawName.trim().toLowerCase();
+      const exact = allCourses.filter(
+        c => c.name.toLowerCase() === trimmed || c.courseCode.toLowerCase() === trimmed
+      );
+      if (exact.length === 1) return { course: exact[0], isAmbiguous: false, matchCount: 1 };
+      if (exact.length > 1) return { course: null, isAmbiguous: true, matchCount: exact.length };
+
+      const contains = allCourses.filter(
+        c => c.name.toLowerCase().includes(trimmed) || c.courseCode.toLowerCase().includes(trimmed)
+      );
+      if (contains.length === 1) return { course: contains[0], isAmbiguous: false, matchCount: 1 };
+      if (contains.length > 1) return { course: null, isAmbiguous: true, matchCount: contains.length };
+
+      return { course: null, isAmbiguous: false, matchCount: 0 };
+    };
+
+    // In-memory Doctor matcher
+    const matchDoctor = (rawName: string, effectiveDeptId?: number | null): StaffResolveResult<number> => {
+      const cleanName = rawName
+        .trim()
+        .replace(/^(د\.|دكتور\s+|dr\.|dr\s+|أ\.د\.|prof\.|prof\s+)\s*/i, '')
+        .trim();
+      const parts = cleanName.split(/\s+/).filter(Boolean).map(p => p.toLowerCase());
+      if (parts.length === 0) return { id: null, isAmbiguous: false, matchCount: 0 };
+
+      const filterDocs = (docs: typeof globalDoctors, mode: 'exact' | 'contains') => {
+        return docs.filter(doc => {
+          const f = (doc.firstName || '').toLowerCase();
+          const l = (doc.lastName || '').toLowerCase();
+          if (parts.length >= 2) {
+            const targetFirst = parts[0];
+            const targetLast = parts[parts.length - 1];
+            return mode === 'exact'
+              ? f === targetFirst && l === targetLast
+              : f.includes(targetFirst) && l.includes(targetLast);
+          } else {
+            const target = parts[0];
+            return mode === 'exact'
+              ? f === target || l === target
+              : f.includes(target) || l.includes(target);
+          }
+        });
+      };
+
+      const scopedDoctors = effectiveDeptId ? doctorsByDept.get(effectiveDeptId) || [] : globalDoctors;
+
+      let candidates = filterDocs(scopedDoctors, 'exact');
+      if (candidates.length === 1) return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+      if (candidates.length > 1) return { id: null, isAmbiguous: true, matchCount: candidates.length };
+
+      candidates = filterDocs(scopedDoctors, 'contains');
+      if (candidates.length === 1) return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+      if (candidates.length > 1) return { id: null, isAmbiguous: true, matchCount: candidates.length };
+
+      if (effectiveDeptId) {
+        candidates = filterDocs(globalDoctors, 'exact');
+        if (candidates.length === 1) return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+        if (candidates.length > 1) return { id: null, isAmbiguous: true, matchCount: candidates.length };
+
+        candidates = filterDocs(globalDoctors, 'contains');
+        if (candidates.length === 1) return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+        if (candidates.length > 1) return { id: null, isAmbiguous: true, matchCount: candidates.length };
+      }
+
+      return { id: null, isAmbiguous: false, matchCount: 0 };
+    };
+
     let syncedCount = 0;
     let skippedCount = 0;
     const skippedSlots: Array<{ courseName: string; reason: string }> = [];
+
+    const updatesToRun: Array<{ where: { id: number }; data: any }> = [];
+    const createsToRun: any[] = [];
 
     for (const slot of slots) {
       const { day, startTime, endTime, courseName, instructor, room, slotType } = slot;
       if (!courseName || typeof courseName !== 'string') continue;
 
       const trimmedName = courseName.trim();
-      const deptFilter = parsedDeptId ? { departmentId: parsedDeptId } : {};
+      const courseMatch = matchCourse(trimmedName);
 
-      // 1. Exact match lookup (name or courseCode)
-      let course = await prisma.course.findFirst({
-        where: {
-          OR: [
-            { name: { equals: trimmedName, mode: 'insensitive' } },
-            { courseCode: { equals: trimmedName, mode: 'insensitive' } },
-          ],
-          ...deptFilter,
-        },
-      });
-
-      // 2. Contains fallback with ambiguity guard if no exact match found
-      if (!course) {
-        const candidateCourses = await prisma.course.findMany({
-          where: {
-            OR: [
-              { name: { contains: trimmedName, mode: 'insensitive' } },
-              { courseCode: { contains: trimmedName, mode: 'insensitive' } },
-            ],
-            ...deptFilter,
-          },
+      if (courseMatch.isAmbiguous) {
+        skippedCount++;
+        skippedSlots.push({
+          courseName: trimmedName,
+          reason: `AMBIGUOUS_COURSE_MATCH: ${courseMatch.matchCount} candidate courses matched '${trimmedName}'`,
         });
+        continue;
+      }
 
-        if (candidateCourses.length === 1) {
-          course = candidateCourses[0];
-        } else if (candidateCourses.length > 1) {
-          skippedCount++;
-          skippedSlots.push({
-            courseName: trimmedName,
-            reason: `AMBIGUOUS_COURSE_MATCH: ${candidateCourses.length} candidate courses matched '${trimmedName}'`,
-          });
-          continue;
-        } else {
-          skippedCount++;
-          skippedSlots.push({
-            courseName: trimmedName,
-            reason: `COURSE_NOT_FOUND: No course matching '${trimmedName}'`,
-          });
-          continue;
-        }
+      const course = courseMatch.course;
+      if (!course) {
+        skippedCount++;
+        skippedSlots.push({
+          courseName: trimmedName,
+          reason: `COURSE_NOT_FOUND: No course matching '${trimmedName}'`,
+        });
+        continue;
       }
 
       let doctorId: number | null = null;
       if (instructor) {
-        const docResolve = await resolveDoctorByName(instructor, parsedDeptId || course.departmentId);
+        const effectiveDeptId = parsedDeptId || course.departmentId;
+        const docResolve = matchDoctor(instructor, effectiveDeptId);
         if (docResolve.isAmbiguous) {
           skippedCount++;
           skippedSlots.push({
@@ -745,28 +880,14 @@ export const syncGridToMaster = catchAsync(
         }
       }
 
-      let timetableId: number | null = null;
-      if (parsedDeptId && academicYear && semester) {
-        const timetable = await prisma.timetable.findFirst({
-          where: {
-            departmentId: parsedDeptId,
-            academicYear: parseInt(academicYear),
-            semester: parseInt(semester)
-          }
-        });
-        if (timetable) timetableId = timetable.id;
-      }
-
-      const existingSlot = await prisma.scheduleSlot.findFirst({
-        where: {
-          courseId: course.id,
-          dayOfWeek: (day || 'MONDAY').toUpperCase(),
-          startTime: startTime || '09:00',
-        },
-      });
+      const normalizedDay = (day || 'MONDAY').toUpperCase();
+      const normalizedStartTime = startTime || '09:00';
+      const slotKey = `${course.id}-${normalizedDay}-${normalizedStartTime}`;
+      const existingSlot = existingSlotMap.get(slotKey);
 
       if (existingSlot) {
-        await prisma.scheduleSlot.update({
+        existingSlotMap.delete(slotKey);
+        updatesToRun.push({
           where: { id: existingSlot.id },
           data: {
             endTime: endTime || '11:00',
@@ -777,21 +898,27 @@ export const syncGridToMaster = catchAsync(
           },
         });
       } else if (doctorId) {
-        await prisma.scheduleSlot.create({
-          data: {
-            courseId: course.id,
-            groupId: null,
-            doctorId,
-            timetableId,
-            slotType: slotType || 'LECTURE',
-            dayOfWeek: (day || 'MONDAY').toUpperCase(),
-            startTime: startTime || '09:00',
-            endTime: endTime || '11:00',
-            room: room || 'Main Hall',
-          },
+        createsToRun.push({
+          courseId: course.id,
+          groupId: null,
+          doctorId,
+          timetableId,
+          slotType: slotType || 'LECTURE',
+          dayOfWeek: normalizedDay,
+          startTime: normalizedStartTime,
+          endTime: endTime || '11:00',
+          room: room || 'Main Hall',
         });
       }
       syncedCount++;
+    }
+
+    // 5. Batch database execution
+    if (updatesToRun.length > 0 || createsToRun.length > 0) {
+      await prisma.$transaction([
+        ...updatesToRun.map(u => prisma.scheduleSlot.update(u)),
+        ...(createsToRun.length > 0 ? [prisma.scheduleSlot.createMany({ data: createsToRun })] : []),
+      ]);
     }
 
     auditLog('SYNC_GRID_TO_MASTER', 'ScheduleSlot', '0', req);
