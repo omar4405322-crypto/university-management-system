@@ -578,8 +578,29 @@ class EnrollmentService {
       return { enrolledCount: 0 };
     }
 
+    // Batch-fetch existing enrollments with status 'ENROLLED' to exclude no-op upserts
+    const existingEnrollments = await prisma.enrollment.findMany({
+      where: {
+        studentId: student.id,
+        courseId: { in: matchingCourses.map((c) => c.id) },
+        academicYear: currentAcademicYear,
+        status: 'ENROLLED',
+      },
+      select: { courseId: true, semester: true },
+    });
+
+    const alreadyEnrolledKeys = new Set(
+      existingEnrollments.map((e) => `${e.courseId}:${e.semester}`)
+    );
+
+    let newlyEnrolledCount = 0;
     const operations = matchingCourses.map((course) => {
       const semester = course.semester || 1;
+      const key = `${course.id}:${semester}`;
+      if (!alreadyEnrolledKeys.has(key)) {
+        newlyEnrolledCount++;
+      }
+
       return prisma.enrollment.upsert({
         where: {
           studentId_courseId_semester_academicYear: {
@@ -602,8 +623,8 @@ class EnrollmentService {
       });
     });
 
-    const results = await prisma.$transaction(operations);
-    return { enrolledCount: results.length };
+    await prisma.$transaction(operations);
+    return { enrolledCount: newlyEnrolledCount };
   }
 
   /**
@@ -635,8 +656,29 @@ class EnrollmentService {
       return { enrolledCount: 0 };
     }
 
-    const operations = matchingStudents.map((student) =>
-      prisma.enrollment.upsert({
+    // Batch-fetch existing enrollments with status 'ENROLLED' to exclude no-op upserts
+    const existingEnrollments = await prisma.enrollment.findMany({
+      where: {
+        courseId: course.id,
+        studentId: { in: matchingStudents.map((s) => s.id) },
+        semester,
+        academicYear: currentAcademicYear,
+        status: 'ENROLLED',
+      },
+      select: { studentId: true },
+    });
+
+    const alreadyEnrolledStudentIds = new Set(
+      existingEnrollments.map((e) => e.studentId)
+    );
+
+    let newlyEnrolledCount = 0;
+    const operations = matchingStudents.map((student) => {
+      if (!alreadyEnrolledStudentIds.has(student.id)) {
+        newlyEnrolledCount++;
+      }
+
+      return prisma.enrollment.upsert({
         where: {
           studentId_courseId_semester_academicYear: {
             studentId: student.id,
@@ -655,11 +697,11 @@ class EnrollmentService {
         update: {
           status: 'ENROLLED',
         },
-      })
-    );
+      });
+    });
 
-    const results = await prisma.$transaction(operations);
-    return { enrolledCount: results.length };
+    await prisma.$transaction(operations);
+    return { enrolledCount: newlyEnrolledCount };
   }
 
   /**
@@ -668,7 +710,11 @@ class EnrollmentService {
   static async syncAllEnrollments() {
     const currentAcademicYear = new Date().getFullYear();
 
-    const [activeStudents, allCourses] = await Promise.all([
+    // Note: We batch all student/course matching and existing enrollment lookups
+    // in bulk here rather than calling autoEnrollStudent per student in a loop.
+    // This executes all operations in a single multi-query transaction and avoids
+    // N+1 round-trips and N separate database transactions.
+    const [activeStudents, allCourses, existingEnrollments] = await Promise.all([
       prisma.student.findMany({
         where: {
           isActive: true,
@@ -682,9 +728,21 @@ class EnrollmentService {
         },
         select: { id: true, departmentId: true, year: true, semester: true },
       }),
+      prisma.enrollment.findMany({
+        where: {
+          academicYear: currentAcademicYear,
+          status: 'ENROLLED',
+        },
+        select: { studentId: true, courseId: true, semester: true },
+      }),
     ]);
 
+    const alreadyEnrolledKeys = new Set(
+      existingEnrollments.map((e) => `${e.studentId}:${e.courseId}:${e.semester}`)
+    );
+
     const operations: ReturnType<typeof prisma.enrollment.upsert>[] = [];
+    let newlyEnrolledCount = 0;
 
     for (const student of activeStudents) {
       if (!student.departmentId || !student.year) continue;
@@ -694,6 +752,11 @@ class EnrollmentService {
 
       for (const course of matchingCourses) {
         const semester = course.semester || 1;
+        const key = `${student.id}:${course.id}:${semester}`;
+        if (!alreadyEnrolledKeys.has(key)) {
+          newlyEnrolledCount++;
+        }
+
         operations.push(
           prisma.enrollment.upsert({
             where: {
@@ -723,8 +786,8 @@ class EnrollmentService {
       return { totalStudents: activeStudents.length, totalEnrolled: 0 };
     }
 
-    const results = await prisma.$transaction(operations);
-    return { totalStudents: activeStudents.length, totalEnrolled: results.length };
+    await prisma.$transaction(operations);
+    return { totalStudents: activeStudents.length, totalEnrolled: newlyEnrolledCount };
   }
 }
 
