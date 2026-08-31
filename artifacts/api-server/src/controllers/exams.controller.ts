@@ -493,7 +493,7 @@ export const getExamQuestions = catchAsync(async (req: Request, res: Response, n
 });
 
 export const addExamQuestion = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const examId = parseInt(req.params.id as string);
+  const examId = parseInt(req.params.id as string, 10);
   const { text, type, optionA, optionB, optionC, optionD, correctAnswer, points, order } = req.body;
 
   const examScope: any = getScopeWhere(req.user!, 'exam');
@@ -507,15 +507,24 @@ export const addExamQuestion = catchAsync(async (req: Request, res: Response, ne
 
   const question = await prisma.examQuestion.create({
     data: {
-      examId, text, type, optionA, optionB, optionC, optionD, correctAnswer, points: points || 1, order: order || 1
-    }
+      examId,
+      text: String(text).trim(),
+      type: type || 'MCQ',
+      optionA: optionA !== undefined ? (optionA ? String(optionA).trim() : null) : null,
+      optionB: optionB !== undefined ? (optionB ? String(optionB).trim() : null) : null,
+      optionC: optionC !== undefined ? (optionC ? String(optionC).trim() : null) : null,
+      optionD: optionD !== undefined ? (optionD ? String(optionD).trim() : null) : null,
+      correctAnswer: String(correctAnswer).trim(),
+      points: points !== undefined && points !== '' ? parseInt(String(points), 10) : 1,
+      order: order !== undefined && order !== '' ? parseInt(String(order), 10) : 1,
+    },
   });
 
   res.status(201).json({ success: true, data: question });
 });
 
 export const updateExamQuestion = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const questionId = parseInt(req.params.questionId as string);
+  const questionId = parseInt(req.params.questionId as string, 10);
   const { text, type, optionA, optionB, optionC, optionD, correctAnswer, points, order } = req.body;
 
   const question = await prisma.examQuestion.findUnique({ where: { id: questionId } });
@@ -530,9 +539,31 @@ export const updateExamQuestion = catchAsync(async (req: Request, res: Response,
   });
   if (!exam) return next(new AuthorizationError('Access denied'));
 
+  const data: {
+    text?: string;
+    type?: 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER';
+    optionA?: string | null;
+    optionB?: string | null;
+    optionC?: string | null;
+    optionD?: string | null;
+    correctAnswer?: string;
+    points?: number;
+    order?: number;
+  } = {};
+
+  if (text !== undefined) data.text = String(text).trim();
+  if (type !== undefined) data.type = type;
+  if (optionA !== undefined) data.optionA = optionA ? String(optionA).trim() : null;
+  if (optionB !== undefined) data.optionB = optionB ? String(optionB).trim() : null;
+  if (optionC !== undefined) data.optionC = optionC ? String(optionC).trim() : null;
+  if (optionD !== undefined) data.optionD = optionD ? String(optionD).trim() : null;
+  if (correctAnswer !== undefined) data.correctAnswer = String(correctAnswer).trim();
+  if (points !== undefined && points !== '') data.points = parseInt(String(points), 10);
+  if (order !== undefined && order !== '') data.order = parseInt(String(order), 10);
+
   const updated = await prisma.examQuestion.update({
     where: { id: questionId },
-    data: { text, type, optionA, optionB, optionC, optionD, correctAnswer, points, order }
+    data,
   });
 
   res.json({ success: true, data: updated });

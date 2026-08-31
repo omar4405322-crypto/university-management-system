@@ -55,10 +55,36 @@ router.delete(
   examsController.deleteExam
 );
 
+const addExamQuestionValidation = [
+  param('id').isInt().withMessage('Invalid exam ID'),
+  body('text').notEmpty().withMessage('Question text is required').trim(),
+  body('type').optional().isIn(['MCQ', 'TRUE_FALSE', 'SHORT_ANSWER']).withMessage('Invalid question type'),
+  body('optionA').optional().trim(),
+  body('optionB').optional().trim(),
+  body('optionC').optional().trim(),
+  body('optionD').optional().trim(),
+  body('correctAnswer').notEmpty().withMessage('Correct answer is required').trim(),
+  body('points').optional().isInt({ min: 1 }).withMessage('Points must be a positive integer'),
+  body('order').optional().isInt({ min: 0 }).withMessage('Order must be a non-negative integer'),
+];
+
+const updateExamQuestionValidation = [
+  param('questionId').isInt().withMessage('Invalid question ID'),
+  body('text').optional().notEmpty().withMessage('Question text cannot be empty').trim(),
+  body('type').optional().isIn(['MCQ', 'TRUE_FALSE', 'SHORT_ANSWER']).withMessage('Invalid question type'),
+  body('optionA').optional().trim(),
+  body('optionB').optional().trim(),
+  body('optionC').optional().trim(),
+  body('optionD').optional().trim(),
+  body('correctAnswer').optional().notEmpty().withMessage('Correct answer cannot be empty').trim(),
+  body('points').optional().isInt({ min: 1 }).withMessage('Points must be a positive integer'),
+  body('order').optional().isInt({ min: 0 }).withMessage('Order must be a non-negative integer'),
+];
+
 // --- EXAM QUESTIONS ---
 router.get('/:id/questions', authorize('STUDENT', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), examsController.getExamQuestions);
-router.post('/:id/questions', authorize('DOCTOR', 'ADMIN'), examsController.addExamQuestion);
-router.put('/questions/:questionId', authorize('DOCTOR', 'ADMIN'), examsController.updateExamQuestion);
+router.post('/:id/questions', authorize('DOCTOR', 'ADMIN'), addExamQuestionValidation, validate, examsController.addExamQuestion);
+router.put('/questions/:questionId', authorize('DOCTOR', 'ADMIN'), updateExamQuestionValidation, validate, examsController.updateExamQuestion);
 router.delete('/questions/:questionId', authorize('DOCTOR', 'ADMIN'), examsController.deleteExamQuestion);
 
 // --- EXAM SESSIONS & SUBMISSIONS ---
