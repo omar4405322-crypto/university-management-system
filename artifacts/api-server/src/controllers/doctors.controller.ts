@@ -18,7 +18,13 @@ function assertDoctorScope(
   },
   user: { role: string; managedCollegeId?: number | null; managedDepartmentId?: number | null }
 ): boolean {
-  if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return true;
+  if (user.role === 'SUPER_ADMIN') return true;
+  if (user.role === 'ADMIN') {
+    if (!user.managedCollegeId) return false;
+    if (doctor.department?.collegeId === user.managedCollegeId) return true;
+    if (doctor.scheduleSlots?.some((s: any) => s.course?.department?.collegeId === user.managedCollegeId)) return true;
+    return false;
+  }
   if (user.role === 'COLLEGE_ADMIN') {
     if (doctor.department?.collegeId === user.managedCollegeId) return true;
     if (doctor.scheduleSlots?.some((s: any) => s.course?.department?.collegeId === user.managedCollegeId)) return true;
@@ -373,7 +379,10 @@ export const createDoctor = catchAsync(async (req: Request, res: Response, next:
   let { email, password, firstName, lastName, doctorId, phone, specialty, departmentId } = req.body;
 
   // Enforce scope
-  if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
+  if (req.user!.role === 'ADMIN') {
+    if (!req.user!.managedCollegeId) {
+      return next(new AuthorizationError('Access denied: Unscoped admin cannot create doctors'));
+    }
     if (departmentId) {
       const dept = await prisma.department.findUnique({
         where: { id: parseInt(departmentId as string) },
@@ -466,7 +475,10 @@ export const updateDoctor = catchAsync(async (req: Request, res: Response, next:
 
   // If changing department, check scope for new department
   if (departmentId) {
-    if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
+    if (req.user!.role === 'ADMIN') {
+      if (!req.user!.managedCollegeId) {
+        return next(new AuthorizationError('Access denied: Unscoped admin cannot update doctors'));
+      }
       const newDept = await prisma.department.findUnique({
         where: { id: parseInt(departmentId as string) },
       });

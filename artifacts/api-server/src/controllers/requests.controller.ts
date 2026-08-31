@@ -83,13 +83,31 @@ export const approveRequest = catchAsync(async (req: Request, res: Response, nex
   if (changeReq.status !== 'PENDING') return next(new AppError('Request is not pending', 400));
 
   // Verify Admin Scope
-  if (req.user!.role === 'DEPARTMENT_ADMIN' && req.user!.managedDepartmentId) {
-    if (changeReq.course.departmentId !== req.user!.managedDepartmentId) return next(new AuthorizationError('Out of scope'));
-  } else if ((req.user!.role === 'ADMIN' || req.user!.role === 'COLLEGE_ADMIN') && req.user!.managedCollegeId) {
+  if (req.user!.role === 'SUPER_ADMIN') {
+    // Super admin full access
+  } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
+    if (!req.user!.managedDepartmentId || changeReq.course.departmentId !== req.user!.managedDepartmentId) {
+      return next(new AuthorizationError('Out of scope'));
+    }
+  } else if (req.user!.role === 'COLLEGE_ADMIN') {
     const dept = changeReq.course.departmentId
       ? await prisma.department.findUnique({ where: { id: changeReq.course.departmentId } })
       : null;
-    if (dept?.collegeId !== req.user!.managedCollegeId) return next(new AuthorizationError('Out of scope'));
+    if (!req.user!.managedCollegeId || dept?.collegeId !== req.user!.managedCollegeId) {
+      return next(new AuthorizationError('Out of scope'));
+    }
+  } else if (req.user!.role === 'ADMIN') {
+    if (!req.user!.managedCollegeId) {
+      return next(new AuthorizationError('Access denied: Unscoped admin cannot resolve schedule requests'));
+    }
+    const dept = changeReq.course.departmentId
+      ? await prisma.department.findUnique({ where: { id: changeReq.course.departmentId } })
+      : null;
+    if (dept?.collegeId !== req.user!.managedCollegeId) {
+      return next(new AuthorizationError('Out of scope'));
+    }
+  } else {
+    return next(new AuthorizationError('Access denied'));
   }
 
   // Apply the change
@@ -203,13 +221,31 @@ export const rejectRequest = catchAsync(async (req: Request, res: Response, next
   if (changeReq.status !== 'PENDING') return next(new AppError('Request is not pending', 400));
 
   // Verify Admin Scope
-  if (req.user!.role === 'DEPARTMENT_ADMIN' && req.user!.managedDepartmentId) {
-    if (changeReq.course.departmentId !== req.user!.managedDepartmentId) return next(new AuthorizationError('Out of scope'));
-  } else if ((req.user!.role === 'ADMIN' || req.user!.role === 'COLLEGE_ADMIN') && req.user!.managedCollegeId) {
+  if (req.user!.role === 'SUPER_ADMIN') {
+    // Super admin full access
+  } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
+    if (!req.user!.managedDepartmentId || changeReq.course.departmentId !== req.user!.managedDepartmentId) {
+      return next(new AuthorizationError('Out of scope'));
+    }
+  } else if (req.user!.role === 'COLLEGE_ADMIN') {
     const dept = changeReq.course.departmentId
       ? await prisma.department.findUnique({ where: { id: changeReq.course.departmentId } })
       : null;
-    if (dept?.collegeId !== req.user!.managedCollegeId) return next(new AuthorizationError('Out of scope'));
+    if (!req.user!.managedCollegeId || dept?.collegeId !== req.user!.managedCollegeId) {
+      return next(new AuthorizationError('Out of scope'));
+    }
+  } else if (req.user!.role === 'ADMIN') {
+    if (!req.user!.managedCollegeId) {
+      return next(new AuthorizationError('Access denied: Unscoped admin cannot resolve schedule requests'));
+    }
+    const dept = changeReq.course.departmentId
+      ? await prisma.department.findUnique({ where: { id: changeReq.course.departmentId } })
+      : null;
+    if (dept?.collegeId !== req.user!.managedCollegeId) {
+      return next(new AuthorizationError('Out of scope'));
+    }
+  } else {
+    return next(new AuthorizationError('Access denied'));
   }
 
   await prisma.scheduleChangeRequest.update({

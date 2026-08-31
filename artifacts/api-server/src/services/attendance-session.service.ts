@@ -81,16 +81,19 @@ class AttendanceSessionService {
       }
 
       if (user.role === 'COLLEGE_ADMIN') {
-        return !!(user.managedCollegeId && courseCollegeId === user.managedCollegeId);
+        const adminCollegeId = user.managedCollegeId || user.collegeId;
+        return !!(adminCollegeId && courseCollegeId === adminCollegeId);
       }
 
       if (user.role === 'DEPARTMENT_ADMIN') {
-        return !!(user.managedDepartmentId && courseDepartmentId === user.managedDepartmentId);
+        const adminDepartmentId = user.managedDepartmentId || user.departmentId;
+        return !!(adminDepartmentId && courseDepartmentId === adminDepartmentId);
       }
 
       if (user.role === 'ADMIN') {
-        if (!user.managedCollegeId) return false; // Fail-closed for unscoped ADMIN
-        return courseCollegeId === user.managedCollegeId;
+        const adminCollegeId = user.managedCollegeId || user.collegeId;
+        if (!adminCollegeId) return false; // Fail-closed for unscoped ADMIN
+        return courseCollegeId === adminCollegeId;
       }
     }
 

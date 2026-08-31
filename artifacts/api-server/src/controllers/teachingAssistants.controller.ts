@@ -16,7 +16,13 @@ function assertTAScope(
   },
   user: { role: string; managedCollegeId?: number | null; managedDepartmentId?: number | null }
 ): boolean {
-  if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return true;
+  if (user.role === 'SUPER_ADMIN') return true;
+  if (user.role === 'ADMIN') {
+    if (!user.managedCollegeId) return false;
+    if (ta.department?.collegeId === user.managedCollegeId) return true;
+    if (ta.scheduleSlots?.some((s: any) => s.course?.department?.collegeId === user.managedCollegeId)) return true;
+    return false;
+  }
   if (user.role === 'COLLEGE_ADMIN') {
     if (ta.department?.collegeId === user.managedCollegeId) return true;
     if (ta.scheduleSlots?.some((s: any) => s.course?.department?.collegeId === user.managedCollegeId)) return true;
@@ -332,7 +338,10 @@ export const createTeachingAssistant = catchAsync(async (req: Request, res: Resp
   let { email, password, employeeId, specialization, departmentId, status, firstName, lastName } = req.body;
 
   // Enforce scope
-  if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
+  if (req.user!.role === 'ADMIN') {
+    if (!req.user!.managedCollegeId) {
+      return next(new AuthorizationError('Access denied: Unscoped admin cannot create teaching assistants'));
+    }
     if (departmentId) {
       const dept = await prisma.department.findUnique({
         where: { id: parseInt(departmentId as string) },
@@ -423,7 +432,10 @@ export const updateTeachingAssistant = catchAsync(async (req: Request, res: Resp
   }
 
   if (departmentId) {
-    if (req.user!.role === 'ADMIN' && req.user!.managedCollegeId) {
+    if (req.user!.role === 'ADMIN') {
+      if (!req.user!.managedCollegeId) {
+        return next(new AuthorizationError('Access denied: Unscoped admin cannot update teaching assistants'));
+      }
       const newDept = await prisma.department.findUnique({
         where: { id: parseInt(departmentId as string) },
       });

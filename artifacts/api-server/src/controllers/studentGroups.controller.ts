@@ -29,9 +29,12 @@ export const autoDivideStudents = async (req: Request, res: Response, next: Next
     if (!department) return res.status(404).json({ success: false, message: 'Department not found' });
 
     // Verify Admin Scope
-    if (req.user!.role === 'DEPARTMENT_ADMIN' && req.user!.managedDepartmentId) {
-      if (departmentId !== req.user!.managedDepartmentId) return next(new AuthorizationError('Out of scope'));
-    } else if ((req.user!.role === 'ADMIN' || req.user!.role === 'COLLEGE_ADMIN') && req.user!.managedCollegeId) {
+    if (req.user!.role === 'DEPARTMENT_ADMIN') {
+      if (!req.user!.managedDepartmentId || departmentId !== req.user!.managedDepartmentId) return next(new AuthorizationError('Out of scope'));
+    } else if (req.user!.role === 'COLLEGE_ADMIN') {
+      if (!req.user!.managedCollegeId || department.collegeId !== req.user!.managedCollegeId) return next(new AuthorizationError('Out of scope'));
+    } else if (req.user!.role === 'ADMIN') {
+      if (!req.user!.managedCollegeId) return next(new AuthorizationError('Access denied: Unscoped admin cannot manage student groups'));
       if (department.collegeId !== req.user!.managedCollegeId) return next(new AuthorizationError('Out of scope'));
     }
 

@@ -31,13 +31,29 @@ export const createOverride = catchAsync(async (req: Request, res: Response, nex
   }
 
   // Verify Admin Scope
-  if (req.user!.role === 'DEPARTMENT_ADMIN' && req.user!.managedDepartmentId) {
-    if (slot.course.departmentId !== req.user!.managedDepartmentId) return next(new AuthorizationError('Out of scope'));
-  } else if ((req.user!.role === 'ADMIN' || req.user!.role === 'COLLEGE_ADMIN') && req.user!.managedCollegeId) {
+  if (req.user!.role === 'SUPER_ADMIN') {
+    // Super admin full access
+  } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
+    if (!req.user!.managedDepartmentId || slot.course.departmentId !== req.user!.managedDepartmentId) {
+      return next(new AuthorizationError('Out of scope'));
+    }
+  } else if (req.user!.role === 'COLLEGE_ADMIN') {
     const dept = slot.course.departmentId
       ? await prisma.department.findUnique({ where: { id: slot.course.departmentId } })
       : null;
-    if (dept?.collegeId !== req.user!.managedCollegeId) return next(new AuthorizationError('Out of scope'));
+    if (!req.user!.managedCollegeId || dept?.collegeId !== req.user!.managedCollegeId) {
+      return next(new AuthorizationError('Out of scope'));
+    }
+  } else if (req.user!.role === 'ADMIN') {
+    if (!req.user!.managedCollegeId) {
+      return next(new AuthorizationError('Access denied: Unscoped admin cannot create overrides'));
+    }
+    const dept = slot.course.departmentId
+      ? await prisma.department.findUnique({ where: { id: slot.course.departmentId } })
+      : null;
+    if (dept?.collegeId !== req.user!.managedCollegeId) {
+      return next(new AuthorizationError('Out of scope'));
+    }
   }
 
   // Ensure no overlapping overrides for this specific slot
