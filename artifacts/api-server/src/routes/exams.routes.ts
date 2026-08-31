@@ -35,21 +35,21 @@ const updateExamValidation = [
 
 router.post(
   '/',
-  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
+  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'DOCTOR'),
   createExamValidation,
   validate,
   examsController.createExam
 );
 router.put(
   '/:id',
-  authorize('SUPER_ADMIN', 'ADMIN'),
+  authorize('SUPER_ADMIN', 'ADMIN', 'DOCTOR'),
   updateExamValidation,
   validate,
   examsController.updateExam
 );
 router.delete(
   '/:id',
-  authorize('SUPER_ADMIN', 'ADMIN'),
+  authorize('SUPER_ADMIN', 'ADMIN', 'DOCTOR'),
   [param('id').isInt().withMessage('Invalid exam ID')],
   validate,
   examsController.deleteExam

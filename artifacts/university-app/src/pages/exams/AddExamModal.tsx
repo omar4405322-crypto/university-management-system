@@ -25,6 +25,7 @@ import {
   Filter,
   Shield,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/button';
 import Modal from '../../components/ui/Modal';
 import { useForm } from 'react-hook-form';
@@ -53,6 +54,8 @@ interface AddExamModalProps {
 
 const AddExamModal: React.FC<AddExamModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isDoctor = user?.role === 'DOCTOR';
   const [colleges, setColleges] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
@@ -308,6 +311,13 @@ const AddExamModal: React.FC<AddExamModalProps> = ({ isOpen, onClose, onSuccess 
           </div>
         )}
 
+        {isDoctor && (
+          <div className="p-3 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-950/40 border border-brand-primary-200 dark:border-brand-primary-800 text-brand-primary-800 dark:text-brand-primary-200 text-xs font-bold flex items-center gap-2">
+            <BookOpenCheck className="w-4 h-4 shrink-0 text-brand-primary-600 dark:text-brand-primary-400" />
+            <span>{t('exams.doctorCoursesOnlyHint', 'يمكنك وضع امتحانات للمقررات المسندة إليك في جدولك التدريسي فقط.')}</span>
+          </div>
+        )}
+
         {/* ── Section 1: College, Department, Year, Semester, Group & Course Filters ── */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -378,7 +388,7 @@ const AddExamModal: React.FC<AddExamModalProps> = ({ isOpen, onClose, onSuccess 
                 className="w-full h-9 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer"
               >
                 <option value="">{t('exams.allYears')}</option>
-                {[1, 2, 3, 4, 5].map((y) => (
+                {[1, 2, 3, 4].map((y) => (
                   <option key={y} value={String(y)}>{t(`exams.yearLevel${y}`, { defaultValue: `${t('exams.yearLevel')} ${y}` })}</option>
                 ))}
               </select>

@@ -67,7 +67,7 @@ export const getUpcomingExams = catchAsync(
 export const createExam = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { courseId, type, title, date, startTime, endTime, room, location } = req.body;
 
-  // Check if course belongs to admin's scope
+  // Check if course exists
   const course = await prisma.course.findUnique({
     where: { id: parseInt(courseId as string) },
     include: { department: true },
@@ -77,17 +77,38 @@ export const createExam = catchAsync(async (req: Request, res: Response, next: N
     return next(new NotFoundError('Course not found'));
   }
 
-  // Enforce scope via helper
-  const courseScope: any = getScopeWhere(req.user!, 'course');
-  if (courseScope && Object.keys(courseScope).length) {
-    if (
-      courseScope.department &&
-      course.department?.collegeId !== courseScope.department.collegeId
-    ) {
-      return next(new AuthorizationError('Access denied'));
+  // ── Doctor ownership check: only allow exams for courses the doctor teaches ──
+  if (req.user!.role === 'DOCTOR') {
+    const doctor = await prisma.doctor.findUnique({
+      where: { userId: req.user!.id },
+    });
+    if (!doctor) {
+      return next(new AuthorizationError('Doctor profile not found'));
     }
-    if (courseScope.departmentId && course.departmentId !== courseScope.departmentId) {
-      return next(new AuthorizationError('Access denied'));
+    const teachesThisCourse = await prisma.scheduleSlot.findFirst({
+      where: {
+        doctorId: doctor.id,
+        courseId: parseInt(courseId as string),
+      },
+    });
+    if (!teachesThisCourse) {
+      return next(new AuthorizationError('You can only create exams for courses you teach'));
+    }
+  }
+
+  // Enforce scope via helper (for admins)
+  if (req.user!.role !== 'DOCTOR') {
+    const courseScope: any = getScopeWhere(req.user!, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      if (
+        courseScope.department &&
+        course.department?.collegeId !== courseScope.department.collegeId
+      ) {
+        return next(new AuthorizationError('Access denied'));
+      }
+      if (courseScope.departmentId && course.departmentId !== courseScope.departmentId) {
+        return next(new AuthorizationError('Access denied'));
+      }
     }
   }
 
