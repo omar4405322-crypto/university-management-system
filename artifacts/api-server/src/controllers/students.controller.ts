@@ -11,6 +11,7 @@ import { getScopeWhere } from '../utils/scope.utils';
 import { StudentGroupsService } from '../services/studentGroups.service';
 import { AttendanceService } from '../services/attendance.service';
 import { calculateStudentGpa } from '../utils/gpa.utils';
+import { EnrollmentService } from '../services/enrollment.service';
 
 const mapStudentStatus = (student: any) => ({
   ...student,
@@ -325,6 +326,11 @@ export const createStudent = catchAsync(async (req: Request, res: Response, next
   });
 
   await StudentGroupsService.assignStudentToGroup(newStudent);
+  try {
+    await EnrollmentService.autoEnrollStudent(newStudent.id);
+  } catch (enrollErr) {
+    console.warn('Could not auto-enroll new student:', enrollErr);
+  }
 
   await invalidateCache('dashboard:*');
 
@@ -345,11 +351,11 @@ export const createStudent = catchAsync(async (req: Request, res: Response, next
  */
 export const updateStudent = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
-  const { email, ...updateData } = req.body;
+  const { email, collegeId: _collegeId, ...updateData } = req.body;
 
   const student = await prisma.student.findUnique({
-    where: { id: parseInt(id as string) },
-    select: { userId: true, departmentId: true, department: { select: { collegeId: true } } },
+    where: { id: parseInt(id as string, 10) },
+    select: { id: true, userId: true, studentId: true, departmentId: true, department: { select: { collegeId: true } } },
   });
 
   if (!student) {
@@ -360,33 +366,111 @@ export const updateStudent = catchAsync(async (req: Request, res: Response, next
     return res.status(403).json({ message: 'Access denied: student belongs to a different scope' });
   }
 
+  // If studentId is changed, check uniqueness
+  if (updateData.studentId && updateData.studentId.trim() !== student.studentId) {
+    const existingStudent = await prisma.student.findUnique({
+      where: { studentId: updateData.studentId.trim() },
+    });
+    if (existingStudent && existingStudent.id !== student.id) {
+      return next(new AppError('Student ID is already in use by another student', 400));
+    }
+  }
+
+  // If email is changed, check uniqueness
+  const normalizedEmail = email && typeof email === 'string' && email.trim() !== '' ? email.trim().toLowerCase() : undefined;
+  if (normalizedEmail) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (existingUser && existingUser.id !== student.userId) {
+      return next(new AppError('Email address is already in use by another account', 400));
+    }
+  }
+
+  // Check department scope if changing department
+  if (updateData.departmentId !== undefined && updateData.departmentId !== '') {
+    const targetDeptId = parseInt(updateData.departmentId as string, 10);
+    if (req.user!.role === 'COLLEGE_ADMIN') {
+      const targetDept = await prisma.department.findUnique({
+        where: { id: targetDeptId },
+      });
+      if (!targetDept || targetDept.collegeId !== req.user!.managedCollegeId) {
+        return next(new AuthorizationError('Cannot assign student to a department outside your managed college'));
+      }
+    } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
+      if (targetDeptId !== req.user!.managedDepartmentId) {
+        return next(new AuthorizationError('Cannot move student to another department'));
+      }
+    }
+  }
+
+  // Clean data for Prisma Student update
+  const prismaData: any = {};
+  if (updateData.firstName !== undefined) prismaData.firstName = updateData.firstName.trim();
+  if (updateData.lastName !== undefined) prismaData.lastName = updateData.lastName.trim();
+  if (updateData.studentId !== undefined) prismaData.studentId = updateData.studentId.trim();
+  if (updateData.phone !== undefined) prismaData.phone = updateData.phone ? updateData.phone.trim() : null;
+  if (updateData.address !== undefined) prismaData.address = updateData.address ? updateData.address.trim() : null;
+  if (updateData.bio !== undefined) prismaData.bio = updateData.bio ? updateData.bio.trim() : null;
+  if (updateData.gender !== undefined) prismaData.gender = updateData.gender || null;
+  if (updateData.birthDate !== undefined) {
+    prismaData.birthDate = updateData.birthDate ? new Date(updateData.birthDate) : null;
+  }
+  if (updateData.departmentId !== undefined && updateData.departmentId !== '') {
+    prismaData.departmentId = parseInt(updateData.departmentId as string, 10);
+  }
+  if (updateData.year !== undefined && updateData.year !== '') {
+    prismaData.year = parseInt(updateData.year as string, 10);
+  }
+
   const updatedStudent = await prisma.$transaction(async (tx: any) => {
-    if (email) {
+    if (normalizedEmail) {
       await tx.user.update({
         where: { id: student.userId },
-        data: { email },
+        data: { email: normalizedEmail },
       });
     }
 
     return tx.student.update({
-      where: { id: parseInt(id as string) },
-      data: {
-        ...updateData,
-        departmentId:
-          updateData.departmentId !== undefined && updateData.departmentId !== ''
-            ? parseInt(updateData.departmentId)
-            : undefined,
-        year:
-          updateData.year !== undefined && updateData.year !== ''
-            ? parseInt(updateData.year)
-            : undefined,
+      where: { id: parseInt(id as string, 10) },
+      data: prismaData,
+      include: {
+        user: { select: { email: true, profilePicture: true } },
+        department: {
+          select: {
+            id: true,
+            name: true,
+            nameAr: true,
+            college: { select: { id: true, name: true, nameAr: true } },
+          },
+        },
+        group: {
+          include: { parentGroup: true },
+        },
       },
     });
   });
 
+  if (updateData.year !== undefined || updateData.departmentId !== undefined) {
+    try {
+      await StudentGroupsService.assignStudentToGroup(updatedStudent);
+    } catch (grpErr) {
+      console.warn('Could not reassign student group on update:', grpErr);
+    }
+    try {
+      await EnrollmentService.autoEnrollStudent(updatedStudent.id);
+    } catch (enrollErr) {
+      console.warn('Could not auto-enroll student on update:', enrollErr);
+    }
+  }
+
+  await invalidateCache('dashboard:*');
+  auditLog('UPDATE_STUDENT', 'Student', String(id), req);
+
   res.json({
     success: true,
-    data: updatedStudent,
+    data: mapStudentStatus(updatedStudent),
+    message: 'Student updated successfully',
   });
 });
 

@@ -22,7 +22,7 @@ const schema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   phone: z.string().optional(),
   address: z.string().optional(),
-  year: z.coerce.number().min(1),
+  year: z.coerce.number().min(1, 'Academic division is required').max(4, 'Division must be between 1 and 4'),
   collegeId: z.coerce.number().min(1, 'College is required'),
   departmentId: z.coerce.number().min(1, 'Department is required'),
 });
@@ -238,7 +238,6 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
               <option value="2">{t('auth.year2')}</option>
               <option value="3">{t('auth.year3')}</option>
               <option value="4">{t('auth.year4')}</option>
-              <option value="5">{t('auth.year5')}</option>
             </select>
             {errors.year && <p className="text-rose-500 text-xs mt-1">{errors.year.message}</p>}
           </div>

@@ -4,7 +4,7 @@ const router = express.Router();
 import * as studentsController from '../controllers/students.controller';
 import { resetStudentPassword } from '../controllers/students.controller';
 import { protect, authorize } from '../middleware/auth.middleware';
-import { studentValidation, idParamValidation } from '../validations/academic.validation';
+import { studentValidation, studentUpdateValidation, idParamValidation } from '../validations/academic.validation';
 import validate from '../middleware/validate.middleware';
 
 // Statistics endpoint accessible by STUDENT (for self/me) and DOCTOR/ADMIN (scoped)
@@ -19,7 +19,7 @@ router.get('/:id', idParamValidation, validate, studentsController.getStudentByI
 router.post('/', studentValidation, validate, studentsController.createStudent);
 router.put(
   '/:id',
-  [...idParamValidation, ...studentValidation],
+  [...idParamValidation, ...studentUpdateValidation],
   validate,
   studentsController.updateStudent
 );
