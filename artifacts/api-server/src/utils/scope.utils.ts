@@ -38,6 +38,8 @@ export const getScopeWhere = (
     if (entity === 'course') return { department: { collegeId: managedCollegeId } };
     if (entity === 'exam') return { course: { department: { collegeId: managedCollegeId } } };
     if (entity === 'student') return { department: { collegeId: managedCollegeId } };
+    if (entity === 'doctor') return { department: { collegeId: managedCollegeId } };
+    if (entity === 'teachingAssistant') return { department: { collegeId: managedCollegeId } };
     if (entity === 'timetable') return { department: { collegeId: managedCollegeId } };
     if (entity === 'payment') return { student: { department: { collegeId: managedCollegeId } } };
     if (entity === 'user') {
@@ -65,6 +67,8 @@ export const getScopeWhere = (
     if (entity === 'course') return { departmentId: managedDepartmentId };
     if (entity === 'exam') return { course: { departmentId: managedDepartmentId } };
     if (entity === 'student') return { departmentId: managedDepartmentId };
+    if (entity === 'doctor') return { departmentId: managedDepartmentId };
+    if (entity === 'teachingAssistant') return { departmentId: managedDepartmentId };
     if (entity === 'timetable') return { departmentId: managedDepartmentId };
     if (entity === 'payment') return { student: { departmentId: managedDepartmentId } };
     if (entity === 'user') {
@@ -87,32 +91,69 @@ export const getScopeWhere = (
     if (entity === 'course') return { department: { collegeId: user.managedCollegeId } };
     if (entity === 'exam') return { course: { department: { collegeId: user.managedCollegeId } } };
     if (entity === 'student') return { department: { collegeId: user.managedCollegeId } };
+    if (entity === 'doctor') return { department: { collegeId: user.managedCollegeId } };
+    if (entity === 'teachingAssistant') return { department: { collegeId: user.managedCollegeId } };
     if (entity === 'timetable') return { department: { collegeId: user.managedCollegeId } };
     if (entity === 'payment') return { student: { department: { collegeId: user.managedCollegeId } } };
     return { department: { collegeId: user.managedCollegeId } };
   }
 
 
-  // DOCTOR: scoped to the sections they teach or their department
+  // DOCTOR: scoped strictly to courses and exams they teach
   if (user.role === 'DOCTOR' && user.doctor?.id) {
-    if (entity === 'course') return { scheduleSlots: { some: { doctorId: user.doctor.id } } };
-    if (entity === 'exam') return { course: { scheduleSlots: { some: { doctorId: user.doctor.id } } } };
+    if (entity === 'course') {
+      return {
+        scheduleSlots: { some: { doctorId: user.doctor.id } },
+      };
+    }
+    if (entity === 'exam') {
+      return {
+        course: {
+          scheduleSlots: { some: { doctorId: user.doctor.id } },
+        },
+      };
+    }
     if (entity === 'timetable') return { doctorId: user.doctor.id }; // ScheduleSlot entity
     if (entity === 'student') {
+      return {
+        enrollments: {
+          some: { course: { scheduleSlots: { some: { doctorId: user.doctor.id } } } },
+        },
+      };
+    }
+    return { id: -1 };
+  }
+
+  // TEACHING_ASSISTANT: scoped to the sections/slots they are assigned or their home department
+  if (user.role === 'TEACHING_ASSISTANT' && user.teachingAssistant?.id) {
+    if (entity === 'course') {
+      return {
+        OR: [
+          { scheduleSlots: { some: { teachingAssistantId: user.teachingAssistant.id } } },
+          ...(user.teachingAssistant.departmentId ? [{ departmentId: user.teachingAssistant.departmentId }] : []),
+        ],
+      };
+    }
+    if (entity === 'exam') {
+      return {
+        course: {
+          OR: [
+            { scheduleSlots: { some: { teachingAssistantId: user.teachingAssistant.id } } },
+            ...(user.teachingAssistant.departmentId ? [{ departmentId: user.teachingAssistant.departmentId }] : []),
+          ],
+        },
+      };
+    }
+    if (entity === 'timetable') return { teachingAssistantId: user.teachingAssistant.id }; // ScheduleSlot entity
+    if (entity === 'student') {
       const conditions: any[] = [
-        { enrollments: { some: { course: { scheduleSlots: { some: { doctorId: user.doctor.id } } } } } },
+        { enrollments: { some: { course: { scheduleSlots: { some: { teachingAssistantId: user.teachingAssistant.id } } } } } },
       ];
-      if (user.doctor.departmentId) {
-        conditions.push({ departmentId: user.doctor.departmentId });
+      if (user.teachingAssistant.departmentId) {
+        conditions.push({ departmentId: user.teachingAssistant.departmentId });
       }
       return { OR: conditions };
     }
-    return { id: -1 }; // Doctors shouldn't query departments universally without scope
-  }
-
-  // TEACHING_ASSISTANT: scoped to the sections/slots they are assigned
-  if (user.role === 'TEACHING_ASSISTANT' && user.teachingAssistant?.id) {
-    if (entity === 'timetable') return { teachingAssistantId: user.teachingAssistant.id }; // ScheduleSlot entity
     return { id: -1 };
   }
 
