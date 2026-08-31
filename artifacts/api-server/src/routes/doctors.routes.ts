@@ -4,7 +4,7 @@ const router = express.Router();
 import * as doctorsController from '../controllers/doctors.controller';
 import { resetDoctorPassword, getSuggestedDoctors } from '../controllers/doctors.controller';
 import { authorize } from '../middleware/auth.middleware';
-import { doctorValidation, idParamValidation } from '../validations/academic.validation';
+import { doctorValidation, doctorUpdateValidation, idParamValidation } from '../validations/academic.validation';
 import validate from '../middleware/validate.middleware';
 
 // All doctor routes are restricted
@@ -17,7 +17,7 @@ router.get('/:id', idParamValidation, validate, doctorsController.getDoctorById)
 router.post('/', doctorValidation, validate, doctorsController.createDoctor);
 router.put(
   '/:id',
-  [...idParamValidation, ...doctorValidation],
+  [...idParamValidation, ...doctorUpdateValidation],
   validate,
   doctorsController.updateDoctor
 );

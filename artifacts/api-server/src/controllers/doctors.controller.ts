@@ -8,17 +8,26 @@ import catchAsync from '../utils/catchAsync';
 import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
 
 import { getScopeWhere } from '../utils/scope.utils';
+import { TimetableService } from '../services/timetable.service';
 
 function assertDoctorScope(
-  doctor: { departmentId?: number | null; department?: { collegeId: number } | null },
+  doctor: {
+    departmentId?: number | null;
+    department?: { collegeId?: number | null } | null;
+    scheduleSlots?: any[];
+  },
   user: { role: string; managedCollegeId?: number | null; managedDepartmentId?: number | null }
 ): boolean {
   if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return true;
   if (user.role === 'COLLEGE_ADMIN') {
-    return doctor.department?.collegeId === user.managedCollegeId;
+    if (doctor.department?.collegeId === user.managedCollegeId) return true;
+    if (doctor.scheduleSlots?.some((s: any) => s.course?.department?.collegeId === user.managedCollegeId)) return true;
+    return false;
   }
   if (user.role === 'DEPARTMENT_ADMIN') {
-    return doctor.departmentId === user.managedDepartmentId;
+    if (doctor.departmentId === user.managedDepartmentId) return true;
+    if (doctor.scheduleSlots?.some((s: any) => s.course?.departmentId === user.managedDepartmentId)) return true;
+    return false;
   }
   return false;
 }
@@ -33,24 +42,39 @@ export const getDoctorStats = catchAsync(
       user: { role: 'DOCTOR' },
     };
 
-    const [totalFaculty, activeProfessors, totalCourses, researchProjects] = await Promise.all([
+    const [totalFaculty, activeProfessors, assignedCourses, totalCourses, researchTasks, quizzesCount] = await Promise.all([
       prisma.doctor.count({ where: doctorWhere }),
       prisma.doctor.count({
-        where: { ...doctorWhere, courses: { some: {} } },
+        where: {
+          ...doctorWhere,
+          user: { role: 'DOCTOR', isActive: true },
+        },
+      }),
+      prisma.course.count({
+        where: {
+          ...courseWhere,
+          scheduleSlots: { some: { doctorId: { not: null } } },
+        },
       }),
       prisma.course.count({ where: courseWhere }),
       prisma.task.count({
         where: Object.keys(scopeWhere).length ? { doctor: doctorWhere } : {},
       }),
+      prisma.quiz.count({
+        where: Object.keys(scopeWhere).length ? { doctor: doctorWhere } : {},
+      }),
     ]);
+
+    const effectiveAssignedCourses = assignedCourses > 0 ? assignedCourses : totalCourses;
+    const totalResearchProjects = researchTasks + quizzesCount;
 
     res.json({
       success: true,
       data: {
         totalFaculty,
         activeProfessors,
-        totalCourses,
-        researchProjects,
+        totalCourses: effectiveAssignedCourses,
+        researchProjects: totalResearchProjects,
       },
     });
   }
@@ -270,18 +294,32 @@ export const assignDoctorCourse = catchAsync(async (req: Request, res: Response,
     where: { doctorId, courseId: course.id }
   });
 
+  // Check for scheduling conflicts across all departments and colleges
+  const targetDay = (dayOfWeek || existingSlot?.dayOfWeek || 'SUNDAY').toUpperCase();
+  const targetStart = startTime || existingSlot?.startTime || '09:00';
+  const targetEnd = endTime || existingSlot?.endTime || '11:00';
+  const targetRoom = room !== undefined ? (room ? String(room).trim() : null) : (existingSlot?.room || null);
+
+  await TimetableService.checkConflicts({
+    dayOfWeek: targetDay,
+    startTime: targetStart,
+    endTime: targetEnd,
+    room: targetRoom,
+    courseId: course.id,
+    doctorId,
+    excludeSlotId: existingSlot?.id,
+  });
+
   if (existingSlot) {
-    if (dayOfWeek || startTime || endTime || room) {
-      await prisma.scheduleSlot.update({
-        where: { id: existingSlot.id },
-        data: {
-          ...(dayOfWeek ? { dayOfWeek: (dayOfWeek as string).toUpperCase() } : {}),
-          ...(startTime ? { startTime } : {}),
-          ...(endTime ? { endTime } : {}),
-          ...(room ? { room } : {}),
-        }
-      });
-    }
+    await prisma.scheduleSlot.update({
+      where: { id: existingSlot.id },
+      data: {
+        dayOfWeek: targetDay,
+        startTime: targetStart,
+        endTime: targetEnd,
+        room: targetRoom,
+      }
+    });
   } else {
     let timetableId: number | undefined;
     if (course.departmentId) {
@@ -300,10 +338,10 @@ export const assignDoctorCourse = catchAsync(async (req: Request, res: Response,
         courseId: course.id,
         doctorId,
         slotType: 'LECTURE',
-        dayOfWeek: (dayOfWeek || 'SUNDAY').toUpperCase(),
-        startTime: startTime || '09:00',
-        endTime: endTime || '11:00',
-        room: room || 'Main Hall',
+        dayOfWeek: targetDay,
+        startTime: targetStart,
+        endTime: targetEnd,
+        room: targetRoom,
         timetableId,
       }
     });

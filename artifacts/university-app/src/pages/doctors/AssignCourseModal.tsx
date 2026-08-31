@@ -52,20 +52,9 @@ export default function AssignCourseModal({
     try {
       setFetchingCourses(true);
       setError(null);
-      // 1. First attempt: Fetch courses in the doctor's department with high limit
-      const params: any = { limit: 100 };
-      if (doctor?.departmentId) {
-        params.departmentId = doctor.departmentId;
-      }
-      let res = await api.get('/courses', { params });
-      let list = res.data?.data?.courses || [];
-
-      // 2. Fallback: If no courses found for specific department, fetch university-wide courses
-      if (list.length === 0) {
-        res = await api.get('/courses', { params: { limit: 100 } });
-        list = res.data?.data?.courses || [];
-      }
-
+      // Fetch courses across the university so professors can be assigned to any department/college
+      const res = await api.get('/courses', { params: { limit: 300 } });
+      const list = res.data?.data?.courses || [];
       setCourses(list);
     } catch (err: any) {
       console.error('Failed to fetch courses for assignment:', err);
@@ -193,11 +182,15 @@ export default function AssignCourseModal({
                   className={`w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-3 ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} text-slate-800 dark:text-white focus:ring-2 focus:ring-brand-primary-500 focus:border-brand-primary-500 transition-all font-medium appearance-none`}
                 >
                   <option value="">{fetchingCourses ? (isRTL ? 'جاري التحميل...' : 'Loading...') : (isRTL ? 'اختر المقرر الدراسي المطلوب...' : 'Select a course...')}</option>
-                  {courses.map(course => (
-                    <option key={course.id} value={course.id}>
-                      {course.name} ({course.courseCode}) - {isRTL ? 'الفرقة' : 'Year'} {course.year} {course.department?.name ? `[${course.department.name}]` : ''}
-                    </option>
-                  ))}
+                  {courses.map((course) => {
+                    const deptName = isRTL ? (course.department?.nameAr || course.department?.name) : (course.department?.name || course.department?.nameAr);
+                    const colName = isRTL ? (course.department?.college?.nameAr || course.department?.college?.name) : (course.department?.college?.name || course.department?.college?.nameAr);
+                    return (
+                      <option key={course.id} value={course.id}>
+                        {course.name} ({course.courseCode}) - {isRTL ? `الفرقة ${course.year}` : `Division ${course.year}`} {deptName ? `[${deptName}${colName ? ` - ${colName}` : ''}]` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
@@ -209,13 +202,16 @@ export default function AssignCourseModal({
                   <span>{selectedCourse.name} ({selectedCourse.courseCode})</span>
                 </div>
                 <div className="text-slate-500 dark:text-slate-400 flex items-center gap-3 flex-wrap pt-1">
-                  <span>{isRTL ? 'الفرقة:' : 'Year:'} {selectedCourse.year}</span>
+                  <span>{isRTL ? `الفرقة: ${selectedCourse.year}` : `Division: ${selectedCourse.year}`}</span>
                   <span>•</span>
                   <span>{isRTL ? 'الساعات المعتمدة:' : 'Credits:'} {selectedCourse.credits || 3}</span>
-                  {selectedCourse.department?.name && (
+                  {selectedCourse.department && (
                     <>
                       <span>•</span>
-                      <span>{selectedCourse.department.name}</span>
+                      <span className="font-semibold text-brand-primary-600">
+                        {isRTL ? (selectedCourse.department.nameAr || selectedCourse.department.name) : (selectedCourse.department.name || selectedCourse.department.nameAr)}
+                        {selectedCourse.department.college && ` (${isRTL ? (selectedCourse.department.college.nameAr || selectedCourse.department.college.name) : (selectedCourse.department.college.name || selectedCourse.department.college.nameAr)})`}
+                      </span>
                     </>
                   )}
                 </div>
