@@ -153,42 +153,40 @@ export const getAllDoctors = catchAsync(async (req: Request, res: Response, next
   const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
   const take = parseInt(limit as string);
 
-  const scopeWhere: any = getScopeWhere(req.user!);
+  const scopeWhere = getScopeWhere(req.user!, 'doctor');
 
   const parsedCollegeId = collegeId && collegeId !== '' ? parseInt(collegeId as string, 10) : undefined;
   const parsedDepartmentId = departmentId && departmentId !== '' ? parseInt(departmentId as string, 10) : undefined;
 
-  let collegeOrDeptWhere: any = {};
-  if (parsedCollegeId && parsedDepartmentId) {
-    collegeOrDeptWhere = {
-      departmentId: parsedDepartmentId,
-      department: { collegeId: parsedCollegeId }
-    };
-  } else if (parsedDepartmentId) {
-    collegeOrDeptWhere = {
-      departmentId: parsedDepartmentId
-    };
-  } else if (parsedCollegeId) {
-    collegeOrDeptWhere = {
-      department: { collegeId: parsedCollegeId }
-    };
+  const queryFilters: any[] = [
+    {
+      user: {
+        role: 'DOCTOR',
+      },
+    },
+  ];
+
+  if (parsedCollegeId) {
+    queryFilters.push({ department: { collegeId: parsedCollegeId } });
+  }
+  if (parsedDepartmentId) {
+    queryFilters.push({ departmentId: parsedDepartmentId });
+  }
+  if (search) {
+    queryFilters.push({
+      OR: [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { doctorId: { contains: search, mode: 'insensitive' } },
+      ],
+    });
   }
 
-  const where: any = {
-    ...scopeWhere,
-    ...collegeOrDeptWhere,
-    user: {
-      role: 'DOCTOR',
-    },
-    ...(search
-      ? {
-          OR: [
-            { firstName: { contains: search, mode: 'insensitive' } },
-            { lastName: { contains: search, mode: 'insensitive' } },
-            { doctorId: { contains: search, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
+  const where = {
+    AND: [
+      scopeWhere,
+      ...queryFilters,
+    ],
   };
 
   const [doctors, total] = await Promise.all([

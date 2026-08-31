@@ -119,21 +119,30 @@ export const getAllTeachingAssistants = catchAsync(async (req: Request, res: Res
   const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
   const take = parseInt(limit as string);
 
-  const scopeWhere: any = getScopeWhere(req.user!);
+  const scopeWhere = getScopeWhere(req.user!, 'teachingAssistant');
 
-  const where: any = {
-    ...scopeWhere,
-    ...(status ? { status } : {}),
-    ...(departmentId ? { departmentId: parseInt(departmentId) } : {}),
-    ...(search
-      ? {
-          OR: [
-            { employeeId: { contains: search, mode: 'insensitive' } },
-            { user: { email: { contains: search, mode: 'insensitive' } } },
-            { specialization: { contains: search, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
+  const queryFilters: any[] = [];
+  if (status) {
+    queryFilters.push({ status });
+  }
+  if (departmentId) {
+    queryFilters.push({ departmentId: parseInt(departmentId, 10) });
+  }
+  if (search) {
+    queryFilters.push({
+      OR: [
+        { employeeId: { contains: search, mode: 'insensitive' } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+        { specialization: { contains: search, mode: 'insensitive' } },
+      ],
+    });
+  }
+
+  const where = {
+    AND: [
+      scopeWhere,
+      ...queryFilters,
+    ],
   };
 
   const [teachingAssistants, total] = await Promise.all([

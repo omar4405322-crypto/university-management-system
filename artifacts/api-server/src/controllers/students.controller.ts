@@ -63,55 +63,63 @@ export const getAllStudents = catchAsync(
     const safeSortOrder = ['asc', 'desc'].includes(sortOrder) ? (sortOrder as 'asc' | 'desc') : 'desc';
 
     // 1. Role-based scoping
-    const scopeWhere: any = getScopeWhere(req.user!, 'student');
+    const scopeWhere = getScopeWhere(req.user!, 'student');
 
     const parsedCollegeId = collegeId && collegeId !== '' ? parseInt(collegeId as string, 10) : undefined;
     const parsedDepartmentId = departmentId && departmentId !== '' ? parseInt(departmentId as string, 10) : undefined;
 
-    let collegeOrDeptWhere: any = {};
-    if (parsedCollegeId && parsedDepartmentId) {
-      collegeOrDeptWhere = {
-        departmentId: parsedDepartmentId,
-        department: { collegeId: parsedCollegeId }
-      };
-    } else if (parsedDepartmentId) {
-      collegeOrDeptWhere = {
-        departmentId: parsedDepartmentId
-      };
-    } else if (parsedCollegeId) {
-      collegeOrDeptWhere = {
-        department: { collegeId: parsedCollegeId }
-      };
+    const queryFilters: any[] = [];
+    if (parsedCollegeId) {
+      queryFilters.push({ department: { collegeId: parsedCollegeId } });
     }
-
-    // 2. Advanced Filtering
-    const where: any = {
-      ...scopeWhere,
-      ...collegeOrDeptWhere,
-      ...(year !== undefined && year !== '' && { year: parseInt(year as string) }),
-      ...(groupId !== undefined &&
-        groupId !== '' &&
-        (groupId === 'unassigned'
+    if (parsedDepartmentId) {
+      queryFilters.push({ departmentId: parsedDepartmentId });
+    }
+    if (year !== undefined && year !== '') {
+      queryFilters.push({ year: parseInt(year as string, 10) });
+    }
+    if (groupId !== undefined && groupId !== '') {
+      queryFilters.push(
+        groupId === 'unassigned'
           ? { groupId: null }
-          : { groupId: parseInt(groupId as string) })),
-      ...(status === 'active' && { isActive: true }),
-      ...(status === 'inactive' && { isActive: false }),
-      ...(status === 'suspended' && { status: 'suspended' }),
-      ...(gender && { gender }),
-      ...(letter && {
+          : { groupId: parseInt(groupId as string, 10) }
+      );
+    }
+    if (status === 'active') {
+      queryFilters.push({ isActive: true });
+    } else if (status === 'inactive') {
+      queryFilters.push({ isActive: false });
+    } else if (status === 'suspended') {
+      queryFilters.push({ status: 'suspended' });
+    }
+    if (gender) {
+      queryFilters.push({ gender });
+    }
+    if (letter) {
+      queryFilters.push({
         OR: [
           { firstName: { startsWith: letter, mode: 'insensitive' } },
           { lastName: { startsWith: letter, mode: 'insensitive' } },
         ],
-      }),
-      ...(search && {
+      });
+    }
+    if (search) {
+      queryFilters.push({
         OR: [
           { firstName: { contains: search, mode: 'insensitive' } },
           { lastName: { contains: search, mode: 'insensitive' } },
           { studentId: { contains: search, mode: 'insensitive' } },
+          { nationalId: { contains: search, mode: 'insensitive' } },
           { user: { email: { contains: search, mode: 'insensitive' } } },
         ],
-      }),
+      });
+    }
+
+    const where = {
+      AND: [
+        scopeWhere,
+        ...queryFilters,
+      ],
     };
 
     // Sort definition (multi-field for firstName/lastName)

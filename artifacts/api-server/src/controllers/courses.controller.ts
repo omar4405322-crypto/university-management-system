@@ -40,21 +40,38 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
     : 'desc';
 
   // Scoping: use centralized helper
-  const scopeWhere: any = getScopeWhere(req.user!, 'course');
+  const scopeWhere = getScopeWhere(req.user!, 'course');
 
-  const where: any = {
-    ...scopeWhere,
-    ...(req.user?.role === 'STUDENT' && { isPublished: true }),
-    ...(collegeId && { department: { collegeId: parseInt(collegeId as string, 10) } }),
-    ...(departmentId && { departmentId: parseInt(departmentId as string, 10) }),
-    ...(year && { year: parseInt(year as string, 10) }),
-    ...(semester && { semester: parseInt(semester as string, 10) }),
-    ...(search && {
+  const queryFilters: any[] = [];
+  if (req.user?.role === 'STUDENT') {
+    queryFilters.push({ isPublished: true });
+  }
+  if (collegeId) {
+    queryFilters.push({ department: { collegeId: parseInt(collegeId as string, 10) } });
+  }
+  if (departmentId) {
+    queryFilters.push({ departmentId: parseInt(departmentId as string, 10) });
+  }
+  if (year) {
+    queryFilters.push({ year: parseInt(year as string, 10) });
+  }
+  if (semester) {
+    queryFilters.push({ semester: parseInt(semester as string, 10) });
+  }
+  if (search) {
+    queryFilters.push({
       OR: [
         { name: { contains: search as string, mode: 'insensitive' } },
         { courseCode: { contains: search as string, mode: 'insensitive' } },
       ],
-    }),
+    });
+  }
+
+  const where = {
+    AND: [
+      scopeWhere,
+      ...queryFilters,
+    ],
   };
 
   const [coursesList, total] = await Promise.all([
