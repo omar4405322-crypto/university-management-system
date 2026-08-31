@@ -3,6 +3,11 @@ import type { ApiResponse } from '../types/models';
 import api from './api';
 
 const departmentService = {
+  getPublicDepartments: (
+    params: Record<string, unknown> = {},
+    options: Record<string, unknown> = {}
+  ): Promise<ApiResponse<any>> => apiRequest(() => api.get('/departments/public', { params, ...options })),
+
   getDepartments: (
     params: Record<string, unknown> = {},
     options: Record<string, unknown> = {}

@@ -146,7 +146,7 @@ const Register = () => {
       setDataError('');
 
       try {
-        const result = await departmentService.getDepartments(
+        const result = await departmentService.getPublicDepartments(
           { collegeId: selectedCollegeId },
           { signal: controller.signal }
         );

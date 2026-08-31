@@ -5,6 +5,25 @@ import { getScopeWhere } from '../utils/scope.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError, AuthorizationError, ValidationError, AppError } from '../utils/appError';
 
+export const getPublicDepartments = catchAsync(async (req: Request, res: Response) => {
+  const { collegeId } = req.query;
+  const where: { collegeId?: number } = {};
+  if (collegeId) {
+    where.collegeId = parseInt(collegeId as string, 10);
+  }
+  const departments = await prisma.department.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      nameAr: true,
+      collegeId: true,
+    },
+    orderBy: { name: 'asc' },
+  });
+  res.json({ success: true, data: departments });
+});
+
 export const getAllDepartments = catchAsync(async (req: Request, res: Response) => {
   const { collegeId } = req.query;
 

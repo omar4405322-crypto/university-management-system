@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  getPublicDepartments,
   getAllDepartments,
   getDepartmentById,
   createDepartment,
@@ -12,9 +13,10 @@ import validate from '../middleware/validate.middleware';
 
 const router = express.Router();
 
-// Public: needed by the registration form (no token available yet)
-router.get('/', getAllDepartments);
-router.get('/:id', adminIdValidation, validate, getDepartmentById);
+// Public minimal list endpoint for registration / landing
+router.get('/public', getPublicDepartments);
+router.get('/', protect, getAllDepartments);
+router.get('/:id', protect, adminIdValidation, validate, getDepartmentById);
 
 // Admin only routes
 router.post(
