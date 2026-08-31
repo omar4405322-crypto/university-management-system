@@ -49,11 +49,12 @@ const MaskedEmail = ({ email, className = '' }: { email: string; className?: str
         title={t('admins.revealEmailTitle', 'Confirm Reveal Email')}
         message={t(
           'admins.revealEmailConfirm',
-          'Reveal full email address? This action is logged for administrators only.'
+          'Are you sure you want to reveal the full email address?'
         )}
-        confirmLabel={t('common.confirm', 'Reveal')}
+        confirmLabel={t('admins.revealButton', 'Reveal')}
         cancelLabel={t('common.cancel', 'Cancel')}
-        variant="warning"
+        variant="info"
+        icon={<Eye className="text-blue-500 shrink-0 mt-0.5" size={24} />}
       />
     </>
   );

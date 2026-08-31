@@ -307,6 +307,7 @@ const TakeQuiz = () => {
         confirmLabel={t('quiz.submitButton', 'Submit')}
         cancelLabel={t('common.cancel', 'Cancel')}
         variant="warning"
+        icon={<Send className="text-brand-yellow shrink-0 mt-0.5" size={24} />}
       />
 
       {/* Navigation Protection Modal */}
