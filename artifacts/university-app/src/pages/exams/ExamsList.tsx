@@ -33,13 +33,14 @@ import {
   CheckSquare,
   Square,
   MinusSquare,
+  AlertTriangle,
   Archive,
-  AlertTriangle
 } from 'lucide-react';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import Pagination from '../../components/ui/pagination';
 import { useToast } from '../../context/ToastContext';
 import AddExamModal from './AddExamModal';
 import { getExamStatus, getDaysUntil, getExamLabel, getTypeBadgeConfig, getExamTimeWindowStatus } from './examUtils';
@@ -72,6 +73,8 @@ const ExamsList = () => {
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
 
   // Multi-Selection State
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
@@ -224,6 +227,17 @@ const ExamsList = () => {
     return list;
   }, [exams, search, selectedCollege, selectedDept, selectedYear, typeFilter, statusFilter, sortOrder]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedCollege, selectedDept, selectedYear, typeFilter, statusFilter, sortOrder]);
+
+  const totalPages = Math.ceil(filteredExams.length / pageSize) || 1;
+  const paginatedExams = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredExams.slice(start, start + pageSize);
+  }, [filteredExams, page, pageSize]);
+
   // Multi-Selection Logic
   const allFilteredIds = useMemo(() => filteredExams.map((e) => e.id), [filteredExams]);
   const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
@@ -255,12 +269,15 @@ const ExamsList = () => {
   };
 
   // Bulk Delete
-  const handleBulkDelete = async () => {
-    if (selectedIds.size === 0) return;
-    const count = selectedIds.size;
-    const msg = t('exams.bulkDeleteConfirm', `Are you sure you want to delete ${count} selected exams?`, { count });
-    if (!window.confirm(msg)) return;
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
 
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return;
+    setIsBulkDeleteModalOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    const count = selectedIds.size;
     try {
       setIsBulkDeleting(true);
       const deletePromises = Array.from(selectedIds).map((id) =>
@@ -269,6 +286,7 @@ const ExamsList = () => {
       await Promise.allSettled(deletePromises);
       showToast(t('exams.bulkDeleteSuccess', `Successfully deleted ${count} exams`, { count }), 'success');
       setSelectedIds(new Set());
+      setIsBulkDeleteModalOpen(false);
       fetchExams();
     } catch (_err) {
       showToast(t('exams.bulkDeleteError', 'An error occurred during bulk deletion'), 'error');
@@ -432,98 +450,50 @@ const ExamsList = () => {
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         {/* Total Exams */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('exams.totalExams', 'Total Exams')}
+          value={totalCount}
+          icon={Calendar}
+          color="primary"
+          isActive={statusFilter === 'ALL'}
           onClick={() => setStatusFilter(statusFilter === 'ALL' ? 'ALL' : 'ALL')}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            statusFilter === 'ALL'
-              ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 border-brand-primary-400 dark:border-brand-primary-600 ring-2 ring-brand-primary-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-brand-primary-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('exams.totalExams', 'Total Exams')}
-            </span>
-            <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400 block mt-0.5 font-mono">
-              {totalCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <Calendar size={16} />
-          </div>
-        </button>
+        />
 
         {/* Upcoming Exams */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('exams.statusUpcoming', 'Upcoming')}
+          value={upcomingCount}
+          icon={Clock}
+          color="blue"
+          isActive={statusFilter === 'UPCOMING'}
           onClick={() => setStatusFilter(statusFilter === 'UPCOMING' ? 'ALL' : 'UPCOMING')}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            statusFilter === 'UPCOMING'
-              ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-600 ring-2 ring-blue-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-blue-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('exams.statusUpcoming', 'Upcoming')}
-            </span>
-            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
-              {upcomingCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-            <Clock size={16} />
-          </div>
-        </button>
+        />
 
         {/* Today's Exams */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('exams.statusToday', 'Today')}
+          value={todayCount}
+          icon={CalendarCheck}
+          color="amber"
+          isActive={statusFilter === 'TODAY'}
           onClick={() => setStatusFilter(statusFilter === 'TODAY' ? 'ALL' : 'TODAY')}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            statusFilter === 'TODAY'
-              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-amber-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('exams.statusToday', 'Today')}
-            </span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
-              {todayCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <CalendarCheck size={16} />
-          </div>
-        </button>
+        />
 
         {/* Completed */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('exams.statusCompleted', 'Submitted')}
+          value={completedCount}
+          icon={CheckCircle2}
+          color="emerald"
+          isActive={statusFilter === 'COMPLETED'}
           onClick={() => setStatusFilter(statusFilter === 'COMPLETED' ? 'ALL' : 'COMPLETED')}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            statusFilter === 'COMPLETED'
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-emerald-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('exams.statusCompleted', 'Submitted')}
-            </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
-              {completedCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CheckCircle2 size={16} />
-          </div>
-        </button>
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -681,7 +651,7 @@ const ExamsList = () => {
         /* MODE A: RESPONSIVE CARDS GRID VIEW */
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {filteredExams.map((exam) => {
+            {paginatedExams.map((exam) => {
               const isSelected = selectedIds.has(exam.id);
 
               return (
@@ -738,49 +708,39 @@ const ExamsList = () => {
                       {/* Date & Time */}
                       <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-semibold">
                         <div className="flex items-center gap-1.5">
-                          <Calendar size={12} className="text-brand-primary-500 shrink-0" />
+                          <Calendar size={13} className="text-brand-primary-500 shrink-0" />
                           <span>{exam.date}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 font-bold">
-                          <Clock size={11} className="text-slate-400 shrink-0" />
+                        <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                          <Clock size={12} className="text-slate-400 shrink-0" />
                           <span>{formatTime(exam.startTime)} - {formatTime(exam.endTime)}</span>
                         </div>
                       </div>
 
-                      {/* Hall */}
+                      {/* Hall / Room */}
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-slate-400 font-medium">{t('exams.roomColumn', 'Hall:')}</span>
+                        <span className="text-[11px] text-slate-400 font-medium">{t('exams.roomColumn', 'Hall')}:</span>
                         {exam.room ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold text-xs">
-                            <MapPin size={11} className="text-blue-500 shrink-0" />
+                          <span className="inline-flex items-center gap-1 text-slate-800 dark:text-slate-200 font-bold">
+                            <MapPin size={12} className="text-blue-500 shrink-0" />
                             <span>{exam.room}</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold text-[10px]">
-                            <AlertTriangle size={10} className="text-amber-500" />
+                          <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold text-[11px]">
+                            <AlertTriangle size={11} className="shrink-0" />
                             <span>{t('schedules.unassignedRoomBadge', 'Unassigned')}</span>
                           </span>
                         )}
                       </div>
-
-                      {/* Department */}
-                      {exam.course?.department?.name && (
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-400 font-medium">{t('common.department', 'Dept:')}</span>
-                          <span className="text-slate-600 dark:text-slate-300 font-semibold truncate max-w-[150px]">
-                            {exam.course.department?.nameAr || exam.course.department?.name}
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </div>
 
-                  {/* Actions Footer */}
-                  <div className="pt-2.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-2">
+                  {/* Card Actions */}
+                  <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/60 mt-2">
                     <button
                       type="button"
                       onClick={() => navigate(`/exams/${exam.id}`)}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-brand-primary-50 dark:bg-brand-primary-950/40 hover:bg-brand-primary-100 dark:hover:bg-brand-primary-900/40 text-brand-primary-700 dark:text-brand-primary-300 text-xs font-bold transition-colors"
+                      className="flex-1 py-1.5 px-3 rounded-xl bg-brand-primary-500/10 hover:bg-brand-primary-500 text-brand-primary-700 dark:text-brand-primary-300 hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5"
                     >
                       <Eye size={13} />
                       <span>{t('exams.examDetails', 'Details & Results')}</span>
@@ -790,7 +750,7 @@ const ExamsList = () => {
                       <button
                         type="button"
                         onClick={() => setDeleteTarget({ id: exam.id, name: getExamLabel(exam, t) })}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors border border-slate-200 dark:border-slate-700"
+                        className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-slate-400 hover:text-rose-600 transition-colors"
                         title={t('common.delete', 'Delete')}
                       >
                         <Trash2 size={14} />
@@ -802,13 +762,19 @@ const ExamsList = () => {
             })}
           </div>
 
-          {/* Footer stats */}
-          <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 font-bold">
-            <span>
-              {t('common.showing', 'Showing')} {filteredExams.length} {t('common.of', 'of')} {exams.length}{' '}
-              {t('exams.totalCount', 'Exams')}
-            </span>
-          </div>
+          <Card noPadding className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              total={filteredExams.length}
+              pageSize={pageSize}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+            />
+          </Card>
         </div>
       ) : (
         /* MODE B: TABLE LIST VIEW */
@@ -844,7 +810,7 @@ const ExamsList = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-xs">
-                {filteredExams.map((exam) => {
+                {paginatedExams.map((exam) => {
                   const isSelected = selectedIds.has(exam.id);
 
                   return (
@@ -964,13 +930,18 @@ const ExamsList = () => {
               </tbody>
             </table>
 
-            {/* Table Footer */}
-            <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 font-bold">
-              <span>
-                {t('common.showing', 'Showing')} {filteredExams.length} {t('common.of', 'of')} {exams.length}{' '}
-                {t('exams.totalCount', 'Exams')}
-              </span>
-            </div>
+            {/* Table Footer with Pagination */}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              total={filteredExams.length}
+              pageSize={pageSize}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+            />
           </div>
         </Card>
       )}
@@ -1004,9 +975,19 @@ const ExamsList = () => {
           onConfirm={confirmDelete}
           title={t('exams.deleteExamTitle', 'Delete Exam')}
           message={t('exams.deleteConfirmMessage', `Are you sure you want to delete "${deleteTarget?.name}"?`)}
-          isLoading={deleteLoading}
+          loading={deleteLoading}
         />
       )}
+
+      {/* Confirm Bulk Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => !isBulkDeleting && setIsBulkDeleteModalOpen(false)}
+        onConfirm={confirmBulkDelete}
+        title={t('exams.bulkDeleteTitle', 'Confirm Bulk Deletion')}
+        message={t('exams.bulkDeleteConfirm', `Are you sure you want to delete ${selectedIds.size} selected exams?`, { count: selectedIds.size })}
+        loading={isBulkDeleting}
+      />
     </div>
   );
 };

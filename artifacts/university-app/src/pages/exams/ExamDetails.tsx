@@ -29,6 +29,7 @@ import Card from '../../components/ui/card';
 import { TimeRange } from '../../components/ui/TimeRange';
 import Button from '../../components/ui/button';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { useToast } from '../../context/ToastContext';
 import { getExamLabel, getDurationMinutes, getExamTimeWindowStatus } from './examUtils';
 
@@ -133,16 +134,27 @@ const ExamDetails = () => {
     }
   };
 
-  const handleDeleteQuestion = async (qId: string | number) => {
-    if (!window.confirm(t('exams.confirmDeleteQuestion'))) return;
+  const [deleteQuestionTarget, setDeleteQuestionTarget] = useState<string | number | null>(null);
+  const [deleteQuestionLoading, setDeleteQuestionLoading] = useState(false);
+
+  const handleDeleteQuestion = (qId: string | number) => {
+    setDeleteQuestionTarget(qId);
+  };
+
+  const confirmDeleteQuestion = async () => {
+    if (!deleteQuestionTarget) return;
     try {
-      const res = await examsService.deleteExamQuestion(qId);
+      setDeleteQuestionLoading(true);
+      const res = await examsService.deleteExamQuestion(deleteQuestionTarget);
       if (res.success) {
-        setQuestions((prev) => prev.filter((q) => q.id !== qId));
+        setQuestions((prev) => prev.filter((q) => q.id !== deleteQuestionTarget));
         showToast(t('exams.questionDeletedSuccess'), 'success');
+        setDeleteQuestionTarget(null);
       }
     } catch (_err) {
       showToast(t('exams.deleteQuestionError'), 'error');
+    } finally {
+      setDeleteQuestionLoading(false);
     }
   };
 
@@ -770,6 +782,16 @@ const ExamDetails = () => {
           </ul>
         </div>
       </Card>
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteQuestionTarget)}
+        title={t('exams.deleteQuestionTitle', 'Delete Question')}
+        message={t('exams.confirmDeleteQuestion', 'Are you sure you want to delete this question?')}
+        onClose={() => !deleteQuestionLoading && setDeleteQuestionTarget(null)}
+        onConfirm={confirmDeleteQuestion}
+        loading={deleteQuestionLoading}
+        variant="danger"
+      />
     </div>
   );
 };

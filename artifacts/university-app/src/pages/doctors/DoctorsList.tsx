@@ -162,9 +162,17 @@ const DoctorsList = () => {
     showToast(t('common.exporting', 'Exported selected records'), 'success');
   };
 
-  const handleBulkDelete = async () => {
-    if (!window.confirm(t('doctors.confirmBulkDelete', `Are you sure you want to delete ${selectedIds.length} selected doctor(s)?`))) return;
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleteModalOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
     try {
+      setBulkDeleteLoading(true);
       for (const id of selectedIds) {
         await doctorsService.deleteDoctor(id);
       }
@@ -172,8 +180,11 @@ const DoctorsList = () => {
       setSelectedIds([]);
       fetchDoctors();
       fetchStats();
+      setIsBulkDeleteModalOpen(false);
     } catch (_err: any) {
       showToast(t('common.error'), 'error');
+    } finally {
+      setBulkDeleteLoading(false);
     }
   };
 
@@ -630,6 +641,15 @@ const DoctorsList = () => {
         onClose={() => !deleteLoading && setDeleteTarget(null)}
         onConfirm={confirmDelete}
         loading={deleteLoading}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={isBulkDeleteModalOpen}
+        title={t('doctors.bulkDeleteTitle', 'Confirm Bulk Deletion')}
+        message={t('doctors.confirmBulkDelete', `Are you sure you want to delete ${selectedIds.length} selected doctor(s)?`, { count: selectedIds.length })}
+        onClose={() => !bulkDeleteLoading && setIsBulkDeleteModalOpen(false)}
+        onConfirm={confirmBulkDelete}
+        loading={bulkDeleteLoading}
       />
 
       {/* Modals */}

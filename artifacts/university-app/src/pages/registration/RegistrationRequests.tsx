@@ -30,13 +30,14 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/button';
 import Modal from '../../components/ui/Modal';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import Pagination from '../../components/ui/pagination';
 import Table, {
   TableHeader,
   TableBody,
@@ -105,6 +106,7 @@ const RegistrationRequests: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showBulkRejectModal, setShowBulkRejectModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
@@ -355,13 +357,15 @@ const RegistrationRequests: React.FC = () => {
       return;
     }
 
-    if (
-      !window.confirm(
-        isRTL
-          ? `هل أنت متأكد من رفض ${pendingSelected.length} طلبات تسجيل محددة؟`
-          : `Are you sure you want to reject ${pendingSelected.length} selected requests?`
-      )
-    ) {
+    setShowBulkRejectModal(true);
+  };
+
+  const handleConfirmBulkReject = async () => {
+    const pendingSelected = requests.filter(
+      (r) => selectedIds.includes(r.id) && r.status === 'PENDING'
+    );
+    if (pendingSelected.length === 0) {
+      setShowBulkRejectModal(false);
       return;
     }
 
@@ -388,6 +392,7 @@ const RegistrationRequests: React.FC = () => {
         'success'
       );
       setSelectedIds([]);
+      setShowBulkRejectModal(false);
       await fetchRequests();
     } finally {
       setBulkActionLoading(false);
@@ -477,7 +482,7 @@ const RegistrationRequests: React.FC = () => {
           'الدور',
           'الكلية',
           'القسم',
-          'السنة الدراسية',
+          'الفرقة الدراسية',
           'الحالة',
           'سبب الرفض',
           'تاريخ التقديم',
@@ -492,7 +497,7 @@ const RegistrationRequests: React.FC = () => {
           'Role',
           'College',
           'Department',
-          'Academic Year',
+          'Academic Division',
           'Status',
           'Rejection Reason',
           'Applied Date',
@@ -619,103 +624,48 @@ const RegistrationRequests: React.FC = () => {
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-        {/* PENDING CARD (Inbox Queue) */}
-        <button
-          type="button"
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={t('registration.pendingReview', 'Pending Review')}
+          value={counts.pending}
+          icon={Clock}
+          color="amber"
+          alert={counts.pending > 0}
+          alertLabel={isRTL ? 'معلق' : 'Pending'}
+          isActive={statusFilter === 'PENDING'}
           onClick={() => setStatusFilter(statusFilter === 'PENDING' ? 'ALL' : 'PENDING')}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            statusFilter === 'PENDING'
-              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-amber-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('registration.pendingReview', 'Pending Review')}
-            </span>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-lg font-black text-amber-600 dark:text-amber-400 font-mono">
-                {counts.pending}
-              </span>
-              {counts.pending > 0 && (
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-              )}
-            </div>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <Clock size={16} />
-          </div>
-        </button>
+        />
 
-        {/* APPROVED CARD */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('registration.approvedTotal', 'Approved Requests')}
+          value={counts.approved}
+          icon={CheckCircle2}
+          color="emerald"
+          isActive={statusFilter === 'APPROVED'}
           onClick={() => setStatusFilter(statusFilter === 'APPROVED' ? 'ALL' : 'APPROVED')}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            statusFilter === 'APPROVED'
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-emerald-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('registration.approvedTotal', 'Approved Requests')}
-            </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
-              {counts.approved}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CheckCircle2 size={16} />
-          </div>
-        </button>
+        />
 
-        {/* REJECTED CARD */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('registration.rejectedTotal', 'Rejected Requests')}
+          value={counts.rejected}
+          icon={XCircle}
+          color="rose"
+          isActive={statusFilter === 'REJECTED'}
           onClick={() => setStatusFilter(statusFilter === 'REJECTED' ? 'ALL' : 'REJECTED')}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            statusFilter === 'REJECTED'
-              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600 ring-2 ring-rose-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-rose-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('registration.rejectedTotal', 'Rejected Requests')}
-            </span>
-            <span className="text-lg font-black text-rose-600 dark:text-rose-400 block mt-0.5 font-mono">
-              {counts.rejected}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center shrink-0">
-            <XCircle size={16} />
-          </div>
-        </button>
+        />
 
-        {/* TOTAL CARD */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('registration.totalRegistrations', 'Total Registrations')}
+          value={counts.total}
+          icon={Users}
+          color="primary"
+          isActive={statusFilter === 'ALL'}
           onClick={() => setStatusFilter('ALL')}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            statusFilter === 'ALL'
-              ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 border-brand-primary-400 dark:border-brand-primary-600 ring-2 ring-brand-primary-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-brand-primary-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('registration.totalRegistrations', 'Total Registrations')}
-            </span>
-            <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400 block mt-0.5 font-mono">
-              {counts.total}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <Users size={16} />
-          </div>
-        </button>
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -989,7 +939,7 @@ const RegistrationRequests: React.FC = () => {
                               </span>
                               {req.year && (
                                 <span className="text-[10px] text-slate-400 block font-medium">
-                                  {isRTL ? `السنة ${req.year}` : `Year ${req.year}`}
+                                  {isRTL ? (req.year === 1 ? 'الفرقة الأولى' : req.year === 2 ? 'الفرقة الثانية' : req.year === 3 ? 'الفرقة الثالثة' : req.year === 4 ? 'الفرقة الرابعة' : `الفرقة ${req.year}`) : `Division ${req.year}`}
                                 </span>
                               )}
                             </div>
@@ -1221,43 +1171,21 @@ const RegistrationRequests: React.FC = () => {
         )}
 
         {/* 5. Pagination Footer */}
-        {filteredRequests.length > 0 && totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-slate-200/80 dark:border-slate-700 mt-6">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isRTL ? (
-                <>
-                  عرض <span className="font-bold text-slate-800 dark:text-slate-200">{paginatedRequests.length}</span> من أصل{' '}
-                  <span className="font-bold text-brand-primary-500">{filteredRequests.length}</span> طلب
-                </>
-              ) : (
-                <>
-                  Showing <span className="font-bold text-slate-800 dark:text-slate-200">{paginatedRequests.length}</span> of{' '}
-                  <span className="font-bold text-brand-primary-500">{filteredRequests.length}</span> requests
-                </>
-              )}
-            </p>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 transition-colors cursor-pointer"
-              >
-                <ChevronLeft size={16} className={isRTL ? 'rotate-180' : ''} />
-              </button>
-
-              <span className="px-3 text-xs font-bold text-slate-700 dark:text-slate-300">
-                {currentPage} / {totalPages}
-              </span>
-
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 transition-colors cursor-pointer"
-              >
-                <ChevronRight size={16} className={isRTL ? 'rotate-180' : ''} />
-              </button>
-            </div>
+        {filteredRequests.length > 0 && (
+          <div className="mt-6">
+            <Card noPadding className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs">
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                total={filteredRequests.length}
+                pageSize={itemsPerPage}
+                onPageSizeChange={(newSize) => {
+                  setItemsPerPage(newSize);
+                  setCurrentPage(1);
+                }}
+              />
+            </Card>
           </div>
         )}
       </div>
@@ -1493,9 +1421,9 @@ const RegistrationRequests: React.FC = () => {
                   </div>
                   {selectedRequest.year && (
                     <div>
-                      <span className="text-slate-400 block font-medium">{t('auth.year', 'Academic Year')}</span>
+                      <span className="text-slate-400 block font-medium">{t('auth.year', 'Academic Division')}</span>
                       <span className="font-bold text-slate-800 dark:text-slate-200 block mt-0.5">
-                        {isRTL ? `السنة الدراسية ${selectedRequest.year}` : `Year ${selectedRequest.year}`}
+                        {isRTL ? (selectedRequest.year === 1 ? 'الفرقة الأولى' : selectedRequest.year === 2 ? 'الفرقة الثانية' : selectedRequest.year === 3 ? 'الفرقة الثالثة' : selectedRequest.year === 4 ? 'الفرقة الرابعة' : `الفرقة ${selectedRequest.year}`) : `Division ${selectedRequest.year}`}
                       </span>
                     </div>
                   )}
@@ -1602,6 +1530,22 @@ const RegistrationRequests: React.FC = () => {
             ? `هل أنت متأكد من حذف ${selectedIds.length} طلبات تسجيل محددة نهائياً من قاعدة البيانات؟ لا يمكن التراجع عن هذا الإجراء.`
             : `Are you sure you want to permanently delete ${selectedIds.length} selected registration requests? This action cannot be undone.`
         }
+      />
+
+      {/* 11. Bulk Reject Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={showBulkRejectModal}
+        onClose={() => setShowBulkRejectModal(false)}
+        onConfirm={handleConfirmBulkReject}
+        loading={bulkActionLoading}
+        title={t('registration.bulkReject', 'Reject Selected')}
+        message={
+          isRTL
+            ? `هل أنت متأكد من رفض ${requests.filter((r) => selectedIds.includes(r.id) && r.status === 'PENDING').length} طلبات تسجيل محددة؟`
+            : `Are you sure you want to reject ${requests.filter((r) => selectedIds.includes(r.id) && r.status === 'PENDING').length} selected requests?`
+        }
+        variant="warning"
+        confirmLabel={t('registration.reject', 'Reject')}
       />
     </div>
   );

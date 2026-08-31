@@ -117,8 +117,14 @@ export function CoursesList() {
     showToast(isRTL ? 'تم تصدير المقررات المحددة' : 'Exported selected courses', 'success');
   };
 
-  const handleBulkDelete = async () => {
-    if (!window.confirm(isRTL ? `هل أنت متأكد من حذف ${selectedIds.length} مقرر محدد؟` : `Are you sure you want to delete ${selectedIds.length} selected courses?`)) return;
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleteModalOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
     try {
       setDeleteLoading(true);
       for (const id of selectedIds) {
@@ -126,6 +132,7 @@ export function CoursesList() {
       }
       showToast(isRTL ? 'تم حذف المقررات المحددة بنجاح' : 'Deleted selected courses successfully', 'success');
       setSelectedIds([]);
+      setIsBulkDeleteModalOpen(false);
       refetch();
     } catch (_err: any) {
       showToast(isRTL ? 'حدث خطأ أثناء حذف المقررات' : 'Error deleting courses', 'error');
@@ -763,6 +770,16 @@ export function CoursesList() {
           loading={deleteLoading}
         />
       )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => !deleteLoading && setIsBulkDeleteModalOpen(false)}
+        onConfirm={confirmBulkDelete}
+        title={isRTL ? 'تأكيد الحذف المتعدد' : 'Confirm Bulk Deletion'}
+        message={isRTL ? `هل أنت متأكد من حذف ${selectedIds.length} مقرر محدد؟` : `Are you sure you want to delete ${selectedIds.length} selected courses?`}
+        loading={deleteLoading}
+      />
     </div>
   );
 }

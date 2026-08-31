@@ -26,6 +26,7 @@ import Badge from '../../components/ui/Badge';
 import Table, { TableRow, TableCell, ActionMenu, TableHeader, TableBody, TableHead } from '../../components/ui/Table';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import AddDepartmentModal from '../departments/AddDepartmentModal';
@@ -71,17 +72,27 @@ const CollegeDetails = () => {
   };
 
 
-  const handleDeleteDept = async (deptId) => {
-    if (window.confirm(t('departments.deleteConfirm'))) {
-      try {
-        const result = await departmentService.deleteDepartment(deptId);
-        if (result.success) {
-          showToast(t('departments.deleteSuccess'), 'success');
-          fetchCollegeDetails();
-        }
-      } catch (error: any) {
-        showToast(error.response?.data?.message || t('departments.deleteError'), 'error');
+  const [deleteDeptTarget, setDeleteDeptTarget] = useState<string | number | null>(null);
+  const [deleteDeptLoading, setDeleteDeptLoading] = useState(false);
+
+  const handleDeleteDept = (deptId) => {
+    setDeleteDeptTarget(deptId);
+  };
+
+  const confirmDeleteDept = async () => {
+    if (!deleteDeptTarget) return;
+    try {
+      setDeleteDeptLoading(true);
+      const result = await departmentService.deleteDepartment(deleteDeptTarget);
+      if (result.success) {
+        showToast(t('departments.deleteSuccess'), 'success');
+        setDeleteDeptTarget(null);
+        fetchCollegeDetails();
       }
+    } catch (error: any) {
+      showToast(error.response?.data?.message || t('departments.deleteError'), 'error');
+    } finally {
+      setDeleteDeptLoading(false);
     }
   };
 
@@ -428,6 +439,16 @@ const CollegeDetails = () => {
           fetchCollegeDetails();
           showToast(t('colleges.adminAssignedSuccess') || 'Admin assigned successfully', 'success');
         }}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteDeptTarget)}
+        title={t('departments.deleteConfirmTitle', 'Delete Department')}
+        message={t('departments.deleteConfirm', 'Are you sure you want to delete this department?')}
+        onClose={() => !deleteDeptLoading && setDeleteDeptTarget(null)}
+        onConfirm={confirmDeleteDept}
+        loading={deleteDeptLoading}
+        variant="danger"
       />
     </div>
   );

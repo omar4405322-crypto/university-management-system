@@ -124,9 +124,17 @@ const TeachingAssistantsList = () => {
     showToast(isRTL ? 'تم تصدير المعيدين المحددين' : 'Exported selected records', 'success');
   };
 
-  const handleBulkDelete = async () => {
-    if (!window.confirm(isRTL ? `هل أنت متأكد من حذف ${selectedIds.length} معيد محدد؟` : `Are you sure you want to delete ${selectedIds.length} selected assistant(s)?`)) return;
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleteModalOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
     try {
+      setBulkDeleteLoading(true);
       for (const id of selectedIds) {
         await teachingAssistantsService.deleteTeachingAssistant(id);
       }
@@ -134,8 +142,11 @@ const TeachingAssistantsList = () => {
       setSelectedIds([]);
       fetchTAs();
       fetchStats();
+      setIsBulkDeleteModalOpen(false);
     } catch (_err: any) {
       showToast(t('common.error'), 'error');
+    } finally {
+      setBulkDeleteLoading(false);
     }
   };
 
@@ -578,6 +589,15 @@ const TeachingAssistantsList = () => {
         onClose={() => !deleteLoading && setDeleteTarget(null)}
         onConfirm={confirmDelete}
         loading={deleteLoading}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={isBulkDeleteModalOpen}
+        title={isRTL ? 'تأكيد الحذف المتعدد' : 'Confirm Bulk Deletion'}
+        message={isRTL ? `هل أنت متأكد من حذف ${selectedIds.length} معيد محدد؟` : `Are you sure you want to delete ${selectedIds.length} selected assistant(s)?`}
+        onClose={() => !bulkDeleteLoading && setIsBulkDeleteModalOpen(false)}
+        onConfirm={confirmBulkDelete}
+        loading={bulkDeleteLoading}
       />
 
       <AddTAModal

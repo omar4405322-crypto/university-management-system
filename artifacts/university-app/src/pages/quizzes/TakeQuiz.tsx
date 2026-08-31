@@ -24,6 +24,7 @@ const TakeQuiz = () => {
   });
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState(null);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
 
   // Save answers to localStorage
   useEffect(() => {
@@ -268,11 +269,7 @@ const TakeQuiz = () => {
 
           {isLastQuestion ? (
             <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to submit your quiz?')) {
-                  handleSubmit();
-                }
-              }}
+              onClick={() => setShowSubmitModal(true)}
               disabled={submitting}
               className="flex items-center px-8 py-3 bg-success text-white rounded-xl font-bold hover:brightness-90 shadow-lg shadow-success/20 disabled:opacity-50 transition-all"
             >
@@ -297,11 +294,26 @@ const TakeQuiz = () => {
         </div>
       </div>
 
+      {/* Submit Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={showSubmitModal}
+        onClose={() => setShowSubmitModal(false)}
+        onConfirm={() => {
+          setShowSubmitModal(false);
+          handleSubmit();
+        }}
+        title={t('quiz.submitConfirmTitle', 'Submit Quiz')}
+        message={t('quiz.submitConfirmMessage', 'Are you sure you want to submit your quiz? You will not be able to change your answers.')}
+        confirmLabel={t('quiz.submitButton', 'Submit')}
+        cancelLabel={t('common.cancel', 'Cancel')}
+        variant="warning"
+      />
+
       {/* Navigation Protection Modal */}
       <ConfirmDeleteModal
         isOpen={blocker.state === 'blocked'}
-                onClose={() => blocker.reset()}
-                onConfirm={() => blocker.proceed()}
+        onClose={() => blocker.reset()}
+        onConfirm={() => blocker.proceed()}
         title={t('quiz.leaveWarningTitle')}
         message={t('quiz.leaveWarningMessage')}
         confirmLabel={t('quiz.leaveButton')}

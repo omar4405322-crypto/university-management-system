@@ -294,17 +294,28 @@ const StudentsList = () => {
     showToast(t('common.exporting', 'Exported selected records'), 'success');
   }, [students, selectedIds, showToast, t, isRTL]);
 
-  const handleBulkDelete = useCallback(async () => {
-    if (!window.confirm(t('students.confirmBulkDelete', `Are you sure you want to delete ${selectedIds.length} selected student(s)?`))) return;
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleteModalOpen(true);
+  }, [selectedIds.length]);
+
+  const confirmBulkDelete = useCallback(async () => {
     try {
+      setBulkDeleteLoading(true);
       for (const id of selectedIds) {
         await studentService.deleteStudent(id);
       }
       showToast(t('students.bulkDeleteSuccess', 'Deleted selected students'), 'success');
       setSelectedIds([]);
       fetchStudents();
+      setIsBulkDeleteModalOpen(false);
     } catch (_err: any) {
       showToast(t('common.error'), 'error');
+    } finally {
+      setBulkDeleteLoading(false);
     }
   }, [selectedIds, fetchStudents, showToast, t]);
 
@@ -784,6 +795,15 @@ const StudentsList = () => {
         onClose={() => !deleteLoading && setDeleteTarget(null)}
         onConfirm={confirmDelete}
         loading={deleteLoading}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={isBulkDeleteModalOpen}
+        title={t('students.bulkDeleteTitle', 'Confirm Bulk Deletion')}
+        message={t('students.confirmBulkDelete', `Are you sure you want to delete ${selectedIds.length} selected student(s)?`, { count: selectedIds.length })}
+        onClose={() => !bulkDeleteLoading && setIsBulkDeleteModalOpen(false)}
+        onConfirm={confirmBulkDelete}
+        loading={bulkDeleteLoading}
       />
 
       {editingStudent && (

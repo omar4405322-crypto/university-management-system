@@ -36,6 +36,7 @@ import api from '../../services/api';
 import EditDoctorModal from './EditDoctorModal';
 import AssignCourseModal from './AssignCourseModal';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { useToast } from '../../context/ToastContext';
 
 export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?: boolean }) {
@@ -53,11 +54,16 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [selectedCourseForSlot, setSelectedCourseForSlot] = useState<string | number | undefined>(undefined);
+  const [selectedCourseForSlot, setSelectedCourseForSlot] = useState<number | undefined>(undefined);
+
+  const [unassignCourseTarget, setUnassignCourseTarget] = useState<{ courseId: number; courseName: string } | null>(null);
+  const [unassignSlotTarget, setUnassignSlotTarget] = useState<number | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchDoctor = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await api.get(`/doctors/${id}`);
       if (res.data?.success && res.data?.data) {
         setDoctor(res.data.data);
@@ -79,29 +85,41 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
     window.print();
   };
 
-  const handleUnassignCourse = async (courseId: number, courseName: string) => {
-    if (!window.confirm(isRTL ? `هل أنت متأكد من إلغاء إسناد مقرر (${courseName}) من هذا الدكتور؟ سيتم إزالة جميع محاضراته المجدولة لهذه المادة.` : `Are you sure you want to remove ${courseName} from this professor? All related lecture schedule slots will be removed.`)) {
-      return;
-    }
+  const handleUnassignCourse = (courseId: number, courseName: string) => {
+    setUnassignCourseTarget({ courseId, courseName });
+  };
+
+  const confirmUnassignCourse = async () => {
+    if (!unassignCourseTarget) return;
     try {
-      await api.delete(`/doctors/${doctor.id}/courses/${courseId}`);
+      setActionLoading(true);
+      await api.delete(`/doctors/${doctor.id}/courses/${unassignCourseTarget.courseId}`);
       showToast(isRTL ? 'تم إلغاء إسناد المقرر بنجاح' : 'Course unassigned successfully', 'success');
       fetchDoctor();
+      setUnassignCourseTarget(null);
     } catch (err: any) {
       showToast(err.response?.data?.message || (isRTL ? 'فشل إلغاء إسناد المقرر' : 'Failed to unassign course'), 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleUnassignSlot = async (slotId: number) => {
-    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا الموعد من جدول المحاضرات؟' : 'Are you sure you want to remove this lecture slot?')) {
-      return;
-    }
+  const handleUnassignSlot = (slotId: number) => {
+    setUnassignSlotTarget(slotId);
+  };
+
+  const confirmUnassignSlot = async () => {
+    if (!unassignSlotTarget) return;
     try {
-      await api.delete(`/schedules/${slotId}`);
+      setActionLoading(true);
+      await api.delete(`/schedules/${unassignSlotTarget}`);
       showToast(isRTL ? 'تم حذف موعد المحاضرة بنجاح' : 'Lecture slot removed successfully', 'success');
       fetchDoctor();
+      setUnassignSlotTarget(null);
     } catch (err: any) {
       showToast(err.response?.data?.message || (isRTL ? 'فشل حذف موعد المحاضرة' : 'Failed to remove slot'), 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -765,6 +783,35 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
         onClose={() => setIsResetPasswordOpen(false)}
         person={doctor}
         type="doctor"
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(unassignCourseTarget)}
+        title={isRTL ? 'تأكيد إلغاء إسناد المقرر' : 'Confirm Unassign Course'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من إلغاء إسناد مقرر (${unassignCourseTarget?.courseName}) من هذا الدكتور؟ سيتم إزالة جميع محاضراته المجدولة لهذه المادة.`
+            : `Are you sure you want to remove ${unassignCourseTarget?.courseName} from this professor? All related lecture schedule slots will be removed.`
+        }
+        onClose={() => !actionLoading && setUnassignCourseTarget(null)}
+        onConfirm={confirmUnassignCourse}
+        loading={actionLoading}
+        variant="warning"
+        confirmLabel={isRTL ? 'إلغاء الإسناد' : 'Unassign'}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(unassignSlotTarget)}
+        title={isRTL ? 'تأكيد حذف الموعد' : 'Confirm Remove Slot'}
+        message={
+          isRTL
+            ? 'هل أنت متأكد من حذف هذا الموعد من جدول المحاضرات؟'
+            : 'Are you sure you want to remove this lecture slot?'
+        }
+        onClose={() => !actionLoading && setUnassignSlotTarget(null)}
+        onConfirm={confirmUnassignSlot}
+        loading={actionLoading}
+        variant="danger"
       />
     </div>
   );

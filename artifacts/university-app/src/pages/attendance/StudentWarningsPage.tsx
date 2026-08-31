@@ -29,7 +29,7 @@ import {
   Unlock,
 } from 'lucide-react';
 import attendanceService from '../../services/attendance.service';
-import { Card } from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/button';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -42,6 +42,7 @@ import Table, {
   TableCell,
 } from '../../components/ui/Table';
 import { useAuth } from '../../context/AuthContext';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import api from '../../services/api';
 
 // Arabic normalizer helper
@@ -118,15 +119,18 @@ export function StudentWarningsPage() {
   }, [fetchWarningsData]);
 
   // Handle Unblocking a Student Enrollment
-  const handleUnblock = async (enrollmentId: number, studentName: string) => {
-    const confirmMsg = isRTL
-      ? `هل أنت متأكد من إلغاء الحرمان وإعادة قيد الطالب (${studentName})؟`
-      : `Are you sure you want to unblock student (${studentName})?`;
-    if (!window.confirm(confirmMsg)) return;
+  const [unblockTarget, setUnblockTarget] = useState<{ enrollmentId: number; studentName: string } | null>(null);
 
+  const handleUnblock = (enrollmentId: number, studentName: string) => {
+    setUnblockTarget({ enrollmentId, studentName });
+  };
+
+  const confirmUnblock = async () => {
+    if (!unblockTarget) return;
     try {
-      setUnblockingId(enrollmentId);
-      await api.post(`/attendance/unblock/${enrollmentId}`);
+      setUnblockingId(unblockTarget.enrollmentId);
+      await api.post(`/attendance/unblock/${unblockTarget.enrollmentId}`);
+      setUnblockTarget(null);
       await fetchWarningsData(true);
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to unblock student');
@@ -326,98 +330,46 @@ export function StudentWarningsPage() {
           {/* ========================================================================= */}
           {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
           {/* ========================================================================= */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-            {/* Blocked / Deprived */}
-            <button
-              type="button"
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <StatCard
+              compact
+              title={isRTL ? 'حرمان أكاديمي (≥25%)' : 'Academic Block (≥25%)'}
+              value={staffData.summary?.blockedCount || 0}
+              icon={XCircle}
+              color="rose"
+              isActive={selectedLevel === 'BLOCKED'}
               onClick={() => setSelectedLevel(selectedLevel === 'BLOCKED' ? 'ALL' : 'BLOCKED')}
-              className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-                selectedLevel === 'BLOCKED'
-                  ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600 ring-2 ring-rose-500/20 shadow-xs'
-                  : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-rose-300'
-              }`}
-            >
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold block">
-                  {isRTL ? 'حرمان أكاديمي (≥25%)' : 'Academic Block (≥25%)'}
-                </span>
-                <span className="text-lg font-black text-rose-600 dark:text-rose-400 block mt-0.5 font-mono">
-                  {staffData.summary?.blockedCount || 0}
-                </span>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center shrink-0">
-                <XCircle size={16} />
-              </div>
-            </button>
+            />
 
-            {/* Final Warning */}
-            <button
-              type="button"
+            <StatCard
+              compact
+              title={isRTL ? 'إنذار نهائي (20%)' : 'Final Warning (20%)'}
+              value={staffData.summary?.finalWarningCount || 0}
+              icon={AlertTriangle}
+              color="amber"
+              isActive={selectedLevel === 'FINAL_WARNING'}
               onClick={() => setSelectedLevel(selectedLevel === 'FINAL_WARNING' ? 'ALL' : 'FINAL_WARNING')}
-              className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-                selectedLevel === 'FINAL_WARNING'
-                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-500/20 shadow-xs'
-                  : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-amber-300'
-              }`}
-            >
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold block">
-                  {isRTL ? 'إنذار نهائي (20%)' : 'Final Warning (20%)'}
-                </span>
-                <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
-                  {staffData.summary?.finalWarningCount || 0}
-                </span>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-                <AlertTriangle size={16} />
-              </div>
-            </button>
+            />
 
-            {/* First Warning */}
-            <button
-              type="button"
+            <StatCard
+              compact
+              title={isRTL ? 'إنذار أول (10%)' : 'Early Warning (10%)'}
+              value={staffData.summary?.firstWarningCount || 0}
+              icon={AlertCircle}
+              color="blue"
+              isActive={selectedLevel === 'FIRST_WARNING'}
               onClick={() => setSelectedLevel(selectedLevel === 'FIRST_WARNING' ? 'ALL' : 'FIRST_WARNING')}
-              className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-                selectedLevel === 'FIRST_WARNING'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-600 ring-2 ring-blue-500/20 shadow-xs'
-                  : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-blue-300'
-              }`}
-            >
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold block">
-                  {isRTL ? 'إنذار أول (10%)' : 'Early Warning (10%)'}
-                </span>
-                <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
-                  {staffData.summary?.firstWarningCount || 0}
-                </span>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-                <AlertCircle size={16} />
-              </div>
-            </button>
+            />
 
-            {/* Total Monitored */}
-            <button
-              type="button"
+            <StatCard
+              compact
+              title={isRTL ? 'إجمالي الطلاب المتابعين' : 'Total Monitored'}
+              value={staffData.summary?.totalMonitored || 0}
+              icon={Users}
+              color="primary"
+              isActive={selectedLevel === 'ALL'}
               onClick={() => setSelectedLevel('ALL')}
-              className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-                selectedLevel === 'ALL'
-                  ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 border-brand-primary-400 dark:border-brand-primary-600 ring-2 ring-brand-primary-500/20 shadow-xs'
-                  : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-brand-primary-300'
-              }`}
-            >
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold block">
-                  {isRTL ? 'إجمالي الطلاب المتابعين' : 'Total Monitored'}
-                </span>
-                <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400 block mt-0.5 font-mono">
-                  {staffData.summary?.totalMonitored || 0}
-                </span>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-                <Users size={16} />
-              </div>
-            </button>
+            />
           </div>
 
           {/* ========================================================================= */}
@@ -843,6 +795,21 @@ export function StudentWarningsPage() {
           )}
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(unblockTarget)}
+        title={isRTL ? 'تأكيد إلغاء الحرمان' : 'Confirm Unblock Student'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من إلغاء الحرمان وإعادة قيد الطالب (${unblockTarget?.studentName})؟`
+            : `Are you sure you want to unblock student (${unblockTarget?.studentName})?`
+        }
+        onClose={() => !unblockingId && setUnblockTarget(null)}
+        onConfirm={confirmUnblock}
+        loading={Boolean(unblockingId)}
+        variant="warning"
+        confirmLabel={isRTL ? 'إلغاء الحرمان' : 'Unblock'}
+      />
     </div>
   );
 }

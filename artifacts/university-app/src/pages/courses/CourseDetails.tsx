@@ -307,27 +307,49 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
     return authorizedRoles.includes(user.role);
   }, [user]);
 
+  const [unassignDoctorTarget, setUnassignDoctorTarget] = useState<{ doctorId: number; doctorName: string } | null>(null);
+  const [unassignTATarget, setUnassignTATarget] = useState<{ taId: string; taName: string } | null>(null);
+  const [deleteMaterialTarget, setDeleteMaterialTarget] = useState<number | null>(null);
+  const [unassignActionLoading, setUnassignActionLoading] = useState(false);
+  const [deleteMaterialLoading, setDeleteMaterialLoading] = useState(false);
+
   // Handle Unassigning Doctor from Course
-  const handleUnassignDoctor = async (doctorId: number, doctorName: string) => {
-    if (!window.confirm(isRTL ? `هل أنت متأكد من إزالة إسناد د. ${doctorName} عن هذا المقرر؟` : `Are you sure you want to unassign Dr. ${doctorName} from this course?`)) return;
+  const handleUnassignDoctor = (doctorId: number, doctorName: string) => {
+    setUnassignDoctorTarget({ doctorId, doctorName });
+  };
+
+  const confirmUnassignDoctor = async () => {
+    if (!unassignDoctorTarget) return;
     try {
-      await api.delete(`/doctors/${doctorId}/courses/${actualId}`);
+      setUnassignActionLoading(true);
+      await api.delete(`/doctors/${unassignDoctorTarget.doctorId}/courses/${actualId}`);
       showToast(isRTL ? 'تمت إزالة إسناد الدكتور بنجاح' : 'Unassigned doctor successfully', 'success');
       fetchCourseDetails();
+      setUnassignDoctorTarget(null);
     } catch (err: any) {
       showToast(isRTL ? 'حدث خطأ أثناء إزالة الإسناد' : 'Error unassigning doctor', 'error');
+    } finally {
+      setUnassignActionLoading(false);
     }
   };
 
   // Handle Unassigning TA from Course
-  const handleUnassignTA = async (taId: string, taName: string) => {
-    if (!window.confirm(isRTL ? `هل أنت متأكد من إزالة إسناد م. ${taName} عن هذا المقرر؟` : `Are you sure you want to unassign TA ${taName} from this course?`)) return;
+  const handleUnassignTA = (taId: string, taName: string) => {
+    setUnassignTATarget({ taId, taName });
+  };
+
+  const confirmUnassignTA = async () => {
+    if (!unassignTATarget) return;
     try {
-      await api.delete(`/teaching-assistants/${taId}/courses/${actualId}`);
+      setUnassignActionLoading(true);
+      await api.delete(`/teaching-assistants/${unassignTATarget.taId}/courses/${actualId}`);
       showToast(isRTL ? 'تمت إزالة إسناد المعيد بنجاح' : 'Unassigned teaching assistant successfully', 'success');
       fetchCourseDetails();
+      setUnassignTATarget(null);
     } catch (err: any) {
       showToast(isRTL ? 'حدث خطأ أثناء إزالة الإسناد' : 'Error unassigning teaching assistant', 'error');
+    } finally {
+      setUnassignActionLoading(false);
     }
   };
 
@@ -419,30 +441,29 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
   };
 
   // Handle Delete Material
-  const handleDeleteMaterial = async (materialId: number) => {
-    const confirmMsg = isRTL ? 'هل أنت تأكد من إغلاق وحذف هذا الملف الدراسي؟' : 'Are you sure you want to delete this material?';
-    if (!window.confirm(confirmMsg)) return;
+  const handleDeleteMaterial = (materialId: number) => {
+    setDeleteMaterialTarget(materialId);
+  };
 
+  const confirmDeleteMaterial = async () => {
+    if (!deleteMaterialTarget) return;
     try {
-      // Optimistically update local state so card disappears immediately
-      setCourse((prev: any) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          materials: (prev.materials || []).filter((m: any) => m.id !== materialId),
-        };
-      });
-
-      const res = await coursesService.deleteCourseMaterial(actualId!, materialId);
+      setDeleteMaterialLoading(true);
+      const res = await coursesService.deleteCourseMaterial(actualId!, deleteMaterialTarget);
       if (res.success) {
+        showToast(isRTL ? 'تم حذف الملف بنجاح' : 'Material deleted successfully', 'success');
+        setDeleteMaterialTarget(null);
         fetchCourseDetails();
       } else {
-        fetchCourseDetails(); // rollback/refetch on failure
+        showToast(isRTL ? 'فشل حذف الملف' : 'Failed to delete material', 'error');
+        fetchCourseDetails();
       }
     } catch (err: any) {
       logger.error(err);
-      alert(err.response?.data?.message || err.message || 'Failed to delete material');
+      showToast(err.response?.data?.message || err.message || (isRTL ? 'فشل حذف الملف' : 'Failed to delete material'), 'error');
       fetchCourseDetails();
+    } finally {
+      setDeleteMaterialLoading(false);
     }
   };
 
@@ -1960,6 +1981,53 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           onConfirm={handleConfirmWithdraw}
         />
       )}
+
+      {/* UNASSIGN DOCTOR CONFIRMATION MODAL */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(unassignDoctorTarget)}
+        title={isRTL ? 'تأكيد إلغاء إسناد الدكتور' : 'Confirm Unassign Doctor'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من إزالة إسناد د. ${unassignDoctorTarget?.doctorName} عن هذا المقرر؟`
+            : `Are you sure you want to unassign Dr. ${unassignDoctorTarget?.doctorName} from this course?`
+        }
+        onClose={() => !unassignActionLoading && setUnassignDoctorTarget(null)}
+        onConfirm={confirmUnassignDoctor}
+        loading={unassignActionLoading}
+        variant="warning"
+        confirmLabel={isRTL ? 'إلغاء الإسناد' : 'Unassign'}
+      />
+
+      {/* UNASSIGN TA CONFIRMATION MODAL */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(unassignTATarget)}
+        title={isRTL ? 'تأكيد إلغاء إسناد المعيد' : 'Confirm Unassign TA'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من إزالة إسناد م. ${unassignTATarget?.taName} عن هذا المقرر؟`
+            : `Are you sure you want to unassign TA ${unassignTATarget?.taName} from this course?`
+        }
+        onClose={() => !unassignActionLoading && setUnassignTATarget(null)}
+        onConfirm={confirmUnassignTA}
+        loading={unassignActionLoading}
+        variant="warning"
+        confirmLabel={isRTL ? 'إلغاء الإسناد' : 'Unassign'}
+      />
+
+      {/* DELETE MATERIAL CONFIRMATION MODAL */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteMaterialTarget)}
+        title={isRTL ? 'تأكيد حذف الملف التعليمي' : 'Confirm Delete Material'}
+        message={
+          isRTL
+            ? 'هل أنت متأكد من إغلاق وحذف هذا الملف الدراسي؟'
+            : 'Are you sure you want to delete this material?'
+        }
+        onClose={() => !deleteMaterialLoading && setDeleteMaterialTarget(null)}
+        onConfirm={confirmDeleteMaterial}
+        loading={deleteMaterialLoading}
+        variant="danger"
+      />
     </div>
   );
 };

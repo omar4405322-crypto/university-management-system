@@ -35,6 +35,7 @@ import api from '../../services/api';
 import EditTAModal from './EditTAModal';
 import AssignTACourseModal from './AssignTACourseModal';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { useToast } from '../../context/ToastContext';
 
 export default function TeachingAssistantDetails({ isDrawerMode = false }: { isDrawerMode?: boolean }) {
@@ -52,7 +53,11 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [selectedCourseForSlot, setSelectedCourseForSlot] = useState<string | number | undefined>(undefined);
+  const [selectedCourseForSlot, setSelectedCourseForSlot] = useState<number | undefined>(undefined);
+
+  const [unassignCourseTarget, setUnassignCourseTarget] = useState<{ courseId: number; courseName: string } | null>(null);
+  const [unassignSlotTarget, setUnassignSlotTarget] = useState<number | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchTA = useCallback(async () => {
     try {
@@ -81,44 +86,44 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
     window.print();
   };
 
-  const handleUnassignCourse = async (courseId: number, courseName: string) => {
-    if (
-      !window.confirm(
-        isRTL
-          ? `هل أنت متأكد من إلغاء إسناد مقرر (${courseName}) من هذا المعيد؟ سيتم إزالة جميع حصصه المجدولة لهذه المادة.`
-          : `Are you sure you want to remove ${courseName} from this teaching assistant? All related lab and tutorial slots will be removed.`
-      )
-    ) {
-      return;
-    }
+  const handleUnassignCourse = (courseId: number, courseName: string) => {
+    setUnassignCourseTarget({ courseId, courseName });
+  };
+
+  const confirmUnassignCourse = async () => {
+    if (!unassignCourseTarget) return;
     try {
-      await api.delete(`/teaching-assistants/${ta.id}/courses/${courseId}`);
+      setActionLoading(true);
+      await api.delete(`/teaching-assistants/${ta.id}/courses/${unassignCourseTarget.courseId}`);
       showToast(isRTL ? 'تم إلغاء إسناد المقرر بنجاح' : 'Course unassigned successfully', 'success');
       fetchTA();
+      setUnassignCourseTarget(null);
     } catch (err: any) {
       showToast(
         err.response?.data?.message || (isRTL ? 'فشل إلغاء إسناد المقرر' : 'Failed to unassign course'),
         'error'
       );
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleUnassignSlot = async (slotId: number) => {
-    if (
-      !window.confirm(
-        isRTL
-          ? 'هل أنت متأكد من حذف هذا الموعد من جدول السكاشن/المعامل؟'
-          : 'Are you sure you want to remove this lab/tutorial slot?'
-      )
-    ) {
-      return;
-    }
+  const handleUnassignSlot = (slotId: number) => {
+    setUnassignSlotTarget(slotId);
+  };
+
+  const confirmUnassignSlot = async () => {
+    if (!unassignSlotTarget) return;
     try {
-      await api.delete(`/schedules/${slotId}`);
+      setActionLoading(true);
+      await api.delete(`/schedules/${unassignSlotTarget}`);
       showToast(isRTL ? 'تم حذف الموعد بنجاح' : 'Slot removed successfully', 'success');
       fetchTA();
+      setUnassignSlotTarget(null);
     } catch (err: any) {
       showToast(err.response?.data?.message || (isRTL ? 'فشل حذف الموعد' : 'Failed to remove slot'), 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -703,6 +708,35 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
           onSuccess={fetchTA}
         />
       )}
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(unassignCourseTarget)}
+        title={isRTL ? 'تأكيد إلغاء إسناد المقرر' : 'Confirm Unassign Course'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من إلغاء إسناد مقرر (${unassignCourseTarget?.courseName}) من هذا المعيد؟ سيتم إزالة جميع حصصه المجدولة لهذه المادة.`
+            : `Are you sure you want to remove ${unassignCourseTarget?.courseName} from this teaching assistant? All related lab and tutorial slots will be removed.`
+        }
+        onClose={() => !actionLoading && setUnassignCourseTarget(null)}
+        onConfirm={confirmUnassignCourse}
+        loading={actionLoading}
+        variant="warning"
+        confirmLabel={isRTL ? 'إلغاء الإسناد' : 'Unassign'}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={Boolean(unassignSlotTarget)}
+        title={isRTL ? 'تأكيد حذف الموعد' : 'Confirm Remove Slot'}
+        message={
+          isRTL
+            ? 'هل أنت متأكد من حذف هذا الموعد من جدول السكاشن/المعامل؟'
+            : 'Are you sure you want to remove this lab/tutorial slot?'
+        }
+        onClose={() => !actionLoading && setUnassignSlotTarget(null)}
+        onConfirm={confirmUnassignSlot}
+        loading={actionLoading}
+        variant="danger"
+      />
     </div>
   );
 }
