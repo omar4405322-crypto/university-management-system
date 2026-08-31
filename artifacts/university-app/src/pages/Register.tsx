@@ -439,7 +439,6 @@ const Register = () => {
                     <option value="2">{t('auth.year2')}</option>
                     <option value="3">{t('auth.year3')}</option>
                     <option value="4">{t('auth.year4')}</option>
-                    <option value="5">{t('auth.year5')}</option>
                   </select>
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none" size={18} />
                 </div>
