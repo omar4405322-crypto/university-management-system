@@ -4,8 +4,9 @@ dotenv.config();
 
 import crypto from 'crypto';
 import pkg from '../package.json';
+import logger from './utils/logger';
 
-console.log(`🚀 [BOOT] Starting Smart University API v${pkg.version}`);
+logger.info(`🚀 [BOOT] Starting Smart University API v${pkg.version}`);
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -13,7 +14,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 if (!isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
   const tempSecret = crypto.randomBytes(32).toString('hex');
   process.env.JWT_SECRET = tempSecret;
-  console.warn('⚠️ [DEV] No strong JWT_SECRET found. Generated a temporary one for this session.');
+  logger.warn('⚠️ [DEV] No strong JWT_SECRET found. Generated a temporary one for this session.');
 }
 
 const REQUIRED_ENV_VARS = ['DATABASE_URL', 'JWT_SECRET'];
@@ -27,9 +28,8 @@ const OPTIONAL_ENV_VARS = [
 
 const missingRequired = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
 if (missingRequired.length > 0) {
-  console.error('❌ FATAL: Missing required environment variables:');
-  missingRequired.forEach((key) => console.error(`   - ${key}`));
-  console.error('Please check your .env file.');
+  logger.error('❌ FATAL: Missing required environment variables: ' + missingRequired.join(', '));
+  logger.error('Please check your .env file.');
   process.exit(1);
 }
 
@@ -43,38 +43,36 @@ const weakSecrets = [
 ];
 
 if (weakSecrets.includes(jwtSecret)) {
-  console.error('❌ FATAL: JWT_SECRET is using a default/insecure value.');
-  console.error(
+  logger.error('❌ FATAL: JWT_SECRET is using a default/insecure value.');
+  logger.error(
     '👉 Fix: Set a unique JWT_SECRET in your platform (Vercel/Railway) environment settings.'
   );
   process.exit(1);
 }
 
 if (isProduction && jwtSecret.length < 32) {
-  console.error(
+  logger.error(
     `❌ FATAL: JWT_SECRET must be at least 32 characters in production (currently ${jwtSecret.length}).`
   );
-  console.error(
+  logger.error(
     "👉 Fix: Generate a strong secret using: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   );
   process.exit(1);
 } else if (jwtSecret.length < 8) {
-  console.error('❌ FATAL: JWT_SECRET is dangerously short.');
+  logger.error('❌ FATAL: JWT_SECRET is dangerously short.');
   process.exit(1);
 }
 
 const missingOptional = OPTIONAL_ENV_VARS.filter((key) => !process.env[key]);
 if (missingOptional.length > 0) {
-  console.warn('⚠️ WARNING: Some optional environment variables are missing:');
-  missingOptional.forEach((key) => console.warn(`   - ${key}`));
-  console.warn('Production features like Cloudinary storage and Redis caching will be disabled.');
+  logger.warn('⚠️ WARNING: Some optional environment variables are missing: ' + missingOptional.join(', '));
+  logger.warn('Production features like Cloudinary storage and Redis caching will be disabled.');
 }
 
 import app from './app';
 import http from 'http';
 import { initSocket } from './utils/socket';
 import { startRiskDetectionJob } from './utils/cron';
-import logger from './utils/logger';
 
 const server: http.Server = http.createServer(app);
 
