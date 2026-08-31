@@ -108,6 +108,17 @@ export const getDepartmentById = catchAsync(async (req: Request, res: Response) 
 export const createDepartment = catchAsync(async (req: Request, res: Response) => {
   let { name, nameAr, collegeId } = req.body;
 
+  // Fail closed for unscoped ADMIN role
+  if (req.user && req.user.role === 'ADMIN') {
+    if (!req.user.managedCollegeId) {
+      throw new AuthorizationError('Access denied: Unscoped admin cannot perform write operations');
+    }
+    if (collegeId && parseInt(collegeId, 10) !== req.user.managedCollegeId) {
+      throw new AuthorizationError('Access denied');
+    }
+    collegeId = req.user.managedCollegeId;
+  }
+
   // If user is COLLEGE_ADMIN, enforce managedCollegeId or set automatically
   if (req.user && req.user.role === 'COLLEGE_ADMIN' && req.user.managedCollegeId) {
     if (collegeId && parseInt(collegeId) !== req.user.managedCollegeId) {
@@ -141,6 +152,19 @@ export const updateDepartment = catchAsync(async (req: Request, res: Response) =
     throw new NotFoundError('Department not found');
   }
 
+  // Fail closed for unscoped ADMIN role
+  if (req.user && req.user.role === 'ADMIN') {
+    if (!req.user.managedCollegeId) {
+      throw new AuthorizationError('Access denied: Unscoped admin cannot perform write operations');
+    }
+    if (existing.collegeId !== req.user.managedCollegeId) {
+      throw new AuthorizationError('Access denied');
+    }
+    if (collegeId && parseInt(collegeId, 10) !== req.user.managedCollegeId) {
+      throw new AuthorizationError('Access denied');
+    }
+  }
+
   if (req.user && req.user.role === 'COLLEGE_ADMIN' && req.user.managedCollegeId) {
     if (existing.collegeId !== req.user.managedCollegeId) {
       throw new AuthorizationError('Access denied');
@@ -168,6 +192,17 @@ export const deleteDepartment = catchAsync(async (req: Request, res: Response) =
   if (!existing) {
     throw new NotFoundError('Department not found');
   }
+
+  // Fail closed for unscoped ADMIN role
+  if (req.user && req.user.role === 'ADMIN') {
+    if (!req.user.managedCollegeId) {
+      throw new AuthorizationError('Access denied: Unscoped admin cannot perform write operations');
+    }
+    if (existing.collegeId !== req.user.managedCollegeId) {
+      throw new AuthorizationError('Access denied');
+    }
+  }
+
   if (req.user && req.user.role === 'COLLEGE_ADMIN' && req.user.managedCollegeId) {
     if (existing.collegeId !== req.user.managedCollegeId) {
       throw new AuthorizationError('Access denied');

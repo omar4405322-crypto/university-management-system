@@ -331,10 +331,13 @@ export const getCourseRoster = catchAsync(
 export const createCourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const courseData = req.body;
 
-  // If scoped ADMIN, ensure department belongs to managedCollegeId or set automatically
-  if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+  // Fail closed for unscoped ADMIN role
+  if (req.user && req.user.role === 'ADMIN') {
+    if (!req.user.managedCollegeId) {
+      return res.status(403).json({ success: false, message: 'Access denied: Unscoped admin cannot create courses' });
+    }
     const dept = await prisma.department.findUnique({
-      where: { id: parseInt(courseData.departmentId as string) },
+      where: { id: parseInt(courseData.departmentId as string, 10) },
     });
     if (!dept || dept.collegeId !== req.user.managedCollegeId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
@@ -379,13 +382,18 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
     include: { department: true },
   });
   if (!existing) return next(new NotFoundError('Course not found'));
-  if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+
+  // Fail closed for unscoped ADMIN role
+  if (req.user && req.user.role === 'ADMIN') {
+    if (!req.user.managedCollegeId) {
+      return res.status(403).json({ success: false, message: 'Access denied: Unscoped admin cannot update courses' });
+    }
     if (existing.department?.collegeId !== req.user.managedCollegeId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
     if (updateData.departmentId) {
       const newDept = await prisma.department.findUnique({
-        where: { id: parseInt(updateData.departmentId as string) },
+        where: { id: parseInt(updateData.departmentId as string, 10) },
       });
       if (!newDept || newDept.collegeId !== req.user.managedCollegeId) {
         return res.status(403).json({ success: false, message: 'Access denied' });
@@ -442,7 +450,12 @@ export const deleteCourse = catchAsync(async (req: Request, res: Response, next:
     include: { department: { select: { collegeId: true } } },
   });
   if (!existingCourse) return next(new NotFoundError('Course not found'));
-  if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
+
+  // Fail closed for unscoped ADMIN role
+  if (req.user && req.user.role === 'ADMIN') {
+    if (!req.user.managedCollegeId) {
+      return res.status(403).json({ success: false, message: 'Access denied: Unscoped admin cannot delete courses' });
+    }
     if (existingCourse.department?.collegeId !== req.user.managedCollegeId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
