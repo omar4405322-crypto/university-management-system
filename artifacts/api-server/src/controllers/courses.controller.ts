@@ -113,8 +113,15 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
  * @access  Private
  */
 export const getCourseById = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const course = await prisma.course.findUnique({
-    where: { id: parseInt(req.params.id as string) },
+  const courseId = parseInt(req.params.id as string, 10);
+  const scopeWhere = getScopeWhere(req.user, 'course');
+  const course = await prisma.course.findFirst({
+    where: {
+      AND: [
+        { id: courseId },
+        scopeWhere,
+      ],
+    },
     include: {
       department: { include: { college: true } },
       scheduleSlots: {
@@ -186,13 +193,6 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
     return next(new NotFoundError('Course not found'));
   }
 
-  // Scoped ADMIN enforcement
-  if (req.user && req.user.role === 'ADMIN' && req.user.managedCollegeId) {
-    if (course.department?.collegeId !== req.user.managedCollegeId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-  }
-
   res.json({
     success: true,
     data: course,
@@ -207,8 +207,14 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
 export const getCourseRoster = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const courseId = parseInt(req.params.id as string, 10);
-    const course = await prisma.course.findUnique({
-      where: { id: courseId }
+    const scopeWhere = getScopeWhere(req.user, 'course');
+    const course = await prisma.course.findFirst({
+      where: {
+        AND: [
+          { id: courseId },
+          scopeWhere,
+        ],
+      },
     });
 
     if (!course) {
