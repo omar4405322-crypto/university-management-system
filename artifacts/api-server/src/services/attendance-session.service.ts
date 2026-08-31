@@ -24,26 +24,74 @@ const calculateDistance = (
   return R * c;
 };
 
+interface AttendanceOwnershipTarget {
+  id?: number;
+  doctorId?: number | null;
+  teachingAssistantId?: string | null;
+  scheduleSlotId?: number | null;
+  scheduleSlot?: {
+    doctorId?: number | null;
+    teachingAssistantId?: string | null;
+    courseId?: number;
+    course?: {
+      departmentId?: number;
+      department?: {
+        collegeId?: number;
+      };
+    };
+  } | null;
+}
+
 class AttendanceSessionService {
   static async verifySlotOrSessionOwnership(
-    target: {
-      doctorId?: number | null;
-      teachingAssistantId?: string | null;
-      scheduleSlot?: {
-        doctorId?: number | null;
-        teachingAssistantId?: string | null;
-      } | null;
-    },
+    target: AttendanceOwnershipTarget,
     user: any
   ): Promise<boolean> {
     if (!user || !user.role) return false;
 
-    if (
-      ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(
-        user.role
-      )
-    ) {
+    if (user.role === 'SUPER_ADMIN') {
       return true;
+    }
+
+    if (user.role === 'COLLEGE_ADMIN' || user.role === 'DEPARTMENT_ADMIN' || user.role === 'ADMIN') {
+      let slotId: number | undefined;
+      if (target.scheduleSlotId) {
+        slotId = target.scheduleSlotId;
+      } else if (target.id && !target.scheduleSlotId && !target.scheduleSlot) {
+        // target is a ScheduleSlot itself
+        slotId = target.id;
+      }
+
+      let courseDepartmentId: number | null | undefined = target.scheduleSlot?.course?.departmentId;
+      let courseCollegeId: number | null | undefined = target.scheduleSlot?.course?.department?.collegeId;
+
+      if ((!courseDepartmentId || !courseCollegeId) && slotId) {
+        const slot = await prisma.scheduleSlot.findUnique({
+          where: { id: slotId },
+          include: {
+            course: {
+              include: { department: true },
+            },
+          },
+        });
+        if (slot?.course?.department) {
+          courseDepartmentId = slot.course.departmentId;
+          courseCollegeId = slot.course.department.collegeId;
+        }
+      }
+
+      if (user.role === 'COLLEGE_ADMIN') {
+        return !!(user.managedCollegeId && courseCollegeId === user.managedCollegeId);
+      }
+
+      if (user.role === 'DEPARTMENT_ADMIN') {
+        return !!(user.managedDepartmentId && courseDepartmentId === user.managedDepartmentId);
+      }
+
+      if (user.role === 'ADMIN') {
+        if (!user.managedCollegeId) return false; // Fail-closed for unscoped ADMIN
+        return courseCollegeId === user.managedCollegeId;
+      }
     }
 
     if (user.role === 'DOCTOR') {
