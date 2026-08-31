@@ -25,13 +25,11 @@ export const createOverride = catchAsync(async (req: Request, res: Response, nex
     if (!myDoctor || slot.doctorId !== myDoctor.id) {
       return next(new AuthorizationError('You can only override slots for your own sections'));
     }
-  }
-  if (req.user!.role === 'TEACHING_ASSISTANT' && slot.teachingAssistantId !== req.user!.teachingAssistant?.id) {
-    return next(new AuthorizationError('You can only override slots assigned to you'));
-  }
-
-  // Verify Admin Scope
-  if (req.user!.role === 'SUPER_ADMIN') {
+  } else if (req.user!.role === 'TEACHING_ASSISTANT') {
+    if (slot.teachingAssistantId !== req.user!.teachingAssistant?.id) {
+      return next(new AuthorizationError('You can only override slots assigned to you'));
+    }
+  } else if (req.user!.role === 'SUPER_ADMIN') {
     // Super admin full access
   } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
     if (!req.user!.managedDepartmentId || slot.course.departmentId !== req.user!.managedDepartmentId) {
@@ -54,6 +52,8 @@ export const createOverride = catchAsync(async (req: Request, res: Response, nex
     if (dept?.collegeId !== req.user!.managedCollegeId) {
       return next(new AuthorizationError('Out of scope'));
     }
+  } else {
+    return next(new AuthorizationError('Access denied'));
   }
 
   // Ensure no overlapping overrides for this specific slot
