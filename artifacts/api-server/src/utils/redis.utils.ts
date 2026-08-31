@@ -74,4 +74,25 @@ export const invalidateCache = async (pattern: string): Promise<void> => {
   }
 };
 
+/**
+ * Atomically set a key only if it does not exist (NX) with TTL in seconds (EX).
+ * Returns true if the key was set (did not exist before), false if it already exists or on error.
+ */
+export const setIfNotExists = async (
+  key: string,
+  value: string | number | object,
+  ttlSeconds: number = 300
+): Promise<boolean> => {
+  if (!redis) return false;
+  try {
+    const stringVal = typeof value === 'string' ? value : JSON.stringify(value);
+    const result = await redis.set(key, stringVal, 'EX', ttlSeconds, 'NX');
+    return result === 'OK';
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error(`[REDIS] setIfNotExists error for ${key}: ${msg}`);
+    return false;
+  }
+};
+
 export { redis };

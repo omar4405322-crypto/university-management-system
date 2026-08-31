@@ -9,7 +9,7 @@ import {
 } from './IAttendanceDriver';
 import { AppError } from '../../utils/appError';
 import prisma from '../../utils/prismaClient';
-import { getCache, setCache } from '../../utils/redis.utils';
+import { setIfNotExists, redis } from '../../utils/redis.utils';
 import logger from '../../utils/logger';
 
 const usedTokens = new Set<string>();
@@ -107,22 +107,29 @@ export class QrDriver implements IAttendanceDriver {
     }
 
     const tokenKey = `attendance:used_token:${session.id}:${studentId}:${cleanToken}`;
-    const isUsedCache = await getCache(tokenKey);
+    const ttlSeconds = (session.codeStepSeconds || 20) * 3;
 
-    if (isUsedCache || usedTokens.has(tokenKey)) {
-      return {
-        valid: false,
-        errorCode: 'TOKEN_REUSED',
-        errorMessage: 'تم استخدام هذا الرمز بالفعل، يرجى انتظار الرمز التالي.',
-      };
+    if (redis) {
+      const wasSet = await setIfNotExists(tokenKey, '1', ttlSeconds);
+      if (!wasSet) {
+        return {
+          valid: false,
+          errorCode: 'TOKEN_REUSED',
+          errorMessage: 'تم استخدام هذا الرمز بالفعل، يرجى انتظار الرمز التالي.',
+        };
+      }
+    } else {
+      // In-memory fallback for single-process environments when Redis is not configured
+      if (usedTokens.has(tokenKey)) {
+        return {
+          valid: false,
+          errorCode: 'TOKEN_REUSED',
+          errorMessage: 'تم استخدام هذا الرمز بالفعل، يرجى انتظار الرمز التالي.',
+        };
+      }
+      usedTokens.add(tokenKey);
+      setTimeout(() => usedTokens.delete(tokenKey), ttlSeconds * 1000);
     }
-
-    usedTokens.add(tokenKey);
-    setTimeout(
-      () => usedTokens.delete(tokenKey),
-      (session.codeStepSeconds || 20) * 3000
-    );
-    await setCache(tokenKey, '1', (session.codeStepSeconds || 20) * 3);
 
     if (!session.isActive) {
       return {
