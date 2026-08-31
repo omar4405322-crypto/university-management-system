@@ -574,10 +574,13 @@ class EnrollmentService {
       select: { id: true, semester: true },
     });
 
-    let enrolledCount = 0;
-    for (const course of matchingCourses) {
+    if (matchingCourses.length === 0) {
+      return { enrolledCount: 0 };
+    }
+
+    const operations = matchingCourses.map((course) => {
       const semester = course.semester || 1;
-      const existing = await prisma.enrollment.findUnique({
+      return prisma.enrollment.upsert({
         where: {
           studentId_courseId_semester_academicYear: {
             studentId: student.id,
@@ -586,29 +589,21 @@ class EnrollmentService {
             academicYear: currentAcademicYear,
           },
         },
+        create: {
+          studentId: student.id,
+          courseId: course.id,
+          semester,
+          academicYear: currentAcademicYear,
+          status: 'ENROLLED',
+        },
+        update: {
+          status: 'ENROLLED',
+        },
       });
+    });
 
-      if (!existing) {
-        await prisma.enrollment.create({
-          data: {
-            studentId: student.id,
-            courseId: course.id,
-            semester,
-            academicYear: currentAcademicYear,
-            status: 'ENROLLED',
-          },
-        });
-        enrolledCount++;
-      } else if (existing.status !== 'ENROLLED') {
-        await prisma.enrollment.update({
-          where: { id: existing.id },
-          data: { status: 'ENROLLED' },
-        });
-        enrolledCount++;
-      }
-    }
-
-    return { enrolledCount };
+    const results = await prisma.$transaction(operations);
+    return { enrolledCount: results.length };
   }
 
   /**
@@ -636,9 +631,12 @@ class EnrollmentService {
       select: { id: true },
     });
 
-    let enrolledCount = 0;
-    for (const student of matchingStudents) {
-      const existing = await prisma.enrollment.findUnique({
+    if (matchingStudents.length === 0) {
+      return { enrolledCount: 0 };
+    }
+
+    const operations = matchingStudents.map((student) =>
+      prisma.enrollment.upsert({
         where: {
           studentId_courseId_semester_academicYear: {
             studentId: student.id,
@@ -647,50 +645,86 @@ class EnrollmentService {
             academicYear: currentAcademicYear,
           },
         },
-      });
+        create: {
+          studentId: student.id,
+          courseId: course.id,
+          semester,
+          academicYear: currentAcademicYear,
+          status: 'ENROLLED',
+        },
+        update: {
+          status: 'ENROLLED',
+        },
+      })
+    );
 
-      if (!existing) {
-        await prisma.enrollment.create({
-          data: {
-            studentId: student.id,
-            courseId: course.id,
-            semester,
-            academicYear: currentAcademicYear,
-            status: 'ENROLLED',
-          },
-        });
-        enrolledCount++;
-      } else if (existing.status !== 'ENROLLED') {
-        await prisma.enrollment.update({
-          where: { id: existing.id },
-          data: { status: 'ENROLLED' },
-        });
-        enrolledCount++;
-      }
-    }
-
-    return { enrolledCount };
+    const results = await prisma.$transaction(operations);
+    return { enrolledCount: results.length };
   }
 
   /**
    * Sync all enrollments for all active students across all matching courses
    */
   static async syncAllEnrollments() {
-    const activeStudents = await prisma.student.findMany({
-      where: {
-        isActive: true,
-        departmentId: { not: null },
-      },
-      select: { id: true, departmentId: true, year: true },
-    });
+    const currentAcademicYear = new Date().getFullYear();
 
-    let totalEnrolled = 0;
+    const [activeStudents, allCourses] = await Promise.all([
+      prisma.student.findMany({
+        where: {
+          isActive: true,
+          departmentId: { not: null },
+        },
+        select: { id: true, departmentId: true, year: true },
+      }),
+      prisma.course.findMany({
+        where: {
+          departmentId: { not: null },
+        },
+        select: { id: true, departmentId: true, year: true, semester: true },
+      }),
+    ]);
+
+    const operations: ReturnType<typeof prisma.enrollment.upsert>[] = [];
+
     for (const student of activeStudents) {
-      const res = await EnrollmentService.autoEnrollStudent(student.id);
-      totalEnrolled += res.enrolledCount;
+      if (!student.departmentId || !student.year) continue;
+      const matchingCourses = allCourses.filter(
+        (c) => c.departmentId === student.departmentId && c.year === student.year
+      );
+
+      for (const course of matchingCourses) {
+        const semester = course.semester || 1;
+        operations.push(
+          prisma.enrollment.upsert({
+            where: {
+              studentId_courseId_semester_academicYear: {
+                studentId: student.id,
+                courseId: course.id,
+                semester,
+                academicYear: currentAcademicYear,
+              },
+            },
+            create: {
+              studentId: student.id,
+              courseId: course.id,
+              semester,
+              academicYear: currentAcademicYear,
+              status: 'ENROLLED',
+            },
+            update: {
+              status: 'ENROLLED',
+            },
+          })
+        );
+      }
     }
 
-    return { totalStudents: activeStudents.length, totalEnrolled };
+    if (operations.length === 0) {
+      return { totalStudents: activeStudents.length, totalEnrolled: 0 };
+    }
+
+    const results = await prisma.$transaction(operations);
+    return { totalStudents: activeStudents.length, totalEnrolled: results.length };
   }
 }
 
