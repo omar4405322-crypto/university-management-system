@@ -56,7 +56,7 @@ router.delete(
 );
 
 // --- EXAM QUESTIONS ---
-router.get('/:id/questions', authorize('STUDENT', 'DOCTOR', 'ADMIN'), examsController.getExamQuestions);
+router.get('/:id/questions', authorize('STUDENT', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), examsController.getExamQuestions);
 router.post('/:id/questions', authorize('DOCTOR', 'ADMIN'), examsController.addExamQuestion);
 router.put('/questions/:questionId', authorize('DOCTOR', 'ADMIN'), examsController.updateExamQuestion);
 router.delete('/questions/:questionId', authorize('DOCTOR', 'ADMIN'), examsController.deleteExamQuestion);

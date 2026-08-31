@@ -346,24 +346,97 @@ export function getMcqOptionMapping(studentId: number, questionId: number, optio
   return shuffled;
 }
 
-export const getExamQuestions = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const examId = parseInt(req.params.id as string);
-  const exam = await prisma.exam.findUnique({ where: { id: examId } });
-  if (!exam) return next(new NotFoundError('Exam not found'));
-
-  const questions = await prisma.examQuestion.findMany({
-    where: { examId },
-    orderBy: { order: 'asc' },
+/**
+ * Shared helper to verify student eligibility, active enrollment, timing window, and submission status.
+ */
+async function verifyStudentExamAccess(
+  exam: { id: number; courseId: number; date?: Date | null; startTime?: string | null; endTime?: string | null },
+  studentId: number
+): Promise<void> {
+  // 1. Verify student enrollment eligibility
+  const enrollment = await prisma.enrollment.findFirst({
+    where: {
+      studentId,
+      courseId: exam.courseId,
+    },
+    orderBy: [{ academicYear: 'desc' }, { semester: 'desc' }, { id: 'desc' }],
   });
 
-  // If user is STUDENT, strip the correctAnswer and shuffle MCQ option letters per student
+  if (!enrollment || enrollment.status !== 'ENROLLED') {
+    if (enrollment?.status === 'BLOCKED') {
+      throw new AuthorizationError(
+        'عذراً، تم حظر تسجيلك في هذا المقرر بسبب تجاوز نسبة الغياب، ولا يمكنك دخول الامتحان. يرجى مراجعة إدارة الكلية.'
+      );
+    }
+    throw new AuthorizationError(
+      'عذراً، لا يمكنك دخول هذا الامتحان لأنك غير مسجل حالياً في هذا المقرر الدراسي.'
+    );
+  }
+
+  // 2. Ensure exam is active based on date and time
+  const now = new Date();
+
+  if (exam.date) {
+    // Check start time
+    if (exam.startTime) {
+      const [h, m] = String(exam.startTime).split(':').map(Number);
+      if (!isNaN(h) && !isNaN(m)) {
+        const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
+        zonedDate.setHours(h, m, 0, 0);
+        const startDateTime = fromZonedTime(zonedDate, CAIRO_TZ);
+        if (now.getTime() < startDateTime.getTime()) {
+          throw new AuthorizationError('Exam has not started yet');
+        }
+      }
+    }
+
+    // Check end time
+    if (exam.endTime) {
+      const [h, m] = String(exam.endTime).split(':').map(Number);
+      if (!isNaN(h) && !isNaN(m)) {
+        const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
+        zonedDate.setHours(h, m, 0, 0);
+        const endDateTime = fromZonedTime(zonedDate, CAIRO_TZ);
+        if (now.getTime() > endDateTime.getTime()) {
+          throw new AuthorizationError('Exam time has expired');
+        }
+      }
+    }
+  }
+
+  // 3. Check if submission already exists and completed
+  const submission = await prisma.examSubmission.findUnique({
+    where: { examId_studentId: { examId: exam.id, studentId } },
+  });
+
+  if (submission && submission.status !== 'PENDING') {
+    throw new AuthorizationError('You have already completed this exam');
+  }
+}
+
+export const getExamQuestions = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const examId = parseInt(req.params.id as string, 10);
+
+  let exam: { id: number; courseId: number; date?: Date | null; startTime?: string | null; endTime?: string | null } | null = null;
+
+  // If user is STUDENT, check active enrollment and exam timing window
   if (req.user?.role === 'STUDENT') {
     const student = await prisma.student.findUnique({ where: { userId: req.user.id } });
     if (!student) {
       return next(new AuthorizationError('Access denied'));
     }
-    const studentId = student.id;
 
+    exam = await prisma.exam.findUnique({ where: { id: examId } });
+    if (!exam) return next(new NotFoundError('Exam not found'));
+
+    await verifyStudentExamAccess(exam, student.id);
+
+    const questions = await prisma.examQuestion.findMany({
+      where: { examId },
+      orderBy: { order: 'asc' },
+    });
+
+    const studentId = student.id;
     const processedQuestions = questions.map((q: any) => {
       const { correctAnswer, ...rest } = q;
       const qType = (q.type || '').toUpperCase().replace('-', '_');
@@ -400,6 +473,21 @@ export const getExamQuestions = catchAsync(async (req: Request, res: Response, n
 
     return res.json({ success: true, data: processedQuestions });
   }
+
+  // Doctor / Admin: Enforce centralized exam scope check
+  const examScope: any = getScopeWhere(req.user!, 'exam');
+  exam = await prisma.exam.findFirst({
+    where: {
+      id: examId,
+      ...(examScope && Object.keys(examScope).length ? examScope : {}),
+    },
+  });
+  if (!exam) return next(new NotFoundError('Exam not found'));
+
+  const questions = await prisma.examQuestion.findMany({
+    where: { examId },
+    orderBy: { order: 'asc' },
+  });
 
   res.json({ success: true, data: questions });
 });
@@ -478,60 +566,7 @@ export const startExamSession = catchAsync(async (req: Request, res: Response, n
   const exam = await prisma.exam.findUnique({ where: { id: examId } });
   if (!exam) return next(new NotFoundError('Exam not found'));
 
-  // Verify student enrollment eligibility
-  const enrollment = await prisma.enrollment.findFirst({
-    where: {
-      studentId: student.id,
-      courseId: exam.courseId,
-    },
-    orderBy: [{ academicYear: 'desc' }, { semester: 'desc' }, { id: 'desc' }],
-  });
-
-  if (!enrollment || enrollment.status !== 'ENROLLED') {
-    if (enrollment?.status === 'BLOCKED') {
-      return next(
-        new AuthorizationError(
-          'عذراً، تم حظر تسجيلك في هذا المقرر بسبب تجاوز نسبة الغياب، ولا يمكنك دخول الامتحان. يرجى مراجعة إدارة الكلية.'
-        )
-      );
-    }
-    return next(
-      new AuthorizationError(
-        'عذراً، لا يمكنك دخول هذا الامتحان لأنك غير مسجل حالياً في هذا المقرر الدراسي.'
-      )
-    );
-  }
-
-  // Ensure exam is active based on date and time
-  const now = new Date();
-  
-  if (exam.date) {
-    // Check start time
-    if (exam.startTime) {
-      const [h, m] = String(exam.startTime).split(':').map(Number);
-      if (!isNaN(h) && !isNaN(m)) {
-        const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
-        zonedDate.setHours(h, m, 0, 0);
-        const startDateTime = fromZonedTime(zonedDate, CAIRO_TZ);
-        if (now.getTime() < startDateTime.getTime()) {
-          return next(new AuthorizationError('Exam has not started yet'));
-        }
-      }
-    }
-    
-    // Check end time
-    if (exam.endTime) {
-      const [h, m] = String(exam.endTime).split(':').map(Number);
-      if (!isNaN(h) && !isNaN(m)) {
-        const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
-        zonedDate.setHours(h, m, 0, 0);
-        const endDateTime = fromZonedTime(zonedDate, CAIRO_TZ);
-        if (now.getTime() > endDateTime.getTime()) {
-          return next(new AuthorizationError('Exam time has expired'));
-        }
-      }
-    }
-  }
+  await verifyStudentExamAccess(exam, student.id);
 
   // Check if submission already exists
   let submission = await prisma.examSubmission.findUnique({

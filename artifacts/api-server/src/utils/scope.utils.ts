@@ -86,7 +86,8 @@ export const getScopeWhere = (
   }
 
   // Backwards-compat: support legacy ADMIN with managedCollegeId (temporary)
-  if (user.role === 'ADMIN' && user.managedCollegeId) {
+  if (user.role === 'ADMIN') {
+    if (!user.managedCollegeId) return { id: -1 }; // Fail-closed
     if (entity === 'department') return { collegeId: user.managedCollegeId };
     if (entity === 'course') return { department: { collegeId: user.managedCollegeId } };
     if (entity === 'exam') return { course: { department: { collegeId: user.managedCollegeId } } };
