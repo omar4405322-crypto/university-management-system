@@ -125,12 +125,14 @@ const SubmissionRow = memo(function SubmissionRowImpl({
   const [feedback, setFeedback] = useState<string>(sub?.feedback ?? '');
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<boolean>(!!(sub && sub.score != null));
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Keep row controlled state in sync if the row's submission changes externally
   useEffect(() => {
     setScore(sub && sub.score != null ? String(sub.score) : '');
     setFeedback(sub?.feedback ?? '');
     setLastSaved(!!(sub && sub.score != null));
+    setSaveError(null);
   }, [sub?.id, sub?.score, sub?.feedback]);
 
   const parsedScore = score ? parseFloat(score) : NaN;
@@ -148,6 +150,7 @@ const SubmissionRow = memo(function SubmissionRowImpl({
   const handleSave = useCallback(async () => {
     if (!row.submission || saving || scoreError) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const res = await taskService.gradeSubmission(
         taskId,
@@ -159,12 +162,23 @@ const SubmissionRow = memo(function SubmissionRowImpl({
       );
       if (res?.success && res?.data) {
         setLastSaved(true);
+        setSaveError(null);
         onGradeSaved(row.submission!.id, res.data);
+      } else {
+        setSaveError(res?.message || t('tasks.saveGradeError', 'Failed to save grade'));
       }
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'response' in err && (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          ? (err as { response?: { data?: { message?: string } } }).response!.data!.message!
+          : err instanceof Error
+          ? err.message
+          : t('tasks.saveGradeError', 'Failed to save grade');
+      setSaveError(msg);
     } finally {
       setSaving(false);
     }
-  }, [row.submission, saving, scoreError, taskId, parsedScore, feedback, onGradeSaved]);
+  }, [row.submission, saving, scoreError, taskId, parsedScore, feedback, onGradeSaved, t]);
 
   let statusBadgeVariant: 'success' | 'warning' | 'neutral' | 'danger' | 'info' = 'neutral';
   let statusBadgeLabel = '';
@@ -241,7 +255,10 @@ const SubmissionRow = memo(function SubmissionRowImpl({
                     max={maxScore}
                     step={0.01}
                     value={score}
-                    onChange={(e) => setScore(e.target.value)}
+                    onChange={(e) => {
+                      setScore(e.target.value);
+                      setSaveError(null);
+                    }}
                     disabled={saving}
                     className={`w-full px-3 py-2 text-sm rounded-xl border ${
                       scoreError
@@ -281,17 +298,28 @@ const SubmissionRow = memo(function SubmissionRowImpl({
               <textarea
                 rows={2}
                 value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
+                onChange={(e) => {
+                  setFeedback(e.target.value);
+                  setSaveError(null);
+                }}
                 disabled={saving}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:ring-2 focus:ring-brand-primary-500 focus:outline-none"
               />
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-3 pt-1">
+              {saveError ? (
+                <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 animate-in fade-in duration-200">
+                  <AlertCircle size={14} className="shrink-0 text-rose-500" />
+                  <span>{saveError}</span>
+                </p>
+              ) : (
+                <div />
+              )}
               <Button
                 onClick={handleSave}
                 disabled={!canSave}
-                className="text-[10px] font-black uppercase tracking-widest py-2 px-4 shadow-md shadow-brand-primary-500/20"
+                className="text-[10px] font-black uppercase tracking-widest py-2 px-4 shadow-md shadow-brand-primary-500/20 shrink-0"
               >
                 {saving ? (
                   <Loader2 className="animate-spin" size={14} />
@@ -505,7 +533,7 @@ const SubmissionsGradingModal: React.FC<SubmissionsGradingModalProps> = ({
           title={t('tasks.studyYear')}
         >
           <option value="ALL">{t('tasks.studyYearAll')}</option>
-          {[1, 2, 3, 4, 5, 6].map((y) => (
+          {[1, 2, 3, 4].map((y) => (
             <option key={y} value={y}>
               {t('tasks.studyYearN', { n: y })}
             </option>
