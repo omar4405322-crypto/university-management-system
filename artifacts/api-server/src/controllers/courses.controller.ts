@@ -329,30 +329,61 @@ export const getCourseRoster = catchAsync(
  * @access  Private (Admin)
  */
 export const createCourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const courseData = req.body;
+  const {
+    name,
+    courseCode,
+    credits,
+    departmentId,
+    year,
+    semester,
+    description,
+    maxStudents,
+  } = req.body;
+
+  const parsedDeptId =
+    departmentId !== undefined && departmentId !== '' && departmentId !== null
+      ? parseInt(departmentId as string, 10)
+      : undefined;
+  const parsedCredits =
+    credits !== undefined && credits !== '' ? parseInt(credits as string, 10) : 3;
 
   // Fail closed for unscoped ADMIN role
   if (req.user && req.user.role === 'ADMIN') {
     if (!req.user.managedCollegeId) {
       return res.status(403).json({ success: false, message: 'Access denied: Unscoped admin cannot create courses' });
     }
-    const dept = await prisma.department.findUnique({
-      where: { id: parseInt(courseData.departmentId as string, 10) },
-    });
-    if (!dept || dept.collegeId !== req.user.managedCollegeId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
+    if (parsedDeptId) {
+      const dept = await prisma.department.findUnique({
+        where: { id: parsedDeptId },
+      });
+      if (!dept || dept.collegeId !== req.user.managedCollegeId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
     }
   }
 
+  const courseCreateData: {
+    name: string;
+    courseCode: string;
+    credits: number;
+    departmentId?: number;
+    year?: number;
+    semester?: number;
+    description?: string | null;
+    maxStudents?: number;
+  } = {
+    name: name ? String(name).trim() : '',
+    courseCode: courseCode ? String(courseCode).trim() : '',
+    credits: parsedCredits,
+    ...(parsedDeptId !== undefined ? { departmentId: parsedDeptId } : {}),
+    ...(year !== undefined && year !== '' ? { year: parseInt(year as string, 10) } : {}),
+    ...(semester !== undefined && semester !== '' ? { semester: parseInt(semester as string, 10) } : {}),
+    ...(description !== undefined ? { description: description ? String(description).trim() : null } : {}),
+    ...(maxStudents !== undefined && maxStudents !== '' ? { maxStudents: parseInt(maxStudents as string, 10) } : {}),
+  };
+
   const newCourse = await prisma.course.create({
-    data: {
-      ...courseData,
-      credits: parseInt(courseData.credits as string),
-      departmentId: parseInt(courseData.departmentId as string),
-      maxStudents: courseData.maxStudents ? parseInt(courseData.maxStudents as string) : undefined,
-      year: courseData.year ? parseInt(courseData.year as string) : undefined,
-      semester: courseData.semester ? parseInt(courseData.semester as string) : undefined,
-    },
+    data: courseCreateData,
   });
 
   try {
@@ -374,14 +405,28 @@ export const createCourse = catchAsync(async (req: Request, res: Response, next:
  */
 export const updateCourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
-  const updateData = req.body;
+  const {
+    name,
+    courseCode,
+    credits,
+    departmentId,
+    year,
+    semester,
+    description,
+    maxStudents,
+  } = req.body;
 
   // fetch existing and enforce scope for scoped ADMIN
   const existing = await prisma.course.findUnique({
-    where: { id: parseInt(id as string) },
+    where: { id: parseInt(id as string, 10) },
     include: { department: true },
   });
   if (!existing) return next(new NotFoundError('Course not found'));
+
+  const parsedDeptId =
+    departmentId !== undefined && departmentId !== '' && departmentId !== null
+      ? parseInt(departmentId as string, 10)
+      : undefined;
 
   // Fail closed for unscoped ADMIN role
   if (req.user && req.user.role === 'ADMIN') {
@@ -391,9 +436,9 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
     if (existing.department?.collegeId !== req.user.managedCollegeId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
-    if (updateData.departmentId) {
+    if (parsedDeptId) {
       const newDept = await prisma.department.findUnique({
-        where: { id: parseInt(updateData.departmentId as string, 10) },
+        where: { id: parsedDeptId },
       });
       if (!newDept || newDept.collegeId !== req.user.managedCollegeId) {
         return res.status(403).json({ success: false, message: 'Access denied' });
@@ -401,27 +446,36 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
     }
   }
 
+  const courseUpdateData: {
+    name?: string;
+    courseCode?: string;
+    credits?: number;
+    departmentId?: number | null;
+    year?: number;
+    semester?: number;
+    description?: string | null;
+    maxStudents?: number;
+  } = {};
+
+  if (name !== undefined) courseUpdateData.name = String(name).trim();
+  if (courseCode !== undefined) courseUpdateData.courseCode = String(courseCode).trim();
+  if (credits !== undefined && credits !== '') courseUpdateData.credits = parseInt(credits as string, 10);
+  if (departmentId !== undefined) {
+    courseUpdateData.departmentId =
+      departmentId !== '' && departmentId !== null ? parseInt(departmentId as string, 10) : null;
+  }
+  if (year !== undefined && year !== '') courseUpdateData.year = parseInt(year as string, 10);
+  if (semester !== undefined && semester !== '') courseUpdateData.semester = parseInt(semester as string, 10);
+  if (description !== undefined) courseUpdateData.description = description ? String(description).trim() : null;
+  if (maxStudents !== undefined && maxStudents !== '')
+    courseUpdateData.maxStudents = parseInt(maxStudents as string, 10);
+
   const updatedCourse = await prisma.course.update({
-    where: { id: parseInt(id as string) },
-    data: {
-      ...updateData,
-      credits:
-        updateData.credits !== undefined ? parseInt(updateData.credits as string) : undefined,
-      departmentId:
-        updateData.departmentId !== undefined
-          ? parseInt(updateData.departmentId as string)
-          : undefined,
-      maxStudents:
-        updateData.maxStudents !== undefined
-          ? parseInt(updateData.maxStudents as string)
-          : undefined,
-      year: updateData.year !== undefined ? parseInt(updateData.year as string) : undefined,
-      semester:
-        updateData.semester !== undefined ? parseInt(updateData.semester as string) : undefined,
-    },
+    where: { id: parseInt(id as string, 10) },
+    data: courseUpdateData,
   });
 
-  if (updateData.year !== undefined || updateData.departmentId !== undefined) {
+  if (year !== undefined || departmentId !== undefined) {
     try {
       await EnrollmentService.autoEnrollCourse(updatedCourse.id);
     } catch (enrollErr) {
