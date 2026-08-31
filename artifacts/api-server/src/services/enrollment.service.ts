@@ -550,6 +550,148 @@ class EnrollmentService {
       };
     });
   }
+
+  /**
+   * Automatically enroll a student into all courses matching their department and division (year)
+   */
+  static async autoEnrollStudent(studentId: number) {
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: { id: true, departmentId: true, year: true, isActive: true },
+    });
+
+    if (!student || !student.departmentId || !student.year || !student.isActive) {
+      return { enrolledCount: 0 };
+    }
+
+    const currentAcademicYear = new Date().getFullYear();
+
+    const matchingCourses = await prisma.course.findMany({
+      where: {
+        departmentId: student.departmentId,
+        year: student.year,
+      },
+      select: { id: true, semester: true },
+    });
+
+    let enrolledCount = 0;
+    for (const course of matchingCourses) {
+      const semester = course.semester || 1;
+      const existing = await prisma.enrollment.findUnique({
+        where: {
+          studentId_courseId_semester_academicYear: {
+            studentId: student.id,
+            courseId: course.id,
+            semester,
+            academicYear: currentAcademicYear,
+          },
+        },
+      });
+
+      if (!existing) {
+        await prisma.enrollment.create({
+          data: {
+            studentId: student.id,
+            courseId: course.id,
+            semester,
+            academicYear: currentAcademicYear,
+            status: 'ENROLLED',
+          },
+        });
+        enrolledCount++;
+      } else if (existing.status !== 'ENROLLED') {
+        await prisma.enrollment.update({
+          where: { id: existing.id },
+          data: { status: 'ENROLLED' },
+        });
+        enrolledCount++;
+      }
+    }
+
+    return { enrolledCount };
+  }
+
+  /**
+   * Automatically enroll all active students matching the course department and division (year)
+   */
+  static async autoEnrollCourse(courseId: number) {
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { id: true, departmentId: true, year: true, semester: true },
+    });
+
+    if (!course || !course.departmentId || !course.year) {
+      return { enrolledCount: 0 };
+    }
+
+    const currentAcademicYear = new Date().getFullYear();
+    const semester = course.semester || 1;
+
+    const matchingStudents = await prisma.student.findMany({
+      where: {
+        departmentId: course.departmentId,
+        year: course.year,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    let enrolledCount = 0;
+    for (const student of matchingStudents) {
+      const existing = await prisma.enrollment.findUnique({
+        where: {
+          studentId_courseId_semester_academicYear: {
+            studentId: student.id,
+            courseId: course.id,
+            semester,
+            academicYear: currentAcademicYear,
+          },
+        },
+      });
+
+      if (!existing) {
+        await prisma.enrollment.create({
+          data: {
+            studentId: student.id,
+            courseId: course.id,
+            semester,
+            academicYear: currentAcademicYear,
+            status: 'ENROLLED',
+          },
+        });
+        enrolledCount++;
+      } else if (existing.status !== 'ENROLLED') {
+        await prisma.enrollment.update({
+          where: { id: existing.id },
+          data: { status: 'ENROLLED' },
+        });
+        enrolledCount++;
+      }
+    }
+
+    return { enrolledCount };
+  }
+
+  /**
+   * Sync all enrollments for all active students across all matching courses
+   */
+  static async syncAllEnrollments() {
+    const activeStudents = await prisma.student.findMany({
+      where: {
+        isActive: true,
+        departmentId: { not: null },
+      },
+      select: { id: true, departmentId: true, year: true },
+    });
+
+    let totalEnrolled = 0;
+    for (const student of activeStudents) {
+      const res = await EnrollmentService.autoEnrollStudent(student.id);
+      totalEnrolled += res.enrolledCount;
+    }
+
+    return { totalStudents: activeStudents.length, totalEnrolled };
+  }
 }
 
 export { EnrollmentService };

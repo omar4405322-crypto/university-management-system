@@ -6,6 +6,8 @@ import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
+import { EnrollmentService } from '../services/enrollment.service';
+import { invalidateCache } from '../utils/redis.utils';
 
 /**
  * @desc    Get all courses with advanced filtering, sorting and pagination
@@ -42,6 +44,7 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
 
   const where: any = {
     ...scopeWhere,
+    ...(req.user?.role === 'STUDENT' && { isPublished: true }),
     ...(collegeId && { department: { collegeId: parseInt(collegeId as string, 10) } }),
     ...(departmentId && { departmentId: parseInt(departmentId as string, 10) }),
     ...(year && { year: parseInt(year as string, 10) }),
@@ -175,6 +178,11 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
   });
 
   if (!course) {
+    return next(new NotFoundError('Course not found'));
+  }
+
+  // If requester is a student and course is draft (not published), deny access
+  if (req.user && req.user.role === 'STUDENT' && !course.isPublished) {
     return next(new NotFoundError('Course not found'));
   }
 
@@ -321,6 +329,12 @@ export const createCourse = catchAsync(async (req: Request, res: Response, next:
     },
   });
 
+  try {
+    await EnrollmentService.autoEnrollCourse(newCourse.id);
+  } catch (enrollErr) {
+    console.warn('Could not auto-enroll students for new course:', enrollErr);
+  }
+
   return res.status(201).json({
     success: true,
     data: newCourse,
@@ -375,6 +389,14 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
         updateData.semester !== undefined ? parseInt(updateData.semester as string) : undefined,
     },
   });
+
+  if (updateData.year !== undefined || updateData.departmentId !== undefined) {
+    try {
+      await EnrollmentService.autoEnrollCourse(updatedCourse.id);
+    } catch (enrollErr) {
+      console.warn('Could not auto-enroll students on course update:', enrollErr);
+    }
+  }
 
   res.json({
     success: true,
@@ -702,6 +724,7 @@ export const toggleMaterialPublication = catchAsync(async (req: Request, res: Re
     data: { isPublished: !material.isPublished },
   });
 
+  await invalidateCache('dashboard:*');
   auditLog('TOGGLE_COURSE_MATERIAL', 'CourseMaterial', materialId.toString(), req);
 
   res.json({
@@ -734,6 +757,7 @@ export const toggleCoursePublication = catchAsync(async (req: Request, res: Resp
     data: { isPublished: !course.isPublished },
   });
 
+  await invalidateCache('dashboard:*');
   auditLog('TOGGLE_COURSE_PUBLICATION', 'Course', courseId.toString(), req);
 
   res.json({

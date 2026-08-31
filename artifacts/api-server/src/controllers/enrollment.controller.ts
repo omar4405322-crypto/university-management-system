@@ -149,3 +149,13 @@ export const deleteExemptionPeriod = catchAsync(async (req: Request, res: Respon
   res.json({ success: true, data: result });
 });
 
+export const syncAllEnrollments = catchAsync(async (req: Request, res: Response) => {
+  const result = await EnrollmentService.syncAllEnrollments();
+  auditLog('SYNC_ALL_ENROLLMENTS', 'Enrollment', 'all', req, result);
+  res.json({
+    success: true,
+    message: `Enrollment synchronization complete. Processed ${result.totalStudents} students with ${result.totalEnrolled} new enrollments.`,
+    data: result,
+  });
+});
+

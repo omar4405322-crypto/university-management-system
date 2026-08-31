@@ -2,7 +2,7 @@ import express from 'express';
 const router = express.Router();
 import * as coursesController from '../controllers/courses.controller';
 import { authorize } from '../middleware/auth.middleware';
-import { courseValidation, idParamValidation } from '../validations/academic.validation';
+import { courseValidation, courseUpdateValidation, idParamValidation } from '../validations/academic.validation';
 import validate from '../middleware/validate.middleware';
 import materialUpload from '../middleware/materialUpload.middleware';
 
@@ -28,7 +28,7 @@ router.post(
 router.put(
   '/:id',
   authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
-  [...idParamValidation, ...courseValidation],
+  [...idParamValidation, ...courseUpdateValidation],
   validate,
   coursesController.updateCourse
 );
