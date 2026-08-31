@@ -6,11 +6,11 @@ import doctorsService from '../../services/doctors.service';
 import AddDoctorModal from './AddDoctorModal';
 import EditDoctorModal from './EditDoctorModal';
 import { PageHeader } from '../../components/ui/PageHeader';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody, ActionMenu } from '../../components/ui/Table';
 import Badge from '../../components/ui/Badge';
 import FilterBar from '../../components/ui/FilterBar';
-import Pagination from '../../components/ui/Pagination';
+import Pagination from '../../components/ui/pagination';
 import { EmptyState } from '../../components/ui/EmptyState';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import Button from '../../components/ui/button';
@@ -84,11 +84,13 @@ const DoctorsList = () => {
     return obj;
   }, [selectedCollege, selectedDept]);
 
+  const [pageSize, setPageSize] = useState(10);
   const { data: doctors, loading, error, search, setSearch, page, setPage, total, refetch } = useDoctors({
     filters: activeFilters,
+    limit: pageSize,
   });
-  const limit = 10;
-  const totalPages = Math.ceil(total / limit);
+  const limit = pageSize;
+  const totalPages = Math.ceil(total / limit) || 1;
   const totalRecords = total;
   const fetchDoctors = refetch;
   const debouncedSearch = search; // useDoctors already debounces internally
@@ -295,66 +297,38 @@ const DoctorsList = () => {
       {/* ========================================================================= */}
       {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-        {/* Total Doctors */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('doctors.totalDoctors', 'Total Doctors')}
-            </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
-              {stats[0]?.value || filteredDoctors.length}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <Users size={16} />
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={t('doctors.totalDoctors', 'Total Doctors')}
+          value={stats[0]?.value || filteredDoctors.length}
+          icon={Users}
+          color="primary"
+        />
 
-        {/* Active Faculty */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('doctors.activeDoctors', 'Active Faculty')}
-            </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
-              {stats[1]?.value || filteredDoctors.filter((d: any) => d.status === 'active' || !d.status).length}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-            <UserCheck size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('doctors.activeDoctors', 'Active Faculty')}
+          value={stats[1]?.value || filteredDoctors.filter((d: any) => d.status === 'active' || !d.status).length}
+          icon={UserCheck}
+          color="emerald"
+        />
 
-        {/* Total Courses Assigned */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('doctors.totalCourses', 'Assigned Courses')}
-            </span>
-            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
-              {stats[2]?.value || '0'}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-            <BookOpen size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('doctors.totalCourses', 'Assigned Courses')}
+          value={stats[2]?.value || '0'}
+          icon={BookOpen}
+          color="blue"
+        />
 
-        {/* Research / Projects */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('doctors.researchProjects', 'Research & Depts')}
-            </span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
-              {stats[3]?.value || '0'}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <Briefcase size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('doctors.researchProjects', 'Research & Depts')}
+          value={stats[3]?.value || '0'}
+          icon={Briefcase}
+          color="amber"
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -641,6 +615,10 @@ const DoctorsList = () => {
               onPageChange={setPage} 
               total={totalRecords}
               pageSize={limit}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
             />
           </Card>
         )}

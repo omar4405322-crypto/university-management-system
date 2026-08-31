@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import examsService from '../../services/exams.service';
 import Button from '../../components/ui/button';
-import Card from '../../components/ui/Card';
+import Card from '../../components/ui/card';
 import Modal from '../../components/ui/Modal';
 import { logger } from '../../lib/logger';
 import { useAntiCheat } from '../../hooks/useAntiCheat';

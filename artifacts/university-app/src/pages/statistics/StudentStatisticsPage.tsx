@@ -6,7 +6,7 @@ import {
   Award, GraduationCap, FolderKanban, ShieldCheck, User, ArrowRight
 } from 'lucide-react';
 import studentsService from '../../services/students.service';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/button';
 
@@ -215,7 +215,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
               <p className="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-3 flex-wrap">
                 <span>{isRTL ? 'الرقم الجامعي:' : 'ID:'} <strong className="text-white font-mono">{student?.studentId || 'N/A'}</strong></span>
                 <span>•</span>
-                <span>{isRTL ? 'السنة:' : 'Year:'} <strong className="text-white">{student?.year || 1}</strong></span>
+                <span>{isRTL ? 'الفرقة:' : 'Division:'} <strong className="text-white">{isRTL ? (student?.year === 1 ? 'الأولى' : student?.year === 2 ? 'الثانية' : student?.year === 3 ? 'الثالثة' : student?.year === 4 ? 'الرابعة' : (student?.year || 1)) : `Division ${student?.year || 1}`}</strong></span>
                 {student?.department && (
                   <>
                     <span>•</span>
@@ -442,8 +442,8 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
                         </div>
                         <p className="text-[11px] text-slate-400 mt-0.5">
                           {isRTL 
-                            ? `السنة ${course.countedAcademicYear} الترم ${course.countedSemester} • ${course.credits} ساعات`
-                            : `Year ${course.countedAcademicYear} Sem ${course.countedSemester} • ${course.credits} hrs`}
+                            ? `الفرقة ${course.countedAcademicYear === 1 ? 'الأولى' : course.countedAcademicYear === 2 ? 'الثانية' : course.countedAcademicYear === 3 ? 'الثالثة' : course.countedAcademicYear === 4 ? 'الرابعة' : course.countedAcademicYear} الترم ${course.countedSemester} • ${course.credits} ساعات`
+                            : `Division ${course.countedAcademicYear} Sem ${course.countedSemester} • ${course.credits} hrs`}
                           {course.isRetake && course.supersededAttempts?.length > 0 && (
                             <span className="text-purple-600 dark:text-purple-400 ml-1">
                               • ({isRTL ? 'محاولة سابقة ملغاة' : 'supersedes earlier attempt'})

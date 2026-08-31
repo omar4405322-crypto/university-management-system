@@ -20,7 +20,7 @@ import {
   ExternalLink,
   UserPlus,
 } from 'lucide-react';
-import Card from '../../components/ui/Card';
+import Card from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import Table, { TableRow, TableCell, ActionMenu, TableHeader, TableBody, TableHead } from '../../components/ui/Table';

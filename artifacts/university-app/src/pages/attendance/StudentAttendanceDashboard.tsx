@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import attendanceService from '../../services/attendance.service';
 import studentsService from '../../services/students.service';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StudentAttendanceScanner } from '../../components/attendance/StudentAttendanceScanner';

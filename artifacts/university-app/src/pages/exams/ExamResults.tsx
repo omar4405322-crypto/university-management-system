@@ -16,7 +16,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import examsService from '../../services/exams.service';
-import Card from '../../components/ui/Card';
+import Card from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import {
   normalizeAnswers,

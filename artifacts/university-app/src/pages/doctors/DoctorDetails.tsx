@@ -28,7 +28,7 @@ import {
   ExternalLink,
   GraduationCap
 } from 'lucide-react';
-import Card from '../../components/ui/Card';
+import Card from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import LoadingState from '../../components/ui/LoadingState';
@@ -561,6 +561,13 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
                             <ShieldCheck size={12} />
                             {isRTL ? 'أستاذ المقرر الرئيسي' : 'Course Lead'}
                           </span>
+                          {course.department && (
+                            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                              <Building2 size={12} />
+                              {isRTL ? (course.department.nameAr || course.department.name) : (course.department.name || course.department.nameAr)}
+                              {course.department.college && ` (${isRTL ? (course.department.college.nameAr || course.department.college.name) : (course.department.college.name || course.department.college.nameAr)})`}
+                            </span>
+                          )}
                         </div>
                         <h4 className="text-lg font-bold text-slate-900 dark:text-white">
                           {course.name}

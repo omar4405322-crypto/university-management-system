@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useStudents } from '../../hooks/useStudents';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody, ActionMenu } from '../../components/ui/Table';
 import { PageHeader } from '../../components/ui/PageHeader';
 import Button from '../../components/ui/button';
@@ -35,7 +35,7 @@ import AddStudentModal from './AddStudentModal';
 import EditStudentModal from './EditStudentModal';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
-import Pagination from '../../components/ui/Pagination';
+import Pagination from '../../components/ui/pagination';
 import ErrorState from '../../components/ui/ErrorState';
 import { downloadCsv } from '../../utils/exportCsv';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
@@ -335,66 +335,38 @@ const StudentsList = () => {
       {/* ========================================================================= */}
       {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-        {/* Total Students */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('dashboard.totalStudents', 'Total Students')}
-            </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
-              {total}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <Users size={16} />
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={t('dashboard.totalStudents', 'Total Students')}
+          value={total}
+          icon={Users}
+          color="primary"
+        />
 
-        {/* Active Students */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'الطلاب النشطون' : 'Active Students'}
-            </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
-              {Array.isArray(students) ? students.filter((s: any) => s.isActive).length : 0}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-            <UserCheck size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'الطلاب النشطون' : 'Active Students'}
+          value={Array.isArray(students) ? students.filter((s: any) => s.isActive).length : 0}
+          icon={UserCheck}
+          color="emerald"
+        />
 
-        {/* Inactive / Suspended */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'الحسابات المعطلة' : 'Inactive / Suspended'}
-            </span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
-              {Array.isArray(students) ? students.filter((s: any) => !s.isActive).length : 0}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <UserX size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'الحسابات المعطلة' : 'Inactive / Suspended'}
+          value={Array.isArray(students) ? students.filter((s: any) => !s.isActive).length : 0}
+          icon={UserX}
+          color="amber"
+        />
 
-        {/* Assigned Departments */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'الأقسام الأكاديمية' : 'Academic Depts'}
-            </span>
-            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
-              {departments.length}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-            <GraduationCap size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'الأقسام الأكاديمية' : 'Academic Depts'}
+          value={departments.length}
+          icon={GraduationCap}
+          color="blue"
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -776,6 +748,10 @@ const StudentsList = () => {
               onPageChange={setPage}
               total={totalRecords}
               pageSize={limit}
+              onPageSizeChange={(newSize) => {
+                updateActiveView({ pageSize: newSize });
+                setPage(1);
+              }}
             />
           </Card>
         )}

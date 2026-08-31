@@ -5,10 +5,11 @@ import teachingAssistantsService from '../../services/teachingAssistants.service
 import AddTAModal from './AddTAModal';
 import EditTAModal from './EditTAModal';
 import AssignDoctorModal from './AssignDoctorModal';
+import AssignTACourseModal from './AssignTACourseModal';
 import { PageHeader } from '../../components/ui/PageHeader';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody, ActionMenu } from '../../components/ui/Table';
-import Pagination from '../../components/ui/Pagination';
+import Pagination from '../../components/ui/pagination';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import Button from '../../components/ui/button';
 import { downloadCsv } from '../../utils/exportCsv';
@@ -44,9 +45,12 @@ const TeachingAssistantsList = () => {
   const { user } = useAuth();
   const { scopeParams } = useScope();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const { data: tas, loading, error, search, setSearch, page, setPage, total, refetch } = useTeachingAssistants();
-  const limit = 10;
-  const totalPages = Math.ceil(total / limit);
+  const [pageSize, setPageSize] = useState(10);
+  const { data: tas, loading, error, search, setSearch, page, setPage, total, refetch } = useTeachingAssistants({
+    limit: pageSize,
+  });
+  const limit = pageSize;
+  const totalPages = Math.ceil(total / limit) || 1;
   const totalRecords = total;
   const fetchTAs = refetch;
   const debouncedSearch = search;
@@ -54,6 +58,8 @@ const TeachingAssistantsList = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isAssignCourseModalOpen, setIsAssignCourseModalOpen] = useState(false);
+  const [assignCourseTA, setAssignCourseTA] = useState<any>(null);
   const [selectedTA, setSelectedTA] = useState(null);
   const [resetPasswordTA, setResetPasswordTA] = useState(null);
   const { showToast } = useToast();
@@ -240,66 +246,38 @@ const TeachingAssistantsList = () => {
       {/* ========================================================================= */}
       {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-        {/* Total TAs */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('teachingAssistants.totalTAs', 'Total TAs')}
-            </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
-              {stats[0]?.value || (tas || []).length}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <Users size={16} />
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={t('teachingAssistants.totalTAs', 'Total TAs')}
+          value={stats[0]?.value || (tas || []).length}
+          icon={Users}
+          color="primary"
+        />
 
-        {/* Active TAs */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('teachingAssistants.activeTAs', 'Active TAs')}
-            </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
-              {stats[1]?.value || (tas || []).filter((ta: any) => ta.status === 'ACTIVE' || !ta.status).length}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-            <UserCheck size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('teachingAssistants.activeTAs', 'Active TAs')}
+          value={stats[1]?.value || (tas || []).filter((ta: any) => ta.status === 'ACTIVE' || !ta.status).length}
+          icon={UserCheck}
+          color="emerald"
+        />
 
-        {/* On Leave TAs */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('teachingAssistants.onLeaveTAs', 'On Leave')}
-            </span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
-              {stats[2]?.value || (tas || []).filter((ta: any) => ta.status === 'ON_LEAVE').length}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <Briefcase size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('teachingAssistants.onLeaveTAs', 'On Leave')}
+          value={stats[2]?.value || (tas || []).filter((ta: any) => ta.status === 'ON_LEAVE').length}
+          icon={Briefcase}
+          color="amber"
+        />
 
-        {/* Inactive / Suspended */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'غير نشط' : 'Inactive'}
-            </span>
-            <span className="text-lg font-black text-rose-600 dark:text-rose-400 block mt-0.5 font-mono">
-              {(tas || []).filter((ta: any) => ta.status === 'INACTIVE').length}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center shrink-0">
-            <GraduationCap size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'غير نشط' : 'Inactive'}
+          value={(tas || []).filter((ta: any) => ta.status === 'INACTIVE').length}
+          icon={GraduationCap}
+          color="rose"
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -449,7 +427,8 @@ const TeachingAssistantsList = () => {
                     return (
                       <TableRow 
                         key={ta.id} 
-                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors ${
+                        onClick={() => navigate(`/teaching-assistants/${ta.id}`)}
+                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors cursor-pointer ${
                           isSelected ? 'bg-brand-primary-500/5 dark:bg-brand-primary-500/10' : ''
                         }`}
                       >
@@ -467,11 +446,11 @@ const TeachingAssistantsList = () => {
                               {initials}
                             </div>
                             <div className="flex flex-col">
-                              <span className="font-bold text-brand-text-primary dark:text-white">
-                                {ta.employeeId}
+                              <span className="font-bold text-brand-text-primary dark:text-white hover:text-purple-600 transition-colors">
+                                {ta.firstName ? `م. ${ta.firstName} ${ta.lastName || ''}` : ta.employeeId}
                               </span>
                               <span className="text-xs text-brand-text-secondary dark:text-slate-400">
-                                {ta.specialization || '—'}
+                                {ta.specialization ? `${ta.specialization} (${ta.employeeId})` : ta.employeeId}
                               </span>
                             </div>
                           </div>
@@ -505,9 +484,24 @@ const TeachingAssistantsList = () => {
                             {statusLabel}
                           </span>
                         </TableCell>
-                        <TableCell className="p-4 text-end pe-6">
+                        <TableCell className="p-4 text-end pe-6" onClick={(e) => e.stopPropagation()}>
                           <ActionMenu
                             actions={[
+                              {
+                                label: isRTL ? 'عرض الملف والتفاصيل' : 'View Profile',
+                                icon: Eye,
+                                variant: 'view',
+                                onClick: () => navigate(`/teaching-assistants/${ta.id}`),
+                              },
+                              {
+                                label: isRTL ? 'إسناد مقرر / معمل' : 'Assign Course / Lab',
+                                icon: BookOpen,
+                                variant: 'view',
+                                onClick: () => {
+                                  setAssignCourseTA(ta);
+                                  setIsAssignCourseModalOpen(true);
+                                },
+                              },
                               {
                                 label: isRTL ? 'عرض الجدول' : 'View Schedule',
                                 icon: Calendar,
@@ -562,6 +556,10 @@ const TeachingAssistantsList = () => {
               onPageChange={setPage} 
               total={totalRecords}
               pageSize={limit}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
             />
           </Card>
         )}
@@ -619,6 +617,20 @@ const TeachingAssistantsList = () => {
             setSelectedTA(null);
           }}
           ta={selectedTA}
+          onSuccess={() => {
+            fetchTAs();
+          }}
+        />
+      )}
+
+      {isAssignCourseModalOpen && (
+        <AssignTACourseModal
+          isOpen={isAssignCourseModalOpen}
+          onClose={() => {
+            setIsAssignCourseModalOpen(false);
+            setAssignCourseTA(null);
+          }}
+          ta={assignCourseTA}
           onSuccess={() => {
             fetchTAs();
           }}

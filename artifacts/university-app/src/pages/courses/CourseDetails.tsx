@@ -35,7 +35,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import Card from '../../components/ui/Card';
+import Card from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
@@ -46,6 +46,9 @@ import SubmissionsGradingModal from '../../components/tasks/SubmissionsGradingMo
 import coursesService from '../../services/courses.service';
 import enrollmentService from '../../services/enrollment.service';
 import EnrollStudentModal from './EnrollStudentModal';
+import AssignDoctorModal from './AssignDoctorModal';
+import AssignTAModal from './AssignTAModal';
+import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { logger } from '../../lib/logger';
@@ -68,6 +71,10 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
   const [course, setCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+
+  // Instructor Assignment State
+  const [showAssignDoctorModal, setShowAssignDoctorModal] = useState(false);
+  const [showAssignTAModal, setShowAssignTAModal] = useState(false);
 
   // Enrollment and Roster State
   const [showEnrollModal, setShowEnrollModal] = useState(false);
@@ -299,6 +306,30 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
     const authorizedRoles = ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'];
     return authorizedRoles.includes(user.role);
   }, [user]);
+
+  // Handle Unassigning Doctor from Course
+  const handleUnassignDoctor = async (doctorId: number, doctorName: string) => {
+    if (!window.confirm(isRTL ? `هل أنت متأكد من إزالة إسناد د. ${doctorName} عن هذا المقرر؟` : `Are you sure you want to unassign Dr. ${doctorName} from this course?`)) return;
+    try {
+      await api.delete(`/doctors/${doctorId}/courses/${actualId}`);
+      showToast(isRTL ? 'تمت إزالة إسناد الدكتور بنجاح' : 'Unassigned doctor successfully', 'success');
+      fetchCourseDetails();
+    } catch (err: any) {
+      showToast(isRTL ? 'حدث خطأ أثناء إزالة الإسناد' : 'Error unassigning doctor', 'error');
+    }
+  };
+
+  // Handle Unassigning TA from Course
+  const handleUnassignTA = async (taId: string, taName: string) => {
+    if (!window.confirm(isRTL ? `هل أنت متأكد من إزالة إسناد م. ${taName} عن هذا المقرر؟` : `Are you sure you want to unassign TA ${taName} from this course?`)) return;
+    try {
+      await api.delete(`/teaching-assistants/${taId}/courses/${actualId}`);
+      showToast(isRTL ? 'تمت إزالة إسناد المعيد بنجاح' : 'Unassigned teaching assistant successfully', 'success');
+      fetchCourseDetails();
+    } catch (err: any) {
+      showToast(isRTL ? 'حدث خطأ أثناء إزالة الإسناد' : 'Error unassigning teaching assistant', 'error');
+    }
+  };
 
   // Handle Student Withdrawal from Course
   const handleConfirmWithdraw = async () => {
@@ -820,7 +851,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
                 <p className="text-xs font-bold text-brand-text-muted">{t('courses.tutorials', 'Tutorials & Labs')}</p>
                 <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{tutorials.length}</h3>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
                 <Video size={24} />
               </div>
             </div>
@@ -830,66 +861,136 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Professors Card */}
             <Card className="p-6">
-              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.professorsInCharge', 'Professors in Charge')}</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-black text-brand-text-main">{t('courses.professorsInCharge', 'Professors in Charge')}</h3>
+                {canManageRoster && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowAssignDoctorModal(true)}
+                    className="text-xs font-bold flex items-center gap-1.5 border-brand-primary-300 text-brand-brand-green-dark hover:bg-brand-primary-50 rounded-xl"
+                  >
+                    <Plus size={14} />
+                    <span>{assignedDoctors.length > 0 ? (isRTL ? 'إسناد/تغيير الدكتور' : 'Assign / Change Doctor') : (isRTL ? 'إسناد أستاذ للمقرر' : 'Assign Professor')}</span>
+                  </Button>
+                )}
+              </div>
               {assignedDoctors.length > 0 ? (
                 <div className="space-y-3 mt-2">
                   {assignedDoctors.map((doc: any) => (
-                    <div key={doc.id} className="flex items-center gap-4 p-4 rounded-2xl bg-surface-subtle border border-brand-border">
-                      <div className="w-11 h-11 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-brand-green-dark flex items-center justify-center font-black text-base shrink-0 border border-brand-border">
-                        {doc.firstName?.[0] || 'D'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-brand-text-primary dark:text-brand-text-main truncate text-sm">
-                            د. {doc.firstName} {doc.lastName}
-                          </h4>
-                          <span className="bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-brand-green-dark text-[10px] px-2 py-0.5 rounded-full font-bold border border-brand-border">
-                            أستاذ المادة
-                          </span>
+                    <div key={doc.id} className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-surface-subtle border border-brand-border">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-brand-green-dark flex items-center justify-center font-black text-base shrink-0 border border-brand-border">
+                          {doc.firstName?.[0] || 'D'}
                         </div>
-                        {doc.specialty && <p className="text-xs text-brand-text-muted mt-0.5">{doc.specialty}</p>}
-                        {doc.user?.email && <p className="text-xs text-brand-text-muted truncate">{doc.user.email}</p>}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-brand-text-primary dark:text-brand-text-main truncate text-sm">
+                              د. {doc.firstName} {doc.lastName}
+                            </h4>
+                            <span className="bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-brand-green-dark text-[10px] px-2 py-0.5 rounded-full font-bold border border-brand-border">
+                              أستاذ المادة
+                            </span>
+                          </div>
+                          {doc.specialty && <p className="text-xs text-brand-text-muted mt-0.5">{doc.specialty}</p>}
+                          {doc.user?.email && <p className="text-xs text-brand-text-muted truncate">{doc.user.email}</p>}
+                        </div>
                       </div>
+                      {canManageRoster && (
+                        <button
+                          type="button"
+                          onClick={() => handleUnassignDoctor(doc.id, `${doc.firstName} ${doc.lastName}`)}
+                          className="text-slate-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all shrink-0"
+                          title={isRTL ? 'إلغاء إسناد الدكتور' : 'Unassign doctor'}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-brand-text-muted italic text-xs">
-                  <UserCheck size={32} className="mx-auto mb-2 opacity-40 text-brand-text-muted" />
+                <div className="text-center py-8 text-brand-text-muted italic text-xs space-y-3">
+                  <UserCheck size={32} className="mx-auto opacity-40 text-brand-text-muted" />
                   <p>{t('courses.noAssignedProfessors', 'No professor assigned to this course yet')}</p>
+                  {canManageRoster && (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowAssignDoctorModal(true)}
+                      className="bg-brand-primary-500 hover:bg-brand-primary-600 text-white text-xs font-bold rounded-xl px-4 py-2 mx-auto flex items-center gap-1.5"
+                    >
+                      <Plus size={14} />
+                      <span>{isRTL ? 'إسناد أستاذ للمقرر الآن' : 'Assign Professor Now'}</span>
+                    </Button>
+                  )}
                 </div>
               )}
             </Card>
 
             {/* Teaching Assistants Card */}
             <Card className="p-6">
-              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('courses.tasInCharge', 'Teaching Assistants in Charge')}</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-black text-brand-text-main">{t('courses.tasInCharge', 'Teaching Assistants in Charge')}</h3>
+                {canManageRoster && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowAssignTAModal(true)}
+                    className="text-xs font-bold flex items-center gap-1.5 border-brand-navy-300 text-brand-navy-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl"
+                  >
+                    <Plus size={14} />
+                    <span>{assignedTAs.length > 0 ? (isRTL ? 'إسناد/تغيير المعيد' : 'Assign / Change TA') : (isRTL ? 'إسناد معيد للمقرر' : 'Assign TA')}</span>
+                  </Button>
+                )}
+              </div>
               {assignedTAs.length > 0 ? (
                 <div className="space-y-3 mt-2">
                   {assignedTAs.map((ta: any) => (
-                    <div key={ta.id} className="flex items-center gap-4 p-4 rounded-2xl bg-surface-subtle border border-brand-border">
-                      <div className="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center font-black text-base shrink-0 border border-purple-200/50">
-                        {ta.firstName?.[0] || 'T'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-brand-text-primary dark:text-brand-text-main truncate text-sm">
-                            م. {ta.firstName} {ta.lastName}
-                          </h4>
-                          <span className="bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 text-[10px] px-2 py-0.5 rounded-full font-bold border border-purple-200/50">
-                            المعيد المسؤول
-                          </span>
+                    <div key={ta.id} className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-surface-subtle border border-brand-border">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 rounded-xl bg-brand-navy-50 dark:bg-slate-700 text-brand-navy-600 dark:text-slate-200 flex items-center justify-center font-black text-base shrink-0 border border-slate-200 dark:border-slate-700">
+                          {ta.firstName?.[0] || 'T'}
                         </div>
-                        {ta.specialization && <p className="text-xs text-brand-text-muted mt-0.5">{ta.specialization}</p>}
-                        {ta.user?.email && <p className="text-xs text-brand-text-muted truncate">{ta.user.email}</p>}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-brand-text-primary dark:text-brand-text-main truncate text-sm">
+                              م. {ta.firstName} {ta.lastName}
+                            </h4>
+                            <span className="bg-brand-navy-50 dark:bg-slate-700 text-brand-navy-600 dark:text-slate-200 text-[10px] px-2 py-0.5 rounded-full font-bold border border-slate-200 dark:border-slate-600">
+                              المعيد المسؤول
+                            </span>
+                          </div>
+                          {ta.specialization && <p className="text-xs text-brand-text-muted mt-0.5">{ta.specialization}</p>}
+                          {ta.user?.email && <p className="text-xs text-brand-text-muted truncate">{ta.user.email}</p>}
+                        </div>
                       </div>
+                      {canManageRoster && (
+                        <button
+                          type="button"
+                          onClick={() => handleUnassignTA(ta.id, `${ta.firstName} ${ta.lastName}`)}
+                          className="text-slate-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all shrink-0"
+                          title={isRTL ? 'إلغاء إسناد المعيد' : 'Unassign teaching assistant'}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-brand-text-muted italic text-xs">
-                  <UserCheck size={32} className="mx-auto mb-2 opacity-40 text-brand-text-muted" />
+                <div className="text-center py-8 text-brand-text-muted italic text-xs space-y-3">
+                  <UserCheck size={32} className="mx-auto opacity-40 text-brand-text-muted" />
                   <p>{t('courses.noAssignedTAs', 'No teaching assistant assigned to this course yet')}</p>
+                  {canManageRoster && (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowAssignTAModal(true)}
+                      className="bg-brand-primary-500 hover:bg-brand-primary-600 text-white text-xs font-bold rounded-xl px-4 py-2 mx-auto flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Plus size={14} />
+                      <span>{isRTL ? 'إسناد معيد للمقرر الآن' : 'Assign Teaching Assistant Now'}</span>
+                    </Button>
+                  )}
                 </div>
               )}
             </Card>
@@ -1815,6 +1916,28 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, isDrawerMode = 
           academicYear={course?.year || 1}
           currentEnrolledStudentIds={enrolledStudents.map((e: any) => e.studentId || e.student?.id).filter(Boolean)}
           departmentId={course?.departmentId}
+          onSuccess={fetchCourseDetails}
+        />
+      )}
+
+      {/* ASSIGN DOCTOR MODAL */}
+      {canManageRoster && (
+        <AssignDoctorModal
+          isOpen={showAssignDoctorModal}
+          onClose={() => setShowAssignDoctorModal(false)}
+          course={course}
+          currentAssignedDoctors={assignedDoctors}
+          onSuccess={fetchCourseDetails}
+        />
+      )}
+
+      {/* ASSIGN TA MODAL */}
+      {canManageRoster && (
+        <AssignTAModal
+          isOpen={showAssignTAModal}
+          onClose={() => setShowAssignTAModal(false)}
+          course={course}
+          currentAssignedTAs={assignedTAs}
           onSuccess={fetchCourseDetails}
         />
       )}

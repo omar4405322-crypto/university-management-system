@@ -7,12 +7,12 @@ import usersService from '../../services/users.service';
 import collegeService from '../../services/college.service';
 import { downloadCsv } from '../../utils/exportCsv';
 
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import MaskedEmail from '../../components/MaskedEmail';
 import { PageHeader } from '../../components/ui/PageHeader';
 import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody, ActionMenu } from '../../components/ui/Table';
-import Pagination from '../../components/ui/Pagination';
+import Pagination from '../../components/ui/pagination';
 import { EmptyState } from '../../components/ui/EmptyState';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
@@ -73,9 +73,7 @@ const AdminsList = () => {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [showBulkReactivateModal, setShowBulkReactivateModal] = useState(false);
   const [showBulkHardDeleteModal, setShowBulkHardDeleteModal] = useState(false);
-  const [bulkHardDeleteConfirmText, setBulkHardDeleteConfirmText] = useState('');
   const [hardDeleteTarget, setHardDeleteTarget] = useState<any>(null);
-  const [hardDeleteConfirmEmail, setHardDeleteConfirmEmail] = useState('');
 
   useEffect(() => {
     const mainEl = document.querySelector('main');
@@ -228,19 +226,50 @@ const AdminsList = () => {
     showToast(isRTL ? 'تم تصدير المسؤولين المحددين' : 'Exported selected admins', 'success');
   }, [filteredAdmins, selectedIds, isRTL, showToast]);
 
-  // Single Delete Confirmation
+  // Single Deactivate Confirmation — Level 1
   const confirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     try {
       setDeleteLoading(true);
+
+      // Optimistically update local state so the row immediately reflects 'Inactive'
+      // This prevents the UI glitch where the account looks unchanged after the action.
+      setAdmins((prev: any[]) =>
+        prev.map((a: any) =>
+          a.id === deleteTarget.id ? { ...a, isActive: false, deactivatedAt: new Date().toISOString() } : a
+        )
+      );
+
       const res = await usersService.deleteUser(deleteTarget.id);
       if (res.success) {
-        showToast(isRTL ? 'تم حذف حساب المسؤول بنجاح' : 'Admin deleted successfully', 'success');
+        showToast(
+          isRTL
+            ? 'تم تعطيل حساب المسؤول بنجاح — يمكن إعادة تفعيله لاحقاً'
+            : 'Admin account deactivated successfully — it can be reactivated later',
+          'success'
+        );
         setDeleteTarget(null);
-        fetchAdmins();
+        fetchAdmins(); // Re-sync with server
+      } else {
+        // Rollback optimistic update on failure
+        setAdmins((prev: any[]) =>
+          prev.map((a: any) =>
+            a.id === deleteTarget.id ? { ...a, isActive: true, deactivatedAt: null } : a
+          )
+        );
+        showToast(res.message || (isRTL ? 'فشل تعطيل المسؤول' : 'Failed to deactivate admin'), 'error');
       }
     } catch (error: any) {
-      showToast(error.response?.data?.message || (isRTL ? 'فشل حذف المسؤول' : 'Failed to delete admin'), 'error');
+      // Rollback optimistic update on exception
+      setAdmins((prev: any[]) =>
+        prev.map((a: any) =>
+          a.id === deleteTarget.id ? { ...a, isActive: true, deactivatedAt: null } : a
+        )
+      );
+      showToast(
+        error.response?.data?.message || (isRTL ? 'فشل تعطيل المسؤول' : 'Failed to deactivate admin'),
+        'error'
+      );
     } finally {
       setDeleteLoading(false);
     }
@@ -266,49 +295,90 @@ const AdminsList = () => {
     }
   }, [reactivateTarget, fetchAdmins, isRTL, showToast]);
 
+  // Single Permanent Delete Confirmation — Level 3
   const confirmHardDelete = useCallback(async () => {
     if (!hardDeleteTarget) return;
-    if (hardDeleteConfirmEmail !== hardDeleteTarget.email) return;
     setDeleteLoading(true);
     try {
-      const res = await usersService.hardDeleteUser(hardDeleteTarget.id, hardDeleteConfirmEmail);
+      const res = await usersService.hardDeleteUser(hardDeleteTarget.id);
       if (res.success) {
-        showToast(isRTL ? 'تم حذف المسؤول نهائياً بنجاح' : 'Admin permanently deleted', 'success');
+        setAdmins((prev: any[]) => prev.filter((a: any) => a.id !== hardDeleteTarget.id));
+        showToast(
+          isRTL ? 'تم حذف المسؤول نهائياً وبشكل دائم' : 'Admin permanently and irreversibly deleted',
+          'success'
+        );
+        setSelectedIds((prev) => prev.filter((id) => id !== hardDeleteTarget.id));
         fetchAdmins();
+      } else {
+        showToast(
+          res.message || (isRTL ? 'فشل الحذف النهائي' : 'Permanent deletion failed'),
+          'error'
+        );
       }
     } catch (err: any) {
       console.error('Hard delete error:', err);
-      const status = err.response?.status;
       const msg = err.response?.data?.message;
-      if (status === 409) {
-        showToast(msg || (isRTL ? 'هذا الحساب لديه سجلات نظام. قم بإلغاء تنشيطه بدلاً من الحذف النهائي.' : 'This account has audit history. Deactivate it instead.'), 'error');
-      } else {
-        showToast(msg || (isRTL ? 'حدث خطأ أثناء الحذف' : 'Failed to permanently delete admin'), 'error');
-      }
+      showToast(
+        msg || (isRTL ? 'حدث خطأ أثناء الحذف الدائم' : 'Failed to permanently delete admin'),
+        'error'
+      );
     } finally {
       setDeleteLoading(false);
       setHardDeleteTarget(null);
-      setHardDeleteConfirmEmail('');
     }
-  }, [hardDeleteTarget, hardDeleteConfirmEmail, isRTL, showToast, fetchAdmins]);
+  }, [hardDeleteTarget, isRTL, showToast, fetchAdmins]);
 
-  // Bulk Deactivate Confirmation
+  // Bulk Deactivate Confirmation — Level 1 (batch)
   const confirmBulkDeactivate = useCallback(async () => {
     try {
       setDeleteLoading(true);
       let count = 0;
+      const failedIds: (string | number)[] = [];
+
       for (const id of selectedIds) {
         if (id !== user?.id) {
-          await usersService.deleteUser(id);
-          count++;
+          const res = await usersService.deleteUser(id);
+          if (res.success) {
+            count++;
+          } else {
+            failedIds.push(id);
+          }
         }
       }
-      showToast(isRTL ? `تم تعطيل ${count} من حسابات المسؤولين بنجاح` : `Deactivated ${count} admin accounts successfully`, 'success');
+
+      // Optimistically update state for all successfully deactivated admins
+      setAdmins((prev: any[]) =>
+        prev.map((a: any) =>
+          selectedIds.includes(a.id) && a.id !== user?.id && !failedIds.includes(a.id)
+            ? { ...a, isActive: false, deactivatedAt: new Date().toISOString() }
+            : a
+        )
+      );
+
+      if (failedIds.length > 0) {
+        showToast(
+          isRTL
+            ? `تم تعطيل ${count} حساب. فشل تعطيل ${failedIds.length} حساب.`
+            : `Deactivated ${count} account(s). Failed to deactivate ${failedIds.length}.`,
+          'error'
+        );
+      } else {
+        showToast(
+          isRTL
+            ? `تم تعطيل ${count} من حسابات المسؤولين بنجاح`
+            : `Deactivated ${count} admin account(s) successfully`,
+          'success'
+        );
+      }
+
       setSelectedIds([]);
       setShowBulkDeleteModal(false);
       fetchAdmins();
     } catch (error: any) {
-      showToast(isRTL ? 'حدث خطأ أثناء تعطيل بعض الحسابات' : 'Error deactivating some accounts', 'error');
+      showToast(
+        isRTL ? 'حدث خطأ أثناء تعطيل بعض الحسابات' : 'Error deactivating some accounts',
+        'error'
+      );
     } finally {
       setDeleteLoading(false);
     }
@@ -334,31 +404,45 @@ const AdminsList = () => {
     }
   }, [selectedIds, fetchAdmins, isRTL, showToast]);
 
-  // Bulk Hard Delete Confirmation
+  // Bulk Permanent Delete Confirmation — Level 3 (batch)
   const confirmBulkHardDelete = useCallback(async () => {
     try {
       setDeleteLoading(true);
       let count = 0;
+      const deletedIds: (string | number)[] = [];
+
       for (const id of selectedIds) {
         if (id !== user?.id) {
-          const adminObj = (admins || []).find((a: any) => a.id === id);
-          if (adminObj) {
-            const res = await usersService.hardDeleteUser(id, adminObj.email);
-            if (res.success) count++;
+          const res = await usersService.hardDeleteUser(id);
+          if (res.success) {
+            count++;
+            deletedIds.push(id);
           }
         }
       }
-      showToast(isRTL ? `تم حذف ${count} من حسابات المسؤولين نهائياً` : `Permanently deleted ${count} admin accounts`, 'success');
+
+      if (deletedIds.length > 0) {
+        setAdmins((prev: any[]) => prev.filter((a: any) => !deletedIds.includes(a.id)));
+      }
+
+      showToast(
+        isRTL
+          ? `تم حذف ${count} من حسابات المسؤولين نهائياً وبشكل دائم`
+          : `Permanently deleted ${count} admin account(s)`,
+        'success'
+      );
       setSelectedIds([]);
       setShowBulkHardDeleteModal(false);
       fetchAdmins();
     } catch (error: any) {
-      showToast(isRTL ? 'حدث خطأ أثناء الحذف النهائي لبعض الحسابات' : 'Error permanently deleting some accounts', 'error');
+      showToast(
+        isRTL ? 'حدث خطأ أثناء الحذف النهائي لبعض الحسابات' : 'Error permanently deleting some accounts',
+        'error'
+      );
     } finally {
       setDeleteLoading(false);
-      setBulkHardDeleteConfirmText('');
     }
-  }, [selectedIds, user, admins, fetchAdmins, isRTL, showToast]);
+  }, [selectedIds, user, fetchAdmins, isRTL, showToast]);
 
   return (
     <div className="pt-6 section-gap animate-in fade-in duration-700 space-y-6">
@@ -382,66 +466,38 @@ const AdminsList = () => {
       {/* ========================================================================= */}
       {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-        {/* Total Admins */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'إجمالي المسؤولين' : 'Total Admins'}
-            </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
-              {totalAdminsCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <ShieldCheck size={16} />
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={isRTL ? 'إجمالي المسؤولين' : 'Total Admins'}
+          value={totalAdminsCount}
+          icon={ShieldCheck}
+          color="primary"
+        />
 
-        {/* Active Admins */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'الحسابات النشطة' : 'Active Admins'}
-            </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
-              {activeAdminsCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-            <UserCheck size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'الحسابات النشطة' : 'Active Admins'}
+          value={activeAdminsCount}
+          icon={UserCheck}
+          color="emerald"
+        />
 
-        {/* University Admins */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'مسؤولو الجامعة' : 'University Admins'}
-            </span>
-            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
-              {universityAdminsCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-            <Shield size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'مسؤولو الجامعة' : 'University Admins'}
+          value={universityAdminsCount}
+          icon={Shield}
+          color="blue"
+        />
 
-        {/* College & Dept Admins */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'مسؤولو الكليات والأقسام' : 'Faculty & Dept Admins'}
-            </span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
-              {collegeAndDeptAdminsCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <Building2 size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'مسؤولو الكليات والأقسام' : 'Faculty & Dept Admins'}
+          value={collegeAndDeptAdminsCount}
+          icon={Building2}
+          color="amber"
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -614,7 +670,7 @@ const AdminsList = () => {
                     let roleLabel = isRTL ? 'مسؤول' : 'Admin';
 
                     if (admin.role === 'SUPER_ADMIN') {
-                      roleClass = 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
+                      roleClass = 'bg-brand-navy-50 text-brand-navy-600 dark:bg-slate-700 dark:text-slate-100 border border-brand-navy-200/50';
                       roleLabel = isRTL ? 'مسؤول الجامعة (Super Admin)' : 'Super Admin';
                     } else if (admin.role === 'COLLEGE_ADMIN') {
                       roleClass = 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400';
@@ -673,10 +729,7 @@ const AdminsList = () => {
                           label: isRTL ? 'حذف الحساب نهائياً' : 'Permanent Delete',
                           icon: Trash2,
                           variant: 'delete',
-                          onClick: () => {
-                            setHardDeleteTarget(admin);
-                            setHardDeleteConfirmEmail('');
-                          },
+                          onClick: () => setHardDeleteTarget(admin),
                         });
                       }
                     }
@@ -788,17 +841,13 @@ const AdminsList = () => {
             </div>
 
             {/* Pagination Component */}
-            {totalPages > 1 && (
-              <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20">
-                <Pagination
-                  page={page}
-                  totalPages={totalPages}
-                  onPageChange={setPage}
-                  totalRecords={totalRecords}
-                  limit={limit}
-                />
-              </div>
-            )}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalRecords={totalRecords}
+              limit={limit}
+            />
           </Card>
         )}
       </div>
@@ -828,112 +877,112 @@ const AdminsList = () => {
         type="admin"
       />
 
-      {/* Single Deactivate Confirmation Modal */}
+      {/* Single Deactivate Confirmation Modal — Level 1 */}
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
+        onClose={() => !deleteLoading && setDeleteTarget(null)}
         itemName={deleteTarget?.email || ''}
         onConfirm={confirmDelete}
         loading={deleteLoading}
         variant="warning"
-        title={isRTL ? 'تأكيد تعطيل المسؤول' : 'Confirm Deactivate Admin'}
-        confirmLabel={isRTL ? 'تعطيل الحساب' : 'Deactivate Admin'}
+        title={isRTL ? 'تأكيد تعطيل حساب المسؤول' : 'Confirm Deactivate Admin Account'}
+        confirmLabel={isRTL ? 'تعطيل الحساب' : 'Deactivate Account'}
         message={
           isRTL
-            ? `هل أنت متأكد من تعطيل حساب المسؤول "${deleteTarget?.email}"؟ سيتم إيقاف صلاحيات الوصول لهذا الحساب ويمكنك إعادة تفعيله لاحقاً.`
-            : `Are you sure you want to deactivate admin account "${deleteTarget?.email}"? Access permissions will be paused and this account can be reactivated later.`
+            ? `هل أنت متأكد من تعطيل حساب المسؤول "${deleteTarget?.email}"؟ سيتم تعليق صلاحيات الوصول — ويمكنك إعادة تفعيل الحساب في أي وقت.`
+            : `Are you sure you want to deactivate admin "${deleteTarget?.email}"? Access will be suspended — you can reactivate this account at any time.`
         }
       />
 
-      {/* Single Reactivate Confirmation Modal */}
+      {/* Single Reactivate Confirmation Modal — Level 2 */}
       <ConfirmDeleteModal
         isOpen={!!reactivateTarget}
-        onClose={() => setReactivateTarget(null)}
+        onClose={() => !reactivateLoading && setReactivateTarget(null)}
         itemName={reactivateTarget?.email || ''}
         onConfirm={confirmReactivate}
         loading={reactivateLoading}
         variant="warning"
-        title={isRTL ? 'تأكيد إعادة تفعيل المسؤول' : 'Confirm Reactivate Admin'}
-        confirmLabel={isRTL ? 'تفعيل الحساب' : 'Reactivate Account'}
+        title={isRTL ? 'تأكيد إعادة تفعيل الحساب' : 'Confirm Reactivate Admin Account'}
+        confirmLabel={isRTL ? 'إعادة تفعيل الحساب' : 'Reactivate Account'}
         message={
           isRTL
             ? `هل أنت متأكد من إعادة تفعيل حساب المسؤول "${reactivateTarget?.email}"؟ سيتم استعادة جميع صلاحيات الوصول الخاصة به فوراً.`
-            : `Are you sure you want to reactivate admin account "${reactivateTarget?.email}"? All account access permissions will be restored immediately.`
+            : `Are you sure you want to reactivate admin "${reactivateTarget?.email}"? All access permissions will be restored immediately.`
         }
       />
 
-      {/* Bulk Deactivate Confirmation Modal */}
+      {/* Bulk Deactivate Confirmation Modal — Level 1 (batch) */}
       <ConfirmDeleteModal
         isOpen={showBulkDeleteModal}
-        onClose={() => setShowBulkDeleteModal(false)}
-        itemName={`${selectedIds.length} ${isRTL ? 'مسؤولين' : 'admins'}`}
+        onClose={() => !deleteLoading && setShowBulkDeleteModal(false)}
+        itemName={`${selectedIds.length} ${isRTL ? 'مسؤول' : 'admin(s)'}`}
         onConfirm={confirmBulkDeactivate}
         loading={deleteLoading}
         variant="warning"
         title={isRTL ? 'تأكيد تعطيل الحسابات المحددة' : 'Confirm Deactivate Selected Admins'}
-        confirmLabel={isRTL ? 'تعطيل الحسابات' : 'Deactivate Accounts'}
+        confirmLabel={isRTL ? 'تعطيل الحسابات المحددة' : 'Deactivate Selected Accounts'}
         message={
           isRTL
-            ? `هل أنت متأكد من تعطيل ${selectedIds.length} من حسابات المسؤولين المحددة؟ سيتم إيقاف صلاحيات الوصول لهذه الحسابات ويمكنك إعادة تفعيلها لاحقاً.`
-            : `Are you sure you want to deactivate ${selectedIds.length} selected admin accounts? Access permissions will be paused and these accounts can be reactivated later.`
+            ? `هل أنت متأكد من تعطيل ${selectedIds.length} من حسابات المسؤولين المحددة؟ سيتم تعليق صلاحيات الوصول ويمكنك إعادة تفعيلها لاحقاً.`
+            : `Are you sure you want to deactivate ${selectedIds.length} selected admin account(s)? Access will be suspended — these accounts can be reactivated later.`
         }
       />
 
-      {/* Bulk Reactivate Confirmation Modal */}
+      {/* Bulk Reactivate Confirmation Modal — Level 2 (batch) */}
       <ConfirmDeleteModal
         isOpen={showBulkReactivateModal}
-        onClose={() => setShowBulkReactivateModal(false)}
-        itemName={`${selectedIds.length} ${isRTL ? 'مسؤولين' : 'admins'}`}
+        onClose={() => !deleteLoading && setShowBulkReactivateModal(false)}
+        itemName={`${selectedIds.length} ${isRTL ? 'مسؤول' : 'admin(s)'}`}
         onConfirm={confirmBulkReactivate}
         loading={deleteLoading}
         variant="warning"
         title={isRTL ? 'تأكيد إعادة تفعيل الحسابات المحددة' : 'Confirm Reactivate Selected Admins'}
-        confirmLabel={isRTL ? 'تفعيل الحسابات' : 'Reactivate Accounts'}
+        confirmLabel={isRTL ? 'إعادة تفعيل الحسابات المحددة' : 'Reactivate Selected Accounts'}
         message={
           isRTL
             ? `هل أنت متأكد من إعادة تفعيل ${selectedIds.length} من حسابات المسؤولين المحددة؟ سيتم استعادة جميع صلاحيات الوصول الخاصة بهم فوراً.`
-            : `Are you sure you want to reactivate ${selectedIds.length} selected admin accounts? All account access permissions will be restored immediately.`
+            : `Are you sure you want to reactivate ${selectedIds.length} selected admin account(s)? All access permissions will be restored immediately.`
         }
       />
 
-      {/* Bulk Permanent Hard Delete Confirmation Modal */}
+      {/* Bulk Permanent Hard Delete Confirmation Modal — Level 3 (batch) */}
       {showBulkHardDeleteModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowBulkHardDeleteModal(false)} />
-          <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => !deleteLoading && setShowBulkHardDeleteModal(false)}
+          />
+          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Red header bar */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 to-red-600" />
             <div className="p-6">
-              <div className="flex items-center gap-4 text-rose-600 dark:text-rose-500 mb-4">
-                <div className="p-3 bg-rose-100 dark:bg-rose-900/30 rounded-full">
-                  <AlertTriangle className="w-6 h-6" />
+              <div className="flex items-start gap-4 mb-5">
+                <div className="p-3 bg-rose-100 dark:bg-rose-900/30 rounded-full shrink-0 mt-0.5">
+                  <AlertTriangle className="w-6 h-6 text-rose-600 dark:text-rose-400" />
                 </div>
-                <h3 className="text-xl font-bold">
-                  {isRTL ? 'حذف نهائي للحسابات المحددة' : 'Permanent Delete Selected Admins'}
-                </h3>
-              </div>
-              
-              <div className="space-y-4">
-                <p className="text-slate-600 dark:text-slate-300">
-                  {isRTL 
-                    ? `هل أنت متأكد أنك تريد الحذف النهائي لـ ${selectedIds.length} من حسابات المسؤولين المحددة؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذف جميع البيانات المرتبطة بها بشكل دائم.`
-                    : `Are you sure you want to permanently delete ${selectedIds.length} selected admin accounts? This action cannot be undone and will permanently remove all associated data.`}
-                </p>
-
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    {isRTL ? 'لتأكيد الحذف النهائي، يرجى كتابة "DELETE":' : 'To confirm permanent delete, please type "DELETE":'}
-                  </label>
-                  <input
-                    type="text"
-                    value={bulkHardDeleteConfirmText}
-                    onChange={(e) => setBulkHardDeleteConfirmText(e.target.value)}
-                    placeholder="DELETE"
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none uppercase font-mono tracking-widest text-center"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    spellCheck="false"
-                  />
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    {isRTL ? 'حذف دائم للحسابات المحددة' : 'Permanently Delete Selected Admins'}
+                  </h3>
+                  <p className="text-xs text-rose-500 font-bold mt-1">
+                    {isRTL ? 'هذا الإجراء لا يمكن التراجع عنه نهائياً' : 'This action is permanent and cannot be undone'}
+                  </p>
                 </div>
               </div>
+
+              {/* Account count pill */}
+              <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
+                <span className="text-rose-600 dark:text-rose-400 font-black text-2xl">{selectedIds.length}</span>
+                <span className="text-sm text-rose-700 dark:text-rose-300 font-semibold">
+                  {isRTL ? 'حساب مسؤول سيتم حذفه بشكل لا رجعة فيه' : `admin account${selectedIds.length !== 1 ? 's' : ''} will be permanently erased`}
+                </span>
+              </div>
+
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {isRTL
+                  ? 'سيتم حذف جميع بيانات هذه الحسابات بشكل كامل من قاعدة البيانات. تأكد من عملية الاختيار قبل المتابعة.'
+                  : 'All data for these accounts will be completely erased from the database. Verify your selection before proceeding.'}
+              </p>
             </div>
 
             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
@@ -941,59 +990,65 @@ const AdminsList = () => {
                 variant="outline"
                 onClick={() => setShowBulkHardDeleteModal(false)}
                 disabled={deleteLoading}
+                className="font-semibold"
               >
                 {isRTL ? 'إلغاء' : 'Cancel'}
               </Button>
               <Button
                 variant="danger"
                 onClick={confirmBulkHardDelete}
-                disabled={bulkHardDeleteConfirmText.trim().toUpperCase() !== 'DELETE' || deleteLoading}
+                disabled={deleteLoading}
+                className="font-bold"
               >
-                {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isRTL ? 'حذف نهائي للكل' : 'Delete All Permanently'}
+                {deleteLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : isRTL ? (
+                  `حذف ${selectedIds.length} حساب نهائياً`
+                ) : (
+                  `Delete ${selectedIds.length} Account${selectedIds.length !== 1 ? 's' : ''} Permanently`
+                )}
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Permanent Hard Delete Confirmation Modal */}
+      {/* Single Permanent Hard Delete Confirmation Modal — Level 3 */}
       {hardDeleteTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setHardDeleteTarget(null)} />
-          <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => !deleteLoading && setHardDeleteTarget(null)}
+          />
+          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Red header bar */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 to-red-600" />
             <div className="p-6">
-              <div className="flex items-center gap-4 text-rose-600 dark:text-rose-500 mb-4">
-                <div className="p-3 bg-rose-100 dark:bg-rose-900/30 rounded-full">
-                  <AlertTriangle className="w-6 h-6" />
+              <div className="flex items-start gap-4 mb-5">
+                <div className="p-3 bg-rose-100 dark:bg-rose-900/30 rounded-full shrink-0 mt-0.5">
+                  <AlertTriangle className="w-6 h-6 text-rose-600 dark:text-rose-400" />
                 </div>
-                <h3 className="text-xl font-bold">
-                  {isRTL ? 'حذف نهائي' : 'Permanent Delete'}
-                </h3>
-              </div>
-              
-              <div className="space-y-4">
-                <p className="text-slate-600 dark:text-slate-300">
-                  {isRTL 
-                    ? `هل أنت متأكد أنك تريد الحذف النهائي لحساب المسؤول "${hardDeleteTarget.email}"؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذف جميع البيانات المرتبطة بهذا الحساب بشكل دائم.`
-                    : `Are you sure you want to permanently delete admin account "${hardDeleteTarget.email}"? This action cannot be undone and will permanently remove all associated data.`}
-                </p>
-
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    {isRTL ? 'لتأكيد الحذف، يرجى كتابة البريد الإلكتروني للحساب:' : 'To confirm, please type the admin email:'}
-                  </label>
-                  <input
-                    type="text"
-                    value={hardDeleteConfirmEmail}
-                    onChange={(e) => setHardDeleteConfirmEmail(e.target.value)}
-                    placeholder={hardDeleteTarget.email}
-                    className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    spellCheck="false"
-                  />
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    {isRTL ? 'حذف دائم للحساب' : 'Permanently Delete Account'}
+                  </h3>
+                  <p className="text-xs text-rose-500 font-bold mt-1">
+                    {isRTL ? 'هذا الإجراء لا يمكن التراجع عنه نهائياً' : 'This action is permanent and cannot be undone'}
+                  </p>
                 </div>
               </div>
+
+              {/* Account email pill */}
+              <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 font-mono text-sm break-all">
+                <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
+                <span className="text-rose-700 dark:text-rose-300 font-bold">{hardDeleteTarget.email}</span>
+              </div>
+
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {isRTL
+                  ? 'سيتم حذف جميع بيانات هذا الحساب بشكل كامل من قاعدة البيانات. تأكد من صحة الحساب المحدد قبل المتابعة.'
+                  : 'All data for this account will be completely erased from the database. Verify this is the correct account before proceeding.'}
+              </p>
             </div>
 
             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
@@ -1001,15 +1056,23 @@ const AdminsList = () => {
                 variant="outline"
                 onClick={() => setHardDeleteTarget(null)}
                 disabled={deleteLoading}
+                className="font-semibold"
               >
                 {isRTL ? 'إلغاء' : 'Cancel'}
               </Button>
               <Button
                 variant="danger"
                 onClick={confirmHardDelete}
-                disabled={hardDeleteConfirmEmail !== hardDeleteTarget.email || deleteLoading}
+                disabled={deleteLoading}
+                className="font-bold"
               >
-                {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isRTL ? 'حذف نهائي' : 'Delete Permanently'}
+                {deleteLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : isRTL ? (
+                  'حذف الحساب نهائياً'
+                ) : (
+                  'Delete Account Permanently'
+                )}
               </Button>
             </div>
           </div>

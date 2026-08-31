@@ -30,7 +30,7 @@ import {
 import attendanceService from '../../services/attendance.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
-import Card from '../../components/ui/Card';
+import Card from '../../components/ui/card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/button';
 import { EmptyState } from '../../components/ui/EmptyState';

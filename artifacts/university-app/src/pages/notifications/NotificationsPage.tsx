@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
 import { useTranslation } from 'react-i18next';
-import Card from '../../components/ui/Card';
+import Card from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import { PageHeader } from '../../components/ui/PageHeader';

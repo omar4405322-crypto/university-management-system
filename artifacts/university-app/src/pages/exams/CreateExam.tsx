@@ -16,7 +16,7 @@ import {
   Loader2,
   Info,
 } from 'lucide-react';
-import Card from '../../components/ui/Card';
+import Card from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { DEFAULT_ANTI_CHEAT_SETTINGS } from './examUtils';

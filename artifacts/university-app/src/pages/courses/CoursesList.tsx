@@ -1,13 +1,13 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody } from '../../components/ui/Table';
 import Badge from '../../components/ui/Badge';
 import LoadingState from '../../components/ui/LoadingState';
 import { TruncatedText } from '../../components/ui/TruncatedText';
 import { EmptyState } from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
-import Pagination from '../../components/ui/Pagination';
+import Pagination from '../../components/ui/pagination';
 import Button from '../../components/ui/button';
 import {
   BookOpen,
@@ -58,6 +58,7 @@ export function CoursesList() {
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
+  const [pageSize, setPageSize] = useState(10);
 
   const {
     data: courses,
@@ -74,9 +75,10 @@ export function CoursesList() {
     departmentId: selectedDept,
     year: selectedYear,
     semester: selectedSemester,
+    limit: pageSize,
   });
 
-  const totalPages = Math.ceil(total / 10);
+  const totalPages = Math.ceil(total / pageSize) || 1;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -309,66 +311,40 @@ export function CoursesList() {
       {/* ========================================================================= */}
       {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {/* Total Courses */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('dashboard.totalCourses', 'Total Courses')}
-            </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5">
-              {total}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <BookOpen size={16} />
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard
+          compact
+          title={t('dashboard.totalCourses', 'Total Courses')}
+          value={total}
+          icon={BookOpen}
+          color="primary"
+        />
 
-        {/* Active Published */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'المقررات المنشورة' : 'Active Published'}
-            </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5">
-              {publishedCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CheckCircle2 size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'المقررات المنشورة' : 'Active Published'}
+          value={publishedCount}
+          icon={CheckCircle2}
+          color="emerald"
+        />
 
-        {/* Unassigned Instructors */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('courses.unassignedCourses', 'Unassigned Courses')}
-            </span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5">
-              {unassignedCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <AlertCircle size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('courses.unassignedCourses', 'Unassigned Courses')}
+          value={unassignedCount}
+          icon={AlertCircle}
+          color="amber"
+          alert={unassignedCount > 0}
+          alertLabel={isRTL ? 'تنبيه' : 'Alert'}
+        />
 
-        {/* Total Enrollments */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('dashboard.totalStudents', 'Total Students')}
-            </span>
-            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5">
-              {totalEnrollments}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-            <Users size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('dashboard.totalStudents', 'Total Students')}
+          value={totalEnrollments}
+          icon={Users}
+          color="blue"
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -724,8 +700,18 @@ export function CoursesList() {
               </TableBody>
             </Table>
 
-            <div className="p-3 border-t border-slate-100 dark:border-slate-700/60">
-              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            <div className="border-t border-slate-100 dark:border-slate-700/60">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                total={total}
+                pageSize={pageSize}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setPage(1);
+                }}
+              />
             </div>
           </>
         )}
