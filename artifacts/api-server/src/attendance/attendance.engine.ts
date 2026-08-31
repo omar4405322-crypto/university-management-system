@@ -303,9 +303,10 @@ class AttendanceEngine {
           status: intent.status || 'PRESENT',
           method: intent.method,
           ...(intent.remarks !== undefined && { remarks: intent.remarks }),
-          ...(intent.recordedById !== undefined && intent.recordedById !== null
-            ? { recordedBy: { connect: { id: intent.recordedById } } }
-            : { recordedBy: { disconnect: true } }),
+          ...(intent.recordedById !== undefined &&
+            intent.recordedById !== null && {
+              recordedBy: { connect: { id: intent.recordedById } },
+            }),
           ...(intent.ipAddress !== undefined && {
             ipAddress: intent.ipAddress,
           }),
