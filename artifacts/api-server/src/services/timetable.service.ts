@@ -333,16 +333,7 @@ class TimetableService {
             dayOfWeek: dayUpper,
             ...timeOverlap,
             ...excludeCondition,
-            OR: [
-              { groupId: { in: lineageGroupIds } },
-              {
-                groupId: null,
-                course: {
-                  departmentId: targetGroup.departmentId,
-                  year: targetGroup.year,
-                },
-              },
-            ],
+            groupId: { in: lineageGroupIds },
           },
           include: {
             course: { select: { name: true } },
@@ -354,8 +345,8 @@ class TimetableService {
           const courseStr = groupConflict.course?.name || 'مادة أخرى';
           conflicts.push({
             type: 'GROUP_CONFLICT',
-            messageAr: `المجموعة الطلابية أو الدفعة لديها حصة أخرى (${courseStr}) مجدولة في نفس الفترة (${groupConflict.startTime} - ${groupConflict.endTime}).`,
-            messageEn: `The student group or cohort is already scheduled for (${courseStr}) at (${groupConflict.startTime} - ${groupConflict.endTime}).`,
+            messageAr: `المجموعة الطلابية (${groupConflict.group?.name || targetGroup.name}) لديها حصة أخرى (${courseStr}) مجدولة في نفس الفترة (${groupConflict.startTime} - ${groupConflict.endTime}).`,
+            messageEn: `The student group (${groupConflict.group?.name || targetGroup.name}) is already scheduled for (${courseStr}) at (${groupConflict.startTime} - ${groupConflict.endTime}).`,
             conflictingSlot: {
               courseName: courseStr,
               time: `${groupConflict.startTime} - ${groupConflict.endTime}`,
@@ -371,16 +362,7 @@ class TimetableService {
             ...activeOverrideDateRange,
             ...(excludeSlotId ? { scheduleSlotId: { not: Number(excludeSlotId) } } : {}),
             scheduleSlot: {
-              OR: [
-                { groupId: { in: lineageGroupIds } },
-                {
-                  groupId: null,
-                  course: {
-                    departmentId: targetGroup.departmentId,
-                    year: targetGroup.year,
-                  },
-                },
-              ],
+              groupId: { in: lineageGroupIds },
             },
           },
         });
@@ -388,102 +370,8 @@ class TimetableService {
         if (overrideGroupConflict) {
           conflicts.push({
             type: 'GROUP_CONFLICT',
-            messageAr: `توجد حصة استثنائية نشطة لهذه المجموعة الطلابية أو الدفعة في نفس الوقت.`,
-            messageEn: `An active schedule override exists for this student group or cohort at this time.`,
-          });
-        }
-      }
-    } else {
-      // Check department / year cohort conflict
-      let targetDeptId = departmentId ? Number(departmentId) : null;
-      let targetYear = academicYear ? Number(academicYear) : null;
-      let targetSemester = semester ? Number(semester) : null;
-
-      if ((!targetDeptId || !targetYear) && courseId) {
-        const course = await tx.course.findUnique({
-          where: { id: Number(courseId) },
-          select: { departmentId: true, year: true, semester: true },
-        });
-
-        if (course) {
-          if (!targetDeptId && course.departmentId) targetDeptId = course.departmentId;
-          if (!targetYear && course.year) targetYear = course.year;
-          if (!targetSemester && course.semester) targetSemester = course.semester;
-        }
-      }
-
-      if (targetDeptId && targetYear) {
-        const deptConflict = await tx.scheduleSlot.findFirst({
-          where: {
-            dayOfWeek: dayUpper,
-            ...timeOverlap,
-            ...excludeCondition,
-            OR: [
-              {
-                course: {
-                  departmentId: targetDeptId,
-                  year: targetYear,
-                  ...(targetSemester ? { semester: targetSemester } : {}),
-                },
-              },
-              {
-                group: {
-                  departmentId: targetDeptId,
-                  year: targetYear,
-                },
-              },
-            ],
-          },
-          include: {
-            course: { select: { name: true } },
-          },
-        });
-
-        if (deptConflict) {
-          const courseStr = deptConflict.course?.name || 'مادة أخرى';
-          conflicts.push({
-            type: 'BATCH_OVERLAP',
-            messageAr: `توجد بالفعل مادة أخرى (${courseStr}) مجدولة لنفس السنة والقسم في هذه الفترة الزمنية (${deptConflict.startTime} - ${deptConflict.endTime}).`,
-            messageEn: `Another course (${courseStr}) is already scheduled for this batch in this time slot (${deptConflict.startTime} - ${deptConflict.endTime}).`,
-            conflictingSlot: {
-              courseName: courseStr,
-              time: `${deptConflict.startTime} - ${deptConflict.endTime}`,
-              room: deptConflict.room,
-            },
-          });
-        }
-
-        const overrideDeptConflict = await tx.scheduleOverride.findFirst({
-          where: {
-            dayOfWeek: dayUpper,
-            ...timeOverlap,
-            ...activeOverrideDateRange,
-            ...(excludeSlotId ? { scheduleSlotId: { not: Number(excludeSlotId) } } : {}),
-            scheduleSlot: {
-              OR: [
-                {
-                  course: {
-                    departmentId: targetDeptId,
-                    year: targetYear,
-                    ...(targetSemester ? { semester: targetSemester } : {}),
-                  },
-                },
-                {
-                  group: {
-                    departmentId: targetDeptId,
-                    year: targetYear,
-                  },
-                },
-              ],
-            },
-          },
-        });
-
-        if (overrideDeptConflict) {
-          conflicts.push({
-            type: 'BATCH_OVERLAP',
-            messageAr: `توجد حصة استثنائية نشطة لنفس الفرقة والقسم في هذه الفترة الزمنية.`,
-            messageEn: `An active schedule override exists for this department and year at this time.`,
+            messageAr: `توجد حصة استثنائية نشطة لهذه المجموعة الطلابية في نفس الوقت.`,
+            messageEn: `An active schedule override exists for this student group at this time.`,
           });
         }
       }

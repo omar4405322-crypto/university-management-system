@@ -4,25 +4,34 @@ import { auditLog } from '../utils/audit.utils';
 import bcrypt from 'bcryptjs';
 
 import catchAsync from '../utils/catchAsync';
-import { AppError, NotFoundError, AuthorizationError } from '../utils/appError';
+import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
+import { TimetableService } from '../services/timetable.service';
 
 function assertTAScope(
-  ta: { departmentId?: number | null; department?: { collegeId: number } | null },
+  ta: {
+    departmentId?: number | null;
+    department?: { collegeId?: number | null } | null;
+    scheduleSlots?: any[];
+  },
   user: { role: string; managedCollegeId?: number | null; managedDepartmentId?: number | null }
 ): boolean {
   if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return true;
   if (user.role === 'COLLEGE_ADMIN') {
-    return ta.department?.collegeId === user.managedCollegeId;
+    if (ta.department?.collegeId === user.managedCollegeId) return true;
+    if (ta.scheduleSlots?.some((s: any) => s.course?.department?.collegeId === user.managedCollegeId)) return true;
+    return false;
   }
   if (user.role === 'DEPARTMENT_ADMIN') {
-    return ta.departmentId === user.managedDepartmentId;
+    if (ta.departmentId === user.managedDepartmentId) return true;
+    if (ta.scheduleSlots?.some((s: any) => s.course?.departmentId === user.managedDepartmentId)) return true;
+    return false;
   }
   return false;
 }
 
 export const getTAStats = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const scopeWhere: any = getScopeWhere(req.user!);
+  const scopeWhere: any = getScopeWhere(req.user!, 'teachingAssistant');
 
   const [totalTAs, activeTAs, onLeaveTAs] = await Promise.all([
     prisma.teachingAssistant.count({ where: scopeWhere }),
@@ -172,6 +181,16 @@ export const getTeachingAssistantById = catchAsync(async (req: Request, res: Res
       department: {
         include: { college: true },
       },
+      scheduleSlots: {
+        include: {
+          course: {
+            include: {
+              department: { include: { college: true } },
+              _count: { select: { enrollments: true, scheduleSlots: true } }
+            }
+          }
+        }
+      }
     },
   });
 
@@ -183,7 +202,121 @@ export const getTeachingAssistantById = catchAsync(async (req: Request, res: Res
     return res.status(403).json({ message: 'Access denied' });
   }
 
-  res.json({ success: true, data: ta });
+  // Extract unique courses from schedule slots
+  const courseMap = new Map<number, any>();
+  ta.scheduleSlots.forEach((slot: any) => {
+    if (slot.course && !courseMap.has(slot.course.id)) {
+      courseMap.set(slot.course.id, {
+        ...slot.course,
+        studentCount: slot.course._count?.enrollments || 0,
+        totalScheduledSlots: slot.course._count?.scheduleSlots || 0,
+      });
+    }
+  });
+  const taughtCourses = Array.from(courseMap.values());
+
+  res.json({ success: true, data: { ...ta, taughtCourses } });
+});
+
+export const assignTACourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const taId = req.params.id as string;
+  const { courseId, dayOfWeek, startTime, endTime, room, slotType } = req.body;
+
+  if (!courseId) return next(new ValidationError('courseId is required'));
+
+  const ta = await prisma.teachingAssistant.findUnique({
+    where: { id: taId },
+    include: { department: true }
+  });
+  if (!ta) return next(new NotFoundError('Teaching Assistant not found'));
+
+  const course = await prisma.course.findUnique({
+    where: { id: parseInt(courseId as string, 10) },
+    include: { department: true }
+  });
+  if (!course) return next(new NotFoundError('Course not found'));
+
+  const existingSlot = await prisma.scheduleSlot.findFirst({
+    where: { teachingAssistantId: taId, courseId: course.id }
+  });
+
+  const targetDay = (dayOfWeek || existingSlot?.dayOfWeek || 'MONDAY').toUpperCase();
+  const targetStart = startTime || existingSlot?.startTime || '12:00';
+  const targetEnd = endTime || existingSlot?.endTime || '14:00';
+  const targetRoom = room !== undefined ? (room ? String(room).trim() : null) : (existingSlot?.room || null);
+  const targetType = slotType || existingSlot?.slotType || 'TUTORIAL';
+
+  // Check conflicts across university
+  await TimetableService.checkConflicts({
+    dayOfWeek: targetDay,
+    startTime: targetStart,
+    endTime: targetEnd,
+    room: targetRoom,
+    courseId: course.id,
+    teachingAssistantId: taId,
+    excludeSlotId: existingSlot?.id,
+  });
+
+  if (existingSlot) {
+    await prisma.scheduleSlot.update({
+      where: { id: existingSlot.id },
+      data: {
+        dayOfWeek: targetDay,
+        startTime: targetStart,
+        endTime: targetEnd,
+        room: targetRoom,
+        slotType: targetType,
+      }
+    });
+  } else {
+    let timetableId: number | undefined;
+    if (course.departmentId) {
+      const foundTb = await prisma.timetable.findFirst({
+        where: {
+          departmentId: course.departmentId,
+          academicYear: course.year,
+          semester: course.semester,
+        }
+      });
+      if (foundTb) timetableId = foundTb.id;
+    }
+
+    await prisma.scheduleSlot.create({
+      data: {
+        courseId: course.id,
+        teachingAssistantId: taId,
+        slotType: targetType,
+        dayOfWeek: targetDay,
+        startTime: targetStart,
+        endTime: targetEnd,
+        room: targetRoom,
+        timetableId,
+      }
+    });
+  }
+
+  auditLog('ASSIGN_TA_COURSE', 'TeachingAssistant', String(taId), req);
+
+  res.json({
+    success: true,
+    message: `Successfully assigned ${ta.firstName || ''} ${ta.lastName || ''} to ${course.name} (${course.courseCode})`,
+  });
+});
+
+export const unassignTACourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const taId = req.params.id as string;
+  const courseId = parseInt(req.params.courseId as string, 10);
+
+  const deleted = await prisma.scheduleSlot.deleteMany({
+    where: { teachingAssistantId: taId, courseId }
+  });
+
+  auditLog('UNASSIGN_TA_COURSE', 'TeachingAssistant', String(taId), req);
+
+  res.json({
+    success: true,
+    message: `Removed ${deleted.count} assignments for course`,
+  });
 });
 
 export const createTeachingAssistant = catchAsync(async (req: Request, res: Response, next: NextFunction) => {

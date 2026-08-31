@@ -8,6 +8,8 @@ import {
   resetTeachingAssistantPassword,
   getTAStats,
   getSuggestedTeachingAssistants,
+  assignTACourse,
+  unassignTACourse,
 } from '../controllers/teachingAssistants.controller';
 import { protect, authorize } from '../middleware/auth.middleware';
 import { passwordResetLimiter } from '../middleware/rateLimiter.middleware';
@@ -26,10 +28,10 @@ router.get('/:id', getTeachingAssistantById);
 
 router.use(authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'));
 router.post('/', createTeachingAssistant);
+router.post('/:id/assign-course', assignTACourse);
+router.delete('/:id/courses/:courseId', unassignTACourse);
 router.put('/:id', updateTeachingAssistant);
 router.delete('/:id', deleteTeachingAssistant);
 router.patch('/:id/reset-password', passwordResetLimiter, resetTeachingAssistantPassword);
-
-// Doctor assignment routes removed
 
 export default router;
