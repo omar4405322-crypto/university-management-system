@@ -21,7 +21,7 @@ import ChartTooltip from '../../components/ui/ChartTooltip';
 import AddPaymentModal from './AddPaymentModal';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import Modal from '../../components/ui/Modal';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Table, {
   TableRow,
   TableCell,
@@ -368,117 +368,83 @@ export function FinanceDashboard() {
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE FINANCIAL KPI BADGES                                         */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         {isAdmin ? (
           <>
-            {/* Total Collected */}
-            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                  {t('finance.totalCollected', 'Total Collected')}
-                </span>
-                <TrendingUp size={14} className="text-emerald-500" />
-              </div>
-              <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                {isRTL ? 'ج.م ' : 'EGP '}
-                {Number(stats?.totalCollected || 0).toLocaleString()}
-              </div>
-            </div>
+            <StatCard
+              compact
+              title={t('finance.totalCollected', 'Total Collected')}
+              value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(stats?.totalCollected || 0).toLocaleString()}`}
+              icon={TrendingUp}
+              color="emerald"
+            />
 
-            {/* Total Pending */}
-            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-amber-700 dark:text-amber-400">
-                  {t('finance.totalPending', 'Total Pending')}
-                </span>
-                <Clock size={14} className="text-amber-500" />
-              </div>
-              <div className="text-lg sm:text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
-                {isRTL ? 'ج.م ' : 'EGP '}
-                {Number(stats?.totalPending || 0).toLocaleString()}
-              </div>
-            </div>
+            <StatCard
+              compact
+              title={t('finance.totalPending', 'Total Pending')}
+              value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(stats?.totalPending || 0).toLocaleString()}`}
+              icon={Clock}
+              color="amber"
+              alert={Number(stats?.totalPending || 0) > 0}
+              alertLabel={isRTL ? 'معلق' : 'Pending'}
+            />
 
-            {/* Total Overdue */}
-            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-rose-700 dark:text-rose-400">
-                  {t('finance.totalOverdue', 'Total Overdue')}
-                </span>
-                <AlertCircle size={14} className="text-rose-500" />
-              </div>
-              <div className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 font-mono">
-                {isRTL ? 'ج.م ' : 'EGP '}
-                {Number(stats?.totalOverdue || 0).toLocaleString()}
-              </div>
-            </div>
+            <StatCard
+              compact
+              title={t('finance.totalOverdue', 'Total Overdue')}
+              value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(stats?.totalOverdue || 0).toLocaleString()}`}
+              icon={AlertCircle}
+              color="rose"
+              alert={Number(stats?.totalOverdue || 0) > 0}
+              alertLabel={isRTL ? 'متأخر' : 'Overdue'}
+            />
 
-            {/* Active Plans */}
-            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-blue-700 dark:text-blue-400">
-                  {t('finance.activePlans', 'Active Payment Plans')}
-                </span>
-                <CreditCard size={14} className="text-blue-500" />
-              </div>
-              <div className="text-lg sm:text-xl font-black text-blue-600 dark:text-blue-400 font-mono">
-                {stats?.activePlans ?? stats?.totalPayments ?? payments.length}
-              </div>
-            </div>
+            <StatCard
+              compact
+              title={t('finance.activePlans', 'Active Payment Plans')}
+              value={stats?.activePlans ?? stats?.totalPayments ?? payments.length}
+              icon={CreditCard}
+              color="blue"
+            />
           </>
         ) : (
           /* Student Personal KPIs */
           <>
-            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                  {t('finance.totalPaid', 'Total Paid')}
-                </span>
-                <CheckCircle size={14} className="text-emerald-500" />
-              </div>
-              <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                {isRTL ? 'ج.م ' : 'EGP '}
-                {Number(studentStats?.totalPaid || 0).toLocaleString()}
-              </div>
-            </div>
+            <StatCard
+              compact
+              title={t('finance.totalPaid', 'Total Paid')}
+              value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(studentStats?.totalPaid || 0).toLocaleString()}`}
+              icon={CheckCircle}
+              color="emerald"
+            />
 
-            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-amber-700 dark:text-amber-400">
-                  {t('finance.totalPending', 'Total Pending')}
-                </span>
-                <Clock size={14} className="text-amber-500" />
-              </div>
-              <div className="text-lg sm:text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
-                {isRTL ? 'ج.م ' : 'EGP '}
-                {Number(studentStats?.totalPending || 0).toLocaleString()}
-              </div>
-            </div>
+            <StatCard
+              compact
+              title={t('finance.totalPending', 'Total Pending')}
+              value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(studentStats?.totalPending || 0).toLocaleString()}`}
+              icon={Clock}
+              color="amber"
+              alert={Number(studentStats?.totalPending || 0) > 0}
+              alertLabel={isRTL ? 'معلق' : 'Pending'}
+            />
 
-            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-rose-700 dark:text-rose-400">
-                  {t('finance.totalOverdue', 'Total Overdue')}
-                </span>
-                <AlertCircle size={14} className="text-rose-500" />
-              </div>
-              <div className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 font-mono">
-                {isRTL ? 'ج.م ' : 'EGP '}
-                {Number(studentStats?.totalOverdue || 0).toLocaleString()}
-              </div>
-            </div>
+            <StatCard
+              compact
+              title={t('finance.totalOverdue', 'Total Overdue')}
+              value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(studentStats?.totalOverdue || 0).toLocaleString()}`}
+              icon={AlertCircle}
+              color="rose"
+              alert={Number(studentStats?.totalOverdue || 0) > 0}
+              alertLabel={isRTL ? 'متأخر' : 'Overdue'}
+            />
 
-            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-bold text-blue-700 dark:text-blue-400">
-                  {isRTL ? 'إجمالي المعاملات' : 'Transactions'}
-                </span>
-                <Receipt size={14} className="text-blue-500" />
-              </div>
-              <div className="text-lg sm:text-xl font-black text-blue-600 dark:text-blue-400 font-mono">
-                {payments.length}
-              </div>
-            </div>
+            <StatCard
+              compact
+              title={isRTL ? 'إجمالي المعاملات' : 'Transactions'}
+              value={payments.length}
+              icon={Receipt}
+              color="blue"
+            />
           </>
         )}
       </div>
