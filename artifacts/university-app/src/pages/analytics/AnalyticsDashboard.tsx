@@ -34,7 +34,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import analyticsService from '../../services/analytics.service';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -226,59 +226,38 @@ export function AnalyticsDashboard() {
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE OVERVIEW METRIC BADGES                                       */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Total Students */}
-        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-bold text-slate-600 dark:text-slate-300">
-              {t('analytics.totalEnrollment', 'Total Students')}
-            </span>
-            <Users size={14} className="text-brand-primary-500" />
-          </div>
-          <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
-            {totalStudents.toLocaleString()}
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={t('analytics.totalEnrollment', 'Total Students')}
+          value={totalStudents.toLocaleString()}
+          icon={Users}
+          color="primary"
+        />
 
-        {/* Collected Revenue */}
-        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-bold text-emerald-700 dark:text-emerald-400">
-              {t('analytics.revenueMtd', 'Revenue (MTD)')}
-            </span>
-            <DollarSign size={14} className="text-emerald-500" />
-          </div>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-            {isRTL ? 'ج.م ' : 'EGP '}
-            {Number(totalRevenue).toLocaleString()}
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('analytics.revenueMtd', 'Revenue (MTD)')}
+          value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(totalRevenue).toLocaleString()}`}
+          icon={DollarSign}
+          color="emerald"
+        />
 
-        {/* Scheduled Exams */}
-        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-bold text-blue-700 dark:text-blue-400">
-              {t('analytics.scheduledExams', 'Scheduled Exams')}
-            </span>
-            <BookOpen size={14} className="text-blue-500" />
-          </div>
-          <div className="text-xl font-black text-blue-600 dark:text-blue-400 font-mono">
-            {totalExams}
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('analytics.scheduledExams', 'Scheduled Exams')}
+          value={totalExams}
+          icon={BookOpen}
+          color="blue"
+        />
 
-        {/* Average Attendance */}
-        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-bold text-purple-700 dark:text-purple-400">
-              {t('analytics.avgAttendance', 'Avg Attendance')}
-            </span>
-            <TrendingUp size={14} className="text-purple-500" />
-          </div>
-          <div className="text-xl font-black text-purple-600 dark:text-purple-400 font-mono">
-            {avgAttendance}%
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('analytics.avgAttendance', 'Avg Attendance')}
+          value={`${avgAttendance}%`}
+          icon={TrendingUp}
+          color="amber"
+        />
       </div>
 
       {/* ========================================================================= */}

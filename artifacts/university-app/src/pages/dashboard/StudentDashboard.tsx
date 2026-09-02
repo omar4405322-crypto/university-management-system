@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
@@ -81,7 +81,7 @@ export default function StudentDashboard() {
       change: t('dashboard.yearOfStudy'),
       trend: 'neutral',
       icon: BookOpen,
-      color: 'navy',
+      color: 'primary',
       link: '/record',
     },
     {
@@ -91,7 +91,7 @@ export default function StudentDashboard() {
       change: `${Math.round(stats?.profile?.successMetrics?.attendanceRate || 100)}% ${t('dashboard.attendance')}`,
       trend: ['HIGH', 'CRITICAL'].includes(stats?.profile?.successMetrics?.predictedRisk) ? 'down' : 'up',
       icon: Target,
-      color: ['HIGH', 'CRITICAL'].includes(stats?.profile?.successMetrics?.predictedRisk) ? 'yellow' : 'green',
+      color: ['HIGH', 'CRITICAL'].includes(stats?.profile?.successMetrics?.predictedRisk) ? 'rose' : 'emerald',
       link: '/attendance',
     },
     {
@@ -101,7 +101,7 @@ export default function StudentDashboard() {
       change: t('dashboard.pendingPayments'),
       trend: stats?.myPayments?.pending?.count > 0 ? 'down' : 'up',
       icon: DollarSign,
-      color: 'yellow',
+      color: 'amber',
       link: '/record',
     },
     {
@@ -111,7 +111,7 @@ export default function StudentDashboard() {
       change: t('dashboard.activeNow'),
       trend: 'neutral',
       icon: ClipboardList,
-      color: 'green',
+      color: 'blue',
       link: '/quizzes',
     },
     {
@@ -121,7 +121,7 @@ export default function StudentDashboard() {
       change: stats?.profile?.semester === 2 ? t('dashboard.spring') : t('dashboard.fall'),
       trend: 'neutral',
       icon: Calendar,
-      color: 'navy',
+      color: 'primary',
       link: '/schedules/student',
     },
   ];
@@ -179,45 +179,19 @@ export default function StudentDashboard() {
       </div>
 
       {/* === KPI Grid === */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-5 gap-5 xl:gap-6 2xl:gap-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-4">
         {kpis.map((kpi, idx) => (
-          <Card
+          <StatCard
             key={kpi.id || idx}
-            variant="default"
-            noPadding
+            compact
+            title={kpi.title}
+            value={kpi.value}
+            subtitle={kpi.change}
+            icon={kpi.icon}
+            color={kpi.color as any}
             onClick={() => kpi.link && navigate(kpi.link)}
-            className={`group hover:-translate-y-0.5 transition-all duration-300 overflow-hidden relative ${kpi.link ? 'cursor-pointer' : ''}`}
-          >
-            <div className="p-5 space-y-3">
-              <div className="flex justify-between items-start">
-                <div className={`p-2.5 rounded-2xl transition-colors duration-300 ease-in-out ${
-                  kpi.color === 'green'
-                    ? 'bg-brand-primary-50 dark:bg-brand-primary-950/20 text-brand-green dark:text-brand-green group-hover:text-brand-primary-700 dark:group-hover:text-brand-green-light'
-                    : kpi.color === 'navy'
-                    ? 'bg-brand-navy-50 dark:bg-slate-800/50 text-brand-navy-500 dark:text-slate-400 group-hover:text-brand-navy-700 dark:group-hover:text-slate-200'
-                    : 'bg-brand-accent-yellow/15 text-brand-accent-amber group-hover:text-amber-600'
-                }`}>
-                  <kpi.icon size={18} />
-                </div>
-                {kpi.trend === 'up' && <ArrowUpRight size={14} className="text-brand-brand-green-dark" />}
-                {kpi.trend === 'down' && <ArrowDownRight size={14} className="text-error" />}
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-brand-text-muted">{kpi.title}</p>
-                <div className="flex items-baseline gap-2">
-                  <h3 className="text-2xl font-black tracking-tight text-brand-text-primary dark:text-brand-text-main">{kpi.value}</h3>
-                  {kpi.change && (
-                    <div className="flex items-center gap-1">
-                      <span className={`text-[10px] font-bold ${kpi.trend === 'up' ? 'text-brand-brand-green-dark' : kpi.trend === 'down' ? 'text-error' : 'text-brand-text-muted'
-                        }`}>
-                        {kpi.change}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </Card>
+            hasLink={Boolean(kpi.link)}
+          />
         ))}
       </div>
 

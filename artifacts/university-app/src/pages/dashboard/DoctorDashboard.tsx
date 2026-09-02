@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
@@ -17,7 +17,8 @@ import {
   GraduationCap,
   Sparkles,
   MapPin,
-  Award
+  Award,
+  Building2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -132,58 +133,46 @@ export default function DoctorDashboard() {
       </div>
 
       {/* 2. Standalone Elevated Metrics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-        <div
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={isRTL ? 'المقررات الدراسية' : 'My Courses'}
+          value={stats?.counts?.myCourses || 0}
+          icon={BookOpen}
+          color="primary"
           onClick={() => navigate('/courses')}
-          className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
-        >
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-brand-text-muted">{isRTL ? 'المقررات الدراسية' : 'My Courses'}</p>
-            <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{stats?.counts?.myCourses || 0}</h3>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-brand-green-dark flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <BookOpen size={24} />
-          </div>
-        </div>
+          hasLink
+        />
 
-        <div
+        <StatCard
+          compact
+          title={isRTL ? 'إجمالي الطلاب' : 'Total Students'}
+          value={stats?.counts?.totalStudents || 0}
+          icon={Users}
+          color="emerald"
           onClick={() => navigate('/record')}
-          className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
-        >
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-brand-text-muted">{isRTL ? 'إجمالي الطلاب' : 'Total Students'}</p>
-            <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{stats?.counts?.totalStudents || 0}</h3>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-brand-navy-50 dark:bg-brand-navy-900/40 text-brand-navy-500 dark:text-brand-navy-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <Users size={24} />
-          </div>
-        </div>
+          hasLink
+        />
 
-        <div
+        <StatCard
+          compact
+          title={isRTL ? 'الاختبارات المنجزة' : 'Total Quizzes'}
+          value={stats?.counts?.totalQuizzes || 0}
+          icon={ClipboardList}
+          color="blue"
           onClick={() => navigate('/quizzes')}
-          className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
-        >
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-brand-text-muted">{isRTL ? 'الاختبارات المنجزة' : 'Total Quizzes'}</p>
-            <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{stats?.counts?.totalQuizzes || 0}</h3>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <ClipboardList size={24} />
-          </div>
-        </div>
+          hasLink
+        />
 
-        <div
+        <StatCard
+          compact
+          title={isRTL ? 'الواجبات المعلقة' : 'Pending Tasks'}
+          value={stats?.counts?.pendingTasks || 0}
+          icon={FileText}
+          color="amber"
           onClick={() => navigate('/tasks')}
-          className="bg-surface-card border border-brand-border p-5 rounded-2xl flex items-center justify-between shadow-card hover:-translate-y-0.5 transition-all cursor-pointer group"
-        >
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-brand-text-muted">{isRTL ? 'الواجبات المعلقة' : 'Pending Tasks'}</p>
-            <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main">{stats?.counts?.pendingTasks || 0}</h3>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-brand-navy-50 dark:bg-brand-navy-900/40 text-brand-navy-600 dark:text-slate-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <FileText size={24} />
-          </div>
-        </div>
+          hasLink
+        />
       </div>
 
       {/* 3. Main Cohesive Container: Active Courses & Attendance Launcher */}
@@ -233,8 +222,15 @@ export default function DoctorDashboard() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-4 text-xs font-medium text-brand-text-secondary">
-                  <span>{isRTL ? `الفرقة الدراسية: ${course.year || 1}` : `Year: ${course.year || 1}`}</span>
+                <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-brand-text-secondary">
+                  {course.department && (
+                    <span className="flex items-center gap-1 text-brand-brand-green-dark font-semibold">
+                      <Building2 size={13} />
+                      {isRTL ? (course.department.nameAr || course.department.name) : (course.department.name || course.department.nameAr)}
+                      {course.department.college && ` • ${isRTL ? (course.department.college.nameAr || course.department.college.name) : (course.department.college.name || course.department.college.nameAr)}`}
+                    </span>
+                  )}
+                  <span>{isRTL ? `الفرقة: ${course.year || 1}` : `Division: ${course.year || 1}`}</span>
                   <span>•</span>
                   <span>{isRTL ? `الفصل: ${course.semester || 1}` : `Sem: ${course.semester || 1}`}</span>
                 </div>
@@ -294,12 +290,16 @@ export default function DoctorDashboard() {
               {todaySchedule.map((slot: any) => (
                 <div key={slot.id} className="p-4 rounded-xl bg-surface-subtle border border-brand-border flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="px-3 py-1.5 rounded-lg bg-brand-primary-50 text-brand-brand-green-dark font-bold text-xs">
+                    <div className="px-3 py-1.5 rounded-lg bg-brand-primary-50 text-brand-brand-green-dark font-bold text-xs shrink-0">
                       {slot.startTime} - {slot.endTime}
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main">{slot.courseName}</h4>
-                      <p className="text-xs text-brand-text-muted">{slot.room} • {slot.slotType}</p>
+                      <p className="text-xs text-brand-text-muted">
+                        {slot.room} • {slot.slotType}
+                        {slot.departmentName && ` • ${slot.departmentName}`}
+                        {slot.collegeName && ` (${slot.collegeName})`}
+                      </p>
                     </div>
                   </div>
                   <Button

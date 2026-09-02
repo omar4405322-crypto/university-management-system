@@ -281,7 +281,7 @@ const CourseModal = ({
                 {...register('year')}
                 className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main"
               >
-                {[1, 2, 3, 4, 5].map(y => (
+                {[1, 2, 3, 4].map(y => (
                   <option key={y} value={y}>{t(`courses.addModal.year${y}`)}</option>
                 ))}
               </select>

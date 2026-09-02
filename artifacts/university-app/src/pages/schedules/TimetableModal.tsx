@@ -238,7 +238,7 @@ const TimetableModal: React.FC<TimetableModalProps> = ({ isOpen, onClose, timeta
                     className={SELECT_CLASS}
                     {...register('academicYear')}
                   >
-                    {[1, 2, 3, 4, 5].map(y => <option key={y} value={y}>{t('auth.year')} {y}</option>)}
+                    {[1, 2, 3, 4].map(y => <option key={y} value={y}>{t('auth.year')} {y}</option>)}
                   </select>
                   {errors.academicYear && <p className="text-rose-500 text-xs mt-1">{errors.academicYear.message}</p>}
                 </div>

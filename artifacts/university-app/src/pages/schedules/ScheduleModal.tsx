@@ -449,7 +449,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">{t('common.allYears', 'All Years')}</option>
-                {[1, 2, 3, 4, 5].map(y => (
+                {[1, 2, 3, 4].map(y => (
                   <option key={y} value={y.toString()}>{t('common.year', 'Year')} {y}</option>
                 ))}
               </select>

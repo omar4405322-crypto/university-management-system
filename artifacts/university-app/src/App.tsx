@@ -28,6 +28,7 @@ const CourseDetails = lazy(() => import('./pages/courses/CourseDetails'));
 const DoctorsList = lazy(() => import('./pages/doctors/DoctorsList'));
 const DoctorDetails = lazy(() => import('./pages/doctors/DoctorDetails'));
 const TeachingAssistantsList = lazy(() => import('./pages/teaching-assistants/TeachingAssistantsList'));
+const TeachingAssistantDetails = lazy(() => import('./pages/teaching-assistants/TeachingAssistantDetails'));
 const WeeklySchedule = lazy(() => import('./pages/schedules/WeeklySchedule'));
 const DoctorSchedule = lazy(() => import('./pages/schedules/DoctorSchedule'));
 const StudentSchedule = lazy(() => import('./pages/schedules/StudentSchedule'));
@@ -218,6 +219,18 @@ const AppContent = () => {
                         }
                       />
                       <Route
+                        path="teaching-assistants/:id"
+                        element={
+                          <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
+                            <PageWrapper>
+                              <LazyRoute>
+                                <TeachingAssistantDetails />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
                         path="schedules/doctor"
                         element={
                           <ProtectedRoute allowedRoles={['DOCTOR', 'SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN']}>
@@ -295,6 +308,10 @@ const AppContent = () => {
                             </PageWrapper>
                           </ProtectedRoute>
                         }
+                      />
+                      <Route
+                        path="schedules/manage"
+                        element={<Navigate to="/timetables-management" replace />}
                       />
                       <Route
                         path="schedules-management"

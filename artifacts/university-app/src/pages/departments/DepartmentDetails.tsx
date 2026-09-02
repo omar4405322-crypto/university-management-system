@@ -195,11 +195,10 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({
         2: 'الفرقة الثانية',
         3: 'الفرقة الثالثة',
         4: 'الفرقة الرابعة',
-        5: 'الفرقة الخامسة',
       };
       return yearNames[yr] || `الفرقة ${yr}`;
     }
-    return `Year ${yr}`;
+    return `Division ${yr}`;
   };
 
   // Harmonious Color Schemes for Academic Years
@@ -214,8 +213,6 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({
         return 'bg-purple-50 text-purple-700 border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/60';
       case 4:
         return 'bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60';
-      case 5:
-        return 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60';
       default:
         return 'bg-teal-50 text-teal-700 border-teal-200/80 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/60';
     }

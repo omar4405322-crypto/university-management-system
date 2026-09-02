@@ -4,7 +4,7 @@ import {
   AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import Card from '../../components/ui/Card';
+import Card, { StatCard, StatCardColor } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
@@ -225,62 +225,29 @@ export default function AdminDashboard() {
       </div>
 
       {/* === KPI Grid === */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {kpiStats.map((kpi, idx) => {
           const Icon = kpi.icon;
 
-          let colorName = "green";
-          if (kpi.id === 'totalStudents') colorName = "blue";
-          else if (kpi.id === 'totalDoctors') colorName = "green";
-          else if (kpi.id === 'totalColleges') colorName = "navy";
-          else if (kpi.id === 'totalPayments') colorName = "yellow";
-
-          let iconColor = "";
-          let hoverText = "";
-
-          if (colorName === 'blue') {
-            iconColor = "text-blue-500";
-            hoverText = "group-hover:text-blue-600";
-          } else if (colorName === 'green') {
-            iconColor = "text-brand-primary-500";
-            hoverText = "group-hover:text-brand-primary-700";
-          } else if (colorName === 'navy') {
-            iconColor = "text-brand-navy-500 dark:text-slate-400";
-            hoverText = "group-hover:text-brand-navy-700 dark:group-hover:text-slate-200";
-          } else if (colorName === 'yellow') {
-            iconColor = "text-brand-accent-amber";
-            hoverText = "group-hover:text-amber-600";
-          }
+          let cardColor: StatCardColor = 'primary';
+          if (kpi.id === 'totalStudents') cardColor = 'primary';
+          else if (kpi.id === 'totalDoctors') cardColor = 'emerald';
+          else if (kpi.id === 'totalColleges') cardColor = 'blue';
+          else if (kpi.id === 'totalPayments') cardColor = 'amber';
 
           return (
-            <Card
+            <StatCard
               key={kpi.id || idx}
-              variant="default"
-              noPadding
+              compact
+              title={kpi.title}
+              value={kpi.value}
+              icon={Icon}
+              color={cardColor}
               onClick={() => kpi.link && navigate(kpi.link)}
-              className={`group rounded-2xl border border-brand-border/60 bg-brand-bg-card hover:shadow-md transition-all duration-300 ${kpi.link ? 'cursor-pointer' : ''}`}
-            >
-              <div className="p-6 flex justify-between items-start">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs uppercase tracking-widest text-brand-text-muted font-bold">
-                      {kpi.title}
-                    </p>
-                    {kpi.alert && (
-                      <span className="px-2 py-0.5 bg-brand-accent-amber/15 text-brand-accent-amber text-[9px] font-black rounded-md uppercase tracking-wider animate-pulse">
-                        {kpi.alertLabel}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main tabular-nums">
-                    {kpi.value}
-                  </h3>
-                </div>
-                <div className={`shrink-0 transition-colors duration-300 ease-in-out ${iconColor} ${hoverText}`}>
-                  <Icon size={20} />
-                </div>
-              </div>
-            </Card>
+              alert={kpi.alert}
+              alertLabel={kpi.alertLabel}
+              hasLink={Boolean(kpi.link)}
+            />
           );
         })}
       </div>
