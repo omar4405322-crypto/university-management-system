@@ -31,12 +31,17 @@ import {
   RotateCw,
   Eye,
   FileText,
+  CheckSquare,
+  Square,
+  MinusSquare,
 } from 'lucide-react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/button';
+import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
+import { downloadCsv } from '../../utils/exportCsv';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -136,6 +141,7 @@ export function TasksList() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [editingTask, setEditingTask] = useState<any>(null);
   const [mySubmissions, setMySubmissions] = useState<Record<number, any>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
 
   const createSchema = useMemo(
     () =>
@@ -294,6 +300,45 @@ export function TasksList() {
       fetchMySubmissions(tasks.map((t) => t.id));
     }
   }, [tasks, isStudent]);
+
+  // Selection Logic
+  const allFilteredIds = useMemo(() => (Array.isArray(tasks) ? tasks : []).map((t: any) => t.id), [tasks]);
+  const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
+  const isSomeSelected = allFilteredIds.some((id) => selectedIds.has(id)) && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allFilteredIds));
+    }
+  };
+
+  const handleToggleSelect = (id: string | number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkClear = () => setSelectedIds(new Set());
+
+  const handleBulkExport = () => {
+    const selectedList = (Array.isArray(tasks) ? tasks : []).filter((t: any) => selectedIds.has(t.id));
+    if (!selectedList.length) return;
+    const exportData = selectedList.map((t: any) => ({
+      ID: t.id,
+      Title: t.title,
+      Course: t.course?.name || t.course?.courseCode || 'N/A',
+      DueDate: t.dueDate,
+      MaxScore: t.maxScore,
+      Description: t.description || '',
+    }));
+    downloadCsv(exportData, `assignments_selected_${new Date().toISOString().split('T')[0]}.csv`);
+    showToast(isRTL ? 'تم تصدير التكليفات المحددة بنجاح' : 'Exported selected assignments successfully', 'success');
+  };
 
   const onCreateSubmit = async (data: any) => {
     try {
@@ -492,58 +537,40 @@ export function TasksList() {
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE KPI OVERVIEW BADGES                                          */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Total Tasks */}
-        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-bold text-slate-600 dark:text-slate-300">
-              {t('tasks.totalTasks', 'Total Assignments')}
-            </span>
-            <ClipboardList size={14} className="text-brand-primary-500" />
-          </div>
-          <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
-            {kpis.total}
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={t('tasks.totalTasks', 'Total Assignments')}
+          value={kpis.total}
+          icon={ClipboardList}
+          color="primary"
+        />
 
-        {/* Active Tasks */}
-        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-bold text-emerald-700 dark:text-emerald-400">
-              {t('tasks.activeTasks', 'Active Assignments')}
-            </span>
-            <Clock size={14} className="text-emerald-500" />
-          </div>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-            {kpis.active}
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('tasks.activeTasks', 'Active Assignments')}
+          value={kpis.active}
+          icon={Clock}
+          color="emerald"
+        />
 
-        {/* Submissions Count (Doctor) / Completed (Student) */}
-        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-bold text-blue-700 dark:text-blue-400">
-              {isDoctor ? t('tasks.submissions', 'Submissions') : t('tasks.statusSubmitted', 'Submitted')}
-            </span>
-            <Users size={14} className="text-blue-500" />
-          </div>
-          <div className="text-xl font-black text-blue-600 dark:text-blue-400 font-mono">
-            {isDoctor ? kpis.totalSubs : Object.keys(mySubmissions).length}
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isDoctor ? t('tasks.submissions', 'Submissions') : t('tasks.statusSubmitted', 'Submitted')}
+          value={isDoctor ? kpis.totalSubs : Object.keys(mySubmissions).length}
+          icon={Users}
+          color="blue"
+        />
 
-        {/* Overdue */}
-        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-bold text-rose-700 dark:text-rose-400">
-              {t('tasks.overdueTasks', 'Overdue Assignments')}
-            </span>
-            <AlertTriangle size={14} className="text-rose-500" />
-          </div>
-          <div className="text-xl font-black text-rose-600 dark:text-rose-400 font-mono">
-            {kpis.overdue}
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('tasks.overdueTasks', 'Overdue Assignments')}
+          value={kpis.overdue}
+          icon={AlertTriangle}
+          color="rose"
+          alert={kpis.overdue > 0}
+          alertLabel={isRTL ? 'متأخر' : 'Overdue'}
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -630,6 +657,35 @@ export function TasksList() {
             <option value="CREATED_AT_DESC">{t('tasks.sortCreatedDesc', 'Recently Created')}</option>
             <option value="SUBMISSIONS_COUNT_DESC">{t('tasks.sortSubmissionsDesc', 'Most Submissions')}</option>
           </select>
+
+          {/* Select All Button */}
+          {tasks.length > 0 && (
+            <button
+              type="button"
+              onClick={handleToggleSelectAll}
+              className={`h-9 px-2.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                isAllSelected
+                  ? 'bg-brand-primary-500 text-white border-brand-primary-500 shadow-xs'
+                  : isSomeSelected
+                  ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-primary-700 dark:text-brand-primary-300 border-brand-primary-300'
+                  : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+              }`}
+              title={isAllSelected ? t('common.deselectAll', 'Deselect All') : t('common.selectAll', 'Select All')}
+            >
+              {isAllSelected ? (
+                <CheckSquare size={14} />
+              ) : isSomeSelected ? (
+                <MinusSquare size={14} />
+              ) : (
+                <Square size={14} />
+              )}
+              <span>
+                {isAllSelected
+                  ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
+                  : (isRTL ? 'تحديد الكل' : 'Select All')}
+              </span>
+            </button>
+          )}
 
           {/* Reset Filters */}
           {hasActiveFilters && (
@@ -741,18 +797,36 @@ export function TasksList() {
             const subsCount = task._count?.submissions || 0;
             const totalEnrolled = task.course?._count?.enrollments || 30;
             const progressPercent = Math.min(100, Math.round((subsCount / (totalEnrolled || 1)) * 100));
+            const isSelected = selectedIds.has(task.id);
 
             return (
               <div
                 key={task.id}
-                className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700/80 p-4 shadow-2xs hover:shadow-xs hover:border-brand-primary-300 dark:hover:border-brand-primary-600 transition-all flex flex-col justify-between"
+                className={`rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between ${
+                  isSelected
+                    ? 'border-2 border-brand-primary-500 ring-2 ring-brand-primary-500/20 bg-brand-primary-500/[0.02] dark:bg-brand-primary-500/[0.04]'
+                    : 'bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700/80 hover:border-brand-primary-300 dark:hover:border-brand-primary-600'
+                }`}
               >
                 <div>
                   {/* Top Badges Row */}
                   <div className="flex items-center justify-between gap-1.5 mb-2">
-                    <span className="font-mono text-xs font-bold text-brand-primary-700 dark:text-brand-primary-300 bg-brand-primary-50 dark:bg-brand-primary-950/50 px-2 py-0.5 rounded-md border border-brand-primary-200/40">
-                      {task.course?.courseCode}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSelect(task.id)}
+                        className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors p-0.5 cursor-pointer"
+                      >
+                        {isSelected ? (
+                          <CheckSquare size={16} className="text-brand-primary-600" />
+                        ) : (
+                          <Square size={16} />
+                        )}
+                      </button>
+                      <span className="font-mono text-xs font-bold text-brand-primary-700 dark:text-brand-primary-300 bg-brand-primary-50 dark:bg-brand-primary-950/50 px-2 py-0.5 rounded-md border border-brand-primary-200/40">
+                        {task.course?.courseCode}
+                      </span>
+                    </div>
 
                     <div className="flex items-center gap-1 text-[10px] font-semibold">
                       <span
@@ -887,6 +961,22 @@ export function TasksList() {
             <Table className="w-full text-xs">
               <TableHeader className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
                 <TableRow>
+                  <TableHead className="w-10 p-2.5 text-center">
+                    <button
+                      type="button"
+                      onClick={handleToggleSelectAll}
+                      className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
+                      title={isAllSelected ? t('common.deselectAll', 'Deselect All') : t('common.selectAll', 'Select All')}
+                    >
+                      {isAllSelected ? (
+                        <CheckSquare size={14} className="text-brand-primary-600" />
+                      ) : isSomeSelected ? (
+                        <MinusSquare size={14} className="text-brand-primary-600" />
+                      ) : (
+                        <Square size={14} />
+                      )}
+                    </button>
+                  </TableHead>
                   <TableHead className="w-24 p-2.5 font-bold text-slate-500">
                     {isRTL ? 'كود' : 'Code'}
                   </TableHead>
@@ -914,12 +1004,28 @@ export function TasksList() {
                 {tasks.map((task) => {
                   const overdue = isOverdue(task.dueDate);
                   const subsCount = task._count?.submissions || 0;
+                  const isSelected = selectedIds.has(task.id);
 
                   return (
                     <TableRow
                       key={task.id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-700/20 border-b border-slate-100 dark:border-slate-700/50"
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-700/20 border-b border-slate-100 dark:border-slate-700/50 ${
+                        isSelected ? 'bg-brand-primary-500/[0.04] dark:bg-brand-primary-500/[0.08]' : ''
+                      }`}
                     >
+                      <TableCell className="w-10 p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSelect(task.id)}
+                          className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
+                        >
+                          {isSelected ? (
+                            <CheckSquare size={14} className="text-brand-primary-600" />
+                          ) : (
+                            <Square size={14} />
+                          )}
+                        </button>
+                      </TableCell>
                       <TableCell className="p-2.5 font-mono font-bold text-brand-primary-600">
                         {task.course?.courseCode}
                       </TableCell>
@@ -1282,6 +1388,13 @@ export function TasksList() {
           </div>
         </div>
       </Modal>
+
+      {/* Floating Bulk Action Toolbar */}
+      <BulkActionToolbar
+        selectedCount={selectedIds.size}
+        onClear={handleBulkClear}
+        onExport={handleBulkExport}
+      />
     </div>
   );
 }

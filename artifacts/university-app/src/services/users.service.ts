@@ -27,7 +27,7 @@ const deleteUser = (id: string | number): Promise<ApiResponse<any>> => apiReques
 
 const reactivateUser = (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.patch(`/users/${id}/reactivate`));
 
-const hardDeleteUser = (id: string | number, confirmEmail: string): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/users/${id}/permanent`, { data: { confirmEmail } }));
+const hardDeleteUser = (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/users/${id}/permanent`));
 
 const usersService = {
   getProfile,
