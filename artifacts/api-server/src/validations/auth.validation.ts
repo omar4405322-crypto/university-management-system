@@ -22,8 +22,8 @@ export const registerValidation = [
     .withMessage('Student ID is required for students'),
   body('year')
     .if(body('role').equals('STUDENT'))
-    .isInt({ min: 1, max: 7 })
-    .withMessage('Valid academic year is required'),
+    .isInt({ min: 1, max: 4 })
+    .withMessage('Valid academic division is required (1-4)'),
   body('departmentId').optional().isInt().withMessage('Department ID must be an integer'),
 ];
 
