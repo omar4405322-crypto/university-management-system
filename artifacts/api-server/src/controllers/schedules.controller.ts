@@ -891,7 +891,7 @@ export const syncGridToMaster = catchAsync(
           where: { id: existingSlot.id },
           data: {
             endTime: endTime || '11:00',
-            room: room || existingSlot.room,
+            room: room !== undefined ? (room ? String(room).trim() : null) : existingSlot.room,
             slotType: slotType || existingSlot.slotType,
             ...(doctorId ? { doctorId } : {}),
             ...(timetableId ? { timetableId } : {}),
@@ -907,7 +907,7 @@ export const syncGridToMaster = catchAsync(
           dayOfWeek: normalizedDay,
           startTime: normalizedStartTime,
           endTime: endTime || '11:00',
-          room: room || 'Main Hall',
+          room: room ? String(room).trim() : null,
         });
       }
       syncedCount++;
