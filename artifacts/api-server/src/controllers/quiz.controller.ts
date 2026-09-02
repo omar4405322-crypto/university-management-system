@@ -17,12 +17,22 @@ export const createQuiz = catchAsync(async (req: Request, res: Response, next: N
     include: { department: true },
   });
   if (!course) return next(new NotFoundError('Course not found'));
-  const courseScope: any = getScopeWhere(req.user!, 'course');
-  if (courseScope && Object.keys(courseScope).length) {
-    if (courseScope.department && course.department?.collegeId !== courseScope.department.collegeId)
-      return next(new AuthorizationError('Access denied'));
-    if (courseScope.departmentId && course.departmentId !== courseScope.departmentId)
-      return next(new AuthorizationError('Access denied'));
+
+  if (req.user!.role === 'DOCTOR') {
+    const isAssigned = await prisma.scheduleSlot.findFirst({
+      where: { courseId: course.id, doctorId: doctor.id },
+    });
+    if (!isAssigned && doctor.departmentId !== course.departmentId) {
+      return next(new AuthorizationError('You can only create quizzes for courses you teach'));
+    }
+  } else {
+    const courseScope: any = getScopeWhere(req.user!, 'course');
+    if (courseScope && Object.keys(courseScope).length) {
+      if (courseScope.department && course.department?.collegeId !== courseScope.department.collegeId)
+        return next(new AuthorizationError('Access denied'));
+      if (courseScope.departmentId && course.departmentId !== courseScope.departmentId)
+        return next(new AuthorizationError('Access denied'));
+    }
   }
 
   const quiz = await prisma.quiz.create({
