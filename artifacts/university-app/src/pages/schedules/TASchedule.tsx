@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -20,6 +20,8 @@ import {
   X,
   GraduationCap,
   Layers,
+  LayoutGrid,
+  ListOrdered,
 } from 'lucide-react';
 import schedulesService from '../../services/schedules.service';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
@@ -30,6 +32,7 @@ import { ScheduleView } from '../../components/timetable/ScheduleView';
 import { generateHourlyTimes } from '../../utils/scheduleConfig';
 import { logger } from '../../lib/logger';
 import Button from '../../components/ui/button';
+import { StatCard } from '../../components/ui/card';
 import Badge from '../../components/ui/Badge';
 
 const currentYear = new Date().getFullYear();
@@ -79,6 +82,7 @@ export function TASchedule() {
   const { t, i18n } = useTranslation();
   const { isRTL } = useLanguage();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Metadata Lists
@@ -95,6 +99,7 @@ export function TASchedule() {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedSemester, setSelectedSemester] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [scheduleViewMode, setScheduleViewMode] = useState<'grid' | 'agenda'>('grid');
 
   // Raw Schedule Data
   const [rawSlots, setRawSlots] = useState<TAScheduleSlot[]>([]);
@@ -120,7 +125,7 @@ export function TASchedule() {
       setCollegesList(cols);
       setDepartmentsList(depts);
 
-      // Auto-set TA if logged in as TA
+      // Auto-set TA if logged in as TEACHING_ASSISTANT
       if (user?.role === 'TEACHING_ASSISTANT') {
         const myTA = tas.find((t: any) => t.userId === user.id || t.id === user.teachingAssistant?.id);
         if (myTA) setSelectedTAId(String(myTA.id));
@@ -128,24 +133,31 @@ export function TASchedule() {
     });
   }, [user]);
 
-  // TA Select Options
+  // Options for TA Select
   const taOptions = useMemo(() => {
     const opts: SelectOption[] = [
       {
-        label: isRTL ? 'الكل — الجدول الشامل لجميع المعيدين' : 'All TAs (University Master TA Schedule)',
+        label: isRTL ? 'الكل — جدول جميع المعيدين والسكاشن' : 'All Teaching Assistants (Master Schedule)',
         value: 'all',
       },
     ];
     taList.forEach((ta) => {
       opts.push({
-        label: `${ta.firstName} ${ta.lastName}`,
+        label: `${ta.firstName || ''} ${ta.lastName || ''}`.trim(),
         value: String(ta.id),
         sublabel: ta.department?.name || '',
-        group: ta.department?.name || (isRTL ? 'معيد / مساعد تدريس' : 'Teaching Assistant'),
+        group: ta.department?.name || (isRTL ? 'معيد' : 'Teaching Assistant'),
       });
     });
     return opts;
   }, [taList, isRTL]);
+
+  // Cascading departments for selected college
+  const filteredDepartments = useMemo(() => {
+    if (!selectedCollegeId || selectedCollegeId === 'all') return departmentsList;
+    const colId = parseInt(selectedCollegeId, 10);
+    return departmentsList.filter((d) => d.collegeId === colId);
+  }, [departmentsList, selectedCollegeId]);
 
   const activeTA = useMemo(() => {
     if (selectedTAId && selectedTAId !== 'all' && taList.length > 0) {
@@ -190,7 +202,7 @@ export function TASchedule() {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  // 2. Fetch Raw Timetable Data
+  // 2. Fetch Raw Timetable Data (Strictly Practical Lessons, Sections & Labs)
   const fetchScheduleData = useCallback(async () => {
     try {
       setLoading(true);
@@ -213,7 +225,14 @@ export function TASchedule() {
         slots = Object.values(data).flat().filter(Boolean);
       }
 
-      setRawSlots(slots);
+      // Filter to strictly Practical lessons, Sections, and Labs (exclude pure doctor lectures)
+      const practicalSlots = slots.filter((slot: any) => {
+        const isLabOrSection = slot.slotType === 'LAB' || slot.slotType === 'SECTION';
+        const hasTA = Boolean(slot.teachingAssistantId || slot.teachingAssistant?.id);
+        return isLabOrSection || hasTA;
+      });
+
+      setRawSlots(practicalSlots);
     } catch (err: any) {
       logger.error('Error fetching TA schedule:', err);
       setError(err.message || t('common.fetchError', 'Failed to load schedule'));
@@ -229,6 +248,11 @@ export function TASchedule() {
   // 3. Client-Side Filtering
   const filteredSlots = useMemo(() => {
     return rawSlots.filter((slot) => {
+      // Must be a practical session / section / lab or have a TA assigned
+      const isLabOrSection = slot.slotType === 'LAB' || slot.slotType === 'SECTION';
+      const hasTA = Boolean(slot.teachingAssistantId || slot.teachingAssistant?.id);
+      if (!isLabOrSection && !hasTA) return false;
+
       // If specific TA selected
       if (selectedTAId && selectedTAId !== 'all') {
         const slotTaId = String(slot.teachingAssistantId || slot.teachingAssistant?.id || '');
@@ -357,22 +381,32 @@ export function TASchedule() {
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
+            {isAdmin && (
+              <Button
+                size="sm"
+                onClick={() => navigate('/timetables-management')}
+                className="h-8.5 px-3.5 rounded-xl text-xs font-bold bg-brand-primary-600 hover:bg-brand-primary-700 text-white border-0 gap-1.5 cursor-pointer shadow-xs hover:shadow-sm transition-all"
+              >
+                <Layers size={14} className="text-white" />
+                <span>{isRTL ? 'إدارة وتسكين الجداول' : 'Manage Timetables'}</span>
+              </Button>
+            )}
+
             <Button
-              variant="outline"
               size="sm"
               onClick={() => window.print()}
-              className="h-8 px-3 rounded-lg text-xs font-semibold border-slate-200 dark:border-slate-700 gap-1.5 cursor-pointer shadow-2xs"
+              className="h-8.5 px-3.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white border-0 gap-1.5 cursor-pointer shadow-xs hover:shadow-sm transition-all"
             >
-              <Printer size={13} />
+              <Printer size={14} className="text-white" />
               <span>{isRTL ? 'طباعة' : 'Print'}</span>
             </Button>
 
             <button
               onClick={fetchScheduleData}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 cursor-pointer shadow-2xs"
+              className="h-8.5 w-8.5 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer shadow-2xs transition-all"
               title={isRTL ? 'تحديث' : 'Refresh'}
             >
-              <RotateCw size={13} className={loading ? 'animate-spin' : ''} />
+              <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>
@@ -381,66 +415,38 @@ export function TASchedule() {
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {/* Total Sessions */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'إجمالي السكاشن والمعامل' : 'Total Sessions'}
-            </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5">
-              {loading ? '...' : totalSlots}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center shrink-0">
-            <Calendar size={16} />
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard
+          compact
+          title={isRTL ? 'إجمالي السكاشن والمعامل' : 'Total Sessions'}
+          value={loading ? '...' : totalSlots}
+          icon={Calendar}
+          color="primary"
+        />
 
-        {/* Assigned Courses */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'المقررات المسندة' : 'Assigned Courses'}
-            </span>
-            <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400 block mt-0.5">
-              {loading ? '...' : distinctCourses}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <BookOpen size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'المقررات المسندة' : 'Assigned Courses'}
+          value={loading ? '...' : distinctCourses}
+          icon={BookOpen}
+          color="emerald"
+        />
 
-        {/* Assigned Labs / Rooms */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'المعامل والقاعات' : 'Assigned Labs'}
-            </span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5">
-              {loading ? '...' : distinctRooms}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <MapPin size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'المعامل والقاعات' : 'Assigned Labs'}
+          value={loading ? '...' : distinctRooms}
+          icon={MapPin}
+          color="amber"
+        />
 
-        {/* Student Cohorts */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'المجموعات والسكاشن' : 'Student Groups'}
-            </span>
-            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5">
-              {loading ? '...' : distinctGroups > 0 ? distinctGroups : isRTL ? 'الكل' : 'All'}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-            <Users size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'المجموعات والسكاشن' : 'Student Groups'}
+          value={loading ? '...' : distinctGroups > 0 ? distinctGroups : isRTL ? 'الكل' : 'All'}
+          icon={Users}
+          color="blue"
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -541,6 +547,34 @@ export function TASchedule() {
             {isRTL ? 'مسح' : 'Clear'}
           </Button>
         )}
+
+        {/* View Switcher (Grid vs Agenda) inside Unified Toolbar */}
+        <div className="ms-auto flex items-center p-0.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setScheduleViewMode('grid')}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              scheduleViewMode === 'grid'
+                ? 'bg-white dark:bg-slate-800 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <LayoutGrid size={13} />
+            <span>{isRTL ? 'الجدول الأسبوعي' : 'Weekly Grid'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setScheduleViewMode('agenda')}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              scheduleViewMode === 'agenda'
+                ? 'bg-white dark:bg-slate-800 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <ListOrdered size={13} />
+            <span>{isRTL ? 'عرض الأجندة' : 'Agenda View'}</span>
+          </button>
+        </div>
       </div>
 
       {/* ========================================================================= */}
@@ -585,6 +619,8 @@ export function TASchedule() {
           times={times}
           formatTime={formatTime}
           canManage={false}
+          viewMode={scheduleViewMode}
+          onViewModeChange={setScheduleViewMode}
         />
       )}
     </div>

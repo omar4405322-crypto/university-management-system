@@ -25,13 +25,15 @@ import {
   X,
   Plus,
   ArrowRight,
+  LayoutGrid,
+  ListOrdered,
 } from 'lucide-react';
 import schedulesService from '../../services/schedules.service';
 import doctorsService from '../../services/doctors.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import SearchableSelect, { SelectOption } from '../../components/ui/SearchableSelect';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/Badge';
 import { ScheduleView } from '../../components/timetable/ScheduleView';
@@ -107,9 +109,9 @@ export function DoctorSchedule() {
   const [selectedDeptId, setSelectedDeptId] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedSemester, setSelectedSemester] = useState<string>('');
-  const [selectedSlotType, setSelectedSlotType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showConflictsOnly, setShowConflictsOnly] = useState<boolean>(false);
+  const [scheduleViewMode, setScheduleViewMode] = useState<'grid' | 'agenda'>('grid');
 
   // Raw Schedule Data
   const [rawSlots, setRawSlots] = useState<ScheduleSlot[]>([]);
@@ -180,7 +182,7 @@ export function DoctorSchedule() {
     return departmentsList.filter((d) => d.collegeId === colId);
   }, [departmentsList, selectedCollegeId]);
 
-  // 2. Fetch All Schedules across the University on Mount
+  // 2. Fetch All Schedules across the University on Mount (Lectures Only)
   const fetchSchedule = useCallback(async () => {
     try {
       setLoading(true);
@@ -192,7 +194,11 @@ export function DoctorSchedule() {
           ? res.data
           : res.data?.schedules || res.data?.data || [];
       }
-      setRawSlots(slotsData);
+      // Exclude Lab / Section slots since they have their dedicated TA Schedule section
+      const lectureSlots = slotsData.filter(
+        (slot: any) => slot.slotType !== 'LAB' && slot.slotType !== 'SECTION'
+      );
+      setRawSlots(lectureSlots);
     } catch (err: any) {
       logger.error('Error fetching university schedule:', err);
       setError(err.message || t('common.fetchError', 'Failed to load schedules'));
@@ -208,6 +214,9 @@ export function DoctorSchedule() {
   // 3. Multi-Dimensional Master Filtering Logic
   const filteredSlots = useMemo(() => {
     return rawSlots.filter((slot) => {
+      // Exclude Lab / Section slots (they belong exclusively to TA Schedule)
+      if (slot.slotType === 'LAB' || slot.slotType === 'SECTION') return false;
+
       // Doctor Filter
       if (selectedDoctorId && selectedDoctorId !== 'all') {
         const slotDocId = String(slot.doctorId || slot.doctor?.id || '');
@@ -236,11 +245,6 @@ export function DoctorSchedule() {
       if (selectedSemester) {
         const sem = parseInt(selectedSemester, 10);
         if (slot.course?.semester !== sem && slot.semester !== sem) return false;
-      }
-
-      // Slot Type Filter
-      if (selectedSlotType !== 'all') {
-        if (slot.slotType !== selectedSlotType) return false;
       }
 
       // Search Query Filter
@@ -273,7 +277,6 @@ export function DoctorSchedule() {
     selectedDeptId,
     selectedYear,
     selectedSemester,
-    selectedSlotType,
     searchQuery,
   ]);
 
@@ -288,21 +291,70 @@ export function DoctorSchedule() {
     }, {});
   }, [filteredSlots]);
 
-  // Conflict calculation
-  const conflictCount = useMemo(() => {
-    let count = 0;
+  // Accurate Resource Collision Helper
+  const checkTimeOverlap = (s1: ScheduleSlot, s2: ScheduleSlot) => {
+    const start1 = s1.startTime || '00:00';
+    const end1 = s1.endTime || (start1 ? `${parseInt(start1.split(':')[0], 10) + 2}:00` : '23:59');
+    const start2 = s2.startTime || '00:00';
+    const end2 = s2.endTime || (start2 ? `${parseInt(start2.split(':')[0], 10) + 2}:00` : '23:59');
+    return start1 < end2 && end1 > start2;
+  };
+
+  const areSlotsInConflict = (s1: ScheduleSlot, s2: ScheduleSlot) => {
+    if (s1 === s2) return false;
+    if (s1.id !== undefined && s2.id !== undefined && s1.id === s2.id) return false;
+    if (!checkTimeOverlap(s1, s2)) return false;
+
+    // 1. Same Room Collision
+    if (s1.room && s2.room && s1.room.trim() && s2.room.trim()) {
+      if (s1.room.trim().toLowerCase() === s2.room.trim().toLowerCase()) {
+        return true;
+      }
+    }
+
+    // 2. Same Doctor Collision
+    const doc1 = String(s1.doctorId || s1.doctor?.id || '').trim();
+    const doc2 = String(s2.doctorId || s2.doctor?.id || '').trim();
+    if (doc1 && doc2 && doc1 === doc2) {
+      return true;
+    }
+
+    // 3. Same TA Collision
+    const ta1 = String(s1.teachingAssistantId || s1.teachingAssistant?.id || '').trim();
+    const ta2 = String(s2.teachingAssistantId || s2.teachingAssistant?.id || '').trim();
+    if (ta1 && ta2 && ta1 === ta2) {
+      return true;
+    }
+
+    // 4. Same Group Collision
+    const g1 = String(s1.groupId || s1.group?.id || '').trim();
+    const g2 = String(s2.groupId || s2.group?.id || '').trim();
+    if (g1 && g2 && g1 === g2) {
+      return true;
+    }
+
+    return false;
+  };
+
+  // Conflict calculation (identifies truly conflicting slots)
+  const conflictingSlotKeys = useMemo(() => {
+    const keys = new Set<string | number>();
     Object.values(timetableRecord).forEach((slots: ScheduleSlot[]) => {
-      const hourCounts: Record<string, number> = {};
-      slots.forEach((s: ScheduleSlot) => {
-        const hour = s.startTime?.split(':')[0] || '0';
-        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
-      });
-      Object.values(hourCounts).forEach((c) => {
-        if (c > 1) count += c;
-      });
+      for (let i = 0; i < slots.length; i++) {
+        for (let j = i + 1; j < slots.length; j++) {
+          if (areSlotsInConflict(slots[i], slots[j])) {
+            const key1 = slots[i].id !== undefined ? slots[i].id! : `${slots[i].dayOfWeek}_${slots[i].startTime}_${slots[i].course?.name}_${i}`;
+            const key2 = slots[j].id !== undefined ? slots[j].id! : `${slots[j].dayOfWeek}_${slots[j].startTime}_${slots[j].course?.name}_${j}`;
+            keys.add(key1);
+            keys.add(key2);
+          }
+        }
+      }
     });
-    return count;
+    return keys;
   }, [timetableRecord]);
+
+  const conflictCount = conflictingSlotKeys.size;
 
   // Filter for Conflicting slots only if toggled
   const displayTimetable = useMemo<TimetableDayRecord>(() => {
@@ -310,15 +362,9 @@ export function DoctorSchedule() {
 
     const conflictRecord: TimetableDayRecord = {};
     Object.entries(timetableRecord).forEach(([day, slots]: [string, ScheduleSlot[]]) => {
-      const hourCounts: Record<string, number> = {};
-      slots.forEach((s: ScheduleSlot) => {
-        const hour = s.startTime?.split(':')[0] || '0';
-        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
-      });
-
-      const conflictingSlots = slots.filter((s: ScheduleSlot) => {
-        const hour = s.startTime?.split(':')[0] || '0';
-        return hourCounts[hour] > 1;
+      const conflictingSlots = slots.filter((s: ScheduleSlot, idx: number) => {
+        const slotKey = s.id !== undefined ? s.id : `${s.dayOfWeek}_${s.startTime}_${s.course?.name}_${idx}`;
+        return conflictingSlotKeys.has(slotKey);
       });
 
       if (conflictingSlots.length > 0) {
@@ -327,7 +373,7 @@ export function DoctorSchedule() {
     });
 
     return conflictRecord;
-  }, [timetableRecord, showConflictsOnly]);
+  }, [timetableRecord, showConflictsOnly, conflictingSlotKeys]);
 
   // Days & Time configuration
   const days = isRTL
@@ -365,10 +411,6 @@ export function DoctorSchedule() {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  // Counts by slotType
-  const lectureCount = useMemo(() => filteredSlots.filter((s) => s.slotType === 'LECTURE').length, [filteredSlots]);
-  const labCount = useMemo(() => filteredSlots.filter((s) => s.slotType === 'LAB' || s.slotType === 'SECTION').length, [filteredSlots]);
-
   // Statistics
   const totalSlots = filteredSlots.length;
   const distinctCourses = useMemo(
@@ -402,7 +444,6 @@ export function DoctorSchedule() {
     setSelectedDeptId('all');
     setSelectedYear('');
     setSelectedSemester('');
-    setSelectedSlotType('all');
     setSearchQuery('');
     setShowConflictsOnly(false);
   };
@@ -437,32 +478,30 @@ export function DoctorSchedule() {
           <div className="flex items-center gap-2 self-end sm:self-auto">
             {isAdmin && (
               <Button
-                variant="outline"
                 size="sm"
-                onClick={() => navigate('/schedules/manage')}
-                className="h-8 px-3 rounded-lg text-xs font-semibold border-slate-200 dark:border-slate-700 gap-1.5 cursor-pointer shadow-2xs"
+                onClick={() => navigate('/timetables-management')}
+                className="h-8.5 px-3.5 rounded-xl text-xs font-bold bg-brand-primary-600 hover:bg-brand-primary-700 text-white border-0 gap-1.5 cursor-pointer shadow-xs hover:shadow-sm transition-all"
               >
-                <Layers size={13} />
+                <Layers size={14} className="text-white" />
                 <span>{isRTL ? 'إدارة وتسكين الجداول' : 'Manage Timetables'}</span>
               </Button>
             )}
 
             <Button
-              variant="outline"
               size="sm"
               onClick={() => window.print()}
-              className="h-8 px-3 rounded-lg text-xs font-semibold border-slate-200 dark:border-slate-700 gap-1.5 cursor-pointer shadow-2xs"
+              className="h-8.5 px-3.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white border-0 gap-1.5 cursor-pointer shadow-xs hover:shadow-sm transition-all"
             >
-              <Printer size={13} />
+              <Printer size={14} className="text-white" />
               <span>{isRTL ? 'طباعة' : 'Print'}</span>
             </Button>
 
             <button
               onClick={fetchSchedule}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 cursor-pointer shadow-2xs"
+              className="h-8.5 w-8.5 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer shadow-2xs transition-all"
               title={isRTL ? 'تحديث' : 'Refresh'}
             >
-              <RotateCw size={13} className={loading ? 'animate-spin' : ''} />
+              <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>
@@ -471,66 +510,38 @@ export function DoctorSchedule() {
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {/* Total Lectures & Sessions */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'إجمالي المحاضرات والسكاشن' : 'Total Sessions'}
-            </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5">
-              {loading ? '...' : totalSlots}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <Calendar size={16} />
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard
+          compact
+          title={isRTL ? 'إجمالي المحاضرات' : 'Total Lectures'}
+          value={loading ? '...' : totalSlots}
+          icon={Calendar}
+          color="primary"
+        />
 
-        {/* Assigned Courses */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'المقررات المجدولة' : 'Assigned Courses'}
-            </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5">
-              {loading ? '...' : distinctCourses}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-            <BookOpen size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'المقررات المجدولة' : 'Assigned Courses'}
+          value={loading ? '...' : distinctCourses}
+          icon={BookOpen}
+          color="emerald"
+        />
 
-        {/* Active Faculty Members */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'أعضاء هيئة التدريس' : 'Faculty Members'}
-            </span>
-            <span className="text-lg font-black text-purple-600 dark:text-purple-400 block mt-0.5">
-              {loading ? '...' : distinctDoctors}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center shrink-0">
-            <GraduationCap size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'أعضاء هيئة التدريس' : 'Faculty Members'}
+          value={loading ? '...' : distinctDoctors}
+          icon={GraduationCap}
+          color="blue"
+        />
 
-        {/* Halls & Theaters */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'المدرجات والقاعات' : 'Lecture Halls'}
-            </span>
-            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5">
-              {loading ? '...' : distinctRooms}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-            <MapPin size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'المدرجات والقاعات' : 'Lecture Halls'}
+          value={loading ? '...' : distinctRooms}
+          icon={MapPin}
+          color="amber"
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -634,40 +645,6 @@ export function DoctorSchedule() {
           <option value="3">{isRTL ? 'الصيفي' : 'Summer'}</option>
         </select>
 
-        {/* Slot Type Toggle Tabs */}
-        <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
-          <button
-            onClick={() => setSelectedSlotType('all')}
-            className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-              selectedSlotType === 'all'
-                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            {isRTL ? 'الكل' : 'All'} ({totalSlots})
-          </button>
-          <button
-            onClick={() => setSelectedSlotType('LECTURE')}
-            className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-              selectedSlotType === 'LECTURE'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            {isRTL ? 'محاضرة' : 'Lecture'} ({lectureCount})
-          </button>
-          <button
-            onClick={() => setSelectedSlotType('LAB')}
-            className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-              selectedSlotType === 'LAB'
-                ? 'bg-amber-600 text-white shadow-2xs'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            {isRTL ? 'معمل / سكشن' : 'Lab'} ({labCount})
-          </button>
-        </div>
-
         {/* Conflicts Toggle */}
         {conflictCount > 0 && (
           <button
@@ -691,7 +668,6 @@ export function DoctorSchedule() {
           selectedDeptId !== 'all' ||
           selectedYear ||
           selectedSemester ||
-          selectedSlotType !== 'all' ||
           searchQuery ||
           showConflictsOnly) && (
           <Button
@@ -704,6 +680,34 @@ export function DoctorSchedule() {
             {isRTL ? 'مسح' : 'Clear'}
           </Button>
         )}
+
+        {/* View Switcher (Grid vs Agenda) inside Unified Toolbar */}
+        <div className="ms-auto flex items-center p-0.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setScheduleViewMode('grid')}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              scheduleViewMode === 'grid'
+                ? 'bg-white dark:bg-slate-800 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <LayoutGrid size={13} />
+            <span>{isRTL ? 'الجدول الأسبوعي' : 'Weekly Grid'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setScheduleViewMode('agenda')}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              scheduleViewMode === 'agenda'
+                ? 'bg-white dark:bg-slate-800 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <ListOrdered size={13} />
+            <span>{isRTL ? 'عرض الأجندة' : 'Agenda View'}</span>
+          </button>
+        </div>
       </div>
 
       {/* ========================================================================= */}
@@ -730,12 +734,12 @@ export function DoctorSchedule() {
             <Calendar size={24} />
           </div>
           <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
-            {isRTL ? 'لا توجد محاضرات أو سكاشن مسجلة' : 'No Scheduled Lectures Found'}
+            {isRTL ? 'لا توجد محاضرات مسجلة' : 'No Scheduled Lectures Found'}
           </h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4">
             {isRTL
-              ? 'لم يتم العثور على أي محاضرات أو معامل مسندة وفقاً لمعايير التصفية المحددة.'
-              : 'No scheduled lectures or sessions were found matching your current filter criteria.'}
+              ? 'لم يتم العثور على أي محاضرات مسندة وفقاً لمعايير التصفية المحددة.'
+              : 'No scheduled lectures were found matching your current filter criteria.'}
           </p>
 
           <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -747,7 +751,7 @@ export function DoctorSchedule() {
             ) : isAdmin ? (
               <Button
                 size="sm"
-                onClick={() => navigate('/schedules/manage')}
+                onClick={() => navigate('/timetables-management')}
                 className="bg-brand-primary-600 hover:bg-brand-primary-700 text-white text-xs font-bold gap-1.5 shadow-xs"
               >
                 <Plus size={14} />
@@ -766,6 +770,8 @@ export function DoctorSchedule() {
           times={times}
           formatTime={formatTime}
           canManage={false}
+          viewMode={scheduleViewMode}
+          onViewModeChange={setScheduleViewMode}
         />
       )}
     </div>
