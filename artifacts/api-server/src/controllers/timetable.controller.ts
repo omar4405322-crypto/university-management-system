@@ -5,6 +5,7 @@ import { TimetableService } from '../services/timetable.service';
 import { getScopeWhere } from '../utils/scope.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError, AuthorizationError, AppError } from '../utils/appError';
+import { invalidateCache } from '../utils/redis.utils';
 
 /**
  * @desc    Get all timetables (Admin) or matching timetable (Student)
@@ -36,7 +37,7 @@ export const getTimetables = catchAsync(async (req: Request, res: Response, next
       return next(new NotFoundError('Student profile not found'));
     }
 
-    // Automatically match student profile
+    // Automatically match student profile and require PUBLISHED status
     where = {
       departmentId: student.departmentId,
       collegeId: student.department?.collegeId,
@@ -87,6 +88,11 @@ export const getTimetableById = catchAsync(
     });
 
     if (!timetable) {
+      return next(new NotFoundError('Timetable not found'));
+    }
+
+    // If requester is a student, ensure timetable is published
+    if (req.user && req.user.role === 'STUDENT' && timetable.status !== 'PUBLISHED') {
       return next(new NotFoundError('Timetable not found'));
     }
 
@@ -267,7 +273,11 @@ export const publishTimetable = catchAsync(
       });
       return updated;
     });
-    res.json({ success: true, data: timetable });
+
+    await invalidateCache('dashboard:*');
+    auditLog('PUBLISH_TIMETABLE', 'Timetable', id.toString(), req);
+
+    res.json({ success: true, data: timetable, message: 'Timetable published successfully' });
   }
 );
 
@@ -291,6 +301,10 @@ export const unpublishTimetable = catchAsync(
       });
       return updated;
     });
-    res.json({ success: true, data: timetable });
+
+    await invalidateCache('dashboard:*');
+    auditLog('UNPUBLISH_TIMETABLE', 'Timetable', id.toString(), req);
+
+    res.json({ success: true, data: timetable, message: 'Timetable set to draft mode' });
   }
 );
