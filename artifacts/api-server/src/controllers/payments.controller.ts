@@ -292,7 +292,6 @@ export const deletePayment = catchAsync(async (req: Request, res: Response, next
 
   await invalidateCache('dashboard:*');
 
-  auditLog('DELETE_PAYMENT', 'Payment', req.params.id as string, req);
   res.json({ success: true, message: 'Payment deleted' });
 });
 
@@ -304,62 +303,26 @@ export const getPaymentReceipt = catchAsync(
     }
 
     let payment;
-    if (req.user?.role === 'STUDENT') {
-      const student = await prisma.student.findUnique({
-        where: { userId: req.user.id },
-      });
-      if (!student) {
-        return next(new NotFoundError('Student record not found'));
-      }
-      payment = await prisma.payment.findFirst({
-        where: {
-          id: paymentId,
-          studentId: student.id,
+    const scopeWhere = getScopeWhere(req.user, 'payment');
+    
+    payment = await prisma.payment.findFirst({
+      where: {
+        id: paymentId,
+        ...(req.user?.role === 'STUDENT' ? { student: { userId: req.user.id } } : scopeWhere),
+      },
+      include: {
+        student: {
+          include: { department: { include: { college: true } } },
         },
-        include: {
-          student: {
-            include: {
-              department: {
-                include: {
-                  college: true,
-                },
-              },
-            },
-          },
-        },
-      });
-    } else {
-      const scopeWhere = getScopeWhere(req.user, 'payment');
-      payment = await prisma.payment.findFirst({
-        where: {
-          id: paymentId,
-          ...scopeWhere,
-        },
-        include: {
-          student: {
-            include: {
-              department: {
-                include: {
-                  college: true,
-                },
-              },
-            },
-          },
-        },
-      });
-    }
+      },
+    });
 
     if (!payment) {
       return next(new NotFoundError('Payment not found'));
     }
 
     if (payment.status !== 'PAID') {
-      return next(
-        new AppError(
-          'Receipts can only be generated for completed (PAID) payments',
-          400
-        )
-      );
+      return next(new AppError('Receipts can only be generated for completed (PAID) payments', 400));
     }
 
     const receiptData: ReceiptData = {
@@ -367,9 +330,7 @@ export const getPaymentReceipt = catchAsync(
       paymentId: payment.id,
       studentName: `${payment.student.firstName} ${payment.student.lastName}`.trim(),
       studentCode: payment.student.studentId || undefined,
-      academicYear: payment.student.year
-        ? `السنة الدراسية ${payment.student.year}`
-        : undefined,
+      academicYear: payment.student.year ? `الفرقة الدراسية ${payment.student.year}` : undefined,
       departmentName: payment.student.department?.name || undefined,
       collegeName: payment.student.department?.college?.name || undefined,
       universityName: 'جامعة 6 أكتوبر التكنولوجية',
@@ -384,10 +345,7 @@ export const getPaymentReceipt = catchAsync(
     const pdfBuffer = await ReceiptService.generateReceiptPdf(receiptData);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="receipt-${payment.id}.pdf"`
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="receipt-${payment.id}.pdf"`);
     res.setHeader('Content-Length', pdfBuffer.length);
     res.status(200).send(pdfBuffer);
   }

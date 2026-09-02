@@ -275,7 +275,7 @@ export class ReceiptService {
             .fontSize(10)
             .fillColor('#475569')
             .text(
-              this.processArabic(`السنة الدراسية: ${data.academicYear}`),
+              this.processArabic(`الفرقة الدراسية: ${data.academicYear}`),
               55,
               studentY + 62,
               { align: 'left', width: 235 }
