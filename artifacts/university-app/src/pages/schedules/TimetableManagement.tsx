@@ -25,9 +25,11 @@ import {
   Layers,
   GraduationCap
 } from 'lucide-react';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import { downloadCsv } from '../../utils/exportCsv';
 import timetableService from '../../services/timetable.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
@@ -40,16 +42,6 @@ import TimetableModal from './TimetableModal';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
 import { useLanguage } from '../../context/LanguageContext';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../../components/ui/alert-dialog';
 
 export interface TimetableItem {
   id: number;
@@ -97,7 +89,9 @@ const TimetableManagement = () => {
   const [timetables, setTimetables] = useState<TimetableItem[]>([]);
   const [colleges, setColleges] = useState<College[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [deleteTarget, setDeleteTarget] = useState<{ type: 'single'; id: number | string } | { type: 'bulk' } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TimetableItem | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
 
   // Filter States
   const [search, setSearch] = useState('');
@@ -183,24 +177,25 @@ const TimetableManagement = () => {
   }, [fetchTimetables]);
 
   // Delete Timetable
-  const handleDelete = (id: number | string) => {
-    setDeleteTarget({ type: 'single', id });
-  };
-
-  const confirmDelete = async (id: number | string) => {
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      const result = await timetableService.deleteTimetable(String(id));
+      setDeleteLoading(true);
+      const result = await timetableService.deleteTimetable(String(deleteTarget.id));
       if (result.success || result) {
-        showToast(t('common.deleteSuccess', 'Timetable deleted successfully'), 'success');
+        showToast(t('common.deleteSuccess', 'تم حذف الجدول الدراسي بنجاح'), 'success');
         setSelectedIds((prev) => {
           const next = new Set(prev);
-          next.delete(id);
+          next.delete(deleteTarget.id);
           return next;
         });
+        setDeleteTarget(null);
         fetchTimetables();
       }
     } catch (err: any) {
-      showToast(err.message || t('common.deleteError', 'Error deleting timetable'), 'error');
+      showToast(err.message || t('common.deleteError', 'خطأ في حذف الجدول الدراسي'), 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -294,11 +289,6 @@ const TimetableManagement = () => {
   };
 
   // Bulk Delete
-  const handleBulkDelete = () => {
-    if (selectedIds.size === 0) return;
-    setDeleteTarget({ type: 'bulk' });
-  };
-
   const confirmBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     const count = selectedIds.size;
@@ -308,14 +298,33 @@ const TimetableManagement = () => {
         timetableService.deleteTimetable(String(id)).catch((err) => ({ error: err }))
       );
       await Promise.allSettled(deletePromises);
-      showToast(t('timetables.bulkDeleteSuccess', `Successfully deleted ${count} timetables`, { count }), 'success');
+      showToast(t('timetables.bulkDeleteSuccess', `تم حذف ${count} جداول دراسية بنجاح`, { count }), 'success');
       setSelectedIds(new Set());
+      setBulkDeleteModalOpen(false);
       fetchTimetables();
     } catch (err) {
-      showToast(t('timetables.bulkDeleteError', 'An error occurred during bulk deletion'), 'error');
+      showToast(t('timetables.bulkDeleteError', 'حدث خطأ أثناء الحذف الجماعي'), 'error');
     } finally {
       setIsBulkDeleting(false);
     }
+  };
+
+  // Bulk Export Selected Timetables
+  const handleBulkExport = () => {
+    const selectedList = filteredTimetables.filter((tb) => selectedIds.has(tb.id));
+    if (!selectedList.length) return;
+    const exportData = selectedList.map((tb) => ({
+      ID: tb.id,
+      Title: tb.title || 'Untitled',
+      Department: tb.department?.name || tb.department?.nameAr || 'General',
+      College: tb.college?.name || tb.college?.nameAr || 'General',
+      AcademicYear: tb.academicYear,
+      Semester: tb.semester,
+      Status: tb.status || 'DRAFT',
+      SessionsCount: tb.slots?.length || tb._count?.slots || 0,
+    }));
+    downloadCsv(exportData, `timetables_selected_${new Date().toISOString().split('T')[0]}.csv`);
+    showToast(isRTL ? 'تم تصدير الجداول المحددة بنجاح' : 'Exported selected timetables successfully', 'success');
   };
 
   // Live Counts for Status Tabs
@@ -420,90 +429,44 @@ const TimetableManagement = () => {
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-        {/* Total Master Timetables */}
-        <button
-          type="button"
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={t('timetables.totalTimetables', 'Total Timetables')}
+          value={totalCount}
+          icon={Calendar}
+          color="primary"
+          isActive={statusFilter === 'ALL'}
           onClick={() => setStatusFilter('ALL')}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            statusFilter === 'ALL'
-              ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 border-brand-primary-400 dark:border-brand-primary-600 ring-2 ring-brand-primary-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-brand-primary-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('timetables.totalTimetables', 'Total Timetables')}
-            </span>
-            <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400 block mt-0.5 font-mono">
-              {totalCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <Calendar size={16} />
-          </div>
-        </button>
+        />
 
-        {/* Published Timetables */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('timetables.publishedStatus', 'Published')}
+          value={publishedCount}
+          icon={CheckCircle2}
+          color="emerald"
+          isActive={statusFilter === 'PUBLISHED'}
           onClick={() => setStatusFilter(statusFilter === 'PUBLISHED' ? 'ALL' : 'PUBLISHED')}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            statusFilter === 'PUBLISHED'
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-emerald-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('timetables.publishedStatus', 'Published')}
-            </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
-              {publishedCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CheckCircle2 size={16} />
-          </div>
-        </button>
+        />
 
-        {/* Drafts in Progress */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('timetables.draftStatus', 'Draft')}
+          value={draftCount}
+          icon={Clock}
+          color="amber"
+          isActive={statusFilter === 'DRAFT'}
           onClick={() => setStatusFilter(statusFilter === 'DRAFT' ? 'ALL' : 'DRAFT')}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            statusFilter === 'DRAFT'
-              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-amber-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('timetables.draftStatus', 'Draft')}
-            </span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
-              {draftCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <Clock size={16} />
-          </div>
-        </button>
+        />
 
-        {/* Covered Departments */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('groups.allDepartments', 'Departments Covered')}
-            </span>
-            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
-              {coveredDeptsCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-            <Layers size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('groups.allDepartments', 'Departments Covered')}
+          value={coveredDeptsCount}
+          icon={Layers}
+          color="blue"
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -600,6 +563,35 @@ const TimetableManagement = () => {
           <option value="DRAFT">{t('timetables.draftStatus', 'Draft')}</option>
         </select>
 
+        {/* Select All Button */}
+        {canManage && allFilteredIds.length > 0 && (
+          <button
+            type="button"
+            onClick={handleToggleSelectAll}
+            className={`h-8.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              isAllSelected
+                ? 'bg-brand-primary-500 text-white border-brand-primary-500 shadow-xs'
+                : isSomeSelected
+                ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-primary-700 dark:text-brand-primary-300 border-brand-primary-300'
+                : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+            }`}
+            title={isAllSelected ? t('timetables.deselectAll', 'إلغاء تحديد الكل') : t('timetables.selectAll', 'تحديد الكل')}
+          >
+            {isAllSelected ? (
+              <CheckSquare size={14} />
+            ) : isSomeSelected ? (
+              <MinusSquare size={14} />
+            ) : (
+              <Square size={14} />
+            )}
+            <span>
+              {isAllSelected
+                ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
+                : (isRTL ? 'تحديد الكل' : 'Select All')}
+            </span>
+          </button>
+        )}
+
         {/* Clear Filters */}
         {hasActiveFilters && (
           <Button
@@ -675,6 +667,35 @@ const TimetableManagement = () => {
       ) : viewMode === 'CARD' ? (
         /* MODE A: RESPONSIVE CARDS GRID VIEW */
         <div className="space-y-3">
+          {/* Dedicated Select All Header Bar for Cards View */}
+          {canManage && allFilteredIds.length > 0 && (
+            <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
+              <button
+                type="button"
+                onClick={handleToggleSelectAll}
+                className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-brand-primary-600 transition-colors cursor-pointer"
+              >
+                {isAllSelected ? (
+                  <CheckSquare size={16} className="text-brand-primary-600" />
+                ) : isSomeSelected ? (
+                  <MinusSquare size={16} className="text-brand-primary-600" />
+                ) : (
+                  <Square size={16} className="text-slate-400" />
+                )}
+                <span>
+                  {isAllSelected
+                    ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
+                    : (isRTL ? `تحديد جميع الجداول (${allFilteredIds.length})` : `Select All Timetables (${allFilteredIds.length})`)}
+                </span>
+              </button>
+              {selectedIds.size > 0 && (
+                <span className="text-xs font-bold text-brand-primary-700 dark:text-brand-primary-300 bg-brand-primary-50 dark:bg-brand-primary-950/50 px-2.5 py-1 rounded-xl border border-brand-primary-200 dark:border-brand-primary-800">
+                  {isRTL ? `تم تحديد ${selectedIds.size} من أصل ${allFilteredIds.length}` : `Selected ${selectedIds.size} of ${allFilteredIds.length}`}
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredTimetables.map((item) => {
               const isPublished = item.status === 'PUBLISHED';
@@ -810,8 +831,8 @@ const TimetableManagement = () => {
                         {/* Delete */}
                         <button
                           type="button"
-                          onClick={() => handleDelete(item.id)}
-                          className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 transition-colors border border-rose-200 dark:border-rose-800"
+                          onClick={() => setDeleteTarget(item)}
+                          className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 transition-colors border border-rose-200 dark:border-rose-800 cursor-pointer"
                           title={t('common.delete', 'Delete')}
                         >
                           <Trash2 size={13} />
@@ -1004,8 +1025,8 @@ const TimetableManagement = () => {
                               {/* Delete */}
                               <button
                                 type="button"
-                                onClick={() => handleDelete(item.id)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                onClick={() => setDeleteTarget(item)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                                 title={t('common.delete', 'Delete')}
                               >
                                 <Trash2 size={14} />
@@ -1036,7 +1057,8 @@ const TimetableManagement = () => {
         <BulkActionToolbar
           selectedCount={selectedIds.size}
           onClear={() => setSelectedIds(new Set())}
-          onDelete={handleBulkDelete}
+          onExport={handleBulkExport}
+          onDelete={() => setBulkDeleteModalOpen(true)}
         />
       )}
 
@@ -1057,39 +1079,37 @@ const TimetableManagement = () => {
         />
       )}
 
-      {/* Confirmation Alert Dialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {deleteTarget?.type === 'bulk'
-                ? t('timetables.bulkDeleteTitle', 'Delete Selected Timetables')
-                : t('timetables.deleteTitle', 'Delete Timetable')}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteTarget?.type === 'bulk'
-                ? t('timetables.bulkDeleteConfirm', `Are you sure you want to delete ${selectedIds.size} selected timetables?`, { count: selectedIds.size })
-                : t('timetables.deleteConfirm', 'Are you sure you want to delete this timetable?')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel', 'Cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteTarget?.type === 'single') {
-                  confirmDelete(deleteTarget.id);
-                } else if (deleteTarget?.type === 'bulk') {
-                  confirmBulkDelete();
-                }
-                setDeleteTarget(null);
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t('common.delete', 'Delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Single Timetable Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteTarget)}
+        itemName={deleteTarget?.title || deleteTarget?.department?.nameAr || deleteTarget?.department?.name || ''}
+        onClose={() => !deleteLoading && setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        loading={deleteLoading}
+        title={isRTL ? 'تأكيد حذف الجدول الدراسي' : 'Confirm Delete Timetable'}
+        confirmLabel={isRTL ? 'حذف الجدول' : 'Delete Timetable'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من حذف الجدول الدراسي "${deleteTarget?.title || deleteTarget?.department?.nameAr || deleteTarget?.department?.name || ''}" (${deleteTarget?.college?.nameAr || deleteTarget?.college?.name || ''} - الفرقة ${deleteTarget?.academicYear || 1} - الفصل ${deleteTarget?.semester || 1})؟ سيتم حذف جميع الحصص والمحاضرات المرتبطة بهذا الجدول نهائياً لمنع أي أخطاء.`
+            : `Are you sure you want to delete timetable "${deleteTarget?.title || deleteTarget?.department?.name || ''}" (${deleteTarget?.college?.name || ''} - Year ${deleteTarget?.academicYear || 1} - Sem ${deleteTarget?.semester || 1})? All scheduled sessions within this timetable will be permanently deleted.`
+        }
+      />
+
+      {/* Bulk Timetables Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={bulkDeleteModalOpen}
+        itemName={`${selectedIds.size} ${isRTL ? 'جداول دراسية' : 'timetables'}`}
+        onClose={() => !isBulkDeleting && setBulkDeleteModalOpen(false)}
+        onConfirm={confirmBulkDelete}
+        loading={isBulkDeleting}
+        title={isRTL ? 'تأكيد حذف الجداول المحددة' : 'Confirm Delete Selected Timetables'}
+        confirmLabel={isRTL ? 'حذف الجداول المحددة' : 'Delete Selected'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من حذف ${selectedIds.size} جدول دراسي محدد؟ سيتم حذف جميع هذه الجداول والحصص الدراسية المرتبطة بها نهائياً لمنع الأخطاء العرضية.`
+            : `Are you sure you want to delete ${selectedIds.size} selected timetables? All associated scheduled class sessions will be permanently deleted.`
+        }
+      />
     </div>
   );
 };

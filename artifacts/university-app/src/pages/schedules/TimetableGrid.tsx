@@ -12,6 +12,7 @@ import { OverrideModal } from '../../components/timetable/OverrideModal';
 import { SkeletonTable } from '../../components/ui/skeleton';
 import { TimeRange } from '../../components/ui/TimeRange';
 import { PageHeader } from '../../components/ui/PageHeader';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import timetableService from '../../services/timetable.service';
 import schedulesService from '../../services/schedules.service';
 import { notifyScheduleChange, subscribeToScheduleChanges } from '../../utils/scheduleSync';
@@ -42,6 +43,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
   const isRTL = i18n.language?.startsWith('ar');
   const [searchParams, setSearchParams] = useSearchParams();
   const [timeSlots, setTimeSlots] = useState<string[]>(generateTimeSlots);
+  const [slotToDelete, setSlotToDelete] = useState<{ day: string; slot: string; slotData?: SlotEntry } | null>(null);
 
   React.useEffect(() => {
     const handleConfigChange = () => {
@@ -173,16 +175,28 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
 
   const handleDeleteSlot = useCallback(
     (day: string, slot: string) => {
-      if (!window.confirm(t('timetables.deleteConfirm', 'Delete this class slot?'))) return;
-
-      setSlots((prev) => {
-        const next: SlotsMap = { ...prev };
-        delete next[`${day}_${slot}`];
-        return next;
-      });
+      const existing = slots[`${day}_${slot}`];
+      setSlotToDelete({ day, slot, slotData: existing });
     },
-    [t, setSlots]
+    [slots]
   );
+
+  const confirmDeleteSlot = useCallback(() => {
+    if (!slotToDelete) return;
+    const { day, slot, slotData } = slotToDelete;
+    setSlots((prev) => {
+      const next: SlotsMap = { ...prev };
+      delete next[`${day}_${slot}`];
+      return next;
+    });
+    setSlotToDelete(null);
+    showToast(
+      isRTL
+        ? `تم حذف الحصة (${slotData?.courseName || ''}) من جدول الشعبة بنجاح`
+        : `Class session (${slotData?.courseName || ''}) removed from section schedule`,
+      'success'
+    );
+  }, [slotToDelete, isRTL, showToast, setSlots]);
 
   // ── Save slot to local map ───────────────────────────────────────────────────
   const handleSaveSlot = useCallback(() => {
@@ -315,11 +329,6 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
       return;
     }
 
-    // Ask user if they want to sync directly to Master Schedule (Tables Management)
-    const shouldSyncToMaster = window.confirm(
-      t('timetables.syncConfirmPrompt', 'timetables.syncConfirmPrompt')
-    );
-
     setSaving(true);
     try {
       const slotsArray = Object.entries(slots).map(([key, val]) => {
@@ -352,22 +361,15 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
         await timetableService.createTimetable(payload);
       }
 
-      if (shouldSyncToMaster) {
-        await schedulesService.syncGrid({
-          collegeId: Number(effectiveCollegeId),
-          departmentId: Number(filters.departmentId),
-          academicYear: Number(filters.academicYear),
-          semester: Number(filters.semester),
-          slots: slotsArray,
-        });
-        notifyScheduleChange();
-        showToast(
-          t('timetables.syncSuccess', 'timetables.syncSuccess'),
-          'success'
-        );
-      } else {
-        showToast(t('timetables.saveSuccess', 'Timetable saved successfully ✅'), 'success');
-      }
+      await schedulesService.syncGrid({
+        collegeId: Number(effectiveCollegeId),
+        departmentId: Number(filters.departmentId),
+        academicYear: Number(filters.academicYear),
+        semester: Number(filters.semester),
+        slots: slotsArray,
+      });
+      notifyScheduleChange();
+      showToast(isRTL ? 'تم حفظ ومزامنة الجدول بنجاح ✅' : 'Timetable saved & synced successfully ✅', 'success');
     } catch (err) {
       console.error('Save error', err);
       showToast(t('common.errorOccurred', 'Error saving timetable'), 'error');
@@ -611,7 +613,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
             <div className="flex justify-end pt-2 border-t border-brand-border">
               <button
                 onClick={() => setAuditReport(null)}
-                className="px-5 py-2 bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold text-xs rounded-xl shadow transition-all"
+                className="px-5 py-2 bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
               >
                 فهمت، سأقوم بالتعديل
               </button>
@@ -619,6 +621,21 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
           </div>
         </div>
       )}
+
+      {/* Slot Deletion Confirmation Modal to Prevent Accidental Loss */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(slotToDelete)}
+        itemName={slotToDelete?.slotData?.courseName ? `${slotToDelete.slotData.courseName} (${slotToDelete.day} ${slotToDelete.slot})` : ''}
+        onClose={() => setSlotToDelete(null)}
+        onConfirm={confirmDeleteSlot}
+        title={isRTL ? 'تأكيد حذف الحصة من جدول الشعبة' : 'Confirm Remove Class Session'}
+        confirmLabel={isRTL ? 'حذف الحصة' : 'Remove Session'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من حذف الحصة الدراسية لمقرر "${slotToDelete?.slotData?.courseName || ''}" (${slotToDelete?.slotData?.doctorName ? 'المحاضر: ' + slotToDelete.slotData.doctorName + ' - ' : ''}القاعة: ${slotToDelete?.slotData?.room || 'غير محددة'}) يوم ${slotToDelete?.day || ''} الفترة ${slotToDelete?.slot || ''} من جدول هذه الشعبة؟ لن يتمكن الطلاب من رؤيتها بعد الحفظ.`
+            : `Are you sure you want to remove the class session for "${slotToDelete?.slotData?.courseName || ''}" (${slotToDelete?.slotData?.doctorName ? 'Instructor: ' + slotToDelete.slotData.doctorName + ' - ' : ''}Room: ${slotToDelete?.slotData?.room || 'Unassigned'}) on ${slotToDelete?.day || ''} slot ${slotToDelete?.slot || ''} from this section timetable?`
+        }
+      />
     </div>
   );
 }

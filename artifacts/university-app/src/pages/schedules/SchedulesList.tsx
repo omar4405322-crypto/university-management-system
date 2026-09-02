@@ -26,9 +26,11 @@ import {
   Square,
   MinusSquare
 } from 'lucide-react';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import { downloadCsv } from '../../utils/exportCsv';
 import schedulesService from '../../services/schedules.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
@@ -55,7 +57,7 @@ const getSessionBadgeStyle = (type: string) => {
       return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800';
     case 'SECTION':
     case 'TUTORIAL':
-      return 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+      return 'bg-brand-primary-100 text-brand-primary-800 dark:bg-brand-primary-950/40 dark:text-brand-primary-300 border-brand-primary-200 dark:border-brand-primary-800';
     default:
       return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
   }
@@ -109,6 +111,9 @@ const SchedulesList = () => {
   // Multi-Selection State
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ScheduleSlot | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -188,22 +193,25 @@ const SchedulesList = () => {
   }, [fetchSchedules]);
 
   // Delete Individual Schedule
-  const handleDelete = async (id: number | string) => {
-    if (window.confirm(t('schedules.deleteConfirm', 'Are you sure you want to delete this schedule?'))) {
-      try {
-        const result = await schedulesService.deleteSchedule(String(id));
-        if (result.success) {
-          showToast(t('common.deleteSuccess', 'Schedule deleted successfully'), 'success');
-          setSelectedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          });
-          fetchSchedules();
-        }
-      } catch (_error) {
-        showToast(t('common.deleteError', 'Error deleting schedule'), 'error');
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleteTarget.id === undefined) return;
+    try {
+      setDeleteLoading(true);
+      const result = await schedulesService.deleteSchedule(String(deleteTarget.id));
+      if (result.success) {
+        showToast(t('common.deleteSuccess', 'تم حذف الحصة الدراسية بنجاح'), 'success');
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(deleteTarget.id!);
+          return next;
+        });
+        setDeleteTarget(null);
+        fetchSchedules();
       }
+    } catch (_error) {
+      showToast(t('common.deleteError', 'خطأ في حذف الحصة الدراسية'), 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -232,24 +240,49 @@ const SchedulesList = () => {
       if (group.length > 1) {
         const roomMap: Record<string, any[]> = {};
         const docMap: Record<string, any[]> = {};
+        const taMap: Record<string, any[]> = {};
+        const groupMap: Record<string, any[]> = {};
 
         group.forEach((s) => {
-          if (s.room) {
-            if (!roomMap[s.room]) roomMap[s.room] = [];
-            roomMap[s.room].push(s);
+          if (s.room && String(s.room).trim()) {
+            const rKey = String(s.room).trim().toLowerCase();
+            if (!roomMap[rKey]) roomMap[rKey] = [];
+            roomMap[rKey].push(s);
           }
           if (s.doctorId || s.doctor?.id) {
-            const dId = String(s.doctorId || s.doctor?.id);
-            if (!docMap[dId]) docMap[dId] = [];
-            docMap[dId].push(s);
+            const dId = String(s.doctorId || s.doctor?.id).trim();
+            if (dId) {
+              if (!docMap[dId]) docMap[dId] = [];
+              docMap[dId].push(s);
+            }
+          }
+          if (s.teachingAssistantId || s.teachingAssistant?.id) {
+            const taId = String(s.teachingAssistantId || s.teachingAssistant?.id).trim();
+            if (taId) {
+              if (!taMap[taId]) taMap[taId] = [];
+              taMap[taId].push(s);
+            }
+          }
+          if (s.groupId || s.group?.id) {
+            const gId = String(s.groupId || s.group?.id).trim();
+            if (gId) {
+              if (!groupMap[gId]) groupMap[gId] = [];
+              groupMap[gId].push(s);
+            }
           }
         });
 
         Object.values(roomMap).forEach((slots) => {
-          if (slots.length > 1) slots.forEach((slot) => conflictSet.add(slot.id));
+          if (slots.length > 1) slots.forEach((slot) => { if (slot.id !== undefined) conflictSet.add(slot.id); });
         });
         Object.values(docMap).forEach((slots) => {
-          if (slots.length > 1) slots.forEach((slot) => conflictSet.add(slot.id));
+          if (slots.length > 1) slots.forEach((slot) => { if (slot.id !== undefined) conflictSet.add(slot.id); });
+        });
+        Object.values(taMap).forEach((slots) => {
+          if (slots.length > 1) slots.forEach((slot) => { if (slot.id !== undefined) conflictSet.add(slot.id); });
+        });
+        Object.values(groupMap).forEach((slots) => {
+          if (slots.length > 1) slots.forEach((slot) => { if (slot.id !== undefined) conflictSet.add(slot.id); });
         });
       }
     });
@@ -372,26 +405,47 @@ const SchedulesList = () => {
   };
 
   // Bulk Delete Selected Sessions
-  const handleBulkDelete = async () => {
+  const confirmBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     const count = selectedIds.size;
-    const msg = t('schedules.bulkDeleteConfirm', `Are you sure you want to delete ${count} selected sessions? This action cannot be undone.`, { count });
-    if (!window.confirm(msg)) return;
-
     try {
       setIsBulkDeleting(true);
       const deletePromises = Array.from(selectedIds).map((id) =>
         schedulesService.deleteSchedule(String(id)).catch((err) => ({ error: err }))
       );
       await Promise.allSettled(deletePromises);
-      showToast(t('schedules.bulkDeleteSuccess', `Successfully deleted ${count} sessions`, { count }), 'success');
+      showToast(t('schedules.bulkDeleteSuccess', `تم حذف ${count} حصة دراسية بنجاح`, { count }), 'success');
       setSelectedIds(new Set());
+      setBulkDeleteModalOpen(false);
       fetchSchedules();
     } catch (err) {
-      showToast(t('schedules.bulkDeleteError', 'An error occurred during bulk deletion'), 'error');
+      showToast(t('schedules.bulkDeleteError', 'حدث خطأ أثناء الحذف الجماعي'), 'error');
     } finally {
       setIsBulkDeleting(false);
     }
+  };
+
+  // Bulk Export Selected Sessions
+  const handleBulkExport = () => {
+    const selectedList = filteredSchedules.filter((s) => s.id !== undefined && selectedIds.has(s.id));
+    if (!selectedList.length) return;
+    const exportData = selectedList.map((s) => ({
+      ID: s.id,
+      CourseCode: s.course?.courseCode || 'N/A',
+      CourseName: s.course?.name || 'N/A',
+      Department: s.course?.department?.name || s.course?.department?.nameAr || 'General',
+      Year: s.course?.year || s.year || 'N/A',
+      Semester: s.course?.semester || s.semester || 'N/A',
+      Day: s.dayOfWeek,
+      StartTime: s.startTime,
+      EndTime: s.endTime,
+      SlotType: s.slotType,
+      Room: s.room || 'TBA',
+      Doctor: s.doctor ? `${s.doctor.firstName} ${s.doctor.lastName}` : 'TBA',
+      Group: s.group?.name || 'All Students',
+    }));
+    downloadCsv(exportData, `schedules_selected_${new Date().toISOString().split('T')[0]}.csv`);
+    showToast(isRTL ? 'تم تصدير الحصص المحددة بنجاح' : 'Exported selected schedule sessions successfully', 'success');
   };
 
   // Live Metric Counts for Quick Filter Chips
@@ -529,114 +583,62 @@ const SchedulesList = () => {
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-        {/* Total Sessions */}
-        <button
-          type="button"
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={t('schedules.totalSessions', 'Total Sessions')}
+          value={totalCount}
+          icon={Calendar}
+          color="primary"
+          isActive={!filterMissingRoom && !filterMissingDoctor && !filterConflictsOnly}
           onClick={() => {
             setFilterMissingRoom(false);
             setFilterMissingDoctor(false);
             setFilterConflictsOnly(false);
           }}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            !filterMissingRoom && !filterMissingDoctor && !filterConflictsOnly
-              ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 border-brand-primary-400 dark:border-brand-primary-600 ring-2 ring-brand-primary-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-brand-primary-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('schedules.totalSessions', 'Total Sessions')}
-            </span>
-            <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400 block mt-0.5 font-mono">
-              {totalCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <Calendar size={16} />
-          </div>
-        </button>
+        />
 
-        {/* Schedule Conflicts */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('schedules.conflicts', 'Schedule Conflicts')}
+          value={conflictsCount}
+          icon={AlertTriangle}
+          color="rose"
+          isActive={filterConflictsOnly}
           onClick={() => {
             setFilterConflictsOnly(!filterConflictsOnly);
             setFilterMissingRoom(false);
             setFilterMissingDoctor(false);
           }}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            filterConflictsOnly
-              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600 ring-2 ring-rose-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-rose-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('schedules.conflicts', 'Schedule Conflicts')}
-            </span>
-            <span className="text-lg font-black text-rose-600 dark:text-rose-400 block mt-0.5 font-mono">
-              {conflictsCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center shrink-0">
-            <AlertTriangle size={16} />
-          </div>
-        </button>
+        />
 
-        {/* Missing Hall / Room */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('schedules.missingRoom', 'Unassigned Halls')}
+          value={missingRoomCount}
+          icon={MapPin}
+          color="amber"
+          isActive={filterMissingRoom}
           onClick={() => {
             setFilterMissingRoom(!filterMissingRoom);
             setFilterConflictsOnly(false);
             setFilterMissingDoctor(false);
           }}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            filterMissingRoom
-              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-amber-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('schedules.missingRoom', 'Unassigned Halls')}
-            </span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
-              {missingRoomCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <MapPin size={16} />
-          </div>
-        </button>
+        />
 
-        {/* Missing Faculty */}
-        <button
-          type="button"
+        <StatCard
+          compact
+          title={t('schedules.missingDoctor', 'Unassigned Instructors')}
+          value={missingDoctorCount}
+          icon={User}
+          color="blue"
+          isActive={filterMissingDoctor}
           onClick={() => {
             setFilterMissingDoctor(!filterMissingDoctor);
             setFilterConflictsOnly(false);
             setFilterMissingRoom(false);
           }}
-          className={`p-3 rounded-2xl border transition-all text-start flex items-center justify-between cursor-pointer ${
-            filterMissingDoctor
-              ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-600 ring-2 ring-blue-500/20 shadow-xs'
-              : 'bg-white dark:bg-slate-800 border-slate-200/90 dark:border-slate-700 shadow-2xs hover:border-blue-300'
-          }`}
-        >
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('schedules.missingDoctor', 'Unassigned Instructors')}
-            </span>
-            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
-              {missingDoctorCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-            <User size={16} />
-          </div>
-        </button>
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -734,6 +736,35 @@ const SchedulesList = () => {
           <option value="SECTION">{t('schedule.section', 'Sections')}</option>
         </select>
 
+        {/* Select All Button */}
+        {canManage && allFilteredIds.length > 0 && (
+          <button
+            type="button"
+            onClick={handleToggleSelectAll}
+            className={`h-8.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              isAllSelected
+                ? 'bg-brand-primary-500 text-white border-brand-primary-500 shadow-xs'
+                : isSomeSelected
+                ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-primary-700 dark:text-brand-primary-300 border-brand-primary-300'
+                : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+            }`}
+            title={isAllSelected ? t('schedules.deselectAll', 'إلغاء تحديد الكل') : t('schedules.selectAll', 'تحديد الكل')}
+          >
+            {isAllSelected ? (
+              <CheckSquare size={14} />
+            ) : isSomeSelected ? (
+              <MinusSquare size={14} />
+            ) : (
+              <Square size={14} />
+            )}
+            <span>
+              {isAllSelected
+                ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
+                : (isRTL ? 'تحديد الكل' : 'Select All')}
+            </span>
+          </button>
+        )}
+
         {/* Clear Filters */}
         {hasActiveFilters && (
           <Button
@@ -827,6 +858,35 @@ const SchedulesList = () => {
       ) : viewMode === 'CARD' ? (
         /* MODE B: RESPONSIVE CARDS VIEW */
         <div className="space-y-3">
+          {/* Dedicated Select All Header Bar for Cards View */}
+          {canManage && allFilteredIds.length > 0 && (
+            <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
+              <button
+                type="button"
+                onClick={handleToggleSelectAll}
+                className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-brand-primary-600 transition-colors cursor-pointer"
+              >
+                {isAllSelected ? (
+                  <CheckSquare size={16} className="text-brand-primary-600" />
+                ) : isSomeSelected ? (
+                  <MinusSquare size={16} className="text-brand-primary-600" />
+                ) : (
+                  <Square size={16} className="text-slate-400" />
+                )}
+                <span>
+                  {isAllSelected
+                    ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
+                    : (isRTL ? `تحديد جميع الحصص (${allFilteredIds.length})` : `Select All Sessions (${allFilteredIds.length})`)}
+                </span>
+              </button>
+              {selectedIds.size > 0 && (
+                <span className="text-xs font-bold text-brand-primary-700 dark:text-brand-primary-300 bg-brand-primary-50 dark:bg-brand-primary-950/50 px-2.5 py-1 rounded-xl border border-brand-primary-200 dark:border-brand-primary-800">
+                  {isRTL ? `تم تحديد ${selectedIds.size} من أصل ${allFilteredIds.length}` : `Selected ${selectedIds.size} of ${allFilteredIds.length}`}
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredSchedules.map((slot, index) => {
               const course = slot.course || {};
@@ -902,8 +962,8 @@ const SchedulesList = () => {
                           {slotId !== undefined && (
                             <button
                               type="button"
-                              onClick={() => handleDelete(slotId)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                              onClick={() => setDeleteTarget(slot)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                               title={t('schedules.deleteSession', 'Delete')}
                             >
                               <Trash2 size={13} />
@@ -1204,24 +1264,24 @@ const SchedulesList = () => {
                             >
                               <Edit2 size={14} />
                             </button>
-                            {slotId !== undefined && (
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(slotId)}
-                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                                title={t('schedules.deleteSession', 'Delete Session')}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                              {slotId !== undefined && (
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteTarget(slot)}
+                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                  title={t('schedules.deleteSession', 'Delete Session')}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
 
             {/* Table Footer */}
             <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 font-bold">
@@ -1239,9 +1299,42 @@ const SchedulesList = () => {
         <BulkActionToolbar
           selectedCount={selectedIds.size}
           onClear={() => setSelectedIds(new Set())}
-          onDelete={handleBulkDelete}
+          onExport={handleBulkExport}
+          onDelete={() => setBulkDeleteModalOpen(true)}
         />
       )}
+
+      {/* Single Session Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={Boolean(deleteTarget)}
+        itemName={deleteTarget ? `${deleteTarget.course?.name || ''} (${deleteTarget.dayOfWeek} ${deleteTarget.startTime})` : ''}
+        onClose={() => !deleteLoading && setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        loading={deleteLoading}
+        title={isRTL ? 'تأكيد حذف الحصة من الجدول' : 'Confirm Delete Schedule Session'}
+        confirmLabel={isRTL ? 'حذف الحصة' : 'Delete Session'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من حذف الحصة الدراسية لمقرر "${deleteTarget?.course?.name || ''}" يوم ${deleteTarget?.dayOfWeek || ''} من ${deleteTarget?.startTime || ''} إلى ${deleteTarget?.endTime || ''}؟ سيتم إلغاؤها من جدول الشعبة والطلاب لمنع أي تعارض.`
+            : `Are you sure you want to delete the schedule session for "${deleteTarget?.course?.name || ''}" on ${deleteTarget?.dayOfWeek || ''} from ${deleteTarget?.startTime || ''} to ${deleteTarget?.endTime || ''}? This will remove it from student and group timetables.`
+        }
+      />
+
+      {/* Bulk Sessions Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={bulkDeleteModalOpen}
+        itemName={`${selectedIds.size} ${isRTL ? 'حصص دراسية' : 'sessions'}`}
+        onClose={() => !isBulkDeleting && setBulkDeleteModalOpen(false)}
+        onConfirm={confirmBulkDelete}
+        loading={isBulkDeleting}
+        title={isRTL ? 'تأكيد حذف الحصص المحددة' : 'Confirm Delete Selected Sessions'}
+        confirmLabel={isRTL ? 'حذف الحصص المحددة' : 'Delete Selected'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من حذف ${selectedIds.size} حصة دراسية محددة من الجداول؟ سيتم إلغاء هذه الحصص نهائياً من جداول الطلاب والشُعَب.`
+            : `Are you sure you want to delete ${selectedIds.size} selected schedule sessions? They will be permanently removed from all timetables.`
+        }
+      />
 
       {/* Schedule Edit / Create Modal */}
       {isModalOpen && (
