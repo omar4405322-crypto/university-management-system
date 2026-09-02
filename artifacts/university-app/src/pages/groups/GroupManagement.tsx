@@ -24,14 +24,20 @@ import {
   Layers,
   X,
   RotateCw,
-  Plus
+  Plus,
+  CheckSquare,
+  Square,
+  MinusSquare,
 } from 'lucide-react';
 import studentGroupsService from '../../services/studentGroups.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import Modal from '../../components/ui/Modal';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
+import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
+import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import { downloadCsv } from '../../utils/exportCsv';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
@@ -80,6 +86,11 @@ export default function GroupManagement() {
   const [confirmMessage, setConfirmMessage] = useState('');
   const [affectedSlotsList, setAffectedSlotsList] = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Multi-Selection State
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role || '');
 
@@ -193,6 +204,75 @@ export default function GroupManagement() {
       activeDepartmentsCount: activeDeptIds.size,
     };
   }, [filteredHierarchy]);
+
+  // Flat list of all groups currently matching filters (for selection & export)
+  const flatFilteredGroups = useMemo(() => {
+    const list: any[] = [];
+    const traverse = (g: any) => {
+      list.push(g);
+      if (g.children && g.children.length > 0) {
+        g.children.forEach(traverse);
+      }
+    };
+    filteredHierarchy.forEach(traverse);
+    return list;
+  }, [filteredHierarchy]);
+
+  const allFilteredIds = useMemo(() => flatFilteredGroups.map((g) => g.id), [flatFilteredGroups]);
+  const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
+  const isSomeSelected = allFilteredIds.some((id) => selectedIds.has(id)) && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allFilteredIds));
+    }
+  };
+
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkClear = () => setSelectedIds(new Set());
+
+  const handleBulkExport = () => {
+    const selectedList = flatFilteredGroups.filter((g) => selectedIds.has(g.id));
+    if (selectedList.length === 0) return;
+    const exportData = selectedList.map((g) => ({
+      ID: g.id,
+      Name: g.name,
+      Department: g.department?.nameAr || g.department?.name || 'N/A',
+      Year: g.year || 'N/A',
+      StudentsCount: g._count?.students ?? g.studentCount ?? 0,
+      SubgroupsCount: g.children ? g.children.length : 0,
+      RangeStart: g.rangeStartName || '—',
+      RangeEnd: g.rangeEndName || '—',
+    }));
+    downloadCsv(exportData, `student_groups_selected_${new Date().toISOString().split('T')[0]}.csv`);
+    showToast(t('groups.exportSuccess', 'Exported selected groups successfully'), 'success');
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await Promise.all(ids.map((id) => studentGroupsService.deleteGroup(id, { confirmed: true })));
+      showToast(t('groups.bulkDeleteSuccess', 'Deleted selected groups successfully'), 'success');
+      setSelectedIds(new Set());
+      setBulkDeleteModalOpen(false);
+      fetchAllData(true);
+    } catch (err: any) {
+      showToast(err.message || t('groups.bulkDeleteFailed', 'Failed to delete some groups'), 'error');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   // Tree Expand / Collapse Helpers
   const toggleNode = (nodeKey: string) => {
@@ -343,16 +423,35 @@ export default function GroupManagement() {
     const isExpanded = expandedNodes.has(nodeKey);
     const hasChildren = group.children && group.children.length > 0;
     const studentCount = group._count?.students ?? group.studentCount ?? 0;
+    const isSelected = selectedIds.has(group.id);
 
     return (
       <div key={group.id} className="w-full flex flex-col gap-2">
         <div
-          className={`flex items-center justify-between p-3 bg-white dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/90 rounded-2xl shadow-2xs hover:border-brand-primary-500/50 hover:shadow-xs transition-all ${
+          className={`flex items-center justify-between p-3 bg-white dark:bg-slate-800/90 border rounded-2xl shadow-2xs hover:border-brand-primary-500/50 hover:shadow-xs transition-all ${
+            isSelected
+              ? 'border-brand-primary-500 ring-2 ring-brand-primary-500/20 bg-brand-primary-500/[0.03] dark:bg-brand-primary-500/[0.06]'
+              : 'border-slate-200/90 dark:border-slate-700/90'
+          } ${
             level > 0 ? 'border-s-4 border-s-brand-primary-500/40 bg-slate-50/50 dark:bg-slate-900/40' : ''
           }`}
           style={isRTL ? { marginRight: `${level * 20}px` } : { marginLeft: `${level * 20}px` }}
         >
           <div className="flex items-center gap-2.5">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => handleToggleSelect(group.id)}
+                className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors p-0.5 cursor-pointer shrink-0"
+              >
+                {isSelected ? (
+                  <CheckSquare size={16} className="text-brand-primary-600" />
+                ) : (
+                  <Square size={16} />
+                )}
+              </button>
+            )}
+
             {hasChildren ? (
               <button
                 type="button"
@@ -517,66 +616,38 @@ export default function GroupManagement() {
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-        {/* Total Main Groups */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('groups.totalGroups', 'Total Main Groups')}
-            </span>
-            <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400 block mt-0.5 font-mono">
-              {metrics.totalRootGroups}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <FolderTree size={16} />
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={t('groups.totalGroups', 'Total Main Groups')}
+          value={metrics.totalRootGroups}
+          icon={FolderTree}
+          color="primary"
+        />
 
-        {/* Total Subgroups / Sections */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('groups.totalSubgroups', 'Subgroups & Sections')}
-            </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
-              {metrics.totalSubgroups}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-            <SplitSquareHorizontal size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('groups.totalSubgroups', 'Subgroups & Sections')}
+          value={metrics.totalSubgroups}
+          icon={SplitSquareHorizontal}
+          color="emerald"
+        />
 
-        {/* Total Enrolled Students */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('groups.assignedStudents', 'Distributed Students')}
-            </span>
-            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
-              {metrics.totalStudents}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-            <Users size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('groups.assignedStudents', 'Distributed Students')}
+          value={metrics.totalStudents}
+          icon={Users}
+          color="blue"
+        />
 
-        {/* Active Departments */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {t('groups.activeDepartments', 'Active Departments')}
-            </span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
-              {metrics.activeDepartmentsCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <Layers size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={t('groups.activeDepartments', 'Active Departments')}
+          value={metrics.activeDepartmentsCount}
+          icon={Building2}
+          color="amber"
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -647,6 +718,35 @@ export default function GroupManagement() {
           <option value="3">{t('common.year', 'Year')} 3</option>
           <option value="4">{t('common.year', 'Year')} 4</option>
         </select>
+
+        {/* Select All Action Button */}
+        {isAdmin && flatFilteredGroups.length > 0 && (
+          <button
+            type="button"
+            onClick={handleToggleSelectAll}
+            className={`h-8.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              isAllSelected
+                ? 'bg-brand-primary-500 text-white border-brand-primary-500 shadow-xs'
+                : isSomeSelected
+                ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-primary-700 dark:text-brand-primary-300 border-brand-primary-300'
+                : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+            }`}
+            title={isAllSelected ? t('common.deselectAll', 'Deselect All') : t('common.selectAll', 'Select All')}
+          >
+            {isAllSelected ? (
+              <CheckSquare size={14} />
+            ) : isSomeSelected ? (
+              <MinusSquare size={14} />
+            ) : (
+              <Square size={14} />
+            )}
+            <span>
+              {isAllSelected
+                ? t('common.deselectAll', 'إلغاء تحديد الكل')
+                : t('common.selectAll', 'تحديد الكل')}
+            </span>
+          </button>
+        )}
 
         {/* Clear Filters */}
         {hasActiveFilters && (
@@ -736,16 +836,34 @@ export default function GroupManagement() {
           {filteredHierarchy.map((group: any) => {
             const studentCount = group._count?.students ?? group.studentCount ?? 0;
             const subCount = group.children ? group.children.length : 0;
+            const isSelected = selectedIds.has(group.id);
 
             return (
               <Card
                 key={group.id}
-                className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between"
+                className={`rounded-2xl border p-4 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between relative ${
+                  isSelected
+                    ? 'border-brand-primary-500 ring-2 ring-brand-primary-500/20 bg-brand-primary-500/[0.02] dark:bg-brand-primary-500/[0.04]'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+                }`}
               >
                 <div>
                   {/* Card Header */}
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSelect(group.id)}
+                          className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors p-0.5 cursor-pointer"
+                        >
+                          {isSelected ? (
+                            <CheckSquare size={16} className="text-brand-primary-600" />
+                          ) : (
+                            <Square size={16} />
+                          )}
+                        </button>
+                      )}
                       <span className="p-1.5 rounded-lg bg-brand-primary-500/10 text-brand-primary-600 dark:text-brand-primary-400">
                         <FolderTree size={16} />
                       </span>
@@ -1079,6 +1197,32 @@ export default function GroupManagement() {
           </div>
         </Modal>
       )}
+
+      {/* 4. Standard Bottom Floating BulkActionToolbar */}
+      {isAdmin && (
+        <BulkActionToolbar
+          selectedCount={selectedIds.size}
+          onClear={handleBulkClear}
+          onExport={handleBulkExport}
+          onDelete={() => setBulkDeleteModalOpen(true)}
+        />
+      )}
+
+      {/* Batch Deletion Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={bulkDeleteModalOpen}
+        itemName={`${selectedIds.size} ${isRTL ? 'شُعَب ومجموعات' : 'Groups'}`}
+        onClose={() => !isBulkDeleting && setBulkDeleteModalOpen(false)}
+        onConfirm={handleBulkDelete}
+        loading={isBulkDeleting}
+        title={isRTL ? 'تأكيد حذف الشُعَب المحددة' : 'Confirm Delete Selected Groups'}
+        confirmLabel={isRTL ? 'حذف الشُعَب' : 'Delete Groups'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من حذف ${selectedIds.size} شعبة/مجموعة محددة؟ سيتم إزالة هذه الشُعَب وإلغاء ارتباط الطلاب والجداول الدراسية بها لمنع أي أخطاء.`
+            : `Are you sure you want to delete ${selectedIds.size} selected groups/sections? This will unassign students and associated schedule sessions.`
+        }
+      />
     </div>
   );
 }
