@@ -14,6 +14,7 @@ import {
 } from '../utils/appError';
 import logger from '../utils/logger';
 import { verifyTOTP } from '../utils/twoFactor.utils';
+import { EnrollmentService } from '../services/enrollment.service';
 
 export interface RegisterRequestBody {
   email: string;
@@ -479,8 +480,10 @@ export const approveRequest = catchAsync(
         },
       });
 
+      let studentId: number | null = null;
+
       if (request.role === 'STUDENT') {
-        await tx.student.create({
+        const student = await tx.student.create({
           data: {
             userId: user.id,
             firstName: request.firstName,
@@ -491,6 +494,7 @@ export const approveRequest = catchAsync(
             phone: request.phone || null,
           },
         });
+        studentId = student.id;
       } else if (request.role === 'DOCTOR') {
         await tx.doctor.create({
           data: {
@@ -507,11 +511,19 @@ export const approveRequest = catchAsync(
         data: { status: 'APPROVED' },
       });
 
-      return user;
+      return { user, studentId };
     });
 
+    if (result.studentId) {
+      try {
+        await EnrollmentService.autoEnrollStudent(result.studentId);
+      } catch (enrollErr) {
+        console.warn('Could not auto-enroll student on request approval:', enrollErr);
+      }
+    }
+
     await createNotification({
-      userId: result.id,
+      userId: result.user.id,
       title: 'Registration Approved',
       message: 'Your registration request has been accepted.',
     });
