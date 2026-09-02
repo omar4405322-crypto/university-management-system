@@ -80,6 +80,7 @@ class TaskService {
           'Access denied: You did not create this task'
         );
       }
+      return;
     }
     if (task.course) {
       await TaskService.validateCourseScope(user, task.course);
