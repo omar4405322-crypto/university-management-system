@@ -235,11 +235,11 @@ export const getStudentStats = catchAsync(
       return next(new NotFoundError('Student profile not found'));
     }
 
-    // Year detection
+    // Division (Year) detection - prioritize student.year from database
     const enrolledDate = new Date(student.enrolledAt);
     const now = new Date();
     const yearsDiff = now.getFullYear() - enrolledDate.getFullYear();
-    const studentYear = Math.max(1, yearsDiff + 1);
+    const studentYear = student.year || Math.max(1, yearsDiff + 1);
 
     // Semester detection
     const month = now.getMonth() + 1; // 1-12
@@ -267,6 +267,7 @@ export const getStudentStats = catchAsync(
         where: {
           date: { gte: new Date() },
           course: {
+            isPublished: true,
             enrollments: {
               some: { studentId: student.id, status: 'ENROLLED' },
             },
@@ -279,8 +280,17 @@ export const getStudentStats = catchAsync(
         where: {
           dayOfWeek: today,
           OR: [
-            { groupId: student.groupId || -1 },
-            { slotType: 'LECTURE', groupId: null, course: { departmentId: student.departmentId } },
+            { timetable: { status: 'PUBLISHED' } },
+            { timetableId: null },
+          ],
+          course: { isPublished: true },
+          AND: [
+            {
+              OR: [
+                { groupId: student.groupId || -1 },
+                { slotType: 'LECTURE', groupId: null, course: { departmentId: student.departmentId } },
+              ],
+            },
           ],
         },
         include: {
@@ -292,13 +302,18 @@ export const getStudentStats = catchAsync(
         where: {
           departmentId: student.departmentId,
           year: studentYear,
-          semester: semester,
+          isPublished: true,
         },
+        orderBy: [
+          { semester: 'asc' },
+          { name: 'asc' },
+        ],
       }),
       prisma.quiz.findMany({
         take: 3,
         where: {
           course: {
+            isPublished: true,
             enrollments: {
               some: { studentId: student.id, status: 'ENROLLED' },
             },
@@ -311,6 +326,7 @@ export const getStudentStats = catchAsync(
         take: 3,
         where: {
           course: {
+            isPublished: true,
             enrollments: {
               some: { studentId: student.id, status: 'ENROLLED' },
             },
@@ -405,7 +421,23 @@ export const getDoctorStats = catchAsync(
         where: { doctorId: doctor.id },
         include: {
           course: {
-            select: { id: true, courseCode: true, name: true, credits: true, year: true, semester: true, maxStudents: true },
+            select: {
+              id: true,
+              courseCode: true,
+              name: true,
+              credits: true,
+              year: true,
+              semester: true,
+              maxStudents: true,
+              department: {
+                select: {
+                  id: true,
+                  name: true,
+                  nameAr: true,
+                  college: { select: { id: true, name: true, nameAr: true } },
+                },
+              },
+            },
           },
         },
       }),
@@ -415,7 +447,21 @@ export const getDoctorStats = catchAsync(
           doctorId: doctor.id,
         },
         include: {
-          course: { select: { id: true, name: true, courseCode: true } },
+          course: {
+            select: {
+              id: true,
+              name: true,
+              courseCode: true,
+              department: {
+                select: {
+                  id: true,
+                  name: true,
+                  nameAr: true,
+                  college: { select: { id: true, name: true, nameAr: true } },
+                },
+              },
+            },
+          },
         },
       }),
       prisma.exam.findMany({
@@ -486,6 +532,8 @@ export const getDoctorStats = catchAsync(
           courseId: s.courseId,
           courseName: s.course?.name || 'N/A',
           courseCode: s.course?.courseCode || '',
+          departmentName: s.course?.department?.nameAr || s.course?.department?.name || '',
+          collegeName: s.course?.department?.college?.nameAr || s.course?.department?.college?.name || '',
           startTime: s.startTime,
           endTime: s.endTime,
           room: s.room || 'N/A',
