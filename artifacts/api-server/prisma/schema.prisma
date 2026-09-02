@@ -634,6 +634,9 @@ model StudentGroup {
 
   students      Student[]
   scheduleSlots ScheduleSlot[]
+
+  @@index([departmentId, year])
+  @@index([parentGroupId])
 }
 
 model Room {
@@ -684,6 +687,9 @@ model ScheduleSlot {
   @@index([doctorId])
   @@index([teachingAssistantId])
   @@index([groupId])
+  @@index([dayOfWeek, room])
+  @@index([dayOfWeek, doctorId])
+  @@index([dayOfWeek, teachingAssistantId])
 }
 
 
@@ -714,6 +720,7 @@ model ScheduleOverride {
 
   @@index([scheduleSlotId])
   @@index([startDate, endDate])
+  @@index([dayOfWeek, room, startDate, endDate])
 }
 
 model AbsenceThresholdPolicy {
@@ -771,6 +778,10 @@ model ScheduleChangeRequest {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status, courseId])
+  @@index([requesterId])
+  @@index([scheduleSlotId])
 }
 
 enum SlotType {
