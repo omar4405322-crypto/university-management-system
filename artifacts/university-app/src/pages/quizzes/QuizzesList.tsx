@@ -17,10 +17,16 @@ import {
   Plus,
   Layers,
   GraduationCap,
+  RotateCcw,
+  CheckSquare,
+  Square,
+  MinusSquare,
 } from 'lucide-react';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/button';
+import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
+import { downloadCsv } from '../../utils/exportCsv';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import QuizSubmissionsModal from './QuizSubmissionsModal';
@@ -31,7 +37,7 @@ const QuizzesList = () => {
   const { isRTL } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isDoctor = user?.role === 'DOCTOR';
+  const isDoctor = user?.role === 'DOCTOR' || user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
   const isStudent = user?.role === 'STUDENT';
 
   const [quizzes, setQuizzes] = useState<any[]>([]);
@@ -40,6 +46,7 @@ const QuizzesList = () => {
   const [sortBy, setSortBy] = useState('latest');
   const { showToast } = useToast();
   const [submissionsQuiz, setSubmissionsQuiz] = useState<any>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
 
   const fetchQuizzes = async () => {
     try {
@@ -92,6 +99,45 @@ const QuizzesList = () => {
       });
   }, [quizzes, search, sortBy]);
 
+  // Selection Logic
+  const allFilteredIds = useMemo(() => filteredQuizzes.map((q: any) => q.id), [filteredQuizzes]);
+  const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
+  const isSomeSelected = allFilteredIds.some((id) => selectedIds.has(id)) && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allFilteredIds));
+    }
+  };
+
+  const handleToggleSelect = (id: string | number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkClear = () => setSelectedIds(new Set());
+
+  const handleBulkExport = () => {
+    const selectedList = filteredQuizzes.filter((q: any) => selectedIds.has(q.id));
+    if (!selectedList.length) return;
+    const exportData = selectedList.map((q: any) => ({
+      ID: q.id,
+      Title: q.title,
+      Course: q.course?.name || q.course?.courseCode || 'N/A',
+      DurationMinutes: q.duration,
+      QuestionsCount: q._count?.questions || q.questions?.length || 0,
+      Description: q.description || '',
+    }));
+    downloadCsv(exportData, `quizzes_selected_${new Date().toISOString().split('T')[0]}.csv`);
+    showToast(isRTL ? 'تم تصدير الاختبارات المحددة بنجاح' : 'Exported selected quizzes successfully', 'success');
+  };
+
   return (
     <div className="section-gap animate-page pt-4">
       <PageHeader
@@ -117,66 +163,38 @@ const QuizzesList = () => {
       {/* ========================================================================= */}
       {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-        {/* Total Quizzes */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'إجمالي الاختبارات' : 'Total Quizzes'}
-            </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white block mt-0.5 font-mono">
-              {quizzes.length}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-            <FileText size={16} />
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <StatCard
+          compact
+          title={isRTL ? 'إجمالي الاختبارات' : 'Total Quizzes'}
+          value={quizzes.length}
+          icon={FileText}
+          color="primary"
+        />
 
-        {/* Active Courses */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'المقررات النشطة' : 'Active Courses'}
-            </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
-              {activeCoursesCount}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-            <BookOpen size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'المقررات النشطة' : 'Active Courses'}
+          value={activeCoursesCount}
+          icon={BookOpen}
+          color="emerald"
+        />
 
-        {/* Total Questions */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'بنك الأسئلة المتاحة' : 'Total Questions'}
-            </span>
-            <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
-              {totalQuestions}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-            <HelpCircle size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'بنك الأسئلة المتاحة' : 'Total Questions'}
+          value={totalQuestions}
+          icon={HelpCircle}
+          color="blue"
+        />
 
-        {/* Avg Duration */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 font-semibold block">
-              {isRTL ? 'متوسط المدة' : 'Avg Duration'}
-            </span>
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
-              {avgDuration} {isRTL ? 'د' : 'min'}
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-            <Clock size={16} />
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'متوسط المدة' : 'Avg Duration'}
+          value={`${avgDuration} ${isRTL ? 'د' : 'min'}`}
+          icon={Clock}
+          color="amber"
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -213,6 +231,35 @@ const QuizzesList = () => {
           <option value="duration">{isRTL ? 'ترتيب: حسب المدة' : 'Sort: Duration'}</option>
           <option value="questions">{isRTL ? 'ترتيب: حسب عدد الأسئلة' : 'Sort: Questions'}</option>
         </select>
+
+        {/* Select All Button */}
+        {filteredQuizzes.length > 0 && (
+          <button
+            type="button"
+            onClick={handleToggleSelectAll}
+            className={`h-8.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              isAllSelected
+                ? 'bg-brand-primary-500 text-white border-brand-primary-500 shadow-xs'
+                : isSomeSelected
+                ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-primary-700 dark:text-brand-primary-300 border-brand-primary-300'
+                : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+            }`}
+            title={isAllSelected ? t('common.deselectAll', 'Deselect All') : t('common.selectAll', 'Select All')}
+          >
+            {isAllSelected ? (
+              <CheckSquare size={14} />
+            ) : isSomeSelected ? (
+              <MinusSquare size={14} />
+            ) : (
+              <Square size={14} />
+            )}
+            <span>
+              {isAllSelected
+                ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
+                : (isRTL ? 'تحديد الكل' : 'Select All')}
+            </span>
+          </button>
+        )}
 
         {/* Clear Filters */}
         {(search || sortBy !== 'latest') && (
@@ -254,27 +301,47 @@ const QuizzesList = () => {
             />
           </div>
         ) : (
-          filteredQuizzes.map((quiz) => (
-            <Card
-              key={quiz.id}
-              noPadding
-              className="group hover:-translate-y-2 duration-500 border-none shadow-soft rounded-[2rem] overflow-hidden flex flex-col"
-            >
-              <div className="p-8 flex-grow">
-                <div className="flex justify-between items-start mb-6">
-                  <Badge
-                    variant="primary"
-                    className="px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-brand-navy-500 text-white border-none"
-                  >
-                    {quiz.course?.courseCode}
-                  </Badge>
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-surface-subtle dark:bg-slate-800/50">
-                    <Clock size={14} className="text-brand-primary-600" />
-                    <span className="text-[10px] font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">
-                      {quiz.duration} {t('quizzes.minutes')}
-                    </span>
+          filteredQuizzes.map((quiz) => {
+            const isSelected = selectedIds.has(quiz.id);
+
+            return (
+              <Card
+                key={quiz.id}
+                noPadding
+                className={`group hover:-translate-y-2 duration-500 shadow-soft rounded-[2rem] overflow-hidden flex flex-col transition-all relative ${
+                  isSelected
+                    ? 'border-2 border-brand-primary-500 ring-2 ring-brand-primary-500/20 bg-brand-primary-500/[0.02] dark:bg-brand-primary-500/[0.04]'
+                    : 'border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                <div className="p-8 flex-grow">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSelect(quiz.id)}
+                        className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors p-0.5 cursor-pointer"
+                      >
+                        {isSelected ? (
+                          <CheckSquare size={18} className="text-brand-primary-600" />
+                        ) : (
+                          <Square size={18} />
+                        )}
+                      </button>
+                      <Badge
+                        variant="primary"
+                        className="px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-brand-navy-500 text-white border-none"
+                      >
+                        {quiz.course?.courseCode}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-surface-subtle dark:bg-slate-800/50">
+                      <Clock size={14} className="text-brand-primary-600" />
+                      <span className="text-[10px] font-black text-brand-text-primary dark:text-brand-text-main uppercase tracking-widest">
+                        {quiz.duration} {t('quizzes.minutes')}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
                 <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tight mb-3 group-hover:text-brand-primary-600 transition-colors">
                   {quiz.title}
@@ -334,14 +401,21 @@ const QuizzesList = () => {
                 )}
               </div>
             </Card>
-          ))
-        )}
+          );
+        }))}
       </div>
 
       <QuizSubmissionsModal
         isOpen={Boolean(submissionsQuiz)}
         onClose={() => setSubmissionsQuiz(null)}
         quiz={submissionsQuiz}
+      />
+
+      {/* Floating Bulk Action Toolbar */}
+      <BulkActionToolbar
+        selectedCount={selectedIds.size}
+        onClear={handleBulkClear}
+        onExport={handleBulkExport}
       />
     </div>
   );
