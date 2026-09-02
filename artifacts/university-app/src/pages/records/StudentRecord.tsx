@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import transcriptService, { TranscriptData, CourseTranscriptItem, CompletedExamAdminItem } from '../../services/transcript.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
-import Card from '../../components/ui/Card';
+import Card, { StatCard } from '../../components/ui/card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/button';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
@@ -376,18 +376,6 @@ const StudentRecord: React.FC = () => {
           >
             <RotateCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
-
-          {/* Create Exam Button */}
-          {isStaffOrAdmin && (
-            <button
-              type="button"
-              onClick={() => navigate('/exams/create')}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold text-xs shadow-sm shadow-brand-primary-500/20 active:scale-95 transition-all"
-            >
-              <Plus size={15} />
-              <span>{t('transcript.createExam', 'New Exam')}</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -397,66 +385,38 @@ const StudentRecord: React.FC = () => {
           {/* ========================================================================= */}
           {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
           {/* ========================================================================= */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-            {/* Total Archived Exams */}
-            <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold block">
-                  {t('transcript.completedExams', 'Archived Exams')}
-                </span>
-                <span className="text-lg font-black text-brand-primary-600 dark:text-brand-primary-400 block mt-0.5 font-mono">
-                  {data?.totalCompletedExams || (data?.completedExams?.length ?? 0)}
-                </span>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center shrink-0">
-                <Archive size={16} />
-              </div>
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <StatCard
+              compact
+              title={t('transcript.completedExams', 'Archived Exams')}
+              value={data?.totalCompletedExams || (data?.completedExams?.length ?? 0)}
+              icon={Archive}
+              color="primary"
+            />
 
-            {/* Total Student Submissions */}
-            <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold block">
-                  {t('transcript.submissions', 'Student Submissions')}
-                </span>
-                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block mt-0.5 font-mono">
-                  {data?.totalSubmissions || 0}
-                </span>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-                <Users size={16} />
-              </div>
-            </div>
+            <StatCard
+              compact
+              title={t('transcript.submissions', 'Student Submissions')}
+              value={data?.totalSubmissions || 0}
+              icon={Users}
+              color="emerald"
+            />
 
-            {/* Average Score */}
-            <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold block">
-                  {t('transcript.avgScore', 'Average Grade')}
-                </span>
-                <span className="text-lg font-black text-blue-600 dark:text-blue-400 block mt-0.5 font-mono">
-                  {data?.averageScore || 0}%
-                </span>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-                <BarChart3 size={16} />
-              </div>
-            </div>
+            <StatCard
+              compact
+              title={t('transcript.avgScore', 'Average Grade')}
+              value={`${data?.averageScore || 0}%`}
+              icon={BarChart3}
+              color="blue"
+            />
 
-            {/* Evaluated Courses */}
-            <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-between">
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold block">
-                  {t('transcript.coursesCount', 'Evaluated Courses')}
-                </span>
-                <span className="text-lg font-black text-amber-600 dark:text-amber-400 block mt-0.5 font-mono">
-                  {data?.totalCoursesWithExams || new Set((data?.completedExams || []).map((e: any) => e.courseCode || e.courseName)).size}
-                </span>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-                <BookOpenCheck size={16} />
-              </div>
-            </div>
+            <StatCard
+              compact
+              title={t('transcript.coursesCount', 'Evaluated Courses')}
+              value={data?.totalCoursesWithExams || new Set((data?.completedExams || []).map((e: any) => e.courseCode || e.courseName)).size}
+              icon={BookOpenCheck}
+              color="amber"
+            />
           </div>
 
           {/* ========================================================================= */}
