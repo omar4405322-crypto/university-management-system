@@ -74,6 +74,8 @@ const AdminsList = () => {
   const [showBulkReactivateModal, setShowBulkReactivateModal] = useState(false);
   const [showBulkHardDeleteModal, setShowBulkHardDeleteModal] = useState(false);
   const [hardDeleteTarget, setHardDeleteTarget] = useState<any>(null);
+  const [hardDeleteConfirmInput, setHardDeleteConfirmInput] = useState('');
+  const [bulkHardDeleteConfirmInput, setBulkHardDeleteConfirmInput] = useState('');
 
   useEffect(() => {
     const mainEl = document.querySelector('main');
@@ -325,6 +327,7 @@ const AdminsList = () => {
     } finally {
       setDeleteLoading(false);
       setHardDeleteTarget(null);
+      setHardDeleteConfirmInput('');
     }
   }, [hardDeleteTarget, isRTL, showToast, fetchAdmins]);
 
@@ -433,6 +436,7 @@ const AdminsList = () => {
       );
       setSelectedIds([]);
       setShowBulkHardDeleteModal(false);
+      setBulkHardDeleteConfirmInput('');
       fetchAdmins();
     } catch (error: any) {
       showToast(
@@ -587,7 +591,7 @@ const AdminsList = () => {
           onReactivate={statusFilter !== 'active' ? () => setShowBulkReactivateModal(true) : undefined}
           onHardDelete={() => {
             setShowBulkHardDeleteModal(true);
-            setBulkHardDeleteConfirmText('');
+            setBulkHardDeleteConfirmInput('');
           }}
         />
       )}
@@ -701,7 +705,7 @@ const AdminsList = () => {
                             variant: 'delete',
                             onClick: () => {
                               setHardDeleteTarget(admin);
-                              setHardDeleteConfirmEmail('');
+                              setHardDeleteConfirmInput('');
                             },
                           });
                         }
@@ -729,7 +733,10 @@ const AdminsList = () => {
                           label: isRTL ? 'حذف الحساب نهائياً' : 'Permanent Delete',
                           icon: Trash2,
                           variant: 'delete',
-                          onClick: () => setHardDeleteTarget(admin),
+                          onClick: () => {
+                            setHardDeleteTarget(admin);
+                            setHardDeleteConfirmInput('');
+                          },
                         });
                       }
                     }
@@ -950,7 +957,12 @@ const AdminsList = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
           <div
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            onClick={() => !deleteLoading && setShowBulkHardDeleteModal(false)}
+            onClick={() => {
+              if (!deleteLoading) {
+                setShowBulkHardDeleteModal(false);
+                setBulkHardDeleteConfirmInput('');
+              }
+            }}
           />
           <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Red header bar */}
@@ -978,17 +990,35 @@ const AdminsList = () => {
                 </span>
               </div>
 
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                 {isRTL
-                  ? 'سيتم حذف جميع بيانات هذه الحسابات بشكل كامل من قاعدة البيانات. تأكد من عملية الاختيار قبل المتابعة.'
-                  : 'All data for these accounts will be completely erased from the database. Verify your selection before proceeding.'}
+                  ? `سيتم حذف جميع بيانات هذه الحسابات بشكل كامل من قاعدة البيانات. لتأكيد الحذف، يرجى كتابة عدد الحسابات (${selectedIds.length}) أدناه:`
+                  : `All data for these accounts will be completely erased from the database. To confirm deletion, please type the number of accounts (${selectedIds.length}) below:`}
               </p>
+
+              {/* Typed verification input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  {isRTL ? `اكتب الرقم (${selectedIds.length}) للتأكيد:` : `Type "${selectedIds.length}" to confirm:`}
+                </label>
+                <input
+                  type="text"
+                  value={bulkHardDeleteConfirmInput}
+                  onChange={(e) => setBulkHardDeleteConfirmInput(e.target.value)}
+                  placeholder={String(selectedIds.length)}
+                  dir="ltr"
+                  className="w-full px-3.5 py-2 text-xs font-mono border border-rose-200 dark:border-rose-800 rounded-xl focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none bg-rose-50/50 dark:bg-rose-950/20 text-slate-900 dark:text-white placeholder:text-slate-400"
+                />
+              </div>
             </div>
 
             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
               <Button
                 variant="outline"
-                onClick={() => setShowBulkHardDeleteModal(false)}
+                onClick={() => {
+                  setShowBulkHardDeleteModal(false);
+                  setBulkHardDeleteConfirmInput('');
+                }}
                 disabled={deleteLoading}
                 className="font-semibold"
               >
@@ -997,8 +1027,8 @@ const AdminsList = () => {
               <Button
                 variant="danger"
                 onClick={confirmBulkHardDelete}
-                disabled={deleteLoading}
-                className="font-bold"
+                disabled={deleteLoading || bulkHardDeleteConfirmInput.trim() !== String(selectedIds.length)}
+                className="font-bold disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {deleteLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1018,7 +1048,12 @@ const AdminsList = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
           <div
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            onClick={() => !deleteLoading && setHardDeleteTarget(null)}
+            onClick={() => {
+              if (!deleteLoading) {
+                setHardDeleteTarget(null);
+                setHardDeleteConfirmInput('');
+              }
+            }}
           />
           <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Red header bar */}
@@ -1044,17 +1079,35 @@ const AdminsList = () => {
                 <span className="text-rose-700 dark:text-rose-300 font-bold">{hardDeleteTarget.email}</span>
               </div>
 
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                 {isRTL
-                  ? 'سيتم حذف جميع بيانات هذا الحساب بشكل كامل من قاعدة البيانات. تأكد من صحة الحساب المحدد قبل المتابعة.'
-                  : 'All data for this account will be completely erased from the database. Verify this is the correct account before proceeding.'}
+                  ? 'سيتم حذف جميع بيانات هذا الحساب بشكل كامل من قاعدة البيانات. لتأكيد الحذف، يرجى كتابة البريد الإلكتروني للمسؤول أدناه:'
+                  : 'All data for this account will be completely erased from the database. To confirm deletion, please type the admin\'s email below:'}
               </p>
+
+              {/* Typed verification input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  {isRTL ? 'اكتب البريد الإلكتروني للتأكيد:' : 'Type email to confirm:'}
+                </label>
+                <input
+                  type="text"
+                  value={hardDeleteConfirmInput}
+                  onChange={(e) => setHardDeleteConfirmInput(e.target.value)}
+                  placeholder={hardDeleteTarget.email}
+                  dir="ltr"
+                  className="w-full px-3.5 py-2 text-xs font-mono border border-rose-200 dark:border-rose-800 rounded-xl focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none bg-rose-50/50 dark:bg-rose-950/20 text-slate-900 dark:text-white placeholder:text-slate-400"
+                />
+              </div>
             </div>
 
             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
               <Button
                 variant="outline"
-                onClick={() => setHardDeleteTarget(null)}
+                onClick={() => {
+                  setHardDeleteTarget(null);
+                  setHardDeleteConfirmInput('');
+                }}
                 disabled={deleteLoading}
                 className="font-semibold"
               >
@@ -1063,8 +1116,8 @@ const AdminsList = () => {
               <Button
                 variant="danger"
                 onClick={confirmHardDelete}
-                disabled={deleteLoading}
-                className="font-bold"
+                disabled={deleteLoading || hardDeleteConfirmInput !== hardDeleteTarget.email}
+                className="font-bold disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {deleteLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
