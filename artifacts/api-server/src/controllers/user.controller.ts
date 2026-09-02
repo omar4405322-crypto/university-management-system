@@ -413,18 +413,37 @@ export const createAdmin = catchAsync(async (req: Request, res: Response, next: 
 
 export const deleteUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
+  const targetId = parseInt(id as string, 10);
 
-  if (parseInt(id as string) === req.user!.id) {
+  // Defense-in-depth: only SUPER_ADMIN may deactivate accounts (route also enforces this)
+  if (req.user!.role !== 'SUPER_ADMIN') {
+    return next(new AppError('Only SUPER_ADMIN can deactivate accounts', 403));
+  }
+
+  if (targetId === req.user!.id) {
     return next(new AppError('You cannot deactivate your own account', 400));
   }
 
-  await prisma.user.update({
-    where: { id: parseInt(id as string) },
-    data: { isActive: false, deactivatedAt: new Date() }
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetId },
+    select: { id: true, isActive: true },
   });
 
-  auditLog('DEACTIVATE_USER', 'User', req.params.id as string, req);
-  return res.json({ success: true, message: 'User deactivated successfully' });
+  if (!targetUser) {
+    return next(new NotFoundError('User not found'));
+  }
+
+  if (targetUser.isActive === false) {
+    return next(new AppError('This account is already deactivated', 400));
+  }
+
+  await prisma.user.update({
+    where: { id: targetId },
+    data: { isActive: false, deactivatedAt: new Date() },
+  });
+
+  auditLog('DEACTIVATE_USER', 'User', targetId.toString(), req);
+  return res.json({ success: true, message: 'Account deactivated successfully' });
 });
 
 export const reactivateUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -455,65 +474,62 @@ export const reactivateUser = catchAsync(async (req: Request, res: Response, nex
 export const hardDeleteUser = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const targetId = parseInt(id as string, 10);
-  const { confirmEmail } = req.body;
 
+  // Defense-in-depth: only SUPER_ADMIN may permanently delete accounts
   if (req.user!.role !== 'SUPER_ADMIN') {
-    return next(new AppError('Only SUPER_ADMIN can hard-delete users', 403));
+    return next(new AppError('Only SUPER_ADMIN can permanently delete accounts', 403));
   }
 
   if (targetId === req.user!.id) {
-    return next(new AppError('You cannot delete your own account', 400));
-  }
-
-  if (!confirmEmail) {
-    return next(new AppError('Confirmation email is required', 400));
+    return next(new AppError('You cannot permanently delete your own account', 400));
   }
 
   const targetUser = await prisma.user.findUnique({
     where: { id: targetId },
-    select: { email: true, role: true }
+    select: { email: true, role: true },
   });
 
   if (!targetUser) {
     return next(new NotFoundError('User not found'));
   }
 
-  const adminRoles = ['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN'];
-  if (!adminRoles.includes(targetUser.role)) {
-    return next(new AppError('Target is not an admin account. Cannot hard-delete.', 400));
-  }
-
-  if (targetUser.email !== confirmEmail) {
-    return next(new AppError('Confirmation email does not match the target user\'s email', 400));
-  }
-
-  const auditCount = await prisma.auditLog.count({
-    where: { userId: targetId }
-  });
-
-  if (auditCount > 0) {
-    return res.status(409).json({
-      success: false,
-      message: 'Cannot permanently delete: this account has audit history. Deactivate the account instead.'
-    });
-  }
-
   try {
     await prisma.$transaction(async (tx) => {
+      // Step 1: Nullify userId on all related audit logs.
+      // AuditLog.userId is nullable (Int?) in the schema, so this preserves the
+      // full audit trail while releasing the FK constraint that would otherwise
+      // block the user delete.
+      await tx.auditLog.updateMany({
+        where: { userId: targetId },
+        data: { userId: null },
+      });
+
+      // Step 2: Delete the user record
       await tx.user.delete({ where: { id: targetId } });
-      await auditLog('HARD_DELETE_USER', 'User', targetId.toString(), req, {
-        deletedUserEmail: targetUser.email,
-        deletedUserId: targetId
-      }, tx);
+
+      // Step 3: Write a final audit entry for the deletion itself
+      await auditLog(
+        'HARD_DELETE_USER',
+        'User',
+        targetId.toString(),
+        req,
+        { deletedUserEmail: targetUser.email, deletedUserId: targetId },
+        tx
+      );
     });
   } catch (err: any) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003') {
-      return next(new AppError('Cannot permanently delete: this account is linked to existing records. Deactivate the account instead.', 409));
+      return next(
+        new AppError(
+          'Cannot permanently delete: this account has linked records (e.g. students, doctors). Deactivate the account instead.',
+          409
+        )
+      );
     }
     throw err;
   }
 
-  return res.json({ success: true, message: 'User hard-deleted successfully' });
+  return res.json({ success: true, message: 'Account permanently deleted successfully' });
 });
 
 export const updateAdmin = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
