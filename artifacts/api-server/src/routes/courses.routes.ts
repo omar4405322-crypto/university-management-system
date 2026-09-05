@@ -13,7 +13,14 @@ router.get('/:id', idParamValidation, validate, coursesController.getCourseById)
 
 // Course Publication & Material routes (Authorization is checked inside controller per course assignment)
 router.patch('/:id/toggle-publication', coursesController.toggleCoursePublication);
-router.post('/:id/materials', materialUpload.single('file'), coursesController.uploadCourseMaterial);
+router.post(
+  '/:id/materials',
+  idParamValidation,
+  validate,
+  coursesController.requireCourseMaterialManager,
+  materialUpload.single('file'),
+  coursesController.uploadCourseMaterial
+);
 router.patch('/:id/materials/:materialId/toggle', coursesController.toggleMaterialPublication);
 router.delete('/:id/materials/:materialId', coursesController.deleteCourseMaterial);
 

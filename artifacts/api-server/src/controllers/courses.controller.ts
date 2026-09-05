@@ -617,53 +617,55 @@ export const deleteCourse = catchAsync(async (req: Request, res: Response, next:
  * Helper to check if a user is allowed to upload/manage course materials for a specific course
  */
 export async function canUserManageCourseMaterials(user: any, courseId: number): Promise<boolean> {
-  if (!user) return false;
+  if (!user || !Number.isInteger(courseId) || courseId <= 0) return false;
 
-  // SuperAdmin and Admins are always authorized
-  if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
-    return true;
+  if (user.role === 'SUPER_ADMIN') return true;
+
+  if (['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)) {
+    const scopedCourse = await prisma.course.findFirst({
+      where: getAdminMutationTargetWhere(user, 'course', courseId),
+      select: { id: true },
+    });
+    return Boolean(scopedCourse);
   }
 
-  // Doctor check
   if (user.role === 'DOCTOR') {
-    const doctor = await prisma.doctor.findUnique({
-      where: { userId: user.id },
+    if (!user.doctor?.id) return false;
+    const slot = await prisma.scheduleSlot.findFirst({
+      where: { courseId, doctorId: user.doctor.id },
       select: { id: true },
     });
-    if (!doctor) return false;
-
-    // Check if doctor is assigned to a ScheduleSlot for this course
-    const slot = await prisma.scheduleSlot.findFirst({
-      where: { courseId, doctorId: doctor.id },
-    });
-    // Check if course belongs to doctor's department
-    const courseObj = await prisma.course.findUnique({
-      where: { id: courseId },
-      select: { departmentId: true },
-    });
-    if (courseObj && user.departmentId && courseObj.departmentId === user.departmentId) return true;
-
-    // Doctor fallback: if doctor profile exists, allow managing materials for accessible course
-    return true;
+    return Boolean(slot);
   }
 
-  // Teaching Assistant check
   if (user.role === 'TEACHING_ASSISTANT') {
-    const ta = await prisma.teachingAssistant.findUnique({
-      where: { userId: user.id },
+    if (!user.teachingAssistant?.id) return false;
+    const slot = await prisma.scheduleSlot.findFirst({
+      where: { courseId, teachingAssistantId: user.teachingAssistant.id },
       select: { id: true },
     });
-    if (!ta) return false;
-
-    // Check if TA is assigned to a ScheduleSlot for this course
-    const slot = await prisma.scheduleSlot.findFirst({
-      where: { courseId, teachingAssistantId: ta.id },
-    });
-    if (slot) return true;
+    return Boolean(slot);
   }
 
   return false;
 }
+
+export const requireCourseMaterialManager = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const courseId = parseInt(req.params.id as string, 10);
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { id: true },
+    });
+    if (!course) return next(new NotFoundError('Course not found'));
+
+    if (!(await canUserManageCourseMaterials(req.user, courseId))) {
+      return next(new AuthorizationError('Access denied'));
+    }
+
+    next();
+  }
+);
 
 /**
  * @desc    Upload course material (lecture or tutorial)
