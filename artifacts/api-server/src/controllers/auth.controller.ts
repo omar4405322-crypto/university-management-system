@@ -72,25 +72,6 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
     );
   }
 
-  const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) {
-    return next(new ConflictError('Email already registered'));
-  }
-
-  if (role === 'STUDENT' && studentId) {
-    const existingStudent = await prisma.student.findUnique({ where: { studentId } });
-    if (existingStudent) {
-      return next(new ConflictError('Student ID already exists'));
-    }
-  }
-
-  const existingRequest = await prisma.registrationRequest.findUnique({ where: { email } });
-  if (existingRequest) {
-    return next(new ConflictError('Registration request already pending'));
-  }
-
-  const hashedPassword = await bcrypt.hash(password as string, 10);
-
   const parsedDeptId =
     departmentId !== undefined && departmentId !== ''
       ? parseInt(departmentId as string, 10)
@@ -99,19 +80,64 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
     return res.status(400).json({ message: 'Invalid departmentId: must be a number' });
   }
 
-  const request = await prisma.registrationRequest.create({
-    data: {
+  const genericRegistrationResponse = () =>
+    res.status(202).json({
+      success: true,
+      message:
+        'If the submitted information is eligible, the application will be reviewed.',
+    });
+
+  const [hashedPassword, existingUser, existingStudent, existingRequest] =
+    await Promise.all([
+      bcrypt.hash(password as string, 10),
+      prisma.user.findUnique({ where: { email }, select: { id: true } }),
+      studentId
+        ? prisma.student.findUnique({
+            where: { studentId },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+      prisma.registrationRequest.findUnique({
+        where: { email },
+        select: { id: true, status: true },
+      }),
+    ]);
+
+  if (existingUser || existingStudent || existingRequest) {
+    logger.info('[AUTH] Registration submission matched existing state', {
       email,
-      password: hashedPassword,
-      role,
-      firstName,
-      lastName,
-      studentId: role === 'STUDENT' ? studentId : null,
-      year: role === 'STUDENT' ? (year ? parseInt(year as string, 10) : 1) : null,
-      departmentId: parsedDeptId,
-      phone: phone?.trim() || null,
-    },
-  });
+      existingUser: Boolean(existingUser),
+      existingStudent: Boolean(existingStudent),
+      requestStatus: existingRequest?.status,
+    });
+    return genericRegistrationResponse();
+  }
+
+  let request;
+  try {
+    request = await prisma.registrationRequest.create({
+      data: {
+        email,
+        password: hashedPassword,
+        role,
+        firstName,
+        lastName,
+        studentId: role === 'STUDENT' ? studentId : null,
+        year: role === 'STUDENT' ? (year ? parseInt(year as string, 10) : 1) : null,
+        departmentId: parsedDeptId,
+        phone: phone?.trim() || null,
+      },
+    });
+  } catch (error: any) {
+    if (error?.code === 'P2002') {
+      logger.info('[AUTH] Registration submission lost a uniqueness race', {
+        email,
+        target: error?.meta?.target,
+      });
+      return genericRegistrationResponse();
+    }
+    throw error;
+  }
 
   if (request.departmentId) {
     await notifyAdminsOfNewRequest({
@@ -122,11 +148,7 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
     });
   }
 
-  res.status(201).json({
-    success: true,
-    message: 'Your application is under review. You will be notified upon acceptance.',
-    data: { status: 'PENDING', requestId: request.id },
-  });
+  return genericRegistrationResponse();
 });
 
 export const login = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -137,37 +159,42 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
 
   logger.info(`[AUTH] Login attempt for email: ${email}`);
 
-  const registrationRequest = await prisma.registrationRequest.findUnique({
-    where: { email },
-  });
-
-  if (registrationRequest?.status === 'PENDING') {
-    return next(new AuthenticationError('Your application is under review.'));
-  }
-
-  if (registrationRequest?.status === 'REJECTED') {
-    return next(new AuthenticationError('Your registration request was rejected.'));
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email },
-    include: {
-      student: true,
-      doctor: true,
-      managedCollege: { select: { id: true, name: true, nameAr: true } },
-    },
-  });
+  const [registrationRequest, user] = await Promise.all([
+    prisma.registrationRequest.findUnique({
+      where: { email },
+      select: { status: true },
+    }),
+    prisma.user.findUnique({
+      where: { email },
+      include: {
+        student: true,
+        doctor: true,
+        managedCollege: { select: { id: true, name: true, nameAr: true } },
+      },
+    }),
+  ]);
 
   logger.debug(`[AUTH] User search result: ${user ? 'Found' : 'Not Found'}`);
 
-  if (!user || !(await bcrypt.compare(password as string, user.password))) {
-    logger.warn(`[AUTH] Invalid login attempt for: ${email}`);
+  const dummyPasswordHash =
+    '$2b$10$OpeBBdb/21NC.p5Zrli5vOWHt7XNakKQXMMjPI/PNi5BeQM2VNOea';
+  const passwordMatches = await bcrypt.compare(
+    password as string,
+    user?.password || dummyPasswordHash
+  );
+  const requestBlocksLogin =
+    registrationRequest?.status === 'PENDING' ||
+    registrationRequest?.status === 'REJECTED';
+  if (!user || !passwordMatches || user.isActive === false || requestBlocksLogin) {
+    const denialState = requestBlocksLogin
+      ? `registration_${registrationRequest!.status.toLowerCase()}`
+      : !user
+        ? 'user_not_found'
+        : !passwordMatches
+          ? 'password_mismatch'
+          : 'account_deactivated';
+    logger.warn(`[AUTH] Login denied (${denialState}) for: ${email}`);
     return next(new AuthenticationError('Invalid email or password'));
-  }
-
-  if (user.isActive === false) {
-    logger.warn(`[AUTH] Login attempt for deactivated user: ${email}`);
-    return next(new AuthenticationError('Your account has been deactivated. Please contact support.'));
   }
 
   const require2FA = process.env.REQUIRE_2FA !== 'false';
