@@ -9,6 +9,7 @@ import { NotFoundError, AuthenticationError, AppError } from '../utils/appError'
 import { Request, Response, NextFunction } from 'express';
 import { generateTOTPSecret, generateQRCodeURL, verifyTOTP } from '../utils/twoFactor.utils';
 import { getScopeWhere } from '../utils/scope.utils';
+import { deactivateUserAndRevokeSessions } from '../services/studentStatus.service';
 
 // 1. setup2FA — Generates secret and returns QR code for scanning:
 export const setup2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -437,10 +438,7 @@ export const deleteUser = catchAsync(async (req: Request, res: Response, next: N
     return next(new AppError('This account is already deactivated', 400));
   }
 
-  await prisma.user.update({
-    where: { id: targetId },
-    data: { isActive: false, deactivatedAt: new Date() },
-  });
+  await deactivateUserAndRevokeSessions(targetId, new Date());
 
   auditLog('DEACTIVATE_USER', 'User', targetId.toString(), req);
   return res.json({ success: true, message: 'Account deactivated successfully' });

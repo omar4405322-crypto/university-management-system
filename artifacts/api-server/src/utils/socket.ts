@@ -10,6 +10,26 @@ interface AuthenticatedSocket extends Socket {
 
 let io: Server | undefined;
 
+export const requireActiveSocketAccount = async (decoded: {
+  id: number;
+  tokenVersion?: number;
+}): Promise<void> => {
+  const user = await prisma.user.findUnique({
+    where: { id: decoded.id },
+    select: { tokenVersion: true, isActive: true },
+  });
+
+  if (!user) {
+    throw new Error('Authentication error: User not found');
+  }
+  if (user.isActive === false) {
+    throw new Error('Authentication error: Account deactivated');
+  }
+  if (user.tokenVersion !== decoded.tokenVersion) {
+    throw new Error('Authentication error: Token invalidated');
+  }
+};
+
 /**
  * Initialize Socket.io server
  * @param {http.Server} server - HTTP server instance
@@ -34,18 +54,7 @@ export const initSocket = (server: http.Server): Server => {
 
     try {
       const decoded = verifyToken(token) as any;
-
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
-        select: { tokenVersion: true },
-      });
-
-      if (!user) {
-        return next(new Error('Authentication error: User not found'));
-      }
-      if (user.tokenVersion !== decoded.tokenVersion) {
-        return next(new Error('Authentication error: Token invalidated — please log in again'));
-      }
+      await requireActiveSocketAccount(decoded);
 
       socket.user = decoded;
       next();
