@@ -3,8 +3,8 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import { getCache, setCache } from '../utils/redis.utils';
 import catchAsync from '../utils/catchAsync';
-import { getScopeWhere } from '../utils/scope.utils';
-import { AppError, NotFoundError } from '../utils/appError';
+import { AppError, AuthorizationError, NotFoundError } from '../utils/appError';
+import { getAdministrativeAnalyticsScopes } from '../utils/administrativeAnalyticsScope.utils';
 
 const getTodayDayOfWeek = () => {
   const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -14,37 +14,19 @@ const getTodayDayOfWeek = () => {
 export const getAdminStats = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const today = getTodayDayOfWeek();
 
-  // Use centralized scope utility for each entity type
-  const studentScope: any = getScopeWhere(req.user!, 'student');
-  const doctorScope: any = getScopeWhere(req.user!, 'doctor');
-  const courseScope: any = getScopeWhere(req.user!, 'course');
-  const departmentScope: any = getScopeWhere(req.user!, 'department');
-  const paymentScope: any = { student: studentScope };
-  const examScope: any = getScopeWhere(req.user!, 'exam');
-
-  let collegeId: string | number = 'ALL';
-  let departmentId: string | number = 'ALL';
-
-  if (req.user!.role === 'COLLEGE_ADMIN' && req.user!.managedCollegeId) {
-    collegeId = req.user!.managedCollegeId;
-  } else if (req.user!.role === 'DEPARTMENT_ADMIN' && req.user!.managedDepartmentId) {
-    departmentId = req.user!.managedDepartmentId;
+  const scopes = getAdministrativeAnalyticsScopes(req.user);
+  if (!scopes) {
+    return next(new AuthorizationError('Access denied: Administrative scope is not configured'));
   }
 
-  const cacheKey = `dashboard:${req.user!.role}:${collegeId}:${departmentId}`;
+  const cacheKey = `dashboard:${req.user!.role}:${scopes.cacheScope}`;
   const cachedData = await getCache(cacheKey);
   if (cachedData) {
     return res.json({ success: true, data: cachedData, fromCache: true });
   }
 
-  // Safe college count (avoid passing null id)
-  const collegeWhere: any =
-    req.user!.role === 'SUPER_ADMIN'
-      ? {}
-      : req.user!.managedCollegeId
-        ? { id: req.user!.managedCollegeId }
-        : {};
-  const totalColleges = await prisma.college.count({ where: collegeWhere });
+  const totalColleges = await prisma.college.count({ where: scopes.college });
+  const superAdminVisibilityScope = req.user!.role === 'SUPER_ADMIN' ? {} : { id: -1 };
 
   const [
     totalStudents,
@@ -63,32 +45,41 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
     enrollmentByYear,
     collegesWithStudents,
   ] = await Promise.all([
-    prisma.student.count({ where: studentScope }),
-    prisma.doctor.count({ where: doctorScope }),
-    prisma.course.count({ where: courseScope }),
-    prisma.department.count({ where: departmentScope }),
-    prisma.payment.count({ where: paymentScope }),
-    prisma.user.count({ where: { role: { in: ['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] } } }),
-    prisma.user.count({ where: { role: 'SUPER_ADMIN' } }),
+    prisma.student.count({ where: scopes.student }),
+    prisma.doctor.count({ where: scopes.doctor }),
+    prisma.course.count({ where: scopes.course }),
+    prisma.department.count({ where: scopes.department }),
+    prisma.payment.count({ where: scopes.payment }),
+    prisma.user.count({
+      where: {
+        AND: [
+          { role: { in: ['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] } },
+          scopes.user,
+        ],
+      },
+    }),
+    prisma.user.count({
+      where: { AND: [{ role: 'SUPER_ADMIN' }, superAdminVisibilityScope] },
+    }),
     prisma.studentSuccessMetric.count({
       where: {
         predictedRisk: { in: ['HIGH', 'CRITICAL'] },
-        student: studentScope,
+        student: scopes.student,
       },
     }),
     prisma.payment.groupBy({
-      where: paymentScope,
+      where: scopes.payment,
       by: ['status'],
       _sum: { amount: true },
     }),
     prisma.student.findMany({
-      where: studentScope,
+      where: scopes.student,
       take: 5,
       orderBy: { enrolledAt: 'desc' },
       select: { firstName: true, lastName: true, studentId: true, enrolledAt: true },
     }),
     prisma.payment.findMany({
-      where: paymentScope,
+      where: scopes.payment,
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -96,19 +87,13 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
       },
     }),
     prisma.exam.findMany({
-      where: {
-        course: examScope.course,
-        date: { gte: new Date() },
-      },
+      where: { AND: [{ date: { gte: new Date() } }, scopes.exam] },
       take: 3,
       orderBy: { date: 'asc' },
       include: { course: { select: { name: true } } },
     }),
     prisma.scheduleSlot.findMany({
-      where: {
-        dayOfWeek: today,
-        course: courseScope,
-      },
+      where: { AND: [{ dayOfWeek: today }, { course: scopes.course }] },
       include: {
         course: { select: { name: true } },
         doctor: { select: { firstName: true, lastName: true } },
@@ -117,18 +102,14 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
     prisma.student.groupBy({
       by: ['enrolledAt'],
       _count: { _all: true },
-      where: studentScope,
+      where: scopes.student,
     }),
     prisma.college.findMany({
-      where:
-        req.user!.role === 'SUPER_ADMIN'
-          ? {}
-          : req.user!.managedCollegeId
-            ? { id: req.user!.managedCollegeId }
-            : {},
+      where: scopes.college,
       select: {
         name: true,
         departments: {
+          where: scopes.department,
           select: {
             _count: { select: { students: true } },
           },

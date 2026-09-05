@@ -1,10 +1,26 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import catchAsync from '../utils/catchAsync';
+import { AuthorizationError, ValidationError } from '../utils/appError';
+import { getAdministrativeAnalyticsScopes } from '../utils/administrativeAnalyticsScope.utils';
 
 export const getGeneralAnalytics = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { departmentId, startDate, endDate } = req.query;
+    const scopes = getAdministrativeAnalyticsScopes(req.user);
+    if (!scopes) {
+      return next(new AuthorizationError('Access denied: Administrative scope is not configured'));
+    }
+
+    const requestedDepartmentId = departmentId
+      ? parseInt(departmentId as string, 10)
+      : undefined;
+    if (
+      requestedDepartmentId !== undefined &&
+      (!Number.isInteger(requestedDepartmentId) || requestedDepartmentId <= 0)
+    ) {
+      return next(new ValidationError('Invalid departmentId'));
+    }
 
     const dateFilter: any = {};
     if (startDate || endDate) {
@@ -13,8 +29,13 @@ export const getGeneralAnalytics = catchAsync(
       if (endDate) dateFilter.createdAt.lte = new Date(endDate as string);
     }
 
-    const scopeWhere: any = {};
-    if (departmentId) scopeWhere.departmentId = parseInt(departmentId as string);
+    const departmentFilter = requestedDepartmentId ? { id: requestedDepartmentId } : {};
+    const studentDepartmentFilter = requestedDepartmentId
+      ? { departmentId: requestedDepartmentId }
+      : {};
+    const relatedDepartmentFilter = requestedDepartmentId
+      ? { course: { departmentId: requestedDepartmentId } }
+      : {};
 
     const [
       enrollmentByCollege,
@@ -27,9 +48,11 @@ export const getGeneralAnalytics = catchAsync(
     ] = await Promise.all([
       // 1. Enrollment by College
       prisma.college.findMany({
+        where: scopes.college,
         select: {
           name: true,
           departments: {
+            where: { AND: [scopes.department, departmentFilter] },
             select: {
               _count: {
                 select: { students: true },
@@ -44,18 +67,27 @@ export const getGeneralAnalytics = catchAsync(
         by: ['status'],
         _sum: { amount: true },
         _count: { _all: true },
-        where: dateFilter,
+        where: {
+          AND: [
+            dateFilter,
+            scopes.payment,
+            requestedDepartmentId
+              ? { student: { departmentId: requestedDepartmentId } }
+              : {},
+          ],
+        },
       }),
 
       // 3. Student distribution by year
       prisma.student.groupBy({
         by: ['year'],
         _count: { _all: true },
-        where: scopeWhere,
+        where: { AND: [scopes.student, studentDepartmentFilter] },
       }),
 
       // 4. Department Stats
       prisma.department.findMany({
+        where: { AND: [scopes.department, departmentFilter] },
         select: {
           name: true,
           _count: {
@@ -67,10 +99,15 @@ export const getGeneralAnalytics = catchAsync(
       // 5. Monthly Enrollment Trends (Last 12 months)
       prisma.student.findMany({
         where: {
-          enrolledAt: {
-            gte: new Date(new Date().setFullYear(new Date().getFullYear() - 1)),
-          },
-          ...scopeWhere,
+          AND: [
+            scopes.student,
+            studentDepartmentFilter,
+            {
+              enrolledAt: {
+                gte: new Date(new Date().setFullYear(new Date().getFullYear() - 1)),
+              },
+            },
+          ],
         },
         select: { enrolledAt: true },
       }),
@@ -79,6 +116,7 @@ export const getGeneralAnalytics = catchAsync(
       prisma.exam.groupBy({
         by: ['type'],
         _count: { _all: true },
+        where: { AND: [scopes.exam, relatedDepartmentFilter] },
       }),
 
       // 7. Attendance Overview
@@ -86,9 +124,15 @@ export const getGeneralAnalytics = catchAsync(
         by: ['status'],
         _count: { _all: true },
         where: {
-          date: {
-            gte: new Date(new Date().setDate(new Date().getDate() - 30)), // Last 30 days
-          },
+          AND: [
+            { course: scopes.course },
+            relatedDepartmentFilter,
+            {
+              date: {
+                gte: new Date(new Date().setDate(new Date().getDate() - 30)),
+              },
+            },
+          ],
         },
       }),
     ]);
