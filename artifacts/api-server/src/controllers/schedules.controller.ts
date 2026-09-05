@@ -7,6 +7,7 @@ import { NotFoundError, AuthorizationError, AppError, ConflictError, ValidationE
 import { TimetableService } from '../services/timetable.service';
 import { Prisma } from '@prisma/client';
 import { MAX_SCHEDULE_SYNC_SLOTS } from '../utils/requestLimits';
+import { requireExistingCourseStaffAssignments } from '../utils/scheduleAssignment.utils';
 
 export const getWeeklyTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -220,18 +221,30 @@ export const createSchedule = catchAsync(
     });
     if (!course) return next(new NotFoundError('Course not found'));
 
-    const parsedDoctorId = doctorId ? parseInt(doctorId as string) : null;
+    let parsedDoctorId = doctorId ? parseInt(doctorId as string) : null;
     const parsedGroupId = groupId ? parseInt(groupId as string) : null;
+    let effectiveTeachingAssistantId = teachingAssistantId
+      ? String(teachingAssistantId)
+      : null;
 
     if (req.user!.role === 'DOCTOR') {
       const myDoctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
       if (!myDoctor || (parsedDoctorId && parsedDoctorId !== myDoctor.id)) {
         return next(new AuthorizationError('You can only schedule classes for yourself'));
       }
+      if (effectiveTeachingAssistantId) {
+        return next(new AuthorizationError('Staff reassignment must be performed by a scoped admin'));
+      }
+      parsedDoctorId = myDoctor.id;
     } else if (req.user!.role === 'TEACHING_ASSISTANT') {
-      if (teachingAssistantId !== req.user!.teachingAssistant?.id) {
+      const myTeachingAssistantId = req.user!.teachingAssistant?.id;
+      if (!myTeachingAssistantId || (effectiveTeachingAssistantId && effectiveTeachingAssistantId !== myTeachingAssistantId)) {
         return next(new AuthorizationError('You can only schedule classes assigned to you'));
       }
+      if (parsedDoctorId) {
+        return next(new AuthorizationError('Staff reassignment must be performed by a scoped admin'));
+      }
+      effectiveTeachingAssistantId = myTeachingAssistantId;
     } else {
       const deptScope: any = getScopeWhere(req.user!, 'department');
       if (deptScope && Object.keys(deptScope).length) {
@@ -267,6 +280,12 @@ export const createSchedule = catchAsync(
     let scheduleSlot;
     try {
       scheduleSlot = await prisma.$transaction(async (tx) => {
+        await requireExistingCourseStaffAssignments(tx, {
+          courseId: course.id,
+          doctorId: parsedDoctorId,
+          teachingAssistantId: effectiveTeachingAssistantId,
+        });
+
         await TimetableService.checkConflicts({
           dayOfWeek,
           startTime,
@@ -275,7 +294,7 @@ export const createSchedule = catchAsync(
           courseId: parseInt(courseId as string),
           doctorId: parsedDoctorId,
           groupId: parsedGroupId,
-          teachingAssistantId,
+          teachingAssistantId: effectiveTeachingAssistantId,
         }, tx);
 
         return tx.scheduleSlot.create({
@@ -288,7 +307,7 @@ export const createSchedule = catchAsync(
             startTime,
             endTime,
             room,
-            teachingAssistantId,
+            teachingAssistantId: effectiveTeachingAssistantId,
 
             timetableId: effectiveTimetableId
           },
@@ -319,12 +338,17 @@ export const updateSchedule = catchAsync(
     const newCourseId = courseId ? parseInt(courseId as string) : existing.courseId;
     const newDoctorId = doctorId !== undefined ? (doctorId ? parseInt(doctorId as string) : null) : existing.doctorId;
     const newGroupId = groupId !== undefined ? (groupId ? parseInt(groupId as string) : null) : existing.groupId;
-    const newTeachingAssistantId = teachingAssistantId !== undefined ? teachingAssistantId : existing.teachingAssistantId;
+    const newTeachingAssistantId = teachingAssistantId !== undefined
+      ? (teachingAssistantId ? String(teachingAssistantId) : null)
+      : existing.teachingAssistantId;
 
     if (req.user!.role === 'DOCTOR') {
       const myDoctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
       if (!myDoctor || existing.doctorId !== myDoctor.id) {
         return next(new AuthorizationError('You can only modify slots for your own sections'));
+      }
+      if (newDoctorId !== myDoctor.id || newTeachingAssistantId !== existing.teachingAssistantId) {
+        return next(new AuthorizationError('Staff reassignment must be performed by a scoped admin'));
       }
     } else if (req.user!.role === 'TEACHING_ASSISTANT') {
       if (existing.teachingAssistantId !== req.user!.teachingAssistant?.id) {
@@ -332,6 +356,9 @@ export const updateSchedule = catchAsync(
       }
       if (newTeachingAssistantId !== req.user!.teachingAssistant?.id) {
         return next(new AuthorizationError('You cannot reassign to another TA'));
+      }
+      if (newDoctorId !== existing.doctorId) {
+        return next(new AuthorizationError('Staff reassignment must be performed by a scoped admin'));
       }
     } else {
       const deptScope: any = getScopeWhere(req.user!, 'department');
@@ -380,6 +407,23 @@ export const updateSchedule = catchAsync(
     }
 
     const scheduleSlot = await prisma.$transaction(async (tx) => {
+      const doctorNeedsAssignmentProof =
+        newDoctorId !== null &&
+        (newDoctorId !== existing.doctorId || newCourseId !== existing.courseId);
+      const teachingAssistantNeedsAssignmentProof =
+        newTeachingAssistantId !== null &&
+        (newTeachingAssistantId !== existing.teachingAssistantId ||
+          newCourseId !== existing.courseId);
+
+      await requireExistingCourseStaffAssignments(tx, {
+        courseId: newCourseId,
+        doctorId: doctorNeedsAssignmentProof ? newDoctorId : undefined,
+        teachingAssistantId: teachingAssistantNeedsAssignmentProof
+          ? newTeachingAssistantId
+          : undefined,
+        excludeSlotId: slotId,
+      });
+
       await TimetableService.checkConflicts({
         dayOfWeek: dayOfWeek || existing.dayOfWeek,
         startTime: startTime || existing.startTime,
@@ -399,7 +443,7 @@ export const updateSchedule = catchAsync(
           startTime,
           endTime,
           room,
-          teachingAssistantId,
+          teachingAssistantId: newTeachingAssistantId,
 
           courseId: newCourseId,
           doctorId: newDoctorId,
