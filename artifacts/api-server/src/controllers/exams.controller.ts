@@ -265,8 +265,9 @@ export const deleteExam = catchAsync(async (req: Request, res: Response, next: N
 
 export const getExamById = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const id = parseInt(req.params.id as string);
-  const exam: any = await prisma.exam.findUnique({
-    where: { id },
+  const examScope = getScopeWhere(req.user!, 'exam');
+  const exam: any = await prisma.exam.findFirst({
+    where: { AND: [{ id }, examScope] },
     include: {
       course: {
         select: {
@@ -291,20 +292,6 @@ export const getExamById = catchAsync(async (req: Request, res: Response, next: 
 
   if (!exam) {
     return next(new NotFoundError('Exam not found'));
-  }
-
-  // Enforce scope on read
-  const courseScope: any = getScopeWhere(req.user!, 'course');
-  if (courseScope && Object.keys(courseScope).length) {
-    if (
-      courseScope.department &&
-      exam.course?.department?.collegeId !== courseScope.department.collegeId
-    ) {
-      return next(new AuthorizationError('Access denied'));
-    }
-    if (courseScope.departmentId && exam.course?.departmentId !== courseScope.departmentId) {
-      return next(new AuthorizationError('Access denied'));
-    }
   }
 
   res.json({ success: true, data: exam });
