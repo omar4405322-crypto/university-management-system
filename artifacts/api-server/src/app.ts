@@ -14,6 +14,7 @@ import prisma from './utils/prismaClient';
 import globalErrorHandler from './middleware/error.middleware';
 import { NotFoundError } from './utils/appError';
 import { getRedisStatus } from './utils/redis.utils';
+import logger from './utils/logger';
 
 // Route imports
 import authRoutes from './routes/auth.routes';
@@ -42,7 +43,7 @@ import teachingAssistantsRoutes from './routes/teaching-assistants.routes';
 
 import studentGroupsRoutes from './routes/studentGroups.routes';
 import requestsRoutes from './routes/requests.routes';
-import { protect } from './middleware/auth.middleware';
+import { protect, authorize } from './middleware/auth.middleware';
 import roomRoutes from './routes/room.routes';
 
 import swaggerUi from 'swagger-ui-express';
@@ -136,35 +137,49 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// 4. HEALTH CHECK (both /api/health and /api/healthz for deployment compatibility)
-const healthHandler = async (req: Request, res: Response): Promise<void> => {
-  const redisStatus = getRedisStatus();
+const healthLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// 4. PUBLIC LIVENESS (both aliases remain for deployment compatibility)
+const livenessHandler = (_req: Request, res: Response): void => {
+  res.status(200).json({ status: 'ok' });
+};
+app.get('/api/healthz', healthLimiter, livenessHandler);
+app.get('/api/health', healthLimiter, livenessHandler);
+
+const readinessHandler = async (_req: Request, res: Response): Promise<void> => {
   try {
     await (prisma as any).$queryRaw`SELECT 1`;
-    res.status(200).json({
-      success: true,
-      message: 'Server and Database are healthy',
-      redis: redisStatus,
-      timestamp: new Date().toISOString(),
-      env: process.env.NODE_ENV,
+    const redisStatus = getRedisStatus();
+    const redisReady = !redisStatus.configured || redisStatus.connected;
+    res.status(redisReady ? 200 : 503).json({
+      status: redisReady ? 'ready' : 'not_ready',
+      checks: {
+        database: true,
+        redis: redisReady,
+      },
     });
-  } catch (err: any) {
-    res.status(500).json({
-      success: false,
-      message: 'Database connection failed',
-      redis: redisStatus,
-      error: err instanceof Error ? err.message : 'Unknown error',
-      timestamp: new Date().toISOString(),
-    });
+  } catch (error: unknown) {
+    logger.error('[HEALTH] Readiness database check failed', { error });
+    res.status(503).json({ status: 'not_ready', checks: { database: false } });
   }
 };
-app.get('/api/healthz', healthHandler);
-app.get('/api/health', healthHandler);
 
 // 5. BODY PARSERS
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+app.get(
+  '/api/health/readiness',
+  healthLimiter,
+  protect,
+  authorize('SUPER_ADMIN'),
+  readinessHandler
+);
 
 // 6. STATIC FILES
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
