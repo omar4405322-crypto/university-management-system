@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
 import { enforcePaginationBounds } from './middleware/requestLimits.middleware';
 import { setMaterialDownloadHeaders } from './middleware/materialUpload.middleware';
+import auditLog from './middleware/audit.middleware';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import prisma from './utils/prismaClient';
@@ -183,6 +184,14 @@ app.get(
   readinessHandler
 );
 app.use('/api', enforcePaginationBounds);
+
+// Centralized request audit coverage for the mutation families remediated in
+// this security session. Each middleware records only successful non-GET calls.
+app.use('/api/courses', auditLog('COURSE_MUTATION', 'Course'));
+app.use('/api/enrollments', auditLog('ENROLLMENT_MUTATION', 'Enrollment'));
+app.use('/api/quizzes', auditLog('QUIZ_MUTATION', 'Quiz'));
+app.use('/api/attendance', auditLog('ATTENDANCE_MUTATION', 'Attendance'));
+app.use('/api/schedules', auditLog('SCHEDULE_MUTATION', 'ScheduleSlot'));
 
 // 6. STATIC FILES
 app.use(
