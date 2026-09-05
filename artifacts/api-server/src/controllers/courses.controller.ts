@@ -4,8 +4,12 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
-import { NotFoundError } from '../utils/appError';
+import { AuthorizationError, NotFoundError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
+import {
+  canManageUnassignedAdminResource,
+  getAdminMutationTargetWhere,
+} from '../utils/adminMutationScope.utils';
 import { EnrollmentService } from '../services/enrollment.service';
 import { invalidateCache } from '../utils/redis.utils';
 
@@ -347,19 +351,15 @@ export const createCourse = catchAsync(async (req: Request, res: Response, next:
   const parsedCredits =
     credits !== undefined && credits !== '' ? parseInt(credits as string, 10) : 3;
 
-  // Fail closed for unscoped ADMIN role
-  if (req.user && req.user.role === 'ADMIN') {
-    if (!req.user.managedCollegeId) {
-      return res.status(403).json({ success: false, message: 'Access denied: Unscoped admin cannot create courses' });
-    }
-    if (parsedDeptId) {
-      const dept = await prisma.department.findUnique({
-        where: { id: parsedDeptId },
-      });
-      if (!dept || dept.collegeId !== req.user.managedCollegeId) {
-        return res.status(403).json({ success: false, message: 'Access denied' });
-      }
-    }
+  if (!Number.isInteger(parsedDeptId) || (parsedDeptId as number) <= 0) {
+    return next(new AuthorizationError('Access denied: A managed department is required'));
+  }
+  const destinationDepartment = await prisma.department.findFirst({
+    where: getAdminMutationTargetWhere(req.user, 'department', parsedDeptId as number),
+    select: { id: true },
+  });
+  if (!destinationDepartment) {
+    return next(new AuthorizationError('Access denied: Department is outside your managed scope'));
   }
 
   const courseCreateData: {
@@ -416,9 +416,8 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
     maxStudents,
   } = req.body;
 
-  // fetch existing and enforce scope for scoped ADMIN
-  const existing = await prisma.course.findUnique({
-    where: { id: parseInt(id as string, 10) },
+  const existing = await prisma.course.findFirst({
+    where: getAdminMutationTargetWhere(req.user, 'course', parseInt(id as string, 10)),
     include: { department: true },
   });
   if (!existing) return next(new NotFoundError('Course not found'));
@@ -428,20 +427,20 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
       ? parseInt(departmentId as string, 10)
       : undefined;
 
-  // Fail closed for unscoped ADMIN role
-  if (req.user && req.user.role === 'ADMIN') {
-    if (!req.user.managedCollegeId) {
-      return res.status(403).json({ success: false, message: 'Access denied: Unscoped admin cannot update courses' });
-    }
-    if (existing.department?.collegeId !== req.user.managedCollegeId) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-    if (parsedDeptId) {
-      const newDept = await prisma.department.findUnique({
-        where: { id: parsedDeptId },
+  if (departmentId !== undefined) {
+    if (parsedDeptId === undefined || !Number.isInteger(parsedDeptId) || parsedDeptId <= 0) {
+      if (!canManageUnassignedAdminResource(req.user)) {
+        return next(new AuthorizationError('Access denied: Scoped admins cannot detach courses'));
+      }
+    } else {
+      const destinationDepartment = await prisma.department.findFirst({
+        where: getAdminMutationTargetWhere(req.user, 'department', parsedDeptId),
+        select: { id: true },
       });
-      if (!newDept || newDept.collegeId !== req.user.managedCollegeId) {
-        return res.status(403).json({ success: false, message: 'Access denied' });
+      if (!destinationDepartment) {
+        return next(
+          new AuthorizationError('Access denied: Destination department is outside your managed scope')
+        );
       }
     }
   }
