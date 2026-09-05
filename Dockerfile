@@ -12,8 +12,8 @@ COPY artifacts/api-server/package.json ./artifacts/api-server/
 COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/db/package.json ./lib/db/
 
-# Install dependencies without frozen lockfile
-RUN pnpm install --no-frozen-lockfile --strict-peer-dependencies=false
+# Install exactly the dependency graph committed in the lockfile
+RUN pnpm install --frozen-lockfile --strict-peer-dependencies=false
 
 # Copy only the source and configuration required to build the API
 COPY tsconfig.base.json ./
@@ -48,6 +48,11 @@ COPY --from=builder /app/artifacts/api-server/prisma/schema.prisma ./artifacts/a
 COPY --from=builder /app/artifacts/api-server/prisma/migrations/ ./artifacts/api-server/prisma/migrations/
 
 WORKDIR /app
+
+# Runtime uploads are the only application-owned writable path
+RUN mkdir -p /app/uploads && chown node:node /app/uploads
+
+USER node
 
 EXPOSE 5000
 

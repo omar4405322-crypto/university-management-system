@@ -217,4 +217,23 @@ const requiredDockerCopies = [
 for (const pattern of requiredDockerCopies) {
   assert.match(dockerfile, pattern, `Dockerfile is missing required narrow copy ${pattern}`);
 }
+
+assert.match(
+  dockerfile,
+  /^RUN pnpm install --frozen-lockfile(?:\s|$)/mu,
+  'Container dependencies must be installed from the committed lockfile'
+);
+assert.doesNotMatch(
+  dockerfile,
+  /pnpm install[^\r\n]*--no-frozen-lockfile/u,
+  'Container builds must not permit lockfile drift'
+);
+
+const runnerStage = dockerfile.slice(dockerfile.indexOf('FROM node:20-alpine AS runner'));
+assert.match(runnerStage, /^RUN mkdir -p \/app\/uploads && chown node:node \/app\/uploads$/mu);
+assert.match(runnerStage, /^USER node$/mu, 'The runtime image must drop root privileges');
+assert(
+  runnerStage.indexOf('USER node') < runnerStage.indexOf('CMD '),
+  'The production command must execute as the non-root user'
+);
 console.log('✓ Docker build-context secret exclusions passed');
