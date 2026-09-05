@@ -12,6 +12,7 @@ export interface SlotEntry {
   timetableId: number | null;
   courseId?: number;
   doctorId?: number;
+  teachingAssistantId?: string;
   groupId?: number | null;
   id?: number;
   /** Set to true when an active ScheduleOverride exists for today */

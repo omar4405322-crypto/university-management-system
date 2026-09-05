@@ -24,7 +24,10 @@ type SlotType = 'LECTURE' | 'LAB' | 'SECTION';
 
 export interface SlotFormValues {
   courseName: string;
+  courseId?: number;
   doctorName: string;
+  doctorId?: number;
+  teachingAssistantId?: string;
   room: string;
   slotType: SlotType;
   groupName?: string;
@@ -77,7 +80,9 @@ export default function SlotModal({
   const { t } = useTranslation();
 
   const isEditing = Boolean(form.courseName && dialogContext);
-  const selectedCourse = courses.find((c) => c.name === form.courseName);
+  const selectedCourse = courses.find(
+    (c) => c.id === form.courseId || c.name === form.courseName
+  );
 
   const [checkingConflict, setCheckingConflict] = useState(false);
   const [conflicts, setConflicts] = useState<
@@ -106,6 +111,9 @@ export default function SlotModal({
           room: form.room,
           doctorName: form.doctorName,
           courseName: form.courseName,
+          courseId: form.courseId,
+          doctorId: form.doctorId,
+          teachingAssistantId: form.teachingAssistantId,
           slotType: form.slotType,
         });
 
@@ -123,7 +131,7 @@ export default function SlotModal({
 
   const courseOptions = useMemo(() => {
     return courses.map((c: any) => ({
-      value: c.name,
+      value: String(c.id),
       label: `${c.name} ${c.courseCode ? `(${c.courseCode})` : ''}`,
       sublabel: c.department?.name ? `${c.department.name} • ${t('common.year', 'Year')} ${c.year || 1}` : '',
     }));
@@ -157,12 +165,16 @@ export default function SlotModal({
             </label>
             <SearchableSelect
               options={courseOptions}
-              value={form.courseName}
+              value={selectedCourse ? String(selectedCourse.id) : ''}
               onChange={(val) => {
+                const selected = courses.find((course) => String(course.id) === val);
                 onChange({
                   ...form,
-                  courseName: val,
-                  doctorName: form.doctorName,
+                  courseId: selected?.id,
+                  courseName: selected?.name || '',
+                  doctorName: '',
+                  doctorId: undefined,
+                  teachingAssistantId: undefined,
                 });
               }}
               placeholder={loadingCourses ? t('common.loading', 'Loading...') : t('schedule.selectCourse', 'Select Course')}
@@ -295,11 +307,21 @@ export default function SlotModal({
             <InstructorSelector
               courseId={selectedCourse?.id}
               slotType={form.slotType}
-              value={form.doctorName}
-              onChange={(val) => onChange({ ...form, doctorName: val })}
+              value={
+                form.slotType === 'LECTURE'
+                  ? form.doctorId ? String(form.doctorId) : ''
+                  : form.teachingAssistantId || ''
+              }
+              onChange={(val, label) => onChange({
+                ...form,
+                doctorName: label || '',
+                doctorId: form.slotType === 'LECTURE' ? Number(val) : undefined,
+                teachingAssistantId: form.slotType === 'LECTURE' ? undefined : val,
+              })}
               isRTL={isRTL}
               collegeId={collegeId}
-              fallbackOptions={doctors}
+              fallbackOptions={form.slotType === 'LECTURE' ? doctors : []}
+              useIdAsValue
             />
           </div>
         </div>

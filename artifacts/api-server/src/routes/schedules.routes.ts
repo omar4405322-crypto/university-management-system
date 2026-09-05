@@ -60,6 +60,19 @@ router.post(
       .trim()
       .isLength({ min: 1, max: MAX_SCHEDULE_TEXT_LENGTH })
       .withMessage('Course name is required and must not exceed 200 characters'),
+    body('slots.*.courseId')
+      .optional({ nullable: true })
+      .isInt({ min: 1 })
+      .withMessage('Course ID must be a positive integer'),
+    body('slots.*.doctorId')
+      .optional({ nullable: true })
+      .isInt({ min: 1 })
+      .withMessage('Doctor ID must be a positive integer'),
+    body('slots.*.teachingAssistantId')
+      .optional({ nullable: true })
+      .isString()
+      .isLength({ min: 1, max: 64 })
+      .withMessage('Teaching assistant ID must be a valid identifier'),
     body('slots.*.instructor')
       .optional({ nullable: true })
       .isString()

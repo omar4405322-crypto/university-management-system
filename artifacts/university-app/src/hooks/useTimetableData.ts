@@ -162,6 +162,7 @@ export function useTimetableData(
               timetableId: slot.timetableId,
               courseId: slot.courseId,
               doctorId: slot.doctorId,
+              teachingAssistantId: slot.teachingAssistantId,
               groupId: slot.groupId,
               id: slot.id
             };
@@ -179,6 +180,9 @@ export function useTimetableData(
               room: slot.room || '',
               slotType: slot.slotType || 'LECTURE',
               timetableId: timetable.id,
+              courseId: slot.courseId,
+              doctorId: slot.doctorId,
+              teachingAssistantId: slot.teachingAssistantId,
             };
           });
           setSlots(mapped);

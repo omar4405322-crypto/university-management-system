@@ -559,49 +559,6 @@ async function resolveDoctorByName(
     return { id: null, isAmbiguous: true, matchCount: candidates.length };
   }
 
-  // Step 3: Unscoped Fallback (if departmentId was provided but 0 matches found in dept)
-  if (departmentId) {
-    const exactUnscoped = parts.length >= 2
-      ? {
-          firstName: { equals: parts[0], mode: 'insensitive' as const },
-          lastName: { equals: parts[parts.length - 1], mode: 'insensitive' as const },
-        }
-      : {
-          OR: [
-            { firstName: { equals: parts[0], mode: 'insensitive' as const } },
-            { lastName: { equals: parts[0], mode: 'insensitive' as const } },
-          ],
-        };
-
-    candidates = await prisma.doctor.findMany({ where: exactUnscoped });
-    if (candidates.length === 1) {
-      return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-    }
-    if (candidates.length > 1) {
-      return { id: null, isAmbiguous: true, matchCount: candidates.length };
-    }
-
-    const containsUnscoped = parts.length >= 2
-      ? {
-          firstName: { contains: parts[0], mode: 'insensitive' as const },
-          lastName: { contains: parts[parts.length - 1], mode: 'insensitive' as const },
-        }
-      : {
-          OR: [
-            { firstName: { contains: parts[0], mode: 'insensitive' as const } },
-            { lastName: { contains: parts[0], mode: 'insensitive' as const } },
-          ],
-        };
-
-    candidates = await prisma.doctor.findMany({ where: containsUnscoped });
-    if (candidates.length === 1) {
-      return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-    }
-    if (candidates.length > 1) {
-      return { id: null, isAmbiguous: true, matchCount: candidates.length };
-    }
-  }
-
   return { id: null, isAmbiguous: false, matchCount: 0 };
 }
 
@@ -666,49 +623,6 @@ async function resolveTaByName(
     return { id: null, isAmbiguous: true, matchCount: candidates.length };
   }
 
-  // Step 3: Unscoped Fallback
-  if (departmentId) {
-    const exactUnscoped = parts.length >= 2
-      ? {
-          firstName: { equals: parts[0], mode: 'insensitive' as const },
-          lastName: { equals: parts[parts.length - 1], mode: 'insensitive' as const },
-        }
-      : {
-          OR: [
-            { firstName: { equals: parts[0], mode: 'insensitive' as const } },
-            { lastName: { equals: parts[0], mode: 'insensitive' as const } },
-          ],
-        };
-
-    candidates = await prisma.teachingAssistant.findMany({ where: exactUnscoped });
-    if (candidates.length === 1) {
-      return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-    }
-    if (candidates.length > 1) {
-      return { id: null, isAmbiguous: true, matchCount: candidates.length };
-    }
-
-    const containsUnscoped = parts.length >= 2
-      ? {
-          firstName: { contains: parts[0], mode: 'insensitive' as const },
-          lastName: { contains: parts[parts.length - 1], mode: 'insensitive' as const },
-        }
-      : {
-          OR: [
-            { firstName: { contains: parts[0], mode: 'insensitive' as const } },
-            { lastName: { contains: parts[0], mode: 'insensitive' as const } },
-          ],
-        };
-
-    candidates = await prisma.teachingAssistant.findMany({ where: containsUnscoped });
-    if (candidates.length === 1) {
-      return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-    }
-    if (candidates.length > 1) {
-      return { id: null, isAmbiguous: true, matchCount: candidates.length };
-    }
-  }
-
   return { id: null, isAmbiguous: false, matchCount: 0 };
 }
 
@@ -728,14 +642,14 @@ export const syncGridToMaster = catchAsync(
       );
     }
 
-    const parsedDeptId = departmentId ? parseInt(departmentId) : undefined;
+    const parsedDeptId = Number(departmentId);
+    if (!Number.isSafeInteger(parsedDeptId) || parsedDeptId <= 0) {
+      return next(new ValidationError('departmentId must be a positive integer'));
+    }
 
     // Enforce Admin Scope
     const deptScope: any = getScopeWhere(req.user!, 'department');
     if (deptScope && Object.keys(deptScope).length) {
-      if (!parsedDeptId) {
-        return next(new AuthorizationError('Access denied'));
-      }
       if (deptScope.id && parsedDeptId !== deptScope.id) {
         return next(new AuthorizationError('Access denied'));
       }
@@ -764,28 +678,22 @@ export const syncGridToMaster = catchAsync(
       if (timetable) timetableId = timetable.id;
     }
 
-    // 2. Pre-fetch Courses for the department (or all courses if unscoped)
-    const deptFilter = parsedDeptId ? { departmentId: parsedDeptId } : {};
+    // 2. Pre-fetch only courses for the explicitly selected department.
+    const deptFilter = { departmentId: parsedDeptId };
     const allCourses = await prisma.course.findMany({
       where: deptFilter,
       select: { id: true, name: true, courseCode: true, departmentId: true },
     });
 
-    // 3. Pre-fetch Staff (Doctors) in a single query, and group by departmentId in memory for slot-scoped matching
-    const globalDoctors = await prisma.doctor.findMany({
+    // 3. Pre-fetch only staff in the explicitly selected department.
+    const departmentDoctors = await prisma.doctor.findMany({
+      where: { departmentId: parsedDeptId },
       select: { id: true, firstName: true, lastName: true, departmentId: true },
     });
-    const doctorsByDept = new Map<number, typeof globalDoctors>();
-    for (const doc of globalDoctors) {
-      if (doc.departmentId) {
-        let list = doctorsByDept.get(doc.departmentId);
-        if (!list) {
-          list = [];
-          doctorsByDept.set(doc.departmentId, list);
-        }
-        list.push(doc);
-      }
-    }
+    const departmentTeachingAssistants = await prisma.teachingAssistant.findMany({
+      where: { departmentId: parsedDeptId },
+      select: { id: true, firstName: true, lastName: true, departmentId: true },
+    });
 
     // 4. Pre-fetch Existing ScheduleSlots for matched courses
     const allCourseIds = allCourses.map(c => c.id);
@@ -834,7 +742,7 @@ export const syncGridToMaster = catchAsync(
     };
 
     // In-memory Doctor matcher
-    const matchDoctor = (rawName: string, effectiveDeptId?: number | null): StaffResolveResult<number> => {
+    const matchDoctor = (rawName: string): StaffResolveResult<number> => {
       const cleanName = rawName
         .trim()
         .replace(/^(د\.|دكتور\s+|dr\.|dr\s+|أ\.د\.|prof\.|prof\s+)\s*/i, '')
@@ -842,7 +750,7 @@ export const syncGridToMaster = catchAsync(
       const parts = cleanName.split(/\s+/).filter(Boolean).map(p => p.toLowerCase());
       if (parts.length === 0) return { id: null, isAmbiguous: false, matchCount: 0 };
 
-      const filterDocs = (docs: typeof globalDoctors, mode: 'exact' | 'contains') => {
+      const filterDocs = (docs: typeof departmentDoctors, mode: 'exact' | 'contains') => {
         return docs.filter(doc => {
           const f = (doc.firstName || '').toLowerCase();
           const l = (doc.lastName || '').toLowerCase();
@@ -861,24 +769,56 @@ export const syncGridToMaster = catchAsync(
         });
       };
 
-      const scopedDoctors = effectiveDeptId ? doctorsByDept.get(effectiveDeptId) || [] : globalDoctors;
-
-      let candidates = filterDocs(scopedDoctors, 'exact');
+      let candidates = filterDocs(departmentDoctors, 'exact');
       if (candidates.length === 1) return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
       if (candidates.length > 1) return { id: null, isAmbiguous: true, matchCount: candidates.length };
 
-      candidates = filterDocs(scopedDoctors, 'contains');
+      candidates = filterDocs(departmentDoctors, 'contains');
       if (candidates.length === 1) return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
       if (candidates.length > 1) return { id: null, isAmbiguous: true, matchCount: candidates.length };
 
-      if (effectiveDeptId) {
-        candidates = filterDocs(globalDoctors, 'exact');
-        if (candidates.length === 1) return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-        if (candidates.length > 1) return { id: null, isAmbiguous: true, matchCount: candidates.length };
+      return { id: null, isAmbiguous: false, matchCount: 0 };
+    };
 
-        candidates = filterDocs(globalDoctors, 'contains');
-        if (candidates.length === 1) return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-        if (candidates.length > 1) return { id: null, isAmbiguous: true, matchCount: candidates.length };
+    const matchTeachingAssistant = (rawName: string): StaffResolveResult<string> => {
+      const cleanName = rawName
+        .trim()
+        .replace(/^(م\.|مهندس\s+|eng\.|eng\s+|ta\.|ta\s+|معيد\s+)\s*/i, '')
+        .trim();
+      const parts = cleanName.split(/\s+/).filter(Boolean).map(p => p.toLowerCase());
+      if (parts.length === 0) return { id: null, isAmbiguous: false, matchCount: 0 };
+
+      const filterTeachingAssistants = (mode: 'exact' | 'contains') =>
+        departmentTeachingAssistants.filter(teachingAssistant => {
+          const firstName = (teachingAssistant.firstName || '').toLowerCase();
+          const lastName = (teachingAssistant.lastName || '').toLowerCase();
+          if (parts.length >= 2) {
+            const targetFirst = parts[0];
+            const targetLast = parts[parts.length - 1];
+            return mode === 'exact'
+              ? firstName === targetFirst && lastName === targetLast
+              : firstName.includes(targetFirst) && lastName.includes(targetLast);
+          }
+          const target = parts[0];
+          return mode === 'exact'
+            ? firstName === target || lastName === target
+            : firstName.includes(target) || lastName.includes(target);
+        });
+
+      let candidates = filterTeachingAssistants('exact');
+      if (candidates.length === 1) {
+        return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+      }
+      if (candidates.length > 1) {
+        return { id: null, isAmbiguous: true, matchCount: candidates.length };
+      }
+
+      candidates = filterTeachingAssistants('contains');
+      if (candidates.length === 1) {
+        return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
+      }
+      if (candidates.length > 1) {
+        return { id: null, isAmbiguous: true, matchCount: candidates.length };
       }
 
       return { id: null, isAmbiguous: false, matchCount: 0 };
@@ -892,11 +832,28 @@ export const syncGridToMaster = catchAsync(
     const createsToRun: any[] = [];
 
     for (const slot of slots) {
-      const { day, startTime, endTime, courseName, instructor, room, slotType } = slot;
+      const {
+        day,
+        startTime,
+        endTime,
+        courseName,
+        courseId,
+        instructor,
+        doctorId: suppliedDoctorId,
+        teachingAssistantId: suppliedTeachingAssistantId,
+        room,
+        slotType,
+      } = slot;
       if (!courseName || typeof courseName !== 'string') continue;
 
       const trimmedName = courseName.trim();
-      const courseMatch = matchCourse(trimmedName);
+      const courseMatch = courseId
+        ? {
+            course: allCourses.find(c => c.id === Number(courseId)) || null,
+            isAmbiguous: false,
+            matchCount: 0,
+          }
+        : matchCourse(trimmedName);
 
       if (courseMatch.isAmbiguous) {
         skippedCount++;
@@ -912,24 +869,85 @@ export const syncGridToMaster = catchAsync(
         skippedCount++;
         skippedSlots.push({
           courseName: trimmedName,
-          reason: `COURSE_NOT_FOUND: No course matching '${trimmedName}'`,
+          reason: courseId
+            ? `COURSE_ID_NOT_IN_SCOPE: Course ID '${courseId}' is not in the selected department`
+            : `COURSE_NOT_FOUND: No scoped course matching '${trimmedName}'`,
         });
         continue;
       }
 
       let doctorId: number | null = null;
-      if (instructor) {
-        const effectiveDeptId = parsedDeptId || course.departmentId;
-        const docResolve = matchDoctor(instructor, effectiveDeptId);
-        if (docResolve.isAmbiguous) {
-          skippedCount++;
-          skippedSlots.push({
-            courseName: trimmedName,
-            reason: `AMBIGUOUS_INSTRUCTOR_MATCH: ${docResolve.matchCount} instructors matched '${instructor}'`,
-          });
-          continue;
-        } else if (docResolve.id) {
-          doctorId = docResolve.id;
+      let teachingAssistantId: string | null = null;
+      const effectiveSlotType = String(slotType || 'LECTURE').toUpperCase();
+      const usesTeachingAssistant = effectiveSlotType === 'LAB' || effectiveSlotType === 'SECTION';
+
+      if (usesTeachingAssistant) {
+        if (suppliedTeachingAssistantId) {
+          const scopedTeachingAssistant = departmentTeachingAssistants.find(
+            teachingAssistant => teachingAssistant.id === String(suppliedTeachingAssistantId)
+          );
+          if (!scopedTeachingAssistant) {
+            skippedCount++;
+            skippedSlots.push({
+              courseName: trimmedName,
+              reason: `INSTRUCTOR_ID_NOT_IN_SCOPE: Teaching assistant ID '${suppliedTeachingAssistantId}' is not in the selected department`,
+            });
+            continue;
+          }
+          teachingAssistantId = scopedTeachingAssistant.id;
+        } else if (instructor) {
+          const teachingAssistantResolve = matchTeachingAssistant(instructor);
+          if (teachingAssistantResolve.isAmbiguous) {
+            skippedCount++;
+            skippedSlots.push({
+              courseName: trimmedName,
+              reason: `AMBIGUOUS_INSTRUCTOR_MATCH: ${teachingAssistantResolve.matchCount} teaching assistants matched '${instructor}'`,
+            });
+            continue;
+          }
+          if (teachingAssistantResolve.id) {
+            teachingAssistantId = teachingAssistantResolve.id;
+          } else {
+            skippedCount++;
+            skippedSlots.push({
+              courseName: trimmedName,
+              reason: `INSTRUCTOR_NOT_FOUND: No scoped teaching assistant matching '${instructor}'`,
+            });
+            continue;
+          }
+        }
+      } else {
+        if (suppliedDoctorId) {
+          const scopedDoctor = departmentDoctors.find(doc => doc.id === Number(suppliedDoctorId));
+          if (!scopedDoctor) {
+            skippedCount++;
+            skippedSlots.push({
+              courseName: trimmedName,
+              reason: `INSTRUCTOR_ID_NOT_IN_SCOPE: Doctor ID '${suppliedDoctorId}' is not in the selected department`,
+            });
+            continue;
+          }
+          doctorId = scopedDoctor.id;
+        } else if (instructor) {
+          const docResolve = matchDoctor(instructor);
+          if (docResolve.isAmbiguous) {
+            skippedCount++;
+            skippedSlots.push({
+              courseName: trimmedName,
+              reason: `AMBIGUOUS_INSTRUCTOR_MATCH: ${docResolve.matchCount} instructors matched '${instructor}'`,
+            });
+            continue;
+          }
+          if (docResolve.id) {
+            doctorId = docResolve.id;
+          } else {
+            skippedCount++;
+            skippedSlots.push({
+              courseName: trimmedName,
+              reason: `INSTRUCTOR_NOT_FOUND: No scoped instructor matching '${instructor}'`,
+            });
+            continue;
+          }
         }
       }
 
@@ -945,23 +963,32 @@ export const syncGridToMaster = catchAsync(
           data: {
             endTime: endTime || '11:00',
             room: room !== undefined ? (room ? String(room).trim() : null) : existingSlot.room,
-            slotType: slotType || existingSlot.slotType,
-            ...(doctorId ? { doctorId } : {}),
+            slotType: effectiveSlotType || existingSlot.slotType,
+            ...(doctorId ? { doctorId, teachingAssistantId: null } : {}),
+            ...(teachingAssistantId ? { teachingAssistantId, doctorId: null } : {}),
             ...(timetableId ? { timetableId } : {}),
           },
         });
-      } else if (doctorId) {
+      } else if (doctorId || teachingAssistantId) {
         createsToRun.push({
           courseId: course.id,
           groupId: null,
           doctorId,
+          teachingAssistantId,
           timetableId,
-          slotType: slotType || 'LECTURE',
+          slotType: effectiveSlotType,
           dayOfWeek: normalizedDay,
           startTime: normalizedStartTime,
           endTime: endTime || '11:00',
           room: room ? String(room).trim() : null,
         });
+      } else {
+        skippedCount++;
+        skippedSlots.push({
+          courseName: trimmedName,
+          reason: 'INSTRUCTOR_REQUIRED: A stable instructor ID or unique scoped name is required for a new slot',
+        });
+        continue;
       }
       syncedCount++;
     }

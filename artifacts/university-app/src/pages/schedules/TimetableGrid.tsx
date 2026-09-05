@@ -163,7 +163,10 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
       if (existing) {
         setForm({
           courseName: existing.courseName,
+          courseId: existing.courseId,
           doctorName: existing.doctorName,
+          doctorId: existing.doctorId,
+          teachingAssistantId: existing.teachingAssistantId,
           room: existing.room,
           slotType: existing.slotType,
         });
@@ -339,7 +342,10 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
           startTime,
           endTime,
           courseName: val.courseName,
+          courseId: val.courseId,
           instructor: val.doctorName,
+          doctorId: val.doctorId,
+          teachingAssistantId: val.teachingAssistantId,
           room: val.room,
           slotType: val.slotType,
         };

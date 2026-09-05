@@ -9,7 +9,7 @@ interface InstructorSelectorProps {
   courseId: string | number | undefined;
   slotType: 'LECTURE' | 'LAB' | 'SECTION' | string;
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, label?: string) => void;
   isRTL?: boolean;
   disabled?: boolean;
   collegeId?: string | number | null;
@@ -129,7 +129,10 @@ export default function InstructorSelector({
     <SearchableSelect
       options={options}
       value={value}
-      onChange={onChange}
+      onChange={(nextValue) => {
+        const selected = options.find((option) => option.value === nextValue);
+        onChange(nextValue, selected?.label);
+      }}
       placeholder={placeholderText}
       searchPlaceholder={t('common.searchPlaceholder', 'Search...')}
       emptyText={emptyText}

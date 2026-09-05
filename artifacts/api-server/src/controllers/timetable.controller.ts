@@ -6,6 +6,7 @@ import { getScopeWhere } from '../utils/scope.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError, AuthorizationError, AppError } from '../utils/appError';
 import { invalidateCache } from '../utils/redis.utils';
+import { getAdminMutationScopeWhere } from '../utils/adminMutationScope.utils';
 
 /**
  * @desc    Get all timetables (Admin) or matching timetable (Student)
@@ -134,23 +135,44 @@ export const createTimetable = catchAsync(
       );
     }
 
-    // Enforce scope for creation
-    const deptScope: any = getScopeWhere(req.user!, 'department');
-    if (deptScope && Object.keys(deptScope).length) {
-      if (deptScope.collegeId && parseInt(collegeId as string) !== deptScope.collegeId)
-        return next(new AuthorizationError('Access denied'));
-      if (deptScope.id && parseInt(departmentId as string) !== deptScope.id)
-        return next(new AuthorizationError('Access denied'));
+    const parsedCollegeId = Number(collegeId);
+    const parsedDepartmentId = Number(departmentId);
+    const parsedAcademicYear = Number(academicYear);
+    const parsedSemester = Number(semester);
+    if (
+      !Number.isSafeInteger(parsedCollegeId) || parsedCollegeId <= 0 ||
+      !Number.isSafeInteger(parsedDepartmentId) || parsedDepartmentId <= 0 ||
+      !Number.isSafeInteger(parsedAcademicYear) || parsedAcademicYear <= 0 ||
+      !Number.isSafeInteger(parsedSemester) || parsedSemester <= 0
+    ) {
+      return next(new AppError('Timetable identifiers must be positive integers', 400));
+    }
+
+    const department = await prisma.department.findFirst({
+      where: {
+        AND: [
+          { id: parsedDepartmentId, collegeId: parsedCollegeId },
+          getAdminMutationScopeWhere(req.user!, 'department'),
+        ],
+      },
+      select: { id: true },
+    });
+    if (!department) {
+      return next(
+        new AuthorizationError(
+          'Department does not belong to the supplied college or is outside your managed scope'
+        )
+      );
     }
 
     // Check for duplicates (handled by unique constraint in DB, but better to check)
     const existing = await prisma.timetable.findUnique({
       where: {
         collegeId_departmentId_academicYear_semester: {
-          collegeId: parseInt(collegeId as string),
-          departmentId: parseInt(departmentId as string),
-          academicYear: parseInt(academicYear as string),
-          semester: parseInt(semester as string),
+          collegeId: parsedCollegeId,
+          departmentId: parsedDepartmentId,
+          academicYear: parsedAcademicYear,
+          semester: parsedSemester,
         },
       },
     });
@@ -167,10 +189,10 @@ export const createTimetable = catchAsync(
     const timetable = await prisma.$transaction(async (tx) => {
       const created = await tx.timetable.create({
         data: {
-          collegeId: parseInt(collegeId as string),
-          departmentId: parseInt(departmentId as string),
-          academicYear: parseInt(academicYear as string),
-          semester: parseInt(semester as string),
+          collegeId: parsedCollegeId,
+          departmentId: parsedDepartmentId,
+          academicYear: parsedAcademicYear,
+          semester: parsedSemester,
           title,
           description,
           fileUrl,
