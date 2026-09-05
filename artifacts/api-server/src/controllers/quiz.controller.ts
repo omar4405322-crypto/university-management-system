@@ -1,49 +1,155 @@
 import { Request, Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { notifyStudentsInCourse } from '../utils/notification.utils';
 import catchAsync from '../utils/catchAsync';
-import { NotFoundError, AuthorizationError, AppError } from '../utils/appError';
+import {
+  NotFoundError,
+  AuthorizationError,
+  AppError,
+  ConflictError,
+} from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
+
+type QuizWindow = {
+  startTime: Date | string | null;
+  endTime: Date | string | null;
+  createdAt: Date | string;
+  duration: number;
+};
+
+function hasScopeFilter(scope: Record<string, any>): boolean {
+  return Object.keys(scope).length > 0;
+}
+
+/**
+ * Quiz access always starts with the shared course scope, then tightens staff and
+ * student access to the relationship that authorizes this specific workflow.
+ */
+export function getQuizCourseScope(user: any): Record<string, any> {
+  const sharedScope = getScopeWhere(user, 'course');
+  const role = String(user?.role || '').toUpperCase();
+
+  if (role === 'DOCTOR') {
+    const doctorId = user?.doctor?.id;
+    if (!doctorId) return { id: -1 };
+    return {
+      AND: [sharedScope, { scheduleSlots: { some: { doctorId } } }],
+    };
+  }
+
+  if (role === 'TEACHING_ASSISTANT') {
+    const teachingAssistantId = user?.teachingAssistant?.id;
+    if (!teachingAssistantId) return { id: -1 };
+    return {
+      AND: [sharedScope, { scheduleSlots: { some: { teachingAssistantId } } }],
+    };
+  }
+
+  if (role === 'STUDENT') {
+    const studentId = user?.student?.id;
+    if (!studentId) return { id: -1 };
+    return {
+      AND: [
+        sharedScope,
+        { enrollments: { some: { studentId, status: 'ENROLLED' } } },
+      ],
+    };
+  }
+
+  return sharedScope;
+}
+
+export function getQuizWhere(id: number, user: any): Record<string, any> {
+  const courseScope = getQuizCourseScope(user);
+  return {
+    AND: [{ id }, hasScopeFilter(courseScope) ? { course: courseScope } : {}],
+  };
+}
+
+export function assertQuizSubmissionWindow(
+  quiz: QuizWindow,
+  now: Date = new Date()
+): void {
+  const startsAt = new Date(quiz.startTime ?? quiz.createdAt);
+  const duration = Number(quiz.duration);
+
+  if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(duration) || duration <= 0) {
+    throw new AppError('Quiz submission window is not configured correctly', 403);
+  }
+  if (now.getTime() < startsAt.getTime()) {
+    throw new AppError('Quiz has not started yet', 403);
+  }
+
+  const durationDeadline = startsAt.getTime() + duration * 60_000;
+  const configuredEnd = quiz.endTime ? new Date(quiz.endTime).getTime() : null;
+  const closesAt =
+    configuredEnd !== null && Number.isFinite(configuredEnd)
+      ? Math.min(configuredEnd, durationDeadline)
+      : durationDeadline;
+
+  if (now.getTime() > closesAt) {
+    throw new AppError('Quiz submission window has closed', 403);
+  }
+}
+
+export function isQuizSubmissionUniqueConflict(error: any): boolean {
+  if (error?.code !== 'P2002') return false;
+  const target = error?.meta?.target;
+  if (!target) return true;
+  const fields = Array.isArray(target) ? target.map(String) : [String(target)];
+  return (
+    fields.some((field) => field.includes('quizId')) &&
+    fields.some((field) => field.includes('studentId'))
+  );
+}
+
+async function rejectMissingScopedQuiz(id: number): Promise<never> {
+  const exists = await prisma.quiz.findUnique({ where: { id }, select: { id: true } });
+  if (exists) throw new AuthorizationError('You do not have access to this quiz');
+  throw new NotFoundError('Quiz not found');
+}
 
 export const createQuiz = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { title, description, courseId, duration, startTime, endTime, questions } = req.body;
-  const doctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
+  const doctor = req.user?.doctor;
 
   if (!doctor) return next(new AuthorizationError('Only doctors can create quizzes'));
 
-  // Ensure course within scope
-  const course = await prisma.course.findUnique({
-    where: { id: parseInt(courseId as string) },
-    include: { department: true },
+  const parsedCourseId = parseInt(courseId as string);
+  const courseScope = getQuizCourseScope(req.user);
+  const course = await prisma.course.findFirst({
+    where: {
+      AND: [{ id: parsedCourseId }, hasScopeFilter(courseScope) ? courseScope : {}],
+    },
+    select: { id: true },
   });
-  if (!course) return next(new NotFoundError('Course not found'));
-
-  if (req.user!.role === 'DOCTOR') {
-    const isAssigned = await prisma.scheduleSlot.findFirst({
-      where: { courseId: course.id, doctorId: doctor.id },
+  if (!course) {
+    const courseExists = await prisma.course.findUnique({
+      where: { id: parsedCourseId },
+      select: { id: true },
     });
-    if (!isAssigned && doctor.departmentId !== course.departmentId) {
+    if (courseExists) {
       return next(new AuthorizationError('You can only create quizzes for courses you teach'));
     }
-  } else {
-    const courseScope: any = getScopeWhere(req.user!, 'course');
-    if (courseScope && Object.keys(courseScope).length) {
-      if (courseScope.department && course.department?.collegeId !== courseScope.department.collegeId)
-        return next(new AuthorizationError('Access denied'));
-      if (courseScope.departmentId && course.departmentId !== courseScope.departmentId)
-        return next(new AuthorizationError('Access denied'));
-    }
+    return next(new NotFoundError('Course not found'));
   }
+
+  const parsedDuration = parseInt(duration as string);
+  const effectiveStartTime = startTime ? new Date(startTime as string) : new Date();
+  const effectiveEndTime = endTime
+    ? new Date(endTime as string)
+    : new Date(effectiveStartTime.getTime() + parsedDuration * 60_000);
 
   const quiz = await prisma.quiz.create({
     data: {
       title,
       description,
-      courseId: parseInt(courseId as string),
+      courseId: parsedCourseId,
       doctorId: doctor.id,
-      duration: parseInt(duration as string),
-      startTime: startTime ? new Date(startTime as string) : null,
-      endTime: endTime ? new Date(endTime as string) : null,
+      duration: parsedDuration,
+      startTime: effectiveStartTime,
+      endTime: effectiveEndTime,
       questions: {
         create: questions.map((q: any) => ({
           text: q.text,
@@ -75,33 +181,13 @@ export const createQuiz = catchAsync(async (req: Request, res: Response, next: N
 
 export const getQuizzes = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { courseId } = req.query;
-  const where: any = {};
-
-  if (courseId) {
-    where.courseId = parseInt(courseId as string);
-  }
-
-  // Role-based filtering
-  if (req.user!.role === 'DOCTOR') {
-    const doctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
-    if (doctor) {
-      where.doctorId = doctor.id;
-    }
-  } else if (req.user!.role === 'STUDENT') {
-    const student = await prisma.student.findUnique({ where: { userId: req.user!.id } });
-    if (student) {
-      where.course = {
-        enrollments: { some: { studentId: student.id, status: 'ENROLLED' } },
-      };
-    }
-  }
-
-  // Apply admin scope
-  const courseScope: any = getScopeWhere(req.user!, 'course');
-  if (courseScope && Object.keys(courseScope).length) {
-    if (courseScope.department) where.course = courseScope.department;
-    else if (courseScope.departmentId) where.course = { departmentId: courseScope.departmentId };
-  }
+  const courseScope = getQuizCourseScope(req.user);
+  const where = {
+    AND: [
+      ...(courseId ? [{ courseId: parseInt(courseId as string) }] : []),
+      hasScopeFilter(courseScope) ? { course: courseScope } : {},
+    ],
+  };
 
   const quizzes = await prisma.quiz.findMany({
     where,
@@ -117,28 +203,39 @@ export const getQuizzes = catchAsync(async (req: Request, res: Response, next: N
 });
 
 export const getQuizById = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const quiz: any = await prisma.quiz.findUnique({
-    where: { id: parseInt(req.params.id as string) },
+  const quizId = parseInt(req.params.id as string);
+  const isStudent = String(req.user?.role || '').toUpperCase() === 'STUDENT';
+  const quiz: any = await prisma.quiz.findFirst({
+    where: getQuizWhere(quizId, req.user),
     include: {
-      questions: req.user!.role === 'DOCTOR' || req.user!.role === 'SUPER_ADMIN', // Hide correct answers for students?
-      // Actually, we need questions for students to take the quiz, but maybe hide the 'correct' field.
-      course: true,
-      doctor: true,
+      questions: isStudent
+        ? {
+            select: {
+              id: true,
+              text: true,
+              optionA: true,
+              optionB: true,
+              optionC: true,
+              optionD: true,
+              points: true,
+            },
+          }
+        : true,
+      course: { select: { id: true, name: true, courseCode: true } },
+      doctor: { select: { id: true, firstName: true, lastName: true } },
     },
   });
 
-  if (!quiz) return next(new NotFoundError('Quiz not found'));
+  if (!quiz) {
+    return rejectMissingScopedQuiz(quizId);
+  }
 
-  // If student, remove the 'correct' field from questions
-  if (req.user!.role === 'STUDENT') {
-    const student: any = await prisma.student.findUnique({ where: { userId: req.user!.id } });
+  if (isStudent) {
+    const studentId = req.user?.student?.id;
+    if (!studentId) return next(new AuthorizationError('Student profile is required'));
     const studentSubmission = await prisma.quizSubmission.findFirst({
-      where: { quizId: quiz.id, studentId: student.id },
-    });
-
-    quiz.questions = quiz.questions.map((q: any) => {
-      const { correct, ...rest } = q;
-      return studentSubmission ? q : rest; // Show correct answers only if already submitted
+      where: { quizId: quiz.id, studentId },
+      select: { id: true },
     });
     quiz.hasSubmitted = !!studentSubmission;
   }
@@ -148,54 +245,74 @@ export const getQuizById = catchAsync(async (req: Request, res: Response, next: 
 
 export const submitQuiz = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
-  const { answers } = req.body; // { questionId: "A", ... }
-  const student = await prisma.student.findUnique({ where: { userId: req.user!.id } });
+  const { answers } = req.body;
+  const studentId = req.user?.student?.id;
 
-  if (!student) return next(new AuthorizationError('Only students can submit quizzes'));
+  if (!studentId) return next(new AuthorizationError('Only students can submit quizzes'));
 
-  const quiz: any = await prisma.quiz.findUnique({
-    where: { id: parseInt(id as string) },
-    include: { questions: true, course: { include: { department: true } } },
+  const quizId = parseInt(id as string);
+  const preflightQuiz = await prisma.quiz.findFirst({
+    where: getQuizWhere(quizId, req.user),
+    select: { id: true },
   });
-
-  if (!quiz) return next(new NotFoundError('Quiz not found'));
-
-  // Enforce scope on submission
-  const courseScope2: any = getScopeWhere(req.user!, 'course');
-  if (courseScope2 && Object.keys(courseScope2).length) {
-    if (
-      courseScope2.department &&
-      quiz.course?.department?.collegeId !== courseScope2.department.collegeId
-    )
-      return next(new AuthorizationError('Access denied'));
-    if (courseScope2.departmentId && quiz.course?.departmentId !== courseScope2.departmentId)
-      return next(new AuthorizationError('Access denied'));
+  if (!preflightQuiz) {
+    return rejectMissingScopedQuiz(quizId);
   }
 
-  // Check if already submitted
-  const existingSubmission = await prisma.quizSubmission.findFirst({
-    where: { quizId: quiz.id, studentId: student.id },
-  });
-  if (existingSubmission) return next(new AppError('Already submitted', 400));
+  const normalizedAnswers: Record<string, unknown> = Array.isArray(answers)
+    ? Object.fromEntries(answers.map((entry: any) => [String(entry.questionId), entry.answer]))
+    : answers;
 
-  // Auto-grading
-  let score = 0;
-  let totalPoints = 0;
-  quiz.questions.forEach((q: any) => {
-    totalPoints += q.points;
-    if (answers[q.id] === q.correct) {
-      score += q.points;
+  let submission;
+  try {
+    submission = await prisma.$transaction(
+      async (tx) => {
+        const quiz: any = await tx.quiz.findFirst({
+          where: getQuizWhere(quizId, req.user),
+          include: { questions: true },
+        });
+        if (!quiz) throw new AuthorizationError('You do not have access to this quiz');
+
+        assertQuizSubmissionWindow(quiz);
+
+        const existingSubmission = await tx.quizSubmission.findFirst({
+          where: { quizId, studentId },
+          select: { id: true },
+        });
+        if (existingSubmission) {
+          throw new ConflictError('You have already submitted this quiz');
+        }
+
+        let score = 0;
+        let totalPoints = 0;
+        quiz.questions.forEach((question: any) => {
+          totalPoints += question.points;
+          if (normalizedAnswers[String(question.id)] === question.correct) {
+            score += question.points;
+          }
+        });
+        if (totalPoints <= 0) throw new AppError('Quiz has no gradable questions', 409);
+
+        return tx.quizSubmission.create({
+          data: {
+            quizId,
+            studentId,
+            answers: normalizedAnswers as Prisma.InputJsonObject,
+            score: (score / totalPoints) * 100,
+          },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+  } catch (error: any) {
+    if (isQuizSubmissionUniqueConflict(error)) {
+      return next(new ConflictError('You have already submitted this quiz'));
     }
-  });
-
-  const submission = await prisma.quizSubmission.create({
-    data: {
-      quizId: quiz.id,
-      studentId: student.id,
-      answers,
-      score: (score / totalPoints) * 100,
-    },
-  });
+    if (error?.code === 'P2034') {
+      return next(new ConflictError('A concurrent quiz submission was detected. Please retry.'));
+    }
+    throw error;
+  }
 
   res.status(201).json({ success: true, data: submission });
 });
@@ -203,26 +320,16 @@ export const submitQuiz = catchAsync(async (req: Request, res: Response, next: N
 export const getQuizResults = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
-    const quiz = await prisma.quiz.findUnique({
-      where: { id: parseInt(id as string) },
+    const quizId = parseInt(id as string);
+    const quiz = await prisma.quiz.findFirst({
+      where: getQuizWhere(quizId, req.user),
       include: {
         submissions: { include: { student: true } },
-        course: { include: { department: true } },
       },
     });
 
-    if (!quiz) return next(new NotFoundError('Quiz not found'));
-
-    // Enforce scope for results
-    const courseScope3: any = getScopeWhere(req.user!, 'course');
-    if (courseScope3 && Object.keys(courseScope3).length) {
-      if (
-        courseScope3.department &&
-        quiz.course?.department?.collegeId !== courseScope3.department.collegeId
-      )
-        return next(new AuthorizationError('Access denied'));
-      if (courseScope3.departmentId && quiz.course?.departmentId !== courseScope3.departmentId)
-        return next(new AuthorizationError('Access denied'));
+    if (!quiz) {
+      return rejectMissingScopedQuiz(quizId);
     }
 
     res.json({ success: true, data: quiz.submissions });

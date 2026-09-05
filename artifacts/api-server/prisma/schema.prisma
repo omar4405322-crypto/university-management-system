@@ -385,7 +385,7 @@ model QuizSubmission {
   score       Float?
   submittedAt DateTime @default(now())
 
-  @@index([quizId, studentId])
+  @@unique([quizId, studentId])
 }
 
 model Task {
@@ -849,4 +849,3 @@ model RfidDevice {
   lastSeenAt DateTime?
   createdAt  DateTime  @default(now())
 }
-

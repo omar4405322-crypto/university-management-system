@@ -5,6 +5,17 @@ export const quizValidation = [
   body('title').notEmpty().withMessage('Quiz title is required').trim(),
   body('courseId').isInt().withMessage('Course ID must be an integer'),
   body('duration').isInt({ min: 1 }).withMessage('Duration must be at least 1 minute'),
+  body('startTime').optional().isISO8601().withMessage('Start time must be a valid ISO date'),
+  body('endTime')
+    .optional()
+    .isISO8601()
+    .withMessage('End time must be a valid ISO date')
+    .custom((value, { req }) => {
+      if (req.body.startTime && new Date(value).getTime() <= new Date(req.body.startTime).getTime()) {
+        throw new Error('End time must be after start time');
+      }
+      return true;
+    }),
   body('questions').isArray({ min: 1 }).withMessage('At least one question is required'),
   body('questions.*.text').notEmpty().withMessage('Question text is required'),
   body('questions.*.optionA').notEmpty().withMessage('Option A is required'),
