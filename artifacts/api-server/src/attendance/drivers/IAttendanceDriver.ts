@@ -1,4 +1,5 @@
 import { AttendanceMethod, AttendanceStatus } from '@prisma/client';
+import type { UserScope } from '../../utils/scope.utils';
 
 export interface DriverValidationContext {
   studentId?: number;
@@ -7,6 +8,8 @@ export interface DriverValidationContext {
   ipAddress?: string;
   userAgent?: string;
   semester?: number;
+  courseId?: number;
+  actor?: UserScope;
   prismaTransaction?: any;
 }
 

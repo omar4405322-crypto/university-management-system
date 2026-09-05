@@ -452,7 +452,7 @@ class AttendanceSessionService {
     return attendanceEngine.recordAttendance({
       method: 'MANUAL',
       payload: { studentId, status, sessionId, recordedById: user.id },
-      ctx: { userId: user.id, ipAddress: undefined, sessionId },
+      ctx: { userId: user.id, ipAddress: undefined, sessionId, actor: user },
     });
   }
 

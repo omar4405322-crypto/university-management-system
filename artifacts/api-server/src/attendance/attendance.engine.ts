@@ -9,6 +9,7 @@ import {
   DriverValidationContext,
   IAttendanceDriver,
 } from './drivers/IAttendanceDriver';
+import { requireManualAttendanceAccess } from '../utils/manualAttendanceScope.utils';
 
 export interface RecordAttendanceOptions {
   method: AttendanceMethod;
@@ -60,6 +61,12 @@ class AttendanceEngine {
     const warnings: string[] = [];
 
     const intent = await driver.buildIntent(payload, ctx);
+    if (method === AttendanceMethod.MANUAL) {
+      await requireManualAttendanceAccess(
+        { courseId: intent.courseId, sessionId: intent.sessionId },
+        ctx
+      );
+    }
     await this.validateIntent(intent, ctx);
 
     let targetSemester: number | undefined;
@@ -401,6 +408,11 @@ class AttendanceEngine {
       throw new AppError('No attendance records provided', 400);
     }
 
+    await requireManualAttendanceAccess(
+      { courseId: ctx.courseId, sessionId: ctx.sessionId },
+      ctx
+    );
+
     const results = await Promise.all(
       records.map((record) =>
         this.recordAttendance({
@@ -410,6 +422,7 @@ class AttendanceEngine {
             status: record.status,
             remarks: record.remarks,
             sessionId: ctx.sessionId,
+            courseId: ctx.courseId,
           },
           ctx,
         })

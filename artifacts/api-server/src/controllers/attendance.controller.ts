@@ -11,14 +11,16 @@ export const recordAttendanceManual = catchAsync(
     const ctx = {
       userId: req.user!.id,
       ipAddress: req.ip || req.socket.remoteAddress,
-      sessionId: sessionId ? parseInt(sessionId) : undefined,
+      sessionId: sessionId ? Number(sessionId) : undefined,
+      courseId: courseId ? Number(courseId) : undefined,
       semester: semester ? parseInt(semester) : undefined,
+      actor: req.user!,
     };
 
     if (records && Array.isArray(records)) {
       const createdRecords = await AttendanceService.recordBulkManual(records, {
         ...ctx,
-        courseId: courseId ? parseInt(courseId) : undefined,
+        courseId: courseId ? Number(courseId) : undefined,
         semester: semester ? parseInt(semester) : undefined,
       });
 

@@ -132,6 +132,14 @@ router.post(
       .optional()
       .isInt({ min: 1, max: 3 })
       .withMessage('Semester must be between 1 and 3'),
+    body('courseId')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('Course ID must be a positive integer'),
+    body('sessionId')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('Session ID must be a positive integer'),
   ],
   validate,
   attendanceController.recordAttendanceManual

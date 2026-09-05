@@ -6,6 +6,7 @@ import {
   AttendanceIntent,
 } from './IAttendanceDriver';
 import { AppError } from '../../utils/appError';
+import { requireManualAttendanceAccess } from '../../utils/manualAttendanceScope.utils';
 
 export class ManualDriver implements IAttendanceDriver {
   readonly method: AttendanceMethod = AttendanceMethod.MANUAL;
@@ -40,6 +41,8 @@ export class ManualDriver implements IAttendanceDriver {
       };
     }
 
+    await requireManualAttendanceAccess(rawPayload, ctx);
+
     return { valid: true, metadata: {} };
   }
 
@@ -52,6 +55,7 @@ export class ManualDriver implements IAttendanceDriver {
       throw new AppError(validation.errorMessage || 'Validation failed', 400);
     }
 
+    const access = await requireManualAttendanceAccess(rawPayload, ctx);
     const intent: AttendanceIntent = {
       studentId: parseInt(rawPayload.studentId),
       method: this.method,
@@ -60,8 +64,8 @@ export class ManualDriver implements IAttendanceDriver {
       recordedById: ctx.userId || null,
       ipAddress: ctx.ipAddress || null,
       deviceId: rawPayload.deviceId || null,
-      courseId: rawPayload.courseId ? parseInt(rawPayload.courseId) : undefined,
-      sessionId: rawPayload.sessionId || ctx.sessionId || null,
+      courseId: access.courseId,
+      sessionId: access.sessionId || null,
       date: rawPayload.date ? new Date(rawPayload.date) : undefined,
     };
 
