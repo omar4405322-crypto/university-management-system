@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
 import { enforcePaginationBounds } from './middleware/requestLimits.middleware';
+import { setMaterialDownloadHeaders } from './middleware/materialUpload.middleware';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import prisma from './utils/prismaClient';
@@ -184,6 +185,12 @@ app.get(
 app.use('/api', enforcePaginationBounds);
 
 // 6. STATIC FILES
+app.use(
+  '/uploads/materials',
+  express.static(path.join(process.cwd(), 'uploads/materials'), {
+    setHeaders: setMaterialDownloadHeaders,
+  })
+);
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // 7. ROUTES
