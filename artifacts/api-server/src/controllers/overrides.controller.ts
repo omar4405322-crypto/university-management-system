@@ -5,56 +5,110 @@ import catchAsync from '../utils/catchAsync';
 import { NotFoundError, ValidationError, AuthorizationError } from '../utils/appError';
 import { TimetableService } from '../services/timetable.service';
 import { Prisma } from '@prisma/client';
+import { requireExistingCourseStaffAssignments } from '../utils/scheduleAssignment.utils';
+import { getAdminMutationScopeWhere } from '../utils/adminMutationScope.utils';
+import {
+  getScheduleSlotOverrideAccessWhere,
+  getScopedScheduleOverrideWhere,
+  getScopedScheduleSlotForOverrideWhere,
+} from '../utils/scheduleOverrideScope.utils';
+
+const OVERRIDE_ADMIN_ROLES = new Set([
+  'SUPER_ADMIN',
+  'ADMIN',
+  'COLLEGE_ADMIN',
+  'DEPARTMENT_ADMIN',
+]);
+
+async function requireOverrideReplacementStaffAssignments(
+  client: any,
+  user: any,
+  courseId: number,
+  doctorId: number | null | undefined,
+  teachingAssistantId: string | null | undefined
+): Promise<void> {
+  if (!OVERRIDE_ADMIN_ROLES.has(user?.role)) {
+    await requireExistingCourseStaffAssignments(client, {
+      courseId,
+      doctorId,
+      teachingAssistantId,
+    });
+    return;
+  }
+
+  if (doctorId !== undefined && doctorId !== null) {
+    const doctorAssignment = await client.scheduleSlot.findFirst({
+      where: {
+        courseId,
+        doctorId,
+        doctor: { is: getAdminMutationScopeWhere(user, 'doctor') },
+      },
+      select: { id: true },
+    });
+    if (!doctorAssignment) {
+      throw new AuthorizationError(
+        'Replacement doctor must be assigned to the course and inside your managed scope'
+      );
+    }
+  }
+
+  if (teachingAssistantId !== undefined && teachingAssistantId !== null) {
+    const teachingAssistantAssignment = await client.scheduleSlot.findFirst({
+      where: {
+        courseId,
+        teachingAssistantId,
+        teachingAssistant: {
+          is: getAdminMutationScopeWhere(user, 'teachingAssistant'),
+        },
+      },
+      select: { id: true },
+    });
+    if (!teachingAssistantAssignment) {
+      throw new AuthorizationError(
+        'Replacement teaching assistant must be assigned to the course and inside your managed scope'
+      );
+    }
+  }
+}
+
+function parseReplacementDoctorId(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new ValidationError('doctorId must be a positive integer');
+  }
+  return parsed;
+}
+
+function parseReplacementTeachingAssistantId(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  if (typeof value !== 'string' || value.length > 64) {
+    throw new ValidationError('teachingAssistantId must be a valid identifier');
+  }
+  return value;
+}
 
 export const createOverride = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const slotId = parseInt(req.params.slotId as string);
   const { startDate, endDate, room, dayOfWeek, startTime, endTime, doctorId, teachingAssistantId, reason } = req.body;
+  const replacementDoctorId = parseReplacementDoctorId(doctorId);
+  const replacementTeachingAssistantId = parseReplacementTeachingAssistantId(teachingAssistantId);
+
+  if (!Number.isSafeInteger(slotId) || slotId <= 0) {
+    return next(new ValidationError('slotId must be a positive integer'));
+  }
 
   if (new Date(startDate) > new Date(endDate)) {
     return next(new ValidationError('startDate must be before or equal to endDate'));
   }
 
-  const slot = await prisma.scheduleSlot.findUnique({
-    where: { id: slotId },
+  const slot = await prisma.scheduleSlot.findFirst({
+    where: getScopedScheduleSlotForOverrideWhere(req.user!, slotId),
     include: { course: true }
   });
-  if (!slot) return next(new NotFoundError('ScheduleSlot not found'));
-
-  if (req.user!.role === 'DOCTOR') {
-    const myDoctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
-    if (!myDoctor || slot.doctorId !== myDoctor.id) {
-      return next(new AuthorizationError('You can only override slots for your own sections'));
-    }
-  } else if (req.user!.role === 'TEACHING_ASSISTANT') {
-    if (slot.teachingAssistantId !== req.user!.teachingAssistant?.id) {
-      return next(new AuthorizationError('You can only override slots assigned to you'));
-    }
-  } else if (req.user!.role === 'SUPER_ADMIN') {
-    // Super admin full access
-  } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
-    if (!req.user!.managedDepartmentId || slot.course.departmentId !== req.user!.managedDepartmentId) {
-      return next(new AuthorizationError('Out of scope'));
-    }
-  } else if (req.user!.role === 'COLLEGE_ADMIN') {
-    const dept = slot.course.departmentId
-      ? await prisma.department.findUnique({ where: { id: slot.course.departmentId } })
-      : null;
-    if (!req.user!.managedCollegeId || dept?.collegeId !== req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Out of scope'));
-    }
-  } else if (req.user!.role === 'ADMIN') {
-    if (!req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Access denied: Unscoped admin cannot create overrides'));
-    }
-    const dept = slot.course.departmentId
-      ? await prisma.department.findUnique({ where: { id: slot.course.departmentId } })
-      : null;
-    if (dept?.collegeId !== req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Out of scope'));
-    }
-  } else {
-    return next(new AuthorizationError('Access denied'));
-  }
+  if (!slot) return next(new AuthorizationError('Schedule slot is outside your override scope'));
 
   // Ensure no overlapping overrides for this specific slot
   const overlapping = await prisma.scheduleOverride.findFirst({
@@ -72,6 +126,14 @@ export const createOverride = catchAsync(async (req: Request, res: Response, nex
   }
 
   const override = await prisma.$transaction(async (tx) => {
+    await requireOverrideReplacementStaffAssignments(
+      tx,
+      req.user!,
+      slot.courseId,
+      replacementDoctorId,
+      replacementTeachingAssistantId
+    );
+
     // Conflict Check (Against Base Schedule)
     await TimetableService.checkConflicts({
       dayOfWeek: dayOfWeek || slot.dayOfWeek,
@@ -79,9 +141,9 @@ export const createOverride = catchAsync(async (req: Request, res: Response, nex
       endTime: endTime || slot.endTime,
       room: room !== undefined ? room : slot.room,
       courseId: slot.courseId,
-      doctorId: doctorId ? parseInt(doctorId) : slot.doctorId,
+      doctorId: replacementDoctorId ?? slot.doctorId,
       groupId: slot.groupId,
-      teachingAssistantId: teachingAssistantId !== undefined ? teachingAssistantId : slot.teachingAssistantId,
+      teachingAssistantId: replacementTeachingAssistantId ?? slot.teachingAssistantId,
       excludeSlotId: slotId, // We exclude the slot being overridden so it doesn't conflict with itself
     }, tx);
 
@@ -94,8 +156,8 @@ export const createOverride = catchAsync(async (req: Request, res: Response, nex
         dayOfWeek,
         startTime,
         endTime,
-        doctorId: doctorId ? parseInt(doctorId) : null,
-        teachingAssistantId,
+        doctorId: replacementDoctorId ?? null,
+        teachingAssistantId: replacementTeachingAssistantId ?? null,
         reason,
         createdBy: req.user!.id,
       },
@@ -108,8 +170,14 @@ export const createOverride = catchAsync(async (req: Request, res: Response, nex
 
 export const getOverrides = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const slotId = parseInt(req.params.slotId as string);
+  if (!Number.isSafeInteger(slotId) || slotId <= 0) {
+    return next(new ValidationError('slotId must be a positive integer'));
+  }
   const overrides = await prisma.scheduleOverride.findMany({
-    where: { scheduleSlotId: slotId },
+    where: {
+      scheduleSlotId: slotId,
+      scheduleSlot: getScheduleSlotOverrideAccessWhere(req.user!),
+    },
     orderBy: { startDate: 'desc' },
     include: {
       doctor: { select: { firstName: true, lastName: true } },
@@ -122,22 +190,18 @@ export const getOverrides = catchAsync(async (req: Request, res: Response, next:
 export const updateOverride = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const overrideId = parseInt(req.params.overrideId as string);
   const { startDate, endDate, room, dayOfWeek, startTime, endTime, doctorId, teachingAssistantId, reason } = req.body;
+  const replacementDoctorId = parseReplacementDoctorId(doctorId);
+  const replacementTeachingAssistantId = parseReplacementTeachingAssistantId(teachingAssistantId);
 
-  const existing = await prisma.scheduleOverride.findUnique({
-    where: { id: overrideId },
+  if (!Number.isSafeInteger(overrideId) || overrideId <= 0) {
+    return next(new ValidationError('overrideId must be a positive integer'));
+  }
+
+  const existing = await prisma.scheduleOverride.findFirst({
+    where: getScopedScheduleOverrideWhere(req.user!, overrideId),
     include: { scheduleSlot: true }
   });
   if (!existing) return next(new NotFoundError('Override not found'));
-
-  if (req.user!.role === 'DOCTOR') {
-    const myDoctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
-    if (!myDoctor || existing.scheduleSlot.doctorId !== myDoctor.id) {
-      return next(new AuthorizationError('You can only update overrides for your own sections'));
-    }
-  }
-  if (req.user!.role === 'TEACHING_ASSISTANT' && existing.scheduleSlot.teachingAssistantId !== req.user!.teachingAssistant?.id) {
-    return next(new AuthorizationError('You can only update overrides for slots assigned to you'));
-  }
 
   const newStartDate = startDate ? new Date(startDate) : existing.startDate;
   const newEndDate = endDate ? new Date(endDate) : existing.endDate;
@@ -147,6 +211,21 @@ export const updateOverride = catchAsync(async (req: Request, res: Response, nex
   }
 
   const override = await prisma.$transaction(async (tx) => {
+    await requireOverrideReplacementStaffAssignments(
+      tx,
+      req.user!,
+      existing.scheduleSlot.courseId,
+      replacementDoctorId,
+      replacementTeachingAssistantId
+    );
+
+    const effectiveDoctorId = replacementDoctorId === undefined
+      ? existing.doctorId ?? existing.scheduleSlot.doctorId
+      : replacementDoctorId ?? existing.scheduleSlot.doctorId;
+    const effectiveTeachingAssistantId = replacementTeachingAssistantId === undefined
+      ? existing.teachingAssistantId ?? existing.scheduleSlot.teachingAssistantId
+      : replacementTeachingAssistantId ?? existing.scheduleSlot.teachingAssistantId;
+
     // Conflict Check
     await TimetableService.checkConflicts({
       dayOfWeek: dayOfWeek || existing.dayOfWeek || existing.scheduleSlot.dayOfWeek,
@@ -154,9 +233,9 @@ export const updateOverride = catchAsync(async (req: Request, res: Response, nex
       endTime: endTime || existing.endTime || existing.scheduleSlot.endTime,
       room: room !== undefined ? room : (existing.room || existing.scheduleSlot.room),
       courseId: existing.scheduleSlot.courseId,
-      doctorId: doctorId ? parseInt(doctorId) : (existing.doctorId || existing.scheduleSlot.doctorId),
+      doctorId: effectiveDoctorId,
       groupId: existing.scheduleSlot.groupId,
-      teachingAssistantId: teachingAssistantId !== undefined ? teachingAssistantId : (existing.teachingAssistantId || existing.scheduleSlot.teachingAssistantId),
+      teachingAssistantId: effectiveTeachingAssistantId,
       excludeSlotId: existing.scheduleSlotId,
     }, tx);
 
@@ -169,8 +248,8 @@ export const updateOverride = catchAsync(async (req: Request, res: Response, nex
         dayOfWeek,
         startTime,
         endTime,
-        doctorId: doctorId ? parseInt(doctorId) : null,
-        teachingAssistantId,
+        doctorId: replacementDoctorId,
+        teachingAssistantId: replacementTeachingAssistantId,
         reason,
       },
     });
@@ -182,21 +261,15 @@ export const updateOverride = catchAsync(async (req: Request, res: Response, nex
 
 export const deleteOverride = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const overrideId = parseInt(req.params.overrideId as string);
-  const existing = await prisma.scheduleOverride.findUnique({ 
-    where: { id: overrideId },
+  if (!Number.isSafeInteger(overrideId) || overrideId <= 0) {
+    return next(new ValidationError('overrideId must be a positive integer'));
+  }
+
+  const existing = await prisma.scheduleOverride.findFirst({
+    where: getScopedScheduleOverrideWhere(req.user!, overrideId),
     include: { scheduleSlot: true }
   });
   if (!existing) return next(new NotFoundError('Override not found'));
-
-  if (req.user!.role === 'DOCTOR') {
-    const myDoctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
-    if (!myDoctor || existing.scheduleSlot.doctorId !== myDoctor.id) {
-      return next(new AuthorizationError('You can only delete overrides for your own sections'));
-    }
-  }
-  if (req.user!.role === 'TEACHING_ASSISTANT' && existing.scheduleSlot.teachingAssistantId !== req.user!.teachingAssistant?.id) {
-    return next(new AuthorizationError('You can only delete overrides for slots assigned to you'));
-  }
 
   await prisma.scheduleOverride.delete({ where: { id: overrideId } });
   auditLog('DELETE_OVERRIDE', 'ScheduleOverride', overrideId.toString(), req);
