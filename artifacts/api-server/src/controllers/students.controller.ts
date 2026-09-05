@@ -13,6 +13,7 @@ import { StudentGroupsService } from '../services/studentGroups.service';
 import { AttendanceService } from '../services/attendance.service';
 import { calculateStudentGpa } from '../utils/gpa.utils';
 import { EnrollmentService } from '../services/enrollment.service';
+import { setStudentAndUserActiveState } from '../services/studentStatus.service';
 
 const mapStudentStatus = (student: any) => ({
   ...student,
@@ -223,16 +224,11 @@ export const toggleStudentStatus = catchAsync(
     }
 
     const makeInactive = student.isActive;
-    const updated = await prisma.student.update({
-      where: { id },
-      data: {
-        isActive: !makeInactive,
-      },
-      include: {
-        user: { select: { email: true, profilePicture: true } },
-        department: { select: { name: true, college: { select: { name: true } } } },
-      },
-    });
+    const updated = await setStudentAndUserActiveState(
+      id,
+      student.userId,
+      !makeInactive
+    );
 
     if (updated.isActive) {
       await StudentGroupsService.assignStudentToGroup(updated);
