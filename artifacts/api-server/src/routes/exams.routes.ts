@@ -4,6 +4,11 @@ import * as examsController from '../controllers/exams.controller';
 import { authorize } from '../middleware/auth.middleware';
 import { body, param } from 'express-validator';
 import validate from '../middleware/validate.middleware';
+import {
+  isBoundedAnswerCollection,
+  isBoundedAntiCheatLogCollection,
+  MAX_EXAM_CANCEL_REASON_LENGTH,
+} from '../utils/requestLimits';
 
 router.get('/', examsController.getAllExams);
 router.get('/upcoming', examsController.getUpcomingExams);
@@ -89,8 +94,46 @@ router.delete('/questions/:questionId', authorize('DOCTOR', 'ADMIN'), examsContr
 
 // --- EXAM SESSIONS & SUBMISSIONS ---
 router.post('/:id/start', authorize('STUDENT'), examsController.startExamSession);
-router.post('/:id/submit', authorize('STUDENT'), examsController.submitExam);
-router.post('/:id/cancel', authorize('STUDENT'), [param('id').isInt().withMessage('Invalid exam ID')], examsController.cancelExam);
+const examSubmissionLimits = [
+  param('id').isInt({ min: 1 }).withMessage('Invalid exam ID'),
+  body('answers')
+    .custom(isBoundedAnswerCollection)
+    .withMessage('Answers must contain at most 200 bounded question responses'),
+  body('antiCheatLogs')
+    .optional()
+    .custom(isBoundedAntiCheatLogCollection)
+    .withMessage('Anti-cheat logs exceed the allowed size or format'),
+];
+
+router.post(
+  '/:id/submit',
+  authorize('STUDENT'),
+  examSubmissionLimits,
+  validate,
+  examsController.submitExam
+);
+router.post(
+  '/:id/cancel',
+  authorize('STUDENT'),
+  [
+    param('id').isInt({ min: 1 }).withMessage('Invalid exam ID'),
+    body('answers')
+      .optional()
+      .custom(isBoundedAnswerCollection)
+      .withMessage('Answers must contain at most 200 bounded question responses'),
+    body('antiCheatLogs')
+      .optional()
+      .custom(isBoundedAntiCheatLogCollection)
+      .withMessage('Anti-cheat logs exceed the allowed size or format'),
+    body('reason')
+      .optional()
+      .isString()
+      .isLength({ max: MAX_EXAM_CANCEL_REASON_LENGTH })
+      .withMessage('Cancellation reason is too long'),
+  ],
+  validate,
+  examsController.cancelExam
+);
 router.get('/:id/submissions', authorize('DOCTOR', 'ADMIN', 'SUPER_ADMIN'), examsController.getExamSubmissions);
 router.get('/:id/my-submission', authorize('STUDENT'), examsController.getMyExamSubmission);
 router.put('/submissions/:submissionId/grade', authorize('DOCTOR', 'ADMIN', 'SUPER_ADMIN'), examsController.gradeSubmission);

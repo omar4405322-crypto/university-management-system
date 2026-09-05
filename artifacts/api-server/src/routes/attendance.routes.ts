@@ -6,6 +6,10 @@ import { protect, authorize } from '../middleware/auth.middleware';
 import { param, body } from 'express-validator';
 import validate from '../middleware/validate.middleware';
 import rateLimit from 'express-rate-limit';
+import {
+  MAX_ATTENDANCE_RECORDS,
+  MAX_ATTENDANCE_REMARKS_LENGTH,
+} from '../utils/requestLimits';
 
 const qrLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -104,8 +108,8 @@ router.post(
     body('studentId').optional().isInt().withMessage('Student ID must be an integer'),
     body('records')
       .optional()
-      .isArray()
-      .withMessage('Records must be an array'),
+      .isArray({ max: MAX_ATTENDANCE_RECORDS })
+      .withMessage(`Records must be an array with at most ${MAX_ATTENDANCE_RECORDS} items`),
     body('records.*.studentId')
       .optional()
       .isInt()
@@ -114,6 +118,16 @@ router.post(
       .optional()
       .isIn(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'])
       .withMessage('Invalid status'),
+    body('records.*.remarks')
+      .optional()
+      .isString()
+      .isLength({ max: MAX_ATTENDANCE_REMARKS_LENGTH })
+      .withMessage('Attendance remarks are too long'),
+    body('remarks')
+      .optional()
+      .isString()
+      .isLength({ max: MAX_ATTENDANCE_REMARKS_LENGTH })
+      .withMessage('Attendance remarks are too long'),
     body('semester')
       .optional()
       .isInt({ min: 1, max: 3 })

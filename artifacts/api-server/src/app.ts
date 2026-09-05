@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
+import { enforcePaginationBounds } from './middleware/requestLimits.middleware';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import prisma from './utils/prismaClient';
@@ -180,6 +181,7 @@ app.get(
   authorize('SUPER_ADMIN'),
   readinessHandler
 );
+app.use('/api', enforcePaginationBounds);
 
 // 6. STATIC FILES
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));

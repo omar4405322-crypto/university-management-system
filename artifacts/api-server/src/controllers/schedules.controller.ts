@@ -6,6 +6,7 @@ import catchAsync from '../utils/catchAsync';
 import { NotFoundError, AuthorizationError, AppError, ConflictError, ValidationError } from '../utils/appError';
 import { TimetableService } from '../services/timetable.service';
 import { Prisma } from '@prisma/client';
+import { MAX_SCHEDULE_SYNC_SLOTS } from '../utils/requestLimits';
 
 export const getWeeklyTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -671,8 +672,16 @@ export const syncGridToMaster = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { departmentId, academicYear, semester, slots } = req.body;
 
-    if (!Array.isArray(slots)) {
-      return next(new ValidationError('Slots array is required for synchronization'));
+    if (
+      !Array.isArray(slots) ||
+      slots.length === 0 ||
+      slots.length > MAX_SCHEDULE_SYNC_SLOTS
+    ) {
+      return next(
+        new ValidationError(
+          `Slots must contain between 1 and ${MAX_SCHEDULE_SYNC_SLOTS} items`
+        )
+      );
     }
 
     const parsedDeptId = departmentId ? parseInt(departmentId) : undefined;
