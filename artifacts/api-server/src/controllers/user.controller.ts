@@ -10,6 +10,7 @@ import { Request, Response, NextFunction } from 'express';
 import { generateTOTPSecret, generateQRCodeURL, verifyTOTP } from '../utils/twoFactor.utils';
 import { getScopeWhere } from '../utils/scope.utils';
 import { deactivateUserAndRevokeSessions } from '../services/studentStatus.service';
+import { assertPasswordStrength } from '../utils/passwordPolicy';
 
 // 1. setup2FA — Generates secret and returns QR code for scanning:
 export const setup2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -209,6 +210,7 @@ export const updatePassword = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user!.id;
     const { currentPassword, newPassword } = req.body;
+    assertPasswordStrength(newPassword);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -351,6 +353,7 @@ export const createAdmin = catchAsync(async (req: Request, res: Response, next: 
     firstName,
     lastName,
   } = req.body;
+  assertPasswordStrength(password);
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
@@ -581,9 +584,7 @@ export const resetUserPassword = catchAsync(async (req: Request, res: Response, 
   const { id } = req.params;
   const { newPassword } = req.body;
 
-  if (!newPassword || newPassword.length < 6) {
-    return next(new AppError('Password must be at least 6 characters long', 400));
-  }
+  assertPasswordStrength(newPassword);
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
   await prisma.user.update({

@@ -1,4 +1,5 @@
 import { body, param } from 'express-validator';
+import { passwordStrengthValidator } from '../utils/passwordPolicy';
 
 export const studentValidation = [
   body('firstName').notEmpty().withMessage('First name is required').trim(),
@@ -7,6 +8,7 @@ export const studentValidation = [
   body('year').isInt({ min: 1, max: 4 }).withMessage('Valid academic division is required (1-4)'),
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('departmentId').isInt().withMessage('Department ID must be an integer'),
+  body('password').optional().custom(passwordStrengthValidator),
   body('phone').optional().trim(),
   body('address').optional().trim(),
   body('gender').optional().isIn(['Male', 'Female', 'Other']).withMessage('Invalid gender'),
@@ -31,6 +33,7 @@ export const courseValidation = [
   body('name').notEmpty().withMessage('Course name is required').trim(),
   body('credits').isInt({ min: 1, max: 10 }).withMessage('Credits must be between 1 and 10'),
   body('departmentId').isInt().withMessage('Department ID must be an integer'),
+  body('password').custom(passwordStrengthValidator),
   body('doctorId').optional().isInt().withMessage('Doctor ID must be an integer'),
   body('description').optional().trim(),
   body('maxStudents').optional().isInt({ min: 1 }).withMessage('Max students must be at least 1'),

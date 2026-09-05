@@ -11,6 +11,7 @@ import {
   getAdminMutationTargetWhere,
 } from '../utils/adminMutationScope.utils';
 import { TimetableService } from '../services/timetable.service';
+import { assertPasswordStrength } from '../utils/passwordPolicy';
 
 function assertTAScope(
   ta: {
@@ -371,6 +372,7 @@ export const unassignTACourse = catchAsync(async (req: Request, res: Response, n
 
 export const createTeachingAssistant = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   let { email, password, employeeId, specialization, departmentId, status, firstName, lastName } = req.body;
+  assertPasswordStrength(password);
 
   // Enforce scope
   if (req.user!.role === 'ADMIN') {
@@ -546,9 +548,7 @@ export const resetTeachingAssistantPassword = catchAsync(async (req: Request, re
   const { id } = req.params as { id: string };
   const { newPassword } = req.body;
 
-  if (!newPassword || newPassword.length < 6) {
-    return next(new AppError('Password must be at least 6 characters', 400));
-  }
+  assertPasswordStrength(newPassword);
 
   const ta = await prisma.teachingAssistant.findUnique({
     where: { id },

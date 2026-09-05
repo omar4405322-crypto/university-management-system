@@ -1,4 +1,5 @@
 import { body, param } from 'express-validator';
+import { passwordStrengthValidator } from '../utils/passwordPolicy';
 
 export const collegeValidation = [
   body('name').notEmpty().withMessage('College name is required').trim(),
@@ -28,8 +29,7 @@ export const adminIdValidation = [param('id').isInt().withMessage('Invalid ID fo
 export const adminCreateValidation = [
   body('email').isEmail().withMessage('Invalid email format').normalizeEmail(),
   body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long'),
+    .custom(passwordStrengthValidator),
   body('firstName')
     .trim()
     .notEmpty()

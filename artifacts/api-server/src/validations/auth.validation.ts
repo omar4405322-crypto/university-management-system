@@ -1,14 +1,10 @@
 import { body, param } from 'express-validator';
+import { passwordStrengthValidator } from '../utils/passwordPolicy';
 
 export const registerValidation = [
   body('email').isEmail().withMessage('Please provide a valid email address').normalizeEmail(),
   body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
-    .matches(/\d/)
-    .withMessage('Password must contain at least one number')
-    .matches(/[A-Z]/)
-    .withMessage('Password must contain at least one uppercase letter'),
+    .custom(passwordStrengthValidator),
   body('role')
     .optional()
     .isIn(['STUDENT', 'DOCTOR', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN'])

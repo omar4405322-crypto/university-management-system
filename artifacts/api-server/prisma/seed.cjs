@@ -2,6 +2,10 @@ require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
+if (process.env.NODE_ENV?.trim().toLowerCase() === 'production') {
+  throw new Error('Refusing to run database seed while NODE_ENV=production');
+}
+
 const prisma = new PrismaClient();
 
 async function main() {

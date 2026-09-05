@@ -15,6 +15,7 @@ import {
 import logger from '../utils/logger';
 import { verifyTOTP } from '../utils/twoFactor.utils';
 import { EnrollmentService } from '../services/enrollment.service';
+import { assertPasswordStrength } from '../utils/passwordPolicy';
 
 export interface RegisterRequestBody {
   email: string;
@@ -62,6 +63,7 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
     year,
     phone,
   } = req.body as RegisterRequestBody;
+  assertPasswordStrength(password);
   const role = 'STUDENT';
   if (requestedRole && requestedRole !== 'STUDENT') {
     return next(

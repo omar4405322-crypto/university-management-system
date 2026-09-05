@@ -13,6 +13,7 @@ import {
   getAdminMutationTargetWhere,
 } from '../utils/adminMutationScope.utils';
 import { TimetableService } from '../services/timetable.service';
+import { assertPasswordStrength } from '../utils/passwordPolicy';
 
 function assertDoctorScope(
   doctor: {
@@ -414,6 +415,7 @@ export const unassignDoctorCourse = catchAsync(async (req: Request, res: Respons
 
 export const createDoctor = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   let { email, password, firstName, lastName, doctorId, phone, specialty, departmentId } = req.body;
+  assertPasswordStrength(password);
 
   // Enforce scope
   if (req.user!.role === 'ADMIN') {
@@ -610,9 +612,7 @@ export const resetDoctorPassword = catchAsync(
     const { newPassword, password } = req.body;
     const providedPassword = newPassword || password;
 
-    if (!providedPassword || providedPassword.length < 6) {
-      return next(new AppError('Password must be at least 6 characters', 400));
-    }
+    assertPasswordStrength(providedPassword);
 
     const doctor = await prisma.doctor.findUnique({
       where: { id: parseInt(id as string) },
