@@ -18,7 +18,7 @@ const router = express.Router();
 
 const adminRoles = authorize('COLLEGE_ADMIN', 'SUPER_ADMIN', 'DEPARTMENT_ADMIN');
 
-router.post('/sync-all', protect, adminRoles, syncAllEnrollments);
+router.post('/sync-all', protect, authorize('SUPER_ADMIN'), syncAllEnrollments);
 router.post('/', protect, adminRoles, enrollStudent);
 
 router.get('/', protect, getEnrollments);

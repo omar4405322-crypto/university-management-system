@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import catchAsync from '../utils/catchAsync';
-import { ValidationError, AppError, NotFoundError } from '../utils/appError';
+import { ValidationError, AppError, NotFoundError, AuthorizationError } from '../utils/appError';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import { EnrollmentService } from '../services/enrollment.service';
+import { getScopeWhere } from '../utils/strictScope.utils';
 
 export const enrollStudent = catchAsync(async (req: Request, res: Response) => {
   const { studentId, courseId, semester, academicYear } = req.body;
@@ -31,6 +32,21 @@ export const enrollStudent = catchAsync(async (req: Request, res: Response) => {
     throw new AppError('Semester must be between 1 and 3 (1 = First, 2 = Second, 3 = Summer)', 400);
   }
 
+  // Approved interim policy: enforce COURSE scope only, not student scope, for COLLEGE_ADMIN/DEPARTMENT_ADMIN/ADMIN.
+  // Cross-department elective enrollment by a scoped admin remains intentionally allowed for now.
+  // Note: This is an interim policy that may be replaced later by a curriculum-based automatic course-eligibility feature.
+  const courseScope = getScopeWhere(req.user, 'course');
+  if (courseScope && Object.keys(courseScope).length > 0) {
+    const courseCheck = await prisma.course.findFirst({
+      where: { AND: [{ id: parsedCourseId }, courseScope] },
+    });
+    if (!courseCheck) {
+      throw new AuthorizationError(
+        'Access denied: You are not authorized for this course.'
+      );
+    }
+  }
+
   const enrollment = await EnrollmentService.enrollStudent(
     parsedStudentId,
     parsedCourseId,
@@ -55,30 +71,77 @@ export const withdrawStudent = catchAsync(async (req: Request, res: Response) =>
     throw new NotFoundError('Enrollment not found');
   }
 
+  const enrollmentScope = getScopeWhere(req.user, 'enrollment');
+  const scopedEnrollment = await prisma.enrollment.findFirst({
+    where: {
+      AND: [{ id: enrollmentId }, enrollmentScope],
+    },
+  });
+
+  if (!scopedEnrollment) {
+    throw new AuthorizationError(
+      'Access denied: You are not authorized for this enrollment.'
+    );
+  }
+
   const withdrawn = await EnrollmentService.withdrawStudent(enrollment.id);
   res.json({ success: true, data: withdrawn });
 });
 
 export const getEnrollments = catchAsync(async (req: Request, res: Response) => {
   const { studentId, courseId, semester } = req.query;
-  const where: any = {};
-  if (studentId) where.studentId = parseInt(studentId as string);
-  if (courseId) where.courseId = parseInt(courseId as string);
-  if (semester) where.semester = parseInt(semester as string);
+  const whereFilters: any = {};
+  if (studentId) whereFilters.studentId = parseInt(studentId as string);
+  if (courseId) whereFilters.courseId = parseInt(courseId as string);
+  if (semester) whereFilters.semester = parseInt(semester as string);
+
+  const scopeWhere = getScopeWhere(req.user, 'enrollment');
+  const where: any = {
+    AND: [
+      whereFilters,
+      scopeWhere,
+    ],
+  };
 
   const enrollments = await prisma.enrollment.findMany({ where });
   res.json({ success: true, data: enrollments });
 });
 
 export const updateGrade = catchAsync(async (req: Request, res: Response) => {
+  const enrollmentId = parseInt(req.params.id as string);
+  if (isNaN(enrollmentId)) {
+    throw new AppError('Invalid enrollment ID', 400);
+  }
+
   const { finalGrade } = req.body;
 
   if (finalGrade < 0 || finalGrade > 100) {
     throw new ValidationError('Grade must be between 0 and 100');
   }
 
+  const existingEnrollment = await prisma.enrollment.findUnique({
+    where: { id: enrollmentId },
+  });
+
+  if (!existingEnrollment) {
+    throw new NotFoundError('Enrollment not found');
+  }
+
+  const enrollmentScope = getScopeWhere(req.user, 'enrollment');
+  const scopedEnrollment = await prisma.enrollment.findFirst({
+    where: {
+      AND: [{ id: enrollmentId }, enrollmentScope],
+    },
+  });
+
+  if (!scopedEnrollment) {
+    throw new AuthorizationError(
+      'Access denied: You are not authorized for this enrollment.'
+    );
+  }
+
   const enrollment = await prisma.enrollment.update({
-    where: { id: parseInt(req.params.id as string) },
+    where: { id: enrollmentId },
     data: {
       finalGrade,
       status: finalGrade >= 60 ? 'COMPLETED' : 'FAILED',

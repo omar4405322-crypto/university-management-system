@@ -79,20 +79,7 @@ app.use(
     frameguard: { action: 'deny' },
   })
 );
-
-const envOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
-  : [];
-
-const allowedOrigins = [
-  ...envOrigins,
-  process.env.FRONTEND_URL,
-  process.env.FRONTEND_NETWORK_URL,
-  process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : undefined,
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://localhost:3001',
-].filter((v, i, arr) => Boolean(v) && arr.indexOf(v) === i) as string[];
+import { isOriginAllowed } from './utils/corsOrigins';
 
 app.use(
   cors({
@@ -104,19 +91,11 @@ app.use(
       if (!origin) {
         return callback(null, true);
       }
-      // Allow any localhost port (dev only)
-      const isLocalhost = /^https?:\/\/localhost(:\d+)?$/.test(origin);
-      // Allow local network IP addresses
-      const isLocalNetwork = /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
-      const isVercelPreview = /https:\/\/university-management-system.*\.vercel\.app$/.test(origin);
-      // Match any *.replit.dev, *.replit.app, *.repl.co subdomain
-      const isReplitOrigin =
-        /https?:\/\/[^/]*\.replit\.app(:\d+)?$/.test(origin) ||
-        /https?:\/\/[^/]*\.repl\.co(:\d+)?$/.test(origin) ||
-        /https?:\/\/[^/]*\.replit\.dev(:\d+)?$/.test(origin);
-      if (allowedOrigins.includes(origin) || isLocalhost || isLocalNetwork || isVercelPreview || isReplitOrigin) {
+
+      if (isOriginAllowed(origin)) {
         return callback(null, true);
       }
+
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,

@@ -54,6 +54,10 @@ if (twoFactorConfigError) {
 const missingOptional = OPTIONAL_ENV_VARS.filter((key) => !process.env[key]);
 if (missingOptional.length > 0) {
   logger.warn('⚠️ WARNING: Some optional environment variables are missing: ' + missingOptional.join(', '));
+  const missingCloudinary = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'].some((k) => !process.env[k]);
+  if (isProduction && missingCloudinary) {
+    logger.warn('⚠️ [STORAGE] Cloudinary credentials missing in production: Profile picture uploads will return 503 (local-disk fallback is DISABLED in production).');
+  }
   logger.warn('Production features like Cloudinary storage and Redis caching will be disabled.');
 }
 

@@ -19,12 +19,13 @@ import {
 import validate from '../middleware/validate.middleware';
 
 import { loginLimiter } from '../middleware/rateLimiter.middleware';
+import validateRefreshOrigin from '../middleware/validateRefreshOrigin.middleware';
 
 const router = express.Router();
 
 router.post('/register', registerValidation, validate, register);
 router.post('/login', loginLimiter, loginValidation, validate, login);
-router.post('/refresh', refresh);
+router.post('/refresh', validateRefreshOrigin, refresh);
 router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
 
