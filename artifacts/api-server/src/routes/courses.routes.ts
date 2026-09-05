@@ -8,7 +8,20 @@ import materialUpload from '../middleware/materialUpload.middleware';
 
 // GET routes are accessible by all authenticated users
 router.get('/', coursesController.getAllCourses);
-router.get('/:id/roster', idParamValidation, validate, coursesController.getCourseRoster);
+router.get(
+  '/:id/roster',
+  authorize(
+    'SUPER_ADMIN',
+    'ADMIN',
+    'COLLEGE_ADMIN',
+    'DEPARTMENT_ADMIN',
+    'DOCTOR',
+    'TEACHING_ASSISTANT'
+  ),
+  idParamValidation,
+  validate,
+  coursesController.getCourseRoster
+);
 router.get('/:id', idParamValidation, validate, coursesController.getCourseById);
 
 // Course Publication & Material routes (Authorization is checked inside controller per course assignment)

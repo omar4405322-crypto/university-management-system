@@ -136,6 +136,7 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
 export const getCourseById = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const courseId = parseInt(req.params.id as string, 10);
   const scopeWhere = getScopeWhere(req.user, 'course');
+  const includeEnrollmentRoster = req.user?.role !== 'STUDENT';
   const course = await prisma.course.findFirst({
     where: {
       AND: [
@@ -182,17 +183,21 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
         },
         orderBy: { createdAt: 'desc' },
       },
-      enrollments: {
-        include: {
-          student: {
-            include: {
-              user: {
-                select: { id: true, email: true, profilePicture: true },
+      ...(includeEnrollmentRoster
+        ? {
+            enrollments: {
+              include: {
+                student: {
+                  include: {
+                    user: {
+                      select: { id: true, email: true, profilePicture: true },
+                    },
+                  },
+                },
               },
             },
-          },
-        },
-      },
+          }
+        : {}),
       _count: {
         select: {
           enrollments: true,
@@ -228,15 +233,11 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
 export const getCourseRoster = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const courseId = parseInt(req.params.id as string, 10);
-    const scopeWhere = getScopeWhere(req.user, 'course');
-    const course = await prisma.course.findFirst({
-      where: {
-        AND: [
-          { id: courseId },
-          scopeWhere,
-        ],
-      },
-    });
+    if (!(await canUserManageCourseMaterials(req.user, courseId))) {
+      return next(new AuthorizationError('Access denied: Course roster is restricted to assigned staff'));
+    }
+
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
 
     if (!course) {
       return next(new NotFoundError('Course not found'));
