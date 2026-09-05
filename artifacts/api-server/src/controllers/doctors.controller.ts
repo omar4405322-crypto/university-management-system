@@ -8,6 +8,10 @@ import catchAsync from '../utils/catchAsync';
 import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
 
 import { getScopeWhere } from '../utils/scope.utils';
+import {
+  getAdminMutationScopeWhere,
+  getAdminMutationTargetWhere,
+} from '../utils/adminMutationScope.utils';
 import { TimetableService } from '../services/timetable.service';
 
 function assertDoctorScope(
@@ -287,11 +291,20 @@ export const assignDoctorCourse = catchAsync(async (req: Request, res: Response,
 
   if (!courseId) return next(new ValidationError('courseId is required'));
 
-  const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
-  if (!doctor) return next(new NotFoundError('Doctor not found'));
+  const parsedCourseId = Number(courseId);
+  if (!Number.isSafeInteger(parsedCourseId) || parsedCourseId <= 0) {
+    return next(new ValidationError('courseId must be a positive integer'));
+  }
 
-  const course = await prisma.course.findUnique({ where: { id: parseInt(courseId as string, 10) } });
-  if (!course) return next(new NotFoundError('Course not found'));
+  const doctor = await prisma.doctor.findFirst({
+    where: getAdminMutationTargetWhere(req.user!, 'doctor', doctorId),
+  });
+  if (!doctor) return next(new AuthorizationError('Doctor is outside your managed scope'));
+
+  const course = await prisma.course.findFirst({
+    where: getAdminMutationTargetWhere(req.user!, 'course', parsedCourseId),
+  });
+  if (!course) return next(new AuthorizationError('Course is outside your managed scope'));
 
   // Check if doctor is already assigned to a slot for this course
   const existingSlot = await prisma.scheduleSlot.findFirst({
@@ -361,10 +374,34 @@ export const assignDoctorCourse = catchAsync(async (req: Request, res: Response,
 
 export const unassignDoctorCourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const doctorId = parseInt(req.params.id as string, 10);
-  const courseId = parseInt(req.params.courseId as string, 10);
+  const courseId = Number(req.params.courseId);
+
+  if (!Number.isSafeInteger(doctorId) || doctorId <= 0 || !Number.isSafeInteger(courseId) || courseId <= 0) {
+    return next(new ValidationError('Doctor and course IDs must be positive integers'));
+  }
+
+  const [doctor, course] = await Promise.all([
+    prisma.doctor.findFirst({
+      where: getAdminMutationTargetWhere(req.user!, 'doctor', doctorId),
+      select: { id: true },
+    }),
+    prisma.course.findFirst({
+      where: getAdminMutationTargetWhere(req.user!, 'course', courseId),
+      select: { id: true },
+    }),
+  ]);
+
+  if (!doctor || !course) {
+    return next(new AuthorizationError('Doctor or course is outside your managed scope'));
+  }
 
   const deleted = await prisma.scheduleSlot.deleteMany({
-    where: { doctorId, courseId }
+    where: {
+      doctorId,
+      courseId,
+      doctor: { is: getAdminMutationScopeWhere(req.user!, 'doctor') },
+      course: { is: getAdminMutationScopeWhere(req.user!, 'course') },
+    }
   });
 
   auditLog('UNASSIGN_DOCTOR_COURSE', 'Doctor', String(doctorId), req);

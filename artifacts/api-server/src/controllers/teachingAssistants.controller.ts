@@ -6,6 +6,10 @@ import bcrypt from 'bcryptjs';
 import catchAsync from '../utils/catchAsync';
 import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
+import {
+  getAdminMutationScopeWhere,
+  getAdminMutationTargetWhere,
+} from '../utils/adminMutationScope.utils';
 import { TimetableService } from '../services/timetable.service';
 
 function assertTAScope(
@@ -239,17 +243,22 @@ export const assignTACourse = catchAsync(async (req: Request, res: Response, nex
 
   if (!courseId) return next(new ValidationError('courseId is required'));
 
-  const ta = await prisma.teachingAssistant.findUnique({
-    where: { id: taId },
-    include: { department: true }
-  });
-  if (!ta) return next(new NotFoundError('Teaching Assistant not found'));
+  const parsedCourseId = Number(courseId);
+  if (!Number.isSafeInteger(parsedCourseId) || parsedCourseId <= 0) {
+    return next(new ValidationError('courseId must be a positive integer'));
+  }
 
-  const course = await prisma.course.findUnique({
-    where: { id: parseInt(courseId as string, 10) },
+  const ta = await prisma.teachingAssistant.findFirst({
+    where: getAdminMutationTargetWhere(req.user!, 'teachingAssistant', taId),
     include: { department: true }
   });
-  if (!course) return next(new NotFoundError('Course not found'));
+  if (!ta) return next(new AuthorizationError('Teaching assistant is outside your managed scope'));
+
+  const course = await prisma.course.findFirst({
+    where: getAdminMutationTargetWhere(req.user!, 'course', parsedCourseId),
+    include: { department: true }
+  });
+  if (!course) return next(new AuthorizationError('Course is outside your managed scope'));
 
   const existingSlot = await prisma.scheduleSlot.findFirst({
     where: { teachingAssistantId: taId, courseId: course.id }
@@ -320,10 +329,36 @@ export const assignTACourse = catchAsync(async (req: Request, res: Response, nex
 
 export const unassignTACourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const taId = req.params.id as string;
-  const courseId = parseInt(req.params.courseId as string, 10);
+  const courseId = Number(req.params.courseId);
+
+  if (!taId || !Number.isSafeInteger(courseId) || courseId <= 0) {
+    return next(new ValidationError('Teaching assistant and course IDs are required'));
+  }
+
+  const [teachingAssistant, course] = await Promise.all([
+    prisma.teachingAssistant.findFirst({
+      where: getAdminMutationTargetWhere(req.user!, 'teachingAssistant', taId),
+      select: { id: true },
+    }),
+    prisma.course.findFirst({
+      where: getAdminMutationTargetWhere(req.user!, 'course', courseId),
+      select: { id: true },
+    }),
+  ]);
+
+  if (!teachingAssistant || !course) {
+    return next(new AuthorizationError('Teaching assistant or course is outside your managed scope'));
+  }
 
   const deleted = await prisma.scheduleSlot.deleteMany({
-    where: { teachingAssistantId: taId, courseId }
+    where: {
+      teachingAssistantId: taId,
+      courseId,
+      teachingAssistant: {
+        is: getAdminMutationScopeWhere(req.user!, 'teachingAssistant'),
+      },
+      course: { is: getAdminMutationScopeWhere(req.user!, 'course') },
+    }
   });
 
   auditLog('UNASSIGN_TA_COURSE', 'TeachingAssistant', String(taId), req);

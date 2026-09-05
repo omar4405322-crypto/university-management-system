@@ -1,6 +1,12 @@
 import { getScopeWhere, type UserScope } from './scope.utils';
 
-export type AdminMutationEntity = 'college' | 'department' | 'course' | 'student';
+export type AdminMutationEntity =
+  | 'college'
+  | 'department'
+  | 'course'
+  | 'student'
+  | 'doctor'
+  | 'teachingAssistant';
 
 const ADMIN_MUTATION_ROLES = new Set([
   'SUPER_ADMIN',
@@ -43,7 +49,7 @@ export function getAdminMutationScopeWhere(
 export function getAdminMutationTargetWhere(
   user: UserScope | null | undefined,
   entity: AdminMutationEntity,
-  id: number
+  id: number | string
 ): Record<string, unknown> {
   return {
     AND: [{ id }, getAdminMutationScopeWhere(user, entity)],
