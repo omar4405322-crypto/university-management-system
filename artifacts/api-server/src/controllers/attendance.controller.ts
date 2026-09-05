@@ -322,7 +322,7 @@ export const unblockEnrollment = catchAsync(
 
 export const getAuditDuplicateDevices = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const data = await AttendanceService.getAuditDuplicateDevices();
+    const data = await AttendanceService.getAuditDuplicateDevices(req.user!);
     return res.json({ success: true, data });
   }
 );

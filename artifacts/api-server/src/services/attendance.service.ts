@@ -4,6 +4,11 @@ import { AppError, AuthorizationError, NotFoundError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
 import attendanceEngine, { BulkManualRecord } from '../attendance/attendance.engine';
 import { DriverValidationContext } from '../attendance/drivers/IAttendanceDriver';
+import {
+  getAttendanceAuditCourseWhere,
+  getFlagOverrideAttendanceWhere,
+} from '../utils/attendanceAuditScope.utils';
+import { isAdminMutationScopeConfigured } from '../utils/adminMutationScope.utils';
 
 class AttendanceService {
   static async recordByMethod(
@@ -777,40 +782,56 @@ class AttendanceService {
     return { message: 'Student unblocked successfully' };
   }
 
-  static async getAuditDuplicateDevices() {
-    const duplicates: any[] = await prisma.$queryRaw`
-      SELECT "deviceId", 
-             COUNT(DISTINCT "studentId")::int as "studentCount", 
-             array_agg(DISTINCT "studentId") as "studentIds"
-      FROM "Attendance"
-      WHERE "deviceId" IS NOT NULL
-      GROUP BY "deviceId"
-      HAVING COUNT(DISTINCT "studentId") > 1
-    `;
+  static async getAuditDuplicateDevices(user: any) {
+    if (!isAdminMutationScopeConfigured(user)) {
+      throw new AuthorizationError('Managed scope is required for device audit');
+    }
 
-    if (!duplicates || duplicates.length === 0) {
+    const deviceStudentPairs = await prisma.attendance.groupBy({
+      by: ['deviceId', 'studentId'],
+      where: {
+        deviceId: { not: null },
+        course: getAttendanceAuditCourseWhere(user),
+      },
+    });
+
+    const studentIdsByDevice = new Map<string, Set<number>>();
+    for (const pair of deviceStudentPairs) {
+      if (!pair.deviceId) continue;
+      const studentIds = studentIdsByDevice.get(pair.deviceId) ?? new Set<number>();
+      studentIds.add(pair.studentId);
+      studentIdsByDevice.set(pair.deviceId, studentIds);
+    }
+
+    const duplicates = [...studentIdsByDevice.entries()].filter(
+      ([, studentIds]) => studentIds.size > 1
+    );
+    if (duplicates.length === 0) {
       return [];
     }
 
-    return Promise.all(
-      duplicates.map(async (dup) => {
-        const students = await prisma.student.findMany({
-          where: { id: { in: dup.studentIds } },
-          select: {
-            id: true,
-            studentId: true,
-            firstName: true,
-            lastName: true,
-            user: { select: { email: true } },
-          },
-        });
-        return {
-          deviceId: dup.deviceId,
-          studentCount: dup.studentCount,
-          students,
-        };
-      })
-    );
+    const duplicateStudentIds = [
+      ...new Set(duplicates.flatMap(([, studentIds]) => [...studentIds])),
+    ];
+    const students = await prisma.student.findMany({
+      where: { id: { in: duplicateStudentIds } },
+      select: {
+        id: true,
+        studentId: true,
+        firstName: true,
+        lastName: true,
+        user: { select: { email: true } },
+      },
+    });
+    const studentsById = new Map(students.map(student => [student.id, student]));
+
+    return duplicates.map(([deviceId, studentIds]) => ({
+      deviceId,
+      studentCount: studentIds.size,
+      students: [...studentIds]
+        .map(studentId => studentsById.get(studentId))
+        .filter(Boolean),
+    }));
   }
 
   static async overrideFlaggedRecord(
@@ -818,57 +839,28 @@ class AttendanceService {
     attendanceId: number,
     note?: string
   ) {
-    const attendanceRecord = await prisma.attendance.findUnique({
-      where: { id: attendanceId },
-      include: { session: { include: { scheduleSlot: true } } },
+    const accessWhere = getFlagOverrideAttendanceWhere(user, attendanceId);
+    const attendanceRecord = await prisma.attendance.findFirst({
+      where: accessWhere,
     });
 
-    if (!attendanceRecord || !attendanceRecord.session) {
+    if (!attendanceRecord) {
       throw new NotFoundError('Record not found');
     }
 
-    let authorized = false;
-    const session = attendanceRecord.session;
-    if (
-      ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(
-        user.role
-      )
-    ) {
-      authorized = true;
-    } else if (user.role === 'DOCTOR') {
-      const doctor = await prisma.doctor.findUnique({
-        where: { userId: user.id },
-      });
-      if (
-        doctor &&
-        (session.scheduleSlot?.doctorId === doctor.id ||
-          session.doctorId === doctor.id)
-      ) {
-        authorized = true;
-      }
-    } else if (user.role === 'TEACHING_ASSISTANT') {
-      const ta = await prisma.teachingAssistant.findUnique({
-        where: { userId: user.id },
-      });
-      if (ta && session.scheduleSlot?.teachingAssistantId === ta.id) {
-        authorized = true;
-      }
-    }
-
-    if (!authorized) {
-      throw new AuthorizationError(
-        'Not authorized to override records for this session'
-      );
-    }
-
-    return prisma.attendance.update({
-      where: { id: attendanceId },
+    const updated = await prisma.attendance.updateMany({
+      where: accessWhere,
       data: {
         locationFlagged: false,
         overriddenBy: user.email,
         overrideNote: note,
       },
     });
+    if (updated.count !== 1) {
+      throw new AuthorizationError('Attendance record left your authorized scope');
+    }
+
+    return prisma.attendance.findUnique({ where: { id: attendanceId } });
   }
 
   static async getMyAbsenceWarnings(user: any) {
