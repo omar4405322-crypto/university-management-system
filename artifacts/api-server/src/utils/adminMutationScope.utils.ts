@@ -59,3 +59,19 @@ export function getAdminMutationTargetWhere(
 export function canManageUnassignedAdminResource(user: UserScope | null | undefined): boolean {
   return user?.role === 'SUPER_ADMIN';
 }
+
+export function isAdminMutationScopeConfigured(
+  user: UserScope | null | undefined
+): boolean {
+  if (user?.role === 'SUPER_ADMIN') return true;
+  if (user?.role === 'ADMIN' || user?.role === 'COLLEGE_ADMIN') {
+    return Number.isInteger(user.managedCollegeId) && (user.managedCollegeId as number) > 0;
+  }
+  if (user?.role === 'DEPARTMENT_ADMIN') {
+    return (
+      Number.isInteger(user.managedDepartmentId) &&
+      (user.managedDepartmentId as number) > 0
+    );
+  }
+  return false;
+}

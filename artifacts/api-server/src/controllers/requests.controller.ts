@@ -1,42 +1,128 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import catchAsync from '../utils/catchAsync';
-import { AppError, NotFoundError, AuthorizationError } from '../utils/appError';
+import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
 import { auditLog } from '../utils/audit.utils';
 import { TimetableService } from '../services/timetable.service';
 import { Prisma } from '@prisma/client';
+import {
+  getAdminMutationScopeWhere,
+  getAdminMutationTargetWhere,
+  isAdminMutationScopeConfigured,
+} from '../utils/adminMutationScope.utils';
+
+const ADMIN_ROLES = new Set([
+  'SUPER_ADMIN',
+  'ADMIN',
+  'COLLEGE_ADMIN',
+  'DEPARTMENT_ADMIN',
+]);
+
+function getScopedRequestWhere(user: any, requestId: number) {
+  return {
+    AND: [
+      { id: requestId },
+      { course: getAdminMutationScopeWhere(user, 'course') },
+    ],
+  };
+}
+
+function getScopedRequestSlotWhere(user: any, slotId: number, courseId: number) {
+  return {
+    AND: [
+      { id: slotId, courseId },
+      { course: getAdminMutationScopeWhere(user, 'course') },
+    ],
+  };
+}
 
 export const createRequest = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { type, courseId, scheduleSlotId, proposedData, reason } = req.body;
 
-  const course = await prisma.course.findUnique({ where: { id: parseInt(courseId) } });
-  if (!course) return next(new NotFoundError('Course not found'));
+  const parsedCourseId = Number(courseId);
+  const parsedScheduleSlotId = scheduleSlotId !== undefined && scheduleSlotId !== null
+    ? Number(scheduleSlotId)
+    : null;
+  if (!Number.isSafeInteger(parsedCourseId) || parsedCourseId <= 0) {
+    return next(new ValidationError('courseId must be a positive integer'));
+  }
+  if (
+    parsedScheduleSlotId !== null &&
+    (!Number.isSafeInteger(parsedScheduleSlotId) || parsedScheduleSlotId <= 0)
+  ) {
+    return next(new ValidationError('scheduleSlotId must be a positive integer'));
+  }
+  if (type !== 'NEW_SLOT' && parsedScheduleSlotId === null) {
+    return next(new ValidationError('scheduleSlotId is required for this request type'));
+  }
 
   if (req.user!.role === 'DOCTOR') {
-    // Verify doctor teaches this course (has schedule slots for it)
-    const myDoctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
-    if (!myDoctor) return next(new AuthorizationError('Doctor profile not found'));
-    const hasSlot = await prisma.scheduleSlot.findFirst({
-      where: { courseId: parseInt(courseId), doctorId: myDoctor.id }
-    });
-    if (!hasSlot) return next(new AuthorizationError('You can only request changes for your own courses'));
-  }
-  // TAs own slots, so if scheduleSlotId is provided, they must own the slot
-  if (req.user!.role === 'TEACHING_ASSISTANT') {
-    if (!scheduleSlotId) {
+    const doctorId = req.user!.doctor?.id;
+    if (!Number.isInteger(doctorId)) {
+      return next(new AuthorizationError('Doctor profile not found'));
+    }
+    const ownedResource = parsedScheduleSlotId === null
+      ? await prisma.course.findFirst({
+          where: {
+            id: parsedCourseId,
+            scheduleSlots: { some: { doctorId } },
+          },
+          select: { id: true },
+        })
+      : await prisma.scheduleSlot.findFirst({
+          where: {
+            id: parsedScheduleSlotId,
+            courseId: parsedCourseId,
+            doctorId,
+          },
+          select: { id: true },
+        });
+    if (!ownedResource) {
+      return next(new AuthorizationError('You can only request changes for your own course slots'));
+    }
+  } else if (req.user!.role === 'TEACHING_ASSISTANT') {
+    const teachingAssistantId = req.user!.teachingAssistant?.id;
+    if (!teachingAssistantId || parsedScheduleSlotId === null) {
       return next(new AuthorizationError('TAs must specify the schedule slot they are requesting to change'));
     }
-    const slot = await prisma.scheduleSlot.findUnique({ where: { id: parseInt(scheduleSlotId) } });
-    if (!slot || slot.teachingAssistantId !== req.user!.teachingAssistant?.id) {
+    const slot = await prisma.scheduleSlot.findFirst({
+      where: {
+        id: parsedScheduleSlotId,
+        courseId: parsedCourseId,
+        teachingAssistantId,
+      },
+      select: { id: true },
+    });
+    if (!slot) {
       return next(new AuthorizationError('You can only request changes for slots assigned to you'));
     }
+  } else if (ADMIN_ROLES.has(req.user!.role)) {
+    const course = await prisma.course.findFirst({
+      where: getAdminMutationTargetWhere(req.user!, 'course', parsedCourseId),
+      select: { id: true },
+    });
+    if (!course) return next(new AuthorizationError('Course is outside your managed scope'));
+
+    if (parsedScheduleSlotId !== null) {
+      const slot = await prisma.scheduleSlot.findFirst({
+        where: getScopedRequestSlotWhere(
+          req.user!,
+          parsedScheduleSlotId,
+          parsedCourseId
+        ),
+        select: { id: true },
+      });
+      if (!slot) return next(new AuthorizationError('Schedule slot is outside your managed scope'));
+    }
+  } else {
+    return next(new AuthorizationError('Access denied'));
   }
 
   const newReq = await prisma.scheduleChangeRequest.create({
     data: {
       type,
-      courseId: parseInt(courseId),
-      scheduleSlotId: scheduleSlotId ? parseInt(scheduleSlotId) : undefined,
+      courseId: parsedCourseId,
+      scheduleSlotId: parsedScheduleSlotId ?? undefined,
       proposedData,
       reason,
       requesterId: req.user!.id
@@ -48,14 +134,16 @@ export const createRequest = catchAsync(async (req: Request, res: Response, next
 });
 
 export const getRequests = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  let where: any = {};
-
+  let where: Record<string, unknown>;
   if (req.user!.role === 'DOCTOR' || req.user!.role === 'TEACHING_ASSISTANT') {
-    where.requesterId = req.user!.id;
-  } else if (req.user!.role === 'DEPARTMENT_ADMIN' && req.user!.managedDepartmentId) {
-    where.course = { departmentId: req.user!.managedDepartmentId };
-  } else if ((req.user!.role === 'ADMIN' || req.user!.role === 'COLLEGE_ADMIN') && req.user!.managedCollegeId) {
-    where.course = { department: { collegeId: req.user!.managedCollegeId } };
+    where = { requesterId: req.user!.id };
+  } else if (ADMIN_ROLES.has(req.user!.role)) {
+    if (!isAdminMutationScopeConfigured(req.user!)) {
+      return next(new AuthorizationError('Managed scope is required to list schedule requests'));
+    }
+    where = { course: getAdminMutationScopeWhere(req.user!, 'course') };
+  } else {
+    return next(new AuthorizationError('Access denied'));
   }
 
   const requests = await prisma.scheduleChangeRequest.findMany({
@@ -74,45 +162,30 @@ export const approveRequest = catchAsync(async (req: Request, res: Response, nex
   const { id } = req.params;
   const { adminComment } = req.body;
 
-  const changeReq = await prisma.scheduleChangeRequest.findUnique({
-    where: { id: parseInt(id as string) },
+  const changeReq = await prisma.scheduleChangeRequest.findFirst({
+    where: getScopedRequestWhere(req.user!, parseInt(id as string)),
     include: { course: true }
   });
 
   if (!changeReq) return next(new NotFoundError('Request not found'));
   if (changeReq.status !== 'PENDING') return next(new AppError('Request is not pending', 400));
 
-  // Verify Admin Scope
-  if (req.user!.role === 'SUPER_ADMIN') {
-    // Super admin full access
-  } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
-    if (!req.user!.managedDepartmentId || changeReq.course.departmentId !== req.user!.managedDepartmentId) {
-      return next(new AuthorizationError('Out of scope'));
-    }
-  } else if (req.user!.role === 'COLLEGE_ADMIN') {
-    const dept = changeReq.course.departmentId
-      ? await prisma.department.findUnique({ where: { id: changeReq.course.departmentId } })
-      : null;
-    if (!req.user!.managedCollegeId || dept?.collegeId !== req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Out of scope'));
-    }
-  } else if (req.user!.role === 'ADMIN') {
-    if (!req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Access denied: Unscoped admin cannot resolve schedule requests'));
-    }
-    const dept = changeReq.course.departmentId
-      ? await prisma.department.findUnique({ where: { id: changeReq.course.departmentId } })
-      : null;
-    if (dept?.collegeId !== req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Out of scope'));
-    }
-  } else {
-    return next(new AuthorizationError('Access denied'));
-  }
-
   // Apply the change
   const data: any = changeReq.proposedData;
   await prisma.$transaction(async (tx) => {
+    const scopedSlot = changeReq.scheduleSlotId
+      ? await tx.scheduleSlot.findFirst({
+          where: getScopedRequestSlotWhere(
+            req.user!,
+            changeReq.scheduleSlotId,
+            changeReq.courseId
+          ),
+        })
+      : null;
+    if (changeReq.scheduleSlotId && !scopedSlot) {
+      throw new AuthorizationError('Schedule slot is outside your managed scope');
+    }
+
     if (changeReq.type === 'NEW_SLOT') {
       await TimetableService.checkConflicts({
         dayOfWeek: data.dayOfWeek,
@@ -139,17 +212,16 @@ export const approveRequest = catchAsync(async (req: Request, res: Response, nex
       });
     } else if (changeReq.type === 'UPDATE_SLOT') {
       if (!changeReq.scheduleSlotId) throw new AppError('scheduleSlotId required for UPDATE_SLOT', 400);
-      const slot = await tx.scheduleSlot.findUnique({ where: { id: changeReq.scheduleSlotId } });
-      if (!slot) throw new NotFoundError('ScheduleSlot not found');
+      if (!scopedSlot) throw new AuthorizationError('Schedule slot is outside your managed scope');
       await TimetableService.checkConflicts({
-        dayOfWeek: data.dayOfWeek || slot.dayOfWeek,
-        startTime: data.startTime || slot.startTime,
-        endTime: data.endTime || slot.endTime,
-        room: data.room !== undefined ? data.room : slot.room,
+        dayOfWeek: data.dayOfWeek || scopedSlot.dayOfWeek,
+        startTime: data.startTime || scopedSlot.startTime,
+        endTime: data.endTime || scopedSlot.endTime,
+        room: data.room !== undefined ? data.room : scopedSlot.room,
         courseId: changeReq.courseId,
-        doctorId: data.doctorId !== undefined ? (data.doctorId ? parseInt(data.doctorId) : null) : slot.doctorId,
-        groupId: data.groupId !== undefined ? (data.groupId ? parseInt(data.groupId) : null) : slot.groupId,
-        teachingAssistantId: data.teachingAssistantId !== undefined ? data.teachingAssistantId : slot.teachingAssistantId,
+        doctorId: data.doctorId !== undefined ? (data.doctorId ? parseInt(data.doctorId) : null) : scopedSlot.doctorId,
+        groupId: data.groupId !== undefined ? (data.groupId ? parseInt(data.groupId) : null) : scopedSlot.groupId,
+        teachingAssistantId: data.teachingAssistantId !== undefined ? data.teachingAssistantId : scopedSlot.teachingAssistantId,
         excludeSlotId: changeReq.scheduleSlotId
       }, tx);
       await tx.scheduleSlot.update({
@@ -165,20 +237,20 @@ export const approveRequest = catchAsync(async (req: Request, res: Response, nex
       });
     } else if (changeReq.type === 'DELETE_SLOT') {
       if (!changeReq.scheduleSlotId) throw new AppError('scheduleSlotId required for DELETE_SLOT', 400);
+      if (!scopedSlot) throw new AuthorizationError('Schedule slot is outside your managed scope');
       await tx.scheduleSlot.delete({ where: { id: changeReq.scheduleSlotId } });
     } else if (changeReq.type === 'OVERRIDE') {
       if (!changeReq.scheduleSlotId) throw new AppError('scheduleSlotId required for OVERRIDE', 400);
-      const slot = await tx.scheduleSlot.findUnique({ where: { id: changeReq.scheduleSlotId } });
-      if (!slot) throw new NotFoundError('ScheduleSlot not found');
+      if (!scopedSlot) throw new AuthorizationError('Schedule slot is outside your managed scope');
       await TimetableService.checkConflicts({
-        dayOfWeek: data.dayOfWeek || slot.dayOfWeek,
-        startTime: data.startTime || slot.startTime,
-        endTime: data.endTime || slot.endTime,
-        room: data.room !== undefined ? data.room : slot.room,
+        dayOfWeek: data.dayOfWeek || scopedSlot.dayOfWeek,
+        startTime: data.startTime || scopedSlot.startTime,
+        endTime: data.endTime || scopedSlot.endTime,
+        room: data.room !== undefined ? data.room : scopedSlot.room,
         courseId: changeReq.courseId,
-        doctorId: data.doctorId !== undefined ? (data.doctorId ? parseInt(data.doctorId) : null) : slot.doctorId,
-        groupId: data.groupId !== undefined ? (data.groupId ? parseInt(data.groupId) : null) : slot.groupId,
-        teachingAssistantId: data.teachingAssistantId !== undefined ? data.teachingAssistantId : slot.teachingAssistantId,
+        doctorId: data.doctorId !== undefined ? (data.doctorId ? parseInt(data.doctorId) : null) : scopedSlot.doctorId,
+        groupId: data.groupId !== undefined ? (data.groupId ? parseInt(data.groupId) : null) : scopedSlot.groupId,
+        teachingAssistantId: data.teachingAssistantId !== undefined ? data.teachingAssistantId : scopedSlot.teachingAssistantId,
         excludeSlotId: changeReq.scheduleSlotId
       }, tx);
       await tx.scheduleOverride.create({
@@ -212,41 +284,13 @@ export const rejectRequest = catchAsync(async (req: Request, res: Response, next
   const { id } = req.params;
   const { adminComment } = req.body;
 
-  const changeReq = await prisma.scheduleChangeRequest.findUnique({
-    where: { id: parseInt(id as string) },
+  const changeReq = await prisma.scheduleChangeRequest.findFirst({
+    where: getScopedRequestWhere(req.user!, parseInt(id as string)),
     include: { course: true }
   });
 
   if (!changeReq) return next(new NotFoundError('Request not found'));
   if (changeReq.status !== 'PENDING') return next(new AppError('Request is not pending', 400));
-
-  // Verify Admin Scope
-  if (req.user!.role === 'SUPER_ADMIN') {
-    // Super admin full access
-  } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
-    if (!req.user!.managedDepartmentId || changeReq.course.departmentId !== req.user!.managedDepartmentId) {
-      return next(new AuthorizationError('Out of scope'));
-    }
-  } else if (req.user!.role === 'COLLEGE_ADMIN') {
-    const dept = changeReq.course.departmentId
-      ? await prisma.department.findUnique({ where: { id: changeReq.course.departmentId } })
-      : null;
-    if (!req.user!.managedCollegeId || dept?.collegeId !== req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Out of scope'));
-    }
-  } else if (req.user!.role === 'ADMIN') {
-    if (!req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Access denied: Unscoped admin cannot resolve schedule requests'));
-    }
-    const dept = changeReq.course.departmentId
-      ? await prisma.department.findUnique({ where: { id: changeReq.course.departmentId } })
-      : null;
-    if (dept?.collegeId !== req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Out of scope'));
-    }
-  } else {
-    return next(new AuthorizationError('Access denied'));
-  }
 
   await prisma.scheduleChangeRequest.update({
     where: { id: changeReq.id },
