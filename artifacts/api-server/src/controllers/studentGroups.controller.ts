@@ -2,7 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import { logger } from '../lib/logger';
 import { StudentGroupsService } from '../services/studentGroups.service';
-import { AuthorizationError } from '../utils/appError';
+import { AuthorizationError, ValidationError } from '../utils/appError';
+import { getAdminMutationTargetWhere } from '../utils/adminMutationScope.utils';
+import {
+  getAdminStudentGroupScopeWhere,
+  resolveStudentGroupReadScopeWhere,
+} from '../utils/studentGroupScope.utils';
 
 function toBase26(num: number): string {
   let res = '';
@@ -25,18 +30,10 @@ export const autoDivideStudents = async (req: Request, res: Response, next: Next
       return res.status(400).json({ success: false, message: 'Exactly one of numberOfGroups or maxGroupSize must be provided' });
     }
 
-    const department = await prisma.department.findUnique({ where: { id: departmentId } });
-    if (!department) return res.status(404).json({ success: false, message: 'Department not found' });
-
-    // Verify Admin Scope
-    if (req.user!.role === 'DEPARTMENT_ADMIN') {
-      if (!req.user!.managedDepartmentId || departmentId !== req.user!.managedDepartmentId) return next(new AuthorizationError('Out of scope'));
-    } else if (req.user!.role === 'COLLEGE_ADMIN') {
-      if (!req.user!.managedCollegeId || department.collegeId !== req.user!.managedCollegeId) return next(new AuthorizationError('Out of scope'));
-    } else if (req.user!.role === 'ADMIN') {
-      if (!req.user!.managedCollegeId) return next(new AuthorizationError('Access denied: Unscoped admin cannot manage student groups'));
-      if (department.collegeId !== req.user!.managedCollegeId) return next(new AuthorizationError('Out of scope'));
-    }
+    const department = await prisma.department.findFirst({
+      where: getAdminMutationTargetWhere(req.user!, 'department', departmentId),
+    });
+    if (!department) return next(new AuthorizationError('Department is outside your managed scope'));
 
     const students = await prisma.student.findMany({
       where: { departmentId, year: academicYear, isActive: true },
@@ -97,7 +94,7 @@ export const autoDivideStudents = async (req: Request, res: Response, next: Next
   }
 };
 
-export const splitGroup = async (req: Request, res: Response) => {
+export const splitGroup = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const groupId = parseInt(req.params.groupId as string);
     let { numberOfSubgroups, maxSubgroupSize, confirmed } = req.body || {};
@@ -107,12 +104,17 @@ export const splitGroup = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Exactly one of numberOfSubgroups or maxSubgroupSize must be provided' });
     }
 
-    const group = await prisma.studentGroup.findUnique({ where: { id: groupId } });
-    if (!group) return res.status(404).json({ success: false, message: 'Group not found' });
+    const groupScope = getAdminStudentGroupScopeWhere(req.user!);
+    const group = await prisma.studentGroup.findFirst({
+      where: { AND: [{ id: groupId }, groupScope] },
+    });
+    if (!group) return next(new AuthorizationError('Group is outside your managed scope'));
 
     // Find all descendants to check for slots
     async function getDescendantIds(id: number): Promise<number[]> {
-      const children = await prisma.studentGroup.findMany({ where: { parentGroupId: id } });
+      const children = await prisma.studentGroup.findMany({
+        where: { AND: [{ parentGroupId: id }, groupScope] },
+      });
       let ids = [id];
       for (const child of children) {
         ids = ids.concat(await getDescendantIds(child.id));
@@ -127,7 +129,11 @@ export const splitGroup = async (req: Request, res: Response) => {
     }
 
     const students = await prisma.student.findMany({
-      where: { groupId },
+      where: {
+        groupId,
+        departmentId: group.departmentId,
+        year: group.year,
+      },
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }]
     });
 
@@ -141,7 +147,12 @@ export const splitGroup = async (req: Request, res: Response) => {
       const subgroups = [];
       for (let i = 0; i < numberOfSubgroups; i++) {
         subgroups.push(await tx.studentGroup.create({
-          data: { name: `${group.name}${i + 1}`, departmentId: group.departmentId, parentGroupId: group.id }
+          data: {
+            name: `${group.name}${i + 1}`,
+            departmentId: group.departmentId,
+            year: group.year,
+            parentGroupId: group.id,
+          }
         }));
       }
 
@@ -174,18 +185,23 @@ export const splitGroup = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteGroup = async (req: Request, res: Response) => {
+export const deleteGroup = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const groupId = parseInt(req.params.groupId as string);
     const { confirmed } = req.body || {};
 
-    const groupToDelete = await prisma.studentGroup.findUnique({ where: { id: groupId } });
-    if (!groupToDelete) return res.status(404).json({ success: false, message: 'Group not found' });
+    const groupScope = getAdminStudentGroupScopeWhere(req.user!);
+    const groupToDelete = await prisma.studentGroup.findFirst({
+      where: { AND: [{ id: groupId }, groupScope] },
+    });
+    if (!groupToDelete) return next(new AuthorizationError('Group is outside your managed scope'));
     const targetParentGroupId = groupToDelete.parentGroupId;
     
     // Find all descendants to check for slots
     async function getDescendantIds(id: number): Promise<number[]> {
-      const children = await prisma.studentGroup.findMany({ where: { parentGroupId: id } });
+      const children = await prisma.studentGroup.findMany({
+        where: { AND: [{ parentGroupId: id }, groupScope] },
+      });
       let ids = [id];
       for (const child of children) {
         ids = ids.concat(await getDescendantIds(child.id));
@@ -220,11 +236,12 @@ export const deleteGroup = async (req: Request, res: Response) => {
 export const getAllGroups = async (req: Request, res: Response) => {
   try {
     const { departmentId, year } = req.query as { departmentId?: string; year?: string };
-    const where: any = {};
-    if (departmentId) where.departmentId = parseInt(departmentId);
-    if (year) where.year = parseInt(year);
+    const requestedWhere: Record<string, number> = {};
+    if (departmentId) requestedWhere.departmentId = parseInt(departmentId);
+    if (year) requestedWhere.year = parseInt(year);
+    const scopeWhere = await resolveStudentGroupReadScopeWhere(req.user!);
     const groups = await prisma.studentGroup.findMany({
-      where,
+      where: { AND: [requestedWhere, scopeWhere] },
       include: {
         department: {
           select: {
@@ -254,7 +271,12 @@ export const getGroupsByDepartment = async (req: Request, res: Response) => {
 
     if (isNaN(departmentId)) return res.status(400).json({ success: false, message: 'Invalid department ID' });
 
-    const tree = await StudentGroupsService.getDepartmentGroupTree(departmentId, year as number);
+    const scopeWhere = await resolveStudentGroupReadScopeWhere(req.user!);
+    const tree = await StudentGroupsService.getDepartmentGroupTree(
+      departmentId,
+      year as number,
+      scopeWhere
+    );
     return res.json({ success: true, data: tree });
   } catch (error) {
     logger.error('Error fetching student groups: ' + (error as Error).message);
@@ -262,18 +284,63 @@ export const getGroupsByDepartment = async (req: Request, res: Response) => {
   }
 };
 
-export const manualOverrideGroup = async (req: Request, res: Response) => {
+export const manualOverrideGroup = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const studentId = parseInt(req.params.studentId as string);
     const { groupId } = req.body || {};
 
-    await prisma.student.update({
-      where: { id: studentId },
-      data: { groupId: groupId ? parseInt(groupId) : null }
+    const parsedGroupId = groupId ? Number(groupId) : null;
+    if (!Number.isSafeInteger(studentId) || studentId <= 0) {
+      return next(new ValidationError('studentId must be a positive integer'));
+    }
+    if (parsedGroupId !== null && (!Number.isSafeInteger(parsedGroupId) || parsedGroupId <= 0)) {
+      return next(new ValidationError('groupId must be a positive integer'));
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const student = await tx.student.findFirst({
+        where: getAdminMutationTargetWhere(req.user!, 'student', studentId),
+        select: { id: true, departmentId: true, year: true },
+      });
+      if (!student) {
+        throw new AuthorizationError('Student is outside your managed scope');
+      }
+
+      if (parsedGroupId !== null) {
+        const group = await tx.studentGroup.findFirst({
+          where: {
+            AND: [
+              { id: parsedGroupId },
+              getAdminStudentGroupScopeWhere(req.user!),
+            ],
+          },
+          select: { id: true, departmentId: true, year: true },
+        });
+        if (!group) {
+          throw new AuthorizationError('Target group is outside your managed scope');
+        }
+        if (
+          student.departmentId === null ||
+          student.departmentId !== group.departmentId ||
+          student.year !== group.year
+        ) {
+          throw new ValidationError(
+            'Student and target group must have the same department and academic year'
+          );
+        }
+      }
+
+      await tx.student.update({
+        where: { id: student.id },
+        data: { groupId: parsedGroupId },
+      });
     });
 
     return res.json({ success: true, message: 'Student group updated manually' });
   } catch (error) {
+    if (error instanceof AuthorizationError || error instanceof ValidationError) {
+      return next(error);
+    }
     logger.error('Error manually updating student group: ' + (error as Error).message);
     return res.status(500).json({ success: false, message: 'Failed to update student group' });
   }

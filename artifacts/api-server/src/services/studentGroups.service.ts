@@ -40,9 +40,18 @@ export class StudentGroupsService {
    * Gets the full nested group tree for a department.
    * If year is omitted, groups for all years are returned.
    */
-  static async getDepartmentGroupTree(departmentId: number, year?: number) {
+  static async getDepartmentGroupTree(
+    departmentId: number,
+    year?: number,
+    scopeWhere: Record<string, unknown> = {}
+  ) {
     const allGroups = await prisma.studentGroup.findMany({
-      where: { departmentId, ...(year !== undefined ? { year } : {}) },
+      where: {
+        AND: [
+          { departmentId, ...(year !== undefined ? { year } : {}) },
+          scopeWhere,
+        ],
+      },
       include: {
         _count: { select: { students: true } }
       },
