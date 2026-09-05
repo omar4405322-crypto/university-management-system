@@ -1,5 +1,15 @@
 import Redis from 'ioredis';
 import logger from './logger';
+import { AppError } from './appError';
+
+export class RedisOperationError extends AppError {
+  constructor(message: string = 'Cache service is temporarily unavailable') {
+    super(message, 503);
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+type RedisSetClient = Pick<Redis, 'set'>;
 
 let redis: Redis | null = null;
 
@@ -76,22 +86,27 @@ export const invalidateCache = async (pattern: string): Promise<void> => {
 
 /**
  * Atomically set a key only if it does not exist (NX) with TTL in seconds (EX).
- * Returns true if the key was set (did not exist before), false if it already exists or on error.
+ * Returns true if the key was set and false only when the key already exists.
+ * Backend/configuration failures are surfaced as service errors so callers cannot
+ * mistake infrastructure failure for a replay.
  */
 export const setIfNotExists = async (
   key: string,
   value: string | number | object,
-  ttlSeconds: number = 300
+  ttlSeconds: number = 300,
+  client: RedisSetClient | null = redis
 ): Promise<boolean> => {
-  if (!redis) return false;
+  if (!client) {
+    throw new RedisOperationError();
+  }
   try {
     const stringVal = typeof value === 'string' ? value : JSON.stringify(value);
-    const result = await redis.set(key, stringVal, 'EX', ttlSeconds, 'NX');
+    const result = await client.set(key, stringVal, 'EX', ttlSeconds, 'NX');
     return result === 'OK';
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    logger.error(`[REDIS] setIfNotExists error for ${key}: ${msg}`);
-    return false;
+    logger.error(`[REDIS] setIfNotExists failed: ${msg}`);
+    throw new RedisOperationError();
   }
 };
 

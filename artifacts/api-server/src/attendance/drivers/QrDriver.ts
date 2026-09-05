@@ -110,8 +110,8 @@ export class QrDriver implements IAttendanceDriver {
     const ttlSeconds = (session.codeStepSeconds || 20) * 3;
 
     if (redis) {
-      const wasSet = await setIfNotExists(tokenKey, '1', ttlSeconds);
-      if (!wasSet) {
+      const tokenClaimed = await setIfNotExists(tokenKey, '1', ttlSeconds);
+      if (!tokenClaimed) {
         return {
           valid: false,
           errorCode: 'TOKEN_REUSED',
