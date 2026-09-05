@@ -5,6 +5,7 @@ import { EnrollmentService } from '../services/enrollment.service';
 import prisma from '../utils/prismaClient';
 import { getScopeWhere } from '../utils/scope.utils';
 import { calculateStudentGpa } from '../utils/gpa.utils';
+import { getTranscriptOverviewWhere } from '../utils/transcriptScope.utils';
 
 export const getTranscript = catchAsync(async (req: Request, res: Response) => {
   const { studentId: studentIdParam } = req.params;
@@ -95,14 +96,16 @@ export const getTranscript = catchAsync(async (req: Request, res: Response) => {
     });
   }
 
-  // Case 2: Administrative Overview (Doctors / Admins / Super Admins)
+  // Case 2: Administrative Overview (assigned doctors and scoped administrators)
   const now = new Date();
+  const overviewWhere = getTranscriptOverviewWhere(user, now);
+  if (!overviewWhere) {
+    throw new AuthorizationError('Access denied: Your role cannot view transcript overviews');
+  }
 
   const [exams, quizzes, tasks] = await Promise.all([
     prisma.exam.findMany({
-      where: {
-        date: { lte: now },
-      },
+      where: overviewWhere.exam,
       include: {
         course: { select: { id: true, name: true, courseCode: true } },
         submissions: {
@@ -115,9 +118,7 @@ export const getTranscript = catchAsync(async (req: Request, res: Response) => {
       orderBy: { date: 'desc' },
     }),
     prisma.quiz.findMany({
-      where: {
-        endTime: { lte: now },
-      },
+      where: overviewWhere.quiz,
       include: {
         course: { select: { id: true, name: true, courseCode: true } },
         submissions: {
@@ -129,9 +130,7 @@ export const getTranscript = catchAsync(async (req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' },
     }),
     prisma.task.findMany({
-      where: {
-        dueDate: { lte: now },
-      },
+      where: overviewWhere.task,
       include: {
         course: { select: { id: true, name: true, courseCode: true } },
         submissions: {
