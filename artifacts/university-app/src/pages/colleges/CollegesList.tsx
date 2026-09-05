@@ -70,7 +70,7 @@ const CollegesList = () => {
   const fetchColleges = async () => {
     try {
       setLoading(true);
-      const result = await collegeService.getColleges();
+      const result = await collegeService.getManagedColleges();
       if (result.success) {
         setColleges(result.data?.colleges || result.data || []);
       }

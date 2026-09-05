@@ -2,6 +2,8 @@ import express from 'express';
 import {
   getAllColleges,
   getCollegeById,
+  getPublicColleges,
+  getPublicCollegeById,
   createCollege,
   updateCollege,
   deleteCollege,
@@ -14,8 +16,22 @@ import validate from '../middleware/validate.middleware';
 const router = express.Router();
 
 // Public: needed by the registration form (no token available yet)
-router.get('/', getAllColleges);
-router.get('/:id', adminIdValidation, validate, getCollegeById);
+router.get('/', getPublicColleges);
+router.get(
+  '/manage',
+  protect,
+  authorize('ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
+  getAllColleges
+);
+router.get(
+  '/manage/:id',
+  protect,
+  authorize('ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
+  adminIdValidation,
+  validate,
+  getCollegeById
+);
+router.get('/:id', adminIdValidation, validate, getPublicCollegeById);
 
 // Admin only routes
 router.post('/', protect, authorize('SUPER_ADMIN'), collegeValidation, validate, createCollege);

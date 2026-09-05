@@ -107,7 +107,7 @@ const AdminsList = () => {
 
   const fetchColleges = useCallback(async () => {
     try {
-      const res = await collegeService.getColleges();
+      const res = await collegeService.getManagedColleges();
       if (res.success) setColleges(res.data || []);
     } catch (error) {
       console.error('Error fetching colleges:', error);

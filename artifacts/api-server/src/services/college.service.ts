@@ -1,8 +1,24 @@
 import prisma from '../utils/prismaClient';
-import { NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
+import { NotFoundError, ValidationError } from '../utils/appError';
+import { getScopeWhere } from '../utils/scope.utils';
 
-export const getAllColleges = async () => {
+const publicCollegeSelect = { id: true, name: true, nameAr: true } as const;
+
+export const getPublicColleges = async () =>
+  prisma.college.findMany({ select: publicCollegeSelect, orderBy: { name: 'asc' } });
+
+export const getPublicCollegeById = async (collegeId: number) => {
+  const college = await prisma.college.findUnique({
+    where: { id: collegeId },
+    select: publicCollegeSelect,
+  });
+  if (!college) throw new NotFoundError('College not found');
+  return college;
+};
+
+export const getAllColleges = async (user: any) => {
   const colleges = await prisma.college.findMany({
+    where: getScopeWhere(user, 'college'),
     include: {
       _count: {
         select: { departments: true },
@@ -35,12 +51,8 @@ export const getAllColleges = async () => {
 };
 
 export const getCollegeById = async (collegeId: number, user: any) => {
-  if (user && user.role === 'COLLEGE_ADMIN' && user.managedCollegeId !== collegeId) {
-    throw new AuthorizationError('Access denied');
-  }
-
-  const college = await prisma.college.findUnique({
-    where: { id: collegeId },
+  const college = await prisma.college.findFirst({
+    where: { AND: [{ id: collegeId }, getScopeWhere(user, 'college')] },
     include: {
       departments: {
         include: {

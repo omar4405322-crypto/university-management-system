@@ -4,7 +4,17 @@ import catchAsync from '../utils/catchAsync';
 import * as collegeService from '../services/college.service';
 
 export const getAllColleges = catchAsync(async (req: Request, res: Response) => {
-  const data = await collegeService.getAllColleges();
+  const data = await collegeService.getAllColleges(req.user);
+  res.json({ success: true, data });
+});
+
+export const getPublicColleges = catchAsync(async (_req: Request, res: Response) => {
+  const data = await collegeService.getPublicColleges();
+  res.json({ success: true, data });
+});
+
+export const getPublicCollegeById = catchAsync(async (req: Request, res: Response) => {
+  const data = await collegeService.getPublicCollegeById(parseInt(req.params.id as string));
   res.json({ success: true, data });
 });
 

@@ -8,7 +8,11 @@ const collegeService = {
     options: Record<string, unknown> = {}
   ): Promise<ApiResponse<any>> => apiRequest(() => api.get('/colleges', { params, ...options })),
 
-  getCollegeById: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/colleges/${id}`)),
+  getManagedColleges: (): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.get('/colleges/manage')),
+
+  getCollegeById: (id: string | number): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.get(`/colleges/manage/${id}`)),
 
   createCollege: async (data?: Record<string, unknown>) => {
     const response = await api.post('/colleges', data);

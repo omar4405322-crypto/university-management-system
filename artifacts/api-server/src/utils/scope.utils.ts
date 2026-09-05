@@ -33,6 +33,7 @@ export const getScopeWhere = (
     const managedCollegeId = user.managedCollegeId || user.collegeId;
     if (!managedCollegeId) return { id: -1 }; // Fail-closed
 
+    if (entity === 'college') return { id: managedCollegeId };
     // Most entities are related via department.collegeId; for department entity itself we filter by collegeId
     if (entity === 'department') return { collegeId: managedCollegeId };
     if (entity === 'course') return { department: { collegeId: managedCollegeId } };
@@ -62,6 +63,7 @@ export const getScopeWhere = (
     const managedDepartmentId = user.managedDepartmentId || user.departmentId;
     if (!managedDepartmentId) return { id: -1 }; // Fail-closed
 
+    if (entity === 'college') return { departments: { some: { id: managedDepartmentId } } };
     // For department entity, match id; for others, departmentId
     if (entity === 'department') return { id: managedDepartmentId };
     if (entity === 'course') return { departmentId: managedDepartmentId };
@@ -88,6 +90,7 @@ export const getScopeWhere = (
   // Backwards-compat: support legacy ADMIN with managedCollegeId (temporary)
   if (user.role === 'ADMIN') {
     if (!user.managedCollegeId) return { id: -1 }; // Fail-closed
+    if (entity === 'college') return { id: user.managedCollegeId };
     if (entity === 'department') return { collegeId: user.managedCollegeId };
     if (entity === 'course') return { department: { collegeId: user.managedCollegeId } };
     if (entity === 'exam') return { course: { department: { collegeId: user.managedCollegeId } } };
