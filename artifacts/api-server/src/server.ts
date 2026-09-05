@@ -5,6 +5,7 @@ dotenv.config();
 import crypto from 'crypto';
 import pkg from '../package.json';
 import logger from './utils/logger';
+import { getJwtSecretValidationError } from './utils/jwtSecretValidation';
 
 logger.info(`🚀 [BOOT] Starting Smart University API v${pkg.version}`);
 
@@ -33,33 +34,9 @@ if (missingRequired.length > 0) {
   process.exit(1);
 }
 
-// Security Check: JWT_SECRET strength
-const jwtSecret = process.env.JWT_SECRET || '';
-const weakSecrets = [
-  'your-super-secret-key-change-this',
-  'secret',
-  'changeme',
-  'replace-with-any-32-char-string-for-tests',
-];
-
-if (weakSecrets.includes(jwtSecret)) {
-  logger.error('❌ FATAL: JWT_SECRET is using a default/insecure value.');
-  logger.error(
-    '👉 Fix: Set a unique JWT_SECRET in your platform (Vercel/Railway) environment settings.'
-  );
-  process.exit(1);
-}
-
-if (isProduction && jwtSecret.length < 32) {
-  logger.error(
-    `❌ FATAL: JWT_SECRET must be at least 32 characters in production (currently ${jwtSecret.length}).`
-  );
-  logger.error(
-    "👉 Fix: Generate a strong secret using: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
-  );
-  process.exit(1);
-} else if (jwtSecret.length < 8) {
-  logger.error('❌ FATAL: JWT_SECRET is dangerously short.');
+const jwtSecretError = getJwtSecretValidationError(process.env.JWT_SECRET, isProduction ? 32 : 8);
+if (jwtSecretError) {
+  logger.error(`❌ FATAL: ${jwtSecretError}`);
   process.exit(1);
 }
 

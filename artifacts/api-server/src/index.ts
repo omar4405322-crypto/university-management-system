@@ -1,6 +1,7 @@
 // @ts-ignore
 import dotenv from 'dotenv';
 import os from 'os';
+import { getJwtSecretValidationError } from './utils/jwtSecretValidation';
 dotenv.config();
 
 import * as Sentry from '@sentry/node';
@@ -10,8 +11,9 @@ if (process.env.SENTRY_DSN) {
   });
 }
 
-if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-  console.error('FATAL: JWT_SECRET environment variable is not set or too short (min 32 chars). Exiting.');
+const jwtSecretError = getJwtSecretValidationError(process.env.JWT_SECRET, 32);
+if (jwtSecretError) {
+  console.error(`FATAL: ${jwtSecretError} Exiting.`);
   process.exit(1);
 }
 
