@@ -48,11 +48,20 @@ router.put(
 router.put('/profile/picture', upload.single('profilePicture'), updateProfilePicture);
 
 // 2FA Routes
-router.post('/2fa/setup', setup2FA);
+router.post(
+  '/2fa/setup',
+  twoFactorLimiter,
+  [body('currentPassword').notEmpty().withMessage('Current password is required')],
+  validate,
+  setup2FA
+);
 router.post(
   '/2fa/enable',
   twoFactorLimiter,
-  [body('token').notEmpty().withMessage('Verification code is required')],
+  [
+    body('token').notEmpty().withMessage('Verification code is required'),
+    body('currentPassword').notEmpty().withMessage('Current password is required'),
+  ],
   validate,
   enable2FA
 );

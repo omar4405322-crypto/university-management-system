@@ -2,6 +2,7 @@
 import dotenv from 'dotenv';
 import os from 'os';
 import { getJwtSecretValidationError } from './utils/jwtSecretValidation';
+import { getTwoFactorConfigError } from './utils/twoFactorConfig';
 dotenv.config();
 
 import * as Sentry from '@sentry/node';
@@ -14,6 +15,15 @@ if (process.env.SENTRY_DSN) {
 const jwtSecretError = getJwtSecretValidationError(process.env.JWT_SECRET, 32);
 if (jwtSecretError) {
   console.error(`FATAL: ${jwtSecretError} Exiting.`);
+  process.exit(1);
+}
+
+const twoFactorConfigError = getTwoFactorConfigError(
+  process.env.NODE_ENV,
+  process.env.REQUIRE_2FA
+);
+if (twoFactorConfigError) {
+  console.error(`FATAL: ${twoFactorConfigError} Exiting.`);
   process.exit(1);
 }
 

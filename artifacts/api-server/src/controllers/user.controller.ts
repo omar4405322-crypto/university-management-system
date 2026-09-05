@@ -14,9 +14,12 @@ import { assertPasswordStrength } from '../utils/passwordPolicy';
 
 // 1. setup2FA — Generates secret and returns QR code for scanning:
 export const setup2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  
+  const { currentPassword } = req.body;
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (!user) return next(new NotFoundError('User not found'));
   if (user!.twoFactorEnabled) return next(new AppError('2FA is already enabled', 400));
+  const passwordMatches = await bcrypt.compare(currentPassword, user.password);
+  if (!passwordMatches) return next(new AuthenticationError('Incorrect current password'));
 
   const secret = generateTOTPSecret(user!.email);
   // Store secret temporarily (not enabling yet until verified)
@@ -32,15 +35,17 @@ export const setup2FA = catchAsync(async (req: Request, res: Response, next: Nex
 
 // 2. enable2FA — Verifies the first TOTP code and enables 2FA:
 export const enable2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  
-  const { token } = req.body;
+  const { token, currentPassword } = req.body;
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
 
+  if (!user) return next(new NotFoundError('User not found'));
   if (!user!.twoFactorSecret) return next(new AppError('Run 2FA setup first', 400));
   if (user!.twoFactorEnabled) return next(new AppError('2FA is already enabled', 400));
   if (!token) return next(new AppError('Verification code is required', 400));
+  const passwordMatches = await bcrypt.compare(currentPassword, user.password);
+  if (!passwordMatches) return next(new AuthenticationError('Incorrect current password'));
 
-  const isValid = verifyTOTP(user!.twoFactorSecret, token);
+  const isValid = await verifyTOTP(user!.twoFactorSecret, token, user.id);
   if (!isValid) return next(new AppError('Invalid verification code', 400));
 
   await prisma.user.update({
@@ -61,7 +66,7 @@ export const disable2FA = catchAsync(async (req: Request, res: Response, next: N
   const passwordMatch = await bcrypt.compare(password, user!.password);
   if (!passwordMatch) return next(new AppError('Incorrect password', 401));
 
-  const isValid = verifyTOTP(user!.twoFactorSecret!, token);
+  const isValid = await verifyTOTP(user!.twoFactorSecret!, token, user!.id);
   if (!isValid) return next(new AppError('Invalid verification code', 400));
   await prisma.user.update({
     where: { id: req.user!.id },

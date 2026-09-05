@@ -210,7 +210,11 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
         message: 'Please enter your 2FA code',
       });
     }
-    const isValid = verifyTOTP(user.twoFactorSecret as string, totpToken);
+    const isValid = await verifyTOTP(
+      user.twoFactorSecret as string,
+      totpToken,
+      user.id
+    );
     if (!isValid) {
       logger.warn(`[AUTH] Invalid 2FA token for: ${email}`);
       return next(new AuthenticationError('Invalid 2FA code'));

@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import pkg from '../package.json';
 import logger from './utils/logger';
 import { getJwtSecretValidationError } from './utils/jwtSecretValidation';
+import { getTwoFactorConfigError } from './utils/twoFactorConfig';
 
 logger.info(`🚀 [BOOT] Starting Smart University API v${pkg.version}`);
 
@@ -37,6 +38,16 @@ if (missingRequired.length > 0) {
 const jwtSecretError = getJwtSecretValidationError(process.env.JWT_SECRET, isProduction ? 32 : 8);
 if (jwtSecretError) {
   logger.error(`❌ FATAL: ${jwtSecretError}`);
+  process.exit(1);
+}
+
+
+const twoFactorConfigError = getTwoFactorConfigError(
+  process.env.NODE_ENV,
+  process.env.REQUIRE_2FA
+);
+if (twoFactorConfigError) {
+  logger.error(`❌ FATAL: ${twoFactorConfigError}`);
   process.exit(1);
 }
 
