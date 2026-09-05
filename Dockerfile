@@ -6,15 +6,23 @@ WORKDIR /app
 # Enable Corepack and prepare pnpm 9.15.9
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
-# Copy root workspace configuration & lockfile
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
-
-# Copy required workspace libraries and api-server
-COPY lib/ ./lib/
-COPY artifacts/api-server/ ./artifacts/api-server/
+# Copy dependency manifests first so installs remain cacheable
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+COPY lib/api-zod/package.json ./lib/api-zod/
+COPY lib/db/package.json ./lib/db/
 
 # Install dependencies without frozen lockfile
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --no-frozen-lockfile --strict-peer-dependencies=false
+
+# Copy only the source and configuration required to build the API
+COPY tsconfig.base.json ./
+COPY artifacts/api-server/build.mjs artifacts/api-server/tsconfig.json ./artifacts/api-server/
+COPY artifacts/api-server/src/ ./artifacts/api-server/src/
+COPY artifacts/api-server/prisma/schema.prisma ./artifacts/api-server/prisma/
+COPY artifacts/api-server/prisma/migrations/ ./artifacts/api-server/prisma/migrations/
+COPY lib/api-zod/src/ ./lib/api-zod/src/
+COPY lib/db/src/ ./lib/db/src/
 
 # Generate Prisma Client & Build Production Bundle
 RUN pnpm --filter @workspace/api-server run prisma:generate
@@ -30,8 +38,14 @@ ENV NODE_ENV=production
 # Enable Corepack and prepare pnpm 9.15.9 for running prisma/scripts
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
-# Copy workspace build artifacts and dependencies from builder stage
-COPY --from=builder /app /app
+# Copy only runtime manifests, dependencies, the compiled server, and active migrations
+COPY package.json pnpm-workspace.yaml ./
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+COPY --from=builder /app/node_modules/ ./node_modules/
+COPY --from=builder /app/artifacts/api-server/node_modules/ ./artifacts/api-server/node_modules/
+COPY --from=builder /app/artifacts/api-server/dist/ ./artifacts/api-server/dist/
+COPY --from=builder /app/artifacts/api-server/prisma/schema.prisma ./artifacts/api-server/prisma/
+COPY --from=builder /app/artifacts/api-server/prisma/migrations/ ./artifacts/api-server/prisma/migrations/
 
 WORKDIR /app
 

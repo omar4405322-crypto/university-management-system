@@ -1,0 +1,69 @@
+# Default-deny the Docker build context. Only the API build inputs below are sent.
+**
+
+# Root workspace manifests and TypeScript configuration
+!package.json
+!pnpm-workspace.yaml
+!pnpm-lock.yaml
+!tsconfig.base.json
+
+# API manifest, build configuration, and TypeScript source
+!artifacts/
+!artifacts/api-server/
+!artifacts/api-server/package.json
+!artifacts/api-server/build.mjs
+!artifacts/api-server/tsconfig.json
+!artifacts/api-server/src/
+!artifacts/api-server/src/**/
+!artifacts/api-server/src/*.ts
+!artifacts/api-server/src/**/*.ts
+
+# Prisma schema and active migration files only
+!artifacts/api-server/prisma/
+!artifacts/api-server/prisma/schema.prisma
+!artifacts/api-server/prisma/migrations/
+!artifacts/api-server/prisma/migrations/*/
+!artifacts/api-server/prisma/migrations/*/migration.sql
+!artifacts/api-server/prisma/migrations/migration_lock.toml
+
+# Workspace libraries referenced by the API package
+!lib/
+!lib/api-zod/
+!lib/api-zod/package.json
+!lib/api-zod/src/
+!lib/api-zod/src/**/
+!lib/api-zod/src/*.ts
+!lib/api-zod/src/**/*.ts
+!lib/db/
+!lib/db/package.json
+!lib/db/src/
+!lib/db/src/**/
+!lib/db/src/*.ts
+!lib/db/src/**/*.ts
+
+# Defense in depth: never admit credentials, dependencies, or VCS metadata.
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+**/*.env
+*.pem
+**/*.pem
+*.key
+**/*.key
+*.p12
+**/*.p12
+*.pfx
+**/*.pfx
+credentials.json
+**/credentials.json
+service-account*.json
+**/service-account*.json
+.git
+.git/**
+**/.git
+**/.git/**
+node_modules
+**/node_modules
+**/node_modules/**
