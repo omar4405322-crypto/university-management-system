@@ -540,6 +540,17 @@ export const approveRequest = catchAsync(
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      const claimedRequest = await tx.registrationRequest.updateMany({
+        where: {
+          id: parseInt(id as string),
+          status: 'PENDING',
+        },
+        data: { status: 'APPROVED' },
+      });
+      if (claimedRequest.count !== 1) {
+        throw new ConflictError('Registration request has already been resolved');
+      }
+
       const user = await tx.user.create({
         data: {
           email: request.email,
@@ -574,11 +585,6 @@ export const approveRequest = catchAsync(
           },
         });
       }
-
-      await tx.registrationRequest.update({
-        where: { id: parseInt(id as string) },
-        data: { status: 'APPROVED' },
-      });
 
       return { user, studentId };
     });
@@ -627,10 +633,16 @@ export const rejectRequest = catchAsync(async (req: Request, res: Response, next
     return res.status(403).json({ message: 'Access denied: request belongs to a different department' });
   }
 
-  await prisma.registrationRequest.update({
-    where: { id: parseInt(id as string) },
+  const rejected = await prisma.registrationRequest.updateMany({
+    where: {
+      id: parseInt(id as string),
+      status: 'PENDING',
+    },
     data: { status: 'REJECTED', rejectionReason: reason },
   });
+  if (rejected.count !== 1) {
+    throw new ConflictError('Registration request has already been resolved');
+  }
 
   res.json({ success: true, message: 'Request rejected' });
 });

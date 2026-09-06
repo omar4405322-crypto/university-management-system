@@ -13,6 +13,7 @@ import { AttendanceService } from '../services/attendance.service';
 import { calculateStudentGpa } from '../utils/gpa.utils';
 import { EnrollmentService } from '../services/enrollment.service';
 import { setStudentAndUserActiveState } from '../services/studentStatus.service';
+import { replacePasswordAndRevokeAllUserSessions } from '../services/session.service';
 import {
   assertPasswordStrength,
   generateStrongTemporaryPassword,
@@ -607,13 +608,7 @@ export const resetStudentPassword = catchAsync(
     assertPasswordStrength(finalPassword);
     const hashedPassword = await bcrypt.hash(finalPassword, 10);
 
-    await prisma.user.update({
-      where: { id: student.userId },
-      data: {
-        password: hashedPassword,
-        tokenVersion: { increment: 1 },
-      },
-    });
+    await replacePasswordAndRevokeAllUserSessions(student.userId, hashedPassword);
 
     auditLog('RESET_STUDENT_PASSWORD', 'Student', req.params.id as string, req);
     res.json({

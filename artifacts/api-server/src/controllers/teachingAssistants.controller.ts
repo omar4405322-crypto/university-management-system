@@ -11,6 +11,7 @@ import {
   getAdminMutationTargetWhere,
 } from '../utils/adminMutationScope.utils';
 import { TimetableService } from '../services/timetable.service';
+import { replacePasswordAndRevokeAllUserSessions } from '../services/session.service';
 import { assertPasswordStrength } from '../utils/passwordPolicy';
 
 function assertTAScope(
@@ -568,10 +569,7 @@ export const resetTeachingAssistantPassword = catchAsync(async (req: Request, re
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-  await prisma.user.update({
-    where: { id: ta.userId },
-    data: { password: hashedPassword },
-  });
+  await replacePasswordAndRevokeAllUserSessions(ta.userId, hashedPassword);
 
   auditLog('RESET_TEACHING_ASSISTANT_PASSWORD', 'TeachingAssistant', id, req);
   res.json({
@@ -579,4 +577,3 @@ export const resetTeachingAssistantPassword = catchAsync(async (req: Request, re
     message: `Password reset successfully for TA ${ta.employeeId}`,
   });
 });
-

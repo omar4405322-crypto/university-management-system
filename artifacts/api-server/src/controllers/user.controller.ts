@@ -10,6 +10,7 @@ import { Request, Response, NextFunction } from 'express';
 import { generateTOTPSecret, generateQRCodeURL, verifyTOTP } from '../utils/twoFactor.utils';
 import { getScopeWhere } from '../utils/scope.utils';
 import { deactivateUserAndRevokeSessions } from '../services/studentStatus.service';
+import { replacePasswordAndRevokeAllUserSessions } from '../services/session.service';
 import { assertPasswordStrength } from '../utils/passwordPolicy';
 
 // 1. setup2FA — Generates secret and returns QR code for scanning:
@@ -233,13 +234,7 @@ export const updatePassword = catchAsync(
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        password: hashedPassword,
-        tokenVersion: { increment: 1 },
-      },
-    });
+    await replacePasswordAndRevokeAllUserSessions(userId, hashedPassword);
 
     return res.json({
       success: true,
@@ -592,10 +587,7 @@ export const resetUserPassword = catchAsync(async (req: Request, res: Response, 
   assertPasswordStrength(newPassword);
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-  await prisma.user.update({
-    where: { id: parseInt(id as string) },
-    data: { password: hashedPassword },
-  });
+  await replacePasswordAndRevokeAllUserSessions(parseInt(id as string), hashedPassword);
 
   auditLog('RESET_USER_PASSWORD', 'User', id as string, req);
   return res.json({ success: true, message: 'Password reset successfully' });

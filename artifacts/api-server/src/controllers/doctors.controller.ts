@@ -13,6 +13,7 @@ import {
   getAdminMutationTargetWhere,
 } from '../utils/adminMutationScope.utils';
 import { TimetableService } from '../services/timetable.service';
+import { replacePasswordAndRevokeAllUserSessions } from '../services/session.service';
 import { assertPasswordStrength } from '../utils/passwordPolicy';
 
 function assertDoctorScope(
@@ -632,13 +633,7 @@ export const resetDoctorPassword = catchAsync(
 
     const hashedPassword = await bcrypt.hash(providedPassword, 10);
 
-    await prisma.user.update({
-      where: { id: doctor.userId },
-      data: {
-        password: hashedPassword,
-        tokenVersion: { increment: 1 },
-      },
-    });
+    await replacePasswordAndRevokeAllUserSessions(doctor.userId, hashedPassword);
 
     auditLog('RESET_DOCTOR_PASSWORD', 'Doctor', req.params.id as string, req);
     res.json({
