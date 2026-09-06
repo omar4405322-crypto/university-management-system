@@ -226,18 +226,20 @@ model Attendance {
   deviceId        String?
   locationData    Json?
   locationFlagged Boolean          @default(false)
-  overriddenBy    String?
-  overrideNote    String?
-  sessionId       Int?
-  session         AttendanceSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  scheduleSlotId  Int?
-  scheduleSlot    ScheduleSlot?      @relation(fields: [scheduleSlotId], references: [id])
-  createdAt       DateTime         @default(now())
+  overriddenBy          String?
+  overrideNote          String?
+  pendingApprovedStatus AttendanceStatus?
+  sessionId             Int?
+  session               AttendanceSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  scheduleSlotId        Int?
+  scheduleSlot          ScheduleSlot?      @relation(fields: [scheduleSlotId], references: [id])
+  createdAt             DateTime           @default(now())
 
   @@unique([studentId, sessionId])
   @@index([courseId, date])
-  @@index([studentId, courseId])
-  @@index([sessionId])
+  @@index([studentId, courseId, date])
+  @@index([studentId, date, status])
+  @@index([sessionId, ipAddress, deviceId])
   @@index([scheduleSlotId])
   @@index([method])
 }
@@ -255,6 +257,7 @@ enum AttendanceStatus {
   ABSENT
   LATE
   EXCUSED
+  PENDING_REVIEW
 }
 
 model Payment {
@@ -510,6 +513,7 @@ model ExamViolation {
   type         ExamViolationType
   occurredAt   DateTime          @default(now())
   details      String?
+  ipAddress    String?
 
   @@index([submissionId])
 }
@@ -538,6 +542,8 @@ enum ExamViolationType {
   SCREENSHOT
   WINDOW_RESIZE
   LOCATION_DENIED
+  SESSION_START
+  SESSION_END
 }
 
 enum ExamType {
@@ -579,7 +585,7 @@ model Enrollment {
 
   @@unique([studentId, courseId, semester, academicYear])
   @@index([studentId])
-  @@index([courseId])
+  @@index([courseId, status])
 }
 
 enum EnrollmentStatus {
@@ -841,11 +847,13 @@ model AttendanceSession {
 }
 
 model RfidDevice {
-  id         Int       @id @default(autoincrement())
-  roomId     String    @unique
-  secretHash String
-  label      String?
-  isActive   Boolean   @default(true)
-  lastSeenAt DateTime?
-  createdAt  DateTime  @default(now())
+  id                  Int       @id @default(autoincrement())
+  roomId              String    @unique
+  signingKeyEncrypted String    @default("")
+  /// @deprecated Replaced by signingKeyEncrypted. Hardware signs requests via HMAC; raw secret is never transmitted.
+  secretHash          String?
+  label               String?
+  isActive            Boolean   @default(true)
+  lastSeenAt          DateTime?
+  createdAt           DateTime  @default(now())
 }
