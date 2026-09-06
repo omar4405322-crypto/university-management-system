@@ -1,6 +1,12 @@
 import { Request, Response } from 'express';
 import catchAsync from '../utils/catchAsync';
-import { ValidationError, AppError, NotFoundError, AuthorizationError } from '../utils/appError';
+import {
+  ValidationError,
+  AppError,
+  NotFoundError,
+  AuthorizationError,
+  ConflictError,
+} from '../utils/appError';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import { EnrollmentService } from '../services/enrollment.service';
@@ -115,8 +121,13 @@ export const updateGrade = catchAsync(async (req: Request, res: Response) => {
 
   const { finalGrade } = req.body;
 
-  if (finalGrade < 0 || finalGrade > 100) {
-    throw new ValidationError('Grade must be between 0 and 100');
+  if (
+    typeof finalGrade !== 'number' ||
+    !Number.isFinite(finalGrade) ||
+    finalGrade < 0 ||
+    finalGrade > 100
+  ) {
+    throw new ValidationError('Grade must be a finite number between 0 and 100');
   }
 
   const existingEnrollment = await prisma.enrollment.findUnique({
@@ -139,14 +150,29 @@ export const updateGrade = catchAsync(async (req: Request, res: Response) => {
       'Access denied: You are not authorized for this enrollment.'
     );
   }
+  if (scopedEnrollment.status !== 'ENROLLED') {
+    throw new ConflictError(
+      `Enrollment is ${scopedEnrollment.status} and cannot be graded`
+    );
+  }
 
-  const enrollment = await prisma.enrollment.update({
-    where: { id: enrollmentId },
+  const updated = await prisma.enrollment.updateMany({
+    where: { id: enrollmentId, status: 'ENROLLED' },
     data: {
       finalGrade,
       status: finalGrade >= 60 ? 'COMPLETED' : 'FAILED',
     },
   });
+  if (updated.count !== 1) {
+    throw new ConflictError('Enrollment is no longer eligible for grading');
+  }
+
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { id: enrollmentId },
+  });
+  if (!enrollment) {
+    throw new NotFoundError('Enrollment not found after grading');
+  }
 
   auditLog('UPDATE_GRADE', 'Enrollment', enrollment.id.toString(), req, {
     finalGrade: { from: null, to: finalGrade },

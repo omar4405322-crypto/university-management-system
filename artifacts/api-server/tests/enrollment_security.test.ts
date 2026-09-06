@@ -48,7 +48,7 @@ async function runEnrollmentSecurityTests() {
   const originalFindMany = prisma.enrollment.findMany.bind(prisma.enrollment);
   const originalFindUnique = prisma.enrollment.findUnique.bind(prisma.enrollment);
   const originalFindFirst = prisma.enrollment.findFirst.bind(prisma.enrollment);
-  const originalUpdate = prisma.enrollment.update.bind(prisma.enrollment);
+  const originalUpdateMany = prisma.enrollment.updateMany.bind(prisma.enrollment);
   const originalCourseFindFirst = prisma.course.findFirst.bind(prisma.course);
   const originalEnrollStudent = EnrollmentService.enrollStudent.bind(EnrollmentService);
   const originalWithdrawStudent = EnrollmentService.withdrawStudent.bind(EnrollmentService);
@@ -236,10 +236,16 @@ async function runEnrollmentSecurityTests() {
     // =========================================================================
     console.log('\n[Suite 4] Testing PATCH /api/enrollments/:id/grade doctor and admin scoping...');
     let updatedGradeData: any = null;
-    (prisma.enrollment.update as any) = async (args: any) => {
+    (prisma.enrollment.updateMany as any) = async (args: any) => {
       updatedGradeData = args;
-      return { id: args.where.id, finalGrade: args.data.finalGrade, status: args.data.status };
+      return { count: 1 };
     };
+    (prisma.enrollment.findUnique as any) = async ({ where }: any) => ({
+      id: where.id,
+      courseId: where.id === 1001 ? 101 : 201,
+      status: updatedGradeData?.data.status || 'ENROLLED',
+      finalGrade: updatedGradeData?.data.finalGrade ?? null,
+    });
 
     const doctorUser = {
       id: 20,
@@ -255,11 +261,11 @@ async function runEnrollmentSecurityTests() {
 
       // Enrollment 1001: Doctor 5 teaches it; in Dept 3
       if (id === 1001 && doctorScopeId === 5) {
-        return { id: 1001, courseId: 101 };
+        return { id: 1001, courseId: 101, status: 'ENROLLED' };
       }
       // Enrollment 1001: In Dept 3
       if (id === 1001 && deptScopeId === 3) {
-        return { id: 1001, courseId: 101 };
+        return { id: 1001, courseId: 101, status: 'ENROLLED' };
       }
       return null;
     };
@@ -370,7 +376,7 @@ async function runEnrollmentSecurityTests() {
     prisma.enrollment.findMany = originalFindMany;
     prisma.enrollment.findUnique = originalFindUnique;
     prisma.enrollment.findFirst = originalFindFirst;
-    prisma.enrollment.update = originalUpdate;
+    prisma.enrollment.updateMany = originalUpdateMany;
     prisma.course.findFirst = originalCourseFindFirst;
     prisma.auditLog.create = originalAuditLogCreate;
     EnrollmentService.enrollStudent = originalEnrollStudent;

@@ -8,8 +8,104 @@ import {
 } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
 import { attendanceEngine } from '../attendance/attendance.engine';
+import { Prisma } from '@prisma/client';
 
 class EnrollmentService {
+  private static async createEnrollmentWithinCapacity(
+    studentId: number,
+    courseId: number,
+    semester: number,
+    academicYear: number,
+    throwOnConflict: boolean
+  ) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          const existing = await tx.enrollment.findUnique({
+            where: {
+              studentId_courseId_semester_academicYear: {
+                studentId,
+                courseId,
+                semester,
+                academicYear,
+              },
+            },
+          });
+
+          if (existing) {
+            if (throwOnConflict) {
+              const message =
+                existing.status === 'ENROLLED'
+                  ? 'Student is already enrolled in this course for this semester'
+                  : `Enrollment is ${existing.status} and requires an explicit override to reopen`;
+              throw new ConflictError(message);
+            }
+            return null;
+          }
+
+          const course = await tx.course.findUnique({
+            where: { id: courseId },
+            select: { maxStudents: true },
+          });
+          if (!course) {
+            if (throwOnConflict) {
+              throw new NotFoundError('Course not found');
+            }
+            return null;
+          }
+
+          const enrolledCount = await tx.enrollment.count({
+            where: {
+              courseId,
+              semester,
+              academicYear,
+              status: 'ENROLLED',
+            },
+          });
+          if (enrolledCount >= course.maxStudents) {
+            if (throwOnConflict) {
+              throw new ConflictError('Course has reached maximum enrollment capacity');
+            }
+            return null;
+          }
+
+          return tx.enrollment.create({
+            data: {
+              studentId,
+              courseId,
+              semester,
+              academicYear,
+              status: 'ENROLLED',
+            },
+            include: throwOnConflict
+              ? {
+                  course: {
+                    select: {
+                      id: true,
+                      name: true,
+                      courseCode: true,
+                      credits: true,
+                    },
+                  },
+                }
+              : undefined,
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      );
+    } catch (error: any) {
+      if (error?.code === 'P2034' || error?.code === 'P2002') {
+        if (throwOnConflict) {
+          throw new ConflictError(
+            'A concurrent enrollment change was detected. Please retry.'
+          );
+        }
+        return null;
+      }
+      throw error;
+    }
+  }
+
   static async enrollStudent(
     studentId: number,
     courseId: number,
@@ -30,94 +126,13 @@ class EnrollmentService {
       throw new AppError('Semester must be between 1 and 3 (1 = First, 2 = Second, 3 = Summer)', 400);
     }
 
-    return prisma.$transaction(async (tx) => {
-      const existing = await tx.enrollment.findUnique({
-        where: {
-          studentId_courseId_semester_academicYear: {
-            studentId,
-            courseId,
-            semester,
-            academicYear,
-          },
-        },
-      });
-
-      if (existing) {
-        if (existing.status === 'ENROLLED') {
-          throw new ConflictError('Student is already enrolled in this course for this semester');
-        }
-
-        const course = await tx.course.findUnique({
-          where: { id: courseId },
-          include: {
-            _count: {
-              select: {
-                enrollments: {
-                  where: {
-                    semester,
-                    academicYear,
-                    status: 'ENROLLED',
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        if (!course) {
-          throw new NotFoundError('Course not found');
-        }
-        if (course._count.enrollments >= course.maxStudents) {
-          throw new ConflictError('Course has reached maximum enrollment capacity');
-        }
-
-        return tx.enrollment.update({
-          where: { id: existing.id },
-          data: {
-            status: 'ENROLLED',
-            enrolledAt: new Date(),
-          },
-          include: {
-            course: {
-              select: { id: true, name: true, courseCode: true, credits: true },
-            },
-          },
-        });
-      }
-
-      const course = await tx.course.findUnique({
-        where: { id: courseId },
-        include: {
-          _count: {
-            select: {
-              enrollments: {
-                where: {
-                  semester,
-                  academicYear,
-                  status: 'ENROLLED',
-                },
-              },
-            },
-          },
-        },
-      });
-
-      if (!course) {
-        throw new NotFoundError('Course not found');
-      }
-      if (course._count.enrollments >= course.maxStudents) {
-        throw new ConflictError('Course has reached maximum enrollment capacity');
-      }
-
-      return tx.enrollment.create({
-        data: { studentId, courseId, semester, academicYear, status: 'ENROLLED' },
-        include: {
-          course: {
-            select: { id: true, name: true, courseCode: true, credits: true },
-          },
-        },
-      });
-    });
+    return this.createEnrollmentWithinCapacity(
+      studentId,
+      courseId,
+      semester,
+      academicYear,
+      true
+    );
   }
 
   static async withdrawStudent(enrollmentIdOrStudentId: number, courseId?: number) {
@@ -129,9 +144,16 @@ class EnrollmentService {
         throw new NotFoundError('No active enrollment found for this student and course');
       }
 
-      return prisma.enrollment.update({
-        where: { id: enrollment.id },
+      const updated = await prisma.enrollment.updateMany({
+        where: { id: enrollment.id, status: 'ENROLLED' },
         data: { status: 'WITHDRAWN' },
+      });
+      if (updated.count !== 1) {
+        throw new ConflictError('Enrollment is no longer eligible for withdrawal');
+      }
+
+      return prisma.enrollment.findUnique({
+        where: { id: enrollment.id },
         include: {
           course: { select: { id: true, name: true, courseCode: true } },
         },
@@ -144,10 +166,22 @@ class EnrollmentService {
     if (!enrollment) {
       throw new NotFoundError('Enrollment not found');
     }
+    if (enrollment.status !== 'ENROLLED') {
+      throw new ConflictError(
+        `Enrollment is ${enrollment.status} and cannot be withdrawn`
+      );
+    }
 
-    return prisma.enrollment.update({
-      where: { id: enrollmentIdOrStudentId },
+    const updated = await prisma.enrollment.updateMany({
+      where: { id: enrollmentIdOrStudentId, status: 'ENROLLED' },
       data: { status: 'WITHDRAWN' },
+    });
+    if (updated.count !== 1) {
+      throw new ConflictError('Enrollment is no longer eligible for withdrawal');
+    }
+
+    return prisma.enrollment.findUnique({
+      where: { id: enrollmentIdOrStudentId },
       include: {
         course: { select: { id: true, name: true, courseCode: true } },
       },
@@ -578,52 +612,40 @@ class EnrollmentService {
       return { enrolledCount: 0 };
     }
 
-    // Batch-fetch existing enrollments with status 'ENROLLED' to exclude no-op upserts
+    // Any existing attempt is terminal or already active and must not be reopened by sync.
     const existingEnrollments = await prisma.enrollment.findMany({
       where: {
         studentId: student.id,
         courseId: { in: matchingCourses.map((c) => c.id) },
         academicYear: currentAcademicYear,
-        status: 'ENROLLED',
       },
       select: { courseId: true, semester: true },
     });
 
-    const alreadyEnrolledKeys = new Set(
+    const existingEnrollmentKeys = new Set(
       existingEnrollments.map((e) => `${e.courseId}:${e.semester}`)
     );
 
     let newlyEnrolledCount = 0;
-    const operations = matchingCourses.map((course) => {
+    for (const course of matchingCourses) {
       const semester = course.semester || 1;
       const key = `${course.id}:${semester}`;
-      if (!alreadyEnrolledKeys.has(key)) {
-        newlyEnrolledCount++;
+      if (existingEnrollmentKeys.has(key)) {
+        continue;
       }
 
-      return prisma.enrollment.upsert({
-        where: {
-          studentId_courseId_semester_academicYear: {
-            studentId: student.id,
-            courseId: course.id,
-            semester,
-            academicYear: currentAcademicYear,
-          },
-        },
-        create: {
-          studentId: student.id,
-          courseId: course.id,
-          semester,
-          academicYear: currentAcademicYear,
-          status: 'ENROLLED',
-        },
-        update: {
-          status: 'ENROLLED',
-        },
-      });
-    });
+      const enrollment = await this.createEnrollmentWithinCapacity(
+        student.id,
+        course.id,
+        semester,
+        currentAcademicYear,
+        false
+      );
+      if (enrollment) {
+        newlyEnrolledCount++;
+      }
+    }
 
-    await prisma.$transaction(operations);
     return { enrolledCount: newlyEnrolledCount };
   }
 
@@ -656,51 +678,39 @@ class EnrollmentService {
       return { enrolledCount: 0 };
     }
 
-    // Batch-fetch existing enrollments with status 'ENROLLED' to exclude no-op upserts
+    // Any existing attempt is terminal or already active and must not be reopened by sync.
     const existingEnrollments = await prisma.enrollment.findMany({
       where: {
         courseId: course.id,
         studentId: { in: matchingStudents.map((s) => s.id) },
         semester,
         academicYear: currentAcademicYear,
-        status: 'ENROLLED',
       },
       select: { studentId: true },
     });
 
-    const alreadyEnrolledStudentIds = new Set(
+    const existingEnrollmentStudentIds = new Set(
       existingEnrollments.map((e) => e.studentId)
     );
 
     let newlyEnrolledCount = 0;
-    const operations = matchingStudents.map((student) => {
-      if (!alreadyEnrolledStudentIds.has(student.id)) {
-        newlyEnrolledCount++;
+    for (const student of matchingStudents) {
+      if (existingEnrollmentStudentIds.has(student.id)) {
+        continue;
       }
 
-      return prisma.enrollment.upsert({
-        where: {
-          studentId_courseId_semester_academicYear: {
-            studentId: student.id,
-            courseId: course.id,
-            semester,
-            academicYear: currentAcademicYear,
-          },
-        },
-        create: {
-          studentId: student.id,
-          courseId: course.id,
-          semester,
-          academicYear: currentAcademicYear,
-          status: 'ENROLLED',
-        },
-        update: {
-          status: 'ENROLLED',
-        },
-      });
-    });
+      const enrollment = await this.createEnrollmentWithinCapacity(
+        student.id,
+        course.id,
+        semester,
+        currentAcademicYear,
+        false
+      );
+      if (enrollment) {
+        newlyEnrolledCount++;
+      }
+    }
 
-    await prisma.$transaction(operations);
     return { enrolledCount: newlyEnrolledCount };
   }
 
@@ -710,10 +720,8 @@ class EnrollmentService {
   static async syncAllEnrollments() {
     const currentAcademicYear = new Date().getFullYear();
 
-    // Note: We batch all student/course matching and existing enrollment lookups
-    // in bulk here rather than calling autoEnrollStudent per student in a loop.
-    // This executes all operations in a single multi-query transaction and avoids
-    // N+1 round-trips and N separate database transactions.
+    // Batch the read phase, then allocate each new seat in its own serializable
+    // transaction so concurrent manual and automatic enrollment share one guard.
     const [activeStudents, allCourses, existingEnrollments] = await Promise.all([
       prisma.student.findMany({
         where: {
@@ -731,17 +739,15 @@ class EnrollmentService {
       prisma.enrollment.findMany({
         where: {
           academicYear: currentAcademicYear,
-          status: 'ENROLLED',
         },
         select: { studentId: true, courseId: true, semester: true },
       }),
     ]);
 
-    const alreadyEnrolledKeys = new Set(
+    const existingEnrollmentKeys = new Set(
       existingEnrollments.map((e) => `${e.studentId}:${e.courseId}:${e.semester}`)
     );
 
-    const operations: ReturnType<typeof prisma.enrollment.upsert>[] = [];
     let newlyEnrolledCount = 0;
 
     for (const student of activeStudents) {
@@ -753,40 +759,23 @@ class EnrollmentService {
       for (const course of matchingCourses) {
         const semester = course.semester || 1;
         const key = `${student.id}:${course.id}:${semester}`;
-        if (!alreadyEnrolledKeys.has(key)) {
-          newlyEnrolledCount++;
+        if (existingEnrollmentKeys.has(key)) {
+          continue;
         }
 
-        operations.push(
-          prisma.enrollment.upsert({
-            where: {
-              studentId_courseId_semester_academicYear: {
-                studentId: student.id,
-                courseId: course.id,
-                semester,
-                academicYear: currentAcademicYear,
-              },
-            },
-            create: {
-              studentId: student.id,
-              courseId: course.id,
-              semester,
-              academicYear: currentAcademicYear,
-              status: 'ENROLLED',
-            },
-            update: {
-              status: 'ENROLLED',
-            },
-          })
+        const enrollment = await this.createEnrollmentWithinCapacity(
+          student.id,
+          course.id,
+          semester,
+          currentAcademicYear,
+          false
         );
+        if (enrollment) {
+          newlyEnrolledCount++;
+        }
       }
     }
 
-    if (operations.length === 0) {
-      return { totalStudents: activeStudents.length, totalEnrolled: 0 };
-    }
-
-    await prisma.$transaction(operations);
     return { totalStudents: activeStudents.length, totalEnrolled: newlyEnrolledCount };
   }
 }
