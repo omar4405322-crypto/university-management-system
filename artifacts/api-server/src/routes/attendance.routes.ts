@@ -101,6 +101,13 @@ router.post(
 );
 
 router.post(
+  '/record/:attendanceId/reject',
+  protect,
+  adminOrTeacher,
+  attendanceController.rejectFlaggedRecord
+);
+
+router.post(
   '/manual',
   protect,
   adminOrTeacher,
@@ -162,7 +169,34 @@ router.post(
   [
     body('deviceId').notEmpty().withMessage('Device ID is required'),
     body('rfidTag').notEmpty().withMessage('RFID tag is required'),
-    body('secret').notEmpty().withMessage('Device secret is required'),
+    body('timestamp')
+      .custom((val, { req }) => {
+        const ts = val ?? req?.headers?.['x-timestamp'];
+        if (ts === undefined || ts === null || ts === '') {
+          throw new Error('Timestamp is required');
+        }
+        return true;
+      }),
+    body('nonce')
+      .custom((val, { req }) => {
+        const n = val ?? req?.headers?.['x-nonce'];
+        if (!n || typeof n !== 'string' || !n.trim()) {
+          throw new Error('Nonce is required');
+        }
+        return true;
+      }),
+    body('signature')
+      .custom((val, { req }) => {
+        const sig =
+          val ??
+          req?.body?.hmac ??
+          req?.headers?.['x-signature'] ??
+          req?.headers?.['x-hmac'];
+        if (!sig || typeof sig !== 'string' || !sig.trim()) {
+          throw new Error('Request signature is required');
+        }
+        return true;
+      }),
   ],
   validate,
   attendanceController.recordAttendanceRfid
@@ -192,6 +226,17 @@ router.post(
   protect,
   sessionLimiter,
   adminOrTeacher,
+  [
+    body('radius')
+      .optional({ nullable: true })
+      .isFloat({ min: 1, max: 200 })
+      .withMessage('Session radius must be between 1 and 200 meters'),
+    body('gracePeriodMins')
+      .optional({ nullable: true })
+      .isInt({ min: 0, max: 30 })
+      .withMessage('Grace period must be between 0 and 30 minutes'),
+  ],
+  validate,
   attendanceSessionController.startSession
 );
 
@@ -200,6 +245,17 @@ router.post(
   protect,
   sessionLimiter,
   adminOrTeacher,
+  [
+    body('radius')
+      .optional({ nullable: true })
+      .isFloat({ min: 1, max: 200 })
+      .withMessage('Session radius must be between 1 and 200 meters'),
+    body('gracePeriodMins')
+      .optional({ nullable: true })
+      .isInt({ min: 0, max: 30 })
+      .withMessage('Grace period must be between 0 and 30 minutes'),
+  ],
+  validate,
   attendanceSessionController.startSession
 );
 
@@ -301,6 +357,26 @@ router.post(
   body('token').notEmpty().withMessage('يجب توفير رمز الاستجابة السريعة (TOTP)'),
   validate,
   attendanceController.recordAttendanceQr
+);
+
+// RFID Device Provisioning & Management (Admin Only)
+router.post(
+  '/devices/rfid',
+  protect,
+  authorize('SUPER_ADMIN'),
+  [
+    body('roomId').notEmpty().withMessage('Room ID is required'),
+    body('label').optional().isString().withMessage('Label must be a string'),
+  ],
+  validate,
+  attendanceController.provisionRfidDevice
+);
+
+router.get(
+  '/devices/rfid',
+  protect,
+  authorize('SUPER_ADMIN'),
+  attendanceController.listRfidDevices
 );
 
 export default router;

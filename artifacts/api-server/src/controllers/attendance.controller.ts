@@ -109,9 +109,20 @@ export const recordAttendanceQr = catchAsync(
 
 export const recordAttendanceRfid = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
+    const rawPayload = {
+      ...req.body,
+      timestamp: req.body.timestamp ?? req.headers['x-timestamp'],
+      nonce: req.body.nonce ?? req.headers['x-nonce'],
+      signature:
+        req.body.signature ??
+        req.body.hmac ??
+        req.headers['x-signature'] ??
+        req.headers['x-hmac'],
+    };
+
     const result = await AttendanceService.recordByMethod(
       'RFID',
-      req.body,
+      rawPayload,
       {
         ipAddress: req.ip || req.socket.remoteAddress,
       }
@@ -338,6 +349,39 @@ export const overrideFlaggedRecord = catchAsync(
       parseInt(attendanceId as string),
       note
     );
+    return res.json({ success: true, data });
+  }
+);
+
+export const rejectFlaggedRecord = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { attendanceId } = req.params;
+    const { note } = req.body;
+    const data = await AttendanceService.rejectFlaggedRecord(
+      req.user!,
+      parseInt(attendanceId as string),
+      note
+    );
+    return res.json({ success: true, data });
+  }
+);
+
+export const provisionRfidDevice = catchAsync(
+  async (req: Request, res: Response) => {
+    const { roomId, label } = req.body;
+    const data = await AttendanceService.provisionRfidDevice({ roomId, label });
+    return res.status(201).json({
+      success: true,
+      message:
+        'RFID device provisioned successfully. Flash the signingKey into firmware immediately.',
+      data,
+    });
+  }
+);
+
+export const listRfidDevices = catchAsync(
+  async (_req: Request, res: Response) => {
+    const data = await AttendanceService.listRfidDevices();
     return res.json({ success: true, data });
   }
 );

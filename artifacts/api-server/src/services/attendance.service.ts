@@ -9,6 +9,8 @@ import {
   getFlagOverrideAttendanceWhere,
 } from '../utils/attendanceAuditScope.utils';
 import { isAdminMutationScopeConfigured } from '../utils/adminMutationScope.utils';
+import crypto from 'crypto';
+import { encrypt } from '../utils/encryption.utils';
 
 class AttendanceService {
   static async recordByMethod(
@@ -128,11 +130,17 @@ class AttendanceService {
 
     const skip = (page - 1) * limit;
 
+    const courseScope = getScopeWhere(user, 'course');
+    const enrollmentWhere: any = { status: 'ENROLLED' };
+    if (Object.keys(courseScope).length > 0) {
+      enrollmentWhere.course = courseScope;
+    }
+
     const student = await prisma.student.findUnique({
       where: { id: studentId },
       include: {
         enrollments: {
-          where: { status: 'ENROLLED' },
+          where: enrollmentWhere,
           select: { courseId: true },
         },
       },
@@ -158,6 +166,7 @@ class AttendanceService {
           ABSENT: 0,
           LATE: 0,
           EXCUSED: 0,
+          PENDING_REVIEW: 0,
           percentage: 0,
         },
       };
@@ -178,6 +187,7 @@ class AttendanceService {
           ABSENT: 0,
           LATE: 0,
           EXCUSED: 0,
+          PENDING_REVIEW: 0,
           percentage: 0,
         },
       };
@@ -248,12 +258,14 @@ class AttendanceService {
     let late = 0;
     let excused = 0;
     let explicitAbsent = 0;
+    let pendingReview = 0;
 
     sessionAttendances.forEach((a: any) => {
       if (a.status === 'PRESENT') present++;
       else if (a.status === 'LATE') late++;
       else if (a.status === 'EXCUSED') excused++;
       else if (a.status === 'ABSENT') explicitAbsent++;
+      else if (a.status === 'PENDING_REVIEW') pendingReview++;
     });
 
     standaloneAttendances.forEach((a: any) => {
@@ -261,6 +273,7 @@ class AttendanceService {
       else if (a.status === 'LATE') late++;
       else if (a.status === 'EXCUSED') excused++;
       else if (a.status === 'ABSENT') explicitAbsent++;
+      else if (a.status === 'PENDING_REVIEW') pendingReview++;
     });
 
     // Unattended held sessions without an explicit record are counted as ABSENT
@@ -269,7 +282,7 @@ class AttendanceService {
     const totalAbsent = explicitAbsent + unrecordedAbsent;
     const totalSessions = totalHeldSessions + standaloneAttendances.length;
 
-    const effectiveTotal = totalSessions - excused;
+    const effectiveTotal = totalSessions - excused - pendingReview;
     const percentage =
       effectiveTotal > 0
         ? ((present + late * 0.5) / effectiveTotal) * 100
@@ -281,6 +294,7 @@ class AttendanceService {
       ABSENT: totalAbsent,
       LATE: late,
       EXCUSED: excused,
+      PENDING_REVIEW: pendingReview,
       percentage: Math.round(percentage * 100) / 100,
     };
 
@@ -458,7 +472,6 @@ class AttendanceService {
 
   static async getMySlots(user: any) {
     const userRole = user.role;
-    let slots: any[] = [];
 
     const selectFields = {
       course: { select: { id: true, name: true, courseCode: true } },
@@ -471,79 +484,28 @@ class AttendanceService {
       { startTime: 'asc' },
     ];
 
-    if (userRole === 'DOCTOR') {
-      const myDoctor = await prisma.doctor.findUnique({
-        where: { userId: user.id },
-      });
-      if (myDoctor) {
-        slots = await prisma.scheduleSlot.findMany({
-          where: { doctorId: myDoctor.id },
-          include: selectFields,
-          orderBy,
-        });
-
-        if (slots.length === 0 && myDoctor.departmentId) {
-          slots = await prisma.scheduleSlot.findMany({
-            where: { course: { departmentId: myDoctor.departmentId } },
-            include: selectFields,
-            orderBy,
-          });
-        }
-      }
-    } else if (userRole === 'TEACHING_ASSISTANT') {
-      const myTA = await prisma.teachingAssistant.findUnique({
-        where: { userId: user.id },
-      });
-      if (myTA) {
-        slots = await prisma.scheduleSlot.findMany({
-          where: { teachingAssistantId: myTA.id },
-          include: selectFields,
-          orderBy,
-        });
-
-        if (slots.length === 0 && myTA.departmentId) {
-          slots = await prisma.scheduleSlot.findMany({
-            where: { course: { departmentId: myTA.departmentId } },
-            include: selectFields,
-            orderBy,
-          });
-        }
-      }
-    } else if (
-      ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(
-        userRole
-      )
-    ) {
+    const staffRoles = new Set([
+      'SUPER_ADMIN',
+      'ADMIN',
+      'COLLEGE_ADMIN',
+      'DEPARTMENT_ADMIN',
+      'DOCTOR',
+      'TEACHING_ASSISTANT',
+    ]);
+    if (staffRoles.has(userRole)) {
       const courseScope: any = getScopeWhere(user, 'course');
       const where: any =
         courseScope && Object.keys(courseScope).length > 0
           ? { course: courseScope }
           : {};
-      slots = await prisma.scheduleSlot.findMany({
+      return prisma.scheduleSlot.findMany({
         where,
         include: selectFields,
         orderBy,
       });
     }
 
-    if (
-      slots.length === 0 &&
-      [
-        'DOCTOR',
-        'TEACHING_ASSISTANT',
-        'SUPER_ADMIN',
-        'ADMIN',
-        'COLLEGE_ADMIN',
-        'DEPARTMENT_ADMIN',
-      ].includes(userRole)
-    ) {
-      slots = await prisma.scheduleSlot.findMany({
-        include: selectFields,
-        orderBy,
-      });
-    }
-
-    return slots;
+    return [];
   }
 
   static async getMyAttendance(userId: number, courseId?: number) {
@@ -633,7 +595,7 @@ class AttendanceService {
       where: { courseId },
       _count: true,
     });
-    const stats: any = { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0 };
+    const stats: any = { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0, PENDING_REVIEW: 0 };
     statsData.forEach((item) => (stats[item.status] = item._count));
     return stats;
   }
@@ -848,9 +810,13 @@ class AttendanceService {
       throw new NotFoundError('Record not found');
     }
 
+    const nextStatus = attendanceRecord.pendingApprovedStatus || 'PRESENT';
+
     const updated = await prisma.attendance.updateMany({
       where: accessWhere,
       data: {
+        status: nextStatus,
+        pendingApprovedStatus: null,
         locationFlagged: false,
         overriddenBy: user.email,
         overrideNote: note,
@@ -859,6 +825,47 @@ class AttendanceService {
     if (updated.count !== 1) {
       throw new AuthorizationError('Attendance record left your authorized scope');
     }
+
+    await attendanceEngine.recalculateAbsence(
+      attendanceRecord.studentId,
+      attendanceRecord.courseId
+    );
+
+    return prisma.attendance.findUnique({ where: { id: attendanceId } });
+  }
+
+  static async rejectFlaggedRecord(
+    user: any,
+    attendanceId: number,
+    note?: string
+  ) {
+    const accessWhere = getFlagOverrideAttendanceWhere(user, attendanceId);
+    const attendanceRecord = await prisma.attendance.findFirst({
+      where: accessWhere,
+    });
+
+    if (!attendanceRecord) {
+      throw new NotFoundError('Record not found');
+    }
+
+    const updated = await prisma.attendance.updateMany({
+      where: accessWhere,
+      data: {
+        status: 'ABSENT',
+        pendingApprovedStatus: null,
+        locationFlagged: false,
+        overriddenBy: user.email,
+        overrideNote: note || 'Rejected',
+      },
+    });
+    if (updated.count !== 1) {
+      throw new AuthorizationError('Attendance record left your authorized scope');
+    }
+
+    await attendanceEngine.recalculateAbsence(
+      attendanceRecord.studentId,
+      attendanceRecord.courseId
+    );
 
     return prisma.attendance.findUnique({ where: { id: attendanceId } });
   }
@@ -906,103 +913,192 @@ class AttendanceService {
       };
     }
 
-    const coursesData = await Promise.all(
-      student.enrollments.map(async (enrollment) => {
-        const courseId = enrollment.courseId;
-        const attendanceData = await this.getStudentAttendance(
-          user,
-          student.id,
-          courseId,
-          1,
-          1
-        );
-
-        let maxAbsencePercent = 25.0;
-        if (
-          enrollment.customAbsenceThreshold !== null &&
-          enrollment.customAbsenceThreshold !== undefined
-        ) {
-          maxAbsencePercent = enrollment.customAbsenceThreshold;
-        } else {
-          const policies = await prisma.absenceThresholdPolicy.findMany({
-            where: {
-              OR: [
-                { courseId },
-                { departmentId: enrollment.course.departmentId },
-                { departmentId: null, courseId: null },
-              ],
-            },
-          });
-
-          let policy = policies.find((p) => p.courseId === courseId);
-          if (!policy) {
-            policy = policies.find(
-              (p) => p.departmentId === enrollment.course.departmentId
-            );
-          }
-          if (!policy) {
-            policy = policies.find(
-              (p) => p.courseId === null && p.departmentId === null
-            );
-          }
-          if (policy) {
-            maxAbsencePercent = policy.maxAbsencePercent;
-          }
-        }
-
-        const stats = attendanceData.stats;
-        const activeTotal = stats.total - stats.EXCUSED;
-        const absencePercent =
-          activeTotal > 0
-            ? Math.round(
-                ((stats.ABSENT + stats.LATE * 0.5) / activeTotal) * 1000
-              ) / 10
-            : 0;
-
-        const isBlocked = enrollment.status === 'BLOCKED';
-        const isExceeding = absencePercent >= maxAbsencePercent;
-        const isNearLimit =
-          !isExceeding && absencePercent >= Math.max(0, maxAbsencePercent - 5);
-
-        return {
-          enrollmentId: enrollment.id,
-          courseId: enrollment.course.id,
-          courseCode: enrollment.course.courseCode,
-          courseName: enrollment.course.name,
-          status: enrollment.status,
-          isBlocked,
-          absencePercent,
-          maxAbsencePercent,
-          isExceeding,
-          isNearLimit,
-          totalSessions: stats.total,
-          present: stats.PRESENT,
-          late: stats.LATE,
-          absent: stats.ABSENT,
-          excused: stats.EXCUSED,
-          exemptionPeriods: enrollment.exemptionPeriods,
-        };
-      })
+    const activeCourseIds = student.enrollments
+      .filter((enrollment) => enrollment.status === 'ENROLLED')
+      .map((enrollment) => enrollment.courseId);
+    const departmentIds = Array.from(
+      new Set(
+        student.enrollments
+          .map((enrollment) => enrollment.course.departmentId)
+          .filter((departmentId): departmentId is number => departmentId !== null)
+      )
     );
 
-    // Fetch student's related notifications regarding absence/enrollment
-    const notifications = await prisma.notification.findMany({
+    const slots = await prisma.scheduleSlot.findMany({
       where: {
-        userId: user.id,
-        OR: [
-          { title: { contains: 'Enrollment', mode: 'insensitive' } },
-          { title: { contains: 'Absence', mode: 'insensitive' } },
-          { title: { contains: 'حرمان', mode: 'insensitive' } },
-          { title: { contains: 'غياب', mode: 'insensitive' } },
-          { title: { contains: 'إنذار', mode: 'insensitive' } },
-          { message: { contains: 'absence', mode: 'insensitive' } },
-          { message: { contains: 'غياب', mode: 'insensitive' } },
-          { message: { contains: 'blocked', mode: 'insensitive' } },
-          { message: { contains: 'restored', mode: 'insensitive' } },
-        ],
+        courseId: { in: activeCourseIds },
+        OR: [{ groupId: student.groupId }, { groupId: null }],
       },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
+      select: { id: true, courseId: true },
+    });
+    const slotToCourse = new Map(slots.map((slot) => [slot.id, slot.courseId]));
+
+    const sessions = await prisma.attendanceSession.findMany({
+      where: { scheduleSlotId: { in: slots.map((slot) => slot.id) } },
+      select: { id: true, scheduleSlotId: true },
+    });
+    const sessionToCourse = new Map<number, number>();
+    const heldSessionsByCourse = new Map<number, number>();
+    for (const session of sessions) {
+      const sessionCourseId = slotToCourse.get(session.scheduleSlotId!);
+      if (sessionCourseId === undefined) continue;
+      sessionToCourse.set(session.id, sessionCourseId);
+      heldSessionsByCourse.set(
+        sessionCourseId,
+        (heldSessionsByCourse.get(sessionCourseId) ?? 0) + 1
+      );
+    }
+
+    const notificationWhere = {
+      userId: user.id,
+      OR: [
+        { title: { contains: 'Enrollment', mode: 'insensitive' as const } },
+        { title: { contains: 'Absence', mode: 'insensitive' as const } },
+        { title: { contains: 'حرمان', mode: 'insensitive' as const } },
+        { title: { contains: 'غياب', mode: 'insensitive' as const } },
+        { title: { contains: 'إنذار', mode: 'insensitive' as const } },
+        { message: { contains: 'absence', mode: 'insensitive' as const } },
+        { message: { contains: 'غياب', mode: 'insensitive' as const } },
+        { message: { contains: 'blocked', mode: 'insensitive' as const } },
+        { message: { contains: 'restored', mode: 'insensitive' as const } },
+      ],
+    };
+    const [sessionGroups, standaloneGroups, policies, notifications] =
+      await Promise.all([
+        prisma.attendance.groupBy({
+          by: ['sessionId', 'status'],
+          where: {
+            studentId: student.id,
+            sessionId: { in: sessions.map((session) => session.id) },
+          },
+          _count: { _all: true },
+        }),
+        prisma.attendance.groupBy({
+          by: ['courseId', 'status'],
+          where: {
+            studentId: student.id,
+            courseId: { in: activeCourseIds },
+            sessionId: null,
+          },
+          _count: { _all: true },
+        }),
+        prisma.absenceThresholdPolicy.findMany({
+          where: {
+            OR: [
+              { courseId: { in: student.enrollments.map((item) => item.courseId) } },
+              ...(departmentIds.length > 0
+                ? [{ departmentId: { in: departmentIds } }]
+                : []),
+              { departmentId: null, courseId: null },
+            ],
+          },
+        }),
+        prisma.notification.findMany({
+          where: notificationWhere,
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        }),
+      ]);
+
+    type WarningStats = {
+      PRESENT: number;
+      ABSENT: number;
+      LATE: number;
+      EXCUSED: number;
+      PENDING_REVIEW: number;
+      recordedSessions: number;
+      standalone: number;
+    };
+    const emptyStats = (): WarningStats => ({
+      PRESENT: 0,
+      ABSENT: 0,
+      LATE: 0,
+      EXCUSED: 0,
+      PENDING_REVIEW: 0,
+      recordedSessions: 0,
+      standalone: 0,
+    });
+    const statsByCourse = new Map<number, WarningStats>();
+    const getStats = (courseId: number) => {
+      const existing = statsByCourse.get(courseId);
+      if (existing) return existing;
+      const created = emptyStats();
+      statsByCourse.set(courseId, created);
+      return created;
+    };
+
+    for (const group of sessionGroups) {
+      if (group.sessionId === null) continue;
+      const sessionCourseId = sessionToCourse.get(group.sessionId);
+      if (sessionCourseId === undefined) continue;
+      const stats = getStats(sessionCourseId);
+      stats[group.status] += group._count._all;
+      stats.recordedSessions += group._count._all;
+    }
+    for (const group of standaloneGroups) {
+      const stats = getStats(group.courseId);
+      stats[group.status] += group._count._all;
+      stats.standalone += group._count._all;
+    }
+
+    const coursesData = student.enrollments.map((enrollment) => {
+      const stats = statsByCourse.get(enrollment.courseId) ?? emptyStats();
+      const totalHeldSessions = heldSessionsByCourse.get(enrollment.courseId) ?? 0;
+      const unrecordedAbsent = Math.max(
+        0,
+        totalHeldSessions - stats.recordedSessions
+      );
+      const absent = stats.ABSENT + unrecordedAbsent;
+      const totalSessions = totalHeldSessions + stats.standalone;
+      const activeTotal =
+        totalSessions - stats.EXCUSED - stats.PENDING_REVIEW;
+      const absencePercent =
+        activeTotal > 0
+          ? Math.round(((absent + stats.LATE * 0.5) / activeTotal) * 1000) / 10
+          : 0;
+
+      let maxAbsencePercent = enrollment.customAbsenceThreshold ?? 25.0;
+      if (
+        enrollment.customAbsenceThreshold === null ||
+        enrollment.customAbsenceThreshold === undefined
+      ) {
+        const policy =
+          policies.find((candidate) => candidate.courseId === enrollment.courseId) ||
+          policies.find(
+            (candidate) =>
+              candidate.departmentId === enrollment.course.departmentId
+          ) ||
+          policies.find(
+            (candidate) =>
+              candidate.courseId === null && candidate.departmentId === null
+          );
+        if (policy) maxAbsencePercent = policy.maxAbsencePercent;
+      }
+
+      const isBlocked = enrollment.status === 'BLOCKED';
+      const isExceeding = absencePercent >= maxAbsencePercent;
+      const isNearLimit =
+        !isExceeding && absencePercent >= Math.max(0, maxAbsencePercent - 5);
+
+      return {
+        enrollmentId: enrollment.id,
+        courseId: enrollment.course.id,
+        courseCode: enrollment.course.courseCode,
+        courseName: enrollment.course.name,
+        status: enrollment.status,
+        isBlocked,
+        absencePercent,
+        maxAbsencePercent,
+        isExceeding,
+        isNearLimit,
+        totalSessions,
+        present: stats.PRESENT,
+        late: stats.LATE,
+        absent,
+        excused: stats.EXCUSED,
+        pendingReview: stats.PENDING_REVIEW,
+        exemptionPeriods: enrollment.exemptionPeriods,
+      };
     });
 
     return {
@@ -1154,12 +1250,12 @@ class AttendanceService {
       },
     });
 
-    const attendanceStatsMap = new Map<string, { present: number; late: number; absent: number; excused: number; total: number }>();
+    const attendanceStatsMap = new Map<string, { present: number; late: number; absent: number; excused: number; pendingReview: number; total: number }>();
     attendances.forEach((att) => {
       const key = `${att.studentId}_${att.courseId}`;
       let stat = attendanceStatsMap.get(key);
       if (!stat) {
-        stat = { present: 0, late: 0, absent: 0, excused: 0, total: 0 };
+        stat = { present: 0, late: 0, absent: 0, excused: 0, pendingReview: 0, total: 0 };
         attendanceStatsMap.set(key, stat);
       }
       stat.total++;
@@ -1167,6 +1263,7 @@ class AttendanceService {
       else if (att.status === 'LATE') stat.late++;
       else if (att.status === 'ABSENT') stat.absent++;
       else if (att.status === 'EXCUSED') stat.excused++;
+      else if (att.status === 'PENDING_REVIEW') stat.pendingReview++;
     });
 
     const policies = await prisma.absenceThresholdPolicy.findMany({
@@ -1187,10 +1284,10 @@ class AttendanceService {
       const courseId = enrollment.courseId;
       const studentId = enrollment.studentId;
       const key = `${studentId}_${courseId}`;
-      const stat = attendanceStatsMap.get(key) || { present: 0, late: 0, absent: 0, excused: 0, total: 0 };
+      const stat = attendanceStatsMap.get(key) || { present: 0, late: 0, absent: 0, excused: 0, pendingReview: 0, total: 0 };
 
       const totalHeld = Math.max(stat.total, courseSessionsCountMap.get(courseId) || 0);
-      const activeTotal = totalHeld - stat.excused;
+      const activeTotal = totalHeld - stat.excused - stat.pendingReview;
 
       let maxAbsencePercent = enrollment.customAbsenceThreshold ?? 25.0;
       if (enrollment.customAbsenceThreshold === null || enrollment.customAbsenceThreshold === undefined) {
@@ -1245,6 +1342,7 @@ class AttendanceService {
         late: stat.late,
         absent: stat.absent,
         excused: stat.excused,
+        pendingReview: stat.pendingReview,
         exemptionPeriods: enrollment.exemptionPeriods || [],
       };
     });
@@ -1276,6 +1374,70 @@ class AttendanceService {
       warningRecords,
       coursesList,
     };
+  }
+
+  /**
+   * Provisions a new RFID hardware device.
+   * Generates a 32-byte cryptographic signing key server-side, encrypts it
+   * at rest using AES-256-GCM, and returns the raw plaintext key exactly once
+   * for flashing into device firmware.
+   */
+  static async provisionRfidDevice(data: { roomId: string; label?: string }) {
+    const roomId = data.roomId?.trim();
+    if (!roomId) {
+      throw new AppError('Room ID (device identifier) is required', 400);
+    }
+
+    const existing = await prisma.rfidDevice.findUnique({
+      where: { roomId },
+    });
+    if (existing) {
+      throw new AppError(`An RFID device is already provisioned for room: ${roomId}`, 409);
+    }
+
+    // Generate 32-byte (256-bit) cryptographically strong signing key
+    const signingKey = crypto.randomBytes(32).toString('hex');
+    const signingKeyEncrypted = encrypt(signingKey);
+
+    const device = await prisma.rfidDevice.create({
+      data: {
+        roomId,
+        label: data.label?.trim() || null,
+        signingKeyEncrypted,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        roomId: true,
+        label: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      ...device,
+      signingKey, // Returned exactly once in provisioning response!
+      warning:
+        'Store this signing key securely and flash it directly into device firmware. The plaintext key is encrypted at rest and cannot be retrieved again.',
+    };
+  }
+
+  /**
+   * Lists provisioned RFID devices (never exposes signing keys).
+   */
+  static async listRfidDevices() {
+    return prisma.rfidDevice.findMany({
+      select: {
+        id: true,
+        roomId: true,
+        label: true,
+        isActive: true,
+        lastSeenAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }
 

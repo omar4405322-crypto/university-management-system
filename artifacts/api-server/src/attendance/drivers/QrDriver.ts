@@ -46,6 +46,28 @@ export class QrDriver implements IAttendanceDriver {
       };
     }
 
+    if (rawPayload.latitude != null) {
+      const lat = parseFloat(rawPayload.latitude);
+      if (isNaN(lat) || lat < -90 || lat > 90) {
+        return {
+          valid: false,
+          errorCode: 'INVALID_COORDINATES',
+          errorMessage: 'إحداثيات الموقع خارج النطاق المسموح به (-90 إلى 90 لخط العرض)',
+        };
+      }
+    }
+
+    if (rawPayload.longitude != null) {
+      const lng = parseFloat(rawPayload.longitude);
+      if (isNaN(lng) || lng < -180 || lng > 180) {
+        return {
+          valid: false,
+          errorCode: 'INVALID_COORDINATES',
+          errorMessage: 'إحداثيات الموقع خارج النطاق المسموح به (-180 إلى 180 لخط الطول)',
+        };
+      }
+    }
+
     let sessionId = rawPayload.sessionId;
     let session: any = null;
 
@@ -163,27 +185,47 @@ export class QrDriver implements IAttendanceDriver {
     }
 
     const { session } = validation.metadata!;
-    const { latitude, longitude, deviceId } = rawPayload;
+    const { deviceId } = rawPayload;
 
+    const latitude =
+      rawPayload.latitude != null && !isNaN(parseFloat(rawPayload.latitude))
+        ? parseFloat(rawPayload.latitude)
+        : null;
+    const longitude =
+      rawPayload.longitude != null && !isNaN(parseFloat(rawPayload.longitude))
+        ? parseFloat(rawPayload.longitude)
+        : null;
+    const accuracy =
+      rawPayload.accuracy != null && !isNaN(parseFloat(rawPayload.accuracy))
+        ? parseFloat(rawPayload.accuracy)
+        : null;
+
+    let isOutOfRange = false;
     let locationFlagged = false;
-    if (session.latitude && session.longitude && latitude && longitude) {
-      const R = 6371e3;
-      const φ1 = (session.latitude * Math.PI) / 180;
-      const φ2 = (latitude * Math.PI) / 180;
-      const Δφ = ((latitude - session.latitude) * Math.PI) / 180;
-      const Δλ = ((longitude - session.longitude) * Math.PI) / 180;
 
-      const a =
-        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      const distance = R * c;
+    if (session.latitude != null && session.longitude != null) {
+      if (latitude != null && longitude != null) {
+        const R = 6371e3;
+        const φ1 = (session.latitude * Math.PI) / 180;
+        const φ2 = (latitude * Math.PI) / 180;
+        const Δφ = ((latitude - session.latitude) * Math.PI) / 180;
+        const Δλ = ((longitude - session.longitude) * Math.PI) / 180;
 
-      if (distance > (session.radius || 120)) {
+        const a =
+          Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+          Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c;
+
+        if (distance > (session.radius || 120)) {
+          isOutOfRange = true;
+          locationFlagged = true;
+        }
+      } else {
+        // Geofenced session but student request missing coordinates
+        isOutOfRange = true;
         locationFlagged = true;
       }
-    } else if (session.latitude && session.longitude) {
-      locationFlagged = true;
     }
 
     const now = new Date();
@@ -192,6 +234,15 @@ export class QrDriver implements IAttendanceDriver {
     const gracePeriodMinutes = session.gracePeriodMins ?? 15;
     const computedStatus: AttendanceStatus =
       elapsedMinutes <= gracePeriodMinutes ? 'PRESENT' : 'LATE';
+
+    let finalStatus: AttendanceStatus = computedStatus;
+    let pendingApprovedStatus: AttendanceStatus | null = null;
+
+    if (isOutOfRange) {
+      locationFlagged = true;
+      finalStatus = 'PENDING_REVIEW' as AttendanceStatus;
+      pendingApprovedStatus = computedStatus;
+    }
 
     const attendanceDate = new Date(session.createdAt);
     attendanceDate.setHours(0, 0, 0, 0);
@@ -202,10 +253,11 @@ export class QrDriver implements IAttendanceDriver {
       sessionId: session.id,
       courseId: session.scheduleSlot.courseId,
       scheduleSlotId: session.scheduleSlot.id,
-      status: computedStatus,
+      status: finalStatus,
+      pendingApprovedStatus,
       ipAddress: ctx.ipAddress || null,
       deviceId: deviceId || null,
-      locationData: { lat: latitude || null, lng: longitude || null },
+      locationData: { lat: latitude, lng: longitude, accuracy },
       locationFlagged,
       date: attendanceDate,
     };

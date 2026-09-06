@@ -31,8 +31,9 @@ export interface AttendanceIntent {
   recordedById?: number | null;
   ipAddress?: string | null;
   deviceId?: string | null;
-  locationData?: { lat?: number | null; lng?: number | null } | null;
+  locationData?: { lat?: number | null; lng?: number | null; accuracy?: number | null } | null;
   locationFlagged?: boolean;
+  pendingApprovedStatus?: AttendanceStatus | null;
   date?: Date;
 }
 

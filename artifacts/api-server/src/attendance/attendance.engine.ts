@@ -10,6 +10,39 @@ import {
   IAttendanceDriver,
 } from './drivers/IAttendanceDriver';
 import { requireManualAttendanceAccess } from '../utils/manualAttendanceScope.utils';
+import { availableParallelism } from 'node:os';
+
+const MAX_BULK_ATTENDANCE_CONCURRENCY = 8;
+const ABSENCE_RECALCULATION_BATCH_SIZE = 100;
+
+function getPrismaConnectionLimit(): number {
+  const configuredUrl = process.env.DATABASE_URL;
+  if (configuredUrl) {
+    try {
+      const configuredLimit = Number(
+        new URL(configuredUrl).searchParams.get('connection_limit')
+      );
+      if (Number.isSafeInteger(configuredLimit) && configuredLimit > 0) {
+        return configuredLimit;
+      }
+    } catch {
+      // Prisma will report an invalid DATABASE_URL; use its default pool sizing here.
+    }
+  }
+
+  return availableParallelism() * 2 + 1;
+}
+
+function getBulkAttendanceConcurrency(): number {
+  const connectionLimit = getPrismaConnectionLimit();
+  return Math.max(
+    1,
+    Math.min(
+      MAX_BULK_ATTENDANCE_CONCURRENCY,
+      Math.floor(connectionLimit / 2)
+    )
+  );
+}
 
 export interface RecordAttendanceOptions {
   method: AttendanceMethod;
@@ -41,7 +74,26 @@ export interface BulkManualRecord {
   remarks?: string;
 }
 
+interface AbsenceRecalculationKey {
+  studentId: number;
+  courseId: number;
+}
+
+interface PendingAbsenceRecalculation extends AbsenceRecalculationKey {
+  waiters: Array<{
+    resolve: () => void;
+    reject: (reason?: unknown) => void;
+  }>;
+}
+
 class AttendanceEngine {
+  private readonly pendingAbsenceRecalculations = new Map<
+    string,
+    PendingAbsenceRecalculation
+  >();
+  private absenceRecalculationFlushScheduled = false;
+  private absenceRecalculationFlushRunning = false;
+
   getDriver(method: AttendanceMethod): IAttendanceDriver {
     const driver = driverRegistry.get(method);
     if (!driver) {
@@ -324,6 +376,9 @@ class AttendanceEngine {
           ...(intent.locationFlagged !== undefined && {
             locationFlagged: intent.locationFlagged,
           }),
+          ...(intent.pendingApprovedStatus !== undefined && {
+            pendingApprovedStatus: intent.pendingApprovedStatus,
+          }),
           ...(intent.scheduleSlotId !== undefined &&
             intent.scheduleSlotId !== null && {
               scheduleSlot: { connect: { id: intent.scheduleSlotId } },
@@ -350,6 +405,9 @@ class AttendanceEngine {
             locationData: intent.locationData as any,
           }),
           ...(intent.locationFlagged !== undefined && { locationFlagged: intent.locationFlagged }),
+          ...(intent.pendingApprovedStatus !== undefined && {
+            pendingApprovedStatus: intent.pendingApprovedStatus,
+          }),
           ...(intent.sessionId && {
             session: { connect: { id: intent.sessionId } },
           }),
@@ -413,21 +471,28 @@ class AttendanceEngine {
       ctx
     );
 
-    const results = await Promise.all(
-      records.map((record) =>
-        this.recordAttendance({
-          method: 'MANUAL',
-          payload: {
-            studentId: record.studentId,
-            status: record.status,
-            remarks: record.remarks,
-            sessionId: ctx.sessionId,
-            courseId: ctx.courseId,
-          },
-          ctx,
-        })
-      )
-    );
+    const concurrency = getBulkAttendanceConcurrency();
+    const results: RecordAttendanceResult[] = [];
+
+    for (let index = 0; index < records.length; index += concurrency) {
+      const chunk = records.slice(index, index + concurrency);
+      const chunkResults = await Promise.all(
+        chunk.map((record) =>
+          this.recordAttendance({
+            method: 'MANUAL',
+            payload: {
+              studentId: record.studentId,
+              status: record.status,
+              remarks: record.remarks,
+              sessionId: ctx.sessionId,
+              courseId: ctx.courseId,
+            },
+            ctx,
+          })
+        )
+      );
+      results.push(...chunkResults);
+    }
 
     return results.map((r) => r.attendance);
   }
@@ -451,7 +516,7 @@ class AttendanceEngine {
   private async postProcessAsync(intent: AttendanceIntent): Promise<void> {
     try {
       if (intent.courseId) {
-        await this.recalculateAbsence(intent.studentId, intent.courseId);
+        await this.queueAbsenceRecalculation(intent.studentId, intent.courseId);
       }
 
       if (intent.status && intent.status !== 'PRESENT' && intent.courseId) {
@@ -501,117 +566,254 @@ class AttendanceEngine {
         return 'حاضراً متأخراً';
       case 'EXCUSED':
         return 'بعذر';
+      case 'PENDING_REVIEW':
+        return 'قيد المراجعة';
       default:
         return status;
     }
   }
 
   async recalculateAbsence(studentId: number, courseId: number): Promise<void> {
-    const enrollment = await prisma.enrollment.findFirst({
-      where: { studentId, courseId },
-      orderBy: [{ academicYear: 'desc' }, { semester: 'desc' }, { id: 'desc' }],
-      include: { exemptionPeriods: true },
-    });
+    await this.recalculateAbsenceBatch([{ studentId, courseId }]);
+  }
 
-    if (!enrollment || (enrollment.status !== 'ENROLLED' && enrollment.status !== 'BLOCKED')) return;
+  queueAbsenceRecalculation(studentId: number, courseId: number): Promise<void> {
+    const key = `${studentId}:${courseId}`;
 
-    const attendances = await prisma.attendance.findMany({
-      where: { studentId, courseId },
-      select: { id: true, status: true, date: true },
-    });
-
-    const exemptionPeriods = enrollment.exemptionPeriods || [];
-
-    let total = 0;
-    let excused = 0;
-    let absent = 0;
-    let late = 0;
-
-    // Filter out Attendance records whose date falls within any active AbsenceExemptionPeriod for this enrollment.
-    // This calculation-only filter discounts approved exemption windows from absence totals without mutating historical Attendance rows.
-    for (const record of attendances) {
-      const recordTime = record.date.getTime();
-      const isExempt = exemptionPeriods.some(
-        (p) => recordTime >= p.startDate.getTime() && recordTime <= p.endDate.getTime()
-      );
-      if (isExempt) {
-        continue;
+    const completion = new Promise<void>((resolve, reject) => {
+      const pending = this.pendingAbsenceRecalculations.get(key);
+      if (pending) {
+        pending.waiters.push({ resolve, reject });
+      } else {
+        this.pendingAbsenceRecalculations.set(key, {
+          studentId,
+          courseId,
+          waiters: [{ resolve, reject }],
+        });
       }
+    });
 
-      total += 1;
-      if (record.status === 'EXCUSED') excused += 1;
-      if (record.status === 'ABSENT') absent += 1;
-      if (record.status === 'LATE') late += 1;
+    if (
+      !this.absenceRecalculationFlushScheduled &&
+      !this.absenceRecalculationFlushRunning
+    ) {
+      this.absenceRecalculationFlushScheduled = true;
+      setImmediate(() => {
+        void this.flushAbsenceRecalculationQueue();
+      });
     }
 
-    const activeTotal = total - excused;
-    const absencePercent =
-      activeTotal > 0 ? ((absent + late * 0.5) / activeTotal) * 100 : 0;
+    return completion;
+  }
 
-    const course = await prisma.course.findUnique({
-      where: { id: courseId },
-      include: { department: true },
+  private async flushAbsenceRecalculationQueue(): Promise<void> {
+    this.absenceRecalculationFlushScheduled = false;
+    if (this.absenceRecalculationFlushRunning) return;
+
+    this.absenceRecalculationFlushRunning = true;
+    try {
+      while (this.pendingAbsenceRecalculations.size > 0) {
+        const batch = Array.from(this.pendingAbsenceRecalculations.values()).slice(
+          0,
+          ABSENCE_RECALCULATION_BATCH_SIZE
+        );
+        for (const pending of batch) {
+          this.pendingAbsenceRecalculations.delete(
+            `${pending.studentId}:${pending.courseId}`
+          );
+        }
+
+        try {
+          await this.recalculateAbsenceBatch(batch);
+          batch.forEach((pending) =>
+            pending.waiters.forEach(({ resolve }) => resolve())
+          );
+        } catch (error) {
+          batch.forEach((pending) =>
+            pending.waiters.forEach(({ reject }) => reject(error))
+          );
+        }
+      }
+    } finally {
+      this.absenceRecalculationFlushRunning = false;
+      if (
+        this.pendingAbsenceRecalculations.size > 0 &&
+        !this.absenceRecalculationFlushScheduled
+      ) {
+        this.absenceRecalculationFlushScheduled = true;
+        setImmediate(() => {
+          void this.flushAbsenceRecalculationQueue();
+        });
+      }
+    }
+  }
+
+  private async recalculateAbsenceBatch(
+    requestedKeys: AbsenceRecalculationKey[]
+  ): Promise<void> {
+    const uniqueKeys = Array.from(
+      new Map(
+        requestedKeys.map((key) => [`${key.studentId}:${key.courseId}`, key])
+      ).values()
+    );
+    if (uniqueKeys.length === 0) return;
+
+    const enrollmentRows = await prisma.enrollment.findMany({
+      where: {
+        OR: uniqueKeys.map(({ studentId, courseId }) => ({
+          studentId,
+          courseId,
+        })),
+      },
+      select: {
+        id: true,
+        studentId: true,
+        courseId: true,
+        semester: true,
+        academicYear: true,
+        status: true,
+        customAbsenceThreshold: true,
+        exemptionPeriods: {
+          select: { startDate: true, endDate: true },
+        },
+        student: { select: { userId: true } },
+        course: { select: { name: true, departmentId: true } },
+      },
     });
 
-    let maxAbsencePercent: number;
+    const latestEnrollmentByKey = new Map<string, (typeof enrollmentRows)[number]>();
+    for (const enrollment of enrollmentRows) {
+      const key = `${enrollment.studentId}:${enrollment.courseId}`;
+      const current = latestEnrollmentByKey.get(key);
+      if (
+        !current ||
+        enrollment.academicYear > current.academicYear ||
+        (enrollment.academicYear === current.academicYear &&
+          enrollment.semester > current.semester) ||
+        (enrollment.academicYear === current.academicYear &&
+          enrollment.semester === current.semester &&
+          enrollment.id > current.id)
+      ) {
+        latestEnrollmentByKey.set(key, enrollment);
+      }
+    }
 
-    if (enrollment.customAbsenceThreshold !== null && enrollment.customAbsenceThreshold !== undefined) {
-      maxAbsencePercent = enrollment.customAbsenceThreshold;
-    } else {
-      const policies = await prisma.absenceThresholdPolicy.findMany({
+    const enrollments = Array.from(latestEnrollmentByKey.values()).filter(
+      (enrollment) =>
+        enrollment.status === 'ENROLLED' || enrollment.status === 'BLOCKED'
+    );
+    if (enrollments.length === 0) return;
+
+    const attendanceScopes: Prisma.AttendanceWhereInput[] = enrollments.map(
+      (enrollment) => ({
+        studentId: enrollment.studentId,
+        courseId: enrollment.courseId,
+        ...(enrollment.exemptionPeriods.length > 0 && {
+          NOT: {
+            OR: enrollment.exemptionPeriods.map((period) => ({
+              date: { gte: period.startDate, lte: period.endDate },
+            })),
+          },
+        }),
+      })
+    );
+    const courseIds = Array.from(
+      new Set(enrollments.map((enrollment) => enrollment.courseId))
+    );
+    const departmentIds = Array.from(
+      new Set(
+        enrollments
+          .map((enrollment) => enrollment.course.departmentId)
+          .filter((departmentId): departmentId is number => departmentId !== null)
+      )
+    );
+
+    const [attendanceGroups, policies] = await Promise.all([
+      prisma.attendance.groupBy({
+        by: ['studentId', 'courseId', 'status'],
+        where: { OR: attendanceScopes },
+        _count: { _all: true },
+      }),
+      prisma.absenceThresholdPolicy.findMany({
         where: {
           OR: [
-            { courseId },
-            { departmentId: course?.departmentId },
+            { courseId: { in: courseIds } },
+            ...(departmentIds.length > 0
+              ? [{ departmentId: { in: departmentIds } }]
+              : []),
             { departmentId: null, courseId: null },
           ],
         },
-      });
+      }),
+    ]);
 
-      let policy = policies.find((p) => p.courseId === courseId);
-      if (!policy)
-        policy = policies.find((p) => p.departmentId === course?.departmentId);
-      if (!policy)
-        policy = policies.find(
-          (p) => p.courseId === null && p.departmentId === null
-        );
-
-      maxAbsencePercent = policy ? policy.maxAbsencePercent : 25;
+    const countsByEnrollment = new Map<string, Map<AttendanceStatus, number>>();
+    for (const group of attendanceGroups) {
+      const key = `${group.studentId}:${group.courseId}`;
+      const counts = countsByEnrollment.get(key) ?? new Map();
+      counts.set(group.status, group._count._all);
+      countsByEnrollment.set(key, counts);
     }
 
-    if (absencePercent >= maxAbsencePercent) {
-      if (enrollment.status !== 'BLOCKED') {
+    for (const enrollment of enrollments) {
+      const counts = countsByEnrollment.get(
+        `${enrollment.studentId}:${enrollment.courseId}`
+      );
+      const total = counts
+        ? Array.from(counts.values()).reduce((sum, count) => sum + count, 0)
+        : 0;
+      const excused = counts?.get('EXCUSED') ?? 0;
+      const pendingReview = counts?.get('PENDING_REVIEW') ?? 0;
+      const absent = counts?.get('ABSENT') ?? 0;
+      const late = counts?.get('LATE') ?? 0;
+      const activeTotal = total - excused - pendingReview;
+      const absencePercent =
+        activeTotal > 0 ? ((absent + late * 0.5) / activeTotal) * 100 : 0;
+
+      let maxAbsencePercent = enrollment.customAbsenceThreshold ?? 25;
+      if (
+        enrollment.customAbsenceThreshold === null ||
+        enrollment.customAbsenceThreshold === undefined
+      ) {
+        const policy =
+          policies.find((candidate) => candidate.courseId === enrollment.courseId) ||
+          policies.find(
+            (candidate) =>
+              candidate.departmentId === enrollment.course.departmentId
+          ) ||
+          policies.find(
+            (candidate) =>
+              candidate.courseId === null && candidate.departmentId === null
+          );
+        if (policy) maxAbsencePercent = policy.maxAbsencePercent;
+      }
+
+      if (
+        absencePercent >= maxAbsencePercent &&
+        enrollment.status !== 'BLOCKED'
+      ) {
         await prisma.enrollment.update({
           where: { id: enrollment.id },
           data: { status: 'BLOCKED' },
         });
-
-        const student = await prisma.student.findUnique({
-          where: { id: studentId },
-        });
-        if (student) {
-          await createNotification({
-            userId: student.userId,
-            title: 'Enrollment Blocked',
-            message: `Your enrollment in ${course?.name} has been blocked due to exceeding the maximum absence limit (${maxAbsencePercent}%).`,
-            type: 'error',
-          });
-        }
-      }
-    } else if (enrollment.status === 'BLOCKED') {
-      await prisma.enrollment.update({
-        where: { id: enrollment.id },
-        data: { status: 'ENROLLED' },
-      });
-
-      const student = await prisma.student.findUnique({
-        where: { id: studentId },
-      });
-      if (student) {
         await createNotification({
-          userId: student.userId,
+          userId: enrollment.student.userId,
+          title: 'Enrollment Blocked',
+          message: `Your enrollment in ${enrollment.course.name} has been blocked due to exceeding the maximum absence limit (${maxAbsencePercent}%).`,
+          type: 'error',
+        });
+      } else if (
+        absencePercent < maxAbsencePercent &&
+        enrollment.status === 'BLOCKED'
+      ) {
+        await prisma.enrollment.update({
+          where: { id: enrollment.id },
+          data: { status: 'ENROLLED' },
+        });
+        await createNotification({
+          userId: enrollment.student.userId,
           title: 'Enrollment Restored',
-          message: `Your enrollment in ${course?.name} has been restored as your absence rate (${absencePercent.toFixed(1)}%) is now below the limit (${maxAbsencePercent}%).`,
+          message: `Your enrollment in ${enrollment.course.name} has been restored as your absence rate (${absencePercent.toFixed(1)}%) is now below the limit (${maxAbsencePercent}%).`,
           type: 'success',
         });
       }

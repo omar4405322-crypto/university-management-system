@@ -56,6 +56,10 @@ export class GpsDriver implements IAttendanceDriver {
 
     const latitude = rawPayload.latitude != null ? parseFloat(rawPayload.latitude) : null;
     const longitude = rawPayload.longitude != null ? parseFloat(rawPayload.longitude) : null;
+    const accuracy =
+      rawPayload.accuracy != null && !isNaN(parseFloat(rawPayload.accuracy))
+        ? parseFloat(rawPayload.accuracy)
+        : null;
 
     if (latitude == null || longitude == null || isNaN(latitude) || isNaN(longitude)) {
       return {
@@ -65,9 +69,17 @@ export class GpsDriver implements IAttendanceDriver {
       };
     }
 
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      return {
+        valid: false,
+        errorCode: 'INVALID_COORDINATES',
+        errorMessage: 'إحداثيات الموقع خارج النطاق المسموح به (-90 إلى 90 لخط العرض، -180 إلى 180 لخط الطول)',
+      };
+    }
+
     return {
       valid: true,
-      metadata: { session, latitude, longitude },
+      metadata: { session, latitude, longitude, accuracy },
     };
   }
 
@@ -80,7 +92,7 @@ export class GpsDriver implements IAttendanceDriver {
       throw new AppError(validation.errorMessage || 'Invalid GPS attendance payload', 400);
     }
 
-    const { session, latitude, longitude } = validation.metadata!;
+    const { session, latitude, longitude, accuracy } = validation.metadata!;
     const { deviceId } = rawPayload;
 
     // Haversine formula matching QrDriver geofencing logic
@@ -96,18 +108,29 @@ export class GpsDriver implements IAttendanceDriver {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c;
 
-    // Out of range policy: accepts attempt but flags location, matching QrDriver:166-168
-    let locationFlagged = false;
-    if (distance > (session.radius || 120)) {
-      locationFlagged = true;
-    }
-
     const now = new Date();
     const sessionStartTime = new Date(session.createdAt).getTime();
     const elapsedMinutes = (now.getTime() - sessionStartTime) / (1000 * 60);
     const gracePeriodMinutes = session.gracePeriodMins ?? 15;
     const computedStatus: AttendanceStatus =
       elapsedMinutes <= gracePeriodMinutes ? 'PRESENT' : 'LATE';
+
+    // Out of range check:
+    // When distance exceeds session.radius (default 120):
+    // - status is set to PENDING_REVIEW (not counted as present or absent)
+    // - would-be status (computedStatus) stored in pendingApprovedStatus
+    // - locationFlagged is set to true for visibility and admin review
+    // Poor accuracy alone does NOT auto-forgive an out-of-range distance.
+    const isOutOfRange = distance > (session.radius || 120);
+    let locationFlagged = false;
+    let finalStatus: AttendanceStatus = computedStatus;
+    let pendingApprovedStatus: AttendanceStatus | null = null;
+
+    if (isOutOfRange) {
+      locationFlagged = true;
+      finalStatus = 'PENDING_REVIEW' as AttendanceStatus;
+      pendingApprovedStatus = computedStatus;
+    }
 
     const attendanceDate = new Date(session.createdAt);
     attendanceDate.setHours(0, 0, 0, 0);
@@ -118,10 +141,11 @@ export class GpsDriver implements IAttendanceDriver {
       sessionId: session.id,
       courseId: session.scheduleSlot.courseId,
       scheduleSlotId: session.scheduleSlot.id,
-      status: computedStatus,
+      status: finalStatus,
+      pendingApprovedStatus,
       ipAddress: ctx.ipAddress || null,
       deviceId: deviceId || null,
-      locationData: { lat: latitude, lng: longitude },
+      locationData: { lat: latitude, lng: longitude, accuracy },
       locationFlagged,
       date: attendanceDate,
     };

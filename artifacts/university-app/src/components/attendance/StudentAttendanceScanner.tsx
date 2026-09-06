@@ -151,6 +151,7 @@ export function StudentAttendanceScanner({
       // Geolocation capture
       let lat: number | undefined;
       let lng: number | undefined;
+      let accuracy: number | undefined;
       try {
         const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(
@@ -161,6 +162,7 @@ export function StudentAttendanceScanner({
         });
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
+        accuracy = pos.coords.accuracy;
       } catch (e) {
         console.warn('Geolocation denied or failed', e);
       }
@@ -191,6 +193,7 @@ export function StudentAttendanceScanner({
         step,
         latitude: lat,
         longitude: lng,
+        accuracy,
         deviceId
       });
 
@@ -266,6 +269,7 @@ export function StudentAttendanceScanner({
       // Step 1: Capture student location with two-tier fallback
       let lat: number;
       let lng: number;
+      let accuracy: number | undefined;
 
       try {
         let pos: GeolocationPosition;
@@ -296,6 +300,7 @@ export function StudentAttendanceScanner({
 
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
+        accuracy = pos.coords.accuracy;
       } catch (geoErr: any) {
         console.warn('Geolocation capture failed:', geoErr);
         if (geoErr?.code === 1) {
@@ -398,6 +403,7 @@ export function StudentAttendanceScanner({
         sessionId: targetSessionId,
         latitude: lat,
         longitude: lng,
+        accuracy,
         deviceId,
       });
 

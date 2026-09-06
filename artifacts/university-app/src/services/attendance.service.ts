@@ -52,6 +52,7 @@ export interface QrAttendanceParams {
   step?: number;
   latitude?: number;
   longitude?: number;
+  accuracy?: number;
   deviceId?: string;
 }
 
@@ -208,6 +209,11 @@ const attendanceService = {
 
   overrideFlaggedRecord: async (attendanceId: number, note?: string) => {
     const response = await api.post(`/attendance/record/${attendanceId}/override`, { note });
+    return response.data;
+  },
+
+  rejectFlaggedRecord: async (attendanceId: number, note?: string) => {
+    const response = await api.post(`/attendance/record/${attendanceId}/reject`, { note });
     return response.data;
   },
 

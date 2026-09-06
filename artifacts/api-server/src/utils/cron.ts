@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import prisma from './prismaClient';
 import logger from './logger';
 import { createNotification } from './notification.utils';
+import attendanceEngine from '../attendance/attendance.engine';
 
 /**
  * AI Risk Detection Job
@@ -160,3 +161,85 @@ export const startSessionAutoExpiryJob = (): void => {
     }
   });
 };
+
+/**
+ * Core auto-resolve logic for PENDING_REVIEW records older than 5 calendar days.
+ * Sets status to ABSENT, clears pendingApprovedStatus, sets locationFlagged to false,
+ * and triggers attendanceEngine.recalculateAbsence for affected student/course pairs.
+ * Note: School-day tracking doesn't exist in this codebase; calendar days are used as a documented simplification.
+ */
+export const autoResolvePendingAttendance = async (
+  cutoffDate?: Date
+): Promise<number> => {
+  const cutoff = cutoffDate || new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+
+  const expiredRecords = await prisma.attendance.findMany({
+    where: {
+      status: 'PENDING_REVIEW',
+      createdAt: { lte: cutoff },
+    },
+    select: {
+      id: true,
+      studentId: true,
+      courseId: true,
+    },
+  });
+
+  if (expiredRecords.length === 0) {
+    return 0;
+  }
+
+  const expiredIds = expiredRecords.map((r) => r.id);
+
+  await prisma.attendance.updateMany({
+    where: { id: { in: expiredIds } },
+    data: {
+      status: 'ABSENT',
+      pendingApprovedStatus: null,
+      locationFlagged: false,
+      overrideNote: 'Auto-resolved to ABSENT after 5 calendar days review window',
+    },
+  });
+
+  const affectedPairs = new Set<string>();
+  expiredRecords.forEach((r) =>
+    affectedPairs.add(`${r.studentId}:${r.courseId}`)
+  );
+
+  for (const pair of affectedPairs) {
+    const [studentIdStr, courseIdStr] = pair.split(':');
+    try {
+      await attendanceEngine.recalculateAbsence(
+        parseInt(studentIdStr),
+        parseInt(courseIdStr)
+      );
+    } catch (err: any) {
+      logger.error(
+        `[CRON] Failed to recalculate absence for student ${studentIdStr} course ${courseIdStr}: ${err.message}`
+      );
+    }
+  }
+
+  return expiredRecords.length;
+};
+
+/**
+ * Scheduled job to auto-resolve PENDING_REVIEW attendance records older than 5 calendar days.
+ * Runs daily at 3:00 AM.
+ */
+export const startPendingReviewAutoResolveJob = (): void => {
+  cron.schedule('0 3 * * *', async () => {
+    logger.info('[CRON] Starting Pending Review Auto-Resolve job');
+    try {
+      const resolvedCount = await autoResolvePendingAttendance();
+      if (resolvedCount > 0) {
+        logger.info(
+          `[CRON] Auto-resolved ${resolvedCount} pending attendance records to ABSENT`
+        );
+      }
+    } catch (err: any) {
+      logger.error(`[CRON] Pending Review Auto-Resolve Job error: ${err.message}`);
+    }
+  });
+};
+

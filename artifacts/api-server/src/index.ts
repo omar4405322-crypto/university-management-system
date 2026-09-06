@@ -40,7 +40,7 @@ import http from 'http';
 // @ts-ignore
 import { initSocket } from './utils/socket';
 // @ts-ignore
-import { startRiskDetectionJob, startSessionAutoExpiryJob } from './utils/cron';
+import { startRiskDetectionJob, startSessionAutoExpiryJob, startPendingReviewAutoResolveJob } from './utils/cron';
 // @ts-ignore
 import logger from './utils/logger';
 
@@ -59,6 +59,7 @@ const server: http.Server = http.createServer(app);
 initSocket(server);
 startRiskDetectionJob();
 startSessionAutoExpiryJob();
+startPendingReviewAutoResolveJob();
 
 const startServer = () => {
   server.listen(PORT, '0.0.0.0', () => {
