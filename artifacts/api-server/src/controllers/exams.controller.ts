@@ -6,6 +6,21 @@ import { NotFoundError, AuthorizationError, ValidationError } from '../utils/app
 import { getScopeWhere } from '../utils/scope.utils';
 import { sendToUser } from '../utils/socket';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import {
+  canStudentReviewExamAnswers,
+  STUDENT_EXAM_QUESTION_SELECT,
+  STUDENT_EXAM_REVIEW_QUESTION_SELECT,
+  type StudentExamQuestionDto,
+  type StudentExamReviewQuestionDto,
+} from '../utils/examAnswerReview.utils';
+
+/**
+ * Extract the client IP from an Express request.
+ * Mirrors the pattern used in audit.utils.ts for consistency.
+ */
+function getClientIp(req: Request): string | null {
+  return req.ip || req.get?.('x-forwarded-for')?.split(',')[0]?.trim() || null;
+}
 
 const CAIRO_TZ = 'Africa/Cairo';
 
@@ -619,6 +634,18 @@ export const startExamSession = catchAsync(async (req: Request, res: Response, n
     }
   }
 
+  // Record a SESSION_START audit event with server-captured IP
+  if (submission) {
+    await prisma.examViolation.create({
+      data: {
+        submissionId: submission.id,
+        type: 'SESSION_START',
+        details: 'Exam session started',
+        ipAddress: getClientIp(req),
+      },
+    }).catch(() => { /* best-effort — do not block exam start */ });
+  }
+
   res.status(201).json({ success: true, data: submission });
 });
 
@@ -800,14 +827,26 @@ export const submitExam = catchAsync(async (req: Request, res: Response, next: N
 
     // Handle violations if any
     if (Array.isArray(antiCheatLogs) && antiCheatLogs.length > 0) {
+      const serverIp = getClientIp(req);
       const violationRecords = antiCheatLogs.map((log: any) => ({
         submissionId: sub.id,
         type: log.type,
         details: log.details || null,
-        occurredAt: log.occurredAt ? new Date(log.occurredAt) : new Date()
+        occurredAt: log.occurredAt ? new Date(log.occurredAt) : new Date(),
+        ipAddress: serverIp,
       }));
       await tx.examViolation.createMany({ data: violationRecords });
     }
+
+    // Record a SESSION_END audit event with server-captured IP
+    await tx.examViolation.create({
+      data: {
+        submissionId: sub.id,
+        type: 'SESSION_END',
+        details: 'Exam submitted',
+        ipAddress: getClientIp(req),
+      },
+    });
 
     return sub;
   });
@@ -863,14 +902,26 @@ export const cancelExam = catchAsync(async (req: Request, res: Response, next: N
 
     // Handle violations if any
     if (Array.isArray(antiCheatLogs) && antiCheatLogs.length > 0) {
+      const serverIp = getClientIp(req);
       const violationRecords = antiCheatLogs.map((log: any) => ({
         submissionId: sub.id,
         type: log.type,
         details: log.details || (reason ? `Auto-cancelled: ${reason}` : null),
-        occurredAt: log.occurredAt ? new Date(log.occurredAt) : new Date()
+        occurredAt: log.occurredAt ? new Date(log.occurredAt) : new Date(),
+        ipAddress: serverIp,
       }));
       await tx.examViolation.createMany({ data: violationRecords });
     }
+
+    // Record a SESSION_END audit event with server-captured IP
+    await tx.examViolation.create({
+      data: {
+        submissionId: sub.id,
+        type: 'SESSION_END',
+        details: reason ? `Exam cancelled: ${reason}` : 'Exam cancelled (anti-cheat)',
+        ipAddress: getClientIp(req),
+      },
+    });
 
     return sub;
   });
@@ -939,17 +990,39 @@ export const getMyExamSubmission = catchAsync(async (req: Request, res: Response
 
   if (!submission) return next(new NotFoundError('Submission not found'));
 
-  const exam = await prisma.exam.findUnique({ where: { id: examId } });
-
-  let questions = await prisma.examQuestion.findMany({
-    where: { examId },
-    orderBy: { order: 'asc' },
+  const exam = await prisma.exam.findUnique({
+    where: { id: examId },
+    select: {
+      id: true,
+      courseId: true,
+      date: true,
+      endTime: true,
+    },
   });
+  if (!exam) return next(new NotFoundError('Exam not found'));
+
+  const canReviewAnswers = canStudentReviewExamAnswers(submission.status, exam);
+  let questions: Array<StudentExamQuestionDto | StudentExamReviewQuestionDto>;
+
+  if (canReviewAnswers) {
+    questions = await prisma.examQuestion.findMany({
+      where: { examId },
+      select: STUDENT_EXAM_REVIEW_QUESTION_SELECT,
+      orderBy: { order: 'asc' },
+    });
+  } else {
+    questions = await prisma.examQuestion.findMany({
+      where: { examId },
+      select: STUDENT_EXAM_QUESTION_SELECT,
+      orderBy: { order: 'asc' },
+    });
+  }
 
   // Fallback: If no questions attached directly to examId, load questions from any exam of the same course
-  if (questions.length === 0 && exam?.courseId) {
+  if (questions.length === 0 && exam.courseId) {
     questions = await prisma.examQuestion.findMany({
       where: { exam: { courseId: exam.courseId } },
+      select: STUDENT_EXAM_QUESTION_SELECT,
       orderBy: { order: 'asc' },
     });
   }

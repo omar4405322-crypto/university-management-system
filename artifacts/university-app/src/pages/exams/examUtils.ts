@@ -386,6 +386,7 @@ export interface DeviceInfo {
   longitude?: number;
   locationAccuracy?: number;
   locationDenied?: boolean;
+  networkType?: string;
 }
 
 export interface AntiCheatSettings {

@@ -62,6 +62,22 @@ function parseUserAgent(): { deviceType: string; browserName: string; browserVer
   return { deviceType, browserName, browserVersion, os };
 }
 
+/**
+ * Best-effort network-type detection using the Network Information API.
+ * Supported in Chromium-based browsers. NOT supported in Safari/iOS/Firefox —
+ * returns "unknown" when the API is unavailable rather than omitting or guessing.
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/NetworkInformation
+ */
+function getNetworkType(): string {
+  const conn = (navigator as any).connection
+    || (navigator as any).mozConnection
+    || (navigator as any).webkitConnection;
+  if (!conn) return 'unknown';
+  // .type gives: 'bluetooth', 'cellular', 'ethernet', 'wifi', 'wimax', 'other', 'none', 'unknown'
+  // .effectiveType gives: 'slow-2g', '2g', '3g', '4g'
+  return conn.type || conn.effectiveType || 'unknown';
+}
+
 export function collectDeviceInfo(): DeviceInfo {
   const { deviceType, browserName, browserVersion, os } = parseUserAgent();
   return {
@@ -75,6 +91,7 @@ export function collectDeviceInfo(): DeviceInfo {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown',
     touchSupport: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
     concurrentScreens: (window.screen as any).isExtended ? 2 : 1,
+    networkType: getNetworkType(),
   };
 }
 
