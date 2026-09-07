@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useDeferredValue } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -45,19 +45,6 @@ import { useAuth } from '../../context/AuthContext';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import api from '../../services/api';
 
-// Arabic normalizer helper
-function normalizeArabic(text: string | null | undefined): string {
-  if (!text) return '';
-  return String(text)
-    .trim()
-    .toLowerCase()
-    .replace(/[أإآٱ]/g, 'ا')
-    .replace(/ة/g, 'ه')
-    .replace(/ى/g, 'ي')
-    .replace(/[\u064B-\u065F\u0670]/g, '')
-    .replace(/\s+/g, ' ');
-}
-
 export function StudentWarningsPage() {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -74,6 +61,7 @@ export function StudentWarningsPage() {
     summary?: any;
     warningRecords?: any[];
     coursesList?: any[];
+    pagination?: any;
   }>({});
   const [studentCourses, setStudentCourses] = useState<any[]>([]);
   const [studentNotifications, setStudentNotifications] = useState<any[]>([]);
@@ -83,6 +71,13 @@ export function StudentWarningsPage() {
   const [selectedLevel, setSelectedLevel] = useState<string>('ALL');
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
   const [selectedCourseId, setSelectedCourseId] = useState<string>('ALL');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
+  const deferredSearch = useDeferredValue(search.trim());
+  const [exporting, setExporting] = useState(false);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
 
   // Unblock action loading state
   const [unblockingId, setUnblockingId] = useState<number | null>(null);
@@ -92,8 +87,20 @@ export function StudentWarningsPage() {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       setError(null);
+      setExportNotice(null);
 
-      const res = await attendanceService.getMyWarnings();
+      const res = await attendanceService.getMyWarnings({
+        page,
+        limit: pageSize,
+        ...(selectedLevel !== 'ALL' && { warningStage: selectedLevel }),
+        ...(selectedYear !== 'ALL' && { year: Number(selectedYear) }),
+        ...(selectedCourseId !== 'ALL' && {
+          courseId: Number(selectedCourseId),
+        }),
+        ...(deferredSearch && { search: deferredSearch }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate }),
+      });
       if (res?.data) {
         const payload = res.data;
         if (payload.isStaff) {
@@ -112,7 +119,15 @@ export function StudentWarningsPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [
+    page,
+    selectedLevel,
+    selectedYear,
+    selectedCourseId,
+    deferredSearch,
+    startDate,
+    endDate,
+  ]);
 
   useEffect(() => {
     fetchWarningsData();
@@ -139,104 +154,55 @@ export function StudentWarningsPage() {
     }
   };
 
-  // CSV Export for Faculty/Staff
-  const exportToCSV = () => {
-    const records = filteredStaffRecords;
-    if (records.length === 0) return;
+  const exportToCSV = async () => {
+    try {
+      setExporting(true);
+      setError(null);
+      setExportNotice(null);
+      const result = await attendanceService.exportWarnings({
+        ...(selectedLevel !== 'ALL' && { warningStage: selectedLevel }),
+        ...(selectedYear !== 'ALL' && { year: Number(selectedYear) }),
+        ...(selectedCourseId !== 'ALL' && {
+          courseId: Number(selectedCourseId),
+        }),
+        ...(search.trim() && { search: search.trim() }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate }),
+      });
+      const url = URL.createObjectURL(result.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `absence_warnings_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
 
-    const headers = [
-      'Student Name',
-      'Student ID',
-      'Course Name',
-      'Course Code',
-      'Absence %',
-      'Max Allowed %',
-      'Status',
-      'Total Sessions',
-      'Absent',
-      'Late',
-      'Excused',
-    ];
-
-    const rows = records.map((r) => [
-      `"${r.studentName}"`,
-      `"${r.studentCode}"`,
-      `"${r.courseName}"`,
-      `"${r.courseCode}"`,
-      `"${r.absencePercent}%"`,
-      `"${r.maxAbsencePercent}%"`,
-      `"${r.warningStage}"`,
-      r.totalSessions,
-      r.absent,
-      r.late,
-      r.excused,
-    ]);
-
-    const csvContent =
-      'data:text/csv;charset=utf-8,\uFEFF' +
-      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute(
-      'download',
-      `absence_warnings_${new Date().toISOString().slice(0, 10)}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      setExportNotice(
+        result.capped
+          ? isRTL
+            ? `تم تصدير أول ${result.limit} سجل من أصل ${result.total}. تم تطبيق الحد لحماية أداء النظام.`
+            : `Exported the first ${result.limit} of ${result.total} records. The safety cap was applied to protect system performance.`
+          : isRTL
+          ? `تم تصدير جميع السجلات المطابقة (${result.total}).`
+          : `Exported all ${result.total} matching records.`
+      );
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Failed to export absence warnings');
+    } finally {
+      setExporting(false);
+    }
   };
 
-  // Filtered Staff Records
-  const filteredStaffRecords = useMemo(() => {
-    if (!staffData.warningRecords) return [];
-    const normQ = normalizeArabic(search);
-
-    return staffData.warningRecords.filter((r) => {
-      // 1. Warning Stage
-      if (selectedLevel !== 'ALL' && r.warningStage !== selectedLevel) {
-        return false;
-      }
-
-      // 2. Academic Year
-      if (selectedYear !== 'ALL') {
-        const yr = Number(r.studentYear || r.courseYear) || 1;
-        if (yr !== Number(selectedYear)) return false;
-      }
-
-      // 3. Course Filter
-      if (selectedCourseId !== 'ALL' && String(r.courseId) !== String(selectedCourseId)) {
-        return false;
-      }
-
-      // 4. Search
-      if (normQ) {
-        const nameNorm = normalizeArabic(r.studentName);
-        const codeNorm = normalizeArabic(r.studentCode);
-        const courseCodeNorm = normalizeArabic(r.courseCode);
-        const courseNameNorm = normalizeArabic(r.courseName);
-        const emailNorm = normalizeArabic(r.studentEmail);
-
-        const matches =
-          nameNorm.includes(normQ) ||
-          codeNorm.includes(normQ) ||
-          courseCodeNorm.includes(normQ) ||
-          courseNameNorm.includes(normQ) ||
-          emailNorm.includes(normQ);
-
-        if (!matches) return false;
-      }
-
-      return true;
-    });
-  }, [staffData.warningRecords, search, selectedLevel, selectedYear, selectedCourseId]);
+  const filteredStaffRecords = staffData.warningRecords || [];
 
   const hasActiveFilters = Boolean(
     search.trim() ||
       selectedLevel !== 'ALL' ||
       selectedYear !== 'ALL' ||
-      selectedCourseId !== 'ALL'
+      selectedCourseId !== 'ALL' ||
+      startDate ||
+      endDate
   );
 
   const resetFilters = () => {
@@ -244,6 +210,9 @@ export function StudentWarningsPage() {
     setSelectedLevel('ALL');
     setSelectedYear('ALL');
     setSelectedCourseId('ALL');
+    setStartDate('');
+    setEndDate('');
+    setPage(1);
   };
 
   return (
@@ -255,6 +224,21 @@ export function StudentWarningsPage() {
             <span>{error}</span>
           </div>
           <button onClick={() => setError(null)} className="p-1 hover:opacity-75 cursor-pointer">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {exportNotice && (
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3 text-xs font-semibold">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span>{exportNotice}</span>
+          </div>
+          <button
+            onClick={() => setExportNotice(null)}
+            className="p-1 hover:opacity-75 cursor-pointer"
+          >
             <X size={14} />
           </button>
         </div>
@@ -291,11 +275,23 @@ export function StudentWarningsPage() {
               variant="outline"
               size="sm"
               onClick={exportToCSV}
-              disabled={filteredStaffRecords.length === 0}
+              disabled={exporting || (staffData.pagination?.total ?? 0) === 0}
               className="h-8.5 px-3 rounded-lg border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 gap-1.5 cursor-pointer shadow-2xs"
             >
-              <FileSpreadsheet size={13} className="text-emerald-600" />
-              <span>{isRTL ? 'تصدير CSV' : 'Export CSV'}</span>
+              {exporting ? (
+                <RefreshCw size={13} className="animate-spin text-emerald-600" />
+              ) : (
+                <FileSpreadsheet size={13} className="text-emerald-600" />
+              )}
+              <span>
+                {exporting
+                  ? isRTL
+                    ? 'جارٍ التصدير...'
+                    : 'Exporting...'
+                  : isRTL
+                  ? 'تصدير CSV'
+                  : 'Export CSV'}
+              </span>
             </Button>
           )}
 
@@ -338,7 +334,10 @@ export function StudentWarningsPage() {
               icon={XCircle}
               color="rose"
               isActive={selectedLevel === 'BLOCKED'}
-              onClick={() => setSelectedLevel(selectedLevel === 'BLOCKED' ? 'ALL' : 'BLOCKED')}
+              onClick={() => {
+                setSelectedLevel(selectedLevel === 'BLOCKED' ? 'ALL' : 'BLOCKED');
+                setPage(1);
+              }}
             />
 
             <StatCard
@@ -348,7 +347,10 @@ export function StudentWarningsPage() {
               icon={AlertTriangle}
               color="amber"
               isActive={selectedLevel === 'FINAL_WARNING'}
-              onClick={() => setSelectedLevel(selectedLevel === 'FINAL_WARNING' ? 'ALL' : 'FINAL_WARNING')}
+              onClick={() => {
+                setSelectedLevel(selectedLevel === 'FINAL_WARNING' ? 'ALL' : 'FINAL_WARNING');
+                setPage(1);
+              }}
             />
 
             <StatCard
@@ -358,7 +360,10 @@ export function StudentWarningsPage() {
               icon={AlertCircle}
               color="blue"
               isActive={selectedLevel === 'FIRST_WARNING'}
-              onClick={() => setSelectedLevel(selectedLevel === 'FIRST_WARNING' ? 'ALL' : 'FIRST_WARNING')}
+              onClick={() => {
+                setSelectedLevel(selectedLevel === 'FIRST_WARNING' ? 'ALL' : 'FIRST_WARNING');
+                setPage(1);
+              }}
             />
 
             <StatCard
@@ -368,7 +373,10 @@ export function StudentWarningsPage() {
               icon={Users}
               color="primary"
               isActive={selectedLevel === 'ALL'}
-              onClick={() => setSelectedLevel('ALL')}
+              onClick={() => {
+                setSelectedLevel('ALL');
+                setPage(1);
+              }}
             />
           </div>
 
@@ -390,12 +398,18 @@ export function StudentWarningsPage() {
                     : 'Search by student name, ID, or course code...'
                 }
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
                 className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
               />
               {search && (
                 <button
-                  onClick={() => setSearch('')}
+                  onClick={() => {
+                    setSearch('');
+                    setPage(1);
+                  }}
                   className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
                 >
                   <X size={12} />
@@ -406,7 +420,10 @@ export function StudentWarningsPage() {
             {/* Warning Stage Filter */}
             <select
               value={selectedLevel}
-              onChange={(e) => setSelectedLevel(e.target.value)}
+              onChange={(e) => {
+                setSelectedLevel(e.target.value);
+                setPage(1);
+              }}
               className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
             >
               <option value="ALL">{isRTL ? 'جميع الحالات والإنذارات' : 'All Warning Levels'}</option>
@@ -419,7 +436,10 @@ export function StudentWarningsPage() {
             {/* Academic Year Filter */}
             <select
               value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
+              onChange={(e) => {
+                setSelectedYear(e.target.value);
+                setPage(1);
+              }}
               className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
             >
               <option value="ALL">{isRTL ? 'جميع الفرق' : 'All Years'}</option>
@@ -433,7 +453,10 @@ export function StudentWarningsPage() {
             {staffData.coursesList && staffData.coursesList.length > 0 && (
               <select
                 value={selectedCourseId}
-                onChange={(e) => setSelectedCourseId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedCourseId(e.target.value);
+                  setPage(1);
+                }}
                 className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer max-w-[180px] truncate"
               >
                 <option value="ALL">{isRTL ? 'جميع المقررات' : 'All Courses'}</option>
@@ -444,6 +467,34 @@ export function StudentWarningsPage() {
                 ))}
               </select>
             )}
+
+            <label className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+              <span>{isRTL ? 'من' : 'From'}</span>
+              <input
+                type="date"
+                value={startDate}
+                max={endDate || undefined}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setPage(1);
+                }}
+                className="h-8.5 px-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500"
+              />
+            </label>
+
+            <label className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+              <span>{isRTL ? 'إلى' : 'To'}</span>
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setPage(1);
+                }}
+                className="h-8.5 px-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500"
+              />
+            </label>
 
             {/* Reset Filter Button */}
             {hasActiveFilters && (
@@ -677,6 +728,37 @@ export function StudentWarningsPage() {
                   </TableBody>
                 </Table>
               </div>
+              {staffData.pagination?.totalPages > 1 && (
+                <div className="flex items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-700 px-3 py-2">
+                  <span className="text-[11px] text-slate-500">
+                    {isRTL
+                      ? `صفحة ${staffData.pagination.page} من ${staffData.pagination.totalPages}`
+                      : `Page ${staffData.pagination.page} of ${staffData.pagination.totalPages}`}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1}
+                      onClick={() => setPage((current) => Math.max(1, current - 1))}
+                      className="h-7 px-2 text-[11px]"
+                    >
+                      <ChevronLeft size={12} />
+                      {isRTL ? 'السابق' : 'Previous'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= staffData.pagination.totalPages}
+                      onClick={() => setPage((current) => current + 1)}
+                      className="h-7 px-2 text-[11px]"
+                    >
+                      {isRTL ? 'التالي' : 'Next'}
+                      <ChevronRight size={12} />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

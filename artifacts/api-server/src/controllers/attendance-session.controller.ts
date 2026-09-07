@@ -77,11 +77,35 @@ export const markStudentAttendance = catchAsync(
 export const getSlotSessions = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { slotId } = req.params;
-    const data = await AttendanceSessionService.getSlotSessions(
+    const {
+      date,
+      startDate,
+      endDate,
+      semester,
+      academicYear,
+      page,
+      limit,
+    } = req.query;
+    const result = await AttendanceSessionService.getSlotSessions(
       req.user,
-      parseInt(slotId as string)
+      parseInt(slotId as string),
+      {
+        date: date as string | undefined,
+        startDate: startDate as string | undefined,
+        endDate: endDate as string | undefined,
+        semester: semester ? parseInt(semester as string) : undefined,
+        academicYear: academicYear
+          ? parseInt(academicYear as string)
+          : undefined,
+        page: page ? parseInt(page as string) : undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+      }
     );
-    res.json({ success: true, data });
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+    });
   }
 );
 

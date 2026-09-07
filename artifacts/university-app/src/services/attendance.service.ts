@@ -114,8 +114,12 @@ const attendanceService = {
     return response.data;
   },
 
-  getCourseAttendance: async (courseId: number, date?: string) => {
-    const params = date ? { date } : {};
+  getCourseAttendance: async (
+    courseId: number,
+    date?: string,
+    options: Record<string, any> = {}
+  ) => {
+    const params = { ...options, ...(date ? { date } : {}) };
     const response = await api.get(`/attendance/course/${courseId}`, { params });
     return response.data;
   },
@@ -144,8 +148,11 @@ const attendanceService = {
     return response.data;
   },
 
-  getMyAttendance: async (courseId?: number) => {
-    const params = courseId ? { courseId } : {};
+  getMyAttendance: async (
+    courseId?: number,
+    options: Record<string, any> = {}
+  ) => {
+    const params = { ...options, ...(courseId ? { courseId } : {}) };
     const response = await api.get('/attendance/my-attendance', { params });
     return response.data;
   },
@@ -165,9 +172,22 @@ const attendanceService = {
     return response.data;
   },
 
-  getMyWarnings: async () => {
-    const response = await api.get('/attendance/my-warnings');
+  getMyWarnings: async (params: Record<string, any> = {}) => {
+    const response = await api.get('/attendance/my-warnings', { params });
     return response.data;
+  },
+
+  exportWarnings: async (params: Record<string, any> = {}) => {
+    const response = await api.get('/attendance/warnings/export', {
+      params,
+      responseType: 'blob',
+    });
+    return {
+      blob: response.data as Blob,
+      capped: response.headers['x-export-capped'] === 'true',
+      limit: Number(response.headers['x-export-limit'] || 0),
+      total: Number(response.headers['x-export-total'] || 0),
+    };
   },
 
   startSession: async (data: StartSessionParams) => {
@@ -217,8 +237,13 @@ const attendanceService = {
     return response.data;
   },
 
-  getSlotSessions: async (slotId: number) => {
-    const response = await api.get(`/attendance/slot/${slotId}/sessions`);
+  getSlotSessions: async (
+    slotId: number,
+    params: Record<string, any> = {}
+  ) => {
+    const response = await api.get(`/attendance/slot/${slotId}/sessions`, {
+      params,
+    });
     return response.data;
   },
 

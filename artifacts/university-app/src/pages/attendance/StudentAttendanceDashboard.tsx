@@ -28,6 +28,9 @@ export function StudentAttendanceDashboard() {
   const [myCourses, setMyCourses] = useState<any[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [myAttendance, setMyAttendance] = useState<any[]>([]);
+  const [attendanceStats, setAttendanceStats] = useState<any>(null);
+  const [attendancePagination, setAttendancePagination] = useState<any>(null);
+  const [historyPage, setHistoryPage] = useState(1);
   const [centralStats, setCentralStats] = useState<any>(null);
   const [activeSession, setActiveSession] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -56,8 +59,15 @@ export function StudentAttendanceDashboard() {
 
   useEffect(() => {
     setLoading(true);
-    attendanceService.getMyAttendance(selectedCourseId || undefined)
-      .then(res => setMyAttendance(res.data || []))
+    attendanceService.getMyAttendance(selectedCourseId || undefined, {
+      page: historyPage,
+      limit: 20,
+    })
+      .then(res => {
+        setMyAttendance(res.data || []);
+        setAttendanceStats(res.stats || null);
+        setAttendancePagination(res.pagination || null);
+      })
       .catch((err) => console.error('Failed to load attendance records:', err))
       .finally(() => setLoading(false));
 
@@ -74,7 +84,7 @@ export function StudentAttendanceDashboard() {
     } else {
       setActiveSession(null);
     }
-  }, [selectedCourseId]);
+  }, [selectedCourseId, historyPage]);
 
   const renderStatusBadge = (status: string) => {
     switch (status) {
@@ -113,7 +123,7 @@ export function StudentAttendanceDashboard() {
 
   // Calculate statistics:
   // - For All Courses view (selectedCourseId === null): use centralStats breakdown & rate when available.
-  // - For specific course: compute strictly from that course's myAttendance array using formula ((present + late * 0.5) / activeTotal) * 100.
+  // - For a specific course, use the server's aggregate query so pagination does not change totals.
   const getStats = () => {
     let present = 0, absent = 0, late = 0, excused = 0;
     myAttendance.forEach(a => {
@@ -127,21 +137,24 @@ export function StudentAttendanceDashboard() {
 
     const displayTotal = isAllCourses && centralStats?.totalSessions !== undefined
       ? centralStats.totalSessions
-      : myAttendance.length;
+      : attendanceStats?.total ?? myAttendance.length;
     const displayPresent = isAllCourses && centralStats?.present !== undefined
       ? centralStats.present
-      : present;
+      : attendanceStats?.PRESENT ?? present;
     const displayLate = isAllCourses && centralStats?.late !== undefined
       ? centralStats.late
-      : late;
+      : attendanceStats?.LATE ?? late;
     const displayAbsent = isAllCourses && centralStats?.absent !== undefined
       ? centralStats.absent
-      : absent;
+      : attendanceStats?.ABSENT ?? absent;
     const displayExcused = isAllCourses && centralStats?.excused !== undefined
       ? centralStats.excused
-      : excused;
+      : attendanceStats?.EXCUSED ?? excused;
+    const displayPendingReview = isAllCourses
+      ? 0
+      : attendanceStats?.PENDING_REVIEW ?? 0;
 
-    const activeTotal = displayTotal - displayExcused;
+    const activeTotal = displayTotal - displayExcused - displayPendingReview;
     
     let percentage: number;
     if (isAllCourses) {
@@ -149,7 +162,9 @@ export function StudentAttendanceDashboard() {
         ? Math.round(centralStats.rate)
         : (activeTotal > 0 ? Math.round(((displayPresent + displayLate * 0.5) / activeTotal) * 100) : 0);
     } else {
-      percentage = activeTotal > 0
+      percentage = attendanceStats?.attendancePercentage !== undefined
+        ? Math.round(attendanceStats.attendancePercentage)
+        : activeTotal > 0
         ? Math.round(((present + late * 0.5) / activeTotal) * 100)
         : 0;
     }
@@ -278,7 +293,10 @@ export function StudentAttendanceDashboard() {
             
             <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
               <button
-                onClick={() => setSelectedCourseId(null)}
+                onClick={() => {
+                  setSelectedCourseId(null);
+                  setHistoryPage(1);
+                }}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border ${
                   selectedCourseId === null
                     ? 'bg-brand-primary-600 text-white border-brand-primary-400 shadow-xs'
@@ -291,7 +309,10 @@ export function StudentAttendanceDashboard() {
               {myCourses.map(course => (
                 <button
                   key={course.id}
-                  onClick={() => setSelectedCourseId(course.id)}
+                  onClick={() => {
+                    setSelectedCourseId(course.id);
+                    setHistoryPage(1);
+                  }}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border ${
                     selectedCourseId === course.id
                       ? 'bg-brand-primary-600 text-white border-brand-primary-400 shadow-xs'
@@ -560,6 +581,39 @@ export function StudentAttendanceDashboard() {
                         <ChevronDown className="w-4 h-4" />
                       )}
                     </button>
+                  </div>
+                )}
+                {attendancePagination?.totalPages > 1 && (
+                  <div className="flex items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-700/60 px-4 py-3">
+                    <span className="text-xs text-slate-500">
+                      {isRTL
+                        ? `صفحة ${attendancePagination.page} من ${attendancePagination.totalPages}`
+                        : `Page ${attendancePagination.page} of ${attendancePagination.totalPages}`}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={historyPage <= 1}
+                        onClick={() => {
+                          setShowAllHistory(false);
+                          setHistoryPage((current) => Math.max(1, current - 1));
+                        }}
+                        className="text-xs font-semibold text-brand-primary-600 disabled:opacity-40"
+                      >
+                        {isRTL ? 'السابق' : 'Previous'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={historyPage >= attendancePagination.totalPages}
+                        onClick={() => {
+                          setShowAllHistory(false);
+                          setHistoryPage((current) => current + 1);
+                        }}
+                        className="text-xs font-semibold text-brand-primary-600 disabled:opacity-40"
+                      >
+                        {isRTL ? 'التالي' : 'Next'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

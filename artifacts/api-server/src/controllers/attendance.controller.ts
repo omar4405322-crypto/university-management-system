@@ -4,6 +4,39 @@ import { AttendanceService } from '../services/attendance.service';
 import prisma from '../utils/prismaClient';
 import { AppError, AuthorizationError } from '../utils/appError';
 
+const getStaffWarningFilters = (query: Request['query']) => {
+  const {
+    courseId,
+    year,
+    warningStage,
+    search,
+    date,
+    startDate,
+    endDate,
+  } = query;
+
+  return {
+    courseId: courseId ? parseInt(courseId as string) : undefined,
+    year: year ? parseInt(year as string) : undefined,
+    warningStage: warningStage as
+      | 'BLOCKED'
+      | 'FINAL_WARNING'
+      | 'FIRST_WARNING'
+      | 'SAFE'
+      | undefined,
+    search: search as string | undefined,
+    date: date as string | undefined,
+    startDate: startDate as string | undefined,
+    endDate: endDate as string | undefined,
+  };
+};
+
+const csvCell = (value: unknown) => {
+  const raw = value === null || value === undefined ? '' : String(value);
+  const spreadsheetSafe = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
+  return `"${spreadsheetSafe.replace(/"/g, '""')}"`;
+};
+
 export const recordAttendanceManual = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { courseId, date, records, sessionId, semester } = req.body;
@@ -221,15 +254,38 @@ export const recordAttendanceGps = catchAsync(
 export const getCourseAttendance = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { courseId } = req.params;
-    const { date } = req.query;
+    const {
+      date,
+      startDate,
+      endDate,
+      semester,
+      academicYear,
+      page,
+      limit,
+    } = req.query;
 
-    const data = await AttendanceService.getCourseAttendance(
+    const result = await AttendanceService.getCourseAttendance(
       req.user!,
       parseInt(courseId as string),
-      date as string | undefined
+      {
+        date: date as string | undefined,
+        startDate: startDate as string | undefined,
+        endDate: endDate as string | undefined,
+        semester: semester ? parseInt(semester as string) : undefined,
+        academicYear: academicYear
+          ? parseInt(academicYear as string)
+          : undefined,
+        page: page ? parseInt(page as string) : undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+      }
     );
 
-    return res.json({ success: true, data });
+    return res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      stats: result.stats,
+    });
   }
 );
 
@@ -271,21 +327,109 @@ export const getMySlots = catchAsync(
 
 export const getMyAttendance = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { courseId } = req.query;
+    const {
+      courseId,
+      date,
+      startDate,
+      endDate,
+      semester,
+      academicYear,
+      page,
+      limit,
+    } = req.query;
 
-    const data = await AttendanceService.getMyAttendance(
+    const result = await AttendanceService.getMyAttendance(
       req.user!.id,
-      courseId ? parseInt(courseId as string) : undefined
+      {
+        courseId: courseId ? parseInt(courseId as string) : undefined,
+        date: date as string | undefined,
+        startDate: startDate as string | undefined,
+        endDate: endDate as string | undefined,
+        semester: semester ? parseInt(semester as string) : undefined,
+        academicYear: academicYear
+          ? parseInt(academicYear as string)
+          : undefined,
+        page: page ? parseInt(page as string) : undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+      }
     );
 
-    return res.json({ success: true, data });
+    return res.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+      stats: result.stats,
+    });
   }
 );
 
 export const getMyAbsenceWarnings = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const data = await AttendanceService.getMyAbsenceWarnings(req.user!);
+    const { page, limit } = req.query;
+    const data = await AttendanceService.getMyAbsenceWarnings(req.user!, {
+      ...getStaffWarningFilters(req.query),
+      page: page ? parseInt(page as string) : undefined,
+      limit: limit ? parseInt(limit as string) : undefined,
+    });
     return res.json({ success: true, data });
+  }
+);
+
+export const exportAbsenceWarnings = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await AttendanceService.exportStaffAbsenceWarnings(
+      req.user!,
+      getStaffWarningFilters(req.query)
+    );
+    const headers = [
+      'Student Name',
+      'Student ID',
+      'Student Email',
+      'Course Name',
+      'Course Code',
+      'Absence %',
+      'Max Allowed %',
+      'Status',
+      'Total Sessions',
+      'Present',
+      'Absent',
+      'Late',
+      'Excused',
+      'Pending Review',
+    ];
+    const rows = result.records.map((record) => [
+      record.studentName,
+      record.studentCode,
+      record.studentEmail,
+      record.courseName,
+      record.courseCode,
+      record.absencePercent,
+      record.maxAbsencePercent,
+      record.warningStage,
+      record.totalSessions,
+      record.present,
+      record.absent,
+      record.late,
+      record.excused,
+      record.pendingReview,
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map(csvCell).join(','))
+      .join('\r\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="absence_warnings_${new Date().toISOString().slice(0, 10)}.csv"`
+    );
+    res.setHeader('X-Export-Capped', String(result.capped));
+    res.setHeader('X-Export-Limit', String(result.limit));
+    res.setHeader('X-Export-Total', String(result.total));
+    res.setHeader(
+      'Access-Control-Expose-Headers',
+      'Content-Disposition, X-Export-Capped, X-Export-Limit, X-Export-Total'
+    );
+    return res.send(`\uFEFF${csv}`);
   }
 );
 

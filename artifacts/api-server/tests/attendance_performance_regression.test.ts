@@ -82,6 +82,72 @@ async function testRecalculationQueueCoalescesClassWideChanges() {
   }
 }
 
+async function testGroupedRecalculationPreservesExemptionWindows() {
+  const originals = {
+    enrollmentFindMany: prisma.enrollment.findMany,
+    attendanceGroupBy: prisma.attendance.groupBy,
+    policyFindMany: prisma.absenceThresholdPolicy.findMany,
+    enrollmentUpdate: prisma.enrollment.update,
+    notificationCreate: prisma.notification.create,
+  };
+  const exemptionStart = new Date('2026-09-02T00:00:00.000Z');
+  const exemptionEnd = new Date('2026-09-03T23:59:59.999Z');
+  let attendanceWhere: any;
+  let updatedStatus: string | undefined;
+
+  try {
+    (prisma.enrollment.findMany as any) = async () => [
+      {
+        id: 99,
+        studentId: 44,
+        courseId: 22,
+        semester: 1,
+        academicYear: 2026,
+        status: 'ENROLLED',
+        customAbsenceThreshold: 40,
+        exemptionPeriods: [{ startDate: exemptionStart, endDate: exemptionEnd }],
+        student: { userId: 440 },
+        course: { name: 'Networks', departmentId: 4 },
+      },
+    ];
+    (prisma.attendance.groupBy as any) = async (args: any) => {
+      attendanceWhere = args.where;
+      return [
+        { studentId: 44, courseId: 22, status: 'PRESENT', _count: { _all: 1 } },
+        { studentId: 44, courseId: 22, status: 'ABSENT', _count: { _all: 1 } },
+        { studentId: 44, courseId: 22, status: 'PENDING_REVIEW', _count: { _all: 1 } },
+      ];
+    };
+    (prisma.absenceThresholdPolicy.findMany as any) = async () => [];
+    (prisma.enrollment.update as any) = async (args: any) => {
+      updatedStatus = args.data.status;
+      return { id: 99, ...args.data };
+    };
+    (prisma.notification.create as any) = async (args: any) => args.data;
+
+    await attendanceEngine.recalculateAbsence(44, 22);
+
+    assert.deepEqual(attendanceWhere.OR[0], {
+      studentId: 44,
+      courseId: 22,
+      NOT: {
+        OR: [{ date: { gte: exemptionStart, lte: exemptionEnd } }],
+      },
+    });
+    assert.equal(
+      updatedStatus,
+      'BLOCKED',
+      'PENDING_REVIEW remains excluded from the grouped denominator'
+    );
+  } finally {
+    prisma.enrollment.findMany = originals.enrollmentFindMany;
+    prisma.attendance.groupBy = originals.attendanceGroupBy;
+    prisma.absenceThresholdPolicy.findMany = originals.policyFindMany;
+    prisma.enrollment.update = originals.enrollmentUpdate;
+    prisma.notification.create = originals.notificationCreate;
+  }
+}
+
 async function testStudentWarningsUseFixedQueryCount() {
   const originals = {
     studentFindUnique: prisma.student.findUnique,
@@ -237,5 +303,6 @@ async function testStudentWarningsUseFixedQueryCount() {
 
 await testBulkAttendanceUsesBoundedConcurrency();
 await testRecalculationQueueCoalescesClassWideChanges();
+await testGroupedRecalculationPreservesExemptionWindows();
 await testStudentWarningsUseFixedQueryCount();
 console.log('Attendance performance regression checks passed');

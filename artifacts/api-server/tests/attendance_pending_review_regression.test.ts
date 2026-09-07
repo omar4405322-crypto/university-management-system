@@ -483,6 +483,7 @@ async function runPendingReviewRegressionSuite() {
   // -------------------------------------------------------------------------
   const origCourseFindMany = prisma.course.findMany;
   const origEnrollmentFindMany = prisma.enrollment.findMany;
+  const origQueryRaw = prisma.$queryRaw;
   try {
     const facultyUser = { role: 'ADMIN', id: 1 };
 
@@ -511,24 +512,27 @@ async function runPendingReviewRegressionSuite() {
       },
     ];
 
-    (prisma.scheduleSlot.findMany as any) = async () => [
-      { id: 10, courseId: 22 },
-    ];
-    (prisma.attendanceSession.findMany as any) = async () => [
-      { id: 101, scheduleSlotId: 10 },
-      { id: 102, scheduleSlotId: 10 },
-      { id: 103, scheduleSlotId: 10 },
-    ]; // 3 sessions held
-    (prisma.absenceThresholdPolicy.findMany as any) = async () => [
-      { courseId: 22, maxAbsencePercent: 25.0 },
-    ];
-
-    // 1 PRESENT, 1 ABSENT, 1 PENDING_REVIEW
-    (prisma.attendance.findMany as any) = async () => [
-      { studentId: 44, courseId: 22, status: 'PRESENT' },
-      { studentId: 44, courseId: 22, status: 'ABSENT' },
-      { studentId: 44, courseId: 22, status: 'PENDING_REVIEW' },
-    ];
+    (prisma as any).$queryRaw = async () => {
+      return [{
+        totalMonitored: 1,
+        blockedCount: 1,
+        finalWarningCount: 0,
+        firstWarningCount: 0,
+        safeCount: 0,
+        pageRows: [{
+          enrollmentId: 99,
+          warningStage: 'BLOCKED',
+          absencePercent: 50,
+          maxAbsencePercent: 25,
+          total: 3,
+          present: 1,
+          absent: 1,
+          late: 0,
+          excused: 0,
+          pendingReview: 1,
+        }],
+      }];
+    };
 
     const staffWarnings = await AttendanceService.getMyAbsenceWarnings(facultyUser);
     const staffRecord = staffWarnings.warningRecords[0];
@@ -553,6 +557,7 @@ async function runPendingReviewRegressionSuite() {
     prisma.attendanceSession.findMany = origAttendanceSessionFindMany;
     prisma.attendance.findMany = origAttendanceFindMany;
     prisma.absenceThresholdPolicy.findMany = origPoliciesFindMany;
+    (prisma as any).$queryRaw = origQueryRaw;
   }
 
   // -------------------------------------------------------------------------
