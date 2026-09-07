@@ -77,4 +77,15 @@ export const doctorUpdateValidation = [
   body('gender').optional().isIn(['Male', 'Female', 'Other']).withMessage('Invalid gender'),
 ];
 
+export const teachingAssistantValidation = [
+  body('firstName').notEmpty().withMessage('First name is required').trim(),
+  body('lastName').notEmpty().withMessage('Last name is required').trim(),
+  body('employeeId').notEmpty().withMessage('Employee ID is required').trim(),
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('password').custom(passwordStrengthValidator),
+  body('departmentId').optional({ checkFalsy: true }).isInt().withMessage('Department ID must be an integer'),
+  body('specialization').optional().trim(),
+  body('status').optional().isIn(['ACTIVE', 'ON_LEAVE', 'INACTIVE']).withMessage('Invalid status'),
+];
+
 export const idParamValidation = [param('id').isInt().withMessage('Invalid ID format')];
