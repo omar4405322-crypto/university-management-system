@@ -100,7 +100,8 @@ export const authLimiter = rateLimit({
 
 /**
  * 2. loginLimiter: Dedicated strict limiter for POST /api/auth/login
- * Window: 15 minutes, Max: 5 attempts per IP
+ * Window: 15 minutes, Max: 5 attempts per account (normalized email), falling back to client IP.
+ * Protects against distributed credential-stuffing attacks across multiple IPs targeting the same account.
  */
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -108,8 +109,19 @@ export const loginLimiter = rateLimit({
   message: { success: false, message: 'Too many login attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
+  // Fail-open trade-off decision: availability outweighs the marginal security gain here.
+  // A Redis outage or transient store error must not lock out legitimate logins across the institution.
   passOnStoreError: true,
   store: createRedisStore('login'),
+  validate: { keyGeneratorIpFallback: false },
+  keyGenerator: (req) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email.toLowerCase().trim() : '';
+    if (email) {
+      return `email:${email}`;
+    }
+    const ip = req.ip || req.get?.('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    return `ip:${ip}`;
+  },
 });
 
 /**
