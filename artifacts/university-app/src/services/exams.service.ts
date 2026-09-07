@@ -36,6 +36,12 @@ const examsService = {
   // ── Anti-Cheat Endpoints ──────────────────────────────────────────────────
   reportDeviceInfo: (examId: string, deviceInfo: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/exams/${examId}/device-info`, deviceInfo)),
 
+  ingestViolation: (examId: string | number, submissionId: string | number, data: Record<string, unknown>): Promise<ApiResponse<any>> =>
+    apiRequest(() => api.post(`/exams/${examId}/submissions/${submissionId}/violations`, data)),
+
+  getViolationSequence: (examId: string | number, submissionId: string | number): Promise<ApiResponse<{ sequence: number }>> =>
+    apiRequest(() => api.get(`/exams/${examId}/submissions/${submissionId}/violations/sequence`)),
+
   cancelExam: (examId: string, data?: Record<string, unknown> | string): Promise<ApiResponse<any>> => {
     const payload = typeof data === 'string' ? { reason: data } : (data || {});
     return apiRequest(() => api.post(`/exams/${examId}/cancel`, payload));

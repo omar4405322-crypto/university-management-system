@@ -110,6 +110,8 @@ const TakeExam = () => {
     examCancelled,
     multiTabBlocked,
     refreshDeviceInfo,
+    setSubmissionId,
+    setLastKnownSequence,
   } = useAntiCheat(
     (violation) => {
       if (status !== 'IN_PROGRESS') return;
@@ -175,6 +177,23 @@ const TakeExam = () => {
       const result = await examsService.getExamById(id);
       if (result.success) {
         setExam(result.data);
+      }
+      // If student already has a pending submission, link it to anti-cheat
+      try {
+        const subResult = await examsService.getMyExamSubmission(id);
+        if (subResult?.success && subResult.data?.id) {
+          setSubmissionId(subResult.data.id);
+          if (typeof subResult.data.lastAcceptedSequence === 'number') {
+            setLastKnownSequence(subResult.data.lastAcceptedSequence);
+          } else {
+            const seqRes = await examsService.getViolationSequence(id, subResult.data.id);
+            if (seqRes?.success && typeof seqRes.data?.sequence === 'number') {
+              setLastKnownSequence(seqRes.data.sequence);
+            }
+          }
+        }
+      } catch (_subErr) {
+        // Exam may not be started yet
       }
     } catch (err: any) {
       setError(err.response?.data?.message || t('exams.loadError'));
@@ -283,9 +302,16 @@ const TakeExam = () => {
       setLoading(true);
 
       // Send device info with start session
-      await examsService.startExamSession(id, {
+      const startRes = await examsService.startExamSession(id, {
         deviceInfo: deviceInfo,
       });
+
+      if (startRes?.data?.id) {
+        setSubmissionId(startRes.data.id);
+        if (typeof startRes.data.lastAcceptedSequence === 'number') {
+          setLastKnownSequence(startRes.data.lastAcceptedSequence);
+        }
+      }
 
       // Also report device info separately (for persistence)
       if (deviceInfo) {

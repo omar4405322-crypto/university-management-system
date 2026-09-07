@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { DeviceInfo, AntiCheatSettings } from '../pages/exams/examUtils';
 import { DEFAULT_ANTI_CHEAT_SETTINGS } from '../pages/exams/examUtils';
+import examsService from '../services/exams.service';
 
 // ── Violation Types ──────────────────────────────────────────────────────────
 
@@ -18,9 +19,11 @@ export type ExamViolationType =
   | 'LOCATION_DENIED';
 
 export interface ExamViolation {
+  sequence?: number;
   type: ExamViolationType;
   occurredAt: string;
   details?: string;
+  viaFallbackBatch?: boolean;
 }
 
 // ── Device Fingerprinting ────────────────────────────────────────────────────
@@ -209,6 +212,7 @@ function releaseExamLock(examId: string): void {
 
 export interface UseAntiCheatOptions {
   examId?: string;
+  submissionId?: string | number;
   settings?: Partial<AntiCheatSettings>;
   onViolation?: (violation: ExamViolation) => void;
   onExamCancelled?: () => void;
@@ -225,6 +229,8 @@ export interface UseAntiCheatResult {
   examCancelled: boolean;
   multiTabBlocked: boolean;
   refreshDeviceInfo: () => Promise<DeviceInfo | null>;
+  setSubmissionId: (id: string | number) => void;
+  setLastKnownSequence: (seq: number) => void;
 }
 
 export const useAntiCheat = (
@@ -233,6 +239,23 @@ export const useAntiCheat = (
   options?: UseAntiCheatOptions
 ): UseAntiCheatResult => {
   const examId = options?.examId || '';
+  const submissionIdRef = useRef<string | number | undefined>(options?.submissionId);
+
+  const setSubmissionId = useCallback((id: string | number) => {
+    submissionIdRef.current = id;
+  }, []);
+
+  const setLastKnownSequence = useCallback((seq: number) => {
+    if (typeof seq === 'number' && !isNaN(seq)) {
+      sequenceRef.current = Math.max(sequenceRef.current, seq);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (options?.submissionId !== undefined) {
+      submissionIdRef.current = options.submissionId;
+    }
+  }, [options?.submissionId]);
 
   // Store options in refs so callbacks stay stable and don't re-create event listeners
   const onViolationRef = useRef(onViolation);
@@ -293,8 +316,14 @@ export const useAntiCheat = (
     }
   }, [leaveCount, examId]);
 
+  const sequenceRef = useRef<number>(0);
+
   const addViolation = useCallback((type: ExamViolationType, details?: string) => {
+    sequenceRef.current += 1;
+    const currentSeq = sequenceRef.current;
+
     const newViolation: ExamViolation = {
+      sequence: currentSeq,
       type,
       occurredAt: new Date().toISOString(),
       details,
@@ -303,7 +332,22 @@ export const useAntiCheat = (
     if (onViolationRef.current) {
       onViolationRef.current(newViolation);
     }
-  }, []);
+
+    // Real-time event ingestion (SEC-33)
+    const currentSubId = submissionIdRef.current;
+    if (currentSubId && examId) {
+      examsService.ingestViolation(examId, currentSubId, {
+        sequence: currentSeq,
+        type,
+        occurredAt: newViolation.occurredAt,
+        details,
+      }).catch((err) => {
+        // Real-time ingestion failure (e.g. offline/network drop):
+        // The violation is safely preserved in local state and will be sent via fallback batch
+        console.warn('[ANTI-CHEAT] Real-time violation ingestion failed, preserved in fallback batch:', err);
+      });
+    }
+  }, [examId]);
 
   // ── Device Info Collection (Runs immediately on mount regardless of enabled) ──
   const refreshDeviceInfo = useCallback(async (): Promise<DeviceInfo | null> => {
@@ -577,5 +621,7 @@ export const useAntiCheat = (
     examCancelled,
     multiTabBlocked,
     refreshDeviceInfo,
+    setSubmissionId,
+    setLastKnownSequence,
   };
 };

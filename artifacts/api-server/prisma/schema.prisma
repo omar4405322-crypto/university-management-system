@@ -393,6 +393,7 @@ model QuizSubmission {
   submittedAt DateTime @default(now())
 
   @@unique([quizId, studentId])
+  @@index([studentId, quizId])
 }
 
 model Task {
@@ -412,6 +413,10 @@ model Task {
 
   @@index([courseId])
   @@index([isDeleted])
+  @@index([doctorId, isDeleted, createdAt])
+  @@index([doctorId, isDeleted, dueDate])
+  @@index([courseId, isDeleted, createdAt])
+  @@index([courseId, isDeleted, dueDate])
 }
 
 model TaskSubmission {
@@ -428,6 +433,7 @@ model TaskSubmission {
 
   @@index([taskId, studentId])
   @@unique([taskId, studentId])
+  @@index([studentId, taskId])
 }
 
 model Timetable {
@@ -508,6 +514,7 @@ model ExamSubmission {
 
   @@unique([examId, studentId])
   @@index([examId, studentId])
+  @@index([studentId, examId])
 }
 
 model ExamViolation {
@@ -516,6 +523,7 @@ model ExamViolation {
   submission   ExamSubmission    @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   type         ExamViolationType
   occurredAt   DateTime          @default(now())
+  receivedAt   DateTime          @default(now())
   details      String?
   ipAddress    String?
 
@@ -732,6 +740,8 @@ model ScheduleOverride {
   @@index([scheduleSlotId])
   @@index([startDate, endDate])
   @@index([dayOfWeek, room, startDate, endDate])
+  @@index([dayOfWeek, doctorId, startDate, endDate], map: "ScheduleOverride_day_doctor_active_dates_idx")
+  @@index([dayOfWeek, teachingAssistantId, startDate, endDate], map: "ScheduleOverride_day_ta_active_dates_idx")
 }
 
 model AbsenceThresholdPolicy {

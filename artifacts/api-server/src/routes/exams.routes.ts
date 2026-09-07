@@ -138,4 +138,28 @@ router.get('/:id/submissions', authorize('DOCTOR', 'ADMIN', 'SUPER_ADMIN'), exam
 router.get('/:id/my-submission', authorize('STUDENT'), examsController.getMyExamSubmission);
 router.put('/submissions/:submissionId/grade', authorize('DOCTOR', 'ADMIN', 'SUPER_ADMIN'), examsController.gradeSubmission);
 
+const ingestViolationValidation = [
+  param('submissionId').isInt({ min: 1 }).withMessage('Invalid submission ID'),
+  body('sequence').isInt({ min: 1 }).withMessage('Sequence must be a positive integer'),
+  body('type').isString().notEmpty().withMessage('Violation type is required'),
+  body('occurredAt').isISO8601().withMessage('Valid occurredAt timestamp is required'),
+  body('details').optional().isString().isLength({ max: 500 }).withMessage('Details too long'),
+];
+
+router.post(
+  '/:id/submissions/:submissionId/violations',
+  authorize('STUDENT'),
+  ingestViolationValidation,
+  validate,
+  examsController.ingestViolation
+);
+
+router.get(
+  '/:id/submissions/:submissionId/violations/sequence',
+  authorize('STUDENT'),
+  [param('submissionId').isInt({ min: 1 }).withMessage('Invalid submission ID')],
+  validate,
+  examsController.getViolationSequence
+);
+
 export default router;
