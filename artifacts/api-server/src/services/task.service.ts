@@ -633,9 +633,8 @@ class TaskService {
     });
     const submittedPromise = prisma.taskSubmission.count({ where: { taskId } });
     const gradedPromise = prisma.taskSubmission.count({ where: { taskId, score: { not: null } } });
-    const lateRawPromise = prisma.taskSubmission.findMany({
-      where: { taskId },
-      select: { submittedAt: true },
+    const latePromise = prisma.taskSubmission.count({
+      where: { taskId, submittedAt: { gt: taskDueDate } },
     });
 
     // ---------- Two paths: with "NOT_SUBMITTED" we need enrollment LEFT JOIN; else submission-only query ----------
@@ -722,18 +721,15 @@ class TaskService {
       let orphanRows: UnifiedRow[] = [];
       let orphanTotalCount = 0;
       if (statusAny !== 'NOT_SUBMITTED') {
-        const allCourseEnrollmentIds = await prisma.enrollment.findMany({
-          where: { courseId, status: 'ENROLLED' },
-          select: { studentId: true },
-        });
-        const enrolledStudentIdsSet = new Set(allCourseEnrollmentIds.map((e) => e.studentId));
         const orphanBaseWhere: any = {
           taskId,
-          studentId: { notIn: Array.from(enrolledStudentIdsSet) },
+          student: {
+            ...studentWhere,
+            enrollments: {
+              none: { courseId, status: 'ENROLLED' },
+            },
+          },
         };
-        if (Object.keys(studentWhere).length) {
-          orphanBaseWhere.student = studentWhere;
-        }
         if (statusAny === 'GRADED') orphanBaseWhere.score = { not: null };
         else if (statusAny === 'UNGRADED') orphanBaseWhere.score = null;
         else if (statusAny === 'LATE') orphanBaseWhere.submittedAt = { gt: taskDueDate };
@@ -780,13 +776,12 @@ class TaskService {
       const totalCount = enrollmentTotalCount + orphanTotalCount;
       const totalPages = Math.max(1, Math.ceil(totalCount / limit));
 
-      const [totalEnrolled, submitted, graded, lateRaw] = await Promise.all([
+      const [totalEnrolled, submitted, graded, late] = await Promise.all([
         totalEnrolledPromise,
         submittedPromise,
         gradedPromise,
-        lateRawPromise,
+        latePromise,
       ]);
-      const late = lateRaw.filter((s) => new Date(s.submittedAt) > taskDueDate).length;
 
       return {
         rows: finalRows,
@@ -836,13 +831,12 @@ class TaskService {
     });
     const totalPages = Math.max(1, Math.ceil(totalCount / limit));
 
-    const [totalEnrolled, submitted, graded, lateRaw] = await Promise.all([
+    const [totalEnrolled, submitted, graded, late] = await Promise.all([
       totalEnrolledPromise,
       submittedPromise,
       gradedPromise,
-      lateRawPromise,
+      latePromise,
     ]);
-    const late = lateRaw.filter((s) => new Date(s.submittedAt) > taskDueDate).length;
 
     return {
       rows,
