@@ -4,6 +4,78 @@ import speakeasy from 'speakeasy';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import attendanceEngine from '../attendance/attendance.engine';
 import { getScopeWhere } from '../utils/scope.utils';
+import { encrypt, decrypt } from '../utils/encryption.utils';
+
+const ATTENDANCE_TIME_ZONE = 'Africa/Cairo';
+const DEFAULT_SESSION_PAGE_SIZE = 20;
+const MAX_SESSION_PAGE_SIZE = 100;
+
+type SlotSessionHistoryOptions = {
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+  semester?: number;
+  academicYear?: number;
+  page?: number;
+  limit?: number;
+};
+
+const normalizeSessionPagination = (page?: number, limit?: number) => {
+  const normalizedPage = Number.isFinite(page) && Number(page) > 0
+    ? Math.floor(Number(page))
+    : 1;
+  const normalizedLimit = Number.isFinite(limit) && Number(limit) > 0
+    ? Math.min(Math.floor(Number(limit)), MAX_SESSION_PAGE_SIZE)
+    : DEFAULT_SESSION_PAGE_SIZE;
+  return {
+    page: normalizedPage,
+    limit: normalizedLimit,
+    skip: (normalizedPage - 1) * normalizedLimit,
+  };
+};
+
+const nextCairoDate = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + 1))
+    .toISOString()
+    .slice(0, 10);
+};
+
+const sessionDateBoundary = (value: string, endExclusive: boolean) => {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const input = dateOnly && endExclusive ? nextCairoDate(value) : value;
+  const parsed = dateOnly
+    ? fromZonedTime(`${input}T00:00:00`, ATTENDANCE_TIME_ZONE)
+    : new Date(input);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new AppError(`Invalid attendance date: ${value}`, 400);
+  }
+  return parsed;
+};
+
+const buildSessionDateWhere = (
+  date?: string,
+  startDate?: string,
+  endDate?: string
+) => {
+  if (date) {
+    return {
+      gte: sessionDateBoundary(date, false),
+      lt: sessionDateBoundary(date, true),
+    };
+  }
+  if (!startDate && !endDate) return undefined;
+  const range: { gte?: Date; lte?: Date; lt?: Date } = {};
+  if (startDate) range.gte = sessionDateBoundary(startDate, false);
+  if (endDate) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      range.lt = sessionDateBoundary(endDate, true);
+    } else {
+      range.lte = sessionDateBoundary(endDate, false);
+    }
+  }
+  return range;
+};
 
 const calculateDistance = (
   lat1: number,
@@ -277,7 +349,7 @@ class AttendanceSessionService {
           data: {
             scheduleSlotId: slot.id,
             doctorId: doctor?.id,
-            secretKey: secret.base32,
+            secretKey: encrypt(secret.base32),
             latitude: finalLat,
             longitude: finalLng,
             radius: finalRadius,
@@ -415,7 +487,7 @@ class AttendanceSessionService {
     const step = session.codeStepSeconds;
 
     const token = speakeasy.totp({
-      secret: session.secretKey,
+      secret: decrypt(session.secretKey),
       encoding: 'base32',
       step,
     });
@@ -482,7 +554,15 @@ class AttendanceSessionService {
     });
   }
 
-  static async getSlotSessions(user: any, slotId: number) {
+  static async getSlotSessions(
+    user: any,
+    slotId: number,
+    options: SlotSessionHistoryOptions = {}
+  ) {
+    const { page, limit, skip } = normalizeSessionPagination(
+      options.page,
+      options.limit
+    );
     const slot = await prisma.scheduleSlot.findUnique({
       where: { id: slotId },
     });
@@ -496,14 +576,55 @@ class AttendanceSessionService {
     if (!isOwner) {
       throw new AppError('Not authorized to view sessions for this slot', 403);
     }
-    return prisma.attendanceSession.findMany({
-      where: { scheduleSlotId: slotId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        doctor: { select: { firstName: true, lastName: true } },
-        _count: { select: { attendances: true } },
+
+    const createdAt = buildSessionDateWhere(
+      options.date,
+      options.startDate,
+      options.endDate
+    );
+    const timetableFilter = options.semester || options.academicYear
+      ? {
+          scheduleSlot: {
+            timetable: {
+              is: {
+                ...(options.semester && { semester: options.semester }),
+                ...(options.academicYear && {
+                  academicYear: options.academicYear,
+                }),
+              },
+            },
+          },
+        }
+      : {};
+    const where = {
+      scheduleSlotId: slotId,
+      ...(createdAt && { createdAt }),
+      ...timetableFilter,
+    };
+
+    const [data, total] = await Promise.all([
+      prisma.attendanceSession.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        include: {
+          doctor: { select: { firstName: true, lastName: true } },
+          _count: { select: { attendances: true } },
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.attendanceSession.count({ where }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
-    });
+    };
   }
 
   static async getSessionRoster(user: any, sessionId: number) {

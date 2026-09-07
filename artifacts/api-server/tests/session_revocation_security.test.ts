@@ -5,6 +5,7 @@ import { login, logout, refresh } from '../src/controllers/auth.controller';
 import {
   createRefreshTokenValue,
   generateRefreshToken,
+  hashRefreshToken,
   parseRefreshTokenMetadata,
 } from '../src/utils/jwt.utils';
 import { replacePasswordAndRevokeAllUserSessions } from '../src/services/session.service';
@@ -12,6 +13,7 @@ import { replacePasswordAndRevokeAllUserSessions } from '../src/services/session
 type RefreshRow = {
   id: number;
   token: string;
+  familyId?: string;
   userId: number;
   expiresAt: Date;
   createdAt: Date;
@@ -46,6 +48,7 @@ let sessionLocks = 0;
 const matchesWhere = (row: RefreshRow, where: any): boolean => {
   if (where.id !== undefined && row.id !== where.id) return false;
   if (where.userId !== undefined && row.userId !== where.userId) return false;
+  if (where.familyId !== undefined && row.familyId !== where.familyId) return false;
   if (where.expiresAt instanceof Date && row.expiresAt.getTime() !== where.expiresAt.getTime()) {
     return false;
   }
@@ -69,6 +72,7 @@ const fakeRefreshToken = {
     const row: RefreshRow = {
       id: nextId++,
       token: data.token,
+      familyId: data.familyId,
       userId: data.userId,
       expiresAt: data.expiresAt,
       createdAt: new Date(),
@@ -187,7 +191,7 @@ async function runSessionRevocationSecurityTests() {
     assert.equal(replay.body, undefined, 'A consumed token must not receive a response containing tokens');
     assert.equal(replay.error?.statusCode, 401, 'A consumed token replay must be rejected');
     assert.ok(sessionLocks > locksBeforeReplay, 'Replay handling must acquire the same user session lock');
-    assert.equal(rows.some((row) => row.token === rotatedToken), false, 'Replay must revoke its token family');
+    assert.equal(rows.some((row) => row.token === hashRefreshToken(rotatedToken)), false, 'Replay must revoke its token family');
 
     rows = [];
     process.env.REQUIRE_2FA = 'false';
@@ -235,7 +239,8 @@ async function runSessionRevocationSecurityTests() {
     const legacyToken = 'a'.repeat(80);
     await fakeRefreshToken.create({
       data: {
-        token: legacyToken,
+        token: hashRefreshToken(legacyToken),
+        familyId: 'legacy-family',
         userId: user.id,
         expiresAt: new Date(Date.now() + 60_000),
       },

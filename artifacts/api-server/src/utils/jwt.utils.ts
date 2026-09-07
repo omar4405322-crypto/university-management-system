@@ -91,6 +91,12 @@ export const getRefreshTokenFamilyPrefix = (metadata: RefreshTokenMetadata): str
   `${REFRESH_TOKEN_FORMAT_VERSION}.${metadata.userId}.${metadata.tokenVersion}.${metadata.familyId}.`;
 
 /**
+ * Hash a raw refresh token using SHA-256 for secure storage at rest.
+ */
+export const hashRefreshToken = (token: string): string =>
+  crypto.createHash('sha256').update(token).digest('hex');
+
+/**
  * Generate a short-lived access token
  */
 export const generateAccessToken = (userId: number, tokenVersion: number = 0): string => {
@@ -105,19 +111,21 @@ export const generateAccessToken = (userId: number, tokenVersion: number = 0): s
 export const generateToken = generateAccessToken;
 
 /**
- * Generate a long-lived refresh token and store it in DB
+ * Generate a long-lived refresh token, hash it for DB storage, and return the raw token for client cookie
  */
 export const generateRefreshToken = async (
   userId: number,
-  tokenVersion: number
+  tokenVersion: number,
+  familyId: string = crypto.randomBytes(REFRESH_TOKEN_FAMILY_BYTES).toString('hex')
 ): Promise<string> => {
-  const token = createRefreshTokenValue(userId, tokenVersion);
+  const token = createRefreshTokenValue(userId, tokenVersion, familyId);
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
 
   await prisma.refreshToken.create({
     data: {
-      token,
+      token: hashRefreshToken(token),
+      familyId,
       userId,
       expiresAt,
     },

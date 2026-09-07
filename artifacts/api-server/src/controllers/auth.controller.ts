@@ -5,9 +5,10 @@ import {
   createRefreshTokenValue,
   generateAccessToken,
   generateRefreshToken,
-  getRefreshTokenFamilyPrefix,
+  hashRefreshToken,
   parseRefreshTokenMetadata,
 } from '../utils/jwt.utils';
+import { decrypt } from '../utils/encryption.utils';
 import { notifyAdminsOfNewRequest, createNotification } from '../utils/notification.utils';
 import catchAsync from '../utils/catchAsync';
 import {
@@ -231,7 +232,7 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
       });
     }
     const isValid = await verifyTOTP(
-      user.twoFactorSecret as string,
+      decrypt(user.twoFactorSecret as string),
       totpToken,
       user.id
     );
@@ -276,10 +277,11 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
   }
 
   const metadata = parseRefreshTokenMetadata(refresh_token);
+  const hashedToken = hashRefreshToken(refresh_token);
   const result = await prisma.$transaction(async (tx) => {
     const findToken = () =>
       tx.refreshToken.findUnique({
-        where: { token: refresh_token },
+        where: { token: hashedToken },
         include: {
           user: {
             include: {
@@ -308,7 +310,7 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
         await tx.refreshToken.deleteMany({
           where: {
             userId: metadata.userId,
-            token: { startsWith: getRefreshTokenFamilyPrefix(metadata) },
+            familyId: metadata.familyId,
           },
         });
       }
@@ -337,16 +339,16 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
       await tx.refreshToken.deleteMany({
         where: {
           userId: metadata.userId,
-          token: { startsWith: getRefreshTokenFamilyPrefix(metadata) },
+          familyId: metadata.familyId,
         },
       });
       return { kind: 'invalid' as const };
     }
 
-    const familyId = metadata?.familyId;
+    const familyId = metadata?.familyId || tokenDoc.familyId;
     const claimedToken = metadata
       ? await tx.refreshToken.deleteMany({
-          where: { id: tokenDoc.id, token: refresh_token },
+          where: { id: tokenDoc.id, token: hashedToken },
         })
       : await tx.refreshToken.updateMany({
           where: { id: tokenDoc.id, expiresAt: tokenDoc.expiresAt },
@@ -358,7 +360,7 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
         await tx.refreshToken.deleteMany({
           where: {
             userId: metadata.userId,
-            token: { startsWith: getRefreshTokenFamilyPrefix(metadata) },
+            familyId: metadata.familyId,
           },
         });
       } else {
@@ -377,7 +379,8 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
 
     await tx.refreshToken.create({
       data: {
-        token: newRefreshToken,
+        token: hashRefreshToken(newRefreshToken),
+        familyId,
         userId: tokenDoc.user.id,
         expiresAt,
       },

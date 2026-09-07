@@ -53,12 +53,14 @@ model User {
 model RefreshToken {
   id        Int      @id @default(autoincrement())
   token     String   @unique
+  familyId  String
   userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([userId, familyId])
 }
 
 model AuditLog {
@@ -237,8 +239,10 @@ model Attendance {
 
   @@unique([studentId, sessionId])
   @@index([courseId, date])
+  @@index([studentId, courseId])
   @@index([studentId, courseId, date])
   @@index([studentId, date, status])
+  @@index([sessionId])
   @@index([sessionId, ipAddress, deviceId])
   @@index([scheduleSlotId])
   @@index([method])
@@ -585,6 +589,7 @@ model Enrollment {
 
   @@unique([studentId, courseId, semester, academicYear])
   @@index([studentId])
+  @@index([courseId])
   @@index([courseId, status])
 }
 

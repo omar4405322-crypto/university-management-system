@@ -12,6 +12,7 @@ import { getScopeWhere } from '../utils/scope.utils';
 import { deactivateUserAndRevokeSessions } from '../services/studentStatus.service';
 import { replacePasswordAndRevokeAllUserSessions } from '../services/session.service';
 import { assertPasswordStrength } from '../utils/passwordPolicy';
+import { encrypt, decrypt } from '../utils/encryption.utils';
 
 // 1. setup2FA — Generates secret and returns QR code for scanning:
 export const setup2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -26,7 +27,7 @@ export const setup2FA = catchAsync(async (req: Request, res: Response, next: Nex
   // Store secret temporarily (not enabling yet until verified)
   await prisma.user.update({
     where: { id: req.user!.id },
-    data: { twoFactorSecret: secret.base32 },
+    data: { twoFactorSecret: encrypt(secret.base32) },
   });
 
   const qrCodeUrl = await generateQRCodeURL(secret.otpauth_url!);
@@ -46,7 +47,7 @@ export const enable2FA = catchAsync(async (req: Request, res: Response, next: Ne
   const passwordMatches = await bcrypt.compare(currentPassword, user.password);
   if (!passwordMatches) return next(new AuthenticationError('Incorrect current password'));
 
-  const isValid = await verifyTOTP(user!.twoFactorSecret, token, user.id);
+  const isValid = await verifyTOTP(decrypt(user!.twoFactorSecret), token, user.id);
   if (!isValid) return next(new AppError('Invalid verification code', 400));
 
   await prisma.user.update({
@@ -67,7 +68,7 @@ export const disable2FA = catchAsync(async (req: Request, res: Response, next: N
   const passwordMatch = await bcrypt.compare(password, user!.password);
   if (!passwordMatch) return next(new AppError('Incorrect password', 401));
 
-  const isValid = await verifyTOTP(user!.twoFactorSecret!, token, user!.id);
+  const isValid = await verifyTOTP(decrypt(user!.twoFactorSecret!), token, user!.id);
   if (!isValid) return next(new AppError('Invalid verification code', 400));
   await prisma.user.update({
     where: { id: req.user!.id },

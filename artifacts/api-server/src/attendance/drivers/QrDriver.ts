@@ -10,6 +10,7 @@ import {
 import { AppError } from '../../utils/appError';
 import prisma from '../../utils/prismaClient';
 import { setIfNotExists, redis } from '../../utils/redis.utils';
+import { decrypt } from '../../utils/encryption.utils';
 import logger from '../../utils/logger';
 
 const usedTokens = new Set<string>();
@@ -72,8 +73,14 @@ export class QrDriver implements IAttendanceDriver {
     let session: any = null;
 
     const verifyTokenForSession = (s: any) => {
+      let secret = s.secretKey;
+      try {
+        secret = decrypt(s.secretKey);
+      } catch {
+        return false;
+      }
       return speakeasy.totp.verify({
-        secret: s.secretKey,
+        secret,
         encoding: 'base32',
         token: cleanToken,
         step: s.codeStepSeconds || 20,
