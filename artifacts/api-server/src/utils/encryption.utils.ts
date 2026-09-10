@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { getSecretStrengthValidationError } from './secretValidation';
 
 /**
  * Reusable AES-256-GCM symmetric encryption utility for protecting sensitive
@@ -27,6 +28,11 @@ export function getEncryptionKey(): Buffer {
     );
   }
 
+  const strengthError = getSecretStrengthValidationError(rawKey, 'ENCRYPTION_KEY');
+  if (strengthError) {
+    throw new Error(strengthError);
+  }
+
   let keyBuffer: Buffer;
   // Try 64-char hex
   if (/^[0-9a-fA-F]{64}$/.test(rawKey)) {
@@ -46,6 +52,14 @@ export function getEncryptionKey(): Buffer {
     throw new Error(
       `Invalid ENCRYPTION_KEY length: Key resolved to ${keyBuffer.length} bytes, but exactly 32 bytes (256 bits) are required for AES-256-GCM.`
     );
+  }
+
+  const decodedStrengthError = getSecretStrengthValidationError(
+    keyBuffer.toString('hex'),
+    'ENCRYPTION_KEY'
+  );
+  if (decodedStrengthError) {
+    throw new Error(decodedStrengthError);
   }
 
   return keyBuffer;

@@ -2,6 +2,7 @@
 import dotenv from 'dotenv';
 import os from 'os';
 import { getJwtSecretValidationError } from './utils/jwtSecretValidation';
+import { getEncryptionKey } from './utils/encryption.utils';
 import { getTwoFactorConfigError } from './utils/twoFactorConfig';
 dotenv.config();
 
@@ -16,6 +17,15 @@ const jwtSecretError = getJwtSecretValidationError(process.env.JWT_SECRET, 32);
 if (jwtSecretError) {
   console.error(`FATAL: ${jwtSecretError} Exiting.`);
   process.exit(1);
+}
+
+if (process.env.NODE_ENV === 'production') {
+  try {
+    getEncryptionKey();
+  } catch (error) {
+    console.error(`FATAL: ${(error as Error).message} Exiting.`);
+    process.exit(1);
+  }
 }
 
 const twoFactorConfigError = getTwoFactorConfigError(

@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import pkg from '../package.json';
 import logger from './utils/logger';
 import { getJwtSecretValidationError } from './utils/jwtSecretValidation';
+import { getEncryptionKey } from './utils/encryption.utils';
 import { getTwoFactorConfigError } from './utils/twoFactorConfig';
 
 logger.info(`🚀 [BOOT] Starting Smart University API v${pkg.version}`);
@@ -39,6 +40,15 @@ const jwtSecretError = getJwtSecretValidationError(process.env.JWT_SECRET, isPro
 if (jwtSecretError) {
   logger.error(`❌ FATAL: ${jwtSecretError}`);
   process.exit(1);
+}
+
+if (isProduction) {
+  try {
+    getEncryptionKey();
+  } catch (error) {
+    logger.error(`FATAL: ${(error as Error).message} Exiting.`);
+    process.exit(1);
+  }
 }
 
 
