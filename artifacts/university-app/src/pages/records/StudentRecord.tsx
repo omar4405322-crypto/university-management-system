@@ -303,8 +303,8 @@ const StudentRecord: React.FC = () => {
             if (!matchName && !matchCode) return false;
           }
 
-          if (gradeStatusFilter === 'PASSED' && (cItem.finalGrade === null || cItem.finalGrade < 50)) return false;
-          if (gradeStatusFilter === 'FAILED' && (cItem.finalGrade === null || cItem.finalGrade >= 50)) return false;
+          if (gradeStatusFilter === 'PASSED' && cItem.status !== 'COMPLETED') return false;
+          if (gradeStatusFilter === 'FAILED' && cItem.status !== 'FAILED') return false;
           if (gradeStatusFilter === 'IN_PROGRESS' && cItem.finalGrade !== null) return false;
 
           if (assessmentTypeFilter === 'EXAMS' && cItem.exams.length === 0) return false;
