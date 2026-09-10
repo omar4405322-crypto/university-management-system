@@ -8,6 +8,10 @@ import {
   getAdminStudentGroupScopeWhere,
   resolveStudentGroupReadScopeWhere,
 } from '../utils/studentGroupScope.utils';
+import {
+  validatePositiveSafeInteger,
+  validateRequestedGroupCount,
+} from '../utils/studentGroupAllocation.utils';
 
 function toBase26(num: number): string {
   let res = '';
@@ -26,10 +30,18 @@ export const autoDivideStudents = async (req: Request, res: Response, next: Next
     const academicYear = year ? parseInt(year) : 1;
 
     if (isNaN(departmentId)) return res.status(400).json({ success: false, message: 'Invalid department ID' });
-    if ((!numberOfGroups && !maxGroupSize) || (numberOfGroups && maxGroupSize)) {
+    const hasNumberOfGroups = numberOfGroups !== undefined && numberOfGroups !== null;
+    const hasMaxGroupSize = maxGroupSize !== undefined && maxGroupSize !== null;
+    if (hasNumberOfGroups === hasMaxGroupSize) {
       return res.status(400).json({ success: false, message: 'Exactly one of numberOfGroups or maxGroupSize must be provided' });
     }
 
+    const allocationField = hasNumberOfGroups ? 'numberOfGroups' : 'maxGroupSize';
+    const allocationValue = hasNumberOfGroups ? numberOfGroups : maxGroupSize;
+    const allocationError = validatePositiveSafeInteger(allocationValue, allocationField);
+    if (allocationError) {
+      return res.status(400).json({ success: false, message: allocationError });
+    }
     const department = await prisma.department.findFirst({
       where: getAdminMutationTargetWhere(req.user!, 'department', departmentId),
     });
@@ -47,6 +59,10 @@ export const autoDivideStudents = async (req: Request, res: Response, next: Next
     }
 
     // Check if we need confirmation for overwriting existing tree
+    const groupCountError = validateRequestedGroupCount(numberOfGroups, students.length);
+    if (groupCountError) {
+      return res.status(400).json({ success: false, message: groupCountError });
+    }
     const existingGroups = await prisma.studentGroup.findMany({ where: { departmentId, year: academicYear, parentGroupId: null } });
     if (existingGroups.length > 0 && !confirmed) {
       return res.json({ success: true, requiresConfirmation: true, message: 'This will overwrite existing groups for this year. Confirm to proceed.' });
@@ -100,8 +116,16 @@ export const splitGroup = async (req: Request, res: Response, next: NextFunction
     let { numberOfSubgroups, maxSubgroupSize, confirmed } = req.body || {};
 
     if (isNaN(groupId)) return res.status(400).json({ success: false, message: 'Invalid group ID' });
-    if ((!numberOfSubgroups && !maxSubgroupSize) || (numberOfSubgroups && maxSubgroupSize)) {
+    const hasNumberOfSubgroups = numberOfSubgroups !== undefined && numberOfSubgroups !== null;
+    const hasMaxSubgroupSize = maxSubgroupSize !== undefined && maxSubgroupSize !== null;
+    if (hasNumberOfSubgroups === hasMaxSubgroupSize) {
       return res.status(400).json({ success: false, message: 'Exactly one of numberOfSubgroups or maxSubgroupSize must be provided' });
+    }
+    const splitField = hasNumberOfSubgroups ? 'numberOfSubgroups' : 'maxSubgroupSize';
+    const splitValue = hasNumberOfSubgroups ? numberOfSubgroups : maxSubgroupSize;
+    const splitError = validatePositiveSafeInteger(splitValue, splitField);
+    if (splitError) {
+      return res.status(400).json({ success: false, message: splitError });
     }
 
     const groupScope = getAdminStudentGroupScopeWhere(req.user!);
@@ -141,6 +165,10 @@ export const splitGroup = async (req: Request, res: Response, next: NextFunction
 
     if (maxSubgroupSize) {
       numberOfSubgroups = Math.ceil(students.length / maxSubgroupSize);
+    }
+    const subgroupCountError = validateRequestedGroupCount(numberOfSubgroups, students.length);
+    if (subgroupCountError) {
+      return res.status(400).json({ success: false, message: subgroupCountError });
     }
 
     await prisma.$transaction(async (tx) => {
