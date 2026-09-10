@@ -16,6 +16,7 @@ import taskService, {
   SubmissionsStatus,
 } from '../../services/task.service';
 import { EmptyState } from '../ui/EmptyState';
+import { getSubmissionDestinationHostname } from '../../utils/taskSubmissionUrl';
 
 type StudentT = {
   id: number;
@@ -199,6 +200,10 @@ const SubmissionRow = memo(function SubmissionRowImpl({
     statusBadgeLabel = t('tasks.notGradedYet');
   }
 
+  const destinationHostname = sub?.fileUrl
+    ? getSubmissionDestinationHostname(sub.fileUrl)
+    : null;
+
   return (
     <div className="py-4 flex flex-col lg:flex-row lg:items-start justify-between gap-4">
       <div className="lg:max-w-[40%]">
@@ -226,10 +231,11 @@ const SubmissionRow = memo(function SubmissionRowImpl({
           <a
             href={sub.fileUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="text-xs text-brand-primary-500 hover:underline font-bold inline-flex items-center gap-1 mt-2"
           >
             <FileUp size={14} /> {t('tasks.uploadedFile')}
+            {destinationHostname && <span dir="ltr">({destinationHostname})</span>}
           </a>
         )}
       </div>

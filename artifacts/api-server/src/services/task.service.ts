@@ -9,6 +9,7 @@ import {
 import { getScopeWhere } from '../utils/scope.utils';
 import { notifyStudentsInCourse } from '../utils/notification.utils';
 import { auditLog } from '../utils/audit.utils';
+import { validateTaskSubmissionUrl } from '../utils/taskSubmissionUrl.utils';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 const CAIRO_TZ = 'Africa/Cairo';
@@ -400,20 +401,7 @@ class TaskService {
     taskId: number,
     data: { notes?: string; fileUrl?: string }
   ) {
-    if (data.fileUrl) {
-      const url = data.fileUrl.trim();
-      if (url.length > 500) {
-        throw new ValidationError('File URL is too long');
-      }
-      try {
-        const parsed = new URL(url);
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-          throw new ValidationError('File URL must start with http or https');
-        }
-      } catch (e) {
-        throw new ValidationError('Invalid file URL format');
-      }
-    }
+    const normalizedFileUrl = validateTaskSubmissionUrl(data.fileUrl);
 
     const student = await TaskService.getStudentOrThrow(user.id);
 
@@ -453,7 +441,7 @@ class TaskService {
         where: { id: existingSubmission.id },
         data: {
           notes: data.notes,
-          fileUrl: data.fileUrl,
+          fileUrl: normalizedFileUrl,
           submittedAt: new Date(),
           score: null,
           feedback: null,
@@ -471,7 +459,7 @@ class TaskService {
         taskId,
         studentId: student.id,
         notes: data.notes,
-        fileUrl: data.fileUrl,
+        fileUrl: normalizedFileUrl,
       },
     });
 
