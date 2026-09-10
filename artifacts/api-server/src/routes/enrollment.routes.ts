@@ -13,6 +13,7 @@ import {
   deleteExemptionPeriod,
   syncAllEnrollments,
 } from '../controllers/enrollment.controller';
+import { validateCustomAbsenceThreshold } from '../utils/absenceThreshold.utils';
 
 const router = express.Router();
 
@@ -44,9 +45,9 @@ router.patch(
   [
     param('id').isInt().withMessage('Invalid enrollment ID'),
     body('customAbsenceThreshold').custom((val) => {
-      if (val === null || val === undefined) return true;
-      if (typeof val !== 'number' || isNaN(val) || val < 0 || val > 100) {
-        throw new Error('customAbsenceThreshold must be null or a number between 0 and 100');
+      const validationError = validateCustomAbsenceThreshold(val);
+      if (validationError) {
+        throw new Error(validationError);
       }
       return true;
     }),
