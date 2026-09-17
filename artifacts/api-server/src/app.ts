@@ -7,7 +7,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
 import { enforcePaginationBounds } from './middleware/requestLimits.middleware';
-import { setMaterialDownloadHeaders } from './middleware/materialUpload.middleware';
 import auditLog from './middleware/audit.middleware';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,7 +15,7 @@ import prisma from './utils/prismaClient';
 // Error Handling imports
 import globalErrorHandler from './middleware/error.middleware';
 import { NotFoundError } from './utils/appError';
-import { getRedisStatus } from './utils/redis.utils';
+import { getDashboardCacheHealth, getRedisStatus } from './utils/redis.utils';
 import logger from './utils/logger';
 
 // Route imports
@@ -103,13 +102,19 @@ app.use(
 );
 
 // 3. RATE LIMITING
-import { authLimiter } from './middleware/rateLimiter.middleware';
+import {
+  authLimiter,
+  createRedisStore,
+  rateLimiterPassOnStoreError,
+} from './middleware/rateLimiter.middleware';
 
 const enrollmentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore('enrollment'),
 });
 
 const apiLimiter = rateLimit({
@@ -117,6 +122,8 @@ const apiLimiter = rateLimit({
   max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore('api'),
 });
 
 const healthLimiter = rateLimit({
@@ -133,16 +140,20 @@ const livenessHandler = (_req: Request, res: Response): void => {
 app.get('/api/healthz', healthLimiter, livenessHandler);
 app.get('/api/health', healthLimiter, livenessHandler);
 
-const readinessHandler = async (_req: Request, res: Response): Promise<void> => {
+export const createReadinessHandler = (
+  redisStatusProvider: typeof getRedisStatus = getRedisStatus
+) => async (_req: Request, res: Response): Promise<void> => {
   try {
     await (prisma as any).$queryRaw`SELECT 1`;
-    const redisStatus = getRedisStatus();
+    const redisStatus = redisStatusProvider();
+    const dashboardCache = getDashboardCacheHealth(redisStatus);
     const redisReady = !redisStatus.configured || redisStatus.connected;
     res.status(redisReady ? 200 : 503).json({
       status: redisReady ? 'ready' : 'not_ready',
       checks: {
         database: true,
         redis: redisReady,
+        dashboardCache,
       },
     });
   } catch (error: unknown) {
@@ -150,6 +161,8 @@ const readinessHandler = async (_req: Request, res: Response): Promise<void> => 
     res.status(503).json({ status: 'not_ready', checks: { database: false } });
   }
 };
+
+const readinessHandler = createReadinessHandler();
 
 // 5. BODY PARSERS
 app.use(express.json({ limit: '10mb' }));
@@ -173,13 +186,13 @@ app.use('/api/attendance', auditLog('ATTENDANCE_MUTATION', 'Attendance'));
 app.use('/api/schedules', auditLog('SCHEDULE_MUTATION', 'ScheduleSlot'));
 
 // 6. STATIC FILES
-app.use(
-  '/uploads/materials',
-  express.static(path.join(process.cwd(), 'uploads/materials'), {
-    setHeaders: setMaterialDownloadHeaders,
-  })
-);
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+// Local profile files are a development fallback only. Production uploads use the
+// configured cloud provider and must not expose the local filesystem over HTTP.
+// Course materials (/uploads/materials) are private and served exclusively through
+// the authenticated GET /api/courses/:id/materials/:materialId/download endpoint (SEC-01).
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/uploads/profiles', express.static(path.join(process.cwd(), 'uploads/profiles')));
+}
 
 // 7. ROUTES
 app.use('/api/auth', authLimiter, authRoutes);

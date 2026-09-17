@@ -1,25 +1,32 @@
-import rateLimit from 'express-rate-limit';
-import { RedisStore, type RedisReply } from 'rate-limit-redis';
-import { redis } from '../utils/redis.utils';
-import logger from '../utils/logger';
+import "../config/loadEnvironment";
+import type { RequestHandler } from "express";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import { RedisStore, type RedisReply } from "rate-limit-redis";
+import { redis } from "../utils/redis.utils";
+import logger from "../utils/logger";
+
+export const shouldFailClosedRateLimiter = (
+  env: { NODE_ENV?: string } = process.env,
+): boolean => env.NODE_ENV?.trim().toLowerCase() === "production";
+
+export const rateLimiterPassOnStoreError = !shouldFailClosedRateLimiter();
 
 // Emit explicit warning on boot when Redis is not available for rate limiting
-if (!redis && process.env.NODE_ENV?.trim() !== 'test') {
+if (!redis && process.env.NODE_ENV?.trim() !== "test") {
   logger.warn(
-    '[RATE-LIMITER] Redis is not configured or unavailable (REDIS_URL unset). Auth-critical rate limiters (auth, login, 2fa, pwd_reset) are falling back to in-memory store and will not share state across horizontal replicas.'
+    "[RATE-LIMITER] Redis is not configured or unavailable (REDIS_URL unset). Auth-critical rate limiters (auth, login, 2fa, pwd_reset) are falling back to in-memory store and will not share state across horizontal replicas.",
   );
 } else if (redis) {
   logger.info(
-    '[RATE-LIMITER] Redis-backed rate limiting enabled for auth, login, 2fa, and password reset endpoints.'
+    "[RATE-LIMITER] Redis-backed rate limiting enabled for auth, login, 2fa, and password reset endpoints.",
   );
 }
 
 /**
  * Helper to build a RedisStore connected to the existing shared ioredis client.
  * If Redis is not connected/configured, falls back cleanly to undefined (MemoryStore).
- * If Redis disconnects at runtime, sendCommand catches the failure and simulates
- * the hit increment/query in a local in-memory fallback map so requests continue
- * to be rate-limited and never throw an unhandled rejection / 500 error.
+ * Development and tests fall back to a local in-memory map. Production throws
+ * on shared-store failure so rate limits cannot be bypassed across replicas.
  */
 export const createRedisStore = (prefix: string) => {
   if (!redis) return undefined;
@@ -30,13 +37,13 @@ export const createRedisStore = (prefix: string) => {
     const now = Date.now();
     const upperCommand = command.toUpperCase();
 
-    if (upperCommand === 'SCRIPT' && args[0]?.toUpperCase() === 'LOAD') {
-      return 'fallback_sha';
+    if (upperCommand === "SCRIPT" && args[0]?.toUpperCase() === "LOAD") {
+      return "fallback_sha";
     }
 
-    if (upperCommand === 'EVALSHA' || upperCommand === 'EVAL') {
+    if (upperCommand === "EVALSHA" || upperCommand === "EVAL") {
       // rate-limit-redis sends: EVALSHA sha 1 key [windowMs]
-      const key = args[2] || 'unknown';
+      const key = args[2] || "unknown";
       const windowMs = parseInt(args[3], 10) || 15 * 60 * 1000;
 
       const record = fallbackStore.get(key);
@@ -50,15 +57,15 @@ export const createRedisStore = (prefix: string) => {
       return [record.hits, remainingMs] as any;
     }
 
-    if (upperCommand === 'DECR') {
-      const key = args[0] || 'unknown';
+    if (upperCommand === "DECR") {
+      const key = args[0] || "unknown";
       const record = fallbackStore.get(key);
       if (record) record.hits = Math.max(0, record.hits - 1);
       return 1 as any;
     }
 
-    if (upperCommand === 'DEL') {
-      const key = args[0] || 'unknown';
+    if (upperCommand === "DEL") {
+      const key = args[0] || "unknown";
       fallbackStore.delete(key);
       return 1 as any;
     }
@@ -68,14 +75,20 @@ export const createRedisStore = (prefix: string) => {
 
   return new RedisStore({
     sendCommand: async (command: string, ...args: string[]) => {
-      if (!redis || (redis.status !== 'ready' && redis.status !== 'connect')) {
+      if (!redis) {
+        if (shouldFailClosedRateLimiter()) {
+          throw new Error("Shared rate-limit store is unavailable");
+        }
         return handleFallback(command, ...args);
       }
       try {
         return (await (redis as any).call(command, ...args)) as RedisReply;
       } catch (err: any) {
+        if (shouldFailClosedRateLimiter()) {
+          throw err;
+        }
         logger.warn(
-          `[RATE-LIMITER] Redis command failed on store '${prefix}', falling back to memory: ${err.message}`
+          `[RATE-LIMITER] Redis command failed on store '${prefix}', falling back to memory: ${err.message}`,
         );
         return handleFallback(command, ...args);
       }
@@ -91,38 +104,94 @@ export const createRedisStore = (prefix: string) => {
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: { success: false, message: 'Too many auth attempts' },
+  message: { success: false, message: "Too many auth attempts" },
   standardHeaders: true,
   legacyHeaders: false,
-  passOnStoreError: true,
-  store: createRedisStore('auth'),
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore("auth"),
 });
 
 /**
- * 2. loginLimiter: Dedicated strict limiter for POST /api/auth/login
- * Window: 15 minutes, Max: 5 attempts per account (normalized email), falling back to client IP.
- * Protects against distributed credential-stuffing attacks across multiple IPs targeting the same account.
+ * 2a. loginIpLimiter: First layer of defense for POST /api/auth/login.
+ * Window: 15 minutes, Max: 20 attempts per client IP across all accounts.
+ * Throttles single-source credential spraying across multiple accounts.
  */
-export const loginLimiter = rateLimit({
+export const loginIpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { success: false, message: 'Too many login attempts, please try again later' },
+  max: 20,
+  message: {
+    success: false,
+    message: "Too many login attempts, please try again later",
+  },
   standardHeaders: true,
   legacyHeaders: false,
-  // Fail-open trade-off decision: availability outweighs the marginal security gain here.
-  // A Redis outage or transient store error must not lock out legitimate logins across the institution.
-  passOnStoreError: true,
-  store: createRedisStore('login'),
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore("login_ip"),
   validate: { keyGeneratorIpFallback: false },
   keyGenerator: (req) => {
-    const email = typeof req.body?.email === 'string' ? req.body.email.toLowerCase().trim() : '';
-    if (email) {
-      return `email:${email}`;
-    }
-    const ip = req.ip || req.get?.('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    return `ip:${ip}`;
+    return ipKeyGenerator(
+      (req.ip || req.socket?.remoteAddress || "unknown").trim(),
+    );
   },
 });
+
+/**
+ * 2b. loginAccountLimiter: Second layer of defense for POST /api/auth/login.
+ * Window: 15 minutes, Max: 5 attempts per (client IP + normalized email).
+ * Throttles single-source password guessing against a single account without
+ * creating a global account-wide denial of service for other client IPs.
+ */
+export const loginAccountLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    success: false,
+    message: "Too many login attempts, please try again later",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore("login_account"),
+  validate: { keyGeneratorIpFallback: false },
+  keyGenerator: (req) => {
+    const email =
+      typeof req.body?.email === "string"
+        ? req.body.email.toLowerCase().trim()
+        : "";
+    const clientIp = ipKeyGenerator(
+      (req.ip || req.socket?.remoteAddress || "unknown").trim(),
+    );
+    return email ? `${clientIp}:${email}` : clientIp;
+  },
+});
+
+/**
+ * 2. loginLimiter: Layered composite limiter for POST /api/auth/login.
+ * Combines IP-level spraying protection (20 attempts / 15m) and (IP + account)
+ * brute-force protection (5 attempts / 15m).
+ * Eliminates the global email-only account lockout vulnerability (SEC-04).
+ */
+export const loginLimiter: RequestHandler = (req, res, next) => {
+  loginIpLimiter(req, res, (err) => {
+    if (err) return next(err);
+    loginAccountLimiter(req, res, next);
+  });
+};
+
+// Introspection and compatibility properties
+(loginLimiter as any).passOnStoreError = rateLimiterPassOnStoreError;
+(loginLimiter as any).ipLimiter = loginIpLimiter;
+(loginLimiter as any).accountLimiter = loginAccountLimiter;
+(loginLimiter as any).keyGenerator = (req: any) => {
+  const email =
+    typeof req.body?.email === "string"
+      ? req.body.email.toLowerCase().trim()
+      : "";
+  const clientIp = ipKeyGenerator(
+    (req.ip || req.socket?.remoteAddress || "unknown").trim(),
+  );
+  return email ? `${clientIp}:${email}` : clientIp;
+};
 
 /**
  * 3. twoFactorLimiter: Dedicated strict limiter for 2FA verification endpoints (/2fa/enable, /2fa/disable)
@@ -131,11 +200,14 @@ export const loginLimiter = rateLimit({
 export const twoFactorLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  message: { success: false, message: 'Too many 2FA verification attempts, please try again later' },
+  message: {
+    success: false,
+    message: "Too many 2FA verification attempts, please try again later",
+  },
   standardHeaders: true,
   legacyHeaders: false,
-  passOnStoreError: true,
-  store: createRedisStore('2fa'),
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore("2fa"),
 });
 
 /**
@@ -145,9 +217,12 @@ export const twoFactorLimiter = rateLimit({
 export const passwordResetLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  message: { success: false, message: 'Too many password reset attempts, please try again later' },
+  message: {
+    success: false,
+    message: "Too many password reset attempts, please try again later",
+  },
   standardHeaders: true,
   legacyHeaders: false,
-  passOnStoreError: true,
-  store: createRedisStore('pwd_reset'),
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore("pwd_reset"),
 });
