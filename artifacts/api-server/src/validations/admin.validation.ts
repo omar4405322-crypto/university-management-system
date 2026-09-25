@@ -52,7 +52,7 @@ export const adminCreateValidation = [
   body('collegeId').optional().isInt(),
   body('departmentId').optional().isInt(),
   body('managedCollegeId').custom((value, { req }) => {
-    if (req.body.role === 'COLLEGE_ADMIN' || req.body.role === 'ADMIN') {
+    if (req.body.role === 'COLLEGE_ADMIN') {
       if (value === undefined || value === null || value === '') {
         throw new Error('managedCollegeId is required for this role');
       }
@@ -71,6 +71,21 @@ export const adminCreateValidation = [
       const parsed = parseInt(value as string, 10);
       if (isNaN(parsed) || parsed <= 0) {
         throw new Error('managedDepartmentId must be a positive integer');
+      }
+    }
+    return true;
+  }),
+  body().custom((body) => {
+    if (body.role === 'ADMIN') {
+      const hasCollege =
+        (body.managedCollegeId && !isNaN(parseInt(body.managedCollegeId as string, 10)) && parseInt(body.managedCollegeId as string, 10) > 0) ||
+        (body.collegeId && !isNaN(parseInt(body.collegeId as string, 10)) && parseInt(body.collegeId as string, 10) > 0);
+      const hasDept =
+        (body.managedDepartmentId && !isNaN(parseInt(body.managedDepartmentId as string, 10)) && parseInt(body.managedDepartmentId as string, 10) > 0) ||
+        (body.departmentId && !isNaN(parseInt(body.departmentId as string, 10)) && parseInt(body.departmentId as string, 10) > 0);
+
+      if (!hasCollege && !hasDept) {
+        throw new Error('An ADMIN user must have an assigned college or department');
       }
     }
     return true;
@@ -84,7 +99,7 @@ export const adminUpdateValidation = [
     .isIn(['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN'])
     .withMessage('Invalid role'),
   body('managedCollegeId').custom((value, { req }) => {
-    if (req.body.role === 'COLLEGE_ADMIN' || req.body.role === 'ADMIN') {
+    if (req.body.role === 'COLLEGE_ADMIN') {
       if (value === undefined || value === null || value === '') {
         throw new Error('managedCollegeId is required for this role');
       }
@@ -103,6 +118,23 @@ export const adminUpdateValidation = [
       const parsed = parseInt(value as string, 10);
       if (isNaN(parsed) || parsed <= 0) {
         throw new Error('managedDepartmentId must be a positive integer');
+      }
+    }
+    return true;
+  }),
+  body().custom((body) => {
+    if (body.role === 'ADMIN') {
+      const hasCollege =
+        (body.managedCollegeId && !isNaN(parseInt(body.managedCollegeId as string, 10)) && parseInt(body.managedCollegeId as string, 10) > 0) ||
+        (body.collegeId && !isNaN(parseInt(body.collegeId as string, 10)) && parseInt(body.collegeId as string, 10) > 0);
+      const hasDept =
+        (body.managedDepartmentId && !isNaN(parseInt(body.managedDepartmentId as string, 10)) && parseInt(body.managedDepartmentId as string, 10) > 0) ||
+        (body.departmentId && !isNaN(parseInt(body.departmentId as string, 10)) && parseInt(body.departmentId as string, 10) > 0);
+
+      if (body.managedCollegeId !== undefined || body.collegeId !== undefined || body.managedDepartmentId !== undefined || body.departmentId !== undefined) {
+        if (!hasCollege && !hasDept) {
+          throw new Error('An ADMIN user must have an assigned college or department');
+        }
       }
     }
     return true;

@@ -162,19 +162,6 @@ async function main() {
     }
   });
 
-  // Admin account (matches README / login placeholder)
-  await prisma.user.upsert({
-    where: { email: 'admin@university.com' },
-    update: { role: 'ADMIN', password: adminPassword, managedCollegeId: industryCollege.id, collegeId: industryCollege.id, adminRole: null },
-    create: {
-      email: 'admin@university.com',
-      password: adminPassword,
-      role: 'ADMIN',
-      managedCollegeId: industryCollege.id,
-      collegeId: industryCollege.id,
-    },
-  });
-
   // College Admin (scoped to College of Industry & Energy)
   await prisma.user.upsert({
     where: { email: 'collegeadmin@university.com' },
