@@ -17,6 +17,11 @@ import globalErrorHandler from './middleware/error.middleware';
 import { NotFoundError } from './utils/appError';
 import { getDashboardCacheHealth, getRedisStatus } from './utils/redis.utils';
 import logger from './utils/logger';
+import { isShuttingDown } from './utils/lifecycleState';
+import requestIdMiddleware from './middleware/requestId.middleware';
+import httpLoggerMiddleware from './middleware/httpLogger.middleware';
+import metricsMiddleware from './middleware/metrics.middleware';
+import metricsRouter from './routes/metrics.routes';
 
 // Route imports
 import authRoutes from './routes/auth.routes';
@@ -54,6 +59,10 @@ import swaggerSpec from './utils/swagger';
 const app: Application = express();
 app.set('trust proxy', 1);
 
+// 1. OBSERVABILITY (Correlation ID, HTTP Request Logging, Metrics)
+app.use(requestIdMiddleware);
+app.use(httpLoggerMiddleware);
+app.use(metricsMiddleware);
 
 // 2. SECURITY HEADERS (Enterprise-grade)
 app.use(
@@ -133,16 +142,72 @@ const healthLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// 4. PUBLIC LIVENESS (both aliases remain for deployment compatibility)
+// 4. PUBLIC LIVENESS & READINESS (Liveness stays ok during drain; readiness fails during shutdown)
 const livenessHandler = (_req: Request, res: Response): void => {
   res.status(200).json({ status: 'ok' });
 };
 app.get('/api/healthz', healthLimiter, livenessHandler);
 app.get('/api/health', healthLimiter, livenessHandler);
 
-export const createReadinessHandler = (
-  redisStatusProvider: typeof getRedisStatus = getRedisStatus
+export const createPublicReadinessHandler = (
+  redisStatusProvider: typeof getRedisStatus = getRedisStatus,
+  shutdownStatusProvider: typeof isShuttingDown = isShuttingDown
 ) => async (_req: Request, res: Response): Promise<void> => {
+  if (shutdownStatusProvider()) {
+    res.status(503).json({ status: 'shutting_down' });
+    return;
+  }
+
+  try {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Database check timeout')), 2000)
+    );
+    await Promise.race([(prisma as any).$queryRaw`SELECT 1`, timeoutPromise]);
+
+    const redisStatus = redisStatusProvider();
+    const redisReady = !redisStatus.configured || redisStatus.connected;
+
+    if (!redisReady) {
+      res.status(503).json({
+        status: 'not_ready',
+        checks: { database: true, redis: false },
+      });
+      return;
+    }
+
+    res.status(200).json({
+      status: 'ready',
+      checks: { database: true, redis: true },
+    });
+  } catch (error: unknown) {
+    logger.error('[HEALTH] Public readiness check failed', { error });
+    res.status(503).json({
+      status: 'not_ready',
+      checks: { database: false },
+    });
+  }
+};
+
+const publicReadinessHandler = createPublicReadinessHandler();
+app.get('/api/ready', healthLimiter, publicReadinessHandler);
+
+export const createReadinessHandler = (
+  redisStatusProvider: typeof getRedisStatus = getRedisStatus,
+  shutdownStatusProvider: typeof isShuttingDown = isShuttingDown
+) => async (_req: Request, res: Response): Promise<void> => {
+  if (shutdownStatusProvider()) {
+    res.status(503).json({
+      status: 'not_ready',
+      shuttingDown: true,
+      checks: {
+        database: false,
+        redis: false,
+        dashboardCache: { configured: false, operational: false, state: 'degraded' },
+      },
+    });
+    return;
+  }
+
   try {
     await (prisma as any).$queryRaw`SELECT 1`;
     const redisStatus = redisStatusProvider();
@@ -230,6 +295,9 @@ app.use('/api/rooms', protect, roomRoutes);
 if (process.env.NODE_ENV !== 'production') {
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }
+
+// Metrics endpoint (Protected)
+app.use(metricsRouter);
 
 // 8. 404 & Global Error Handler
 app.use((req: Request, res: Response, next: NextFunction) => {
