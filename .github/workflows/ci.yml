@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: university_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d university_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/university_test?schema=public
+      ALLOWED_ORIGINS: http://localhost:5173
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Generate ephemeral CI secrets
+        shell: bash
+        run: |
+          echo "JWT_SECRET=$(openssl rand -hex 64)" >> "$GITHUB_ENV"
+          echo "ENCRYPTION_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+
+      - run: pnpm install --frozen-lockfile --strict-peer-dependencies=false
+      - run: pnpm audit
+      - run: pnpm run lint
+      - run: pnpm --filter @workspace/api-server exec prisma migrate deploy
+      - run: pnpm run build
+      - run: pnpm run test
+      - run: pnpm run test:contract
+      - run: pnpm run test:coverage
+      - name: Validate deployment stack
+        run: docker compose --env-file deploy.env.example config --quiet
+      - name: Build production images
+        run: |
+          docker build --file Dockerfile --tag university-api:test .
+          docker build --file Dockerfile.web --tag university-web:test .

@@ -5,8 +5,8 @@
   "license": "MIT",
   "scripts": {
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "lint": "eslint artifacts/university-app/src",
-    "lint:fix": "eslint artifacts/university-app/src --fix",
+    "lint": "eslint artifacts/university-app/src artifacts/api-server/src",
+    "lint:fix": "eslint artifacts/university-app/src artifacts/api-server/src --fix",
     "test": "pnpm run test:api && pnpm run test:web",
     "test:api": "node scripts/run-api-tests.mjs",
     "test:api:unit": "node scripts/run-api-tests.mjs --unit",
