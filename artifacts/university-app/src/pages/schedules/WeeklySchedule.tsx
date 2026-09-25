@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Card from '../../components/ui/card';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 import {
   Clock,
   MapPin,
@@ -55,9 +55,13 @@ const WeeklySchedule = () => {
   const canManage = user?.role ? ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) : false;
 
   const isRTL = i18n.language === 'ar';
-  const days = isRTL
-    ? ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const days = useMemo(
+    () =>
+      isRTL
+        ? ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    [isRTL]
+  );
 
   const getTodayDayName = useCallback((availableDays: string[]) => {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -105,27 +109,7 @@ const WeeklySchedule = () => {
     }
   };
 
-  useEffect(() => {
-    fetchTargetedTimetable();
-    
-    // Poll for schedule changes every 10 seconds to ensure immediate updates
-    const interval = setInterval(() => {
-      fetchTargetedTimetable(true); // Pass a flag to avoid setting loading=true
-    }, 10000);
-    
-    return () => clearInterval(interval);
-  }, [selectedDept, selectedYear, selectedSemester, scopeParams]);
-
-  useEffect(() => {
-    const mainEl = document.querySelector('main');
-    if (!mainEl) return;
-    mainEl.classList.add('bg-slate-50', 'dark:bg-slate-900');
-    return () => {
-      mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
-    };
-  }, []);
-
-  const fetchTargetedTimetable = async (isPolling = false) => {
+  const fetchTargetedTimetable = useCallback(async (isPolling = false) => {
     try {
       if (!isPolling) setLoading(true);
       if (!isPolling) setError(null);
@@ -138,7 +122,7 @@ const WeeklySchedule = () => {
       if (selectedYear) params.year = selectedYear;
       if (selectedSemester) params.semester = selectedSemester;
 
-      const result = await schedulesService.getWeeklyTimetable(params);
+      const result = await schedulesService.getAllWeeklyTimetable(params);
       if (result.success && result.data && Array.isArray(result.data)) {
         const grouped = result.data.reduce((acc: TimetableDayRecord, slot: ScheduleSlot) => {
           if (!slot.dayOfWeek) return acc;
@@ -157,7 +141,27 @@ const WeeklySchedule = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isCollegeAdmin, scopeParams, selectedCollege, selectedDept, selectedSemester, selectedYear, t]);
+
+  useEffect(() => {
+    fetchTargetedTimetable();
+    
+    // Poll for schedule changes every 10 seconds to ensure immediate updates
+    const interval = setInterval(() => {
+      fetchTargetedTimetable(true); // Pass a flag to avoid setting loading=true
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [fetchTargetedTimetable]);
+
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (!mainEl) return;
+    mainEl.classList.add('bg-slate-50', 'dark:bg-slate-900');
+    return () => {
+      mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
+    };
+  }, []);
 
   const formatTime = (timeStr: string) => {
     if (!timeStr) return '';

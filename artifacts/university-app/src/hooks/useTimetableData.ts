@@ -123,7 +123,7 @@ export function useTimetableData(
         academicYear: filters.academicYear,
         semester: filters.semester,
       }),
-      schedulesService.getWeeklyTimetable({
+      schedulesService.getAllWeeklyTimetable({
         departmentId: filters.departmentId,
         year: filters.academicYear,
         semester: filters.semester,

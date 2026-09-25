@@ -33,7 +33,7 @@ import { generateHourlyTimes } from '../../utils/scheduleConfig';
 import { logger } from '../../lib/logger';
 import Button from '../../components/ui/button';
 import { StatCard } from '../../components/ui/card';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -167,9 +167,13 @@ export function TASchedule() {
   }, [selectedTAId, taList]);
 
   // Days & Time configuration
-  const days = isRTL
-    ? ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const days = useMemo(
+    () =>
+      isRTL
+        ? ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    [isRTL]
+  );
 
   const getTodayDayName = useCallback((availableDays: string[]) => {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -215,7 +219,7 @@ export function TASchedule() {
       if (selectedYear) params.year = selectedYear;
       if (selectedSemester) params.semester = selectedSemester;
 
-      const result = await schedulesService.getWeeklyTimetable(params);
+      const result = await schedulesService.getAllWeeklyTimetable(params);
       let data = result?.data || result || {};
 
       let slots: any[] = [];

@@ -52,7 +52,7 @@ import { useLanguage } from '../../context/LanguageContext';
 const getSessionBadgeStyle = (type: string) => {
   switch (type) {
     case 'LECTURE':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+      return 'bg-brand-primary-100 text-brand-primary-800 dark:bg-brand-primary-950/40 dark:text-brand-primary-300 border-brand-primary-200 dark:border-brand-primary-800';
     case 'LAB':
       return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800';
     case 'SECTION':
@@ -107,6 +107,7 @@ const SchedulesList = () => {
   const [filterMissingRoom, setFilterMissingRoom] = useState(false);
   const [filterMissingDoctor, setFilterMissingDoctor] = useState(false);
   const [filterConflictsOnly, setFilterConflictsOnly] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Multi-Selection State
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
@@ -171,12 +172,16 @@ const SchedulesList = () => {
     try {
       setLoading(true);
       setError(null);
-      const params: Record<string, any> = { ...scopeParams };
-      const result = await schedulesService.getSchedules(params);
+      const params: Record<string, any> = {
+        ...scopeParams,
+        ...(showArchived ? { isArchived: 'true' } : {}),
+      };
+      const result = await schedulesService.getAllSchedules(params);
       if (result.success || result.data) {
-        const arr = Array.isArray(result.data)
-          ? result.data
-          : result.data?.schedules || result.data?.data || [];
+        const rawData = result.data as any;
+        const arr = Array.isArray(rawData)
+          ? rawData
+          : rawData?.schedules || rawData?.data || [];
         setSchedules(arr);
       }
     } catch (err: any) {
@@ -186,7 +191,7 @@ const SchedulesList = () => {
     } finally {
       setLoading(false);
     }
-  }, [scopeParams, t, showToast]);
+  }, [scopeParams, showArchived, t, showToast]);
 
   useEffect(() => {
     fetchSchedules();
@@ -499,15 +504,15 @@ const SchedulesList = () => {
   return (
     <div className="section-gap animate-in fade-in duration-500 space-y-4 w-full min-w-0 pb-20">
       {/* 1. Sleek Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="page-header-row">
         <div>
-          <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2.5">
+          <h1 className="page-title flex items-center gap-2.5">
             <span className="p-2 rounded-xl bg-brand-primary-500/10 text-brand-primary-600 dark:text-brand-primary-400">
               <Calendar size={22} />
             </span>
             {t('schedules.managementTitle', 'Schedules & Sessions Management')}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+          <p className="page-subtitle">
             {t('schedules.managementSubtitle', 'Manage class schedules, halls, faculty members, and student groups')}
           </p>
         </div>
@@ -698,6 +703,18 @@ const SchedulesList = () => {
             </option>
           ))}
         </select>
+
+        {canManage && (
+          <select
+            value={showArchived ? 'true' : 'false'}
+            onChange={(e) => setShowArchived(e.target.value === 'true')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+            aria-label={t('schedules.archiveStatus', 'Schedule status')}
+          >
+            <option value="false">{t('schedules.activeSlots', 'Active slots')}</option>
+            <option value="true">{t('schedules.archivedSlots', 'Archived slots')}</option>
+          </select>
+        )}
 
         {/* Academic Year */}
         <select
