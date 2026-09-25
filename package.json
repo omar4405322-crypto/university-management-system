@@ -1,20 +1,30 @@
 {
-    "name": "workspace",
-    "version": "0.0.0",
-    "license": "MIT",
-    "scripts": {
-        "build": "pnpm run typecheck && pnpm -r --if-present run build",
-        "typecheck:libs": "tsc --build",
-        "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
-    },
-    "private": true,
-    "devDependencies": {
-        "@rollup/rollup-win32-x64-msvc": "^4.62.2",
-        "prettier": "^3.8.3",
-        "typescript": "~5.9.3"
-    },
-    "dependencies": {
-        "@tailwindcss/oxide-win32-x64-msvc": "^4.3.1",
-        "lightningcss-win32-x64-msvc": "^1.32.0"
-    }
+  "name": "workspace",
+  "version": "0.0.0",
+  "packageManager": "pnpm@10.34.4",
+  "license": "MIT",
+  "scripts": {
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "lint": "eslint artifacts/university-app/src",
+    "lint:fix": "eslint artifacts/university-app/src --fix",
+    "test": "pnpm run test:api && pnpm run test:web",
+    "test:api": "node scripts/run-api-tests.mjs",
+    "test:api:unit": "node scripts/run-api-tests.mjs --unit",
+    "test:api:integration": "node scripts/run-api-tests.mjs --integration",
+    "test:web": "pnpm --filter @workspace/university-app test",
+    "test:coverage": "node --test --experimental-test-coverage artifacts/university-app/tests",
+    "test:contract": "pnpm --filter @workspace/scripts exec tsx ./contract_drift_check.ts",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "verify": "pnpm audit --audit-level high && pnpm run lint && pnpm run build && pnpm run test"
+  },
+  "private": true,
+  "devDependencies": {
+    "eslint": "^10.10.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.8.3",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70.0"
+  }
 }

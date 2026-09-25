@@ -8,16 +8,24 @@ import { fileTypeFromBuffer } from 'file-type';
 import { AppError } from '../utils/appError';
 import logger from '../utils/logger';
 
-/**
- * Checks if Cloudinary credentials are fully configured.
- */
-export const isCloudinaryConfigured = (): boolean => {
-  return Boolean(
-    process.env.CLOUDINARY_CLOUD_NAME &&
-    process.env.CLOUDINARY_API_KEY &&
-    process.env.CLOUDINARY_API_SECRET
-  );
+type CloudinaryConfig = {
+  cloud_name: string;
+  api_key: string;
+  api_secret: string;
 };
+
+const getCloudinaryConfig = (): CloudinaryConfig | null => {
+  const cloud_name = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const api_key = process.env.CLOUDINARY_API_KEY?.trim();
+  const api_secret = process.env.CLOUDINARY_API_SECRET?.trim();
+
+  return cloud_name && api_key && api_secret
+    ? { cloud_name, api_key, api_secret }
+    : null;
+};
+
+export const isCloudinaryConfigured = (): boolean =>
+  getCloudinaryConfig() !== null;
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const ALLOWED_DETECTED_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
@@ -33,15 +41,11 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
 let cachedCloudinaryUpload: multer.Multer | null = null;
 let cachedCloudinaryKey = '';
 
-const getCloudinaryUpload = (): multer.Multer => {
-  const currentKey = `${process.env.CLOUDINARY_CLOUD_NAME}:${process.env.CLOUDINARY_API_KEY}:${process.env.CLOUDINARY_API_SECRET}`;
+const getCloudinaryUpload = (config: CloudinaryConfig): multer.Multer => {
+  const currentKey = `${config.cloud_name}:${config.api_key}:${config.api_secret}`;
   if (!cachedCloudinaryUpload || cachedCloudinaryKey !== currentKey) {
     cachedCloudinaryKey = currentKey;
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
+    cloudinary.config(config);
 
     const storage = new CloudinaryStorage({
       cloudinary: cloudinary,
@@ -72,39 +76,37 @@ const memoryUpload = multer({
 });
 
 /**
- * Upload middleware for user profile pictures with dual defense:
- * 1. Fail-closed 503 in production if Cloudinary is not configured (no silent local-disk fallback).
- * 2. Magic-byte inspection & safe server-generated extension on local-disk path (in dev).
+ * Upload middleware for user profile pictures with layered defenses:
+ * 1. Cloudinary remains the only production upload store when configured.
+ * 2. Without Cloudinary, uploaded bytes are validated but discarded in production
+ *    so the controller can keep the user's existing/default avatar.
+ * 3. Magic-byte inspection & safe server-generated extension on local-disk path (in dev).
  */
 const upload = {
   single(fieldName: string) {
     return (req: Request, res: Response, next: NextFunction): void => {
-      const isProd = process.env.NODE_ENV === 'production';
-      const cloudinaryReady = isCloudinaryConfigured();
+      const isProd =
+        process.env.NODE_ENV?.trim().toLowerCase() === 'production';
+      const cloudinaryConfig = getCloudinaryConfig();
 
-      // 1. Fail-closed in production if Cloudinary credentials are missing
-      if (isProd && !cloudinaryReady) {
-        logger.warn(
-          '[STORAGE] Profile picture upload rejected: Cloudinary credentials missing in production (local disk fallback disabled)'
-        );
-        res.status(503).json({
-          success: false,
-          status: 'error',
-          message: 'Profile picture storage is not configured',
-        });
-        return;
-      }
-
-      // 2. Cloudinary path if configured
-      if (cloudinaryReady) {
-        const cloudinaryUploader = getCloudinaryUpload();
+      // 1. Cloudinary path if configured
+      if (cloudinaryConfig) {
+        const cloudinaryUploader = getCloudinaryUpload(cloudinaryConfig);
         cloudinaryUploader.single(fieldName)(req, res, next);
         return;
       }
 
-      // 3. Hardened local disk path (development / non-production)
+      // 2. Validate in memory before either default-avatar fallback (production)
+      // or hardened local-disk persistence (development).
       memoryUpload.single(fieldName)(req, res, async (err: any) => {
         if (err) {
+          if (req.file?.path) {
+            try {
+              await fs.promises.unlink(req.file.path);
+            } catch {
+              // Ignore error if file does not exist or was already removed
+            }
+          }
           return next(err);
         }
 
@@ -135,6 +137,17 @@ const upload = {
 
           // Generate safe extension strictly from server-detected real type, never from originalname
           const safeExt = detected.ext === 'jpeg' ? 'jpg' : detected.ext;
+
+          if (isProd) {
+            logger.warn(
+              '[STORAGE] Cloudinary credentials missing: keeping the existing/default profile avatar'
+            );
+            res.locals.profilePictureFallback = true;
+            req.file = undefined;
+            next();
+            return;
+          }
+
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
           const safeFilename = `${req.file.fieldname}-${uniqueSuffix}.${safeExt}`;
 

@@ -1,23 +1,61 @@
+/**
+ * schedules.controller.ts
+ *
+ * Public barrel for schedule controllers.
+ *
+ * Responsibilities retained here:
+ *   - getWeeklyTimetable / getAllSchedules  (read-only list with role-based scoping)
+ *
+ * Responsibilities delegated to sub-controllers:
+ *   - CRUD / lifecycle  → schedulesMutation.controller.ts
+ *   - Bulk grid sync    → schedulesSync.controller.ts
+ *   - Conflict check    → schedulesConflict.controller.ts
+ *
+ * Re-exporting from sub-controllers keeps the router and tests unchanged.
+ */
+
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
-import { auditLog } from '../utils/audit.utils';
 import { getScopeWhere } from '../utils/scope.utils';
 import catchAsync from '../utils/catchAsync';
-import { NotFoundError, AuthorizationError, AppError, ConflictError, ValidationError } from '../utils/appError';
-import { TimetableService } from '../services/timetable.service';
-import { Prisma } from '@prisma/client';
-import { MAX_SCHEDULE_SYNC_SLOTS } from '../utils/requestLimits';
-import { requireExistingCourseStaffAssignments } from '../utils/scheduleAssignment.utils';
+
+export {
+  createSchedule,
+  updateSchedule,
+  deleteSchedule,
+  archiveSchedule,
+  restoreSchedule,
+} from './schedulesMutation.controller';
+export { syncGridToMaster } from './schedulesSync.controller';
+export { checkScheduleConflict } from './schedulesConflict.controller';
 
 export const getWeeklyTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { departmentId, collegeId, year, semester, timetableId, doctorId, teachingAssistantId } = req.query as Record<string, string>;
+    const {
+      departmentId,
+      collegeId,
+      year,
+      semester,
+      timetableId,
+      doctorId,
+      teachingAssistantId,
+      page: pageParam,
+      limit: limitParam,
+    } = req.query as Record<string, string>;
     const { user } = req;
+
+    const parsedPage = Number(pageParam);
+    const parsedLimit = Number(limitParam);
+    const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const limit = Number.isSafeInteger(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, 100)
+      : 20;
+    const skip = (page - 1) * limit;
+    const take = limit;
 
     const filterYear = year ? parseInt(year) : undefined;
     const filterSemester = semester ? parseInt(semester) : undefined;
 
-    let scheduleSlots: any[] = [];
     let whereClause: any = {};
 
     const includeRelations = {
@@ -65,7 +103,16 @@ export const getWeeklyTimetable = catchAsync(
       });
 
       if (!student) {
-        return res.json({ success: true, data: [] });
+        return res.json({
+          success: true,
+          data: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 1,
+          },
+        });
       }
 
       const enrollments = await prisma.enrollment.findMany({
@@ -81,16 +128,23 @@ export const getWeeklyTimetable = catchAsync(
       if (filterSemester !== undefined) baseCourseFilter.semester = filterSemester;
 
       if (student.groupId) {
-        // Get all ancestor group IDs (the student's group + all parents)
+        // Fetch all department groups in a single batch read to avoid point reads per ancestry level
+        const deptGroups = student.departmentId
+          ? await prisma.studentGroup.findMany({
+              where: { departmentId: student.departmentId },
+              select: { id: true, parentGroupId: true },
+            })
+          : [];
+        const groupParentMap = new Map<number, number | null>();
+        for (const g of deptGroups) {
+          groupParentMap.set(g.id, g.parentGroupId);
+        }
+
         const groupIds: number[] = [];
         let currentGroupId: number | null = student.groupId;
         while (currentGroupId) {
           groupIds.push(currentGroupId);
-          const group: any = await prisma.studentGroup.findUnique({
-            where: { id: currentGroupId },
-            select: { parentGroupId: true }
-          });
-          currentGroupId = group?.parentGroupId ?? null;
+          currentGroupId = groupParentMap.get(currentGroupId) ?? null;
         }
 
         // Build enrolled course filter (with optional semester)
@@ -143,11 +197,33 @@ export const getWeeklyTimetable = catchAsync(
       Object.defineProperty(whereClause, '__studentScopedFiltersApplied', { value: true, enumerable: false });
     } else if (user!.role === 'DOCTOR') {
       const doctor = await prisma.doctor.findUnique({ where: { userId: user!.id } });
-      if (!doctor) return res.json({ success: true, data: [] });
+      if (!doctor) {
+        return res.json({
+          success: true,
+          data: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 1,
+          },
+        });
+      }
       whereClause = { doctorId: doctor.id };
     } else if (user!.role === 'TEACHING_ASSISTANT') {
       const ta = await prisma.teachingAssistant.findUnique({ where: { userId: user!.id } });
-      if (!ta) return res.json({ success: true, data: [] });
+      if (!ta) {
+        return res.json({
+          success: true,
+          data: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 1,
+          },
+        });
+      }
       whereClause = { teachingAssistantId: ta.id };
     } else {
       // Admin roles
@@ -180,10 +256,15 @@ export const getWeeklyTimetable = catchAsync(
       whereClause.timetableId = parseInt(timetableId);
     }
 
-    scheduleSlots = await prisma.scheduleSlot.findMany({
-      where: whereClause,
-      include: includeRelations
-    });
+    const [scheduleSlots, total] = await Promise.all([
+      prisma.scheduleSlot.findMany({
+        where: whereClause,
+        include: includeRelations,
+        skip,
+        take,
+      }),
+      prisma.scheduleSlot.count({ where: whereClause }),
+    ]);
 
     const finalSlots = scheduleSlots.map((slot: any) => {
       if (slot.overrides && slot.overrides.length > 0) {
@@ -203,915 +284,17 @@ export const getWeeklyTimetable = catchAsync(
       return slot;
     });
 
-    return res.json({ success: true, data: finalSlots });
+    return res.json({
+      success: true,
+      data: finalSlots,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    });
   }
 );
 
 export const getAllSchedules = getWeeklyTimetable; // Aliasing
-
-export const createSchedule = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { courseId, doctorId, groupId, slotType, dayOfWeek, startTime, endTime, room, teachingAssistantId, timetableId } = req.body;
-
-    if (!courseId) return next(new ValidationError('courseId is required'));
-
-    const course = await prisma.course.findUnique({
-      where: { id: parseInt(courseId as string) },
-      include: { department: true }
-    });
-    if (!course) return next(new NotFoundError('Course not found'));
-
-    let parsedDoctorId = doctorId ? parseInt(doctorId as string) : null;
-    const parsedGroupId = groupId ? parseInt(groupId as string) : null;
-    let effectiveTeachingAssistantId = teachingAssistantId
-      ? String(teachingAssistantId)
-      : null;
-
-    if (req.user!.role === 'DOCTOR') {
-      const myDoctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
-      if (!myDoctor || (parsedDoctorId && parsedDoctorId !== myDoctor.id)) {
-        return next(new AuthorizationError('You can only schedule classes for yourself'));
-      }
-      if (effectiveTeachingAssistantId) {
-        return next(new AuthorizationError('Staff reassignment must be performed by a scoped admin'));
-      }
-      parsedDoctorId = myDoctor.id;
-    } else if (req.user!.role === 'TEACHING_ASSISTANT') {
-      const myTeachingAssistantId = req.user!.teachingAssistant?.id;
-      if (!myTeachingAssistantId || (effectiveTeachingAssistantId && effectiveTeachingAssistantId !== myTeachingAssistantId)) {
-        return next(new AuthorizationError('You can only schedule classes assigned to you'));
-      }
-      if (parsedDoctorId) {
-        return next(new AuthorizationError('Staff reassignment must be performed by a scoped admin'));
-      }
-      effectiveTeachingAssistantId = myTeachingAssistantId;
-    } else {
-      const deptScope: any = getScopeWhere(req.user!, 'department');
-      if (deptScope && Object.keys(deptScope).length) {
-        if (deptScope.collegeId && course.department?.collegeId !== deptScope.collegeId)
-          return next(new AuthorizationError('Access denied'));
-        if (deptScope.id && course.departmentId !== deptScope.id)
-          return next(new AuthorizationError('Access denied'));
-      }
-    }
-
-    if (timetableId) {
-      const timetable = await prisma.timetable.findUnique({ where: { id: parseInt(timetableId as string) } });
-      if (!timetable) return next(new NotFoundError('Timetable not found'));
-      if (timetable.departmentId !== course.departmentId ||
-        timetable.academicYear !== course.year ||
-        timetable.semester !== course.semester) {
-        return next(new ValidationError('Timetable scope does not match Course scope'));
-      }
-    }
-
-    let effectiveTimetableId: number | undefined = timetableId ? parseInt(timetableId as string) : undefined;
-    if (!effectiveTimetableId) {
-      const foundTb = await prisma.timetable.findFirst({
-        where: {
-          departmentId: course.departmentId!,
-          academicYear: course.year,
-          semester: course.semester,
-        }
-      });
-      if (foundTb) effectiveTimetableId = foundTb.id;
-    }
-
-    let scheduleSlot;
-    try {
-      scheduleSlot = await prisma.$transaction(async (tx) => {
-        await requireExistingCourseStaffAssignments(tx, {
-          courseId: course.id,
-          doctorId: parsedDoctorId,
-          teachingAssistantId: effectiveTeachingAssistantId,
-        });
-
-        await TimetableService.checkConflicts({
-          dayOfWeek,
-          startTime,
-          endTime,
-          room,
-          courseId: parseInt(courseId as string),
-          doctorId: parsedDoctorId,
-          groupId: parsedGroupId,
-          teachingAssistantId: effectiveTeachingAssistantId,
-        }, tx);
-
-        return tx.scheduleSlot.create({
-          data: {
-            courseId: parseInt(courseId as string),
-            doctorId: parsedDoctorId,
-            groupId: parsedGroupId,
-            slotType: slotType || 'LECTURE',
-            dayOfWeek,
-            startTime,
-            endTime,
-            room,
-            teachingAssistantId: effectiveTeachingAssistantId,
-
-            timetableId: effectiveTimetableId
-          },
-        });
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-    } catch (err: any) {
-      if (err?.code === 'P2034') {
-        return next(new ConflictError('Scheduling conflict: another booking was committed simultaneously. Please retry.'));
-      }
-      throw err;
-    }
-
-    res.status(201).json({ success: true, data: scheduleSlot });
-  }
-);
-
-export const updateSchedule = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { dayOfWeek, startTime, endTime, room, teachingAssistantId, courseId, doctorId, groupId, slotType } = req.body;
-    const slotId = parseInt(req.params.id as string);
-
-    const existing = await prisma.scheduleSlot.findUnique({
-      where: { id: slotId },
-      include: { course: { include: { department: true } } }
-    });
-    if (!existing) return next(new NotFoundError('ScheduleSlot not found'));
-
-    const newCourseId = courseId ? parseInt(courseId as string) : existing.courseId;
-    const newDoctorId = doctorId !== undefined ? (doctorId ? parseInt(doctorId as string) : null) : existing.doctorId;
-    const newGroupId = groupId !== undefined ? (groupId ? parseInt(groupId as string) : null) : existing.groupId;
-    const newTeachingAssistantId = teachingAssistantId !== undefined
-      ? (teachingAssistantId ? String(teachingAssistantId) : null)
-      : existing.teachingAssistantId;
-
-    if (req.user!.role === 'DOCTOR') {
-      const myDoctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
-      if (!myDoctor || existing.doctorId !== myDoctor.id) {
-        return next(new AuthorizationError('You can only modify slots for your own sections'));
-      }
-      if (newDoctorId !== myDoctor.id || newTeachingAssistantId !== existing.teachingAssistantId) {
-        return next(new AuthorizationError('Staff reassignment must be performed by a scoped admin'));
-      }
-    } else if (req.user!.role === 'TEACHING_ASSISTANT') {
-      if (existing.teachingAssistantId !== req.user!.teachingAssistant?.id) {
-        return next(new AuthorizationError('You can only modify slots assigned to you'));
-      }
-      if (newTeachingAssistantId !== req.user!.teachingAssistant?.id) {
-        return next(new AuthorizationError('You cannot reassign to another TA'));
-      }
-      if (newDoctorId !== existing.doctorId) {
-        return next(new AuthorizationError('Staff reassignment must be performed by a scoped admin'));
-      }
-    } else {
-      const deptScope: any = getScopeWhere(req.user!, 'department');
-      if (deptScope && Object.keys(deptScope).length) {
-        if (deptScope.collegeId && existing.course?.department?.collegeId !== deptScope.collegeId)
-          return next(new AuthorizationError('Access denied'));
-        if (deptScope.id && existing.course?.departmentId !== deptScope.id)
-          return next(new AuthorizationError('Access denied'));
-      }
-    }
-
-    let targetTimetableId = existing.timetableId;
-
-    if (courseId && newCourseId !== existing.courseId) {
-      const course = await prisma.course.findUnique({
-        where: { id: newCourseId },
-        include: { department: true }
-      });
-      if (!course) return next(new NotFoundError('Course not found'));
-
-      const deptScope: any = getScopeWhere(req.user!, 'department');
-      if (deptScope && Object.keys(deptScope).length) {
-        if (deptScope.collegeId && course.department?.collegeId !== deptScope.collegeId)
-          return next(new AuthorizationError('Access denied'));
-        if (deptScope.id && course.departmentId !== deptScope.id)
-          return next(new AuthorizationError('Access denied'));
-      }
-
-      const foundTb = await prisma.timetable.findFirst({
-        where: {
-          departmentId: course.departmentId!,
-          academicYear: course.year,
-          semester: course.semester,
-        }
-      });
-      targetTimetableId = foundTb ? foundTb.id : null;
-    } else if (!targetTimetableId && existing.course) {
-      const foundTb = await prisma.timetable.findFirst({
-        where: {
-          departmentId: existing.course.departmentId!,
-          academicYear: existing.course.year,
-          semester: existing.course.semester,
-        }
-      });
-      if (foundTb) targetTimetableId = foundTb.id;
-    }
-
-    const scheduleSlot = await prisma.$transaction(async (tx) => {
-      const doctorNeedsAssignmentProof =
-        newDoctorId !== null &&
-        (newDoctorId !== existing.doctorId || newCourseId !== existing.courseId);
-      const teachingAssistantNeedsAssignmentProof =
-        newTeachingAssistantId !== null &&
-        (newTeachingAssistantId !== existing.teachingAssistantId ||
-          newCourseId !== existing.courseId);
-
-      await requireExistingCourseStaffAssignments(tx, {
-        courseId: newCourseId,
-        doctorId: doctorNeedsAssignmentProof ? newDoctorId : undefined,
-        teachingAssistantId: teachingAssistantNeedsAssignmentProof
-          ? newTeachingAssistantId
-          : undefined,
-        excludeSlotId: slotId,
-      });
-
-      await TimetableService.checkConflicts({
-        dayOfWeek: dayOfWeek || existing.dayOfWeek,
-        startTime: startTime || existing.startTime,
-        endTime: endTime || existing.endTime,
-        room: room !== undefined ? room : existing.room,
-        courseId: newCourseId,
-        doctorId: newDoctorId,
-        groupId: newGroupId,
-        teachingAssistantId: newTeachingAssistantId,
-        excludeSlotId: slotId,
-      }, tx);
-
-      return tx.scheduleSlot.update({
-        where: { id: slotId },
-        data: {
-          dayOfWeek,
-          startTime,
-          endTime,
-          room,
-          teachingAssistantId: newTeachingAssistantId,
-
-          courseId: newCourseId,
-          doctorId: newDoctorId,
-          groupId: newGroupId,
-          slotType: slotType || undefined,
-          timetableId: targetTimetableId,
-        },
-      });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-
-    res.json({ success: true, data: scheduleSlot });
-  }
-);
-
-export const deleteSchedule = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const slotId = parseInt(req.params.id as string);
-    const existing = await prisma.scheduleSlot.findUnique({
-      where: { id: slotId },
-      include: { course: { include: { department: true } } }
-    });
-    if (!existing) return next(new NotFoundError('ScheduleSlot not found'));
-
-    if (req.user!.role === 'DOCTOR') {
-      const myDoctor = await prisma.doctor.findUnique({ where: { userId: req.user!.id } });
-      if (!myDoctor || existing.doctorId !== myDoctor.id) {
-        return next(new AuthorizationError('You can only delete slots for your own sections'));
-      }
-    } else if (req.user!.role === 'TEACHING_ASSISTANT') {
-      if (existing.teachingAssistantId !== req.user!.teachingAssistant?.id) {
-        return next(new AuthorizationError('You can only delete slots assigned to you'));
-      }
-    } else {
-      const deptScope: any = getScopeWhere(req.user!, 'department');
-      if (deptScope && Object.keys(deptScope).length) {
-        if (deptScope.collegeId && existing.course?.department?.collegeId !== deptScope.collegeId)
-          return next(new AuthorizationError('Access denied'));
-        if (deptScope.id && existing.course?.departmentId !== deptScope.id)
-          return next(new AuthorizationError('Access denied'));
-      }
-    }
-
-    await prisma.scheduleSlot.delete({ where: { id: slotId } });
-    auditLog('DELETE_SCHEDULE', 'ScheduleSlot', req.params.id as string, req);
-    res.json({ success: true, message: 'ScheduleSlot deleted' });
-  }
-);
-
-interface StaffResolveResult<T> {
-  id: T | null;
-  isAmbiguous: boolean;
-  matchCount: number;
-}
-
-async function resolveDoctorByName(
-  rawName: string,
-  departmentId?: number | null
-): Promise<StaffResolveResult<number>> {
-  const cleanName = rawName
-    .trim()
-    .replace(/^(د\.|أ\.د\.|دكتور\s+|dr\.|dr\s+|prof\.|prof\s+)\s*/i, '')
-    .trim();
-  const parts = cleanName.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return { id: null, isAmbiguous: false, matchCount: 0 };
-
-  const deptFilter = departmentId ? { departmentId: Number(departmentId) } : {};
-
-  // Step 1: Scoped Exact Match
-  const exactWhere = parts.length >= 2
-    ? {
-        firstName: { equals: parts[0], mode: 'insensitive' as const },
-        lastName: { equals: parts[parts.length - 1], mode: 'insensitive' as const },
-        ...deptFilter,
-      }
-    : {
-        OR: [
-          { firstName: { equals: parts[0], mode: 'insensitive' as const } },
-          { lastName: { equals: parts[0], mode: 'insensitive' as const } },
-        ],
-        ...deptFilter,
-      };
-
-  let candidates = await prisma.doctor.findMany({ where: exactWhere });
-
-  if (candidates.length === 1) {
-    return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-  }
-  if (candidates.length > 1) {
-    return { id: null, isAmbiguous: true, matchCount: candidates.length };
-  }
-
-  // Step 2: Scoped Contains Match
-  const containsWhere = parts.length >= 2
-    ? {
-        firstName: { contains: parts[0], mode: 'insensitive' as const },
-        lastName: { contains: parts[parts.length - 1], mode: 'insensitive' as const },
-        ...deptFilter,
-      }
-    : {
-        OR: [
-          { firstName: { contains: parts[0], mode: 'insensitive' as const } },
-          { lastName: { contains: parts[0], mode: 'insensitive' as const } },
-        ],
-        ...deptFilter,
-      };
-
-  candidates = await prisma.doctor.findMany({ where: containsWhere });
-
-  if (candidates.length === 1) {
-    return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-  }
-  if (candidates.length > 1) {
-    return { id: null, isAmbiguous: true, matchCount: candidates.length };
-  }
-
-  return { id: null, isAmbiguous: false, matchCount: 0 };
-}
-
-async function resolveTaByName(
-  rawName: string,
-  departmentId?: number | null
-): Promise<StaffResolveResult<string>> {
-  const cleanName = rawName
-    .trim()
-    .replace(/^(م\.|مهندس\s+|eng\.|eng\s+|ta\.|ta\s+|معيد\s+)\s*/i, '')
-    .trim();
-  const parts = cleanName.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return { id: null, isAmbiguous: false, matchCount: 0 };
-
-  const deptFilter = departmentId ? { departmentId: Number(departmentId) } : {};
-
-  // Step 1: Scoped Exact Match
-  const exactWhere = parts.length >= 2
-    ? {
-        firstName: { equals: parts[0], mode: 'insensitive' as const },
-        lastName: { equals: parts[parts.length - 1], mode: 'insensitive' as const },
-        ...deptFilter,
-      }
-    : {
-        OR: [
-          { firstName: { equals: parts[0], mode: 'insensitive' as const } },
-          { lastName: { equals: parts[0], mode: 'insensitive' as const } },
-        ],
-        ...deptFilter,
-      };
-
-  let candidates = await prisma.teachingAssistant.findMany({ where: exactWhere });
-
-  if (candidates.length === 1) {
-    return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-  }
-  if (candidates.length > 1) {
-    return { id: null, isAmbiguous: true, matchCount: candidates.length };
-  }
-
-  // Step 2: Scoped Contains Match
-  const containsWhere = parts.length >= 2
-    ? {
-        firstName: { contains: parts[0], mode: 'insensitive' as const },
-        lastName: { contains: parts[parts.length - 1], mode: 'insensitive' as const },
-        ...deptFilter,
-      }
-    : {
-        OR: [
-          { firstName: { contains: parts[0], mode: 'insensitive' as const } },
-          { lastName: { contains: parts[0], mode: 'insensitive' as const } },
-        ],
-        ...deptFilter,
-      };
-
-  candidates = await prisma.teachingAssistant.findMany({ where: containsWhere });
-
-  if (candidates.length === 1) {
-    return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-  }
-  if (candidates.length > 1) {
-    return { id: null, isAmbiguous: true, matchCount: candidates.length };
-  }
-
-  return { id: null, isAmbiguous: false, matchCount: 0 };
-}
-
-export const syncGridToMaster = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { departmentId, academicYear, semester, slots } = req.body;
-
-    if (
-      !Array.isArray(slots) ||
-      slots.length === 0 ||
-      slots.length > MAX_SCHEDULE_SYNC_SLOTS
-    ) {
-      return next(
-        new ValidationError(
-          `Slots must contain between 1 and ${MAX_SCHEDULE_SYNC_SLOTS} items`
-        )
-      );
-    }
-
-    const parsedDeptId = Number(departmentId);
-    if (!Number.isSafeInteger(parsedDeptId) || parsedDeptId <= 0) {
-      return next(new ValidationError('departmentId must be a positive integer'));
-    }
-
-    // Enforce Admin Scope
-    const deptScope: any = getScopeWhere(req.user!, 'department');
-    if (deptScope && Object.keys(deptScope).length) {
-      if (deptScope.id && parsedDeptId !== deptScope.id) {
-        return next(new AuthorizationError('Access denied'));
-      }
-      if (deptScope.collegeId) {
-        const dept = await prisma.department.findUnique({
-          where: { id: parsedDeptId },
-          select: { collegeId: true },
-        });
-        if (!dept || dept.collegeId !== deptScope.collegeId) {
-          return next(new AuthorizationError('Access denied'));
-        }
-      }
-    }
-
-    // 1. Pre-fetch Timetable (single lookup)
-    let timetableId: number | null = null;
-    if (parsedDeptId && academicYear && semester) {
-      const timetable = await prisma.timetable.findFirst({
-        where: {
-          departmentId: parsedDeptId,
-          academicYear: parseInt(academicYear),
-          semester: parseInt(semester),
-        },
-        select: { id: true },
-      });
-      if (timetable) timetableId = timetable.id;
-    }
-
-    // 2. Pre-fetch only courses for the explicitly selected department.
-    const deptFilter = { departmentId: parsedDeptId };
-    const allCourses = await prisma.course.findMany({
-      where: deptFilter,
-      select: { id: true, name: true, courseCode: true, departmentId: true },
-    });
-
-    // 3. Pre-fetch only staff in the explicitly selected department.
-    const departmentDoctors = await prisma.doctor.findMany({
-      where: { departmentId: parsedDeptId },
-      select: { id: true, firstName: true, lastName: true, departmentId: true },
-    });
-    const departmentTeachingAssistants = await prisma.teachingAssistant.findMany({
-      where: { departmentId: parsedDeptId },
-      select: { id: true, firstName: true, lastName: true, departmentId: true },
-    });
-
-    // 4. Pre-fetch Existing ScheduleSlots for matched courses
-    const allCourseIds = allCourses.map(c => c.id);
-    const existingSlots = allCourseIds.length > 0
-      ? await prisma.scheduleSlot.findMany({
-          where: {
-            courseId: { in: allCourseIds },
-            ...(timetableId ? { timetableId } : {}),
-          },
-          select: {
-            id: true,
-            courseId: true,
-            dayOfWeek: true,
-            startTime: true,
-            endTime: true,
-            room: true,
-            slotType: true,
-            doctorId: true,
-            timetableId: true,
-          },
-        })
-      : [];
-
-    const existingSlotMap = new Map<string, typeof existingSlots[0]>();
-    for (const s of existingSlots) {
-      const key = `${s.courseId}-${s.dayOfWeek.toUpperCase()}-${s.startTime}`;
-      existingSlotMap.set(key, s);
-    }
-
-    // In-memory Course matcher
-    const matchCourse = (rawName: string) => {
-      const trimmed = rawName.trim().toLowerCase();
-      const exact = allCourses.filter(
-        c => c.name.toLowerCase() === trimmed || c.courseCode.toLowerCase() === trimmed
-      );
-      if (exact.length === 1) return { course: exact[0], isAmbiguous: false, matchCount: 1 };
-      if (exact.length > 1) return { course: null, isAmbiguous: true, matchCount: exact.length };
-
-      const contains = allCourses.filter(
-        c => c.name.toLowerCase().includes(trimmed) || c.courseCode.toLowerCase().includes(trimmed)
-      );
-      if (contains.length === 1) return { course: contains[0], isAmbiguous: false, matchCount: 1 };
-      if (contains.length > 1) return { course: null, isAmbiguous: true, matchCount: contains.length };
-
-      return { course: null, isAmbiguous: false, matchCount: 0 };
-    };
-
-    // In-memory Doctor matcher
-    const matchDoctor = (rawName: string): StaffResolveResult<number> => {
-      const cleanName = rawName
-        .trim()
-        .replace(/^(د\.|دكتور\s+|dr\.|dr\s+|أ\.د\.|prof\.|prof\s+)\s*/i, '')
-        .trim();
-      const parts = cleanName.split(/\s+/).filter(Boolean).map(p => p.toLowerCase());
-      if (parts.length === 0) return { id: null, isAmbiguous: false, matchCount: 0 };
-
-      const filterDocs = (docs: typeof departmentDoctors, mode: 'exact' | 'contains') => {
-        return docs.filter(doc => {
-          const f = (doc.firstName || '').toLowerCase();
-          const l = (doc.lastName || '').toLowerCase();
-          if (parts.length >= 2) {
-            const targetFirst = parts[0];
-            const targetLast = parts[parts.length - 1];
-            return mode === 'exact'
-              ? f === targetFirst && l === targetLast
-              : f.includes(targetFirst) && l.includes(targetLast);
-          } else {
-            const target = parts[0];
-            return mode === 'exact'
-              ? f === target || l === target
-              : f.includes(target) || l.includes(target);
-          }
-        });
-      };
-
-      let candidates = filterDocs(departmentDoctors, 'exact');
-      if (candidates.length === 1) return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-      if (candidates.length > 1) return { id: null, isAmbiguous: true, matchCount: candidates.length };
-
-      candidates = filterDocs(departmentDoctors, 'contains');
-      if (candidates.length === 1) return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-      if (candidates.length > 1) return { id: null, isAmbiguous: true, matchCount: candidates.length };
-
-      return { id: null, isAmbiguous: false, matchCount: 0 };
-    };
-
-    const matchTeachingAssistant = (rawName: string): StaffResolveResult<string> => {
-      const cleanName = rawName
-        .trim()
-        .replace(/^(م\.|مهندس\s+|eng\.|eng\s+|ta\.|ta\s+|معيد\s+)\s*/i, '')
-        .trim();
-      const parts = cleanName.split(/\s+/).filter(Boolean).map(p => p.toLowerCase());
-      if (parts.length === 0) return { id: null, isAmbiguous: false, matchCount: 0 };
-
-      const filterTeachingAssistants = (mode: 'exact' | 'contains') =>
-        departmentTeachingAssistants.filter(teachingAssistant => {
-          const firstName = (teachingAssistant.firstName || '').toLowerCase();
-          const lastName = (teachingAssistant.lastName || '').toLowerCase();
-          if (parts.length >= 2) {
-            const targetFirst = parts[0];
-            const targetLast = parts[parts.length - 1];
-            return mode === 'exact'
-              ? firstName === targetFirst && lastName === targetLast
-              : firstName.includes(targetFirst) && lastName.includes(targetLast);
-          }
-          const target = parts[0];
-          return mode === 'exact'
-            ? firstName === target || lastName === target
-            : firstName.includes(target) || lastName.includes(target);
-        });
-
-      let candidates = filterTeachingAssistants('exact');
-      if (candidates.length === 1) {
-        return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-      }
-      if (candidates.length > 1) {
-        return { id: null, isAmbiguous: true, matchCount: candidates.length };
-      }
-
-      candidates = filterTeachingAssistants('contains');
-      if (candidates.length === 1) {
-        return { id: candidates[0].id, isAmbiguous: false, matchCount: 1 };
-      }
-      if (candidates.length > 1) {
-        return { id: null, isAmbiguous: true, matchCount: candidates.length };
-      }
-
-      return { id: null, isAmbiguous: false, matchCount: 0 };
-    };
-
-    let syncedCount = 0;
-    let skippedCount = 0;
-    const skippedSlots: Array<{ courseName: string; reason: string }> = [];
-
-    const updatesToRun: Array<{ where: { id: number }; data: any }> = [];
-    const createsToRun: any[] = [];
-
-    for (const slot of slots) {
-      const {
-        day,
-        startTime,
-        endTime,
-        courseName,
-        courseId,
-        instructor,
-        doctorId: suppliedDoctorId,
-        teachingAssistantId: suppliedTeachingAssistantId,
-        room,
-        slotType,
-      } = slot;
-      if (!courseName || typeof courseName !== 'string') continue;
-
-      const trimmedName = courseName.trim();
-      const courseMatch = courseId
-        ? {
-            course: allCourses.find(c => c.id === Number(courseId)) || null,
-            isAmbiguous: false,
-            matchCount: 0,
-          }
-        : matchCourse(trimmedName);
-
-      if (courseMatch.isAmbiguous) {
-        skippedCount++;
-        skippedSlots.push({
-          courseName: trimmedName,
-          reason: `AMBIGUOUS_COURSE_MATCH: ${courseMatch.matchCount} candidate courses matched '${trimmedName}'`,
-        });
-        continue;
-      }
-
-      const course = courseMatch.course;
-      if (!course) {
-        skippedCount++;
-        skippedSlots.push({
-          courseName: trimmedName,
-          reason: courseId
-            ? `COURSE_ID_NOT_IN_SCOPE: Course ID '${courseId}' is not in the selected department`
-            : `COURSE_NOT_FOUND: No scoped course matching '${trimmedName}'`,
-        });
-        continue;
-      }
-
-      let doctorId: number | null = null;
-      let teachingAssistantId: string | null = null;
-      const effectiveSlotType = String(slotType || 'LECTURE').toUpperCase();
-      const usesTeachingAssistant = effectiveSlotType === 'LAB' || effectiveSlotType === 'SECTION';
-
-      if (usesTeachingAssistant) {
-        if (suppliedTeachingAssistantId) {
-          const scopedTeachingAssistant = departmentTeachingAssistants.find(
-            teachingAssistant => teachingAssistant.id === String(suppliedTeachingAssistantId)
-          );
-          if (!scopedTeachingAssistant) {
-            skippedCount++;
-            skippedSlots.push({
-              courseName: trimmedName,
-              reason: `INSTRUCTOR_ID_NOT_IN_SCOPE: Teaching assistant ID '${suppliedTeachingAssistantId}' is not in the selected department`,
-            });
-            continue;
-          }
-          teachingAssistantId = scopedTeachingAssistant.id;
-        } else if (instructor) {
-          const teachingAssistantResolve = matchTeachingAssistant(instructor);
-          if (teachingAssistantResolve.isAmbiguous) {
-            skippedCount++;
-            skippedSlots.push({
-              courseName: trimmedName,
-              reason: `AMBIGUOUS_INSTRUCTOR_MATCH: ${teachingAssistantResolve.matchCount} teaching assistants matched '${instructor}'`,
-            });
-            continue;
-          }
-          if (teachingAssistantResolve.id) {
-            teachingAssistantId = teachingAssistantResolve.id;
-          } else {
-            skippedCount++;
-            skippedSlots.push({
-              courseName: trimmedName,
-              reason: `INSTRUCTOR_NOT_FOUND: No scoped teaching assistant matching '${instructor}'`,
-            });
-            continue;
-          }
-        }
-      } else {
-        if (suppliedDoctorId) {
-          const scopedDoctor = departmentDoctors.find(doc => doc.id === Number(suppliedDoctorId));
-          if (!scopedDoctor) {
-            skippedCount++;
-            skippedSlots.push({
-              courseName: trimmedName,
-              reason: `INSTRUCTOR_ID_NOT_IN_SCOPE: Doctor ID '${suppliedDoctorId}' is not in the selected department`,
-            });
-            continue;
-          }
-          doctorId = scopedDoctor.id;
-        } else if (instructor) {
-          const docResolve = matchDoctor(instructor);
-          if (docResolve.isAmbiguous) {
-            skippedCount++;
-            skippedSlots.push({
-              courseName: trimmedName,
-              reason: `AMBIGUOUS_INSTRUCTOR_MATCH: ${docResolve.matchCount} instructors matched '${instructor}'`,
-            });
-            continue;
-          }
-          if (docResolve.id) {
-            doctorId = docResolve.id;
-          } else {
-            skippedCount++;
-            skippedSlots.push({
-              courseName: trimmedName,
-              reason: `INSTRUCTOR_NOT_FOUND: No scoped instructor matching '${instructor}'`,
-            });
-            continue;
-          }
-        }
-      }
-
-      const normalizedDay = (day || 'MONDAY').toUpperCase();
-      const normalizedStartTime = startTime || '09:00';
-      const slotKey = `${course.id}-${normalizedDay}-${normalizedStartTime}`;
-      const existingSlot = existingSlotMap.get(slotKey);
-
-      if (existingSlot) {
-        existingSlotMap.delete(slotKey);
-        updatesToRun.push({
-          where: { id: existingSlot.id },
-          data: {
-            endTime: endTime || '11:00',
-            room: room !== undefined ? (room ? String(room).trim() : null) : existingSlot.room,
-            slotType: effectiveSlotType || existingSlot.slotType,
-            ...(doctorId ? { doctorId, teachingAssistantId: null } : {}),
-            ...(teachingAssistantId ? { teachingAssistantId, doctorId: null } : {}),
-            ...(timetableId ? { timetableId } : {}),
-          },
-        });
-      } else if (doctorId || teachingAssistantId) {
-        createsToRun.push({
-          courseId: course.id,
-          groupId: null,
-          doctorId,
-          teachingAssistantId,
-          timetableId,
-          slotType: effectiveSlotType,
-          dayOfWeek: normalizedDay,
-          startTime: normalizedStartTime,
-          endTime: endTime || '11:00',
-          room: room ? String(room).trim() : null,
-        });
-      } else {
-        skippedCount++;
-        skippedSlots.push({
-          courseName: trimmedName,
-          reason: 'INSTRUCTOR_REQUIRED: A stable instructor ID or unique scoped name is required for a new slot',
-        });
-        continue;
-      }
-      syncedCount++;
-    }
-
-    // 5. Batch database execution
-    if (updatesToRun.length > 0 || createsToRun.length > 0) {
-      await prisma.$transaction([
-        ...updatesToRun.map(u => prisma.scheduleSlot.update(u)),
-        ...(createsToRun.length > 0 ? [prisma.scheduleSlot.createMany({ data: createsToRun })] : []),
-      ]);
-    }
-
-    auditLog('SYNC_GRID_TO_MASTER', 'ScheduleSlot', '0', req);
-
-    res.json({
-      success: true,
-      message: `Successfully synced ${syncedCount} slots to Master Schedule${skippedCount > 0 ? ` (${skippedCount} skipped)` : ''}`,
-      data: { syncedCount, skippedCount, skippedSlots },
-    });
-  }
-);
-
-export const checkScheduleConflict = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const {
-      dayOfWeek,
-      startTime,
-      endTime,
-      room,
-      doctorName,
-      doctorId,
-      teachingAssistantId,
-      taName,
-      courseName,
-      courseId,
-      departmentId,
-      academicYear,
-      semester,
-      groupId,
-      excludeSlotId,
-    } = req.body;
-
-    if (!dayOfWeek || !startTime || !endTime) {
-      return res.json({ success: true, hasConflict: false, conflicts: [] });
-    }
-
-    // Derive effective departmentId from payload, course, or authenticated user
-    let effectiveDeptId: number | null = departmentId ? Number(departmentId) : null;
-    let resolvedCourseId: number | null = courseId ? Number(courseId) : null;
-
-    if (!resolvedCourseId && courseName) {
-      const c = await prisma.course.findFirst({
-        where: { name: { equals: String(courseName).trim(), mode: 'insensitive' } },
-        select: { id: true, departmentId: true },
-      });
-      if (c) {
-        resolvedCourseId = c.id;
-        if (!effectiveDeptId && c.departmentId) effectiveDeptId = c.departmentId;
-      }
-    } else if (resolvedCourseId && !effectiveDeptId) {
-      const c = await prisma.course.findUnique({
-        where: { id: resolvedCourseId },
-        select: { departmentId: true },
-      });
-      if (c?.departmentId) effectiveDeptId = c.departmentId;
-    }
-
-    if (!effectiveDeptId && (req as any).user?.departmentId) {
-      effectiveDeptId = (req as any).user.departmentId;
-    }
-
-    // Disambiguation checks for name-based lookup
-    const initialConflicts: any[] = [];
-
-    let targetDoctorId: number | null = doctorId ? Number(doctorId) : null;
-    if (!targetDoctorId && doctorName) {
-      const docResolve = await resolveDoctorByName(doctorName, effectiveDeptId);
-      if (docResolve.isAmbiguous) {
-        initialConflicts.push({
-          type: 'AMBIGUOUS_DOCTOR',
-          messageAr: `يوجد أكثر من عضو هيئة تدريس يطابق الاسم (${doctorName}). يرجى اختيار المحاضر من القائمة أو عبر المعرّف (Doctor ID) لتفادي الالتباس.`,
-          messageEn: `Multiple faculty members match the name (${doctorName}). Please select the instructor from the list or use their numeric ID to disambiguate.`,
-        });
-      } else if (docResolve.id) {
-        targetDoctorId = docResolve.id;
-      }
-    }
-
-    let targetTaId: string | null = teachingAssistantId ? String(teachingAssistantId) : null;
-    if (!targetTaId && taName) {
-      const taResolve = await resolveTaByName(taName, effectiveDeptId);
-      if (taResolve.isAmbiguous) {
-        initialConflicts.push({
-          type: 'AMBIGUOUS_TA',
-          messageAr: `يوجد أكثر من معيد/مدرس مساعد يطابق الاسم (${taName}). يرجى اختيار المعيد من القائمة أو عبر المعرّف (TA ID) لتفادي الالتباس.`,
-          messageEn: `Multiple teaching assistants match the name (${taName}). Please select the TA from the list or use their ID to disambiguate.`,
-        });
-      } else if (taResolve.id) {
-        targetTaId = taResolve.id;
-      }
-    }
-
-    const serviceConflicts = await TimetableService.findConflicts({
-      dayOfWeek,
-      startTime,
-      endTime,
-      room,
-      doctorId: targetDoctorId,
-      teachingAssistantId: targetTaId,
-      courseId: resolvedCourseId,
-      departmentId: effectiveDeptId,
-      academicYear: academicYear ? Number(academicYear) : null,
-      semester: semester ? Number(semester) : null,
-      groupId: groupId ? Number(groupId) : null,
-      excludeSlotId: excludeSlotId ? Number(excludeSlotId) : undefined,
-    });
-
-    const allConflicts = [...initialConflicts, ...serviceConflicts];
-
-    return res.json({
-      success: true,
-      hasConflict: allConflicts.length > 0,
-      conflicts: allConflicts,
-    });
-  }
-);
