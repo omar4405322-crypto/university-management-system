@@ -1,0 +1,28 @@
+# Crontab schedule examples for University Management System Operational Backups
+# Place in /etc/cron.d/university-backups or install via `crontab -e`
+
+# Environment Configuration
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=university
+POSTGRES_DB=university
+BACKUP_DIR=/var/backups/university/db
+RETENTION_DAYS=14
+
+# --- OPTION A: 1-Hour RPO (Hourly Logical Backups) ---
+# Executes every hour at minute 0 to satisfy < 1-hour Recovery Point Objective (RPO)
+0 * * * * /opt/university/scripts/operations/db-backup.sh >> /var/log/university-backup.log 2>&1
+
+# --- OPTION B: 24-Hour RPO (Daily Logical Backups) ---
+# Executes daily at 01:00 UTC
+# 0 1 * * * /opt/university/scripts/operations/db-backup.sh >> /var/log/university-backup.log 2>&1
+
+# --- Media Uploads Backup ---
+# Executes daily at 02:00 UTC
+0 2 * * * /opt/university/scripts/operations/media-backup.sh >> /var/log/university-media-backup.log 2>&1
+
+# --- Weekly Restore Drill Verification ---
+# Executes Sunday at 03:00 UTC to verify backup restorability into isolated scratch DB
+0 3 * * 0 /opt/university/scripts/operations/verify-restore-drill.sh >> /var/log/university-restore-drill.log 2>&1
