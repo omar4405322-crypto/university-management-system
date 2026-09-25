@@ -8,6 +8,10 @@ import validate from '../middleware/validate.middleware';
 import { scheduleValidation } from '../validations/functional.validation';
 import { body } from 'express-validator';
 import {
+  createRedisStore,
+  rateLimiterPassOnStoreError,
+} from '../middleware/rateLimiter.middleware';
+import {
   MAX_SCHEDULE_SYNC_SLOTS,
   MAX_SCHEDULE_TEXT_LENGTH,
 } from '../utils/requestLimits';
@@ -17,6 +21,8 @@ const syncGridLimiter = rateLimit({
   limit: 5, // Limit each IP/user to 5 bulk sync requests per 15-minute window
   standardHeaders: true,
   legacyHeaders: false,
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore('schedule_sync'),
   message: {
     success: false,
     message: 'Too many sync requests, please try again after 15 minutes',
@@ -44,6 +50,16 @@ router.delete(
   '/:id',
   authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'DOCTOR', 'TEACHING_ASSISTANT'),
   schedulesController.deleteSchedule
+);
+router.post(
+  '/:id/archive',
+  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'DOCTOR', 'TEACHING_ASSISTANT'),
+  schedulesController.archiveSchedule
+);
+router.post(
+  '/:id/restore',
+  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'DOCTOR', 'TEACHING_ASSISTANT'),
+  schedulesController.restoreSchedule
 );
 
 router.post(
@@ -111,6 +127,7 @@ router.post(
 router.post(
   '/check-conflict',
   protect,
+  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'DOCTOR', 'TEACHING_ASSISTANT'),
   schedulesController.checkScheduleConflict
 );
 

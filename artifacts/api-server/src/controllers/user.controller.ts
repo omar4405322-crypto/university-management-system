@@ -5,11 +5,15 @@ import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
 import catchAsync from '../utils/catchAsync';
-import { NotFoundError, AuthenticationError, AppError } from '../utils/appError';
+import { NotFoundError, AuthenticationError, AuthorizationError, AppError, ValidationError } from '../utils/appError';
 import { Request, Response, NextFunction } from 'express';
 import { generateTOTPSecret, generateQRCodeURL, verifyTOTP } from '../utils/twoFactor.utils';
+import { isMandatory2FARole } from '../utils/twoFactorConfig';
 import { getScopeWhere } from '../utils/scope.utils';
-import { deactivateUserAndRevokeSessions } from '../services/studentStatus.service';
+import {
+  deactivateUserAndRevokeSessions,
+  setUserAndRoleActiveState,
+} from '../services/studentStatus.service';
 import { replacePasswordAndRevokeAllUserSessions } from '../services/session.service';
 import { assertPasswordStrength } from '../utils/passwordPolicy';
 import { encrypt, decrypt } from '../utils/encryption.utils';
@@ -25,13 +29,22 @@ export const setup2FA = catchAsync(async (req: Request, res: Response, next: Nex
 
   const secret = generateTOTPSecret(user!.email);
   // Store secret temporarily (not enabling yet until verified)
-  await prisma.user.update({
-    where: { id: req.user!.id },
-    data: { twoFactorSecret: encrypt(secret.base32) },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: req.user!.id },
+      data: { twoFactorSecret: encrypt(secret.base32) },
+    });
+    await auditLog(
+      'SETUP_2FA',
+      'User',
+      req.user!.id,
+      req,
+      { twoFactorSetupChanged: true },
+      tx
+    );
   });
 
   const qrCodeUrl = await generateQRCodeURL(secret.otpauth_url!);
-  auditLog('SETUP_2FA', 'User', req.user!.id.toString(), req);
   return res.json({ success: true, data: { qrCodeUrl, manualEntryKey: secret.base32 } });
 });
 
@@ -50,18 +63,45 @@ export const enable2FA = catchAsync(async (req: Request, res: Response, next: Ne
   const isValid = await verifyTOTP(decrypt(user!.twoFactorSecret), token, user.id);
   if (!isValid) return next(new AppError('Invalid verification code', 400));
 
-  await prisma.user.update({
-    where: { id: req.user!.id },
-    data: { twoFactorEnabled: true },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: req.user!.id },
+      data: { twoFactorEnabled: true },
+    });
+    await auditLog(
+      'ENABLE_2FA',
+      'User',
+      req.user!.id,
+      req,
+      { twoFactorEnabled: { from: false, to: true } },
+      tx
+    );
   });
   return res.json({ success: true, message: '2FA enabled successfully' });
 });
 
 // 3. disable2FA — Verifies password + TOTP before disabling:
 export const disable2FA = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  
+
+  const require2FA = process.env.REQUIRE_2FA !== 'false';
+  if (require2FA && isMandatory2FARole(req.user?.role)) {
+    return next(
+      new AuthorizationError(
+        'Two-factor authentication is mandatory for your role and cannot be disabled.'
+      )
+    );
+  }
+
   const { token, password } = req.body;
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (!user) return next(new NotFoundError('User not found'));
+  if (require2FA && isMandatory2FARole(user.role)) {
+    return next(
+      new AuthorizationError(
+        'Two-factor authentication is mandatory for your role and cannot be disabled.'
+      )
+    );
+  }
 
   if (!user!.twoFactorEnabled) return next(new AppError('2FA is not enabled', 400));
 
@@ -70,11 +110,20 @@ export const disable2FA = catchAsync(async (req: Request, res: Response, next: N
 
   const isValid = await verifyTOTP(decrypt(user!.twoFactorSecret!), token, user!.id);
   if (!isValid) return next(new AppError('Invalid verification code', 400));
-  await prisma.user.update({
-    where: { id: req.user!.id },
-    data: { twoFactorEnabled: false, twoFactorSecret: null },
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: req.user!.id },
+      data: { twoFactorEnabled: false, twoFactorSecret: null },
+    });
+    await auditLog(
+      'DISABLE_2FA',
+      'User',
+      req.user!.id,
+      req,
+      { twoFactorEnabled: { from: true, to: false } },
+      tx
+    );
   });
-  auditLog('DISABLE_2FA', 'User', req.user!.id.toString(), req);
   return res.json({ success: true, message: '2FA disabled successfully' });
 });
 
@@ -172,15 +221,23 @@ export const updateProfile = catchAsync(async (req: Request, res: Response, next
     birthDate: birthDate ? new Date(birthDate) : undefined,
   };
 
-  if (role === 'STUDENT') {
-    updatedProfile = await prisma.student.update({
-      where: { userId },
-      data: updateData,
-    });
-  } else if (['DOCTOR', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(role)) {
-    updatedProfile = await prisma.doctor.update({
-      where: { userId },
-      data: updateData,
+  if (role === 'STUDENT' || ['DOCTOR', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(role)) {
+    updatedProfile = await prisma.$transaction(async (tx) => {
+      const before = role === 'STUDENT'
+        ? await tx.student.findUnique({ where: { userId } })
+        : await tx.doctor.findUnique({ where: { userId } });
+      const updated = role === 'STUDENT'
+        ? await tx.student.update({ where: { userId }, data: updateData })
+        : await tx.doctor.update({ where: { userId }, data: updateData });
+      await auditLog(
+        'UPDATE_PROFILE',
+        role === 'STUDENT' ? 'Student' : 'Doctor',
+        updated.id,
+        req,
+        { before, after: updated },
+        tx
+      );
+      return updated;
     });
   } else {
     // Admin roles — update directly on User model (limited fields)
@@ -235,7 +292,16 @@ export const updatePassword = catchAsync(
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    await replacePasswordAndRevokeAllUserSessions(userId, hashedPassword);
+    await replacePasswordAndRevokeAllUserSessions(userId, hashedPassword, async (tx) => {
+      await auditLog(
+        'UPDATE_PASSWORD',
+        'User',
+        userId,
+        req,
+        { passwordChanged: true, sessionsRevoked: true },
+        tx
+      );
+    });
 
     return res.json({
       success: true,
@@ -250,6 +316,20 @@ export const updatePassword = catchAsync(
 export const updateProfilePicture = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user!.id;
+
+    if (res.locals.profilePictureFallback) {
+      const retainedProfilePicture = req.user!.profilePicture || null;
+      return res.json({
+        success: true,
+        data: {
+          profilePicture: retainedProfilePicture,
+          fallback: retainedProfilePicture ? 'existing-avatar' : 'default-avatar',
+        },
+        message: retainedProfilePicture
+          ? 'Profile image uploads are unavailable; your existing avatar was retained.'
+          : 'Profile image uploads are unavailable; the default avatar is being used.',
+      });
+    }
 
     if (!req.file) {
       return next(new AppError('Please upload a profile picture', 400));
@@ -272,11 +352,26 @@ export const updateProfilePicture = catchAsync(
     });
 
     // Update user in DB
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        profilePicture: profilePictureUrl,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          profilePicture: profilePictureUrl,
+        },
+      });
+      await auditLog(
+        'UPDATE_PROFILE_PICTURE',
+        'User',
+        userId,
+        req,
+        {
+          profilePicture: {
+            from: user?.profilePicture || null,
+            to: profilePictureUrl,
+          },
+        },
+        tx
+      );
     });
 
     // Delete old local profile picture if it exists
@@ -302,44 +397,117 @@ export const updateProfilePicture = catchAsync(
 
 export const getAllUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const scopeWhere = getScopeWhere(req.user, 'user');
+  const requestedPage = Number(req.query.page);
+  const requestedLimit = Number(req.query.limit);
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const limit = Number.isSafeInteger(requestedLimit) && requestedLimit > 0
+    ? Math.min(requestedLimit, 100)
+    : 20;
+  const rawRoles = Array.isArray(req.query.role)
+    ? req.query.role
+    : String(req.query.role || '').split(',');
+  const allowedRoles = new Set([
+    'SUPER_ADMIN',
+    'ADMIN',
+    'COLLEGE_ADMIN',
+    'DEPARTMENT_ADMIN',
+    'DOCTOR',
+    'TEACHING_ASSISTANT',
+    'STUDENT',
+  ]);
+  const roles = rawRoles
+    .map((role) => String(role).trim())
+    .filter((role) => allowedRoles.has(role));
+  const search = String(req.query.search || '').trim();
+  const normalizedRoleSearch = search.toUpperCase().replace(/[\s-]+/g, '_');
+  const matchingSearchRoles = [...allowedRoles].filter((role) =>
+    role.includes(normalizedRoleSearch)
+  );
+  const status = String(req.query.status || '').toLowerCase();
   const includeInactive = req.query.includeInactive === 'true';
 
-  const where: any = {
-    ...scopeWhere,
-    ...(!includeInactive && { isActive: true }),
+  const baseWhere: Prisma.UserWhereInput = {
+    AND: [
+      scopeWhere,
+      ...(search
+        ? [{
+            OR: [
+              { email: { contains: search, mode: 'insensitive' as const } },
+              { managedCollege: { name: { contains: search, mode: 'insensitive' as const } } },
+              { managedDepartment: { name: { contains: search, mode: 'insensitive' as const } } },
+              { department: { name: { contains: search, mode: 'insensitive' as const } } },
+              ...(matchingSearchRoles.length > 0
+                ? [{ role: { in: matchingSearchRoles as any } }]
+                : []),
+            ],
+          }]
+        : []),
+    ],
+    ...(req.query.role !== undefined && { role: { in: roles as any } }),
+  };
+  const where: Prisma.UserWhereInput = {
+    ...baseWhere,
+    ...(status === 'active'
+      ? { isActive: true }
+      : status === 'inactive'
+        ? { isActive: false }
+        : !includeInactive && status !== 'all'
+          ? { isActive: true }
+          : {}),
   };
 
-  const users = await prisma.user.findMany({
-    where,
-    select: {
-      id: true,
-      email: true,
-      role: true,
-      adminRole: true,
-      managedCollegeId: true,
-      createdAt: true,
-      profilePicture: true,
-      isActive: true,
-      deactivatedAt: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  const [users, total, summaryGroups] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        adminRole: true,
+        managedCollegeId: true,
+        createdAt: true,
+        profilePicture: true,
+        isActive: true,
+        deactivatedAt: true,
+        managedCollege: { select: { id: true, name: true } },
+        managedDepartment: { select: { id: true, name: true } },
+        college: { select: { id: true, name: true } },
+        department: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.user.count({ where }),
+    prisma.user.groupBy({
+      by: ['role', 'isActive'],
+      where: baseWhere,
+      _count: { _all: true },
+    }),
+  ]);
 
-  // Fetch college info for COLLEGE_ADMIN users
-  const usersWithColleges = await Promise.all(
-    users.map(async (user: any) => {
-      if (user.managedCollegeId) {
-        const college = await prisma.college.findUnique({
-          where: { id: user.managedCollegeId },
-          select: { id: true, name: true },
-        });
-        return { ...user, managedCollege: college };
-      }
-      return { ...user, managedCollege: null };
-    })
+  const summary = summaryGroups.reduce(
+    (acc, group) => {
+      const count = group._count._all;
+      acc.total += count;
+      group.isActive ? (acc.active += count) : (acc.inactive += count);
+      acc.byRole[group.role] = (acc.byRole[group.role] || 0) + count;
+      return acc;
+    },
+    { total: 0, active: 0, inactive: 0, byRole: {} as Record<string, number> }
   );
 
-  return res.json({ success: true, data: usersWithColleges });
+  return res.json({
+    success: true,
+    data: users,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    },
+    summary,
+  });
 });
 
 export const createAdmin = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -355,6 +523,19 @@ export const createAdmin = catchAsync(async (req: Request, res: Response, next: 
     lastName,
   } = req.body;
   assertPasswordStrength(password);
+
+  if (role === 'ADMIN') {
+    const hasCollege =
+      (managedCollegeId && !isNaN(parseInt(managedCollegeId as string, 10)) && parseInt(managedCollegeId as string, 10) > 0) ||
+      (collegeId && !isNaN(parseInt(collegeId as string, 10)) && parseInt(collegeId as string, 10) > 0);
+    const hasDept =
+      (managedDepartmentId && !isNaN(parseInt(managedDepartmentId as string, 10)) && parseInt(managedDepartmentId as string, 10) > 0) ||
+      (departmentId && !isNaN(parseInt(departmentId as string, 10)) && parseInt(departmentId as string, 10) > 0);
+
+    if (!hasCollege && !hasDept) {
+      return next(new ValidationError('ADMIN-role accounts must have an assigned college or department'));
+    }
+  }
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
@@ -464,10 +645,7 @@ export const reactivateUser = catchAsync(async (req: Request, res: Response, nex
     return next(new AppError('User is already active', 400));
   }
 
-  await prisma.user.update({
-    where: { id: targetId },
-    data: { isActive: true, deactivatedAt: null },
-  });
+  await setUserAndRoleActiveState(targetId, true);
 
   auditLog('REACTIVATE_USER', 'User', targetId.toString(), req);
   return res.json({ success: true, message: 'User reactivated successfully' });
@@ -488,11 +666,24 @@ export const hardDeleteUser = catchAsync(async (req: Request, res: Response, nex
 
   const targetUser = await prisma.user.findUnique({
     where: { id: targetId },
-    select: { email: true, role: true },
+    select: {
+      email: true,
+      role: true,
+      student: { select: { id: true } },
+    },
   });
 
   if (!targetUser) {
     return next(new NotFoundError('User not found'));
+  }
+
+  if (targetUser.student && req.body?.confirmPurge !== true) {
+    return next(
+      new AppError(
+        'Deleting a user with a student profile requires confirmPurge to be exactly true',
+        400
+      )
+    );
   }
 
   try {
@@ -541,11 +732,29 @@ export const updateAdmin = catchAsync(async (req: Request, res: Response, next: 
   const adminId = parseInt(id as string);
   const existingUser = await prisma.user.findUnique({
     where: { id: adminId },
-    select: { role: true, managedCollegeId: true, managedDepartmentId: true },
+    select: { role: true, managedCollegeId: true, managedDepartmentId: true, collegeId: true, departmentId: true },
   });
 
   if (!existingUser) {
     return next(new NotFoundError('User not found'));
+  }
+
+  const effectiveRole = role !== undefined ? role : existingUser.role;
+  if (effectiveRole === 'ADMIN') {
+    const targetManagedCollege =
+      managedCollegeId !== undefined
+        ? managedCollegeId ? parseInt(managedCollegeId as string, 10) : null
+        : existingUser.managedCollegeId;
+    const targetManagedDept =
+      managedDepartmentId !== undefined
+        ? managedDepartmentId ? parseInt(managedDepartmentId as string, 10) : null
+        : existingUser.managedDepartmentId;
+    const hasCollege = Boolean(targetManagedCollege || existingUser.collegeId);
+    const hasDept = Boolean(targetManagedDept || existingUser.departmentId);
+
+    if (!hasCollege && !hasDept) {
+      return next(new ValidationError('ADMIN-role accounts must have an assigned college or department'));
+    }
   }
 
   const data: any = {};

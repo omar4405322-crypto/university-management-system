@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 export interface UserScope {
   role?: string;
   managedCollegeId?: number | null;
@@ -14,6 +16,38 @@ export type EntityType =
   | 'payment'
   | 'user'
   | string;
+
+const EFFECTIVE_ACTIVE_STUDENT: Prisma.StudentWhereInput = {
+  isActive: true,
+  user: { is: { isActive: true } },
+};
+
+const EFFECTIVE_ACTIVE_TEACHING_ASSISTANT: Prisma.TeachingAssistantWhereInput = {
+  status: 'ACTIVE',
+  user: { is: { isActive: true } },
+};
+
+const EFFECTIVE_ACTIVE_DOCTOR: Prisma.DoctorWhereInput = {
+  user: { is: { isActive: true } },
+};
+
+export const getEffectiveActiveStudentWhere = (
+  where: Prisma.StudentWhereInput = {}
+): Prisma.StudentWhereInput => ({
+  AND: [where, EFFECTIVE_ACTIVE_STUDENT],
+});
+
+export const getEffectiveActiveTeachingAssistantWhere = (
+  where: Prisma.TeachingAssistantWhereInput = {}
+): Prisma.TeachingAssistantWhereInput => ({
+  AND: [where, EFFECTIVE_ACTIVE_TEACHING_ASSISTANT],
+});
+
+export const getEffectiveActiveDoctorWhere = (
+  where: Prisma.DoctorWhereInput = {}
+): Prisma.DoctorWhereInput => ({
+  AND: [where, EFFECTIVE_ACTIVE_DOCTOR],
+});
 
 export const getScopeWhere = (
   user: UserScope | undefined | null,

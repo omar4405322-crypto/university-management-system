@@ -19,10 +19,13 @@ import {
   AuthorizationError,
 } from '../utils/appError';
 import logger from '../utils/logger';
+import { pseudonymizeEmail, logAuthEvent, AUTH_EVENT } from '../utils/authLog.utils';
 import { verifyTOTP } from '../utils/twoFactor.utils';
+import { isMandatory2FARole } from '../utils/twoFactorConfig';
 import { EnrollmentService } from '../services/enrollment.service';
 import { lockUserSessionState, revokeAllUserSessions } from '../services/session.service';
 import { assertPasswordStrength } from '../utils/passwordPolicy';
+import { auditLog } from '../utils/audit.utils';
 
 export interface RegisterRequestBody {
   email: string;
@@ -127,8 +130,8 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
     ]);
 
   if (existingUser || existingStudent || existingRequest) {
-    logger.info('[AUTH] Registration submission matched existing state', {
-      email,
+    logAuthEvent(AUTH_EVENT.REGISTRATION_DUPLICATE, {
+      accountRef: pseudonymizeEmail(email),
       existingUser: Boolean(existingUser),
       existingStudent: Boolean(existingStudent),
       requestStatus: existingRequest?.status,
@@ -153,8 +156,8 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
     });
   } catch (error: any) {
     if (error?.code === 'P2002') {
-      logger.info('[AUTH] Registration submission lost a uniqueness race', {
-        email,
+      logAuthEvent(AUTH_EVENT.REGISTRATION_DUPLICATE, {
+        accountRef: pseudonymizeEmail(email),
         target: error?.meta?.target,
       });
       return genericRegistrationResponse();
@@ -180,7 +183,8 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
     .toLowerCase();
   const { password } = req.body as LoginRequestBody;
 
-  logger.info(`[AUTH] Login attempt for email: ${email}`);
+  const accountRef = pseudonymizeEmail(email);
+  logAuthEvent(AUTH_EVENT.LOGIN_ATTEMPT, { accountRef });
 
   const [registrationRequest, user] = await Promise.all([
     prisma.registrationRequest.findUnique({
@@ -197,8 +201,6 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
     }),
   ]);
 
-  logger.debug(`[AUTH] User search result: ${user ? 'Found' : 'Not Found'}`);
-
   const dummyPasswordHash =
     '$2b$10$OpeBBdb/21NC.p5Zrli5vOWHt7XNakKQXMMjPI/PNi5BeQM2VNOea';
   const passwordMatches = await bcrypt.compare(
@@ -209,20 +211,33 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
     registrationRequest?.status === 'PENDING' ||
     registrationRequest?.status === 'REJECTED';
   if (!user || !passwordMatches || user.isActive === false || requestBlocksLogin) {
-    const denialState = requestBlocksLogin
-      ? `registration_${registrationRequest!.status.toLowerCase()}`
+    const reasonCode = requestBlocksLogin
+      ? `REGISTRATION_${registrationRequest!.status}`
       : !user
-        ? 'user_not_found'
+        ? 'USER_NOT_FOUND'
         : !passwordMatches
-          ? 'password_mismatch'
-          : 'account_deactivated';
-    logger.warn(`[AUTH] Login denied (${denialState}) for: ${email}`);
+          ? 'PASSWORD_MISMATCH'
+          : 'ACCOUNT_DEACTIVATED';
+    logAuthEvent(AUTH_EVENT.LOGIN_FAILURE, { accountRef, reason: reasonCode });
     return next(new AuthenticationError('Invalid email or password'));
   }
 
   const require2FA = process.env.REQUIRE_2FA !== 'false';
+  if (require2FA && isMandatory2FARole(user.role) && !user.twoFactorEnabled) {
+    logAuthEvent(AUTH_EVENT.MFA_REQUIRED, {
+      accountRef,
+      userId: user.id,
+      reason: 'TOTP_ENROLLMENT_REQUIRED',
+    });
+    return res.status(200).json({
+      success: true,
+      requiresTwoFactorSetup: true,
+      message: 'Two-factor authentication is mandatory for your role. Please complete 2FA enrollment before logging in.',
+    });
+  }
+
   if (require2FA && user.twoFactorEnabled) {
-    logger.info(`[AUTH] 2FA required for: ${email}`);
+    logAuthEvent(AUTH_EVENT.MFA_REQUIRED, { accountRef, userId: user.id });
     const { totpToken } = req.body;
     if (!totpToken) {
       return res.status(200).json({
@@ -237,19 +252,18 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
       user.id
     );
     if (!isValid) {
-      logger.warn(`[AUTH] Invalid 2FA token for: ${email}`);
+      logAuthEvent(AUTH_EVENT.MFA_FAILURE, { accountRef, userId: user.id, reason: 'INVALID_TOTP' });
       return next(new AuthenticationError('Invalid 2FA code'));
     }
   }
 
-  logger.info(`[AUTH] Generating tokens for user: ${user.id}`);
   const accessToken = generateAccessToken(user.id, user.tokenVersion);
   const refreshToken = await generateRefreshToken(user.id, user.tokenVersion);
 
-  logger.info(`[AUTH] Setting cookies and sending response for: ${email}`);
   setAuthCookies(res, accessToken, refreshToken);
+  logAuthEvent(AUTH_EVENT.LOGIN_SUCCESS, { accountRef, userId: user.id });
 
-  res.json({
+  res.status(200).json({
     success: true,
     data: {
       accessToken, // Returned in body for memory storage
@@ -396,7 +410,7 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
   if (result.kind !== 'success') {
     if (result.kind === 'reused' || (result.kind === 'missing' && metadata)) {
       const replayUserId = result.kind === 'reused' ? result.userId : metadata!.userId;
-      logger.warn(`[AUTH] Refresh token reuse detected for user: ${replayUserId}. Session family revoked.`);
+      logAuthEvent(AUTH_EVENT.REFRESH_REJECTED, { userId: replayUserId, reason: 'TOKEN_REUSE_DETECTED' });
     }
     return next(new AuthenticationError('Invalid or expired refresh token'));
   }
@@ -412,6 +426,7 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
 export const logout = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   if (req.user?.id) {
     await revokeAllUserSessions(req.user.id);
+    logAuthEvent(AUTH_EVENT.SESSION_REVOKED, { userId: req.user.id });
   }
 
   const isProd = process.env.NODE_ENV === 'production';
@@ -589,6 +604,18 @@ export const approveRequest = catchAsync(
         });
       }
 
+      await auditLog(
+        'APPROVE_REGISTRATION_REQUEST',
+        'RegistrationRequest',
+        request.id,
+        req,
+        {
+          before: { status: request.status },
+          after: { status: 'APPROVED', createdUserId: user.id, role: request.role },
+        },
+        tx
+      );
+
       return { user, studentId };
     });
 
@@ -636,16 +663,29 @@ export const rejectRequest = catchAsync(async (req: Request, res: Response, next
     return res.status(403).json({ message: 'Access denied: request belongs to a different department' });
   }
 
-  const rejected = await prisma.registrationRequest.updateMany({
-    where: {
-      id: parseInt(id as string),
-      status: 'PENDING',
-    },
-    data: { status: 'REJECTED', rejectionReason: reason },
+  await prisma.$transaction(async (tx) => {
+    const rejected = await tx.registrationRequest.updateMany({
+      where: {
+        id: parseInt(id as string),
+        status: 'PENDING',
+      },
+      data: { status: 'REJECTED', rejectionReason: reason },
+    });
+    if (rejected.count !== 1) {
+      throw new ConflictError('Registration request has already been resolved');
+    }
+    await auditLog(
+      'REJECT_REGISTRATION_REQUEST',
+      'RegistrationRequest',
+      request.id,
+      req,
+      {
+        before: { status: request.status },
+        after: { status: 'REJECTED', rejectionReason: reason || null },
+      },
+      tx
+    );
   });
-  if (rejected.count !== 1) {
-    throw new ConflictError('Registration request has already been resolved');
-  }
 
   res.json({ success: true, message: 'Request rejected' });
 });
@@ -675,8 +715,25 @@ export const deleteRequest = catchAsync(async (req: Request, res: Response, next
     return res.status(403).json({ message: 'Access denied: request belongs to a different department' });
   }
 
-  await prisma.registrationRequest.delete({
-    where: { id: parseInt(id as string) },
+  await prisma.$transaction(async (tx) => {
+    await tx.registrationRequest.delete({
+      where: { id: parseInt(id as string) },
+    });
+    await auditLog(
+      'DELETE_REGISTRATION_REQUEST',
+      'RegistrationRequest',
+      request.id,
+      req,
+      {
+        before: {
+          status: request.status,
+          role: request.role,
+          departmentId: request.departmentId,
+        },
+        after: null,
+      },
+      tx
+    );
   });
 
   res.json({ success: true, message: 'Request deleted successfully' });
