@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import studentsService from '../../services/students.service';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
-import { Badge } from '../../components/ui/Badge';
+import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 
 interface StudentStatisticsPageProps {
@@ -49,7 +49,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
   const getGaugeStyle = (rate: number) => {
     if (rate >= 85) {
       return {
-        stroke: '#84BD3A',
+        stroke: '#8BB83C',
         bgBg: 'bg-emerald-50 dark:bg-emerald-950/40',
         textColor: 'text-emerald-600 dark:text-emerald-400',
         borderColor: 'border-emerald-200 dark:border-emerald-800',
@@ -59,7 +59,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
     }
     if (rate >= 75) {
       return {
-        stroke: '#F59E0B',
+        stroke: '#D6BA34',
         bgBg: 'bg-amber-50 dark:bg-amber-950/40',
         textColor: 'text-amber-600 dark:text-amber-400',
         borderColor: 'border-amber-200 dark:border-amber-800',
@@ -125,7 +125,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
       return {
         label: isRTL ? 'ممتاز (مرتبة الشرف)' : 'Excellent (Honors)',
         badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300',
-        stroke: '#10B981',
+        stroke: '#8BB83C',
         textClass: 'text-emerald-600 dark:text-emerald-400',
       };
     }
@@ -133,7 +133,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
       return {
         label: isRTL ? 'جيد جداً' : 'Very Good',
         badgeClass: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-sky-300',
-        stroke: '#0EA5E9',
+        stroke: '#2F6B87',
         textClass: 'text-sky-600 dark:text-sky-400',
       };
     }
@@ -141,7 +141,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
       return {
         label: isRTL ? 'جيد' : 'Good',
         badgeClass: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300',
-        stroke: '#6366F1',
+        stroke: '#132231',
         textClass: 'text-indigo-600 dark:text-indigo-400',
       };
     }
@@ -149,7 +149,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
       return {
         label: isRTL ? 'مقبول' : 'Fair / Pass',
         badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300',
-        stroke: '#F59E0B',
+        stroke: '#D6BA34',
         textClass: 'text-amber-600 dark:text-amber-400',
       };
     }
@@ -458,6 +458,9 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
                             {course.finalGrade}%
                           </span>
                         )}
+                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                          {t("transcript.letterGrade", "Letter Grade")}:
+                        </span>
                         {getLetterBadge(course.letterGrade, course.gradePoints)}
                       </div>
                     </div>

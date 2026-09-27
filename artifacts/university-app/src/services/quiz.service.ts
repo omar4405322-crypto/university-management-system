@@ -9,7 +9,7 @@ const quizService = {
 
   createQuiz: (data?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post('/quizzes', data)),
 
-  submitQuiz: (id: string, answers: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/quizzes/${id}/submit`, { answers })),
+  submitQuiz: (id: string, answers: any): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/quizzes/${id}/submit`, { answers })),
 
   getQuizSubmissions: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/quizzes/${id}/results`)),
 };

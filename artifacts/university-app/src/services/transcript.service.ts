@@ -1,6 +1,6 @@
-import { apiRequest } from '../lib/apiClient';
-import type { ApiResponse } from '../types/models';
-import api from './api';
+import { apiRequest } from "../lib/apiClient";
+import type { ApiResponse } from "../types/models";
+import api from "./api";
 
 export interface ExamDetail {
   id: number;
@@ -86,18 +86,25 @@ export interface TranscriptData {
   semesters?: SemesterTranscript[];
   isAdminOverview?: boolean;
   totalCompletedExams?: number;
+  totalCoursesWithExams?: number;
   totalSubmissions?: number;
   averageScore?: string;
   completedExams?: CompletedExamAdminItem[];
 }
 
 const transcriptService = {
-  getStudentTranscript: (studentId?: number): Promise<ApiResponse<TranscriptData>> =>
+  getStudentTranscript: (
+    studentId?: number,
+  ): Promise<ApiResponse<TranscriptData>> =>
     apiRequest(async () => {
       try {
-        return await api.get(studentId ? `/transcripts/${studentId}` : '/transcripts');
+        return await api.get(
+          studentId ? `/transcripts/${studentId}` : "/transcripts",
+        );
       } catch (_err) {
-        return await api.get(studentId ? `/transcript/${studentId}` : '/transcript');
+        return await api.get(
+          studentId ? `/transcript/${studentId}` : "/transcript",
+        );
       }
     }),
 };

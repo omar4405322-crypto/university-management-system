@@ -1,5 +1,4 @@
-// @ts-nocheck
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -29,8 +28,8 @@ import {
   normalizeMcqCode,
 } from './examUtils';
 
-const ExamResults = () => {
-  const { id } = useParams();
+const ExamResults: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
@@ -42,11 +41,8 @@ const ExamResults = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchResults();
-  }, [id]);
-
-  const fetchResults = async () => {
+  const fetchResults = useCallback(async () => {
+    if (!id) return;
     try {
       setLoading(true);
 
@@ -72,7 +68,11 @@ const ExamResults = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, t]);
+
+  useEffect(() => {
+    fetchResults();
+  }, [fetchResults]);
 
   // Normalize the answers from the submission
   const normalizedAnswers = useMemo(() => {

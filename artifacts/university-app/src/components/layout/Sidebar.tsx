@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -33,6 +32,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { UNIVERSITY_LOGO, UNIVERSITY_LOGO_WHITE } from '../../constants/universityAssets';
 import { useNotifications } from '../../context/NotificationContext';
+import { hasCapability, Capability } from '../../config/capabilities';
 
 // PERF: React.memo prevents re-render when item's own props haven't changed
 const SidebarItem: React.FC<any> = React.memo(({ item, isCollapsed, isChild = false }) => {
@@ -85,7 +85,26 @@ const SidebarItem: React.FC<any> = React.memo(({ item, isCollapsed, isChild = fa
   );
 });
 
-const groupIcons = {
+interface SidebarItemType {
+  title: string;
+  path: string;
+  icon: React.ComponentType<any>;
+  capability?: Capability;
+  roles?: string[];
+}
+
+interface SidebarGroupType {
+  title: string;
+  items: SidebarItemType[];
+  flat?: boolean;
+}
+
+interface SidebarGroupProps {
+  group: SidebarGroupType;
+  isCollapsed: boolean;
+}
+
+const groupIcons: Record<string, React.ComponentType<any>> = {
   'nav.academic': BookOpen,
   'nav.users': Users,
   'nav.operations': Activity,
@@ -93,21 +112,21 @@ const groupIcons = {
 };
 
 // PERF: React.memo prevents full group re-render when unrelated routes change
-const SidebarGroup: React.FC<any> = React.memo(({ group, isCollapsed }) => {
+const SidebarGroup: React.FC<SidebarGroupProps> = React.memo(({ group, isCollapsed }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(true);
   const location = useLocation();
   const GroupIcon = groupIcons[group.title];
 
   useEffect(() => {
-    const hasActiveChild = group.items.some((item) => location.pathname === item.path);
+    const hasActiveChild = group.items.some((item: SidebarItemType) => location.pathname === item.path);
     if (hasActiveChild) setIsOpen(true);
   }, [location.pathname, group.items]);
 
   if (isCollapsed) {
     return (
       <div className="py-2 space-y-1">
-        {group.items.map((item) => (
+        {group.items.map((item: SidebarItemType) => (
           <SidebarItem key={item.path} item={item} isCollapsed={true} />
         ))}
       </div>
@@ -136,7 +155,7 @@ const SidebarGroup: React.FC<any> = React.memo(({ group, isCollapsed }) => {
 
       {isOpen && (
         <div className="space-y-1 animate-in slide-in-from-top-2 duration-300">
-          {group.items.map((item) => (
+          {group.items.map((item: SidebarItemType) => (
             <SidebarItem key={item.path} item={item} isCollapsed={false} />
           ))}
         </div>
@@ -145,14 +164,19 @@ const SidebarGroup: React.FC<any> = React.memo(({ group, isCollapsed }) => {
   );
 });
 
-const Sidebar = ({ isOpen, onClose }) => {
+export interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { isSidebarCollapsed: isCollapsed, toggleSidebar } = useTheme();
 
-  const navigationConfig = useMemo(() => [
+  const navigationConfig: SidebarGroupType[] = useMemo(() => [
       {
         title: 'nav.academic',
         items: [
@@ -160,62 +184,73 @@ const Sidebar = ({ isOpen, onClose }) => {
             title: 'nav.colleges',
             path: '/colleges',
             icon: Building2,
-            roles: ['SUPER_ADMIN', 'ADMIN'],
+            capability: 'colleges.view' as Capability,
           },
           {
             title: 'nav.departments',
             path: '/departments',
             icon: Layers,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN'],
+            capability: 'departments.view' as Capability,
           },
           {
             title: 'nav.courses',
             path: '/courses',
             icon: BookOpen,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
+            capability: 'courses.view' as Capability,
           },
           {
-            title: 'nav.groups', // Ensure 'nav.groups' exists in translations or use a generic title
+            title: 'nav.groups',
             path: '/groups',
             icon: Users,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+            capability: 'groups.view' as Capability,
           },
-          { title: 'schedule.doctorScheduleTitle', path: '/schedules/doctor', icon: Calendar, roles: ['DOCTOR', 'SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] },
+          {
+            title: 'schedule.doctorScheduleTitle',
+            path: '/schedules/doctor',
+            icon: Calendar,
+            capability: 'schedules.doctor' as Capability,
+          },
           {
             title: 'nav.mySchedule',
             path: '/schedules/student',
             icon: Calendar,
-            roles: ['STUDENT'],
+            capability: 'schedules.student' as Capability,
           },
           {
             title: 'schedule.taScheduleTitle',
             path: '/schedules/ta',
             icon: Calendar,
-            roles: ['TEACHING_ASSISTANT', 'SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+            capability: 'schedules.ta' as Capability,
           },
           {
             title: 'nav.schedulesManagement',
             path: '/schedules-management',
             icon: Calendar,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+            capability: 'schedules.manage' as Capability,
           },
           {
             title: 'timetables.title',
             path: '/timetables-management',
             icon: Calendar,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+            capability: 'schedules.manage' as Capability,
           },
           {
             title: 'nav.exams',
             path: '/exams',
             icon: FileText,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
+            capability: 'exams.view' as Capability,
+          },
+          {
+            title: 'quizzes.title',
+            path: '/quizzes',
+            icon: FileText,
+            capability: 'quizzes.view' as Capability,
           },
           {
             title: 'nav.record',
             path: '/record',
             icon: GraduationCap,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
+            capability: 'records.view' as Capability,
           },
         ],
       },
@@ -226,25 +261,25 @@ const Sidebar = ({ isOpen, onClose }) => {
             title: 'nav.students',
             path: '/students',
             icon: GraduationCap,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+            capability: 'students.view' as Capability,
           },
           {
             title: 'nav.doctors',
             path: '/doctors',
             icon: Users,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+            capability: 'doctors.view' as Capability,
           },
           {
             title: 'nav.teachingAssistants',
             path: '/teaching-assistants',
             icon: GraduationCap,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+            capability: 'teaching_assistants.view' as Capability,
           },
           {
             title: 'nav.admins',
             path: '/admins',
             icon: ShieldCheck,
-            roles: ['SUPER_ADMIN', 'ADMIN'],
+            capability: 'admins.view' as Capability,
           },
         ],
       },
@@ -255,37 +290,37 @@ const Sidebar = ({ isOpen, onClose }) => {
             title: 'nav.requests',
             path: '/registration-requests',
             icon: ClipboardList,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+            capability: 'registration_requests.view' as Capability,
           },
           {
             title: 'nav.attendance',
             path: '/attendance',
             icon: UserCheck,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
+            capability: 'attendance.view' as Capability,
           },
           {
             title: 'nav.warnings',
             path: '/warnings',
             icon: ShieldAlert,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
+            capability: 'warnings.view' as Capability,
           },
           {
             title: 'nav.statistics',
             path: '/statistics',
             icon: BarChart3,
-            roles: ['STUDENT'],
+            capability: 'statistics.view' as Capability,
           },
           {
             title: 'nav.tasks',
             path: '/tasks',
             icon: Activity,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
+            capability: 'tasks.view' as Capability,
           },
           {
             title: 'nav.finance',
             path: '/finance',
             icon: DollarSign,
-            roles: ['SUPER_ADMIN', 'ADMIN'],
+            capability: 'finance.view' as Capability,
           },
         ],
       },
@@ -296,25 +331,25 @@ const Sidebar = ({ isOpen, onClose }) => {
             title: 'nav.notifications',
             path: '/notifications',
             icon: Bell,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
+            capability: 'notifications.view' as Capability,
           },
           {
             title: 'nav.analytics',
             path: '/analytics',
             icon: BarChart3,
-            roles: ['SUPER_ADMIN', 'ADMIN'],
+            capability: 'analytics.view' as Capability,
           },
           {
             title: 'nav.profile',
             path: '/profile',
             icon: UserCircle,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
+            capability: 'profile.view' as Capability,
           },
           {
             title: 'nav.settings',
             path: '/settings',
             icon: Settings,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'STUDENT'],
+            capability: 'settings.view' as Capability,
           },
         ],
       },
@@ -326,9 +361,15 @@ const Sidebar = ({ isOpen, onClose }) => {
     return navigationConfig
       .map((group) => ({
         ...group,
-        items: group.items.filter(
-          (item) => !item.roles || (user && item.roles.includes(user.role))
-        ),
+        items: group.items.filter((item) => {
+          if (item.capability) {
+            return hasCapability(user?.role, item.capability);
+          }
+          if (item.roles) {
+            return user && item.roles.includes(user.role);
+          }
+          return true;
+        }),
       }))
       .filter((group) => group.items.length > 0);
   }, [navigationConfig, user]);

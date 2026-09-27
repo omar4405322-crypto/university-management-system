@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import {
@@ -53,6 +53,22 @@ export default function AssignDoctorModal({
   const [room, setRoom] = useState('Main Hall');
   const [includeScheduleSlot, setIncludeScheduleSlot] = useState(true);
 
+  const fetchDoctors = useCallback(async () => {
+    try {
+      setFetchingDoctors(true);
+      setError(null);
+      // Fetch all professors across the university
+      const res = await api.get('/doctors', { params: { limit: 200 } });
+      const list = res.data?.data?.doctors || [];
+      setDoctors(list);
+    } catch (err: any) {
+      console.error('Failed to fetch doctors:', err);
+      setError(t('courses.failedToFetchDoctors', 'Failed to load doctors list.'));
+    } finally {
+      setFetchingDoctors(false);
+    }
+  }, [t]);
+
   useEffect(() => {
     if (isOpen) {
       fetchDoctors();
@@ -63,23 +79,7 @@ export default function AssignDoctorModal({
       }
       setError(null);
     }
-  }, [isOpen, currentAssignedDoctors]);
-
-  const fetchDoctors = async () => {
-    try {
-      setFetchingDoctors(true);
-      setError(null);
-      // Fetch all professors across the university
-      const res = await api.get('/doctors', { params: { limit: 200 } });
-      const list = res.data?.data?.doctors || [];
-      setDoctors(list);
-    } catch (err: any) {
-      console.error('Failed to fetch doctors list:', err);
-      setError(isRTL ? 'تعذر جلب قائمة أعضاء هيئة التدريس' : 'Failed to load faculty list');
-    } finally {
-      setFetchingDoctors(false);
-    }
-  };
+  }, [isOpen, currentAssignedDoctors, fetchDoctors]);
 
   const filteredDoctors = useMemo(() => {
     if (!searchQuery.trim()) return doctors;

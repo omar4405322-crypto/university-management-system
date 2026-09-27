@@ -30,6 +30,21 @@ const coursesService = {
 
   toggleCoursePublication: (id: string): Promise<ApiResponse<any>> =>
     apiRequest(() => api.patch(`/courses/${id}/toggle-publication`)),
+
+  downloadCourseMaterial: async (courseId: string, materialId: number, fileName?: string): Promise<void> => {
+    const response = await api.get(`/courses/${courseId}/materials/${materialId}/download`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([response.data]);
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName || 'material';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  },
 };
 
 export default coursesService;

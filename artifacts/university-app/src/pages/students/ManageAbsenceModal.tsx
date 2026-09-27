@@ -4,7 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/button';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 import enrollmentService from '../../services/enrollment.service';
 import {
   ShieldAlert,

@@ -6,8 +6,6 @@ import {
   ScanLine, X, ArrowRight, Keyboard, Image as ImageIcon,
   Clock, AlertCircle, RefreshCw, Sparkles
 } from 'lucide-react';
-import jsQR from 'jsqr';
-import fpPromise from '@fingerprintjs/fingerprintjs';
 import attendanceService from '../../services/attendance.service';
 import { SessionCountdown } from './SessionCountdown';
 
@@ -119,6 +117,27 @@ export function StudentAttendanceScanner({
     return rawMsg;
   };
 
+  const getAttendanceDeviceId = async (): Promise<string> => {
+    try {
+      const { default: FingerprintJS } = await import('@fingerprintjs/fingerprintjs');
+      const fingerprint = await FingerprintJS.load();
+      const result = await fingerprint.get();
+      const deviceId = result.visitorId?.trim();
+
+      if (!deviceId || deviceId.length < 8) {
+        throw new Error('FingerprintJS returned an invalid device identifier');
+      }
+
+      return deviceId;
+    } catch {
+      throw new Error(
+        isRTL
+          ? 'تعذر التحقق من هوية الجهاز. يرجى تعطيل مانع التتبع لهذا الموقع ثم إعادة المحاولة.'
+          : 'Device verification is unavailable. Allow FingerprintJS for this site and try again.'
+      );
+    }
+  };
+
   const processQrPayload = async (dataString: string) => {
     try {
       setLoading(true);
@@ -148,6 +167,17 @@ export function StudentAttendanceScanner({
         throw new Error(isRTL ? 'الرمز غير صالح أو فارغ' : 'Invalid or empty code');
       }
 
+      if (!sessionId && selectedCourseId) {
+        sessionId = activeSessionInfo?.sessionId;
+      }
+      if (!sessionId) {
+        throw new Error(
+          isRTL
+            ? 'اختر المقرر الذي ستسجل حضوره قبل إدخال الرمز اليدوي'
+            : 'Select the course before entering a manual attendance code'
+        );
+      }
+
       // Geolocation capture
       let lat: number | undefined;
       let lng: number | undefined;
@@ -167,25 +197,7 @@ export function StudentAttendanceScanner({
         console.warn('Geolocation denied or failed', e);
       }
 
-      // Device ID Hardening
-      let deviceId = localStorage.getItem('attendance_device_id');
-      if (!deviceId) {
-        try {
-          const fp = await fpPromise.load();
-          const fpRes = await fp.get();
-          deviceId = fpRes.visitorId;
-        } catch (e) {
-          if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-            deviceId = crypto.randomUUID();
-          } else {
-            deviceId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-              const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-              return v.toString(16);
-            });
-          }
-        }
-        localStorage.setItem('attendance_device_id', deviceId!);
-      }
+      const deviceId = await getAttendanceDeviceId();
 
       const res = await attendanceService.scanQr({
         sessionId,
@@ -378,25 +390,8 @@ export function StudentAttendanceScanner({
         return;
       }
 
-      // Step 3: Device ID
-      let deviceId = localStorage.getItem('attendance_device_id');
-      if (!deviceId) {
-        try {
-          const fp = await fpPromise.load();
-          const fpRes = await fp.get();
-          deviceId = fpRes.visitorId;
-        } catch (e) {
-          if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-            deviceId = crypto.randomUUID();
-          } else {
-            deviceId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-              const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-              return v.toString(16);
-            });
-          }
-        }
-        localStorage.setItem('attendance_device_id', deviceId!);
-      }
+      // Step 3: FingerprintJS-backed device ID (fail closed if unavailable)
+      const deviceId = await getAttendanceDeviceId();
 
       // Step 4: Submit GPS Check-In
       const res = await attendanceService.recordGps({
@@ -493,7 +488,7 @@ export function StudentAttendanceScanner({
         });
       };
 
-      img.onload = () => {
+      img.onload = async () => {
         try {
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -524,6 +519,7 @@ export function StudentAttendanceScanner({
           context.drawImage(img, 0, 0, width, height);
 
           const imageData = context.getImageData(0, 0, width, height);
+          const { default: jsQR } = await import('jsqr');
           const code = jsQR(imageData.data, imageData.width, imageData.height, {
             inversionAttempts: "dontInvert",
           });
@@ -653,7 +649,7 @@ export function StudentAttendanceScanner({
             {/* Outcome 1: PRESENT (Success) */}
             {result.status === 'PRESENT' && (
               <div className="w-full flex flex-col items-center">
-                <div className="w-20 h-20 rounded-full bg-brand-primary-500/20 text-brand-primary-400 border-2 border-brand-primary-500/40 flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(132,189,58,0.3)]">
+                <div className="w-20 h-20 rounded-full bg-brand-primary-500/20 text-brand-primary-400 border-2 border-brand-primary-500/40 flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(139,184,60,0.3)]">
                   <CheckCircle2 className="w-10 h-10" />
                 </div>
                 <h3 className="text-2xl font-black text-brand-primary-400 mb-2">
@@ -898,7 +894,7 @@ export function StudentAttendanceScanner({
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
               <div className="w-64 h-64 border-2 border-brand-primary-500/40 rounded-2xl relative shadow-[0_0_0_9999px_rgba(3,8,12,0.8)]">
                 {/* Animated scanning laser */}
-                <div className="absolute top-0 inset-x-0 h-0.5 bg-brand-primary-400 shadow-[0_0_12px_rgba(132,189,58,0.9)] animate-scan-laser"></div>
+                <div className="absolute top-0 inset-x-0 h-0.5 bg-brand-primary-400 shadow-[0_0_12px_rgba(139,184,60,0.9)] animate-scan-laser"></div>
 
                 {/* Corner Brackets */}
                 <div className="absolute -top-0.5 -left-0.5 w-8 h-8 border-t-4 border-l-4 border-brand-primary-500 rounded-tl-xl"></div>

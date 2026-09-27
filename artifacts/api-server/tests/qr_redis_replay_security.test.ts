@@ -1,47 +1,41 @@
-import assert from 'node:assert/strict';
-import {
-  RedisOperationError,
-  setIfNotExists,
-} from '../src/utils/redis.utils';
+import assert from "node:assert/strict";
+import { RedisOperationError, setIfNotExists } from "../src/utils/redis.utils";
+import { claimQrToken } from "../src/attendance/drivers/QrDriver";
 
 async function runQrRedisReplaySecurityTests() {
-  const claimed = await setIfNotExists(
-    'test:token',
-    '1',
-    30,
-    { set: async () => 'OK' } as any
-  );
+  const claimed = await setIfNotExists("test:token", "1", 30, {
+    set: async () => "OK",
+  } as any);
   assert.equal(claimed, true);
 
-  const alreadyExists = await setIfNotExists(
-    'test:token',
-    '1',
-    30,
-    { set: async () => null } as any
-  );
-  assert.equal(alreadyExists, false, 'Only an existing key is a replay');
+  const alreadyExists = await setIfNotExists("test:token", "1", 30, {
+    set: async () => null,
+  } as any);
+  assert.equal(alreadyExists, false, "Only an existing key is a replay");
 
   await assert.rejects(
-    setIfNotExists(
-      'test:token',
-      '1',
-      30,
-      {
-        set: async () => {
-          throw new Error('backend unavailable');
-        },
-      } as any
-    ),
+    setIfNotExists("test:token", "1", 30, {
+      set: async () => {
+        throw new Error("backend unavailable");
+      },
+    } as any),
     (error: unknown) =>
-      error instanceof RedisOperationError && error.statusCode === 503
+      error instanceof RedisOperationError && error.statusCode === 503,
   );
 
   await assert.rejects(
-    setIfNotExists('test:token', '1', 30, null),
+    setIfNotExists("test:token", "1", 30, null),
     (error: unknown) =>
-      error instanceof RedisOperationError && error.statusCode === 503
+      error instanceof RedisOperationError && error.statusCode === 503,
+  );
+
+  await assert.rejects(
+    claimQrToken("test:token", 30, null),
+    (error: unknown) =>
+      error instanceof RedisOperationError && error.statusCode === 503,
+    "QR replay protection must fail closed when the shared Redis store is unavailable",
   );
 }
 
 await runQrRedisReplaySecurityTests();
-console.log('QR Redis replay security checks passed');
+console.log("QR Redis replay security checks passed");

@@ -1,20 +1,29 @@
-// @ts-nocheck
-﻿// FIXED: Show quiz submissions with scores and answer preview - Phase 5
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Loader2, Eye, User, Calendar, Award } from 'lucide-react';
-import Modal from '../../components/ui/Modal';
-import Button from '../../components/ui/button';
-import Badge from '../../components/ui/Badge';
-import quizService from '../../services/quiz.service';
-import { logger } from '../../lib/logger';
+// FIXED: Show quiz submissions with scores and answer preview - Phase 5
+import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Loader2, Eye, User, Calendar, Award } from "lucide-react";
+import Modal from "../../components/ui/Modal";
+import Button from "../../components/ui/button";
+import Badge from "../../components/ui/badge";
+import quizService from "../../services/quiz.service";
+import { logger } from "../../lib/logger";
 
-const QuizSubmissionsModal = ({ isOpen, onClose, quiz }) => {
+interface QuizSubmissionsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  quiz: any;
+}
+
+const QuizSubmissionsModal = ({
+  isOpen,
+  onClose,
+  quiz,
+}: QuizSubmissionsModalProps) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [submissions, setSubmissions] = useState([]);
-  const [selectedSubmission, setSelectedSubmission] = useState(null);
-  const [error, setError] = useState(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !quiz?.id) return;
@@ -30,8 +39,8 @@ const QuizSubmissionsModal = ({ isOpen, onClose, quiz }) => {
           setSubmissions([]);
         }
       } catch (err: any) {
-        logger.error('Error loading submissions:', err);
-        setError(t('quizzes.submissionsLoadError'));
+        logger.error("Error loading submissions:", err);
+        setError(t("quizzes.submissionsLoadError"));
         setSubmissions([]);
       } finally {
         setLoading(false);
@@ -40,8 +49,8 @@ const QuizSubmissionsModal = ({ isOpen, onClose, quiz }) => {
     load();
   }, [isOpen, quiz?.id, t]);
 
-  const formatDate = (value) => {
-    if (!value) return '—';
+  const formatDate = (value: string | Date | null | undefined) => {
+    if (!value) return "—";
     return new Date(value).toLocaleString();
   };
 
@@ -49,20 +58,24 @@ const QuizSubmissionsModal = ({ isOpen, onClose, quiz }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={t('quizzes.submissionsTitle', { title: quiz?.title })}
-      subtitle={t('quizzes.submissionsSubtitle')}
+      title={t("quizzes.submissionsTitle", { title: quiz?.title })}
+      subtitle={t("quizzes.submissionsSubtitle")}
       size="lg"
     >
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <Loader2 className="animate-spin text-brand-primary-600" size={36} />
-          <p className="text-sm font-bold text-brand-text-muted">{t('common.loading')}</p>
+          <p className="text-sm font-bold text-brand-text-muted">
+            {t("common.loading")}
+          </p>
         </div>
       ) : error ? (
-        <p className="text-sm font-bold text-error py-8 text-center">{error}</p>
+        <p className="text-sm font-bold text-error-text py-8 text-center">{error}</p>
       ) : submissions.length === 0 ? (
         <div className="py-12 text-center">
-          <p className="text-brand-text-sub font-bold">{t('quizzes.noSubmissions')}</p>
+          <p className="text-brand-text-sub font-bold">
+            {t("quizzes.noSubmissions")}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -71,16 +84,16 @@ const QuizSubmissionsModal = ({ isOpen, onClose, quiz }) => {
               <thead>
                 <tr className="bg-surface-subtle border-b border-brand-border">
                   <th className="px-4 py-3 text-start font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
-                    {t('students.fullName')}
+                    {t("students.fullName")}
                   </th>
                   <th className="px-4 py-3 text-start font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
-                    {t('quizzes.score')}
+                    {t("quizzes.score")}
                   </th>
                   <th className="px-4 py-3 text-start font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
-                    {t('quizzes.submittedAt')}
+                    {t("quizzes.submittedAt")}
                   </th>
                   <th className="px-4 py-3 text-end font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
-                    {t('common.actions')}
+                    {t("common.actions")}
                   </th>
                 </tr>
               </thead>
@@ -99,7 +112,7 @@ const QuizSubmissionsModal = ({ isOpen, onClose, quiz }) => {
                     <td className="px-4 py-3">
                       <Badge variant="primary" className="gap-1">
                         <Award size={12} />
-                        {sub.score != null ? `${sub.score}%` : '—'}
+                        {sub.score != null ? `${sub.score}%` : "—"}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-brand-text-sub font-semibold">
@@ -117,7 +130,7 @@ const QuizSubmissionsModal = ({ isOpen, onClose, quiz }) => {
                         onClick={() => setSelectedSubmission(sub)}
                       >
                         <Eye size={14} />
-                        {t('quizzes.viewAnswers')}
+                        {t("quizzes.viewAnswers")}
                       </Button>
                     </td>
                   </tr>
@@ -129,26 +142,33 @@ const QuizSubmissionsModal = ({ isOpen, onClose, quiz }) => {
           {selectedSubmission && (
             <div className="p-4 rounded-2xl bg-surface-subtle border border-brand-border">
               <h4 className="text-sm font-black text-brand-text-main mb-3">
-                {t('quizzes.answersFor', {
+                {t("quizzes.answersFor", {
                   name: `${selectedSubmission.student?.firstName} ${selectedSubmission.student?.lastName}`,
                 })}
               </h4>
-              {selectedSubmission.answers && typeof selectedSubmission.answers === 'object' ? (
+              {selectedSubmission.answers &&
+              typeof selectedSubmission.answers === "object" ? (
                 <ul className="space-y-2 text-sm">
-                  {Object.entries(selectedSubmission.answers).map(([qId, answer]) => (
-                    <li
-                      key={qId}
-                      className="flex justify-between gap-4 font-semibold text-brand-text-sub"
-                    >
-                      <span>
-                        {t('quizzes.question')} {qId}
-                      </span>
-                      <span className="text-brand-text-main">{String(answer)}</span>
-                    </li>
-                  ))}
+                  {Object.entries(selectedSubmission.answers).map(
+                    ([qId, answer]) => (
+                      <li
+                        key={qId}
+                        className="flex justify-between gap-4 font-semibold text-brand-text-sub"
+                      >
+                        <span>
+                          {t("quizzes.question")} {qId}
+                        </span>
+                        <span className="text-brand-text-main">
+                          {String(answer)}
+                        </span>
+                      </li>
+                    ),
+                  )}
                 </ul>
               ) : (
-                <p className="text-sm text-brand-text-muted">{t('quizzes.noAnswersStored')}</p>
+                <p className="text-sm text-brand-text-muted">
+                  {t("quizzes.noAnswersStored")}
+                </p>
               )}
             </div>
           )}

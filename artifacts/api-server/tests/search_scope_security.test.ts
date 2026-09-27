@@ -108,8 +108,15 @@ async function runSearchScopeSecurityTests() {
     });
     assert.equal(response.error, undefined);
     assert.equal(captured.length, 5);
-    assert.deepEqual(captured[0].where.AND[1], { department: { collegeId: 4 } });
-    assert.deepEqual(captured[1].where.AND[1], { department: { collegeId: 4 } });
+    assert.deepEqual(captured[0].where.AND[0].AND[1], { department: { collegeId: 4 } });
+    assert.deepEqual(captured[0].where.AND[1], {
+      isActive: true,
+      user: { is: { isActive: true } },
+    });
+    assert.deepEqual(captured[1].where.AND[0].AND[1], { department: { collegeId: 4 } });
+    assert.deepEqual(captured[1].where.AND[1], {
+      user: { is: { isActive: true } },
+    });
     assert.deepEqual(captured[2].where.AND[1], { department: { collegeId: 4 } });
     assert.deepEqual(captured[3].where.AND[1], { id: 4 });
     assert.deepEqual(captured[4].where.AND[1], { collegeId: 4 });

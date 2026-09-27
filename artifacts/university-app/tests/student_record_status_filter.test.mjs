@@ -14,11 +14,11 @@ const enrollmentController = readFileSync(
 test('record filters use authoritative enrollment statuses', () => {
   assert.match(
     studentRecord,
-    /gradeStatusFilter === 'PASSED' && cItem\.status !== 'COMPLETED'/
+    /gradeStatusFilter === ["']PASSED["'] && cItem\.status !== ["']COMPLETED["']/
   );
   assert.match(
     studentRecord,
-    /gradeStatusFilter === 'FAILED' && cItem\.status !== 'FAILED'/
+    /gradeStatusFilter === ["']FAILED["'] && cItem\.status !== ["']FAILED["']/
   );
 });
 

@@ -1,6 +1,4 @@
-// @ts-nocheck
-import axios, { AxiosError } from 'axios';
-import type { ApiResponse } from '@/types/models';
+import type { ApiResponse } from '../types/models';
 
 export async function apiRequest<T>(
   fn: () => Promise<{ data: ApiResponse<T> }>

@@ -1,5 +1,4 @@
-// @ts-nocheck
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Calendar,
@@ -33,8 +32,8 @@ import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { useToast } from '../../context/ToastContext';
 import { getExamLabel, getDurationMinutes, getExamTimeWindowStatus } from './examUtils';
 
-const ExamDetails = () => {
-  const { id } = useParams();
+const ExamDetails: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language?.startsWith('ar');
@@ -63,11 +62,8 @@ const ExamDetails = () => {
   const isTeacher = ['ADMIN', 'DOCTOR', 'SUPER_ADMIN'].includes(user?.role || '');
   const isStudent = user?.role === 'STUDENT';
 
-  useEffect(() => {
-    fetchExamData();
-  }, [id]);
-
-  const fetchExamData = async () => {
+  const fetchExamData = useCallback(async () => {
+    if (!id) return;
     try {
       setLoading(true);
       const result = await examsService.getExamById(id);
@@ -91,10 +87,15 @@ const ExamDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, isStudent, isTeacher, t]);
+
+  useEffect(() => {
+    fetchExamData();
+  }, [fetchExamData]);
 
   const handleAddQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!id) return;
     if (!newQuestion.text.trim()) {
       showToast(t('exams.questionTextRequired'), 'error');
       return;
@@ -145,7 +146,7 @@ const ExamDetails = () => {
     if (!deleteQuestionTarget) return;
     try {
       setDeleteQuestionLoading(true);
-      const res = await examsService.deleteExamQuestion(deleteQuestionTarget);
+      const res = await examsService.deleteExamQuestion(String(deleteQuestionTarget));
       if (res.success) {
         setQuestions((prev) => prev.filter((q) => q.id !== deleteQuestionTarget));
         showToast(t('exams.questionDeletedSuccess'), 'success');
@@ -161,7 +162,7 @@ const ExamDetails = () => {
   // Total calculated points
   const totalPoints = useMemo(() => {
     const sourceQuestions = questions.length > 0 ? questions : (exam?.questions || []);
-    return sourceQuestions.reduce((sum, q) => sum + (Number(q.points) || 1), 0);
+    return sourceQuestions.reduce((sum: number, q: any) => sum + (Number(q.points) || 1), 0);
   }, [questions, exam]);
 
   const totalQuestionsCount = useMemo(() => {

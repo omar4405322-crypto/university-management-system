@@ -156,26 +156,30 @@ export const updateGrade = catchAsync(async (req: Request, res: Response) => {
     );
   }
 
-  const updated = await prisma.enrollment.updateMany({
-    where: { id: enrollmentId, status: 'ENROLLED' },
-    data: {
-      finalGrade,
-      status: finalGrade >= 60 ? 'COMPLETED' : 'FAILED',
-    },
-  });
-  if (updated.count !== 1) {
-    throw new ConflictError('Enrollment is no longer eligible for grading');
-  }
+  const enrollment = await prisma.$transaction(async (tx) => {
+    const updated = await tx.enrollment.updateMany({
+      where: { id: enrollmentId, status: 'ENROLLED' },
+      data: {
+        finalGrade,
+        status: finalGrade >= 60 ? 'COMPLETED' : 'FAILED',
+      },
+    });
+    if (updated.count !== 1) {
+      throw new ConflictError('Enrollment is no longer eligible for grading');
+    }
 
-  const enrollment = await prisma.enrollment.findUnique({
-    where: { id: enrollmentId },
-  });
-  if (!enrollment) {
-    throw new NotFoundError('Enrollment not found after grading');
-  }
+    const changed = await tx.enrollment.findUnique({
+      where: { id: enrollmentId },
+    });
+    if (!changed) {
+      throw new NotFoundError('Enrollment not found after grading');
+    }
 
-  auditLog('UPDATE_GRADE', 'Enrollment', enrollment.id.toString(), req, {
-    finalGrade: { from: null, to: finalGrade },
+    await auditLog('UPDATE_GRADE', 'Enrollment', changed.id.toString(), req, {
+      finalGrade: { from: scopedEnrollment.finalGrade, to: finalGrade },
+      status: { from: scopedEnrollment.status, to: changed.status },
+    }, tx);
+    return changed;
   });
 
   res.json({ success: true, data: enrollment });

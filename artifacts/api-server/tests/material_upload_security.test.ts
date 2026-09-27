@@ -82,6 +82,7 @@ async function runMaterialUploadSecurityTests() {
   const endpoint = `http://127.0.0.1:${address.port}/upload`;
 
   let acceptedPath: string | undefined;
+  let acceptedMkvPath: string | undefined;
   try {
     const spoofedForm = new FormData();
     spoofedForm.append(
@@ -118,6 +119,29 @@ async function runMaterialUploadSecurityTests() {
     };
     assert.equal(accepted.mimetype, 'image/png');
     acceptedPath = accepted.path;
+
+    const validMkvForm = new FormData();
+    validMkvForm.append(
+      'file',
+      new Blob([
+        Buffer.from(
+          '1a45dfa39f4286810142f7810142f2810442f381084282886d6174726f736b614287810442858102',
+          'hex'
+        ),
+      ], { type: 'video/x-matroska' }),
+      'lecture.mkv'
+    );
+    const validMkvResponse = await fetch(endpoint, {
+      method: 'POST',
+      body: validMkvForm,
+    });
+    assert.equal(validMkvResponse.status, 200);
+    const acceptedMkv = await validMkvResponse.json() as {
+      path?: string;
+      mimetype?: string;
+    };
+    assert.equal(acceptedMkv.mimetype, 'video/matroska');
+    acceptedMkvPath = acceptedMkv.path;
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close(error => (error ? reject(error) : resolve()))
@@ -127,6 +151,12 @@ async function runMaterialUploadSecurityTests() {
       const resolvedAcceptedPath = path.resolve(acceptedPath);
       assert.equal(path.dirname(resolvedAcceptedPath), resolvedUploadDirectory);
       await unlink(resolvedAcceptedPath);
+    }
+    if (acceptedMkvPath) {
+      const resolvedUploadDirectory = path.resolve(uploadDirectory);
+      const resolvedAcceptedMkvPath = path.resolve(acceptedMkvPath);
+      assert.equal(path.dirname(resolvedAcceptedMkvPath), resolvedUploadDirectory);
+      await unlink(resolvedAcceptedMkvPath);
     }
   }
 }

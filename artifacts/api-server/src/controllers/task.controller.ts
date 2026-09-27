@@ -95,15 +95,20 @@ export const submitTask = catchAsync(
       const submission = await TaskService.submitTask(
         req.user!,
         parseInt(id as string),
-        { notes, fileUrl }
+        { notes, fileUrl },
+        req
       );
       return res.status(201).json({ success: true, data: submission });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (
-        error?.code === 'P2002' &&
-        Array.isArray(error?.meta?.target) &&
-        error.meta.target.includes('taskId') &&
-        error.meta.target.includes('studentId')
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code: unknown }).code === 'P2002' &&
+        'meta' in error &&
+        Array.isArray((error as { meta?: { target?: unknown } }).meta?.target) &&
+        ((error as { meta: { target: string[] } }).meta.target.includes('taskId') &&
+         (error as { meta: { target: string[] } }).meta.target.includes('studentId'))
       ) {
         return next(
           new ConflictError(
@@ -118,14 +123,16 @@ export const submitTask = catchAsync(
 
 export const gradeSubmission = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { sid } = req.params;
-    const { score, feedback } = req.body;
+    const { id, sid } = req.params;
+    const { score, feedback, expectedSubmittedAt } = req.body;
 
     const submission = await TaskService.gradeSubmission(
       req.user!,
+      parseInt(id as string),
       parseInt(sid as string),
       parseFloat(score as string),
       feedback,
+      expectedSubmittedAt,
       req
     );
 

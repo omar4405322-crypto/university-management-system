@@ -42,14 +42,15 @@ import {
 // Assets
 const LOGO = '/assets/university/ne/logo.svg';
 const LOGO_WHITE = '/assets/university/ne/logo-white.svg';
-const HERO_1 = '/assets/university/ne/campus-hero-1.png';
-const HERO_2 = '/assets/university/ne/campus-hero-2.png';
-const BUILDING = '/assets/university/ne/campus-building.png';
-const ENTRANCE = '/assets/university/ne/campus-entrance.png';
-const AERIAL = '/assets/university/ne/campus-aerial.png';
-const WIDE = '/assets/university/ne/campus-wide.png';
-const PORTRAIT_1 = '/assets/university/ne/campus-portrait-1.png';
+const HERO_1 = '/assets/university/ne/campus-hero-1.webp';
+const HERO_2 = '/assets/university/ne/campus-hero-2.webp';
+const BUILDING = '/assets/university/ne/campus-building.webp';
+const ENTRANCE = '/assets/university/ne/campus-entrance.webp';
+const AERIAL = '/assets/university/ne/campus-aerial.webp';
+const WIDE = '/assets/university/ne/campus-wide.webp';
+const PORTRAIT_1 = '/assets/university/ne/campus-portrait-1.webp';
 const PROMO_VIDEO = '/assets/university/ne/university-promo.mp4';
+const PROMO_POSTER = '/assets/university/ne/campus-wide.webp';
 
 // Feature Flags
 const VIRTUAL_TOUR_ENABLED = true;
@@ -783,6 +784,8 @@ const LandingPage: React.FC = () => {
             <video
               controls
               autoPlay
+              preload="none"
+              poster={PROMO_POSTER}
               className="w-full h-full object-contain"
               src={PROMO_VIDEO}
             >

@@ -2,11 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt.utils';
 import prisma from '../utils/prismaClient';
 import catchAsync from '../utils/catchAsync';
+import { AuthActor } from '../types/auth.types';
 
 declare global {
   namespace Express {
     interface Request {
-      user?: any;
+      user?: AuthActor;
       cookies?: any;
     }
   }

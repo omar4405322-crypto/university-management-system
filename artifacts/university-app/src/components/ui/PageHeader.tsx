@@ -19,11 +19,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, action,
   const Icon = action?.icon || Plus;
 
   return (
-    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 animate-page w-full min-w-0">
+    <div className="page-header-row mb-6 animate-page w-full min-w-0">
       <div className="flex flex-col text-start max-w-full md:max-w-2xl min-w-0">
-        <h1 className="heading-display mb-2 break-words text-3xl sm:text-4xl md:text-5xl">{title}</h1>
+        <h1 className="page-title break-words">{title}</h1>
         {subtitle && (
-          <p className="text-brand-text-sub font-medium text-sm leading-relaxed break-words">{subtitle}</p>
+          <p className="page-subtitle break-words">{subtitle}</p>
         )}
       </div>
 
@@ -36,7 +36,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, action,
               variant="default"
               size="lg"
               disabled={action.disabled}
-              className={`shadow-overlay shadow-brand-primary-600/20 hover:shadow-brand-primary-600/30 px-8 py-3.5 ${action.className || ''}`}
+              className={`shadow-md shadow-brand-primary-600/20 hover:shadow-brand-primary-600/30 ${action.className || ''}`}
             >
               {action.icon !== null && (
                 <Icon

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // FIXED: isOpen prop, auto-generate student ID, strip collegeId on POST - Phase 5
 import React, { useState, useEffect } from 'react';
 import studentsService from '../../services/students.service';
@@ -27,12 +26,18 @@ const schema = z.object({
   departmentId: z.coerce.number().min(1, 'Department is required'),
 });
 
-type FormData = z.infer<typeof schema>;
+type StudentFormData = z.infer<typeof schema>;
 
-const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
+export interface AddStudentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
+}
+
+const AddStudentModal: React.FC<AddStudentModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language?.startsWith('ar');
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<StudentFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       firstName: '',
@@ -48,9 +53,9 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
     }
   });
 
-  const [colleges, setColleges] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [toast, setToast] = useState(null);
+  const [colleges, setColleges] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const watchCollegeId = watch('collegeId');
 
@@ -86,7 +91,7 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
     if (isOpen) fetchDepartments();
   }, [isOpen, watchCollegeId]);
 
-  const showToast = (message, type) => {
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
@@ -97,12 +102,12 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
     setValue('studentId', `${year}${suffix}`);
   };
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: StudentFormData) => {
     try {
       const { collegeId, ...payload } = data;
       const result = await studentsService.createStudent(payload);
       if (result && result.success) {
-        onSuccess();
+        onSuccess?.();
       } else {
         showToast(result?.message || t('students.createError'), 'error');
       }
@@ -211,7 +216,7 @@ const AddStudentModal = ({ isOpen, onClose, onSuccess }) => {
             </label>
             <textarea
               {...register('address')}
-              rows="3"
+              rows={3}
               className="w-full px-4 py-2 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all resize-none placeholder:text-brand-text-muted"
               placeholder={t('students.addressPlaceholder')}
             ></textarea>

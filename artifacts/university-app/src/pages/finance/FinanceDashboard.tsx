@@ -1,5 +1,4 @@
-// @ts-nocheck
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDebounce } from '../../hooks/useDebounce';
 import {
   PieChart,
@@ -28,9 +27,9 @@ import Table, {
   TableHeader,
   TableHead,
   TableBody,
-} from '../../components/ui/Table';
+} from '../../components/ui/table';
 import Button from '../../components/ui/button';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { downloadCsv } from '../../utils/exportCsv';
 import {
@@ -156,7 +155,7 @@ export function FinanceDashboard() {
   });
   const debouncedSearch = useDebounce(filters.search, 300);
 
-  const fetchData = async (isRefresh = false) => {
+  const fetchData = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
@@ -188,17 +187,17 @@ export function FinanceDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [debouncedSearch, filters.status, filters.type, isAdmin]);
 
   useEffect(() => {
     fetchData();
-  }, [filters.status, filters.type, debouncedSearch]);
+  }, [fetchData]);
 
   const { isDark } = useTheme();
   const chartColors = {
     grid: isDark ? '#334155' : '#E2E8F0',
     tick: isDark ? '#94A3B8' : '#64748B',
-    pie: ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6'],
+    pie: ['#8BB83C', '#132231', '#D6BA34', '#2F6B87'],
   };
 
   const handleMarkAsPaid = async () => {
@@ -312,12 +311,12 @@ export function FinanceDashboard() {
       {/* ========================================================================= */}
       {/* 1. SLIM EXECUTIVE HEADER                                                  */}
       {/* ========================================================================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
+      <div className="page-header-row">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="page-title">
             {t('finance.title', 'Finance & Payments')}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="page-subtitle">
             {isAdmin
               ? t('finance.adminSubtitle', 'Manage payments and university fees')
               : t('finance.studentSubtitle', 'Your personal payment history and dues')}
@@ -519,7 +518,7 @@ export function FinanceDashboard() {
                     />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: chartColors.tick }} />
                     <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
-                    <Bar dataKey="amount" fill="#10B981" radius={[8, 8, 0, 0]} barSize={32} />
+                    <Bar dataKey="amount" fill="#8BB83C" radius={[8, 8, 0, 0]} barSize={32} />
                   </BarChart>
                 </ResponsiveContainer>
               )}

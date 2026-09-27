@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Card, { StatCard } from '../../components/ui/card';
@@ -160,7 +159,7 @@ export default function StudentDashboard() {
           <div className="flex shrink-0 items-center gap-3">
             <Button
               variant="outline"
-              size="md"
+              size="default"
               className="border-white/30 bg-white/10 font-bold text-xs uppercase tracking-widest text-white backdrop-blur-sm hover:bg-white/20"
               onClick={() => navigate('/notifications')}
             >
@@ -168,7 +167,7 @@ export default function StudentDashboard() {
             </Button>
             <Button
               variant="primary"
-              size="md"
+              size="default"
               className="shadow-overlay shadow-brand-brand-green-dark/30 font-bold text-xs uppercase tracking-widest"
               onClick={() => navigate('/settings')}
             >
@@ -198,7 +197,7 @@ export default function StudentDashboard() {
       {/* === Main Content Grid === */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6 2xl:gap-8">
         <div className="lg:col-span-8 xl:col-span-9 2xl:col-span-9 min-w-0 section-gap">
-          <Card variant="elevated">
+          <Card className="shadow-md">
             <div className="mb-4">
               <h3 className="text-lg font-black text-brand-text-main mb-1">{t('dashboard.academicOverview')}</h3>
               <p className="text-xs text-brand-text-secondary dark:text-brand-text-sub font-medium">
@@ -232,7 +231,7 @@ export default function StudentDashboard() {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card variant="default" noPadding>
+            <Card noPadding>
               <div className="p-5 pb-3 border-b border-brand-border">
                 <h3 className="text-lg font-black text-brand-text-main mb-0">{t('dashboard.recentActivity')}</h3>
               </div>
@@ -268,7 +267,7 @@ export default function StudentDashboard() {
               </div>
             </Card>
 
-            <Card variant="default" noPadding>
+            <Card noPadding>
               <div className="p-6 flex flex-col items-center justify-center gap-4 min-h-[160px]">
                 <h3 className="text-lg font-black text-brand-text-main mb-2">{t('dashboard.systemStatus')}</h3>
                 <div className="p-4 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 border border-brand-primary-100 dark:border-brand-primary-900/20 flex items-center gap-3 w-full">
@@ -284,7 +283,7 @@ export default function StudentDashboard() {
         </div>
 
         <div className="lg:col-span-4 xl:col-span-3 2xl:col-span-3 min-w-0 section-gap">
-          <Card variant="default" noPadding>
+          <Card noPadding>
             <div className="p-6 space-y-5">
               <h3 className="text-lg font-black text-brand-text-main mb-2">{t('dashboard.upcomingEvents')}</h3>
               {!stats?.upcomingEvents?.length ? (
@@ -313,7 +312,7 @@ export default function StudentDashboard() {
           </Card>
 
           {stats?.latestAnnouncement && (
-            <Card variant="subtle" className="border-brand-accent-yellow/20">
+            <Card className="border-brand-accent-yellow/20">
               <div className="flex gap-4">
                 <div className="p-3 bg-brand-accent-yellow/20 text-brand-accent-yellow rounded-xl h-fit shrink-0"><Bell size={18} /></div>
                 <div className="space-y-1.5">

@@ -258,7 +258,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
     }));
 
     setDialog(null);
-  }, [form, dialog, slots, timetableId, showToast, t, setSlots]);
+  }, [form, dialog, slots, timetableId, showToast, setSlots, isRTL]);
 
   // ── Audit Conflicts across the entire grid ───────────────────────────────────
   const handleAuditConflicts = useCallback(async () => {
@@ -382,7 +382,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
     } finally {
       setSaving(false);
     }
-  }, [filters, slots, departments, collegeId, timetableId, showToast, t]);
+  }, [filters, slots, departments, collegeId, timetableId, showToast, t, isRTL]);
 
   const selectedDeptObj = departments.find((d) => String(d.id) === String(filters.departmentId));
   const selectedCollegeObj = colleges.find((c) => String(c.id) === String(filters.collegeId || selectedDeptObj?.collegeId));

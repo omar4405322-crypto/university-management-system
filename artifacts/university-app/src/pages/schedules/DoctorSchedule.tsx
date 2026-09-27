@@ -33,9 +33,10 @@ import doctorsService from '../../services/doctors.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import SearchableSelect, { SelectOption } from '../../components/ui/SearchableSelect';
+import Pagination from '../../components/ui/pagination';
 import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 import { ScheduleView } from '../../components/timetable/ScheduleView';
 import { generateHourlyTimes } from '../../utils/scheduleConfig';
 import { logger } from '../../lib/logger';
@@ -45,6 +46,8 @@ const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 export interface ScheduleSlot {
   id?: number | string;
+  isArchived?: boolean;
+  archivedAt?: string | null;
   dayOfWeek: string;
   startTime: string;
   endTime?: string;
@@ -115,6 +118,9 @@ export function DoctorSchedule() {
 
   // Raw Schedule Data
   const [rawSlots, setRawSlots] = useState<ScheduleSlot[]>([]);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
+  const limit = 50;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -144,13 +150,13 @@ export function DoctorSchedule() {
   }, [user]);
 
   // Format Doctor Name Cleanly
-  const formatDoctorName = (doc: any) => {
+  const formatDoctorName = useCallback((doc: any) => {
     if (!doc) return '';
     const raw = `${doc.firstName || ''} ${doc.lastName || ''}`.trim();
     const cleaned = raw.replace(/^(Dr\.|د\.)\s*(Dr\.|د\.)?/i, '').trim();
     const title = doc.academicRank || (isRTL ? 'د.' : 'Dr.');
     return `${title} ${cleaned}`.trim();
-  };
+  }, [isRTL]);
 
   const doctorOptions = useMemo(() => {
     const opts: SelectOption[] = [
@@ -168,7 +174,7 @@ export function DoctorSchedule() {
       });
     });
     return opts;
-  }, [doctorsList, isRTL]);
+  }, [doctorsList, isRTL, formatDoctorName]);
 
   const activeDoctor = useMemo(() => {
     if (!selectedDoctorId || selectedDoctorId === 'all') return null;
@@ -182,12 +188,21 @@ export function DoctorSchedule() {
     return departmentsList.filter((d) => d.collegeId === colId);
   }, [departmentsList, selectedCollegeId]);
 
-  // 2. Fetch All Schedules across the University on Mount (Lectures Only)
+  // 2. Fetch the filtered schedule page (lectures only)
   const fetchSchedule = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await schedulesService.getSchedules({});
+      const res = await schedulesService.getSchedules({
+        doctorId: selectedDoctorId !== 'all' ? selectedDoctorId : undefined,
+        collegeId: selectedCollegeId !== 'all' ? selectedCollegeId : undefined,
+        departmentId: selectedDeptId !== 'all' ? selectedDeptId : undefined,
+        year: selectedYear || undefined,
+        semester: selectedSemester || undefined,
+        slotType: 'LECTURE',
+        page,
+        limit,
+      });
       let slotsData: any[] = [];
       if (res.success || res.data) {
         slotsData = Array.isArray(res.data)
@@ -199,17 +214,22 @@ export function DoctorSchedule() {
         (slot: any) => slot.slotType !== 'LAB' && slot.slotType !== 'SECTION'
       );
       setRawSlots(lectureSlots);
+      setPagination(res.pagination || { total: lectureSlots.length, totalPages: 1 });
     } catch (err: any) {
       logger.error('Error fetching university schedule:', err);
       setError(err.message || t('common.fetchError', 'Failed to load schedules'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [page, selectedCollegeId, selectedDeptId, selectedDoctorId, selectedSemester, selectedYear, t]);
 
   useEffect(() => {
     fetchSchedule();
   }, [fetchSchedule]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedCollegeId, selectedDeptId, selectedDoctorId, selectedSemester, selectedYear]);
 
   // 3. Multi-Dimensional Master Filtering Logic
   const filteredSlots = useMemo(() => {
@@ -300,7 +320,7 @@ export function DoctorSchedule() {
     return start1 < end2 && end1 > start2;
   };
 
-  const areSlotsInConflict = (s1: ScheduleSlot, s2: ScheduleSlot) => {
+  const areSlotsInConflict = useCallback((s1: ScheduleSlot, s2: ScheduleSlot) => {
     if (s1 === s2) return false;
     if (s1.id !== undefined && s2.id !== undefined && s1.id === s2.id) return false;
     if (!checkTimeOverlap(s1, s2)) return false;
@@ -334,7 +354,7 @@ export function DoctorSchedule() {
     }
 
     return false;
-  };
+  }, []);
 
   // Conflict calculation (identifies truly conflicting slots)
   const conflictingSlotKeys = useMemo(() => {
@@ -352,7 +372,7 @@ export function DoctorSchedule() {
       }
     });
     return keys;
-  }, [timetableRecord]);
+  }, [timetableRecord, areSlotsInConflict]);
 
   const conflictCount = conflictingSlotKeys.size;
 
@@ -376,9 +396,13 @@ export function DoctorSchedule() {
   }, [timetableRecord, showConflictsOnly, conflictingSlotKeys]);
 
   // Days & Time configuration
-  const days = isRTL
-    ? ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const days = useMemo(
+    () =>
+      isRTL
+        ? ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    [isRTL]
+  );
 
   const getTodayDayName = useCallback((availableDays: string[]) => {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -524,7 +548,7 @@ export function DoctorSchedule() {
           title={isRTL ? 'المقررات المجدولة' : 'Assigned Courses'}
           value={loading ? '...' : distinctCourses}
           icon={BookOpen}
-          color="emerald"
+          color="primary"
         />
 
         <StatCard
@@ -772,6 +796,15 @@ export function DoctorSchedule() {
           canManage={false}
           viewMode={scheduleViewMode}
           onViewModeChange={setScheduleViewMode}
+        />
+      )}
+      {!loading && !error && pagination.totalPages > 1 && (
+        <Pagination
+          page={page}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+          totalRecords={pagination.total}
+          limit={limit}
         />
       )}
     </div>

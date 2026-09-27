@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -26,13 +25,13 @@ const schema = z.object({
   questions: z.array(questionSchema).min(1, 'At least one question is required')
 });
 
-type FormData = z.infer<typeof schema>;
+type QuizFormData = z.infer<typeof schema>;
 
-const CreateQuiz = () => {
+const CreateQuiz: React.FC = () => {
   const navigate = useNavigate();
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState<any[]>([]);
 
-  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<QuizFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: '',
@@ -72,13 +71,13 @@ const CreateQuiz = () => {
     fetchCourses();
   }, []);
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (data: QuizFormData) => {
     try {
       const result = await quizService.createQuiz(data);
       if (result.success) {
         navigate('/quizzes');
       }
-    } catch (error) {
+    } catch (error: any) {
       alert(error.response?.data?.message || 'Error creating quiz');
     }
   };
@@ -112,7 +111,7 @@ const CreateQuiz = () => {
             <div className="col-span-2">
               <label className="block text-sm font-medium text-brand-text-primary">Description</label>
               <textarea
-                rows="2"
+                rows={2}
                 className="mt-1 block w-full px-3 py-2 border border-brand-border rounded-md focus:ring-brand-primary-500/30 focus:border-brand-primary-500"
                 {...register('description')}
               />

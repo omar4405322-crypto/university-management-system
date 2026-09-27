@@ -1,6 +1,10 @@
 import prisma from '../utils/prismaClient';
 import { NotFoundError, ValidationError } from '../utils/appError';
-import { getScopeWhere } from '../utils/scope.utils';
+import {
+  getEffectiveActiveDoctorWhere,
+  getEffectiveActiveStudentWhere,
+  getScopeWhere,
+} from '../utils/scope.utils';
 
 const publicCollegeSelect = { id: true, name: true, nameAr: true } as const;
 
@@ -29,7 +33,7 @@ export const getAllColleges = async (user: any) => {
   const collegesWithAdmins = await Promise.all(
     colleges.map(async (college) => {
       const admin = await prisma.user.findFirst({
-        where: { managedCollegeId: college.id },
+        where: { managedCollegeId: college.id, isActive: true },
         select: { id: true, email: true, doctor: { select: { firstName: true, lastName: true } } },
       });
       return {
@@ -57,7 +61,11 @@ export const getCollegeById = async (collegeId: number, user: any) => {
       departments: {
         include: {
           _count: {
-            select: { students: true, doctors: true, courses: true },
+            select: {
+              students: { where: getEffectiveActiveStudentWhere() },
+              doctors: { where: getEffectiveActiveDoctorWhere() },
+              courses: true,
+            },
           },
         },
       },
@@ -69,7 +77,7 @@ export const getCollegeById = async (collegeId: number, user: any) => {
   }
 
   const admin = await prisma.user.findFirst({
-    where: { managedCollegeId: college.id },
+    where: { managedCollegeId: college.id, isActive: true },
     select: { id: true, email: true, doctor: { select: { firstName: true, lastName: true } } },
   });
 
@@ -103,23 +111,27 @@ export const createCollege = async (data: {
   name: string;
   nameAr?: string;
   description?: string;
-}) => {
-  return await prisma.college.create({
+}, client: any = prisma) => {
+  return await client.college.create({
     data,
   });
 };
 
 export const updateCollege = async (
   collegeId: number,
-  data: { name: string; nameAr?: string; description?: string }
+  data: { name: string; nameAr?: string; description?: string },
+  client: any = prisma
 ) => {
-  return await prisma.college.update({
+  return await client.college.update({
     where: { id: collegeId },
     data,
   });
 };
 
-export const deleteCollege = async (collegeId: number) => {
+export const deleteCollege = async (
+  collegeId: number,
+  withinTransaction?: (tx: any) => Promise<void>
+) => {
   await prisma.$transaction(async (tx) => {
     const departments = await tx.department.findMany({
       where: { collegeId },
@@ -156,6 +168,7 @@ export const deleteCollege = async (collegeId: number) => {
     await tx.college.delete({
       where: { id: collegeId },
     });
+    if (withinTransaction) await withinTransaction(tx);
   });
 };
 
@@ -171,12 +184,12 @@ export const assignAdmin = async (collegeId: number, adminId: string | number) =
 
   const parsedAdminId = typeof adminId === 'string' ? parseInt(adminId) : adminId;
 
-  const admin = await prisma.user.findUnique({
-    where: { id: parsedAdminId },
+  const admin = await prisma.user.findFirst({
+    where: { id: parsedAdminId, isActive: true },
     select: { role: true, managedCollegeId: true },
   });
   if (!admin) {
-    throw new NotFoundError('User not found');
+    throw new NotFoundError('Active user not found');
   }
 
   if (admin.role !== 'COLLEGE_ADMIN') {

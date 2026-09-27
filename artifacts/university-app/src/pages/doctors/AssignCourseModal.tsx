@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { X, BookOpen, Clock, Calendar, MapPin, Loader2, Award, ShieldCheck } from 'lucide-react';
@@ -39,16 +39,7 @@ export default function AssignCourseModal({
     slotType: 'LECTURE'
   });
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchCourses();
-      if (preselectedCourseId) {
-        setFormData(prev => ({ ...prev, courseId: String(preselectedCourseId) }));
-      }
-    }
-  }, [isOpen, doctor?.departmentId, preselectedCourseId]);
-
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     try {
       setFetchingCourses(true);
       setError(null);
@@ -62,7 +53,16 @@ export default function AssignCourseModal({
     } finally {
       setFetchingCourses(false);
     }
-  };
+  }, [isRTL]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchCourses();
+      if (preselectedCourseId) {
+        setFormData(prev => ({ ...prev, courseId: String(preselectedCourseId) }));
+      }
+    }
+  }, [isOpen, doctor?.departmentId, preselectedCourseId, fetchCourses]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

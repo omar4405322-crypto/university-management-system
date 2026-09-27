@@ -19,7 +19,7 @@ interface TimeSlotCellProps {
 const SESSION_COLORS: Record<string, string> = {
   LAB: 'bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-700/30',
   SEMINAR: 'bg-purple-50 border-purple-200 dark:bg-purple-900/10 dark:border-purple-700/30',
-  LECTURE: 'bg-blue-50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-700/30',
+  LECTURE: 'bg-brand-primary-50 border-brand-primary-200 dark:bg-brand-primary-950/30 dark:border-brand-primary-800/40',
 };
 
 const SESSION_ICONS: Record<string, React.ReactNode> = {

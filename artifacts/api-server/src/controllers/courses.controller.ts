@@ -1,11 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { Request, Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
-import { AuthorizationError, NotFoundError } from '../utils/appError';
-import { getScopeWhere } from '../utils/scope.utils';
+import { AppError, AuthorizationError, ConflictError, NotFoundError } from '../utils/appError';
+import type { AuthActor } from '../types/auth.types';
+import { getScopeWhere, getEffectiveActiveStudentWhere } from '../utils/scope.utils';
 import {
   canManageUnassignedAdminResource,
   getAdminMutationTargetWhere,
@@ -46,7 +48,7 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
   // Scoping: use centralized helper
   const scopeWhere = getScopeWhere(req.user!, 'course');
 
-  const queryFilters: any[] = [];
+  const queryFilters: Prisma.CourseWhereInput[] = [];
   if (req.user?.role === 'STUDENT') {
     queryFilters.push({ isPublished: true });
   }
@@ -104,7 +106,7 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
     prisma.course.count({ where }),
   ]);
 
-  const courses = coursesList.map((c: any) => ({
+  const courses = coursesList.map((c) => ({
     ...c,
     sections: c.scheduleSlots || [],
     _count: {
@@ -165,6 +167,7 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
         },
       },
       tasks: {
+        where: { isDeleted: false },
         orderBy: { dueDate: 'asc' },
       },
       materials: {
@@ -186,6 +189,12 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
       ...(includeEnrollmentRoster
         ? {
             enrollments: {
+              where: {
+                status: 'ENROLLED',
+                student: {
+                  is: getEffectiveActiveStudentWhere(),
+                },
+              },
               include: {
                 student: {
                   include: {
@@ -243,7 +252,16 @@ export const getCourseRoster = catchAsync(
       return next(new NotFoundError('Course not found'));
     }
 
-    const rosterMap = new Map();
+    interface RosterStudent {
+      id: number;
+      firstName: string;
+      lastName: string;
+      studentId: string;
+      groupId: number | null;
+      group: { id: number; name: string } | null;
+    }
+
+    const rosterMap = new Map<number, RosterStudent>();
 
     // Build roster from enrollments + department/year students
     const courseWithEnrollments = await prisma.course.findUnique({
@@ -266,7 +284,11 @@ export const getCourseRoster = catchAsync(
     });
 
     if (courseWithEnrollments) {
-      courseWithEnrollments.enrollments.forEach((e: any) => rosterMap.set(e.student.id, e.student));
+      courseWithEnrollments.enrollments.forEach((e) => {
+        if (e.student) {
+          rosterMap.set(e.student.id, e.student);
+        }
+      });
 
       if (courseWithEnrollments.departmentId) {
         const deptStudents = await prisma.student.findMany({
@@ -280,11 +302,11 @@ export const getCourseRoster = catchAsync(
             group: { select: { id: true, name: true } }
           },
         });
-        deptStudents.forEach((s: any) => rosterMap.set(s.id, s));
+        deptStudents.forEach((s) => rosterMap.set(s.id, s));
       }
     }
 
-    const sortedData = Array.from(rosterMap.values()).sort((a: any, b: any) => {
+    const sortedData = Array.from(rosterMap.values()).sort((a, b) => {
       if (!a.lastName) return 1;
       if (!b.lastName) return -1;
       return a.lastName.localeCompare(b.lastName);
@@ -302,14 +324,14 @@ export const getCourseRoster = catchAsync(
         }
       });
 
-      const attendanceMap = new Map();
-      const remarksMap = new Map();
-      attendances.forEach((att: any) => {
+      const attendanceMap = new Map<number, string>();
+      const remarksMap = new Map<number, string | null>();
+      attendances.forEach((att) => {
         attendanceMap.set(att.studentId, att.status);
         remarksMap.set(att.studentId, att.remarks);
       });
 
-      const rosterWithStatus = sortedData.map((student: any) => ({
+      const rosterWithStatus = sortedData.map((student) => ({
         ...student,
         existingStatus: attendanceMap.get(student.id) || null,
         existingRemarks: remarksMap.get(student.id) || ''
@@ -516,6 +538,14 @@ export const deleteCourse = catchAsync(async (req: Request, res: Response, next:
   }
 
   await prisma.$transaction(async (tx) => {
+    const hasEnrollments = await tx.enrollment.findFirst({
+      where: { courseId },
+      select: { id: true },
+    });
+    if (hasEnrollments) {
+      throw new ConflictError('Cannot delete course with enrollment history. Unenroll students or archive course instead.');
+    }
+
     // 1. Delete Attendance records linked directly or via schedule slots
     const slots = await tx.scheduleSlot.findMany({
       where: { courseId },
@@ -617,7 +647,7 @@ export const deleteCourse = catchAsync(async (req: Request, res: Response, next:
 /**
  * Helper to check if a user is allowed to upload/manage course materials for a specific course
  */
-export async function canUserManageCourseMaterials(user: any, courseId: number): Promise<boolean> {
+export async function canUserManageCourseMaterials(user: AuthActor | undefined | null, courseId: number): Promise<boolean> {
   if (!user || !Number.isInteger(courseId) || courseId <= 0) return false;
 
   if (user.role === 'SUPER_ADMIN') return true;
@@ -642,7 +672,7 @@ export async function canUserManageCourseMaterials(user: any, courseId: number):
   if (user.role === 'TEACHING_ASSISTANT') {
     if (!user.teachingAssistant?.id) return false;
     const slot = await prisma.scheduleSlot.findFirst({
-      where: { courseId, teachingAssistantId: user.teachingAssistant.id },
+      where: { courseId, teachingAssistantId: user.teachingAssistant.id as string },
       select: { id: true },
     });
     return Boolean(slot);
@@ -676,6 +706,10 @@ export const requireCourseMaterialManager = catchAsync(
 export const uploadCourseMaterial = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const courseId = parseInt(req.params.id as string, 10);
   const course = await prisma.course.findUnique({ where: { id: courseId } });
+
+  if (!req.user) {
+    return next(new AuthorizationError('Authentication required'));
+  }
 
   if (!course) {
     return next(new NotFoundError('Course not found'));
@@ -754,6 +788,10 @@ export const uploadCourseMaterial = catchAsync(async (req: Request, res: Respons
 export const deleteCourseMaterial = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const courseId = parseInt(req.params.id as string, 10);
   const materialId = parseInt(req.params.materialId as string, 10);
+
+  if (!req.user) {
+    return next(new AuthorizationError('Authentication required'));
+  }
 
   const material = await prisma.courseMaterial.findUnique({
     where: { id: materialId },
@@ -858,3 +896,114 @@ export const toggleCoursePublication = catchAsync(async (req: Request, res: Resp
     message: updated.isPublished ? 'Course published for students' : 'Course set to draft mode',
   });
 });
+
+/**
+ * @desc    Download course material securely (SEC-01)
+ * @route   GET /api/courses/:id/materials/:materialId/download
+ * @access  Private (Authenticated, Enrolled Student, Assigned Doctor/TA, or Admin)
+ */
+export const downloadCourseMaterial = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return next(new AuthorizationError('Authentication required'));
+    }
+
+    const courseId = parseInt(req.params.id as string, 10);
+    const materialId = parseInt(req.params.materialId as string, 10);
+
+    const material = await prisma.courseMaterial.findUnique({
+      where: { id: materialId },
+      include: {
+        course: {
+          select: {
+            id: true,
+            isPublished: true,
+            departmentId: true,
+            department: { select: { collegeId: true } },
+          },
+        },
+      },
+    });
+
+    if (!material || material.courseId !== courseId) {
+      return next(new NotFoundError('Course material not found'));
+    }
+
+    if (req.user.role === 'STUDENT') {
+      if (!material.isPublished) {
+        return next(new NotFoundError('Course material not found'));
+      }
+      const studentId = req.user.student?.id;
+      const enrollment = studentId
+        ? await prisma.enrollment.findFirst({
+            where: {
+              courseId,
+              studentId,
+              status: 'ENROLLED',
+            },
+          })
+        : null;
+
+      if (!enrollment) {
+        return next(
+          new AuthorizationError('Access denied: You are not enrolled in this course')
+        );
+      }
+    } else {
+      const isAuthorized = await canUserManageCourseMaterials(req.user, courseId);
+      if (!isAuthorized) {
+        return next(new AuthorizationError('Access denied'));
+      }
+    }
+
+    // Check if external URL
+    if (!material.fileUrl || material.fileUrl.startsWith('http://') || material.fileUrl.startsWith('https://')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Material is hosted externally',
+        external: true,
+      });
+    }
+
+    // Directory traversal / file location validation
+    if (material.fileUrl.includes('..') || !material.fileUrl.startsWith('/uploads/materials/')) {
+      return next(new AppError('Invalid material file path', 400));
+    }
+
+    const filename = path.basename(material.fileUrl);
+    const allowedDir = path.resolve(process.cwd(), 'uploads/materials');
+    const resolvedPath = path.resolve(allowedDir, filename);
+
+    if (!resolvedPath.startsWith(allowedDir)) {
+      return next(new AppError('Path traversal detected', 400));
+    }
+
+    if (!fs.existsSync(resolvedPath)) {
+      return next(new NotFoundError('Material file not found on server'));
+    }
+
+    const rawFileName = material.fileName || filename;
+    const sanitizedFileName = rawFileName.replace(/[\r\n"]/g, '').trim();
+
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', `attachment; filename="${sanitizedFileName}"`);
+
+    const fileStream = fs.createReadStream(resolvedPath);
+
+    res.on('close', () => {
+      if (!fileStream.destroyed) {
+        fileStream.destroy();
+      }
+    });
+
+    fileStream.on('error', (err) => {
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Failed to read material file' });
+      } else {
+        res.destroy(err);
+      }
+    });
+
+    fileStream.pipe(res);
+  }
+);

@@ -129,7 +129,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       setToken(accessToken);
       setUser(normalizedUser);
-      localStorage.setItem('user', JSON.stringify(normalizedUser));
       setLoading(false);
 
       return { success: true, user: normalizedUser };

@@ -151,6 +151,7 @@ async function runSessionRevocationSecurityTests() {
   const originalRefreshCreate = (prisma.refreshToken as any).create;
   const originalRefreshDeleteMany = (prisma.refreshToken as any).deleteMany;
   const originalUserFindUnique = (prisma.user as any).findUnique;
+  const originalRequestFindUnique = (prisma.registrationRequest as any).findUnique;
 
   try {
     (prisma as any).$transaction = async (callback: any) =>
@@ -165,6 +166,7 @@ async function runSessionRevocationSecurityTests() {
     (prisma.refreshToken as any).create = fakeRefreshToken.create;
     (prisma.refreshToken as any).deleteMany = fakeRefreshToken.deleteMany;
     (prisma.user as any).findUnique = fakeUser.findUnique;
+    (prisma.registrationRequest as any).findUnique = async () => null;
 
     const token = createRefreshTokenValue(user.id, user.tokenVersion);
     const metadata = parseRefreshTokenMetadata(token);
@@ -257,6 +259,7 @@ async function runSessionRevocationSecurityTests() {
     (prisma.refreshToken as any).create = originalRefreshCreate;
     (prisma.refreshToken as any).deleteMany = originalRefreshDeleteMany;
     (prisma.user as any).findUnique = originalUserFindUnique;
+    (prisma.registrationRequest as any).findUnique = originalRequestFindUnique;
   }
 }
 

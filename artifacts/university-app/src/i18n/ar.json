@@ -29,6 +29,7 @@
     "date": "التاريخ",
     "submissions": "إجمالي الإجابات المستلمة",
     "avgScore": "متوسط درجات الطلاب",
+    "letterGrade": "التقدير الحرفي",
     "actions": "الإجراءات",
     "viewSubmissions": "عرض تسليمات الطلاب",
     "searchPlaceholder": "ابحث باسم المقرر، الكود، أو العنوان...",
@@ -642,6 +643,7 @@
   },
   "courses": {
     "course": "المقرر",
+    "noStudentsEnrolled": "لا يوجد طلاب مسجلون حتى الآن.",
     "selectCourse": "اختر مقرراً",
     "addCourse": "إضافة مقرر",
     "addDesc": "إضافة مقرر جديد إلى الكتالوج",
@@ -697,6 +699,7 @@
     "download": "تحميل / عرض",
     "deleteMaterialConfirm": "هل أنت متأكد من حذف هذه المادة الدراسية؟",
     "uploadedBy": "تم الرفع بواسطة",
+    "deletedUploader": "مستخدم محذوف",
     "uploadSuccess": "تم رفع المادة بنجاح",
     "scheduleTimeline": "جدول مواعيد وقاعات المقرر الأسبوعي",
     "noDepartment": "لا يوجد قسم",
@@ -1673,6 +1676,7 @@
   "quizzes": {
     "createQuiz": "إنشاء اختبار",
     "minutes": "دقيقة",
+    "fiveMinutesLeft": "متبقي 5 دقائق فقط!",
     "noQuizzes": "لا توجد اختبارات متاحة حالياً.",
     "questions": "أسئلة",
     "subtitleDoctor": "إدارة اختبارات مساقاتك",
@@ -1783,7 +1787,9 @@
     "DEPARTMENT_ADMIN": "مدير قسم",
     "DOCTOR": "أستاذ",
     "STUDENT": "طالب",
-    "SUPER_ADMIN": "مدير عام"
+    "SUPER_ADMIN": "مدير عام",
+    "TEACHING_ASSISTANT": "معيد",
+    "TA": "معيد"
   },
   "schedule": {
     "mySchedule": "جدولي الأسبوعي",

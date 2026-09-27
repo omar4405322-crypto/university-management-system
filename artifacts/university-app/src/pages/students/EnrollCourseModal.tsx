@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { BookPlus, Search, AlertCircle, Loader2, Check, BookOpen, Calendar, Layers } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Modal from '../../components/ui/Modal';
@@ -54,17 +54,7 @@ const EnrollCourseModal: React.FC<EnrollCourseModalProps> = ({
   const [selectedSemester, setSelectedSemester] = useState<number>(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchAvailableCourses();
-      setSelectedCourseId(null);
-      setSelectedSemester(1);
-      setSearchQuery('');
-      setErrorMessage(null);
-    }
-  }, [isOpen]);
-
-  const fetchAvailableCourses = async () => {
+  const fetchAvailableCourses = useCallback(async () => {
     try {
       setLoading(true);
       setErrorMessage(null);
@@ -83,10 +73,21 @@ const EnrollCourseModal: React.FC<EnrollCourseModalProps> = ({
         err.response?.data?.message ||
           (isRTL ? 'تعذر جلب قائمة المقررات الدراسية' : 'Failed to fetch course catalog')
       );
+      setCourses([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [isRTL]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchAvailableCourses();
+      setSelectedCourseId(null);
+      setSelectedSemester(1);
+      setSearchQuery('');
+      setErrorMessage(null);
+    }
+  }, [isOpen, fetchAvailableCourses]);
 
   const enrolledSet = useMemo(() => new Set(alreadyEnrolledCourseIds), [alreadyEnrolledCourseIds]);
 

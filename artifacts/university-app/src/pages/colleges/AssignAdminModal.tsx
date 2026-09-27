@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/button';
 import { useTranslation } from 'react-i18next';
@@ -24,13 +24,7 @@ const AssignAdminModal: React.FC<AssignAdminModalProps> = ({ isOpen, onClose, co
   const [fetching, setFetching] = useState(false);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchAvailableAdmins();
-    }
-  }, [isOpen]);
-
-  const fetchAvailableAdmins = async () => {
+  const fetchAvailableAdmins = useCallback(async () => {
     try {
       setFetching(true);
       const result = await usersService.getUsers({ role: 'COLLEGE_ADMIN' });
@@ -41,13 +35,18 @@ const AssignAdminModal: React.FC<AssignAdminModalProps> = ({ isOpen, onClose, co
         );
         setAdmins(availableAdmins);
       }
-    } catch (error: any) {
-	  logger.error('Error fetching admins:', error);
-	  showToast(t('common.errorFetching'), 'error');
-	} finally {
-	  setFetching(false);
-	}
-  };
+    } catch (err: any) {
+      logger.error('Failed to fetch admins:', err);
+    } finally {
+      setFetching(false);
+    }
+  }, [collegeId]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchAvailableAdmins();
+    }
+  }, [isOpen, fetchAvailableAdmins]);
 
   const handleAssign = async () => {
 	if (!selectedAdminId) {

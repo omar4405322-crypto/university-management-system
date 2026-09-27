@@ -3,11 +3,17 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import { getCache, setCache } from '../utils/redis.utils';
 import catchAsync from '../utils/catchAsync';
-import { AppError, AuthorizationError, NotFoundError } from '../utils/appError';
+import { AuthorizationError, NotFoundError } from '../utils/appError';
 import { getAdministrativeAnalyticsScopes } from '../utils/administrativeAnalyticsScope.utils';
 
+import {
+  getEffectiveActiveStudentWhere,
+  getEffectiveActiveDoctorWhere,
+  getEffectiveActiveTeachingAssistantWhere,
+} from '../utils/scope.utils';
+
 const getTodayDayOfWeek = () => {
-  const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+  const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'] as const;
   return days[new Date().getDay()];
 };
 
@@ -54,6 +60,7 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
       where: {
         AND: [
           { role: { in: ['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] } },
+          { isActive: true },
           scopes.user,
         ],
       },
@@ -119,7 +126,7 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
   ]);
 
   // Process enrollment by year
-  const enrollmentTrends = enrollmentByYear.reduce((acc: any, curr: any) => {
+  const enrollmentTrends = enrollmentByYear.reduce<Record<number, number>>((acc, curr) => {
     const year = new Date(curr.enrolledAt).getFullYear();
     acc[year] = (acc[year] || 0) + curr._count._all;
     return acc;
@@ -127,25 +134,28 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
 
   const enrollmentData = Object.keys(enrollmentTrends)
     .sort()
-    .map((year) => ({
-      name: year,
-      students: enrollmentTrends[year],
-    }));
+    .map((yearStr) => {
+      const year = Number(yearStr);
+      return {
+        name: yearStr,
+        students: enrollmentTrends[year],
+      };
+    });
 
   const growthData = enrollmentData.map((row) => ({
     name: row.name,
     value: row.students,
   }));
 
-  const collegeDistribution = collegesWithStudents.map((college: any) => ({
+  const collegeDistribution = collegesWithStudents.map((college) => ({
     name: college.name,
-    students: college.departments.reduce((sum: number, dept: any) => sum + dept._count.students, 0),
+    students: college.departments.reduce((sum, dept) => sum + dept._count.students, 0),
   }));
 
   const finance = {
-    totalCollected: financeStats.find((s) => s.status === 'PAID')?._sum.amount || 0,
-    totalPending: financeStats.find((s) => s.status === 'PENDING')?._sum.amount || 0,
-    totalOverdue: financeStats.find((s) => s.status === 'OVERDUE')?._sum.amount || 0,
+    totalCollected: Number(financeStats.find((s) => s.status === 'PAID')?._sum.amount?.toString() || 0),
+    totalPending: Number(financeStats.find((s) => s.status === 'PENDING')?._sum.amount?.toString() || 0),
+    totalOverdue: Number(financeStats.find((s) => s.status === 'OVERDUE')?._sum.amount?.toString() || 0),
   };
 
   const responseData = {
@@ -170,19 +180,19 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
       { name: 'PENDING', value: finance.totalPending },
       { name: 'OVERDUE', value: finance.totalOverdue },
     ].filter((item) => item.value > 0),
-    recentPayments: recentPayments.map((p: any) => ({
+    recentPayments: recentPayments.map((p) => ({
       amount: p.amount,
       type: p.type,
       status: p.status,
       studentName: `${p.student.firstName} ${p.student.lastName}`,
     })),
-    upcomingExams: upcomingExams.map((e: any) => ({
+    upcomingExams: upcomingExams.map((e) => ({
       courseName: e.course.name,
       type: e.type,
       date: e.date,
       room: e.room,
     })),
-    todaySchedule: todaySchedule.map((s: any) => ({
+    todaySchedule: todaySchedule.map((s) => ({
       courseName: s.course?.name || 'N/A',
       startTime: s.startTime,
       endTime: s.endTime,
@@ -306,6 +316,7 @@ export const getStudentStats = catchAsync(
       prisma.task.findMany({
         take: 3,
         where: {
+          isDeleted: false,
           course: {
             isPublished: true,
             enrollments: {
@@ -349,13 +360,13 @@ export const getStudentStats = catchAsync(
         },
         curriculum: curriculumCourses,
         myPayments,
-        upcomingExams: upcomingExams.map((e: any) => ({
+        upcomingExams: upcomingExams.map((e) => ({
           courseName: e.course.name,
           type: e.type,
           date: e.date,
           room: e.room,
         })),
-        todaySchedule: todaySchedule.map((s: any) => ({
+        todaySchedule: todaySchedule.map((s) => ({
           courseName: s.course?.name || 'N/A',
           startTime: s.startTime,
           endTime: s.endTime,
@@ -456,7 +467,7 @@ export const getDoctorStats = catchAsync(
       }),
       prisma.taskSubmission.findMany({
         take: 5,
-        where: { task: { doctorId: doctor.id } },
+        where: { task: { doctorId: doctor.id, isDeleted: false } },
         orderBy: { submittedAt: 'desc' },
         include: {
           student: { select: { firstName: true, lastName: true } },
@@ -465,19 +476,28 @@ export const getDoctorStats = catchAsync(
       }),
     ]);
 
-    const uniqueCourses = new Map();
-    myScheduleSlots.forEach((slot: any) => {
+    type ScheduleSlotItem = (typeof myScheduleSlots)[number];
+    type DoctorCourse = NonNullable<ScheduleSlotItem['course']>;
+
+    const uniqueCourses = new Map<number, DoctorCourse>();
+    myScheduleSlots.forEach((slot) => {
       if (slot.course) {
         uniqueCourses.set(slot.course.id, slot.course);
       }
     });
     const myCourses = Array.from(uniqueCourses.values());
 
-    const courseIds = Array.from(new Set(myScheduleSlots.map((s: any) => s.courseId).filter(Boolean)));
+    const courseIds = Array.from(
+      new Set(
+        myScheduleSlots
+          .map((s) => s.courseId)
+          .filter((id): id is number => id !== null && id !== undefined)
+      )
+    );
 
     const [totalQuizzes, pendingTasks, totalStudents] = await Promise.all([
       prisma.quiz.count({ where: { doctorId: doctor.id } }),
-      prisma.taskSubmission.count({ where: { score: null, task: { doctorId: doctor.id } } }),
+      prisma.taskSubmission.count({ where: { score: null, task: { doctorId: doctor.id, isDeleted: false } } }),
       prisma.student.count({
         where: doctor.departmentId
           ? {
@@ -508,7 +528,7 @@ export const getDoctorStats = catchAsync(
           pendingTasks,
         },
         myCourses,
-        todaySchedule: todaySchedule.map((s: any) => ({
+        todaySchedule: todaySchedule.map((s) => ({
           id: s.id,
           courseId: s.courseId,
           courseName: s.course?.name || 'N/A',
@@ -520,7 +540,7 @@ export const getDoctorStats = catchAsync(
           room: s.room || 'N/A',
           slotType: s.slotType,
         })),
-        upcomingExams: upcomingExams.map((e: any) => ({
+        upcomingExams: upcomingExams.map((e) => ({
           id: e.id,
           courseName: e.course.name,
           courseCode: e.course.courseCode,
@@ -528,7 +548,7 @@ export const getDoctorStats = catchAsync(
           date: e.date,
           room: e.room,
         })),
-        recentActivity: recentSubmissions.map((sub: any) => ({
+        recentActivity: recentSubmissions.map((sub) => ({
           id: sub.id,
           title: `تسليم واجب: ${sub.task.title}`,
           studentName: `${sub.student.firstName} ${sub.student.lastName}`,
@@ -556,10 +576,10 @@ export const getPublicLandingStats = catchAsync(
       totalCourses,
       collegesList,
     ] = await Promise.all([
-      prisma.student.count(),
+      prisma.student.count({ where: getEffectiveActiveStudentWhere() }),
       prisma.college.count(),
-      prisma.doctor.count(),
-      prisma.teachingAssistant.count(),
+      prisma.doctor.count({ where: getEffectiveActiveDoctorWhere() }),
+      prisma.teachingAssistant.count({ where: getEffectiveActiveTeachingAssistantWhere() }),
       prisma.department.count(),
       prisma.course.count(),
       prisma.college.findMany({
@@ -582,13 +602,13 @@ export const getPublicLandingStats = catchAsync(
       totalFaculty: totalDoctors + totalTAs,
       totalSpecializations: totalDepartments,
       totalCourses,
-      colleges: collegesList.map((c: any) => ({
+      colleges: collegesList.map((c) => ({
         id: c.id,
         name: c.name,
         nameAr: c.nameAr || c.name,
         description: c.description || '',
         departmentsCount: c.departments?.length || 0,
-        studentsCount: c.departments?.reduce((acc: number, d: any) => acc + (d._count?.students || 0), 0) || 0,
+        studentsCount: c.departments?.reduce((acc: number, d) => acc + (d._count?.students || 0), 0) || 0,
       })),
     };
 

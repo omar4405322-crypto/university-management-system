@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
@@ -114,7 +113,7 @@ export default function DoctorDashboard() {
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="primary"
-              size="md"
+              size="default"
               className="bg-brand-brand-green hover:bg-brand-brand-green-dark text-white font-bold text-xs shadow-overlay shadow-brand-brand-green/30 border-0 flex items-center gap-2 py-2.5 px-5 rounded-xl transition-all"
               onClick={() => navigate('/attendance')}
             >
@@ -122,7 +121,7 @@ export default function DoctorDashboard() {
             </Button>
             <Button
               variant="outline"
-              size="md"
+              size="default"
               className="border-white/20 bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-sm flex items-center gap-2 py-2.5 px-4 rounded-xl"
               onClick={() => navigate('/quizzes')}
             >

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import taskService, { GetTasksParams } from '../../services/task.service';
@@ -38,7 +37,7 @@ import {
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import Card, { StatCard } from '../../components/ui/card';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 import Button from '../../components/ui/button';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 import { downloadCsv } from '../../utils/exportCsv';
@@ -52,7 +51,7 @@ import Table, {
   TableRow,
   TableHead,
   TableCell,
-} from '../../components/ui/Table';
+} from '../../components/ui/table';
 
 type CreateFormData = {
   title: string;
@@ -80,6 +79,8 @@ function normalizeArabic(text: string | null | undefined): string {
     .replace(/\s+/g, ' ');
 }
 
+const TASKS_PAGE_SIZE = 24;
+
 export function TasksList() {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -101,6 +102,9 @@ export function TasksList() {
   const sortByParam = searchParams.get('sortBy') || '';
   const searchParam = searchParams.get('search') || '';
   const yearParam = searchParams.get('year') || '';
+  const parsedPage = Number(searchParams.get('page'));
+  const pageParam = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+  const [searchInput, setSearchInput] = useState(searchParam);
 
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
@@ -112,11 +116,31 @@ export function TasksList() {
       } else {
         next.delete(key);
       }
+      if (key !== 'page') next.delete('page');
       return next;
     });
   };
 
+  useEffect(() => {
+    setSearchInput(searchParam);
+  }, [searchParam]);
+
+  useEffect(() => {
+    if (searchInput === searchParam) return;
+    const timeoutId = window.setTimeout(() => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (searchInput.trim()) next.set('search', searchInput);
+        else next.delete('search');
+        next.delete('page');
+        return next;
+      });
+    }, 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput, searchParam, setSearchParams]);
+
   const clearAllFilters = () => {
+    setSearchInput('');
     setSearchParams(new URLSearchParams());
   };
 
@@ -140,7 +164,12 @@ export function TasksList() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [editingTask, setEditingTask] = useState<any>(null);
-  const [mySubmissions, setMySubmissions] = useState<Record<number, any>>({});
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: TASKS_PAGE_SIZE,
+    totalCount: 0,
+    totalPages: 1,
+  });
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
 
   const createSchema = useMemo(
@@ -246,10 +275,20 @@ export function TasksList() {
         if (sortByParam) params.sortBy = sortByParam as GetTasksParams['sortBy'];
         if (searchParam) params.search = searchParam;
         if (yearParam) params.year = Number(yearParam);
+        params.page = pageParam;
+        params.limit = TASKS_PAGE_SIZE;
 
         const result = await taskService.getTasks(params);
         if (result.success) {
           setTasks(result.data?.rows || result.data || []);
+          setPagination(
+            result.data?.pagination || {
+              page: pageParam,
+              limit: TASKS_PAGE_SIZE,
+              totalCount: 0,
+              totalPages: 1,
+            }
+          );
         }
       } catch (error) {
         showToast(t('tasks.fetchError', 'Error loading tasks'), 'error');
@@ -258,7 +297,7 @@ export function TasksList() {
         setRefreshing(false);
       }
     },
-    [courseIdParam, statusParam, dueFromParam, dueToParam, sortByParam, searchParam, yearParam, t]
+    [courseIdParam, statusParam, dueFromParam, dueToParam, sortByParam, searchParam, yearParam, pageParam, t]
   );
 
   const fetchCourses = async () => {
@@ -273,20 +312,6 @@ export function TasksList() {
     }
   };
 
-  const fetchMySubmissions = async (taskIds: number[]) => {
-    if (!isStudent) return;
-    const map: Record<number, any> = {};
-    await Promise.all(
-      taskIds.map(async (tid) => {
-        try {
-          const r = await taskService.getMySubmission(tid);
-          if (r.success) map[tid] = r.data;
-        } catch (e) {}
-      })
-    );
-    setMySubmissions(map);
-  };
-
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
@@ -294,12 +319,6 @@ export function TasksList() {
   useEffect(() => {
     if (isDoctor) fetchCourses();
   }, [isDoctor]);
-
-  useEffect(() => {
-    if (tasks.length > 0 && isStudent) {
-      fetchMySubmissions(tasks.map((t) => t.id));
-    }
-  }, [tasks, isStudent]);
 
   // Selection Logic
   const allFilteredIds = useMemo(() => (Array.isArray(tasks) ? tasks : []).map((t: any) => t.id), [tasks]);
@@ -438,7 +457,7 @@ export function TasksList() {
   }, [tasks]);
 
   const renderStudentStatusBadge = (task: any) => {
-    const my = mySubmissions[task.id];
+    const my = task.mySubmission;
     if (my && my.score != null) {
       return (
         <Badge className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
@@ -494,12 +513,12 @@ export function TasksList() {
       {/* ========================================================================= */}
       {/* 1. SLIM PAGE HEADER                                                       */}
       {/* ========================================================================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
+      <div className="page-header-row">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="page-title">
             {t('tasks.title', 'Tasks & Assignments')}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="page-subtitle">
             {isDoctor
               ? t('tasks.subtitleDoctor', 'Manage student assignments, grading, and submissions.')
               : t('tasks.subtitleStudent', 'View course assignments and submit your deliverables.')}
@@ -557,7 +576,7 @@ export function TasksList() {
         <StatCard
           compact
           title={isDoctor ? t('tasks.submissions', 'Submissions') : t('tasks.statusSubmitted', 'Submitted')}
-          value={isDoctor ? kpis.totalSubs : Object.keys(mySubmissions).length}
+          value={isDoctor ? kpis.totalSubs : tasks.filter((task) => task.mySubmission).length}
           icon={Users}
           color="blue"
         />
@@ -586,14 +605,14 @@ export function TasksList() {
             />
             <input
               type="text"
-              value={searchParam}
-              onChange={(e) => updateParam('search', e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder={t('tasks.searchPlaceholder', 'Search assignment title, course, or description...')}
               className="w-full ps-8 pe-7 h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500"
             />
-            {searchParam && (
+            {searchInput && (
               <button
-                onClick={() => updateParam('search', '')}
+                onClick={() => setSearchInput('')}
                 className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X size={13} />
@@ -941,7 +960,7 @@ export function TasksList() {
                     >
                       <FileUp size={13} />
                       <span>
-                        {mySubmissions[task.id]
+                        {task.mySubmission
                           ? t('tasks.resubmitTask', 'Resubmit Assignment')
                           : t('tasks.submitTask', 'Submit Assignment')}
                       </span>
@@ -1122,6 +1141,36 @@ export function TasksList() {
                 })}
               </TableBody>
             </Table>
+          </div>
+        </div>
+      )}
+
+      {!loading && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-800">
+          <span className="text-slate-500 dark:text-slate-400">
+            {isRTL
+              ? `صفحة ${pagination.page} من ${pagination.totalPages} — ${pagination.totalCount} تكليف`
+              : `Page ${pagination.page} of ${pagination.totalPages} — ${pagination.totalCount} assignments`}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={pagination.page <= 1}
+              onClick={() => updateParam('page', String(pagination.page - 1))}
+            >
+              {isRTL ? 'السابق' : 'Previous'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={pagination.page >= pagination.totalPages}
+              onClick={() => updateParam('page', String(pagination.page + 1))}
+            >
+              {isRTL ? 'التالي' : 'Next'}
+            </Button>
           </div>
         </div>
       )}

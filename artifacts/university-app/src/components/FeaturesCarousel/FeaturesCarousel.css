@@ -11,7 +11,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("/assets/university/ne/campus-entrance.png");
+  background-image: url("/assets/university/ne/campus-entrance.webp");
   background-size: cover;
   background-position: center;
   filter: brightness(0.28);

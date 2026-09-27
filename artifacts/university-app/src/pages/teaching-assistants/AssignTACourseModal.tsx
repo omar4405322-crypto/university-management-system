@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import {
@@ -23,6 +23,7 @@ interface AssignTACourseModalProps {
   ta: any;
   onSuccess: () => void;
   preselectedCourseId?: string | number;
+  existingAssignments?: any[];
 }
 
 export default function AssignTACourseModal({
@@ -31,6 +32,7 @@ export default function AssignTACourseModal({
   ta,
   onSuccess,
   preselectedCourseId,
+  existingAssignments = [],
 }: AssignTACourseModalProps) {
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
@@ -38,31 +40,19 @@ export default function AssignTACourseModal({
 
   const [courses, setCourses] = useState<any[]>([]);
   const [fetchingCourses, setFetchingCourses] = useState(false);
-  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [courseSearch, setCourseSearch] = useState('');
-
-  const [dayOfWeek, setDayOfWeek] = useState('MONDAY');
-  const [startTime, setStartTime] = useState('12:00');
-  const [endTime, setEndTime] = useState('14:00');
-  const [room, setRoom] = useState('Lab 1');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [dayOfWeek, setDayOfWeek] = useState('SUNDAY');
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('10:00');
+  const [room, setRoom] = useState('Main Lab');
   const [slotType, setSlotType] = useState<'TUTORIAL' | 'LAB'>('TUTORIAL');
-
+  const [includeScheduleSlot, setIncludeScheduleSlot] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchCourses();
-      if (preselectedCourseId) {
-        setSelectedCourseId(String(preselectedCourseId));
-      } else {
-        setSelectedCourseId('');
-      }
-      setError(null);
-    }
-  }, [isOpen, preselectedCourseId]);
-
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     try {
       setFetchingCourses(true);
       const res = await api.get('/courses', { params: { limit: 300 } });
@@ -74,7 +64,19 @@ export default function AssignTACourseModal({
     } finally {
       setFetchingCourses(false);
     }
-  };
+  }, [isRTL]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchCourses();
+      if (preselectedCourseId) {
+        setSelectedCourseId(String(preselectedCourseId));
+      } else {
+        setSelectedCourseId('');
+      }
+      setError(null);
+    }
+  }, [isOpen, preselectedCourseId, fetchCourses]);
 
   const filteredCourses = courses.filter((c) => {
     if (!courseSearch.trim()) return true;

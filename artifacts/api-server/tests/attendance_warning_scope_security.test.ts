@@ -6,17 +6,9 @@ const originals = {
   courseFindMany: prisma.course.findMany,
   doctorFindUnique: prisma.doctor.findUnique,
   scheduleSlotFindMany: prisma.scheduleSlot.findMany,
-  queryRaw: prisma.$queryRaw,
+  enrollmentFindMany: prisma.enrollment.findMany,
+  policyFindMany: prisma.absenceThresholdPolicy.findMany,
 };
-
-const emptyWarningQuery = [{
-  totalMonitored: 0,
-  blockedCount: 0,
-  finalWarningCount: 0,
-  firstWarningCount: 0,
-  safeCount: 0,
-  pageRows: [],
-}];
 
 async function doctorWithoutAssignedSlotsFailsClosed() {
   let departmentFallbackQueries = 0;
@@ -31,10 +23,11 @@ async function doctorWithoutAssignedSlotsFailsClosed() {
     }
     return [];
   };
-  (prisma as any).$queryRaw = async () => {
+  (prisma.enrollment.findMany as any) = async () => {
     warningQueries += 1;
-    return emptyWarningQuery;
+    return [];
   };
+  (prisma.absenceThresholdPolicy.findMany as any) = async () => [];
 
   const result = await AttendanceService.getStaffAbsenceWarnings({
     role: 'DOCTOR',
@@ -60,10 +53,11 @@ async function doctorWithAssignedSlotsKeepsCourseAccess() {
     }
     return [];
   };
-  (prisma as any).$queryRaw = async () => {
+  (prisma.enrollment.findMany as any) = async () => {
     warningQueries += 1;
-    return emptyWarningQuery;
+    return [];
   };
+  (prisma.absenceThresholdPolicy.findMany as any) = async () => [];
 
   const result = await AttendanceService.getStaffAbsenceWarnings({
     role: 'DOCTOR',
@@ -94,7 +88,8 @@ try {
   prisma.course.findMany = originals.courseFindMany;
   prisma.doctor.findUnique = originals.doctorFindUnique;
   prisma.scheduleSlot.findMany = originals.scheduleSlotFindMany;
-  (prisma as any).$queryRaw = originals.queryRaw;
+  prisma.enrollment.findMany = originals.enrollmentFindMany;
+  prisma.absenceThresholdPolicy.findMany = originals.policyFindMany;
 }
 
 if (failures.length > 0) {

@@ -9,6 +9,8 @@ async function runSocketAccountSecurityTests() {
   let capturedSelect: unknown;
   let accountState: any = { isActive: true, tokenVersion: 3 };
   let userUpdate: unknown;
+  let studentUpdate: unknown;
+  let teachingAssistantUpdate: unknown;
   let refreshDelete: unknown;
 
   try {
@@ -39,6 +41,16 @@ async function runSocketAccountSecurityTests() {
             userUpdate = args;
           },
         },
+        student: {
+          updateMany: async (args: any) => {
+            studentUpdate = args;
+          },
+        },
+        teachingAssistant: {
+          updateMany: async (args: any) => {
+            teachingAssistantUpdate = args;
+          },
+        },
         refreshToken: {
           deleteMany: async (args: any) => {
             refreshDelete = args;
@@ -55,6 +67,14 @@ async function runSocketAccountSecurityTests() {
         deactivatedAt,
         tokenVersion: { increment: 1 },
       },
+    });
+    assert.deepEqual(studentUpdate, {
+      where: { userId: 8 },
+      data: { isActive: false },
+    });
+    assert.deepEqual(teachingAssistantUpdate, {
+      where: { userId: 8 },
+      data: { status: 'INACTIVE' },
     });
     assert.deepEqual(refreshDelete, { where: { userId: 8 } });
   } finally {

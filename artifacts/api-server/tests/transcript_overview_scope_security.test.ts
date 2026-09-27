@@ -24,7 +24,7 @@ function runTranscriptOverviewScopeSecurityTests() {
       AND: [{ endTime: { lte: now } }, { course: { departmentId: 7 } }],
     },
     task: {
-      AND: [{ dueDate: { lte: now } }, { course: { departmentId: 7 } }],
+      AND: [{ isDeleted: false }, { dueDate: { lte: now } }, { course: { departmentId: 7 } }],
     },
   });
 
@@ -41,7 +41,7 @@ function runTranscriptOverviewScopeSecurityTests() {
       AND: [{ endTime: { lte: now } }, { course: collegeCourseScope }],
     },
     task: {
-      AND: [{ dueDate: { lte: now } }, { course: collegeCourseScope }],
+      AND: [{ isDeleted: false }, { dueDate: { lte: now } }, { course: collegeCourseScope }],
     },
   });
 
@@ -58,7 +58,7 @@ function runTranscriptOverviewScopeSecurityTests() {
       AND: [{ endTime: { lte: now } }, { course: assignedCourseScope }],
     },
     task: {
-      AND: [{ dueDate: { lte: now } }, { course: assignedCourseScope }],
+      AND: [{ isDeleted: false }, { dueDate: { lte: now } }, { course: assignedCourseScope }],
     },
   });
 
@@ -66,14 +66,14 @@ function runTranscriptOverviewScopeSecurityTests() {
   assert.deepEqual(unscopedLegacyAdmin, {
     exam: { AND: [{ date: { lte: now } }, { id: -1 }] },
     quiz: { AND: [{ endTime: { lte: now } }, { course: { id: -1 } }] },
-    task: { AND: [{ dueDate: { lte: now } }, { course: { id: -1 } }] },
+    task: { AND: [{ isDeleted: false }, { dueDate: { lte: now } }, { course: { id: -1 } }] },
   });
 
   const superAdmin = getTranscriptOverviewWhere({ role: 'SUPER_ADMIN' }, now);
   assert.deepEqual(superAdmin, {
     exam: { AND: [{ date: { lte: now } }, {}] },
     quiz: { AND: [{ endTime: { lte: now } }, { course: {} }] },
-    task: { AND: [{ dueDate: { lte: now } }, { course: {} }] },
+    task: { AND: [{ isDeleted: false }, { dueDate: { lte: now } }, { course: {} }] },
   });
 }
 

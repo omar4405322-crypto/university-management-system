@@ -11,6 +11,7 @@
 !artifacts/
 !artifacts/api-server/
 !artifacts/api-server/package.json
+!artifacts/api-server/prisma.config.ts
 !artifacts/api-server/build.mjs
 !artifacts/api-server/tsconfig.json
 !artifacts/api-server/src/

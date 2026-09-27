@@ -30,7 +30,11 @@ export function getTranscriptOverviewWhere(
       AND: [{ endTime: { lte: completedBefore } }, { course: courseScope }],
     },
     task: {
-      AND: [{ dueDate: { lte: completedBefore } }, { course: courseScope }],
+      AND: [
+        { isDeleted: false },
+        { dueDate: { lte: completedBefore } },
+        { course: courseScope },
+      ],
     },
   };
 }

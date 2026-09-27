@@ -45,12 +45,38 @@ import {
 } from './IAttendanceDriver';
 import { AppError } from '../../utils/appError';
 import prisma from '../../utils/prismaClient';
+import { getEffectiveActiveStudentWhere } from '../../utils/scope.utils';
 import { setIfNotExists, redis } from '../../utils/redis.utils';
 import { decrypt } from '../../utils/encryption.utils';
 import logger from '../../utils/logger';
 
 // In-memory fallback for non-Redis environments (testing/local development)
 const usedRfidNonces = new Set<string>();
+
+export const isValidRfidSignature = (
+  signature: string,
+  expectedDigest: Buffer
+): boolean => {
+  const cleanSignature = signature.trim();
+  let suppliedDigest: Buffer;
+
+  if (/^[0-9a-fA-F]{64}$/.test(cleanSignature)) {
+    suppliedDigest = Buffer.from(cleanSignature, 'hex');
+  } else {
+    suppliedDigest = Buffer.from(cleanSignature, 'base64');
+    if (
+      suppliedDigest.length !== expectedDigest.length ||
+      suppliedDigest.toString('base64') !== cleanSignature
+    ) {
+      return false;
+    }
+  }
+
+  return (
+    suppliedDigest.length === expectedDigest.length &&
+    crypto.timingSafeEqual(suppliedDigest, expectedDigest)
+  );
+};
 
 export class RfidDriver implements IAttendanceDriver {
   readonly method: AttendanceMethod = AttendanceMethod.RFID;
@@ -182,29 +208,13 @@ export class RfidDriver implements IAttendanceDriver {
     // 4. Per-device HMAC request signature verification (timing-safe)
     const cleanNonce = nonce.trim();
     const canonicalString = `${deviceId}:${rfidTag}:${timestamp}:${cleanNonce}`;
-    const expectedSigHex = crypto
+    const expectedDigest = crypto
       .createHmac('sha256', signingKey)
       .update(canonicalString)
-      .digest('hex');
-    const expectedSigBase64 = crypto
-      .createHmac('sha256', signingKey)
-      .update(canonicalString)
-      .digest('base64');
+      .digest();
 
     const cleanSig = reqSignature.trim();
-    let isSigValid = false;
-
-    try {
-      const sigBuf = Buffer.from(cleanSig.toLowerCase(), 'hex');
-      const expBuf = Buffer.from(expectedSigHex.toLowerCase(), 'hex');
-      if (sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf)) {
-        isSigValid = true;
-      } else if (cleanSig === expectedSigBase64) {
-        isSigValid = true;
-      }
-    } catch {
-      isSigValid = false;
-    }
+    const isSigValid = isValidRfidSignature(cleanSig, expectedDigest);
 
     if (!isSigValid) {
       return {
@@ -240,8 +250,8 @@ export class RfidDriver implements IAttendanceDriver {
     }
 
     // 6. Student lookup by tag
-    const student = await prisma.student.findUnique({
-      where: { rfidTag },
+    const student = await prisma.student.findFirst({
+      where: getEffectiveActiveStudentWhere({ rfidTag }),
     });
 
     if (!student) {

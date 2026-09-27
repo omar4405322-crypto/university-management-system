@@ -2,41 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import logger from '../utils/logger';
+import { sanitizeAuditValue } from '../utils/audit.utils';
 
-const REDACTED = '[REDACTED]';
-const SENSITIVE_FIELDS = new Set([
-  'password',
-  'newpassword',
-  'currentpassword',
-  'token',
-  'accesstoken',
-  'refreshtoken',
-  'secret',
-  'secretkey',
-  'authorization',
-  'answers',
-  'correct',
-  'questions',
-  'rfidtag',
-]);
-
-function normalizeFieldName(field: string): string {
-  return field.replace(/[^a-z0-9]/gi, '').toLowerCase();
-}
-
-export function sanitizeAuditValue(value: any): any {
-  if (Array.isArray(value)) return value.map((entry) => sanitizeAuditValue(entry));
-  if (!value || typeof value !== 'object') return value;
-
-  return Object.fromEntries(
-    Object.entries(value).map(([field, fieldValue]) => [
-      field,
-      SENSITIVE_FIELDS.has(normalizeFieldName(field))
-        ? REDACTED
-        : sanitizeAuditValue(fieldValue),
-    ])
-  );
-}
+export { sanitizeAuditValue } from '../utils/audit.utils';
 
 function responseSummary(data: any): Record<string, unknown> {
   const responseData = data?.data;
@@ -62,7 +30,12 @@ const auditLog = (action: string, entity: string) => {
       res.json = originalJson;
 
       // If the request was successful (2xx status), log it
-      if (res.statusCode >= 200 && res.statusCode < 300 && req.method !== 'GET') {
+      if (
+        res.statusCode >= 200 &&
+        res.statusCode < 300 &&
+        req.method !== 'GET' &&
+        !(req as any).auditLogWritten
+      ) {
         const user = (req as any).user;
         const userId = user ? user.id : null;
         const userEmail = user ? user.email : null;

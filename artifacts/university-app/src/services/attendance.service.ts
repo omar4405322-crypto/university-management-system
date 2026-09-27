@@ -47,13 +47,13 @@ export interface StartSessionParams {
 }
 
 export interface QrAttendanceParams {
-  sessionId?: number;
+  sessionId: number;
   token: string;
   step?: number;
   latitude?: number;
   longitude?: number;
   accuracy?: number;
-  deviceId?: string;
+  deviceId: string;
 }
 
 export interface RfidAttendanceParams {
@@ -213,7 +213,7 @@ const attendanceService = {
     return response.data;
   },
 
-  recordAttendanceWithQR: async (payload: { sessionId: number; token: string; step?: number }, location?: { latitude: number; longitude: number }): Promise<RecordAttendanceResponse> => {
+  recordAttendanceWithQR: async (payload: { sessionId: number; token: string; deviceId: string; step?: number }, location?: { latitude: number; longitude: number }): Promise<RecordAttendanceResponse> => {
     const data = { ...payload, ...location };
     return attendanceService.recordQr(data as any);
   },
@@ -258,7 +258,8 @@ const attendanceService = {
   },
 
   listMethods: (): AttendanceMethodType[] => {
-    return ['MANUAL', 'QR', 'RFID', 'FACE', 'GPS'];
+    // FACE attendance is an experimental method disabled by default
+    return ['MANUAL', 'QR', 'RFID', 'GPS'];
   },
 };
 

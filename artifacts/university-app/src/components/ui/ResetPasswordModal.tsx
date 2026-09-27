@@ -1,12 +1,28 @@
-// @ts-nocheck
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { KeyRound, Eye, EyeOff, X } from 'lucide-react';
 import Button from './button';
 import api from '../../services/api';
 
-const ResetPasswordModal = ({ isOpen, onClose, person, type }) => {
-    const { _t } = useTranslation();
+export interface ResetPasswordPerson {
+  id: number;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+}
+
+export interface ResetPasswordModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  person?: ResetPasswordPerson | null;
+  type: 'student' | 'doctor' | 'admin' | 'teaching-assistant';
+}
+
+const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
+  isOpen,
+  onClose,
+  person,
+  type,
+}) => {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,7 +43,11 @@ const ResetPasswordModal = ({ isOpen, onClose, person, type }) => {
       const endpoint =
         type === 'student'
           ? `/students/${person.id}/reset-password`
-          : `/doctors/${person.id}/reset-password`;
+          : type === 'doctor'
+          ? `/doctors/${person.id}/reset-password`
+          : type === 'teaching-assistant'
+          ? `/teaching-assistants/${person.id}/reset-password`
+          : `/users/${person.id}/reset-password`;
 
       const res = await api.patch(endpoint, { newPassword });
       setSuccess(res.data.message || 'Password reset successfully');
@@ -99,14 +119,14 @@ const ResetPasswordModal = ({ isOpen, onClose, person, type }) => {
         </div>
 
         {error && (
-          <div className="px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-sm text-error font-medium">
+          <div className="px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-sm text-error-text font-medium">
             {error}
           </div>
         )}
 
         {success && (
           <div className="px-4 py-3 rounded-xl bg-brand-primary-50 border border-brand-primary-100 text-sm text-brand-primary-600 font-medium">
-            ? {success}
+            {success}
           </div>
         )}
 

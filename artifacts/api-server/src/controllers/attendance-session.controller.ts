@@ -87,7 +87,7 @@ export const getSlotSessions = catchAsync(
       limit,
     } = req.query;
     const result = await AttendanceSessionService.getSlotSessions(
-      req.user,
+      req.user!,
       parseInt(slotId as string),
       {
         date: date as string | undefined,

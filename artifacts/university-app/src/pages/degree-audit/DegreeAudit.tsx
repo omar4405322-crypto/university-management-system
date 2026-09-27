@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import degreeAuditService from '../../services/degreeAudit.service';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/card';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import {

@@ -31,6 +31,7 @@ export async function requireExistingCourseStaffAssignments(
       where: {
         courseId: requirement.courseId,
         doctorId: requirement.doctorId,
+        isArchived: false,
         ...excludeCurrentSlot,
       },
       select: { id: true },
@@ -49,6 +50,7 @@ export async function requireExistingCourseStaffAssignments(
       where: {
         courseId: requirement.courseId,
         teachingAssistantId: requirement.teachingAssistantId,
+        isArchived: false,
         ...excludeCurrentSlot,
       },
       select: { id: true },

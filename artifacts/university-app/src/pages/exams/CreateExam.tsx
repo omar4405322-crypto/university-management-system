@@ -1,5 +1,5 @@
 // FIXED: Exam create uses room field (matches database schema)
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -73,11 +73,7 @@ const CreateExam = () => {
     }
   });
 
-  useEffect(() => {
-    fetchCourses();
-  }, []);
-
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     try {
       setCoursesLoading(true);
       const result = await coursesService.getCourses();
@@ -88,7 +84,11 @@ const CreateExam = () => {
     } finally {
       setCoursesLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchCourses();
+  }, [fetchCourses]);
 
   const [antiCheatEnabled, setAntiCheatEnabled] = useState(DEFAULT_ANTI_CHEAT_SETTINGS.antiCheatEnabled);
   const [maxLeavesBeforeCancel, setMaxLeavesBeforeCancel] = useState(DEFAULT_ANTI_CHEAT_SETTINGS.maxLeavesBeforeCancel);

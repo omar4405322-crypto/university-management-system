@@ -1,4 +1,3 @@
-// @ts-nocheck
 import prisma from './prismaClient';
 import { Role } from '@prisma/client';
 
@@ -32,17 +31,18 @@ export const createNotification = async ({
     });
   } catch (error) {
     console.error('Error creating notification:', error);
+    return null;
   }
 };
 
 export interface NotifyRoleParams extends BaseNotificationParams {
-  role: Role | any;
+  role: Role | string;
 }
 
 export const notifyRole = async ({ role, title, message, type = 'info' }: NotifyRoleParams) => {
   try {
     const users = await prisma.user.findMany({
-      where: { role },
+      where: { role: role as any },
       select: { id: true },
     });
 
@@ -53,6 +53,7 @@ export const notifyRole = async ({ role, title, message, type = 'info' }: Notify
     );
   } catch (error) {
     console.error(`Error notifying role ${role}:`, error);
+    return null;
   }
 };
 
@@ -81,7 +82,7 @@ export const notifyStudentsInCourse = async ({
       },
     });
 
-    if (!course || !course.enrollments.length) return;
+    if (!course || !course.enrollments.length) return null;
 
     const notifications = course.enrollments.map(
       ({ student }: { student: { userId: number } }) => ({
@@ -97,6 +98,7 @@ export const notifyStudentsInCourse = async ({
     });
   } catch (error) {
     console.error('Error notifying students in course:', error);
+    return null;
   }
 };
 
@@ -124,7 +126,7 @@ export const notifyAdminsOfNewRequest = async ({
       select: { name: true, collegeId: true },
     });
 
-    if (!department) return;
+    if (!department) return null;
 
     // Find all potential admins to notify
     const admins = await prisma.user.findMany({
@@ -171,7 +173,9 @@ export const notifyAdminsOfNewRequest = async ({
         data: notifications,
       });
     }
+    return null;
   } catch (error) {
     console.error('Error notifying admins of new request:', error);
+    return null;
   }
 };

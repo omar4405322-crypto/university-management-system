@@ -8,6 +8,8 @@ export interface DriverValidationContext {
   ipAddress?: string;
   userAgent?: string;
   semester?: number;
+  academicYear?: number;
+  date?: string | Date;
   courseId?: number;
   actor?: UserScope;
   prismaTransaction?: any;
@@ -35,6 +37,8 @@ export interface AttendanceIntent {
   locationFlagged?: boolean;
   pendingApprovedStatus?: AttendanceStatus | null;
   date?: Date;
+  semester?: number;
+  academicYear?: number;
 }
 
 export interface IAttendanceDriver {

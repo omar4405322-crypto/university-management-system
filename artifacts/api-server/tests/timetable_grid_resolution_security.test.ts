@@ -124,8 +124,21 @@ async function runTimetableGridResolutionSecurityTests() {
     assert.equal(syncResult.data.skippedCount, 2);
     assert.match(syncResult.data.skippedSlots[0].reason, /^AMBIGUOUS_COURSE_MATCH/);
     assert.match(syncResult.data.skippedSlots[1].reason, /^COURSE_ID_NOT_IN_SCOPE/);
-    assert.deepEqual(capturedDoctorWhere, { departmentId: 7 });
-    assert.deepEqual(capturedTeachingAssistantWhere, { departmentId: 7 });
+    assert.deepEqual(capturedDoctorWhere, {
+      AND: [
+        { departmentId: 7 },
+        { user: { is: { isActive: true } } },
+      ],
+    });
+    assert.deepEqual(capturedTeachingAssistantWhere, {
+      AND: [
+        { departmentId: 7 },
+        {
+          status: 'ACTIVE',
+          user: { is: { isActive: true } },
+        },
+      ],
+    });
     assert.equal(mutationCalled, false, 'Ambiguous/out-of-scope matches require manual review');
 
     const controllerSource = await readFile(

@@ -1,8 +1,10 @@
 export const USER_ROLES = {
-  SUPER_ADMIN: 'SUPER_ADMIN',
-  ADMIN: 'ADMIN',
-  DOCTOR: 'DOCTOR',
-  STUDENT: 'STUDENT',
+  SUPER_ADMIN: "SUPER_ADMIN",
+  ADMIN: "ADMIN",
+  COLLEGE_ADMIN: "COLLEGE_ADMIN",
+  DEPARTMENT_ADMIN: "DEPARTMENT_ADMIN",
+  DOCTOR: "DOCTOR",
+  STUDENT: "STUDENT",
 } as const;
 
-export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
+export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];

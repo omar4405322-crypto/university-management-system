@@ -24,6 +24,13 @@ router.put(
   studentsController.updateStudent
 );
 router.patch('/:id/reset-password', passwordResetLimiter, authorize('SUPER_ADMIN', 'ADMIN'), resetStudentPassword);
+router.delete(
+  '/:id/confirmed-purge',
+  authorize('SUPER_ADMIN'),
+  idParamValidation,
+  validate,
+  studentsController.confirmedPurgeStudent
+);
 router.delete('/:id', idParamValidation, validate, studentsController.deleteStudent);
 
 export default router;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -41,7 +40,7 @@ import { downloadCsv } from '../../utils/exportCsv';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 
 export default function GroupManagement() {
   const { t } = useTranslation();
@@ -548,7 +547,7 @@ export default function GroupManagement() {
       {/* 1. Sleek Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2.5">
+          <h1 className="page-title flex items-center gap-2.5">
             <span className="p-2 rounded-xl bg-brand-primary-500/10 text-brand-primary-600 dark:text-brand-primary-400">
               <FolderTree size={22} />
             </span>

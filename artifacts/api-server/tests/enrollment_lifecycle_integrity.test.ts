@@ -30,6 +30,7 @@ async function runEnrollmentLifecycleIntegrityTests() {
 
   const originalTransaction = prisma.$transaction;
   const originalStudentFindUnique = prisma.student.findUnique;
+  const originalStudentFindFirst = prisma.student.findFirst;
   const originalStudentFindMany = prisma.student.findMany;
   const originalCourseFindMany = prisma.course.findMany;
   const originalCourseFindUnique = prisma.course.findUnique;
@@ -45,12 +46,14 @@ async function runEnrollmentLifecycleIntegrityTests() {
     const currentAcademicYear = new Date().getFullYear();
 
     let transactionCalls = 0;
-    (prisma.student as any).findUnique = async () => ({
+    const mockStudent = async () => ({
       id: 10,
       departmentId: 3,
       year: 2,
       isActive: true,
     });
+    (prisma.student as any).findUnique = mockStudent;
+    (prisma.student as any).findFirst = mockStudent;
     (prisma.course as any).findMany = async () => [
       { id: 101, semester: 1 },
       { id: 102, semester: 1 },
@@ -165,6 +168,13 @@ async function runEnrollmentLifecycleIntegrityTests() {
       return { count: 1 };
     };
     (prisma.auditLog as any).create = async () => ({ id: 1 });
+    (prisma as any).$transaction = async (callback: any) => callback({
+      enrollment: {
+        updateMany: prisma.enrollment.updateMany,
+        findUnique: prisma.enrollment.findUnique,
+      },
+      auditLog: { create: prisma.auditLog.create },
+    });
 
     await invokeController(updateGrade, {
       params: { id: '50' },
@@ -366,6 +376,12 @@ async function runEnrollmentLifecycleIntegrityTests() {
       rejectionWhere = args.where;
       return { count: 0 };
     };
+    (prisma as any).$transaction = async (operation: any) => operation({
+      registrationRequest: {
+        updateMany: prisma.registrationRequest.updateMany,
+      },
+      auditLog: { create: async () => ({ id: 1 }) },
+    });
     await assert.rejects(
       invokeController(rejectRequest, {
         params: { id: '70' },
@@ -381,6 +397,7 @@ async function runEnrollmentLifecycleIntegrityTests() {
   } finally {
     (prisma as any).$transaction = originalTransaction;
     (prisma.student as any).findUnique = originalStudentFindUnique;
+    (prisma.student as any).findFirst = originalStudentFindFirst;
     (prisma.student as any).findMany = originalStudentFindMany;
     (prisma.course as any).findMany = originalCourseFindMany;
     (prisma.course as any).findUnique = originalCourseFindUnique;

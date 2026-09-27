@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import Card from '../../components/ui/card';
 import Button from '../../components/ui/button';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 import LoadingState from '../../components/ui/LoadingState';
 import api from '../../services/api';
 import EditTAModal from './EditTAModal';

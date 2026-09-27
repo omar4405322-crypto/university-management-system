@@ -1,4 +1,5 @@
 import prisma from '../utils/prismaClient';
+import { getEffectiveActiveStudentWhere } from '../utils/scope.utils';
 
 export class StudentGroupsService {
   /**
@@ -11,7 +12,7 @@ export class StudentGroupsService {
       where: { id: groupId },
       include: {
         children: true,
-        students: true
+        students: { where: getEffectiveActiveStudentWhere() }
       }
     });
 
@@ -53,7 +54,11 @@ export class StudentGroupsService {
         ],
       },
       include: {
-        _count: { select: { students: true } }
+        _count: {
+          select: {
+            students: { where: getEffectiveActiveStudentWhere() },
+          },
+        }
       },
       orderBy: [{ year: 'asc' }, { name: 'asc' }]
     });
@@ -105,11 +110,24 @@ export class StudentGroupsService {
    * Assigns a newly created or activated student to the appropriate leaf group based on alphabetical ranges.
    */
   static async assignStudentToGroup(student: any) {
-    if (!student.departmentId) return;
+    const activeStudent = await prisma.student.findFirst({
+      where: getEffectiveActiveStudentWhere({ id: student.id }),
+      select: {
+        id: true,
+        departmentId: true,
+        year: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+    if (!activeStudent?.departmentId) return;
 
     // 1. Find all leaf groups
     const allGroups = await prisma.studentGroup.findMany({
-      where: { departmentId: student.departmentId, year: student.year || 1 },
+      where: {
+        departmentId: activeStudent.departmentId,
+        year: activeStudent.year || 1,
+      },
       include: { children: true }
     });
 
@@ -121,7 +139,7 @@ export class StudentGroupsService {
     // Sort leaves alphabetically by name or range
     leafGroups.sort((a, b) => a.rangeStartName.localeCompare(b.rangeStartName));
 
-    const studentName = `${student.firstName} ${student.lastName}`;
+    const studentName = `${activeStudent.firstName} ${activeStudent.lastName}`;
 
     let assignedGroupId = null;
 
@@ -154,7 +172,7 @@ export class StudentGroupsService {
     // Assign group
     if (assignedGroupId) {
       await prisma.student.update({
-        where: { id: student.id },
+        where: { id: activeStudent.id },
         data: { groupId: assignedGroupId }
       });
     }

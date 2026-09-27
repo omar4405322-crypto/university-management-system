@@ -90,6 +90,7 @@ router.put('/:id', authorize('SUPER_ADMIN'), adminIdValidation, adminUpdateValid
 router.patch('/:id/reset-password', authorize('SUPER_ADMIN'), passwordResetLimiter, adminIdValidation, validate, resetUserPassword);
 router.patch('/:id/reactivate', authorize('SUPER_ADMIN'), adminIdValidation, validate, reactivateUser);
 router.delete('/:id', authorize('SUPER_ADMIN'), adminIdValidation, validate, deleteUser);
+router.delete('/:id/confirmed-purge', authorize('SUPER_ADMIN'), adminIdValidation, validate, hardDeleteUser);
 router.delete('/:id/permanent', authorize('SUPER_ADMIN'), adminIdValidation, validate, hardDeleteUser);
 
 export default router;

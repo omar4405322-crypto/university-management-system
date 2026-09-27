@@ -1,388 +1,446 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
-import * as attendanceController from '../controllers/attendance.controller';
-import * as attendanceSessionController from '../controllers/attendance-session.controller';
-import { protect, authorize } from '../middleware/auth.middleware';
-import { param, body } from 'express-validator';
-import validate from '../middleware/validate.middleware';
-import rateLimit from 'express-rate-limit';
+import * as attendanceController from "../controllers/attendance.controller";
+import * as attendanceSessionController from "../controllers/attendance-session.controller";
+import { protect, authorize } from "../middleware/auth.middleware";
+import { param, body } from "express-validator";
+import validate from "../middleware/validate.middleware";
+import rateLimit from "express-rate-limit";
+import {
+  createRedisStore,
+  rateLimiterPassOnStoreError,
+} from "../middleware/rateLimiter.middleware";
 import {
   MAX_ATTENDANCE_RECORDS,
   MAX_ATTENDANCE_REMARKS_LENGTH,
-} from '../utils/requestLimits';
+} from "../utils/requestLimits";
 
 const qrLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  message: 'Too many QR scan attempts, please try again later.',
+  message: "Too many QR scan attempts, please try again later.",
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore("attendance_qr"),
 });
 
 const sessionLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: 'Too many session requests, please try again later.',
-  keyGenerator: (req: any) =>
-    `session_${req.user!.id}`,
+  message: "Too many session requests, please try again later.",
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore("attendance_session"),
+  validate: { keyGeneratorIpFallback: false },
+  keyGenerator: (req: any) => `session_${req.user!.id}`,
 });
 
 const rfidLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 100,
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore("attendance_rfid"),
 });
 
 const adminOrTeacher = authorize(
-  'SUPER_ADMIN',
-  'ADMIN',
-  'COLLEGE_ADMIN',
-  'DEPARTMENT_ADMIN',
-  'DOCTOR',
-  'TEACHING_ASSISTANT'
+  "SUPER_ADMIN",
+  "ADMIN",
+  "COLLEGE_ADMIN",
+  "DEPARTMENT_ADMIN",
+  "DOCTOR",
+  "TEACHING_ASSISTANT",
 );
 
-router.get('/my-courses', protect, attendanceController.getMyCourses);
-router.get('/my-slots', protect, attendanceController.getMySlots);
-router.get('/my-attendance', protect, attendanceController.getMyAttendance);
-router.get('/my-warnings', protect, attendanceController.getMyAbsenceWarnings);
+router.get("/my-courses", protect, attendanceController.getMyCourses);
+router.get("/my-slots", protect, attendanceController.getMySlots);
+router.get("/my-attendance", protect, attendanceController.getMyAttendance);
+router.get("/my-warnings", protect, attendanceController.getMyAbsenceWarnings);
 router.get(
-  '/warnings/export',
+  "/warnings/export",
   protect,
   adminOrTeacher,
-  attendanceController.exportAbsenceWarnings
+  attendanceController.exportAbsenceWarnings,
 );
 
 router.get(
-  '/records',
+  "/records",
   protect,
-  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
-  attendanceController.getAttendanceRecords
+  authorize("SUPER_ADMIN", "ADMIN", "COLLEGE_ADMIN", "DEPARTMENT_ADMIN"),
+  attendanceController.getAttendanceRecords,
 );
 
 router.get(
-  '/audit/duplicate-devices',
+  "/audit/duplicate-devices",
   protect,
-  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
-  attendanceController.getAuditDuplicateDevices
+  authorize("SUPER_ADMIN", "ADMIN", "COLLEGE_ADMIN", "DEPARTMENT_ADMIN"),
+  attendanceController.getAuditDuplicateDevices,
 );
 
 router.get(
-  '/course/:courseId',
-  protect,
-  adminOrTeacher,
-  [param('courseId').isInt().withMessage('Invalid course ID')],
-  validate,
-  attendanceController.getCourseAttendance
-);
-
-router.get(
-  '/summary/:courseId',
+  "/course/:courseId",
   protect,
   adminOrTeacher,
-  [param('courseId').isInt().withMessage('Invalid course ID')],
+  [param("courseId").isInt().withMessage("Invalid course ID")],
   validate,
-  attendanceController.getAttendanceSummary
+  attendanceController.getCourseAttendance,
 );
 
 router.get(
-  '/student/:studentId',
+  "/summary/:courseId",
   protect,
-  [param('studentId').isInt().withMessage('Invalid student ID')],
+  adminOrTeacher,
+  [param("courseId").isInt().withMessage("Invalid course ID")],
   validate,
-  attendanceController.getStudentAttendance
+  attendanceController.getAttendanceSummary,
+);
+
+router.get(
+  "/student/:studentId",
+  protect,
+  [param("studentId").isInt().withMessage("Invalid student ID")],
+  validate,
+  attendanceController.getStudentAttendance,
 );
 
 router.post(
-  '/unblock/:enrollmentId',
+  "/unblock/:enrollmentId",
   protect,
-  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
-  [param('enrollmentId').isInt().withMessage('Invalid enrollment ID')],
+  authorize("SUPER_ADMIN", "ADMIN", "COLLEGE_ADMIN", "DEPARTMENT_ADMIN"),
+  [param("enrollmentId").isInt().withMessage("Invalid enrollment ID")],
   validate,
-  attendanceController.unblockEnrollment
+  attendanceController.unblockEnrollment,
 );
 
 router.post(
-  '/record/:attendanceId/override',
+  "/record/:attendanceId/override",
   protect,
   adminOrTeacher,
-  attendanceController.overrideFlaggedRecord
+  attendanceController.overrideFlaggedRecord,
 );
 
 router.post(
-  '/record/:attendanceId/reject',
+  "/record/:attendanceId/reject",
   protect,
   adminOrTeacher,
-  attendanceController.rejectFlaggedRecord
+  attendanceController.rejectFlaggedRecord,
 );
 
 router.post(
-  '/manual',
+  "/manual",
   protect,
   adminOrTeacher,
   [
-    body('studentId').optional().isInt().withMessage('Student ID must be an integer'),
-    body('records')
-      .optional()
-      .isArray({ max: MAX_ATTENDANCE_RECORDS })
-      .withMessage(`Records must be an array with at most ${MAX_ATTENDANCE_RECORDS} items`),
-    body('records.*.studentId')
+    body("studentId")
       .optional()
       .isInt()
-      .withMessage('Student ID must be an integer'),
-    body('records.*.status')
+      .withMessage("Student ID must be an integer"),
+    body("records")
       .optional()
-      .isIn(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'])
-      .withMessage('Invalid status'),
-    body('records.*.remarks')
+      .isArray({ max: MAX_ATTENDANCE_RECORDS })
+      .withMessage(
+        `Records must be an array with at most ${MAX_ATTENDANCE_RECORDS} items`,
+      ),
+    body("records.*.studentId")
+      .optional()
+      .isInt()
+      .withMessage("Student ID must be an integer"),
+    body("records.*.status")
+      .optional()
+      .isIn(["PRESENT", "ABSENT", "LATE", "EXCUSED"])
+      .withMessage("Invalid status"),
+    body("records.*.remarks")
       .optional()
       .isString()
       .isLength({ max: MAX_ATTENDANCE_REMARKS_LENGTH })
-      .withMessage('Attendance remarks are too long'),
-    body('remarks')
+      .withMessage("Attendance remarks are too long"),
+    body("remarks")
       .optional()
       .isString()
       .isLength({ max: MAX_ATTENDANCE_REMARKS_LENGTH })
-      .withMessage('Attendance remarks are too long'),
-    body('semester')
+      .withMessage("Attendance remarks are too long"),
+    body("semester")
       .optional()
       .isInt({ min: 1, max: 3 })
-      .withMessage('Semester must be between 1 and 3'),
-    body('courseId')
+      .withMessage("Semester must be between 1 and 3"),
+    body("courseId")
       .optional()
       .isInt({ min: 1 })
-      .withMessage('Course ID must be a positive integer'),
-    body('sessionId')
+      .withMessage("Course ID must be a positive integer"),
+    body("sessionId")
       .optional()
       .isInt({ min: 1 })
-      .withMessage('Session ID must be a positive integer'),
+      .withMessage("Session ID must be a positive integer"),
   ],
   validate,
-  attendanceController.recordAttendanceManual
+  attendanceController.recordAttendanceManual,
 );
 
 router.post(
-  '/qr',
+  "/qr",
   protect,
   qrLimiter,
   [
-    body('token').notEmpty().withMessage('QR token is required'),
+    body("token").notEmpty().withMessage("QR token is required"),
+    body("sessionId").isInt({ min: 1 }).withMessage("Session ID is required"),
+    body("deviceId")
+      .isString()
+      .trim()
+      .isLength({ min: 8, max: 255 })
+      .withMessage("A valid device ID is required"),
   ],
   validate,
-  attendanceController.recordAttendanceQr
+  attendanceController.recordAttendanceQr,
 );
 
 router.post(
-  '/rfid',
+  "/rfid",
   rfidLimiter,
   [
-    body('deviceId').notEmpty().withMessage('Device ID is required'),
-    body('rfidTag').notEmpty().withMessage('RFID tag is required'),
-    body('timestamp')
-      .custom((val, { req }) => {
-        const ts = val ?? req?.headers?.['x-timestamp'];
-        if (ts === undefined || ts === null || ts === '') {
-          throw new Error('Timestamp is required');
-        }
-        return true;
-      }),
-    body('nonce')
-      .custom((val, { req }) => {
-        const n = val ?? req?.headers?.['x-nonce'];
-        if (!n || typeof n !== 'string' || !n.trim()) {
-          throw new Error('Nonce is required');
-        }
-        return true;
-      }),
-    body('signature')
-      .custom((val, { req }) => {
-        const sig =
-          val ??
-          req?.body?.hmac ??
-          req?.headers?.['x-signature'] ??
-          req?.headers?.['x-hmac'];
-        if (!sig || typeof sig !== 'string' || !sig.trim()) {
-          throw new Error('Request signature is required');
-        }
-        return true;
-      }),
+    body("deviceId").notEmpty().withMessage("Device ID is required"),
+    body("rfidTag").notEmpty().withMessage("RFID tag is required"),
+    body("timestamp").custom((val, { req }) => {
+      const ts = val ?? req?.headers?.["x-timestamp"];
+      if (ts === undefined || ts === null || ts === "") {
+        throw new Error("Timestamp is required");
+      }
+      return true;
+    }),
+    body("nonce").custom((val, { req }) => {
+      const n = val ?? req?.headers?.["x-nonce"];
+      if (!n || typeof n !== "string" || !n.trim()) {
+        throw new Error("Nonce is required");
+      }
+      return true;
+    }),
+    body("signature").custom((val, { req }) => {
+      const sig =
+        val ??
+        req?.body?.hmac ??
+        req?.headers?.["x-signature"] ??
+        req?.headers?.["x-hmac"];
+      if (!sig || typeof sig !== "string" || !sig.trim()) {
+        throw new Error("Request signature is required");
+      }
+      return true;
+    }),
   ],
   validate,
-  attendanceController.recordAttendanceRfid
+  attendanceController.recordAttendanceRfid,
 );
 
+const faceAttendanceGuard = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+): void => {
+  if (process.env.ENABLE_FACE_ATTENDANCE !== "true") {
+    res.status(403).json({
+      success: false,
+      error: {
+        code: "FEATURE_DISABLED",
+        message:
+          "Face recognition attendance is disabled by default. Explicit configuration (ENABLE_FACE_ATTENDANCE=true) is required.",
+      },
+    });
+    return;
+  }
+  next();
+};
+
+router.post("/face", protect, faceAttendanceGuard, attendanceController.recordAttendanceFace);
+
 router.post(
-  '/face',
+  "/gps",
   protect,
-  attendanceController.recordAttendanceFace
+  [
+    body("sessionId").isInt({ min: 1 }).withMessage("Session ID is required"),
+    body("deviceId")
+      .isString()
+      .trim()
+      .isLength({ min: 8, max: 255 })
+      .withMessage("A valid device ID is required"),
+    body("latitude")
+      .isFloat({ min: -90, max: 90 })
+      .withMessage("Valid latitude is required"),
+    body("longitude")
+      .isFloat({ min: -180, max: 180 })
+      .withMessage("Valid longitude is required"),
+  ],
+  validate,
+  attendanceController.recordAttendanceGps,
 );
 
 router.post(
-  '/gps',
-  protect,
-  attendanceController.recordAttendanceGps
-);
-
-router.post(
-  '/session/:sessionId/mark',
+  "/session/:sessionId/mark",
   protect,
   adminOrTeacher,
-  attendanceSessionController.markStudentAttendance
+  attendanceSessionController.markStudentAttendance,
 );
 
 router.post(
-  '/sessions/start',
+  "/sessions/start",
   protect,
   sessionLimiter,
   adminOrTeacher,
   [
-    body('radius')
+    body("radius")
       .optional({ nullable: true })
       .isFloat({ min: 1, max: 200 })
-      .withMessage('Session radius must be between 1 and 200 meters'),
-    body('gracePeriodMins')
+      .withMessage("Session radius must be between 1 and 200 meters"),
+    body("gracePeriodMins")
       .optional({ nullable: true })
       .isInt({ min: 0, max: 30 })
-      .withMessage('Grace period must be between 0 and 30 minutes'),
+      .withMessage("Grace period must be between 0 and 30 minutes"),
   ],
   validate,
-  attendanceSessionController.startSession
+  attendanceSessionController.startSession,
 );
 
 router.post(
-  '/session/start',
+  "/session/start",
   protect,
   sessionLimiter,
   adminOrTeacher,
   [
-    body('radius')
+    body("radius")
       .optional({ nullable: true })
       .isFloat({ min: 1, max: 200 })
-      .withMessage('Session radius must be between 1 and 200 meters'),
-    body('gracePeriodMins')
+      .withMessage("Session radius must be between 1 and 200 meters"),
+    body("gracePeriodMins")
       .optional({ nullable: true })
       .isInt({ min: 0, max: 30 })
-      .withMessage('Grace period must be between 0 and 30 minutes'),
+      .withMessage("Grace period must be between 0 and 30 minutes"),
   ],
   validate,
-  attendanceSessionController.startSession
+  attendanceSessionController.startSession,
 );
 
 router.post(
-  '/sessions/:sessionId/stop',
+  "/sessions/:sessionId/stop",
   protect,
   adminOrTeacher,
-  attendanceSessionController.stopSession
+  attendanceSessionController.stopSession,
 );
 
 router.post(
-  '/session/stop/:sessionId',
+  "/session/stop/:sessionId",
   protect,
   adminOrTeacher,
-  attendanceSessionController.stopSession
+  attendanceSessionController.stopSession,
 );
 
 router.get(
-  '/sessions/active',
+  "/sessions/active",
   protect,
-  attendanceSessionController.getActiveSession
+  attendanceSessionController.getActiveSession,
 );
 
 router.get(
-  '/session/active',
+  "/session/active",
   protect,
-  attendanceSessionController.getActiveSession
+  attendanceSessionController.getActiveSession,
 );
 
 router.get(
-  '/sessions/:sessionId/current-code',
+  "/sessions/:sessionId/current-code",
   protect,
   sessionLimiter,
   adminOrTeacher,
-  attendanceSessionController.getCurrentCode
+  attendanceSessionController.getCurrentCode,
 );
 
 router.get(
-  '/session/:sessionId/current-code',
+  "/session/:sessionId/current-code",
   protect,
   sessionLimiter,
   adminOrTeacher,
-  attendanceSessionController.getCurrentCode
+  attendanceSessionController.getCurrentCode,
 );
 
 router.put(
-  '/sessions/:sessionId/location',
+  "/sessions/:sessionId/location",
   protect,
   adminOrTeacher,
-  attendanceSessionController.updateSessionLocation
+  attendanceSessionController.updateSessionLocation,
 );
 
 router.put(
-  '/session/:sessionId/location',
+  "/session/:sessionId/location",
   protect,
   adminOrTeacher,
-  attendanceSessionController.updateSessionLocation
+  attendanceSessionController.updateSessionLocation,
 );
 
 router.get(
-  '/sessions/:sessionId/flagged',
+  "/sessions/:sessionId/flagged",
   protect,
   adminOrTeacher,
-  attendanceSessionController.getFlaggedRecords
+  attendanceSessionController.getFlaggedRecords,
 );
 
 router.get(
-  '/session/:sessionId/flagged',
+  "/session/:sessionId/flagged",
   protect,
   adminOrTeacher,
-  attendanceSessionController.getFlaggedRecords
+  attendanceSessionController.getFlaggedRecords,
 );
 
 router.get(
-  '/slot/:slotId/sessions',
+  "/slot/:slotId/sessions",
   protect,
   adminOrTeacher,
-  attendanceSessionController.getSlotSessions
+  attendanceSessionController.getSlotSessions,
 );
 
 router.get(
-  '/sessions/:sessionId/roster',
+  "/sessions/:sessionId/roster",
   protect,
   adminOrTeacher,
-  attendanceSessionController.getSessionRoster
+  attendanceSessionController.getSessionRoster,
 );
 
 router.get(
-  '/session/:sessionId/roster',
+  "/session/:sessionId/roster",
   protect,
   adminOrTeacher,
-  attendanceSessionController.getSessionRoster
+  attendanceSessionController.getSessionRoster,
 );
 
 router.post(
-  '/scan-qr',
+  "/scan-qr",
   protect,
   qrLimiter,
-  body('token').notEmpty().withMessage('يجب توفير رمز الاستجابة السريعة (TOTP)'),
+  [
+    body("token")
+      .notEmpty()
+      .withMessage("يجب توفير رمز الاستجابة السريعة (TOTP)"),
+    body("sessionId").isInt({ min: 1 }).withMessage("معرف الجلسة مطلوب"),
+    body("deviceId")
+      .isString()
+      .trim()
+      .isLength({ min: 8, max: 255 })
+      .withMessage("معرف جهاز صالح مطلوب"),
+  ],
   validate,
-  attendanceController.recordAttendanceQr
+  attendanceController.recordAttendanceQr,
 );
 
 // RFID Device Provisioning & Management (Admin Only)
 router.post(
-  '/devices/rfid',
+  "/devices/rfid",
   protect,
-  authorize('SUPER_ADMIN'),
+  authorize("SUPER_ADMIN"),
   [
-    body('roomId').notEmpty().withMessage('Room ID is required'),
-    body('label').optional().isString().withMessage('Label must be a string'),
+    body("roomId").notEmpty().withMessage("Room ID is required"),
+    body("label").optional().isString().withMessage("Label must be a string"),
   ],
   validate,
-  attendanceController.provisionRfidDevice
+  attendanceController.provisionRfidDevice,
 );
 
 router.get(
-  '/devices/rfid',
+  "/devices/rfid",
   protect,
-  authorize('SUPER_ADMIN'),
-  attendanceController.listRfidDevices
+  authorize("SUPER_ADMIN"),
+  attendanceController.listRfidDevices,
 );
 
 export default router;

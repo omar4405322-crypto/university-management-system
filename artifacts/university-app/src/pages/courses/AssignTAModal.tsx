@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import {
@@ -54,19 +54,7 @@ export default function AssignTAModal({
   const [slotType, setSlotType] = useState<'TUTORIAL' | 'LAB'>('TUTORIAL');
   const [includeScheduleSlot, setIncludeScheduleSlot] = useState(true);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchTAs();
-      if (currentAssignedTAs.length > 0) {
-        setSelectedTAId(String(currentAssignedTAs[0].id));
-      } else {
-        setSelectedTAId('');
-      }
-      setError(null);
-    }
-  }, [isOpen, currentAssignedTAs]);
-
-  const fetchTAs = async () => {
+  const fetchTAs = useCallback(async () => {
     try {
       setFetchingTAs(true);
       setError(null);
@@ -80,7 +68,19 @@ export default function AssignTAModal({
     } finally {
       setFetchingTAs(false);
     }
-  };
+  }, [isRTL]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchTAs();
+      if (currentAssignedTAs.length > 0) {
+        setSelectedTAId(String(currentAssignedTAs[0].id));
+      } else {
+        setSelectedTAId('');
+      }
+      setError(null);
+    }
+  }, [isOpen, currentAssignedTAs, fetchTAs]);
 
   const filteredTAs = useMemo(() => {
     if (!searchQuery.trim()) return tas;

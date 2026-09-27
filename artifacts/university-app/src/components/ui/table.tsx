@@ -9,7 +9,7 @@ const Table = React.forwardRef<
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn("w-full caption-bottom text-sm text-brand-text-primary", className)}
       {...props}
     />
   </div>
@@ -20,7 +20,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  <thead ref={ref} className={cn("bg-surface-subtle/70 [&_tr]:border-b [&_tr]:border-brand-border", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -43,7 +43,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      "border-t border-brand-border bg-surface-subtle/70 font-semibold [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -58,7 +58,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "border-b border-brand-border transition-colors hover:bg-brand-primary-50/45 dark:hover:bg-brand-primary-950/15 data-[state=selected]:bg-brand-primary-50 dark:data-[state=selected]:bg-brand-primary-950/20",
       className
     )}
     {...props}
@@ -73,7 +73,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "h-11 px-3 text-start align-middle text-[11px] font-black uppercase tracking-wider text-brand-text-secondary [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]",
       hideOnMobile && "hidden md:table-cell",
       className
     )}
@@ -89,7 +89,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "px-3 py-3 align-middle [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]",
       hideOnMobile && "hidden md:table-cell",
       className
     )}
@@ -104,7 +104,7 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("mt-4 text-sm text-muted-foreground", className)}
+    className={cn("mt-4 text-sm text-brand-text-secondary", className)}
     {...props}
   />
 ))
@@ -140,11 +140,13 @@ const ActionMenu = React.forwardRef<HTMLDivElement, ActionMenuProps>(
           return (
             <button
               key={index}
+              type="button"
               onClick={act.onClick}
               className={buttonClass}
               title={act.label}
+              aria-label={act.label}
             >
-              <Icon size={18} />
+              <Icon size={18} aria-hidden="true" />
             </button>
           );
         })}

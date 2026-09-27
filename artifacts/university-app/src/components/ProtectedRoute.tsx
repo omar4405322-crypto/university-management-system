@@ -1,17 +1,19 @@
-// FIXED: Avoid indefinite blank spinner when session has token but no user - Phase 1
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import LoadingState from './ui/LoadingState';
 import Button from './ui/button';
+import { Capability, hasCapability } from '../config/capabilities';
 
 const ProtectedRoute = ({
   children,
   allowedRoles,
+  capability,
 }: {
   children: React.ReactNode;
   allowedRoles?: string[];
+  capability?: Capability;
 }) => {
   const { user, token, loading } = useAuth();
   const location = useLocation();
@@ -44,6 +46,10 @@ const ProtectedRoute = ({
         </Button>
       </div>
     );
+  }
+
+  if (capability && !hasCapability(user.role, capability)) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role) && user.role !== 'SUPER_ADMIN') {

@@ -44,6 +44,9 @@ const processQueue = (error: any, token: string | null = null): void => {
   failedQueue = [];
 };
 
+import { withCrossTabRefreshLock } from './refreshLock';
+export { withCrossTabRefreshLock };
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
@@ -91,43 +94,48 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      try {
-        // Try to refresh the token using a separate axios instance to avoid interceptor loops
-        const response = await axios.post(
-          `${api.defaults.baseURL}/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-            // Prevent this request from being intercepted by the global instance if somehow it would be
+      const performRefresh = async (): Promise<AxiosResponse> => {
+        try {
+          // Try to refresh the token using a separate axios instance to avoid interceptor loops
+          const response = await axios.post(
+            `${api.defaults.baseURL}/auth/refresh`,
+            {},
+            {
+              withCredentials: true,
+              // Prevent this request from being intercepted by the global instance if somehow it would be
+            }
+          );
+
+          const { accessToken } = response.data.data;
+
+          // Save new token in memory
+          setAccessToken(accessToken);
+          processQueue(null, accessToken);
+
+          // Update header and retry
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          return api(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+
+          // Refresh failed - logout
+          localStorage.removeItem('user');
+          setAccessToken(null);
+
+          // Only redirect if we are not already on a public page
+          // and only do it once to avoid ERR_ABORTED in console
+          const isPublicPage = window.location.pathname === '/' || window.location.pathname.includes('/login') || window.location.pathname.includes('/register');
+          if (!isPublicPage && !(window as any).__isRedirecting) {
+            (window as any).__isRedirecting = true;
+            window.location.href = '/login?expired=true';
           }
-        );
-
-        const { accessToken } = response.data.data;
-
-        // Save new token in memory
-        setAccessToken(accessToken);
-        processQueue(null, accessToken);
-
-        // Update header and retry
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-
-        // Refresh failed - logout
-        localStorage.removeItem('user');
-        setAccessToken(null);
-
-        // Only redirect if we are not already on a public page
-        // and only do it once to avoid ERR_ABORTED in console
-        const isPublicPage = window.location.pathname === '/' || window.location.pathname.includes('/login') || window.location.pathname.includes('/register');
-        if (!isPublicPage && !(window as any).__isRedirecting) {
-          (window as any).__isRedirecting = true;
-          window.location.href = '/login?expired=true';
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
         }
-      } finally {
-        isRefreshing = false;
-      }
+      };
+
+      return withCrossTabRefreshLock(() => performRefresh());
     }
 
     return Promise.reject({

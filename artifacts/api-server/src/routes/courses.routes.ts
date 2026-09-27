@@ -36,6 +36,7 @@ router.post(
 );
 router.patch('/:id/materials/:materialId/toggle', coursesController.toggleMaterialPublication);
 router.delete('/:id/materials/:materialId', coursesController.deleteCourseMaterial);
+router.get('/:id/materials/:materialId/download', coursesController.downloadCourseMaterial);
 
 // Modification routes are restricted
 router.post(

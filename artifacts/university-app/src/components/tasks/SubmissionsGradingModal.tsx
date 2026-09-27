@@ -10,7 +10,7 @@ import {
   Search,
 } from 'lucide-react';
 import Modal from '../ui/Modal';
-import Badge from '../ui/Badge';
+import Badge from '../ui/badge';
 import Button from '../ui/button';
 import taskService, {
   SubmissionsStatus,
@@ -134,7 +134,7 @@ const SubmissionRow = memo(function SubmissionRowImpl({
     setFeedback(sub?.feedback ?? '');
     setLastSaved(!!(sub && sub.score != null));
     setSaveError(null);
-  }, [sub?.id, sub?.score, sub?.feedback]);
+  }, [sub]);
 
   const parsedScore = score ? parseFloat(score) : NaN;
   const scoreError =
@@ -375,17 +375,18 @@ const SubmissionsGradingModal: React.FC<SubmissionsGradingModalProps> = ({
       // Default study year filter to the course's own year (Item 4 Option A requirement)
       setStudentYear(task.course?.year ?? 'ALL');
     }
-  }, [isOpen, task?.id, task?.course?.year]);
+  }, [isOpen, task]);
 
+  const taskId = task?.id;
   const fetchData = useCallback(async () => {
-    if (!task) return;
+    if (!taskId) return;
     setLoading(true);
     setError(null);
     try {
       const params: Record<string, unknown> = { page, limit, status };
       if (debouncedSearch) params.search = debouncedSearch;
       if (studentYear !== 'ALL') params.studentYear = Number(studentYear);
-      const res = await taskService.getTaskSubmissions(task.id, params as any);
+      const res = await taskService.getTaskSubmissions(taskId, params as any);
       if (res?.success && res?.data) {
         setRows(res.data.rows ?? []);
         setPagination(res.data.pagination ?? null);
@@ -401,11 +402,11 @@ const SubmissionsGradingModal: React.FC<SubmissionsGradingModalProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [task?.id, page, limit, status, debouncedSearch, studentYear]);
+  }, [taskId, page, limit, status, debouncedSearch, studentYear]);
 
   useEffect(() => {
-    if (isOpen && task) fetchData();
-  }, [isOpen, task?.id, fetchData]);
+    if (isOpen && taskId) fetchData();
+  }, [isOpen, taskId, fetchData]);
 
   const handleGradeSavedInRow = useCallback(
     (submissionId: number, updated: unknown) => {

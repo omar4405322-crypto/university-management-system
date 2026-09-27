@@ -4,6 +4,10 @@ import prisma from '../utils/prismaClient';
 import catchAsync from '../utils/catchAsync';
 import { AuthorizationError } from '../utils/appError';
 import { getSearchScopes } from '../utils/searchScope.utils';
+import {
+  getEffectiveActiveDoctorWhere,
+  getEffectiveActiveStudentWhere,
+} from '../utils/scope.utils';
 
 const TAKE = 8;
 
@@ -24,7 +28,7 @@ export const globalSearch = catchAsync(async (req: Request, res: Response) => {
 
   const contains = { contains: q, mode: 'insensitive' as const };
 
-  const studentWhere: any = {
+  const studentWhere: any = getEffectiveActiveStudentWhere({
     AND: [
       {
         OR: [
@@ -36,8 +40,8 @@ export const globalSearch = catchAsync(async (req: Request, res: Response) => {
       },
       scopes.student,
     ],
-  };
-  const doctorWhere: any = {
+  });
+  const doctorWhere: any = getEffectiveActiveDoctorWhere({
     AND: [
       {
         OR: [
@@ -49,7 +53,7 @@ export const globalSearch = catchAsync(async (req: Request, res: Response) => {
       },
       scopes.doctor,
     ],
-  };
+  });
   const courseWhere: any = {
     AND: [{ OR: [{ name: contains }, { courseCode: contains }] }, scopes.course],
   };

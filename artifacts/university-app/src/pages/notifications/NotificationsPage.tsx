@@ -1,75 +1,81 @@
-// @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
-    _Bell,
   CheckCircle2,
   Trash2,
   Clock,
   AlertCircle,
   Info,
-    _MoreVertical,
-    _CheckCheck,
-    _Filter,
   Loader2,
   Inbox,
-} from 'lucide-react';
-import { useNotifications } from '../../context/NotificationContext';
-import { useTranslation } from 'react-i18next';
-import Card from '../../components/ui/card';
-import Button from '../../components/ui/button';
-import Badge from '../../components/ui/Badge';
-import { PageHeader } from '../../components/ui/PageHeader';
+} from "lucide-react";
+import { useNotifications } from "../../context/NotificationContext";
+import { useTranslation } from "react-i18next";
+import Card from "../../components/ui/card";
+import Button from "../../components/ui/button";
+import Badge from "../../components/ui/badge";
+import { PageHeader } from "../../components/ui/PageHeader";
 
 const NotificationsPage = () => {
   const { t, i18n } = useTranslation();
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead, deleteNotification } =
-    useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+  } = useNotifications();
 
-  const [filter, _setFilter] = useState('all'); // all, unread, read
+  const [filter, _setFilter] = useState("all"); // all, unread, read
 
   const filteredNotifications = notifications.filter((n) => {
-    if (filter === 'unread') return !n.isRead;
-    if (filter === 'read') return n.isRead;
+    if (filter === "unread") return !n.isRead;
+    if (filter === "read") return n.isRead;
     return true;
   });
 
-  const getNotificationIcon = (type) => {
+  const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'SUCCESS':
+      case "SUCCESS":
         return <CheckCircle2 className="text-brand-accent-emerald" size={20} />;
-      case 'ERROR':
+      case "ERROR":
         return <AlertCircle className="text-brand-accent-rose" size={20} />;
-      case 'WARNING':
+      case "WARNING":
         return <AlertCircle className="text-brand-accent-yellow" size={20} />;
       default:
         return <Info className="text-brand-accent-blue" size={20} />;
     }
   };
 
-  const getTimeAgo = (date) => {
-    const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
-    const rtf = new Intl.RelativeTimeFormat(i18n.language || 'en', { numeric: 'auto' });
+  const getTimeAgo = (date: string | Date) => {
+    const seconds = Math.floor(
+      (new Date().getTime() - new Date(date).getTime()) / 1000,
+    );
+    const rtf = new Intl.RelativeTimeFormat(i18n.language || "en", {
+      numeric: "auto",
+    });
     const intervals = [
-      { label: 'year', secs: 31536000 },
-      { label: 'month', secs: 2592000 },
-      { label: 'day', secs: 86400 },
-      { label: 'hour', secs: 3600 },
-      { label: 'minute', secs: 60 },
+      { label: "year", secs: 31536000 },
+      { label: "month", secs: 2592000 },
+      { label: "day", secs: 86400 },
+      { label: "hour", secs: 3600 },
+      { label: "minute", secs: 60 },
     ];
     for (const { label, secs } of intervals) {
       const val = Math.floor(seconds / secs);
-            if (val >= 1) return rtf.format(-val, label as unknown as Record<string, unknown>);
+      if (val >= 1)
+        return rtf.format(-val, label as Intl.RelativeTimeFormatUnit);
     }
-        return rtf.format(-seconds, 'second' as unknown as Record<string, unknown>);
+    return rtf.format(-seconds, "second");
   };
 
   return (
     <div className="section-gap animate-in fade-in duration-700">
       <PageHeader
-        title={t('header.notifications')}
-        subtitle={t('notifications.subtitle')}
+        title={t("header.notifications")}
+        subtitle={t("notifications.subtitle")}
         action={{
-          label: t('header.markAllRead'),
+          label: t("header.markAllRead"),
           onClick: markAllAsRead,
           disabled: unreadCount === 0,
         }}
@@ -80,7 +86,7 @@ const NotificationsPage = () => {
           <div className="flex flex-col items-center justify-center h-[400px] gap-4">
             <Loader2 className="animate-spin text-brand-green" size={40} />
             <p className="text-sm text-brand-text-sub font-bold uppercase tracking-widest">
-              {t('common.loading')}
+              {t("common.loading")}
             </p>
           </div>
         ) : filteredNotifications.length === 0 ? (
@@ -88,11 +94,13 @@ const NotificationsPage = () => {
             <div className="h-20 w-20 rounded-full bg-brand-navy-500/5 flex items-center justify-center mb-4 border border-brand-border">
               <Inbox size={40} className="text-brand-text-muted" />
             </div>
-            <h3 className="text-lg font-black text-brand-text-main">{t('notifications.empty')}</h3>
+            <h3 className="text-lg font-black text-brand-text-main">
+              {t("notifications.empty")}
+            </h3>
             <p className="text-sm text-brand-text-sub max-w-xs mx-auto mt-1 font-bold">
-              {filter === 'unread'
+              {filter === "unread"
                 ? "You've caught up with everything!"
-                : 'Your notification box is empty.'}
+                : "Your notification box is empty."}
             </p>
           </div>
         ) : (
@@ -100,16 +108,20 @@ const NotificationsPage = () => {
             {filteredNotifications.map((notification) => (
               <div
                 key={notification.id}
-                onClick={() => !notification.isRead && markAsRead(notification.id)}
+                onClick={() =>
+                  !notification.isRead && markAsRead(notification.id)
+                }
                 className={`group flex items-start gap-4 p-6 transition-all duration-300 cursor-pointer ${
-                  !notification.isRead ? 'bg-brand-green/5' : 'hover:bg-brand-navy-500/[0.02]'
+                  !notification.isRead
+                    ? "bg-brand-green/5"
+                    : "hover:bg-brand-navy-500/[0.02]"
                 }`}
               >
                 <div
                   className={`mt-1 p-2 rounded-xl shrink-0 ${
                     !notification.isRead
-                      ? 'bg-brand-bg-card dark:bg-slate-700 shadow-sm border border-brand-border'
-                      : 'bg-brand-navy-500/5 dark:bg-slate-800/30'
+                      ? "bg-brand-bg-card dark:bg-slate-700 shadow-sm border border-brand-border"
+                      : "bg-brand-navy-500/5 dark:bg-slate-800/30"
                   }`}
                 >
                   {getNotificationIcon(notification.type)}
@@ -119,7 +131,9 @@ const NotificationsPage = () => {
                   <div className="flex items-center justify-between">
                     <h4
                       className={`text-sm font-black ${
-                        !notification.isRead ? 'text-brand-text-main' : 'text-brand-text-sub'
+                        !notification.isRead
+                          ? "text-brand-text-main"
+                          : "text-brand-text-sub"
                       }`}
                     >
                       {notification.title}
@@ -142,8 +156,8 @@ const NotificationsPage = () => {
                   <p
                     className={`text-sm leading-relaxed ${
                       !notification.isRead
-                        ? 'text-brand-text-sub font-bold'
-                        : 'text-brand-text-muted font-medium'
+                        ? "text-brand-text-sub font-bold"
+                        : "text-brand-text-muted font-medium"
                     }`}
                   >
                     {notification.message}

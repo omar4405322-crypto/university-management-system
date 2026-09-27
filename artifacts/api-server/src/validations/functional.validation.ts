@@ -1,5 +1,6 @@
 import { body, param } from 'express-validator';
 import { fromZonedTime } from 'date-fns-tz';
+import { normalizeMonetaryAmount } from '../utils/currency.utils';
 
 export const quizValidation = [
   body('title').notEmpty().withMessage('Quiz title is required').trim(),
@@ -49,7 +50,17 @@ export const taskValidation = [
 
 export const paymentValidation = [
   body('studentId').isInt().withMessage('Student ID is required'),
-  body('amount').isFloat({ min: 0.01 }).withMessage('Amount must be greater than 0'),
+  body('amount')
+    .notEmpty()
+    .withMessage('Amount is required')
+    .custom((val) => {
+      try {
+        normalizeMonetaryAmount(val);
+        return true;
+      } catch (err: any) {
+        throw new Error(err.message || 'Invalid payment amount');
+      }
+    }),
   body('type')
     .isIn(['TUITION', 'REGISTRATION', 'LIBRARY', 'OTHER'])
     .withMessage('Invalid payment type'),

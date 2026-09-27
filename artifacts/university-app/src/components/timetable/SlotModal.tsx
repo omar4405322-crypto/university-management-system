@@ -127,7 +127,7 @@ export default function SlotModal({
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [dialogContext, form.courseName, form.doctorName, form.room, form.slotType, slotDay, slotStart, slotEnd]);
+  }, [dialogContext, form.courseId, form.courseName, form.doctorId, form.doctorName, form.teachingAssistantId, form.room, form.slotType, slotDay, slotStart, slotEnd]);
 
   const courseOptions = useMemo(() => {
     return courses.map((c: any) => ({

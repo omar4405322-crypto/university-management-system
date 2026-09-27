@@ -85,7 +85,12 @@ async function runStaffCourseAdminScopeSecurityTests() {
       body: { courseId: 41 },
     });
     assert.ok(doctorError instanceof AuthorizationError);
-    assert.deepEqual(doctorWhere, { AND: [{ id: 12 }, { departmentId: 7 }] });
+    assert.deepEqual(doctorWhere, {
+      AND: [
+        { AND: [{ id: 12 }, { departmentId: 7 }] },
+        { user: { is: { isActive: true } } },
+      ],
+    });
     assert.equal(courseWhere, undefined, 'An out-of-scope staff member must stop the flow');
     assert.equal(mutationCalled, false);
 
@@ -105,7 +110,13 @@ async function runStaffCourseAdminScopeSecurityTests() {
     });
     assert.ok(taError instanceof AuthorizationError);
     assert.deepEqual(teachingAssistantWhere, {
-      AND: [{ id: 'ta-12' }, { department: { collegeId: 4 } }],
+      AND: [
+        { AND: [{ id: 'ta-12' }, { department: { collegeId: 4 } }] },
+        {
+          status: 'ACTIVE',
+          user: { is: { isActive: true } },
+        },
+      ],
     });
     assert.deepEqual(courseWhere, {
       AND: [{ id: 41 }, { department: { collegeId: 4 } }],

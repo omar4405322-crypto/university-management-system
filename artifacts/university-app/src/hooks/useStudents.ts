@@ -9,6 +9,7 @@ interface UseStudentsOptions {
   filters?: Record<string, any>;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  includeStats?: boolean;
 }
 
 export function useStudents({
@@ -18,6 +19,7 @@ export function useStudents({
   filters = {},
   sortBy = 'enrolledAt',
   sortOrder = 'desc',
+  includeStats = false,
 }: UseStudentsOptions = {}) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,7 @@ export function useStudents({
       search: debouncedSearch,
       sortBy,
       sortOrder,
+      ...(includeStats ? { includeStats: 'true' } : {}),
       ...parsedFilters,
       ...extraParams,
     };
@@ -56,7 +59,7 @@ export function useStudents({
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch, sortBy, sortOrder, parsedFilters]);
+  }, [page, limit, debouncedSearch, sortBy, sortOrder, includeStats, parsedFilters]);
 
   useEffect(() => {
     fetchData();

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useCallback, useDeferredValue } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -30,7 +29,7 @@ import {
 } from 'lucide-react';
 import attendanceService from '../../services/attendance.service';
 import Card, { StatCard } from '../../components/ui/card';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 import Button from '../../components/ui/button';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -40,7 +39,7 @@ import Table, {
   TableRow,
   TableHead,
   TableCell,
-} from '../../components/ui/Table';
+} from '../../components/ui/table';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import api from '../../services/api';
@@ -249,7 +248,7 @@ export function StudentWarningsPage() {
       {/* ========================================================================= */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="page-title">
             {isStaffView
               ? isRTL
                 ? 'سجل ومتابعة إنذارات وحرمان الطلاب'

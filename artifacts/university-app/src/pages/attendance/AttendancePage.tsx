@@ -1,7 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { lazy, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { StudentAttendanceDashboard } from './StudentAttendanceDashboard';
-import { FacultyAttendanceDashboard } from './FacultyAttendanceDashboard';
+
+const StudentAttendanceDashboard = lazy(() =>
+  import('./StudentAttendanceDashboard').then((module) => ({
+    default: module.StudentAttendanceDashboard,
+  }))
+);
+const FacultyAttendanceDashboard = lazy(() => import('./FacultyAttendanceDashboard'));
 
 export default function AttendancePage() {
   const { user } = useAuth();

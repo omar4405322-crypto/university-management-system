@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -29,7 +28,14 @@ const passwordSchema = z.object({
 
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
-const EditProfileModal = ({ isOpen, onClose, profileData, onSuccess }) => {
+export interface EditProfileModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  profileData?: any;
+  onSuccess?: () => void;
+}
+
+const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, profileData, onSuccess }) => {
   const [activeTab, setActiveTab] = useState('general');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -88,11 +94,11 @@ const EditProfileModal = ({ isOpen, onClose, profileData, onSuccess }) => {
       if (result.success) {
         setSuccess('Profile updated successfully');
         setTimeout(() => {
-          onSuccess();
+          onSuccess?.();
           onClose();
         }, 1500);
       }
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update profile');
     }
   };
@@ -113,7 +119,7 @@ const EditProfileModal = ({ isOpen, onClose, profileData, onSuccess }) => {
           onClose();
         }, 1500);
       }
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to change password');
     }
   };
@@ -154,7 +160,7 @@ const EditProfileModal = ({ isOpen, onClose, profileData, onSuccess }) => {
         </div>
 
         <div className="p-6 sm:p-8 max-h-[70vh] overflow-y-auto no-scrollbar">
-          {error && <div className="mb-6 p-4 bg-error/10 dark:bg-error/20 text-error dark:text-error text-sm font-bold rounded-2xl border border-error/20 dark:border-error/30 flex items-center gap-3">
+          {error && <div className="mb-6 p-4 bg-error/10 dark:bg-error/20 text-error-text text-sm font-bold rounded-2xl border border-error/20 dark:border-error/30 flex items-center gap-3">
             <Info size={18} />
             {error}
           </div>}

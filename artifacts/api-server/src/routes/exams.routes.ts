@@ -1,165 +1,275 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
-import * as examsController from '../controllers/exams.controller';
-import { authorize } from '../middleware/auth.middleware';
-import { body, param } from 'express-validator';
-import validate from '../middleware/validate.middleware';
+import * as examsController from "../controllers/exams.controller";
+import { authorize } from "../middleware/auth.middleware";
+import { body, param } from "express-validator";
+import validate from "../middleware/validate.middleware";
 import {
   isBoundedAnswerCollection,
   isBoundedAntiCheatLogCollection,
   MAX_EXAM_CANCEL_REASON_LENGTH,
-} from '../utils/requestLimits';
+} from "../utils/requestLimits";
 
-router.get('/', examsController.getAllExams);
-router.get('/upcoming', examsController.getUpcomingExams);
+router.get("/", examsController.getAllExams);
+router.get("/upcoming", examsController.getUpcomingExams);
 router.get(
-  '/:id',
-  [param('id').isInt().withMessage('Invalid exam ID')],
+  "/:id",
+  [param("id").isInt().withMessage("Invalid exam ID")],
   validate,
-  examsController.getExamById
+  examsController.getExamById,
 );
 
 const createExamValidation = [
-  body('courseId').isInt().withMessage('Course ID must be an integer'),
-  body('date').isISO8601().withMessage('Valid date is required'),
-  body('startTime').notEmpty().withMessage('Start time is required'),
-  body('endTime').notEmpty().withMessage('End time is required'),
-  body('room').optional().trim(),
-  body('location').optional().trim(),
-  body('type').optional().isIn(['MIDTERM', 'FINAL', 'QUIZ']),
+  body("courseId").isInt().withMessage("Course ID must be an integer"),
+  body("date").isISO8601().withMessage("Valid date is required"),
+  body("startTime").notEmpty().withMessage("Start time is required"),
+  body("endTime").notEmpty().withMessage("End time is required"),
+  body("room").optional().trim(),
+  body("location").optional().trim(),
+  body("type").optional().isIn(["MIDTERM", "FINAL", "QUIZ"]),
 ];
 
 const updateExamValidation = [
-  param('id').isInt().withMessage('Invalid exam ID'),
-  body('date').optional().isISO8601().withMessage('Valid date is required'),
-  body('startTime').optional().notEmpty().withMessage('Start time is required'),
-  body('endTime').optional().notEmpty().withMessage('End time is required'),
-  body('room').optional().trim(),
-  body('type').optional().isIn(['MIDTERM', 'FINAL', 'QUIZ']),
+  param("id").isInt().withMessage("Invalid exam ID"),
+  body("date").optional().isISO8601().withMessage("Valid date is required"),
+  body("startTime").optional().notEmpty().withMessage("Start time is required"),
+  body("endTime").optional().notEmpty().withMessage("End time is required"),
+  body("room").optional().trim(),
+  body("type").optional().isIn(["MIDTERM", "FINAL", "QUIZ"]),
 ];
 
 router.post(
-  '/',
-  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'DOCTOR'),
+  "/",
+  authorize(
+    "SUPER_ADMIN",
+    "ADMIN",
+    "COLLEGE_ADMIN",
+    "DEPARTMENT_ADMIN",
+    "DOCTOR",
+  ),
   createExamValidation,
   validate,
-  examsController.createExam
+  examsController.createExam,
 );
 router.put(
-  '/:id',
-  authorize('SUPER_ADMIN', 'ADMIN', 'DOCTOR'),
+  "/:id",
+  authorize("SUPER_ADMIN", "ADMIN", "DOCTOR"),
   updateExamValidation,
   validate,
-  examsController.updateExam
+  examsController.updateExam,
 );
 router.delete(
-  '/:id',
-  authorize('SUPER_ADMIN', 'ADMIN', 'DOCTOR'),
-  [param('id').isInt().withMessage('Invalid exam ID')],
+  "/:id",
+  authorize("SUPER_ADMIN", "ADMIN", "DOCTOR"),
+  [param("id").isInt().withMessage("Invalid exam ID")],
   validate,
-  examsController.deleteExam
+  examsController.deleteExam,
 );
 
 const addExamQuestionValidation = [
-  param('id').isInt().withMessage('Invalid exam ID'),
-  body('text').notEmpty().withMessage('Question text is required').trim(),
-  body('type').optional().isIn(['MCQ', 'TRUE_FALSE', 'SHORT_ANSWER']).withMessage('Invalid question type'),
-  body('optionA').optional().trim(),
-  body('optionB').optional().trim(),
-  body('optionC').optional().trim(),
-  body('optionD').optional().trim(),
-  body('correctAnswer').notEmpty().withMessage('Correct answer is required').trim(),
-  body('points').optional().isInt({ min: 1 }).withMessage('Points must be a positive integer'),
-  body('order').optional().isInt({ min: 0 }).withMessage('Order must be a non-negative integer'),
+  param("id").isInt().withMessage("Invalid exam ID"),
+  body("text").notEmpty().withMessage("Question text is required").trim(),
+  body("type")
+    .optional()
+    .isIn(["MCQ", "TRUE_FALSE", "SHORT_ANSWER"])
+    .withMessage("Invalid question type"),
+  body("optionA").optional().trim(),
+  body("optionB").optional().trim(),
+  body("optionC").optional().trim(),
+  body("optionD").optional().trim(),
+  body("correctAnswer")
+    .notEmpty()
+    .withMessage("Correct answer is required")
+    .trim(),
+  body("points")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Points must be a positive integer"),
+  body("order")
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage("Order must be a non-negative integer"),
 ];
 
 const updateExamQuestionValidation = [
-  param('questionId').isInt().withMessage('Invalid question ID'),
-  body('text').optional().notEmpty().withMessage('Question text cannot be empty').trim(),
-  body('type').optional().isIn(['MCQ', 'TRUE_FALSE', 'SHORT_ANSWER']).withMessage('Invalid question type'),
-  body('optionA').optional().trim(),
-  body('optionB').optional().trim(),
-  body('optionC').optional().trim(),
-  body('optionD').optional().trim(),
-  body('correctAnswer').optional().notEmpty().withMessage('Correct answer cannot be empty').trim(),
-  body('points').optional().isInt({ min: 1 }).withMessage('Points must be a positive integer'),
-  body('order').optional().isInt({ min: 0 }).withMessage('Order must be a non-negative integer'),
+  param("questionId").isInt().withMessage("Invalid question ID"),
+  body("text")
+    .optional()
+    .notEmpty()
+    .withMessage("Question text cannot be empty")
+    .trim(),
+  body("type")
+    .optional()
+    .isIn(["MCQ", "TRUE_FALSE", "SHORT_ANSWER"])
+    .withMessage("Invalid question type"),
+  body("optionA").optional().trim(),
+  body("optionB").optional().trim(),
+  body("optionC").optional().trim(),
+  body("optionD").optional().trim(),
+  body("correctAnswer")
+    .optional()
+    .notEmpty()
+    .withMessage("Correct answer cannot be empty")
+    .trim(),
+  body("points")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Points must be a positive integer"),
+  body("order")
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage("Order must be a non-negative integer"),
 ];
 
 // --- EXAM QUESTIONS ---
-router.get('/:id/questions', authorize('STUDENT', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'), examsController.getExamQuestions);
-router.post('/:id/questions', authorize('DOCTOR', 'ADMIN'), addExamQuestionValidation, validate, examsController.addExamQuestion);
-router.put('/questions/:questionId', authorize('DOCTOR', 'ADMIN'), updateExamQuestionValidation, validate, examsController.updateExamQuestion);
-router.delete('/questions/:questionId', authorize('DOCTOR', 'ADMIN'), examsController.deleteExamQuestion);
+router.get(
+  "/:id/questions",
+  authorize(
+    "STUDENT",
+    "DOCTOR",
+    "ADMIN",
+    "SUPER_ADMIN",
+    "COLLEGE_ADMIN",
+    "DEPARTMENT_ADMIN",
+  ),
+  examsController.getExamQuestions,
+);
+router.post(
+  "/:id/questions",
+  authorize("DOCTOR", "ADMIN"),
+  addExamQuestionValidation,
+  validate,
+  examsController.addExamQuestion,
+);
+router.put(
+  "/questions/:questionId",
+  authorize("DOCTOR", "ADMIN"),
+  updateExamQuestionValidation,
+  validate,
+  examsController.updateExamQuestion,
+);
+router.delete(
+  "/questions/:questionId",
+  authorize("DOCTOR", "ADMIN"),
+  [param("questionId").isInt({ min: 1 }).withMessage("Invalid question ID")],
+  validate,
+  examsController.deleteExamQuestion,
+);
 
 // --- EXAM SESSIONS & SUBMISSIONS ---
-router.post('/:id/start', authorize('STUDENT'), examsController.startExamSession);
+router.post(
+  "/:id/start",
+  authorize("STUDENT"),
+  [param("id").isInt({ min: 1 }).withMessage("Invalid exam ID")],
+  validate,
+  examsController.startExamSession,
+);
 const examSubmissionLimits = [
-  param('id').isInt({ min: 1 }).withMessage('Invalid exam ID'),
-  body('answers')
+  param("id").isInt({ min: 1 }).withMessage("Invalid exam ID"),
+  body("answers")
     .custom(isBoundedAnswerCollection)
-    .withMessage('Answers must contain at most 200 bounded question responses'),
-  body('antiCheatLogs')
+    .withMessage("Answers must contain at most 200 bounded question responses"),
+  body("antiCheatLogs")
     .optional()
     .custom(isBoundedAntiCheatLogCollection)
-    .withMessage('Anti-cheat logs exceed the allowed size or format'),
+    .withMessage("Anti-cheat logs exceed the allowed size or format"),
 ];
 
 router.post(
-  '/:id/submit',
-  authorize('STUDENT'),
+  "/:id/submit",
+  authorize("STUDENT"),
   examSubmissionLimits,
   validate,
-  examsController.submitExam
+  examsController.submitExam,
 );
 router.post(
-  '/:id/cancel',
-  authorize('STUDENT'),
+  "/:id/cancel",
+  authorize("STUDENT"),
   [
-    param('id').isInt({ min: 1 }).withMessage('Invalid exam ID'),
-    body('answers')
+    param("id").isInt({ min: 1 }).withMessage("Invalid exam ID"),
+    body("answers")
       .optional()
       .custom(isBoundedAnswerCollection)
-      .withMessage('Answers must contain at most 200 bounded question responses'),
-    body('antiCheatLogs')
+      .withMessage(
+        "Answers must contain at most 200 bounded question responses",
+      ),
+    body("antiCheatLogs")
       .optional()
       .custom(isBoundedAntiCheatLogCollection)
-      .withMessage('Anti-cheat logs exceed the allowed size or format'),
-    body('reason')
+      .withMessage("Anti-cheat logs exceed the allowed size or format"),
+    body("reason")
       .optional()
       .isString()
       .isLength({ max: MAX_EXAM_CANCEL_REASON_LENGTH })
-      .withMessage('Cancellation reason is too long'),
+      .withMessage("Cancellation reason is too long"),
   ],
   validate,
-  examsController.cancelExam
+  examsController.cancelExam,
 );
-router.get('/:id/submissions', authorize('DOCTOR', 'ADMIN', 'SUPER_ADMIN'), examsController.getExamSubmissions);
-router.get('/:id/my-submission', authorize('STUDENT'), examsController.getMyExamSubmission);
-router.put('/submissions/:submissionId/grade', authorize('DOCTOR', 'ADMIN', 'SUPER_ADMIN'), examsController.gradeSubmission);
+router.get(
+  "/:id/submissions",
+  authorize("DOCTOR", "ADMIN", "SUPER_ADMIN"),
+  [param("id").isInt({ min: 1 }).withMessage("Invalid exam ID")],
+  validate,
+  examsController.getExamSubmissions,
+);
+router.get(
+  "/:id/my-submission",
+  authorize("STUDENT"),
+  [param("id").isInt({ min: 1 }).withMessage("Invalid exam ID")],
+  validate,
+  examsController.getMyExamSubmission,
+);
+router.put(
+  "/submissions/:submissionId/grade",
+  authorize("DOCTOR", "ADMIN", "SUPER_ADMIN"),
+  [
+    param("submissionId")
+      .isInt({ min: 1 })
+      .withMessage("Invalid submission ID"),
+    body("score")
+      .isFloat({ min: 0 })
+      .withMessage("Score must be a non-negative number")
+      .toFloat(),
+  ],
+  validate,
+  examsController.gradeSubmission,
+);
 
 const ingestViolationValidation = [
-  param('submissionId').isInt({ min: 1 }).withMessage('Invalid submission ID'),
-  body('sequence').isInt({ min: 1 }).withMessage('Sequence must be a positive integer'),
-  body('type').isString().notEmpty().withMessage('Violation type is required'),
-  body('occurredAt').isISO8601().withMessage('Valid occurredAt timestamp is required'),
-  body('details').optional().isString().isLength({ max: 500 }).withMessage('Details too long'),
+  param("submissionId").isInt({ min: 1 }).withMessage("Invalid submission ID"),
+  body("sequence")
+    .isInt({ min: 1 })
+    .withMessage("Sequence must be a positive integer"),
+  body("type").isString().notEmpty().withMessage("Violation type is required"),
+  body("occurredAt")
+    .isISO8601()
+    .withMessage("Valid occurredAt timestamp is required"),
+  body("details")
+    .optional()
+    .isString()
+    .isLength({ max: 500 })
+    .withMessage("Details too long"),
 ];
 
 router.post(
-  '/:id/submissions/:submissionId/violations',
-  authorize('STUDENT'),
+  "/:id/submissions/:submissionId/violations",
+  authorize("STUDENT"),
   ingestViolationValidation,
   validate,
-  examsController.ingestViolation
+  examsController.ingestViolation,
 );
 
 router.get(
-  '/:id/submissions/:submissionId/violations/sequence',
-  authorize('STUDENT'),
-  [param('submissionId').isInt({ min: 1 }).withMessage('Invalid submission ID')],
+  "/:id/submissions/:submissionId/violations/sequence",
+  authorize("STUDENT"),
+  [
+    param("submissionId")
+      .isInt({ min: 1 })
+      .withMessage("Invalid submission ID"),
+  ],
   validate,
-  examsController.getViolationSequence
+  examsController.getViolationSequence,
 );
 
 export default router;

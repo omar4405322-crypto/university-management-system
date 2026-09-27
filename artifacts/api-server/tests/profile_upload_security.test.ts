@@ -49,9 +49,9 @@ async function runUploadSecurityTests() {
 
   try {
     // -------------------------------------------------------------
-    // Suite 1: Production Fail-Closed (Missing Cloudinary Config)
+    // Suite 1: Production Default-Avatar Fallback (Missing Cloudinary Config)
     // -------------------------------------------------------------
-    console.log('\n[Suite 1] Testing production fail-closed behavior (Cloudinary missing)...');
+    console.log('\n[Suite 1] Testing production default-avatar fallback (Cloudinary missing)...');
     process.env.NODE_ENV = 'production';
     delete process.env.CLOUDINARY_CLOUD_NAME;
     delete process.env.CLOUDINARY_API_KEY;
@@ -61,22 +61,32 @@ async function runUploadSecurityTests() {
 
     const appProd = express();
     appProd.use(express.json());
-    appProd.put('/api/users/profile/picture', upload.single('profilePicture'), (req, res) => {
-      res.json({ success: true });
+    appProd.put('/api/users/profile/picture', upload.single('profilePicture'), (_req, res) => {
+      res.json({
+        success: true,
+        data: {
+          profilePicture: null,
+          fallback: res.locals.profilePictureFallback ? 'default-avatar' : null,
+        },
+      });
     });
     appProd.use(globalErrorHandler);
 
     const prodServer = http.createServer(appProd);
     await new Promise<void>((resolve) => prodServer.listen(0, resolve));
     const prodPort = (prodServer.address() as any).port;
+    const profilesDir = path.join(process.cwd(), 'uploads/profiles');
+    const profileFilesBefore = fs.existsSync(profilesDir)
+      ? fs.readdirSync(profilesDir).sort()
+      : [];
 
     try {
-      // 1.1: Spoofed HTML file upload in production should be rejected with 503
+      // 1.1: A valid image falls back without writing to local disk
       const formData = new FormData();
       formData.append(
         'profilePicture',
-        new Blob([SPOOFED_HTML_CONTENT], { type: 'image/png' }),
-        'exploit.png'
+        new Blob([VALID_PNG_BUFFER], { type: 'image/png' }),
+        'avatar.png'
       );
 
       const resProd = await fetch(`http://localhost:${prodPort}/api/users/profile/picture`, {
@@ -86,29 +96,85 @@ async function runUploadSecurityTests() {
 
       assert.strictEqual(
         resProd.status,
-        503,
-        `Production missing Cloudinary must return 503, got ${resProd.status}`
+        200,
+        `Production missing Cloudinary must use the default avatar, got ${resProd.status}`
       );
       const jsonProd = await resProd.json();
       assert.strictEqual(
-        jsonProd.message,
-        'Profile picture storage is not configured',
-        'Should return explicit 503 message'
+        jsonProd.data.fallback,
+        'default-avatar',
+        'Should return the explicit default-avatar fallback'
       );
 
-      // Verify no file was created in uploads/profiles
-      const profilesDir = path.join(process.cwd(), 'uploads/profiles');
-      if (fs.existsSync(profilesDir)) {
-        const files = fs.readdirSync(profilesDir);
-        for (const file of files) {
-          assert(
-            !file.includes('exploit'),
-            'Exploit file must never be written to disk in production'
-          );
-        }
+      // 1.2: Every partial credential combination must take the same safe fallback.
+      const cloudinaryEnvKeys = [
+        'CLOUDINARY_CLOUD_NAME',
+        'CLOUDINARY_API_KEY',
+        'CLOUDINARY_API_SECRET',
+      ] as const;
+
+      for (let configuredMask = 1; configuredMask < 7; configuredMask += 1) {
+        for (const key of cloudinaryEnvKeys) delete process.env[key];
+        cloudinaryEnvKeys.forEach((key, index) => {
+          if (configuredMask & (1 << index)) process.env[key] = `partial-${index}`;
+        });
+
+        assert.strictEqual(
+          isCloudinaryConfigured(),
+          false,
+          `Partial Cloudinary configuration mask ${configuredMask} must not initialize Cloudinary`
+        );
+
+        const partialFormData = new FormData();
+        partialFormData.append(
+          'profilePicture',
+          new Blob([VALID_PNG_BUFFER], { type: 'image/png' }),
+          `partial-${configuredMask}.png`
+        );
+        const partialResponse = await fetch(
+          `http://localhost:${prodPort}/api/users/profile/picture`,
+          { method: 'PUT', body: partialFormData }
+        );
+        assert.strictEqual(
+          partialResponse.status,
+          200,
+          `Partial Cloudinary configuration mask ${configuredMask} must fall back safely`
+        );
+        const partialJson = await partialResponse.json();
+        assert.strictEqual(partialJson.data.fallback, 'default-avatar');
       }
 
-      console.log('✓ Suite 1 passed (Production fails closed with 503 and zero disk writes)');
+      for (const key of cloudinaryEnvKeys) delete process.env[key];
+
+      process.env.NODE_ENV = ' Production ';
+      const normalizedProductionFormData = new FormData();
+      normalizedProductionFormData.append(
+        'profilePicture',
+        new Blob([VALID_PNG_BUFFER], { type: 'image/png' }),
+        'normalized-production.png'
+      );
+      const normalizedProductionResponse = await fetch(
+        `http://localhost:${prodPort}/api/users/profile/picture`,
+        { method: 'PUT', body: normalizedProductionFormData }
+      );
+      assert.strictEqual(normalizedProductionResponse.status, 200);
+      assert.strictEqual(
+        (await normalizedProductionResponse.json()).data.fallback,
+        'default-avatar',
+        'Normalized production NODE_ENV values must never use local disk storage'
+      );
+      process.env.NODE_ENV = 'production';
+
+      const profileFilesAfter = fs.existsSync(profilesDir)
+        ? fs.readdirSync(profilesDir).sort()
+        : [];
+      assert.deepStrictEqual(
+        profileFilesAfter,
+        profileFilesBefore,
+        'Absent or partial Cloudinary configuration must never write profile files locally in production'
+      );
+
+      console.log('✓ Suite 1 passed (Absent/partial config uses the default avatar with zero disk writes)');
     } finally {
       await new Promise<void>((resolve) => prodServer.close(() => resolve()));
     }
@@ -266,8 +332,10 @@ async function runUploadSecurityTests() {
 }
 
 runUploadSecurityTests()
-  .then(() => process.exit(0))
+  .then(() => {
+    process.exitCode = 0;
+  })
   .catch((err) => {
     console.error('❌ Test failed:', err);
-    process.exit(1);
+    process.exitCode = 1;
   });

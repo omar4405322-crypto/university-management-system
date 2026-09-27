@@ -89,7 +89,7 @@ export const createRequest = catchAsync(async (req: Request, res: Response, next
       where: {
         id: parsedScheduleSlotId,
         courseId: parsedCourseId,
-        teachingAssistantId,
+        teachingAssistantId: String(teachingAssistantId),
       },
       select: { id: true },
     });
@@ -123,6 +123,7 @@ export const createRequest = catchAsync(async (req: Request, res: Response, next
       type,
       courseId: parsedCourseId,
       scheduleSlotId: parsedScheduleSlotId ?? undefined,
+      targetScheduleSlotId: parsedScheduleSlotId,
       proposedData,
       reason,
       requesterId: req.user!.id

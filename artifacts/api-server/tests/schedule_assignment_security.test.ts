@@ -34,7 +34,7 @@ async function runScheduleAssignmentSecurityTests() {
     AuthorizationError
   );
   assert.deepEqual(assignmentQueries[0], {
-    where: { courseId: 41, doctorId: 12, id: { not: 5 } },
+    where: { courseId: 41, doctorId: 12, isArchived: false, id: { not: 5 } },
     select: { id: true },
   });
 
@@ -47,7 +47,7 @@ async function runScheduleAssignmentSecurityTests() {
     AuthorizationError
   );
   assert.deepEqual(assignmentQueries[0], {
-    where: { courseId: 41, teachingAssistantId: 'ta-12' },
+    where: { courseId: 41, teachingAssistantId: 'ta-12', isArchived: false },
     select: { id: true },
   });
 
@@ -92,7 +92,7 @@ async function runScheduleAssignmentSecurityTests() {
     });
     assert.ok(unassignedDoctorError instanceof AuthorizationError);
     assert.equal(transactionCalled, true);
-    assert.deepEqual(capturedAssignmentWhere, { courseId: 41, doctorId: 12 });
+    assert.deepEqual(capturedAssignmentWhere, { courseId: 41, doctorId: 12, isArchived: false });
 
     transactionCalled = false;
     capturedAssignmentWhere = undefined;
@@ -114,6 +114,7 @@ async function runScheduleAssignmentSecurityTests() {
     assert.deepEqual(capturedAssignmentWhere, {
       courseId: 41,
       teachingAssistantId: 'ta-12',
+      isArchived: false,
     });
 
     transactionCalled = false;
@@ -172,6 +173,7 @@ async function runScheduleAssignmentSecurityTests() {
     assert.deepEqual(capturedAssignmentWhere, {
       courseId: 41,
       doctorId: 15,
+      isArchived: false,
       id: { not: 5 },
     });
   } finally {

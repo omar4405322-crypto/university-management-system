@@ -121,7 +121,7 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({ isOpen, onClose
           <Button
             type="submit"
             disabled={isSubmitting || loading}
-            className="min-w-[140px] bg-[#84cc16] hover:bg-[#65a30d] text-white font-bold rounded-xl border-none shadow-none px-6 min-h-10 transition-all duration-200"
+            className="min-w-[140px] bg-brand-primary-600 hover:bg-brand-primary-700 text-white font-bold rounded-xl border-none shadow-sm shadow-brand-primary-600/20 px-6 min-h-10 transition-all duration-200"
           >
             {loading ? <Loader2 className="animate-spin" size={20} /> : 'إضافة'}
           </Button>

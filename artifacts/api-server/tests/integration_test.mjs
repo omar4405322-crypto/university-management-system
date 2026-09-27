@@ -94,9 +94,18 @@ async function createTestCourse(code) {
   return prisma.course.create({ data: { courseCode: code, name: `Course ${code}`, departmentId: testDeptId } });
 }
 
-async function createTestSection(courseId, doctorId, timetableId = null) {
-  return prisma.courseSection.create({
-    data: { courseId, doctorId, name: 'Section 1', timetableId }
+async function createTestOwnershipSlot(courseId, doctorId, timetableId = null) {
+  return prisma.scheduleSlot.create({
+    data: {
+      courseId,
+      doctorId,
+      timetableId,
+      dayOfWeek: 'SUNDAY',
+      startTime: '07:00',
+      endTime: '08:00',
+      room: `OWNER-${courseId}`,
+      slotType: 'LECTURE',
+    }
   });
 }
 
@@ -108,14 +117,13 @@ async function createTestAdmin(email) {
 // ─── CLEANUP ─────────────────────────────────────────────────────────────────
 async function cleanup() {
   // Delete in FK-safe order
-  await prisma.scheduleChangeRequest.deleteMany({ where: { courseSection: { course: { courseCode: { startsWith: '__TC' } } } } });
+  await prisma.scheduleChangeRequest.deleteMany({ where: { course: { courseCode: { startsWith: '__TC' } } } });
   await prisma.scheduleOverride.deleteMany({});
-  await prisma.scheduleSlot.deleteMany({ where: { courseSection: { course: { courseCode: { startsWith: '__TC' } } } } });
+  await prisma.scheduleSlot.deleteMany({ where: { course: { courseCode: { startsWith: '__TC' } } } });
   await prisma.quiz.deleteMany({ where: { course: { courseCode: { startsWith: '__TC' } } } });
   await prisma.attendance.deleteMany({ where: { course: { courseCode: { startsWith: '__TC' } } } });
   await prisma.enrollment.deleteMany({ where: { course: { courseCode: { startsWith: '__TC' } } } });
   await prisma.absenceThresholdPolicy.deleteMany({ where: { course: { courseCode: { startsWith: '__TC' } } } });
-  await prisma.courseSection.deleteMany({ where: { course: { courseCode: { startsWith: '__TC' } } } });
   await prisma.course.deleteMany({ where: { courseCode: { startsWith: '__TC' } } });
   await prisma.student.deleteMany({ where: { user: { email: { startsWith: 'test_' } } } });
   await prisma.doctor.deleteMany({ where: { user: { email: { startsWith: 'test_' } } } });
@@ -178,14 +186,27 @@ async function testB() {
   const { user: uX, doctor: dX } = await createTestDoctor('test_docX@test.com', 'X');
   const { user: uY, doctor: dY } = await createTestDoctor('test_docY@test.com', 'Y');
 
-  await createTestSection(courseX.id, dX.id);
-  await createTestSection(courseY.id, dY.id);
+  await createTestOwnershipSlot(courseX.id, dX.id);
+  await createTestOwnershipSlot(courseY.id, dY.id);
+  const { student: targetStudent } = await createTestStudent('test_studentB@test.com', 'STUB001');
+  await prisma.enrollment.create({
+    data: {
+      studentId: targetStudent.id,
+      courseId: courseY.id,
+      semester: 1,
+      academicYear: 2025,
+      status: 'ENROLLED',
+      enrolledAt: new Date('2025-01-01'),
+    }
+  });
 
   const tokenX = makeToken(uX.id);
 
   // Doctor X tries recordAttendance on courseY
-  const r1 = await api('POST', '/attendance', {
-    courseId: courseY.id, date: '2025-01-10', records: []
+  const r1 = await api('POST', '/attendance/manual', {
+    courseId: courseY.id,
+    date: '2025-01-10',
+    records: [{ studentId: targetStudent.id, status: 'PRESENT' }]
   }, tokenX);
   console.log(`  POST /attendance (courseY) as DoctorX → HTTP ${r1.status}: ${r1.data?.message}`);
   record('B1', 'IDOR: Doctor X recordAttendance on courseY → 403', r1.status === 403,
@@ -206,23 +227,33 @@ async function testC() {
   const course = await createTestCourse('__TC_C');
   const { user: uA, doctor: dA } = await createTestDoctor('test_docC@test.com', 'C');
   const { student: s1 } = await createTestStudent('test_studentC@test.com', 'STUC001');
+  await prisma.enrollment.create({
+    data: {
+      studentId: s1.id,
+      courseId: course.id,
+      semester: 1,
+      academicYear: 2025,
+      status: 'ENROLLED',
+      enrolledAt: new Date('2025-01-01'),
+    }
+  });
 
   // Make doctor scope this course via a section
-  await createTestSection(course.id, dA.id);
+  await createTestOwnershipSlot(course.id, dA.id);
 
   const tokenDoc = makeToken(uA.id);
   const payload = {
-    courseId: course.id, date: '2025-02-15',
+    courseId: course.id, date: '2025-02-15', semester: 1, academicYear: 2025,
     records: [{ studentId: s1.id, status: 'PRESENT', remarks: 'First call' }]
   };
 
   // First call
-  const r1 = await api('POST', '/attendance', payload, tokenDoc);
+  const r1 = await api('POST', '/attendance/manual', payload, tokenDoc);
   console.log(`  1st POST /attendance → HTTP ${r1.status}`);
 
   // Second call same date — should upsert not duplicate
   const payload2 = { ...payload, records: [{ studentId: s1.id, status: 'LATE', remarks: 'Second call' }] };
-  const r2 = await api('POST', '/attendance', payload2, tokenDoc);
+  const r2 = await api('POST', '/attendance/manual', payload2, tokenDoc);
   console.log(`  2nd POST /attendance (same student/course/date) → HTTP ${r2.status}`);
 
   // Check DB directly
@@ -248,6 +279,10 @@ async function testD() {
   const course = await createTestCourse('__TC_D');
   const { user: uS, student: s1 } = await createTestStudent('test_studentD@test.com', 'STUD001');
 
+  await prisma.enrollment.create({
+    data: { studentId: s1.id, courseId: course.id, semester: 1, academicYear: 2025, status: 'ENROLLED' }
+  });
+
   // Insert 10 records: 7 PRESENT, 1 LATE, 2 EXCUSED
   const records = [
     ...Array.from({length:7}, (_,i) => ({ status:'PRESENT', date: new Date(`2025-03-0${i+1}`) })),
@@ -256,7 +291,16 @@ async function testD() {
     { status: 'EXCUSED', date: new Date('2025-03-10') },
   ];
   for (const r of records) {
-    await prisma.attendance.create({ data: { studentId: s1.id, courseId: course.id, date: r.date, status: r.status } });
+    await prisma.attendance.create({
+      data: {
+        studentId: s1.id,
+        courseId: course.id,
+        semester: 1,
+        academicYear: 2025,
+        date: r.date,
+        status: r.status,
+      }
+    });
   }
 
   const tokenS = makeToken(uS.id);
@@ -284,11 +328,18 @@ async function testE() {
   const { user: uS, student: sE } = await createTestStudent('test_studentE@test.com', 'STUE001');
   const { user: uAdmin } = await createTestAdmin('test_adminE@test.com');
 
-  await createTestSection(course.id, dD.id);
+  await createTestOwnershipSlot(course.id, dD.id);
 
   // Enroll the student
   await prisma.enrollment.create({
-    data: { studentId: sE.id, courseId: course.id, semester: 1, academicYear: 2025, status: 'ENROLLED' }
+    data: {
+      studentId: sE.id,
+      courseId: course.id,
+      semester: 1,
+      academicYear: 2025,
+      status: 'ENROLLED',
+      enrolledAt: new Date('2025-01-01'),
+    }
   });
 
   // Set policy: max 25% absence
@@ -301,8 +352,8 @@ async function testE() {
   const statuses = ['ABSENT','ABSENT','ABSENT','ABSENT','PRESENT'];
 
   for (let i = 0; i < dates.length; i++) {
-    await api('POST', '/attendance', {
-      courseId: course.id, date: dates[i],
+    await api('POST', '/attendance/manual', {
+      courseId: course.id, date: dates[i], semester: 1, academicYear: 2025,
       records: [{ studentId: sE.id, status: statuses[i], remarks: '' }]
     }, tokenDoc);
   }
@@ -337,14 +388,12 @@ async function testF() {
   console.log('\n── Test F: Schedule conflict detection with overrides ──');
   const course = await createTestCourse('__TC_F');
   const { user: uD, doctor: dD } = await createTestDoctor('test_docF@test.com', 'F');
-  const section = await createTestSection(course.id, dD.id);
-
   const tokenAdmin = makeToken((await createTestAdmin('test_adminF@test.com')).user.id);
 
   // Create base slot: Room 101, Monday 09:00–10:00
   const baseSlot = await prisma.scheduleSlot.create({
     data: {
-      courseSectionId: section.id, dayOfWeek: 'MONDAY',
+      courseId: course.id, doctorId: dD.id, dayOfWeek: 'MONDAY',
       startTime: '09:00', endTime: '10:00', room: 'ROOM101', slotType: 'LECTURE'
     }
   });
@@ -366,14 +415,13 @@ async function testF() {
   // Create a second course/section for conflict testing
   const course2 = await createTestCourse('__TC_F2');
   const { doctor: dD2 } = await createTestDoctor('test_docF2@test.com', 'F2');
-  const section2 = await createTestSection(course2.id, dD2.id);
-
+  await createTestOwnershipSlot(course2.id, dD2.id);
   // F1: Attempt new slot in ROOM101 Monday 09:00-10:00 → should SUCCEED (room freed by override)
   // (Testing via direct DB insertion to simulate the service layer check)
   // We do this by calling the conflict checker directly through the API if possible,
   // or via a schedule creation call.
   const r1 = await api('POST', '/schedules', {
-    courseSectionId: section2.id, dayOfWeek: 'MONDAY',
+    courseId: course2.id, doctorId: dD2.id, dayOfWeek: 'MONDAY',
     startTime: '09:00', endTime: '10:00', room: 'ROOM101', slotType: 'LECTURE'
   }, tokenAdmin);
   console.log(`  F1: New slot ROOM101 Mon 09-10 (room freed by override) → HTTP ${r1.status}: ${r1.data?.message || JSON.stringify(r1.data?.data?.id)}`);
@@ -385,10 +433,9 @@ async function testF() {
   // F2: Attempt new slot in ROOM102 Monday 09:00-10:00 → should be REJECTED (override occupies ROOM102)
   const course3 = await createTestCourse('__TC_F3');
   const { doctor: dD3 } = await createTestDoctor('test_docF3@test.com', 'F3');
-  const section3 = await createTestSection(course3.id, dD3.id);
-
+  await createTestOwnershipSlot(course3.id, dD3.id);
   const r2 = await api('POST', '/schedules', {
-    courseSectionId: section3.id, dayOfWeek: 'MONDAY',
+    courseId: course3.id, doctorId: dD3.id, dayOfWeek: 'MONDAY',
     startTime: '09:00', endTime: '10:00', room: 'ROOM102', slotType: 'LECTURE'
   }, tokenAdmin);
   console.log(`  F2: New slot ROOM102 Mon 09-10 (override in ROOM102) → HTTP ${r2.status}: ${r2.data?.message}`);
@@ -407,18 +454,17 @@ async function testG() {
   const course2 = await createTestCourse('__TC_G2');
   const { user: uD1, doctor: dD1 } = await createTestDoctor('test_docG1@test.com', 'G1');
   const { doctor: dD2 } = await createTestDoctor('test_docG2@test.com', 'G2');
-  const section1 = await createTestSection(course1.id, dD1.id);
-  const section2 = await createTestSection(course2.id, dD2.id);
-
+  await createTestOwnershipSlot(course1.id, dD1.id);
+  await createTestOwnershipSlot(course2.id, dD2.id);
   const { user: adminG } = await createTestAdmin('test_adminG@test.com');
   const tokenAdmin = makeToken(adminG.id);
 
   const payload1 = {
-    courseSectionId: section1.id, dayOfWeek: 'TUESDAY',
+    courseId: course1.id, doctorId: dD1.id, dayOfWeek: 'TUESDAY',
     startTime: '11:00', endTime: '12:00', room: 'ROOMG99', slotType: 'LECTURE'
   };
   const payload2 = {
-    courseSectionId: section2.id, dayOfWeek: 'TUESDAY',
+    courseId: course2.id, doctorId: dD2.id, dayOfWeek: 'TUESDAY',
     startTime: '11:00', endTime: '12:00', room: 'ROOMG99', slotType: 'LECTURE'
   };
 
@@ -456,8 +502,8 @@ async function testH() {
   const course2 = await createTestCourse('__TC_H2');
   const { user: uDoc1, doctor: dDoc1 } = await createTestDoctor('test_docH1@test.com', 'H1');
   const { doctor: dDoc2 } = await createTestDoctor('test_docH2@test.com', 'H2');
-  const section1 = await createTestSection(course1.id, dDoc1.id);
-  const section2 = await createTestSection(course2.id, dDoc2.id);
+  await createTestOwnershipSlot(course1.id, dDoc1.id);
+  await createTestOwnershipSlot(course2.id, dDoc2.id);
 
   const { user: adminH } = await createTestAdmin('test_adminH@test.com');
   const tokenDoc1 = makeToken(uDoc1.id);
@@ -466,7 +512,7 @@ async function testH() {
   // H1: Doctor submits request for their OWN section → should succeed (201)
   const r1 = await api('POST', '/requests', {
     type: 'NEW_SLOT',
-    courseSectionId: section1.id,
+    courseId: course1.id,
     proposedData: { dayOfWeek: 'WEDNESDAY', startTime: '10:00', endTime: '11:00', room: 'ROOMH1', slotType: 'LECTURE' },
     reason: 'Testing new slot request'
   }, tokenDoc1);
@@ -479,7 +525,7 @@ async function testH() {
   // H2: Doctor submits request for ANOTHER doctor's section → should be rejected (403)
   const r2 = await api('POST', '/requests', {
     type: 'NEW_SLOT',
-    courseSectionId: section2.id,
+    courseId: course2.id,
     proposedData: { dayOfWeek: 'WEDNESDAY', startTime: '10:00', endTime: '11:00', room: 'ROOMH2', slotType: 'LECTURE' },
     reason: 'Testing unauthorized request'
   }, tokenDoc1);
@@ -501,7 +547,7 @@ async function testH() {
 
   // Verify: the schedule slot should now exist
   const slot = await prisma.scheduleSlot.findFirst({
-    where: { courseSectionId: section1.id, dayOfWeek: 'WEDNESDAY', startTime: '10:00', room: 'ROOMH1' }
+    where: { courseId: course1.id, dayOfWeek: 'WEDNESDAY', startTime: '10:00', room: 'ROOMH1' }
   });
   // Verify: request status is APPROVED
   const req = await prisma.scheduleChangeRequest.findUnique({ where: { id: requestId } });
@@ -529,6 +575,8 @@ async function testI() {
       title: 'Test Quiz',
       courseId: course.id,
       doctorId: dDoc.id,
+      academicYear: 2025,
+      semester: 1,
       duration: 30,
     }
   });
@@ -558,8 +606,8 @@ async function testJ() {
 
   const r = await api('DELETE', `/departments/${dept.id}`, null, tokenAdmin);
   console.log(`  DELETE /departments/${dept.id} → HTTP ${r.status}: ${r.data?.message}`);
-  record('J', 'Department with active student group cannot be deleted (400)',
-    r.status === 400 && r.data?.message?.includes('active student group'),
+  record('J', 'Department with active student group cannot be deleted (409)',
+    r.status === 409 && r.data?.message?.includes('studentGroups'),
     `HTTP=${r.status}, msg=${r.data?.message}`
   );
 }
@@ -574,12 +622,12 @@ async function testK() {
   const tokenAdmin = makeToken(adminK.id);
 
   const course = await createTestCourse('__TC_K');
-  const section = await createTestSection(course.id, dK.id);
+  await createTestOwnershipSlot(course.id, dK.id);
 
   const tokenDoc = makeToken(uK.id);
   const r1 = await api('POST', '/requests', {
     type: 'NEW_SLOT',
-    courseSectionId: section.id,
+    courseId: course.id,
     proposedData: { dayOfWeek: 'FRIDAY', startTime: '10:00', endTime: '11:00', room: 'ROOMK', slotType: 'LECTURE' },
     reason: 'Testing preservation'
   }, tokenDoc);
@@ -593,7 +641,7 @@ async function testK() {
   const requests = await prisma.scheduleChangeRequest.findMany({ where: { requesterId: uK.id } });
   
   record('K', 'User deactivation blocks login and preserves schedule requests',
-    rLogin.status === 401 && rLogin.data?.message?.includes('deactivated') && requests.length > 0,
+    rLogin.status === 401 && rLogin.data?.message === 'Invalid email or password' && requests.length > 0,
     `loginHTTP=${rLogin.status}, msg=${rLogin.data?.message}, preservedRequests=${requests.length}`
   );
 }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import quizService from '../../services/quiz.service';
@@ -6,24 +5,24 @@ import { Clock, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, Send } from
 import { useTranslation } from 'react-i18next';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 
-const TakeQuiz = () => {
-  const { id } = useParams();
+const TakeQuiz: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const [quiz, setQuiz] = useState(null);
+  const [quiz, setQuiz] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState(() => {
+  const [answers, setAnswers] = useState<Record<string, string>>(() => {
     const saved = localStorage.getItem(`quiz_answers_${id}`);
     return saved ? JSON.parse(saved) : {};
   });
-  const [timeLeft, setTimeLeft] = useState(() => {
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
     const saved = localStorage.getItem(`quiz_timer_${id}`);
-    return saved ? parseInt(saved) : 0;
+    return saved ? parseInt(saved, 10) : 0;
   });
   const [submitted, setSubmitted] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<any>(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
 
   // Save answers to localStorage
@@ -41,7 +40,7 @@ const TakeQuiz = () => {
   // 1. Add a beforeunload event listener
   useEffect(() => {
     if (submitted) return;
-    const handleBeforeUnload = (e) => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = '';
     };
@@ -56,9 +55,10 @@ const TakeQuiz = () => {
   );
 
   const fetchQuiz = useCallback(async () => {
+    if (!id) return;
     try {
       setLoading(true);
-            const res = await quizService.getQuizById(id);
+      const res = await quizService.getQuizById(id);
       if (res.success) {
         setQuiz(res.data);
         if (!localStorage.getItem(`quiz_timer_${id}`)) {
@@ -84,14 +84,14 @@ const TakeQuiz = () => {
   }, [fetchQuiz]);
 
   const handleSubmit = useCallback(async () => {
-    if (submitting || submitted) return;
+    if (!id || submitting || submitted) return;
     setSubmitting(true);
     try {
       const formattedAnswers = Object.entries(answers).map(([questionId, answer]) => ({
         questionId: parseInt(questionId),
         answer,
       }));
-            const res = await quizService.submitQuiz(id, formattedAnswers);
+      const res = await quizService.submitQuiz(id, formattedAnswers);
       if (res.success) {
         setResult(res.data);
         setSubmitted(true);
@@ -120,12 +120,12 @@ const TakeQuiz = () => {
     return () => clearInterval(timer);
   }, [timeLeft, submitted, handleSubmit]);
 
-  const handleAnswerSelect = (questionId, option) => {
+  const handleAnswerSelect = (questionId: any, option: string) => {
     if (submitted) return;
     setAnswers((prev) => ({ ...prev, [questionId]: option }));
   };
 
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -187,7 +187,7 @@ const TakeQuiz = () => {
             {quiz.title}
           </h1>
           <div
-            className={`flex items-center px-4 py-2 rounded-lg font-mono font-bold transition-colors ${isTimeCritical ? 'bg-error text-white animate-pulse' : 'bg-info/10 text-info'}`}
+            className={`flex items-center px-4 py-2 rounded-lg font-mono font-bold transition-colors ${isTimeCritical ? 'bg-error-strong text-white animate-pulse' : 'bg-info/10 text-info'}`}
           >
             <Clock size={18} className="mr-2" />
             {formatTime(timeLeft)}
@@ -199,8 +199,8 @@ const TakeQuiz = () => {
         {isTimeCritical && (
           <div className="mb-4 p-4 rounded-xl bg-error/10 border border-error/20 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
             <AlertCircle size={20} className="text-error" />
-            <p className="text-sm font-black text-error uppercase tracking-widest">
-              {i18n.language === 'ar' ? '???? 5 ????? ???!' : 'Only 5 minutes left!'}
+            <p className="text-sm font-black text-error-text uppercase tracking-widest">
+              {t('quizzes.fiveMinutesLeft', i18n.language === 'ar' ? 'متبقي 5 دقائق فقط!' : 'Only 5 minutes left!')}
             </p>
           </div>
         )}
@@ -210,7 +210,7 @@ const TakeQuiz = () => {
             Question {currentQuestionIndex + 1} of {quiz.questions.length}
           </span>
           <div className="flex space-x-1">
-            {quiz.questions.map((_, i) => (
+            {quiz.questions.map((_: any, i: number) => (
               <div
                 key={i}
                 className={`w-2 h-2 rounded-full ${
@@ -313,8 +313,8 @@ const TakeQuiz = () => {
       {/* Navigation Protection Modal */}
       <ConfirmDeleteModal
         isOpen={blocker.state === 'blocked'}
-        onClose={() => blocker.reset()}
-        onConfirm={() => blocker.proceed()}
+        onClose={() => blocker.reset && blocker.reset()}
+        onConfirm={() => blocker.proceed && blocker.proceed()}
         title={t('quiz.leaveWarningTitle')}
         message={t('quiz.leaveWarningMessage')}
         confirmLabel={t('quiz.leaveButton')}

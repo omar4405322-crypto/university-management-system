@@ -39,7 +39,7 @@ const csvCell = (value: unknown) => {
 
 export const recordAttendanceManual = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { courseId, date, records, sessionId, semester } = req.body;
+    const { courseId, date, records, sessionId, semester, academicYear } = req.body;
 
     const ctx = {
       userId: req.user!.id,
@@ -47,6 +47,8 @@ export const recordAttendanceManual = catchAsync(
       sessionId: sessionId ? Number(sessionId) : undefined,
       courseId: courseId ? Number(courseId) : undefined,
       semester: semester ? parseInt(semester) : undefined,
+      academicYear: academicYear ? parseInt(academicYear) : undefined,
+      date: date as string | undefined,
       actor: req.user!,
     };
 
@@ -55,6 +57,8 @@ export const recordAttendanceManual = catchAsync(
         ...ctx,
         courseId: courseId ? Number(courseId) : undefined,
         semester: semester ? parseInt(semester) : undefined,
+        academicYear: academicYear ? parseInt(academicYear) : undefined,
+        date: date as string | undefined,
       });
 
       res.status(201).json({ success: true, data: createdRecords });

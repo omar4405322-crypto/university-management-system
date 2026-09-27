@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
 import { logger } from '../lib/logger';
@@ -41,7 +41,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!user) return;
     try {
       setLoading(true);
@@ -55,9 +55,9 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const fetchPendingRequestsCount = async () => {
+  const fetchPendingRequestsCount = useCallback(async () => {
     if (!user) {
       setPendingRequestsCount(0);
       return;
@@ -76,7 +76,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     } catch (error: any) {
       logger.error('Fetch pending requests count error:', error);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchNotifications();
@@ -87,7 +87,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       fetchPendingRequestsCount();
     }, 60000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [fetchNotifications, fetchPendingRequestsCount]);
 
   const markAsRead = async (id: string) => {
     try {

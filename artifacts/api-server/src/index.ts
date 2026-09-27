@@ -1,97 +1,45 @@
-// @ts-ignore
-import dotenv from 'dotenv';
-import os from 'os';
-import { getJwtSecretValidationError } from './utils/jwtSecretValidation';
-import { getEncryptionKey } from './utils/encryption.utils';
-import { getTwoFactorConfigError } from './utils/twoFactorConfig';
-dotenv.config();
+import "./config/loadEnvironment";
+import os from "os";
+import http from "http";
+import app from "./app";
+import { bootstrap } from "./bootstrap";
+import logger from "./utils/logger";
+import killPort from "kill-port";
 
-import * as Sentry from '@sentry/node';
-if (process.env.SENTRY_DSN) {
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-  });
-}
-
-const jwtSecretError = getJwtSecretValidationError(process.env.JWT_SECRET, 32);
-if (jwtSecretError) {
-  console.error(`FATAL: ${jwtSecretError} Exiting.`);
-  process.exit(1);
-}
-
-if (process.env.NODE_ENV === 'production') {
-  try {
-    getEncryptionKey();
-  } catch (error) {
-    console.error(`FATAL: ${(error as Error).message} Exiting.`);
-    process.exit(1);
-  }
-}
-
-const twoFactorConfigError = getTwoFactorConfigError(
-  process.env.NODE_ENV,
-  process.env.REQUIRE_2FA
-);
-if (twoFactorConfigError) {
-  console.error(`FATAL: ${twoFactorConfigError} Exiting.`);
-  process.exit(1);
-}
-
-const REQUIRED_ENV_VARS = ['DATABASE_URL'];
-const missingRequired = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
-if (missingRequired.length > 0) {
-  console.error('❌ FATAL: Missing required environment variables:', missingRequired.join(', '));
-  process.exit(1);
-}
-
-// @ts-ignore
-import app from './app';
-import http from 'http';
-// @ts-ignore
-import { initSocket } from './utils/socket';
-// @ts-ignore
-import { startRiskDetectionJob, startSessionAutoExpiryJob, startPendingReviewAutoResolveJob } from './utils/cron';
-// @ts-ignore
-import logger from './utils/logger';
-
-// @ts-ignore
-import killPort from 'kill-port';
-
-const rawPort = process.env['PORT'];
+const rawPort = process.env["PORT"];
 if (!rawPort) {
-  console.error('PORT environment variable is required');
+  console.error("PORT environment variable is required");
   process.exit(1);
 }
 
 const PORT = Number(rawPort);
 const server: http.Server = http.createServer(app);
 
-initSocket(server);
-startRiskDetectionJob();
-startSessionAutoExpiryJob();
-startPendingReviewAutoResolveJob();
+// Authoritative single bootstrap initialization
+bootstrap(server);
 
 const startServer = () => {
-  server.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, "0.0.0.0", () => {
     logger.info(`[SERVER] Running on http://localhost:${PORT}`);
-    
+
     const nets = os.networkInterfaces();
     for (const name of Object.keys(nets)) {
       for (const net of nets[name] || []) {
-        // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
-        if (net.family === 'IPv4' && !net.internal) {
-          logger.info(`[SERVER] Running on http://${net.address}:${PORT} (Network)`);
+        if (net.family === "IPv4" && !net.internal) {
+          logger.info(
+            `[SERVER] Running on http://${net.address}:${PORT} (Network)`,
+          );
         }
       }
     }
   });
 };
 
-if (process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === "production") {
   startServer();
 } else {
   // Attempt to kill whatever is on the port first, then start the server.
-  killPort(PORT, 'tcp')
+  killPort(PORT, "tcp")
     .then(() => {
       logger.info(`[SERVER] Cleared port ${PORT}`);
       startServer();
@@ -102,14 +50,4 @@ if (process.env.NODE_ENV === 'production') {
     });
 }
 
-process.on('unhandledRejection', (err: any) => {
-  console.error('[FATAL] Unhandled Rejection:', err);
-  logger.error(`[FATAL] Unhandled Rejection: ${err?.message}`, { stack: err?.stack });
-  server.close(() => process.exit(1));
-});
-
-process.on('uncaughtException', (err: any) => {
-  console.error('[FATAL] Uncaught Exception:', err);
-  logger.error(`[FATAL] Uncaught Exception: ${err?.message}`, { stack: err?.stack });
-  server.close(() => process.exit(1));
-});
+export { server };

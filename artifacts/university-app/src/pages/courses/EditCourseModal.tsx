@@ -73,7 +73,7 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({ isOpen, onClose, onSu
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6">
           {toast && (
-            <div className={`mb-4 p-3 rounded text-white ${toast.type === 'error' ? 'bg-error' : 'bg-success'}`}>
+            <div className={`mb-4 p-3 rounded text-white ${toast.type === 'error' ? 'bg-error-strong' : 'bg-success'}`}>
               {toast.message}
             </div>
           )}

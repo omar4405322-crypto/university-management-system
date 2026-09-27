@@ -1,5 +1,4 @@
-// @ts-nocheck
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { memo, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
@@ -31,7 +30,7 @@ import attendanceService from '../../services/attendance.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import Card from '../../components/ui/card';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 import Button from '../../components/ui/button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import Table, {
@@ -40,8 +39,7 @@ import Table, {
   TableRow,
   TableHead,
   TableCell,
-} from '../../components/ui/Table';
-import { SessionCountdown } from '../../components/attendance/SessionCountdown';
+} from '../../components/ui/table';
 import { ElapsedSessionTimer } from '../../components/attendance/ElapsedSessionTimer';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -60,6 +58,87 @@ function normalizeArabic(text: string | null | undefined): string {
     .replace(/[\u064B-\u065F\u0670]/g, '')
     .replace(/\s+/g, ' ');
 }
+
+const RotatingQrCode = memo(function RotatingQrCode({
+  sessionId,
+  stepSeconds,
+}: {
+  sessionId: number;
+  stepSeconds: number;
+}) {
+  const [qrToken, setQrToken] = useState('');
+  const [timeLeft, setTimeLeft] = useState(stepSeconds);
+  const targetTimeRef = useRef(0);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const refreshToken = async () => {
+      try {
+        const res = await attendanceService.getCurrentCode(sessionId, stepSeconds);
+        if (mounted && res.data?.token) setQrToken(res.data.token);
+      } catch (err) {
+        console.error('Failed to get token', err);
+      }
+    };
+
+    targetTimeRef.current = Date.now() + stepSeconds * 1000;
+    setTimeLeft(stepSeconds);
+    void refreshToken();
+
+    const timerId = window.setInterval(() => {
+      const remaining = Math.ceil((targetTimeRef.current - Date.now()) / 1000);
+      if (remaining <= 0) {
+        targetTimeRef.current = Date.now() + stepSeconds * 1000;
+        setTimeLeft(stepSeconds);
+        void refreshToken();
+      } else {
+        setTimeLeft(remaining);
+      }
+    }, 500);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(timerId);
+    };
+  }, [sessionId, stepSeconds]);
+
+  return (
+    <>
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center">
+        {qrToken ? (
+          <>
+            <QRCodeSVG
+              value={JSON.stringify({ sessionId, token: qrToken })}
+              size={200}
+              level="H"
+              className="mb-3"
+            />
+            <div className="text-center">
+              <span className="text-[10px] text-slate-400 font-bold block mb-0.5">
+                الرمز المؤقت
+              </span>
+              <span className="text-2xl font-black text-brand-primary-600 font-mono tracking-widest">
+                {qrToken}
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="w-48 h-48 flex flex-col items-center justify-center text-slate-400 text-xs">
+            <RefreshCw className="w-6 h-6 animate-spin mb-2" />
+            <span>جاري التوليد...</span>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+        <Clock size={13} className="text-brand-primary-500" />
+        <span>يتجدد بعد:</span>
+        <span className="font-mono font-bold text-brand-primary-600">{timeLeft}s</span>
+      </div>
+    </>
+  );
+});
 
 export function FacultyAttendanceDashboard() {
   const { t, i18n } = useTranslation();
@@ -82,11 +161,12 @@ export function FacultyAttendanceDashboard() {
   const [selectedSection, setSelectedSection] = useState<string>('ALL');
   const [selectedSemester, setSelectedSemester] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [isDocumentVisible, setIsDocumentVisible] = useState(
+    () => typeof document === 'undefined' || document.visibilityState === 'visible'
+  );
 
   // Active Session states
   const [activeSession, setActiveSession] = useState<any>(null);
-  const [qrToken, setQrToken] = useState('');
-  const [timeLeft, setTimeLeft] = useState(10);
   const [flaggedRecords, setFlaggedRecords] = useState<any[]>([]);
 
   // Toggleable roster state
@@ -101,9 +181,8 @@ export function FacultyAttendanceDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const timerRef = useRef<any>(null);
   const pollingRef = useRef<any>(null);
-  const targetTimeRef = useRef<number>(0);
+  const activeSessionIdRef = useRef<number | undefined>(undefined);
 
   // 1. Initial Load: Fetch Courses, Colleges, Departments
   const fetchInitialData = useCallback(async (isRefresh = false) => {
@@ -149,6 +228,14 @@ export function FacultyAttendanceDashboard() {
     fetchInitialData();
   }, [fetchInitialData]);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsDocumentVisible(document.visibilityState === 'visible');
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   // 2. Load active session if course selected
   useEffect(() => {
     if (selectedCourseId) {
@@ -170,28 +257,32 @@ export function FacultyAttendanceDashboard() {
     }
   };
 
-  // 3. QR Token and Polling
+  const activeSessionId = activeSession?.sessionId;
+  const isRosterPanelVisible = showRosterList || activeTab === 'MANUAL';
+  activeSessionIdRef.current = activeSessionId;
+  const fetchSessionData = useCallback(async (): Promise<boolean> => {
+    if (!activeSessionId) return false;
+    try {
+      const requestedSessionId = activeSessionId;
+      const [flaggedRes, rosterRes] = await Promise.all([
+        attendanceService.getFlaggedRecords(requestedSessionId),
+        attendanceService.getSessionRoster(requestedSessionId),
+      ]);
+      if (activeSessionIdRef.current !== requestedSessionId) return false;
+      setFlaggedRecords(flaggedRes.data || []);
+      if (rosterRes.data) setRoster(rosterRes.data);
+      return true;
+    } catch (err) {
+      console.error('Failed to sync session data', err);
+      return false;
+    }
+  }, [activeSessionId]);
+
+  // 3. Session polling. QR rotation lives in RotatingQrCode so its 500ms tick
+  // does not re-render the full faculty dashboard.
   useEffect(() => {
-    if (activeSession?.sessionId) {
-      const stepSeconds = activeSession.codeStepSeconds || 20;
-      targetTimeRef.current = Date.now() + stepSeconds * 1000;
-      updateToken();
-      setTimeLeft(stepSeconds);
-
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (pollingRef.current) clearInterval(pollingRef.current);
-
-      timerRef.current = setInterval(() => {
-        const remaining = Math.ceil((targetTimeRef.current - Date.now()) / 1000);
-        if (remaining <= 0) {
-          targetTimeRef.current = Date.now() + stepSeconds * 1000;
-          updateToken();
-          setTimeLeft(stepSeconds);
-        } else {
-          setTimeLeft(remaining);
-        }
-      }, 500);
-
+    if (activeSessionId && isRosterPanelVisible && isDocumentVisible) {
+      if (pollingRef.current) clearTimeout(pollingRef.current);
       let isMounted = true;
       let currentInterval = 3000;
 
@@ -213,43 +304,11 @@ export function FacultyAttendanceDashboard() {
 
       return () => {
         isMounted = false;
-        if (timerRef.current) clearInterval(timerRef.current);
         if (pollingRef.current) clearTimeout(pollingRef.current);
       };
     }
     return undefined;
-  }, [activeSession?.sessionId]);
-
-  const updateToken = async () => {
-    if (activeSession?.sessionId) {
-      try {
-        const stepSeconds = activeSession.codeStepSeconds || 20;
-        const res = await attendanceService.getCurrentCode(activeSession.sessionId, stepSeconds);
-        if (res.data?.token) {
-          setQrToken(res.data.token);
-        }
-      } catch (err) {
-        console.error('Failed to get token', err);
-      }
-    }
-  };
-
-  const fetchSessionData = async (): Promise<boolean> => {
-    if (!activeSession?.sessionId) return false;
-    try {
-      const flaggedRes = await attendanceService.getFlaggedRecords(activeSession.sessionId);
-      setFlaggedRecords(flaggedRes.data || []);
-
-      const rosterRes = await attendanceService.getSessionRoster(activeSession.sessionId);
-      if (rosterRes.data) {
-        setRoster(rosterRes.data);
-      }
-      return true;
-    } catch (err) {
-      console.error('Failed to sync session data', err);
-      return false;
-    }
-  };
+  }, [activeSessionId, fetchSessionData, isDocumentVisible, isRosterPanelVisible]);
 
   const captureDoctorLocation = async (): Promise<{ lat?: number; lng?: number }> => {
     if (!navigator.geolocation) return {};
@@ -339,7 +398,6 @@ export function FacultyAttendanceDashboard() {
       await attendanceService.stopSession(activeSession.sessionId);
       setActiveSession(null);
       setSelectedCourseId(null);
-      setQrToken('');
       setFlaggedRecords([]);
 
       setSearchParams((prev) => {
@@ -485,40 +543,42 @@ export function FacultyAttendanceDashboard() {
     setSelectedSemester('ALL');
   };
 
-  const presentCount = roster.filter(
-    (s) =>
-      (s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE') &&
-      !s.existingLocationFlagged
-  ).length;
-  const lateCount = roster.filter(
-    (s) => s.existingStatus === 'LATE' && !s.existingLocationFlagged
-  ).length;
-  const absentCount = roster.filter((s) => s.existingStatus === 'ABSENT').length;
-
-  const filteredStudents = roster.filter((s) => {
-    const fullName = `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase();
-    const studentIdStr = (s.studentId || '').toString().toLowerCase();
-    const matchesSearch =
-      !rosterSearch ||
-      fullName.includes(rosterSearch.toLowerCase()) ||
-      studentIdStr.includes(rosterSearch.toLowerCase());
-
-    if (!matchesSearch) return false;
-
-    if (rosterFilter === 'PRESENT') {
-      return (
+  const { presentCount, lateCount, absentCount } = useMemo(() => ({
+    presentCount: roster.filter(
+      (s) =>
         (s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE') &&
         !s.existingLocationFlagged
-      );
-    }
-    if (rosterFilter === 'LATE') {
-      return s.existingStatus === 'LATE' && !s.existingLocationFlagged;
-    }
-    if (rosterFilter === 'ABSENT') {
-      return s.existingStatus === 'ABSENT';
-    }
-    return true;
-  });
+    ).length,
+    lateCount: roster.filter(
+      (s) => s.existingStatus === 'LATE' && !s.existingLocationFlagged
+    ).length,
+    absentCount: roster.filter((s) => s.existingStatus === 'ABSENT').length,
+  }), [roster]);
+
+  const filteredStudents = useMemo(() => {
+    const normalizedRosterSearch = rosterSearch.toLowerCase();
+    return roster.filter((s) => {
+      const fullName = `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase();
+      const studentIdStr = (s.studentId || '').toString().toLowerCase();
+      const matchesSearch =
+        !normalizedRosterSearch ||
+        fullName.includes(normalizedRosterSearch) ||
+        studentIdStr.includes(normalizedRosterSearch);
+
+      if (!matchesSearch) return false;
+      if (rosterFilter === 'PRESENT') {
+        return (
+          (s.existingStatus === 'PRESENT' || s.existingStatus === 'LATE') &&
+          !s.existingLocationFlagged
+        );
+      }
+      if (rosterFilter === 'LATE') {
+        return s.existingStatus === 'LATE' && !s.existingLocationFlagged;
+      }
+      if (rosterFilter === 'ABSENT') return s.existingStatus === 'ABSENT';
+      return true;
+    });
+  }, [roster, rosterFilter, rosterSearch]);
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
@@ -538,12 +598,12 @@ export function FacultyAttendanceDashboard() {
       {/* 1. SLIM & PROFESSIONAL HEADER                                             */}
       {/* ========================================================================= */}
       {!activeSession ? (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
+        <div className="page-header-row">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+            <h1 className="page-title">
               {t('attendance.smartHubTitle', 'Smart Attendance Management')}
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="page-subtitle">
               {t('attendance.smartHubSubtitle', 'Launch live interactive sessions, scan RFID cards, and monitor attendance records and warnings.')}
             </p>
           </div>
@@ -990,40 +1050,10 @@ export function FacultyAttendanceDashboard() {
                 </p>
               </div>
 
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center">
-                {qrToken ? (
-                  <>
-                    <QRCodeSVG
-                      value={JSON.stringify({
-                        sessionId: activeSession.sessionId,
-                        token: qrToken,
-                      })}
-                      size={200}
-                      level="H"
-                      className="mb-3"
-                    />
-                    <div className="text-center">
-                      <span className="text-[10px] text-slate-400 font-bold block mb-0.5">
-                        الرمز المؤقت
-                      </span>
-                      <span className="text-2xl font-black text-brand-primary-600 font-mono tracking-widest">
-                        {qrToken}
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="w-48 h-48 flex flex-col items-center justify-center text-slate-400 text-xs">
-                    <RefreshCw className="w-6 h-6 animate-spin mb-2" />
-                    <span>جاري التوليد...</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                <Clock size={13} className="text-brand-primary-500" />
-                <span>يتجدد بعد:</span>
-                <span className="font-mono font-bold text-brand-primary-600">{timeLeft}s</span>
-              </div>
+              <RotatingQrCode
+                sessionId={activeSession.sessionId}
+                stepSeconds={activeSession.codeStepSeconds || 20}
+              />
             </div>
           )}
 

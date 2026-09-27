@@ -34,7 +34,7 @@ import {
   Clock,
 } from 'lucide-react';
 import Card from '../../components/ui/card';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 import Button from '../../components/ui/button';
 import LoadingState from '../../components/ui/LoadingState';
 import Modal from '../../components/ui/Modal';

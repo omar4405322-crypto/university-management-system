@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useMemo } from 'react';
 import examsService from '../../services/exams.service';
 import coursesService from '../../services/courses.service';
@@ -44,7 +43,7 @@ const schema = z.object({
   room: z.string().optional(),
 });
 
-type FormData = z.infer<typeof schema>;
+type ExamFormData = z.infer<typeof schema>;
 
 interface AddExamModalProps {
   isOpen: boolean;
@@ -112,7 +111,7 @@ const AddExamModal: React.FC<AddExamModalProps> = ({ isOpen, onClose, onSuccess 
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<FormData>({
+  } = useForm<ExamFormData>({
     resolver: zodResolver(schema),
     defaultValues: { courseId: '', title: '', type: 'MIDTERM', date: '', startTime: '09:00', endTime: '11:00', room: '' },
   });
@@ -222,7 +221,7 @@ const AddExamModal: React.FC<AddExamModalProps> = ({ isOpen, onClose, onSuccess 
     return calculateDuration(startTime, endTime, t);
   }, [startTime, endTime, t]);
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: ExamFormData) => {
     setError('');
     try {
       // Calculate durationMinutes from start/end time

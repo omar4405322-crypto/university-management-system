@@ -64,7 +64,15 @@ async function run(): Promise<void> {
     assert.equal(authorized.status, 200);
     assert.deepEqual(await authorized.json(), {
       status: 'ready',
-      checks: { database: true, redis: true },
+      checks: {
+        database: true,
+        redis: true,
+        dashboardCache: {
+          configured: false,
+          operational: false,
+          state: 'degraded',
+        },
+      },
     });
     assert.equal(readinessQueries, 1);
 

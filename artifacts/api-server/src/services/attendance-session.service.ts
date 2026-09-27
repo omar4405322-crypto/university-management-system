@@ -3,8 +3,13 @@ import { AppError, AuthorizationError, NotFoundError } from '../utils/appError';
 import speakeasy from 'speakeasy';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import attendanceEngine from '../attendance/attendance.engine';
-import { getScopeWhere } from '../utils/scope.utils';
+import {
+  getEffectiveActiveStudentWhere,
+  getScopeWhere,
+} from '../utils/scope.utils';
 import { encrypt, decrypt } from '../utils/encryption.utils';
+import type { AuthActor } from '../types/auth.types';
+import type { Prisma } from '@prisma/client';
 
 const ATTENDANCE_TIME_ZONE = 'Africa/Cairo';
 const DEFAULT_SESSION_PAGE_SIZE = 20;
@@ -118,7 +123,7 @@ interface AttendanceOwnershipTarget {
 class AttendanceSessionService {
   static async verifySlotOrSessionOwnership(
     target: AttendanceOwnershipTarget,
-    user: any
+    user: AuthActor
   ): Promise<boolean> {
     if (!user || !user.role) return false;
 
@@ -195,12 +200,15 @@ class AttendanceSessionService {
     return false;
   }
 
-  static async verifySessionOwnership(session: any, user: any): Promise<boolean> {
+  static async verifySessionOwnership(
+    session: { doctorId?: number | null; teachingAssistantId?: string | null },
+    user: AuthActor
+  ): Promise<boolean> {
     return this.verifySlotOrSessionOwnership(session, user);
   }
 
   static async startSession(
-    user: any,
+    user: AuthActor,
     params: {
       scheduleSlotId?: number;
       courseId?: number;
@@ -212,11 +220,12 @@ class AttendanceSessionService {
   ) {
     const { scheduleSlotId, courseId, latitude, longitude, radius, gracePeriodMins } = params;
 
-    let slot: any;
+    const slotInclude = { course: true, roomRef: true } as const;
+    let slot: Awaited<ReturnType<typeof prisma.scheduleSlot.findFirst<{ include: typeof slotInclude }>>> = null;
     if (scheduleSlotId) {
-      slot = await prisma.scheduleSlot.findUnique({
-        where: { id: parseInt(scheduleSlotId as any) },
-        include: { course: true, roomRef: true },
+      slot = await prisma.scheduleSlot.findFirst({
+        where: { id: scheduleSlotId, isArchived: false },
+        include: slotInclude,
       });
     } else if (courseId) {
       if (user.role === 'DOCTOR') {
@@ -226,10 +235,11 @@ class AttendanceSessionService {
         if (doctor) {
           slot = await prisma.scheduleSlot.findFirst({
             where: {
-              courseId: parseInt(courseId as any),
+              courseId: courseId,
               doctorId: doctor.id,
+              isArchived: false,
             },
-            include: { course: true, roomRef: true },
+            include: slotInclude,
           });
         }
       } else if (user.role === 'TEACHING_ASSISTANT') {
@@ -239,10 +249,11 @@ class AttendanceSessionService {
         if (ta) {
           slot = await prisma.scheduleSlot.findFirst({
             where: {
-              courseId: parseInt(courseId as any),
+              courseId: courseId,
               teachingAssistantId: ta.id,
+              isArchived: false,
             },
-            include: { course: true, roomRef: true },
+            include: slotInclude,
           });
         }
       }
@@ -283,15 +294,15 @@ class AttendanceSessionService {
         : null;
 
     if (radius !== undefined && radius !== null) {
-      const parsedRadius = parseFloat(radius as any);
+      const parsedRadius = radius;
       if (isNaN(parsedRadius) || parsedRadius <= 0 || parsedRadius > 200) {
         throw new AppError('نصف قطر الجلسة (radius) يجب أن يكون بين 1 و 200 متر كحد أقصى.', 400);
       }
     }
 
     if (gracePeriodMins !== undefined && gracePeriodMins !== null) {
-      const parsedGrace = parseInt(gracePeriodMins as any, 10);
-      if (isNaN(parsedGrace) || parsedGrace < 0 || parsedGrace > 30) {
+      const parsedGrace = Math.round(gracePeriodMins);
+      if (!Number.isFinite(parsedGrace) || parsedGrace < 0 || parsedGrace > 30) {
         throw new AppError('فترة السماح (gracePeriodMins) يجب أن تكون بين 0 و 30 دقيقة كحد أقصى.', 400);
       }
     }
@@ -299,24 +310,20 @@ class AttendanceSessionService {
     let finalLat = null;
     let finalLng = null;
     let finalRadius =
-      radius !== undefined && radius !== null ? parseFloat(radius as any) : 100;
+      radius !== undefined && radius !== null ? radius : 100;
     let roomMismatchWarning = false;
 
     const reqLat =
-      latitude !== undefined && latitude !== null
-        ? parseFloat(latitude as any)
-        : null;
+      latitude !== undefined && latitude !== null ? latitude : null;
     const reqLng =
-      longitude !== undefined && longitude !== null
-        ? parseFloat(longitude as any)
-        : null;
+      longitude !== undefined && longitude !== null ? longitude : null;
 
     if (slot.roomRef && slot.roomRef.latitude != null && slot.roomRef.longitude != null) {
       finalLat = slot.roomRef.latitude;
       finalLng = slot.roomRef.longitude;
       finalRadius =
         radius !== undefined && radius !== null
-          ? parseFloat(radius as any)
+          ? radius
           : slot.roomRef.radius ?? 100;
 
       if (reqLat !== null && reqLng !== null) {
@@ -335,19 +342,19 @@ class AttendanceSessionService {
 
     const finalGrace =
       gracePeriodMins !== undefined && gracePeriodMins !== null
-        ? Math.min(Math.max(parseInt(gracePeriodMins as any, 10), 0), 30)
+        ? Math.min(Math.max(Math.round(gracePeriodMins), 0), 30)
         : 15;
 
     const session = await prisma.$transaction(
       async (tx) => {
         await tx.attendanceSession.updateMany({
-          where: { scheduleSlotId: slot.id, isActive: true },
+          where: { scheduleSlotId: slot!.id, isActive: true },
           data: { isActive: false },
         });
 
         return tx.attendanceSession.create({
           data: {
-            scheduleSlotId: slot.id,
+            scheduleSlotId: slot!.id,
             doctorId: doctor?.id,
             secretKey: encrypt(secret.base32),
             latitude: finalLat,
@@ -382,7 +389,7 @@ class AttendanceSessionService {
     };
   }
 
-  static async stopSession(user: any, sessionId: number) {
+  static async stopSession(user: AuthActor, sessionId: number) {
     const session = await prisma.attendanceSession.findUnique({
       where: { id: sessionId },
       include: { scheduleSlot: true },
@@ -407,11 +414,11 @@ class AttendanceSessionService {
   }
 
   static async getActiveSessions(
-    user: any,
+    user: AuthActor,
     params: { courseId?: number; scheduleSlotId?: number }
   ) {
     const { courseId, scheduleSlotId } = params;
-    const where: any = { isActive: true };
+    const where: Prisma.AttendanceSessionWhereInput = { isActive: true };
 
     if (
       scheduleSlotId !== undefined &&
@@ -424,7 +431,7 @@ class AttendanceSessionService {
     }
 
     const courseScope = getScopeWhere(user, 'course');
-    const slotWhere: any = {};
+    const slotWhere: Prisma.ScheduleSlotWhereInput = {};
     if (Object.keys(courseScope).length > 0) {
       slotWhere.course = courseScope;
     }
@@ -446,7 +453,7 @@ class AttendanceSessionService {
 
     const isStudent = user?.role === 'STUDENT';
 
-    return sessions.map((session: any) => {
+    return sessions.map((session) => {
       const basePayload: Record<string, any> = {
         sessionId: session.id,
         scheduleSlotId: session.scheduleSlotId,
@@ -468,7 +475,7 @@ class AttendanceSessionService {
     });
   }
 
-  static async getCurrentCode(user: any, sessionId: number) {
+  static async getCurrentCode(user: AuthActor, sessionId: number) {
     const session = await prisma.attendanceSession.findUnique({
       where: { id: sessionId },
       include: { scheduleSlot: true },
@@ -495,7 +502,7 @@ class AttendanceSessionService {
     return { token };
   }
 
-  static async getFlaggedRecords(user: any, sessionId: number) {
+  static async getFlaggedRecords(user: AuthActor, sessionId: number) {
     const session = await prisma.attendanceSession.findUnique({
       where: { id: sessionId },
       include: { scheduleSlot: true },
@@ -519,7 +526,7 @@ class AttendanceSessionService {
   }
 
   static async markStudentAttendance(
-    user: any,
+    user: AuthActor,
     sessionId: number,
     studentId: number,
     status: 'PRESENT' | 'LATE' | 'ABSENT'
@@ -555,7 +562,7 @@ class AttendanceSessionService {
   }
 
   static async getSlotSessions(
-    user: any,
+    user: AuthActor,
     slotId: number,
     options: SlotSessionHistoryOptions = {}
   ) {
@@ -627,7 +634,7 @@ class AttendanceSessionService {
     };
   }
 
-  static async getSessionRoster(user: any, sessionId: number) {
+  static async getSessionRoster(user: AuthActor, sessionId: number) {
     const session = await prisma.attendanceSession.findUnique({
       where: { id: sessionId },
       include: { scheduleSlot: true },
@@ -646,19 +653,24 @@ class AttendanceSessionService {
     const courseId = session.scheduleSlot.courseId;
     const groupId = session.scheduleSlot.groupId;
 
-    const studentsFilter: any = {};
+    let studentsFilter: Prisma.StudentWhereInput;
     if (groupId) {
-      studentsFilter.groupId = groupId;
+      studentsFilter = {
+        groupId,
+        enrollments: { some: { courseId, status: 'ENROLLED' } },
+      };
     } else {
       const enrollments = await prisma.enrollment.findMany({
         where: { courseId, status: 'ENROLLED' },
         select: { studentId: true },
       });
-      studentsFilter.id = { in: enrollments.map((e: any) => e.studentId) };
+      studentsFilter = {
+        id: { in: enrollments.map((e) => e.studentId) },
+      };
     }
 
     const students = await prisma.student.findMany({
-      where: studentsFilter,
+      where: getEffectiveActiveStudentWhere(studentsFilter),
       select: {
         id: true,
         studentId: true,
@@ -682,10 +694,10 @@ class AttendanceSessionService {
       },
     });
 
-    const attendanceMap = new Map();
-    attendances.forEach((a: any) => attendanceMap.set(a.studentId, a));
+    const attendanceMap = new Map<number, typeof attendances[0]>();
+    attendances.forEach((a) => attendanceMap.set(a.studentId, a));
 
-    return students.map((s: any) => {
+    return students.map((s) => {
       const record = attendanceMap.get(s.id);
       return {
         id: s.id,
@@ -705,7 +717,7 @@ class AttendanceSessionService {
   }
 
   static async updateSessionLocation(
-    user: any,
+    user: AuthActor,
     sessionId: number,
     params: { latitude?: number; longitude?: number; radius?: number }
   ) {
@@ -727,11 +739,9 @@ class AttendanceSessionService {
     const updatedSession = await prisma.attendanceSession.update({
       where: { id: session.id },
       data: {
-        latitude: latitude ? parseFloat(latitude as any) : session.latitude,
-        longitude: longitude
-          ? parseFloat(longitude as any)
-          : session.longitude,
-        radius: radius ? parseFloat(radius as any) : session.radius || 100,
+        latitude: latitude !== undefined ? latitude : session.latitude,
+        longitude: longitude !== undefined ? longitude : session.longitude,
+        radius: radius !== undefined ? radius : session.radius || 100,
       },
     });
 

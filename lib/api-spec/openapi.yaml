@@ -1,22 +1,65 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: Authoritative OpenAPI specification for Smart University Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+    description: Health and readiness monitoring
+  - name: auth
+    description: Authentication and identity lifecycle
+  - name: users
+    description: User account, credential, and 2FA management
+  - name: students
+    description: Student records and academic status
+  - name: colleges
+    description: Colleges institutional management
+  - name: departments
+    description: Academic department management
+  - name: courses
+    description: Course catalog, syllabus, and roster
+  - name: enrollment
+    description: Course registration and approval workflows
+  - name: attendance
+    description: Multi-mode attendance tracking and sessions
+  - name: tasks
+    description: Academic tasks, assignments, and submissions
+  - name: quizzes
+    description: Digital quizzes, attempts, and questions
+  - name: exams
+    description: Examination scheduling, seating, and evaluation
+  - name: schedules
+    description: Lecture slots, conflict resolution, and timetable
+  - name: payments
+    description: Lossless decimal tuition fees and transaction history
+  - name: analytics
+    description: Institutional metrics and performance indicators
+  - name: notifications
+    description: User alert broadcasts and read receipts
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Health check
-      description: Returns server health status
+      summary: Health liveness probe
+      description: Returns server liveness status
+      responses:
+        "200":
+          description: Server process is live
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /health:
+    get:
+      operationId: getHealth
+      tags: [health]
+      summary: Standard liveness endpoint
       responses:
         "200":
           description: Healthy
@@ -24,13 +67,1498 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /ready:
+    get:
+      operationId: getPublicReadiness
+      tags: [health]
+      summary: Public readiness probe
+      responses:
+        "200":
+          description: Process ready to accept traffic
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: Shutting down or unready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /health/readiness:
+    get:
+      operationId: getDetailedReadiness
+      tags: [health]
+      summary: Comprehensive infrastructure readiness probe (Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Infrastructure components healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetailedReadiness"
+        "503":
+          description: Infrastructure degraded or offline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetailedReadiness"
+
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Register a new student or faculty member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Authenticate user credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+
+  /auth/refresh:
+    post:
+      operationId: refreshTokens
+      tags: [auth]
+      summary: Refresh access token using secure HttpOnly refresh cookie
+      responses:
+        "200":
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags: [auth]
+      summary: Terminate session and invalidate refresh token
+      responses:
+        "200":
+          description: Successfully logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Retrieve authenticated user profile and scopes
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /users/profile:
+    put:
+      operationId: updateProfile
+      tags: [users]
+      summary: Update personal profile details
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /users/profile/password:
+    put:
+      operationId: changePassword
+      tags: [users]
+      summary: Change account password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "200":
+          description: Password updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessageResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /users/2fa/setup:
+    post:
+      operationId: setupTwoFactor
+      tags: [users]
+      summary: Generate 2FA TOTP secret and QR code URI
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordConfirmationRequest"
+      responses:
+        "200":
+          description: TOTP setup parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwoFactorSetupResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /users/2fa/enable:
+    post:
+      operationId: enableTwoFactor
+      tags: [users]
+      summary: Confirm TOTP code and activate 2FA
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TwoFactorEnableRequest"
+      responses:
+        "200":
+          description: 2FA activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessageResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /users/2fa/disable:
+    post:
+      operationId: disableTwoFactor
+      tags: [users]
+      summary: Deactivate 2FA for account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordConfirmationRequest"
+      responses:
+        "200":
+          description: 2FA deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessageResponse"
+
+  /students:
+    get:
+      operationId: listStudents
+      tags: [students]
+      summary: Query paginated student directory
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/LimitQuery"
+        - name: departmentId
+          in: query
+          schema:
+            type: number
+        - name: academicYear
+          in: query
+          schema:
+            type: number
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated student listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentListResponse"
+
+  /students/{id}:
+    get:
+      operationId: getStudentById
+      tags: [students]
+      summary: Retrieve student record by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Student profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentDetail"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /colleges:
+    get:
+      operationId: listColleges
+      tags: [colleges]
+      summary: List all academic colleges
+      responses:
+        "200":
+          description: List of colleges
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CollegeItem"
+
+  /departments:
+    get:
+      operationId: listDepartments
+      tags: [departments]
+      summary: List all academic departments
+      parameters:
+        - name: collegeId
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: List of departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepartmentItem"
+
+  /courses:
+    get:
+      operationId: listCourses
+      tags: [courses]
+      summary: Browse catalog courses
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/LimitQuery"
+        - name: departmentId
+          in: query
+          schema:
+            type: number
+        - name: semester
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated courses list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseListResponse"
+
+  /courses/{id}:
+    get:
+      operationId: getCourseById
+      tags: [courses]
+      summary: Get course specification and syllabus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Course details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseDetail"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /enrollments:
+    get:
+      operationId: listEnrollments
+      tags: [enrollment]
+      summary: Get active student enrolled courses
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Enrolled courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EnrollmentItem"
+    post:
+      operationId: enrollStudent
+      tags: [enrollment]
+      summary: Enroll a student into a course
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollmentSubmitRequest"
+      responses:
+        "201":
+          description: Request submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrollmentItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /attendance/my-attendance:
+    get:
+      operationId: getMyAttendance
+      tags: [attendance]
+      summary: Query attendance summary and presence rate for student
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Student attendance report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceSummaryResponse"
+
+  /attendance/scan-qr:
+    post:
+      operationId: scanAttendanceQr
+      tags: [attendance]
+      summary: Verify dynamic rolling QR token for student attendance
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QrAttendanceScanRequest"
+      responses:
+        "200":
+          description: Attendance marked successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceScanResult"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List course tasks and assignments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/LimitQuery"
+        - name: courseId
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Paginated tasks list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskListResponse"
+
+  /tasks/{id}/submit:
+    post:
+      operationId: submitTask
+      tags: [tasks]
+      summary: Submit student task submission
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskSubmissionRequest"
+      responses:
+        "201":
+          description: Submission recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSubmissionItem"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /quizzes:
+    get:
+      operationId: listQuizzes
+      tags: [quizzes]
+      summary: List available quizzes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Quizzes list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuizItem"
+
+  /quizzes/{id}:
+    get:
+      operationId: getQuizById
+      tags: [quizzes]
+      summary: Begin or retrieve quiz session
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Quiz attempt session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizAttemptSession"
+
+  /quizzes/{id}/submit:
+    post:
+      operationId: submitQuizAnswers
+      tags: [quizzes]
+      summary: Submit quiz answers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuizSubmitRequest"
+      responses:
+        "200":
+          description: Quiz graded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizResultResponse"
+
+  /exams:
+    get:
+      operationId: listExams
+      tags: [exams]
+      summary: List scheduled exams
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: List of examinations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExamItem"
+
+  /schedules/week:
+    get:
+      operationId: getWeeklySchedule
+      tags: [schedules]
+      summary: Get unified weekly timetable grid
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Timetable grid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleGridResponse"
+
+  /payments:
+    get:
+      operationId: listPayments
+      tags: [payments]
+      summary: Query ledger payments with lossless decimal monetary strings
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/LimitQuery"
+        - name: studentId
+          in: query
+          schema:
+            type: number
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PAID, OVERDUE, CANCELLED]
+      responses:
+        "200":
+          description: Paginated payment history with exact decimal amounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentListResponse"
+
+  /payments/my:
+    get:
+      operationId: getMyPayments
+      tags: [payments]
+      summary: Get student fee statements and invoices
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Invoices and receipts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentRecord"
+
+  /analytics/general:
+    get:
+      operationId: getGeneralAnalytics
+      tags: [analytics]
+      summary: Campus-wide KPIs and attendance distributions
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Analytics dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsGeneralResponse"
+
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: Get user notification feed
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Notifications feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationItem"
+
+  /notifications/read-all:
+    put:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: All read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessageResponse"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageQuery:
+      name: page
+      in: query
+      description: 1-indexed pagination page
+      schema:
+        type: number
+        default: 1
+        minimum: 1
+    LimitQuery:
+      name: limit
+      in: query
+      description: Number of items per page (capped at 100)
+      schema:
+        type: number
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  responses:
+    ValidationError:
+      description: Request body or query parameters validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    UnauthorizedError:
+      description: Invalid or expired authentication token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    ForbiddenError:
+      description: Insufficient role permissions or scope authorization
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    NotFoundError:
+      description: Requested resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    ConflictError:
+      description: Conflict with existing unique constraint or resource state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+
   schemas:
     HealthStatus:
       type: object
+      required:
+        - status
       properties:
         status:
           type: string
+          example: ok
+
+    DetailedReadiness:
+      type: object
       required:
         - status
+        - checks
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready, shutting_down]
+        shuttingDown:
+          type: boolean
+        checks:
+          type: object
+          required:
+            - database
+          properties:
+            database:
+              type: boolean
+            redis:
+              type: boolean
+            dashboardCache:
+              type: object
+              properties:
+                configured:
+                  type: boolean
+                operational:
+                  type: boolean
+                state:
+                  type: string
+
+    ApiErrorResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Invalid input parameters
+        errors:
+          type: array
+          items:
+            type: string
+
+    SuccessMessageResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation completed successfully
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+        - role
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+        role:
+          type: string
+          enum: [STUDENT, DOCTOR, TEACHING_ASSISTANT]
+        departmentId:
+          type: number
+        nationalId:
+          type: string
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        totpCode:
+          type: string
+          description: 6-digit TOTP token if 2FA is active
+
+    AuthSuccessResponse:
+      type: object
+      required:
+        - success
+        - token
+        - user
+      properties:
+        success:
+          type: boolean
+          example: true
+        token:
+          type: string
+          description: Ephemeral in-memory JWT access token
+        requires2FA:
+          type: boolean
+        user:
+          $ref: "#/components/schemas/UserProfile"
+
+    UserProfile:
+      type: object
+      required:
+        - id
+        - email
+        - name
+        - role
+      properties:
+        id:
+          type: number
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [SUPER_ADMIN, ADMIN, COLLEGE_ADMIN, DEPARTMENT_ADMIN, DOCTOR, TEACHING_ASSISTANT, STUDENT]
+        departmentId:
+          type: number
+          nullable: true
+        collegeId:
+          type: number
+          nullable: true
+        twoFactorEnabled:
+          type: boolean
+        avatarUrl:
+          type: string
+          nullable: true
+
+    UserProfileResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/UserProfile"
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        bio:
+          type: string
+
+    ChangePasswordRequest:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+
+    PasswordConfirmationRequest:
+      type: object
+      required:
+        - currentPassword
+      properties:
+        currentPassword:
+          type: string
+
+    TwoFactorSetupResponse:
+      type: object
+      required:
+        - secret
+        - qrCodeUrl
+      properties:
+        secret:
+          type: string
+        qrCodeUrl:
+          type: string
+
+    TwoFactorEnableRequest:
+      type: object
+      required:
+        - code
+        - currentPassword
+      properties:
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+        currentPassword:
+          type: string
+
+    PaginationMeta:
+      type: object
+      required:
+        - total
+        - page
+        - limit
+        - totalPages
+      properties:
+        total:
+          type: number
+        page:
+          type: number
+        limit:
+          type: number
+        totalPages:
+          type: number
+
+    StudentDetail:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - academicCode
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        email:
+          type: string
+        academicCode:
+          type: string
+        departmentName:
+          type: string
+          nullable: true
+        gpa:
+          type: number
+          nullable: true
+        academicYear:
+          type: number
+          nullable: true
+
+    StudentListResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentDetail"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CollegeItem:
+      type: object
+      required:
+        - id
+        - name
+        - code
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+          nullable: true
+
+    DepartmentItem:
+      type: object
+      required:
+        - id
+        - name
+        - code
+        - collegeId
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        code:
+          type: string
+        collegeId:
+          type: number
+
+    CourseDetail:
+      type: object
+      required:
+        - id
+        - name
+        - code
+        - creditHours
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        code:
+          type: string
+        creditHours:
+          type: number
+        departmentId:
+          type: number
+          nullable: true
+        doctorName:
+          type: string
+          nullable: true
+
+    CourseListResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseDetail"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    EnrollmentItem:
+      type: object
+      required:
+        - id
+        - courseId
+        - studentId
+        - status
+      properties:
+        id:
+          type: number
+        courseId:
+          type: number
+        studentId:
+          type: number
+        status:
+          type: string
+          enum: [PENDING, ENROLLED, REJECTED, DROPPED]
+        course:
+          $ref: "#/components/schemas/CourseDetail"
+
+    EnrollmentSubmitRequest:
+      type: object
+      required:
+        - courseId
+      properties:
+        courseId:
+          type: number
+
+    AttendanceSummaryResponse:
+      type: object
+      required:
+        - totalSessions
+        - attendedSessions
+        - absenceRate
+      properties:
+        totalSessions:
+          type: number
+        attendedSessions:
+          type: number
+        absenceRate:
+          type: number
+        isAtRisk:
+          type: boolean
+
+    QrAttendanceScanRequest:
+      type: object
+      required:
+        - token
+        - slotId
+      properties:
+        token:
+          type: string
+          description: Dynamic HMAC-signed rolling token
+        slotId:
+          type: number
+        latitude:
+          type: number
+        longitude:
+          type: number
+
+    AttendanceScanResult:
+      type: object
+      required:
+        - success
+        - status
+        - timestamp
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+          enum: [PRESENT, LATE, ABSENT]
+        timestamp:
+          type: string
+          format: date-time
+
+    TaskItem:
+      type: object
+      required:
+        - id
+        - title
+        - courseId
+        - dueDate
+      properties:
+        id:
+          type: number
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        courseId:
+          type: number
+        dueDate:
+          type: string
+          format: date-time
+        maxScore:
+          type: number
+
+    TaskListResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskItem"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    TaskSubmissionRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+        fileUrl:
+          type: string
+          nullable: true
+
+    TaskSubmissionItem:
+      type: object
+      required:
+        - id
+        - taskId
+        - studentId
+        - submittedAt
+      properties:
+        id:
+          type: number
+        taskId:
+          type: number
+        studentId:
+          type: number
+        submittedAt:
+          type: string
+          format: date-time
+        score:
+          type: number
+          nullable: true
+
+    QuizItem:
+      type: object
+      required:
+        - id
+        - title
+        - courseId
+        - durationMinutes
+      properties:
+        id:
+          type: number
+        title:
+          type: string
+        courseId:
+          type: number
+        durationMinutes:
+          type: number
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+
+    QuizAttemptSession:
+      type: object
+      required:
+        - attemptId
+        - quizId
+        - expiresAt
+      properties:
+        attemptId:
+          type: number
+        quizId:
+          type: number
+        expiresAt:
+          type: string
+          format: date-time
+        questions:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - prompt
+            properties:
+              id:
+                type: number
+              prompt:
+                type: string
+              options:
+                type: array
+                items:
+                  type: string
+
+    QuizSubmitRequest:
+      type: object
+      required:
+        - answers
+      properties:
+        answers:
+          type: array
+          items:
+            type: object
+            required:
+              - questionId
+              - selectedOption
+            properties:
+              questionId:
+                type: number
+              selectedOption:
+                type: number
+
+    QuizResultResponse:
+      type: object
+      required:
+        - score
+        - totalScore
+        - passed
+      properties:
+        score:
+          type: number
+        totalScore:
+          type: number
+        passed:
+          type: boolean
+
+    ExamItem:
+      type: object
+      required:
+        - id
+        - courseId
+        - examType
+        - date
+      properties:
+        id:
+          type: number
+        courseId:
+          type: number
+        examType:
+          type: string
+          enum: [MIDTERM, FINAL, PRACTICAL]
+        date:
+          type: string
+          format: date-time
+        location:
+          type: string
+          nullable: true
+
+    ScheduleGridResponse:
+      type: object
+      required:
+        - slots
+      properties:
+        slots:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - dayOfWeek
+              - startTime
+              - endTime
+            properties:
+              id:
+                type: number
+              dayOfWeek:
+                type: number
+              startTime:
+                type: string
+              endTime:
+                type: string
+              courseName:
+                type: string
+              room:
+                type: string
+                nullable: true
+
+    PaymentRecord:
+      type: object
+      required:
+        - id
+        - studentId
+        - amount
+        - currency
+        - status
+        - createdAt
+      properties:
+        id:
+          type: number
+        studentId:
+          type: number
+        amount:
+          type: string
+          description: Exact decimal money string (e.g. "1500.50") losslessly preserved
+          example: "1500.50"
+        currency:
+          type: string
+          default: EGP
+          example: EGP
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [PENDING, PAID, OVERDUE, CANCELLED]
+        createdAt:
+          type: string
+          format: date-time
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    PaymentListResponse:
+      type: object
+      required:
+        - success
+        - data
+        - pagination
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaymentRecord"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    AnalyticsGeneralResponse:
+      type: object
+      required:
+        - totalStudents
+        - totalCourses
+        - averageAttendance
+      properties:
+        totalStudents:
+          type: number
+        totalCourses:
+          type: number
+        averageAttendance:
+          type: number
+        atRiskCount:
+          type: number
+
+    NotificationItem:
+      type: object
+      required:
+        - id
+        - title
+        - message
+        - read
+        - createdAt
+      properties:
+        id:
+          type: number
+        title:
+          type: string
+        message:
+          type: string
+        read:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
 

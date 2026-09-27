@@ -147,7 +147,7 @@ async function runTwoFactorSecurityTests() {
   assert.match(routes, /\/2fa\/setup[\s\S]*currentPassword/);
   assert.match(routes, /\/2fa\/enable[\s\S]*currentPassword/);
 
-  for (const entryPoint of ['src/index.ts', 'src/server.ts']) {
+  for (const entryPoint of ['src/bootstrap.ts']) {
     const source = readFileSync(path.join(apiRoot, entryPoint), 'utf8');
     assert.match(source, /getTwoFactorConfigError/);
     assert.match(source, /process\.exit\(1\)/);

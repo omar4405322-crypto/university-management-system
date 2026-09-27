@@ -8,7 +8,7 @@ A full-stack university management portal for جامعة 6 أكتوبر التك
 - `pnpm --filter @workspace/university-app run dev` — run the frontend (Vite, port from `$PORT`)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/api-server run prisma:migrate` — apply Prisma DB schema migrations (dev)
 - Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack

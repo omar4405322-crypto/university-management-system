@@ -1,12 +1,16 @@
 // FIXED: Student active status via bio flag + stats/toggle endpoints - Phase 2
 import { Request, Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
 import { AppError, NotFoundError, AuthorizationError } from '../utils/appError';
 import bcrypt from 'bcryptjs';
 import { invalidateCache } from '../utils/redis.utils';
-import { getScopeWhere } from '../utils/scope.utils';
+import {
+  getEffectiveActiveStudentWhere,
+  getScopeWhere,
+} from '../utils/scope.utils';
 import { getAdminMutationTargetWhere } from '../utils/adminMutationScope.utils';
 import { StudentGroupsService } from '../services/studentGroups.service';
 import { AttendanceService } from '../services/attendance.service';
@@ -19,10 +23,13 @@ import {
   generateStrongTemporaryPassword,
 } from '../utils/passwordPolicy';
 
-const mapStudentStatus = (student: any) => ({
-  ...student,
-  status: student.isActive ? 'active' : 'inactive',
-});
+const mapStudentStatus = (student: any) => {
+  const isEffectivelyActive = student.isActive && student.user?.isActive === true;
+  return {
+    ...student,
+    status: isEffectivelyActive ? 'active' : 'inactive',
+  };
+};
 
 function assertStudentScope(
   student: { departmentId: number | null; department?: { collegeId: number } | null },
@@ -96,9 +103,9 @@ export const getAllStudents = catchAsync(
       );
     }
     if (status === 'active') {
-      queryFilters.push({ isActive: true });
+      queryFilters.push(getEffectiveActiveStudentWhere());
     } else if (status === 'inactive') {
-      queryFilters.push({ isActive: false });
+      queryFilters.push({ NOT: getEffectiveActiveStudentWhere() });
     } else if (status === 'suspended') {
       queryFilters.push({ status: 'suspended' });
     }
@@ -119,7 +126,6 @@ export const getAllStudents = catchAsync(
           { firstName: { contains: search, mode: 'insensitive' } },
           { lastName: { contains: search, mode: 'insensitive' } },
           { studentId: { contains: search, mode: 'insensitive' } },
-          { nationalId: { contains: search, mode: 'insensitive' } },
           { user: { email: { contains: search, mode: 'insensitive' } } },
         ],
       });
@@ -149,6 +155,7 @@ export const getAllStudents = catchAsync(
             select: {
               email: true,
               profilePicture: true,
+              isActive: true,
             },
           },
           department: {
@@ -165,24 +172,35 @@ export const getAllStudents = catchAsync(
       prisma.student.count({ where }),
     ]);
 
-    const activeWhere = {
-      ...scopeWhere,
-      isActive: true,
-    };
-    const inactiveWhere = { ...scopeWhere, isActive: false };
+    const shouldIncludeStats = req.query.includeStats === 'true';
 
-    const [statsTotal, active, pending, inactive] = await Promise.all([
-      prisma.student.count({ where: scopeWhere }),
-      prisma.student.count({ where: activeWhere }),
-      prisma.registrationRequest.count({
-        where: {
-          status: 'PENDING',
-          ...(scopeWhere.departmentId && { departmentId: scopeWhere.departmentId }),
-          ...(scopeWhere.department && { department: scopeWhere.department }),
-        },
-      }),
-      prisma.student.count({ where: inactiveWhere }),
-    ]);
+    let stats: { total: number; active: number; pending: number; inactive: number } | undefined;
+    if (shouldIncludeStats) {
+      const activeWhere = getEffectiveActiveStudentWhere(scopeWhere);
+      const inactiveWhere = {
+        AND: [scopeWhere, { NOT: getEffectiveActiveStudentWhere() }],
+      };
+
+      const [statsTotal, active, pending, inactive] = await Promise.all([
+        prisma.student.count({ where: scopeWhere }),
+        prisma.student.count({ where: activeWhere }),
+        prisma.registrationRequest.count({
+          where: {
+            status: 'PENDING',
+            ...(scopeWhere.departmentId && { departmentId: scopeWhere.departmentId }),
+            ...(scopeWhere.department && { department: scopeWhere.department }),
+          },
+        }),
+        prisma.student.count({ where: inactiveWhere }),
+      ]);
+
+      stats = {
+        total: statsTotal,
+        active,
+        pending,
+        inactive,
+      };
+    }
 
     res.json({
       success: true,
@@ -194,12 +212,7 @@ export const getAllStudents = catchAsync(
           limit: take,
           totalPages: Math.ceil(filteredTotal / take),
         },
-        stats: {
-          total: statsTotal,
-          active,
-          pending,
-          inactive,
-        },
+        ...(stats && { stats }),
         totalPages: Math.ceil(filteredTotal / take),
       },
     });
@@ -216,7 +229,10 @@ export const toggleStudentStatus = catchAsync(
     const id = parseInt(req.params.id as string, 10);
     const student = await prisma.student.findUnique({
       where: { id },
-      include: { department: { select: { collegeId: true } } },
+      include: {
+        user: { select: { isActive: true } },
+        department: { select: { collegeId: true } },
+      },
     });
 
     if (!student) {
@@ -227,18 +243,27 @@ export const toggleStudentStatus = catchAsync(
       return res.status(403).json({ message: 'Access denied: student belongs to a different scope' });
     }
 
-    const makeInactive = student.isActive;
+    const makeInactive = student.isActive && student.user.isActive;
     const updated = await setStudentAndUserActiveState(
       id,
       student.userId,
-      !makeInactive
+      !makeInactive,
+      async (tx) => {
+        await auditLog(
+          'TOGGLE_STUDENT_STATUS',
+          'Student',
+          req.params.id as string,
+          req,
+          { isActive: { from: makeInactive, to: !makeInactive } },
+          tx
+        );
+      }
     );
 
     if (updated.isActive) {
       await StudentGroupsService.assignStudentToGroup(updated);
     }
 
-    auditLog('TOGGLE_STUDENT_STATUS', 'Student', req.params.id as string, req);
     res.json({
       success: true,
       data: mapStudentStatus(updated),
@@ -262,6 +287,7 @@ export const getStudentById = catchAsync(
             email: true,
             role: true,
             profilePicture: true,
+            isActive: true,
           },
         },
         department: {
@@ -346,7 +372,7 @@ export const createStudent = catchAsync(async (req: Request, res: Response, next
       },
     });
 
-    return tx.student.create({
+    const student = await tx.student.create({
       data: {
         ...studentData,
         userId: user.id,
@@ -354,6 +380,22 @@ export const createStudent = catchAsync(async (req: Request, res: Response, next
         year: parseInt(studentData.year),
       },
     });
+    await auditLog(
+      'CREATE_STUDENT',
+      'Student',
+      student.id,
+      req,
+      {
+        after: {
+          studentId: student.studentId,
+          userId: student.userId,
+          departmentId: student.departmentId,
+          year: student.year,
+        },
+      },
+      tx
+    );
+    return student;
   });
 
   await StudentGroupsService.assignStudentToGroup(newStudent);
@@ -386,7 +428,22 @@ export const updateStudent = catchAsync(async (req: Request, res: Response, next
 
   const student = await prisma.student.findUnique({
     where: { id: parseInt(id as string, 10) },
-    select: { id: true, userId: true, studentId: true, departmentId: true, department: { select: { collegeId: true } } },
+    select: {
+      id: true,
+      userId: true,
+      studentId: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      address: true,
+      bio: true,
+      gender: true,
+      birthDate: true,
+      departmentId: true,
+      year: true,
+      user: { select: { email: true } },
+      department: { select: { collegeId: true } },
+    },
   });
 
   if (!student) {
@@ -472,11 +529,11 @@ export const updateStudent = catchAsync(async (req: Request, res: Response, next
       });
     }
 
-    return tx.student.update({
+    const updated = await tx.student.update({
       where: { id: parseInt(id as string, 10) },
       data: prismaData,
       include: {
-        user: { select: { email: true, profilePicture: true } },
+        user: { select: { email: true, profilePicture: true, isActive: true } },
         department: {
           select: {
             id: true,
@@ -490,6 +547,42 @@ export const updateStudent = catchAsync(async (req: Request, res: Response, next
         },
       },
     });
+    await auditLog(
+      'UPDATE_STUDENT',
+      'Student',
+      String(id),
+      req,
+      {
+        before: {
+          studentId: student.studentId,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          phone: student.phone,
+          address: student.address,
+          bio: student.bio,
+          gender: student.gender,
+          birthDate: student.birthDate,
+          departmentId: student.departmentId,
+          year: student.year,
+          email: student.user.email,
+        },
+        after: {
+          studentId: updated.studentId,
+          firstName: updated.firstName,
+          lastName: updated.lastName,
+          phone: updated.phone,
+          address: updated.address,
+          bio: updated.bio,
+          gender: updated.gender,
+          birthDate: updated.birthDate,
+          departmentId: updated.departmentId,
+          year: updated.year,
+          email: updated.user.email,
+        },
+      },
+      tx
+    );
+    return updated;
   });
 
   if (updateData.year !== undefined || updateData.departmentId !== undefined) {
@@ -506,8 +599,6 @@ export const updateStudent = catchAsync(async (req: Request, res: Response, next
   }
 
   await invalidateCache('dashboard:*');
-  auditLog('UPDATE_STUDENT', 'Student', String(id), req);
-
   res.json({
     success: true,
     data: mapStudentStatus(updatedStudent),
@@ -515,18 +606,107 @@ export const updateStudent = catchAsync(async (req: Request, res: Response, next
   });
 });
 
+async function getStudentProtectedDeletionRecords(tx: any, studentId: number) {
+  const [protectedEnrollment, gradedQuiz, gradedTask, gradedExam, payment] =
+    await Promise.all([
+      tx.enrollment.findFirst({
+        where: {
+          studentId,
+          status: { in: ['COMPLETED', 'FAILED', 'WITHDRAWN'] },
+        },
+        select: { id: true },
+      }),
+      tx.quizSubmission.findFirst({
+        where: { studentId, score: { not: null } },
+        select: { id: true },
+      }),
+      tx.taskSubmission.findFirst({
+        where: { studentId, score: { not: null } },
+        select: { id: true },
+      }),
+      tx.examSubmission.findFirst({
+        where: { studentId, score: { not: null } },
+        select: { id: true },
+      }),
+      tx.payment.findFirst({
+        where: { studentId },
+        select: { id: true },
+      }),
+    ]);
+
+  return {
+    enrollmentHistory: Boolean(protectedEnrollment),
+    gradedSubmission: Boolean(gradedQuiz || gradedTask || gradedExam),
+    paymentHistory: Boolean(payment),
+  };
+}
+
+async function purgeStudentAndUser(
+  studentId: number,
+  userId: number,
+  allowProtectedRecords: boolean,
+  req: Request,
+  action: 'DELETE_STUDENT' | 'CONFIRMED_PURGE_STUDENT'
+) {
+  await prisma.$transaction(async (tx: any) => {
+    if (!allowProtectedRecords) {
+      const protectedRecords = await getStudentProtectedDeletionRecords(tx, studentId);
+      if (Object.values(protectedRecords).some(Boolean)) {
+        throw new AppError(
+          'Cannot delete student: retained academic or financial records exist. Deactivate the student, or use the SUPER_ADMIN confirmed-purge endpoint when destruction is explicitly required.',
+          409
+        );
+      }
+    }
+
+    // Delete in order: many-to-many first, then direct relations, then student, then user
+    await tx.student.update({
+      where: { id: studentId },
+      data: {
+        enrollments: { deleteMany: {} },
+      },
+    });
+
+    await tx.attendance.deleteMany({ where: { studentId } });
+    await tx.payment.deleteMany({ where: { studentId } });
+    await tx.quizSubmission.deleteMany({ where: { studentId } });
+    await tx.taskSubmission.deleteMany({ where: { studentId } });
+
+    const successMetric = await tx.studentSuccessMetric.findUnique({
+      where: { studentId },
+    });
+    if (successMetric) {
+      await tx.studentSuccessMetric.delete({ where: { studentId } });
+    }
+
+    await tx.student.delete({ where: { id: studentId } });
+    await tx.user.delete({ where: { id: userId } });
+    await auditLog(
+      action,
+      'Student',
+      studentId,
+      req,
+      { before: { studentId, userId }, after: null },
+      tx
+    );
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+async function findStudentDeletionTarget(studentId: number) {
+  return prisma.student.findUnique({
+    where: { id: studentId },
+    select: { userId: true, departmentId: true, department: { select: { collegeId: true } } },
+  });
+}
+
 /**
- * @desc    Delete student
+ * @desc    Delete a student only when no retained academic/financial records exist
  * @route   DELETE /api/students/:id
  * @access  Private (Admin)
  */
 export const deleteStudent = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.params;
-
-  const student = await prisma.student.findUnique({
-    where: { id: parseInt(id as string) },
-    select: { userId: true, departmentId: true, department: { select: { collegeId: true } } },
-  });
+  const studentId = parseInt(req.params.id as string, 10);
+  const student = await findStudentDeletionTarget(studentId);
 
   if (!student) {
     return next(new NotFoundError('Student not found'));
@@ -536,39 +716,49 @@ export const deleteStudent = catchAsync(async (req: Request, res: Response, next
     return res.status(403).json({ message: 'Access denied: student belongs to a different scope' });
   }
 
-  await prisma.$transaction(async (tx: any) => {
-    // Delete in order: many-to-many first, then direct relations, then student, then user
-    await tx.student.update({
-      where: { id: parseInt(id as string) },
-      data: {
-        enrollments: { deleteMany: {} },
-      },
-    }); // Clear M2M
-
-    await tx.attendance.deleteMany({ where: { studentId: parseInt(id as string) } });
-    await tx.payment.deleteMany({ where: { studentId: parseInt(id as string) } });
-    await tx.quizSubmission.deleteMany({ where: { studentId: parseInt(id as string) } });
-    await tx.taskSubmission.deleteMany({ where: { studentId: parseInt(id as string) } });
-
-    const successMetric = await tx.studentSuccessMetric.findUnique({
-      where: { studentId: parseInt(id as string) },
-    });
-    if (successMetric) {
-      await tx.studentSuccessMetric.delete({ where: { studentId: parseInt(id as string) } });
-    }
-
-    await tx.student.delete({ where: { id: parseInt(id as string) } });
-    await tx.user.delete({ where: { id: student.userId } });
-  });
+  await purgeStudentAndUser(studentId, student.userId, false, req, 'DELETE_STUDENT');
 
   await invalidateCache('dashboard:*');
 
-  auditLog('DELETE_STUDENT', 'Student', req.params.id as string, req);
   res.json({
     success: true,
     message: 'Student and associated user account deleted',
   });
 });
+
+/**
+ * @desc    Irreversibly purge a student after explicit SUPER_ADMIN confirmation
+ * @route   DELETE /api/students/:id/confirmed-purge
+ * @access  Private (SUPER_ADMIN)
+ */
+export const confirmedPurgeStudent = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (req.user!.role !== 'SUPER_ADMIN') {
+      return next(new AuthorizationError('Only SUPER_ADMIN can perform a confirmed student purge'));
+    }
+    if (req.body?.confirmPurge !== true) {
+      return next(new AppError('confirmPurge must be exactly true', 400));
+    }
+
+    const studentId = parseInt(req.params.id as string, 10);
+    const student = await findStudentDeletionTarget(studentId);
+    if (!student) return next(new NotFoundError('Student not found'));
+
+    await purgeStudentAndUser(
+      studentId,
+      student.userId,
+      true,
+      req,
+      'CONFIRMED_PURGE_STUDENT'
+    );
+    await invalidateCache('dashboard:*');
+
+    res.json({
+      success: true,
+      message: 'Student and retained records permanently purged',
+    });
+  }
+);
 
 /**
  * @desc    Reset student password

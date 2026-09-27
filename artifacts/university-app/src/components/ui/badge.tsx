@@ -6,22 +6,21 @@ import { cn } from "@/lib/utils"
 const badgeVariants = cva(
   // @replit
   // Whitespace-nowrap: Badges should never wrap.
-  "whitespace-nowrap inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" +
-  " hover-elevate ",
+  "whitespace-nowrap inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold leading-none transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary-500/30 focus:ring-offset-2",
   {
     variants: {
       variant: {
         default:
           // @replit shadow-xs instead of shadow, no hover because we use hover-elevate
-          "border-transparent bg-primary text-primary-foreground shadow-xs",
+          "border-brand-primary-500/20 bg-brand-primary-500/10 text-brand-primary-700 dark:text-brand-primary-300",
         secondary:
           // @replit no hover because we use hover-elevate
-          "border-transparent bg-secondary text-secondary-foreground",
+          "border-brand-navy-500/20 bg-brand-navy-500/10 text-brand-navy-600 dark:text-slate-200",
         destructive:
           // @replit shadow-xs instead of shadow, no hover because we use hover-elevate
-          "border-transparent bg-destructive text-destructive-foreground shadow-xs",
+          "border-error/20 bg-error/10 text-error-text",
           // @replit shadow-xs" - use badge outline variable
-        outline: "text-foreground border [border-color:var(--badge-outline)]",
+        outline: "border-brand-border bg-brand-bg-card text-brand-text-secondary",
         success:
           "border-transparent bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-500/20",
         warning:

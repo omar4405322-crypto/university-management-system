@@ -1,4 +1,3 @@
-// @ts-nocheck
 // FIXED: Student-only registration, i18n, optional phone - Phase 4 / Phase 6
 // CONVERTED: useState form fields → React Hook Form + Zod
 import React, { useState, useEffect } from 'react';
@@ -273,8 +272,7 @@ const Register = () => {
                     {...register('firstName')}
                     type="text"
                     placeholder={t('auth.firstNamePlaceholder')}
-                    className="pl-12 h-12"
-                    error={!!errors.firstName}
+                    className={`pl-12 h-12 ${errors.firstName ? 'border-red-500' : ''}`}
                   />
                 </div>
                 {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
@@ -289,8 +287,7 @@ const Register = () => {
                     {...register('lastName')}
                     type="text"
                     placeholder={t('auth.lastNamePlaceholder')}
-                    className="pl-12 h-12"
-                    error={!!errors.lastName}
+                    className={`pl-12 h-12 ${errors.lastName ? 'border-red-500' : ''}`}
                   />
                 </div>
                 {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
@@ -308,8 +305,7 @@ const Register = () => {
                   type="email"
                   autoComplete="off"
                   placeholder={t('auth.emailPlaceholder')}
-                  className="pl-12 h-12"
-                  error={!!errors.email}
+                  className={`pl-12 h-12 ${errors.email ? 'border-red-500' : ''}`}
                 />
               </div>
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
@@ -325,8 +321,7 @@ const Register = () => {
                   {...register('phone')}
                   type="tel"
                   placeholder={t('students.phonePlaceholder')}
-                  className="pl-12 h-12"
-                  error={!!errors.phone}
+                  className={`pl-12 h-12 ${errors.phone ? 'border-red-500' : ''}`}
                 />
               </div>
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
@@ -342,8 +337,7 @@ const Register = () => {
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
                   placeholder={t('auth.passwordPlaceholder')}
-                  className="pl-12 pr-12 h-12 rtl:pr-12 rtl:pl-12"
-                  error={!!errors.password}
+                  className={`pl-12 pr-12 h-12 rtl:pr-12 rtl:pl-12 ${errors.password ? 'border-red-500' : ''}`}
                 />
                 <button
                   type="button"
@@ -419,8 +413,7 @@ const Register = () => {
                     {...register('studentId')}
                     type="text"
                     placeholder={t('auth.studentIdPlaceholder')}
-                    className="pl-12 h-12"
-                    error={!!errors.studentId}
+                    className={`pl-12 h-12 ${errors.studentId ? 'border-red-500' : ''}`}
                   />
                 </div>
                 {errors.studentId && <p className="text-red-500 text-xs mt-1">{errors.studentId.message}</p>}

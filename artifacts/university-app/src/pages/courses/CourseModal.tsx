@@ -184,7 +184,7 @@ const CourseModal = ({
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 max-h-[80vh] overflow-y-auto">
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-error text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-300">
+            <div className="mb-6 p-4 rounded-xl bg-error-strong text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-300">
               <AlertCircle size={20} />
               <span className="font-medium">{error}</span>
             </div>

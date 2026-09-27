@@ -39,17 +39,17 @@ async function runStudentDeactivationSecurityTests() {
     assert.equal(deactivated.isActive, false);
     assert.deepEqual(studentUpdates[0].where, { id: 7 });
     assert.deepEqual(studentUpdates[0].data, { isActive: false });
-    assert.deepEqual(userUpdates[0], {
-      where: { id: 42 },
-      data: { isActive: false, tokenVersion: { increment: 1 } },
-    });
+    assert.deepEqual(userUpdates[0].where, { id: 42 });
+    assert.equal(userUpdates[0].data.isActive, false);
+    assert.ok(userUpdates[0].data.deactivatedAt instanceof Date);
+    assert.deepEqual(userUpdates[0].data.tokenVersion, { increment: 1 });
     assert.deepEqual(refreshDeletes[0], { where: { userId: 42 } });
 
     const activated = await setStudentAndUserActiveState(7, 42, true);
     assert.equal(activated.isActive, true);
     assert.deepEqual(userUpdates[1], {
       where: { id: 42 },
-      data: { isActive: true },
+      data: { isActive: true, deactivatedAt: null },
     });
     assert.equal(
       refreshDeletes.length,

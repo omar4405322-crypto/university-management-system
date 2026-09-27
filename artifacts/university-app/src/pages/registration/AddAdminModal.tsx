@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Mail, Lock, ShieldCheck, Building2, Users, Loader2, User } from 'lucide-react';
@@ -33,7 +32,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({
   const [role, setRole] = useState('SUPER_ADMIN');
   const [managedCollegeId, setManagedCollegeId] = useState('');
   const [managedDepartmentId, setManagedDepartmentId] = useState('');
-  const [departments, setDepartments] = useState([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 

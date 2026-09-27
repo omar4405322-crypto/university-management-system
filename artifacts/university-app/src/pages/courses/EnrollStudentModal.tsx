@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { UserPlus, Search, AlertCircle, Loader2, Check, GraduationCap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Modal from '../../components/ui/Modal';
@@ -54,16 +54,7 @@ const EnrollStudentModal: React.FC<EnrollStudentModalProps> = ({
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchCandidateStudents();
-      setSelectedStudentId(null);
-      setSearchQuery('');
-      setErrorMessage(null);
-    }
-  }, [isOpen, courseId]);
-
-  const fetchCandidateStudents = async () => {
+  const fetchCandidateStudents = useCallback(async () => {
     try {
       setLoading(true);
       setErrorMessage(null);
@@ -83,13 +74,22 @@ const EnrollStudentModal: React.FC<EnrollStudentModalProps> = ({
     } catch (err: any) {
       logger.error('Error fetching students for enrollment:', err);
       setErrorMessage(
-        err.response?.data?.message ||
-          (isRTL ? 'تعذر جلب قائمة الطلاب' : 'Failed to fetch student roster')
+        t('courses.errorFetchingStudents', 'Failed to load students list. Please try again.')
       );
+      setStudents([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [departmentId, t]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchCandidateStudents();
+      setSelectedStudentId(null);
+      setSearchQuery('');
+      setErrorMessage(null);
+    }
+  }, [isOpen, courseId, fetchCandidateStudents]);
 
   // Filter out students already enrolled in this course
   const enrolledSet = useMemo(() => new Set(currentEnrolledStudentIds), [currentEnrolledStudentIds]);

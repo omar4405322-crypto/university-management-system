@@ -5,31 +5,26 @@ import { AttendanceService } from '../src/services/attendance.service';
 const originals = {
   courseFindMany: prisma.course.findMany,
   enrollmentFindMany: prisma.enrollment.findMany,
-  queryRaw: prisma.$queryRaw,
+  slotFindMany: prisma.scheduleSlot.findMany,
+  sessionFindMany: prisma.attendanceSession.findMany,
+  attendanceFindMany: prisma.attendance.findMany,
+  policyFindMany: prisma.absenceThresholdPolicy.findMany,
 };
 
-const sqlRow = (enrollmentId: number) => ({
-  enrollmentId,
-  warningStage: 'FINAL_WARNING',
-  absencePercent: 20,
-  maxAbsencePercent: 25,
-  total: 10,
-  present: 7,
-  late: 2,
-  absent: 1,
-  excused: 0,
-  pendingReview: 0,
-});
-
-const enrollmentRow = (id: number) => ({
+const enrollmentRow = (id: number, firstName = 'Student') => ({
   id,
   studentId: id,
   courseId: 7,
+  semester: 1,
+  academicYear: 2026,
   status: 'ENROLLED',
+  enrolledAt: new Date('2026-01-01T00:00:00.000Z'),
+  customAbsenceThreshold: null,
   student: {
     id,
+    groupId: null,
     studentId: `S${id}`,
-    firstName: id === 201 ? 'Needle' : 'Student',
+    firstName,
     lastName: String(id),
     year: 2,
     department: null,
@@ -39,71 +34,80 @@ const enrollmentRow = (id: number) => ({
     id: 7,
     courseCode: 'C7',
     name: 'Course 7',
+    credits: 3,
     year: 2,
     semester: 1,
+    departmentId: 4,
   },
   exemptionPeriods: [],
 });
 
-const installSharedMocks = () => {
-  (prisma.course.findMany as any) = async (args: any) => {
-    if (args?.select?.id && Object.keys(args.select).length === 1) {
-      return [{ id: 7 }];
+let capturedEnrollmentWhere: any;
+let rows: ReturnType<typeof enrollmentRow>[] = [];
+
+function installSharedMocks() {
+  (prisma.course.findMany as any) = async (args: any) =>
+    args?.select?.id && Object.keys(args.select).length === 1
+      ? [{ id: 7 }]
+      : [{ id: 7, courseCode: 'C7', name: 'Course 7', year: 2, semester: 1 }];
+  (prisma.enrollment.findMany as any) = async (args: any) => {
+    if (args.where.id?.in) {
+      const requested = new Set(args.where.id.in);
+      return rows.filter((row) => requested.has(row.id));
     }
-    return [{ id: 7, courseCode: 'C7', name: 'Course 7', year: 2, semester: 1 }];
+    capturedEnrollmentWhere = args.where;
+    return rows;
   };
-  (prisma.enrollment.findMany as any) = async (args: any) =>
-    args.where.id.in.map(enrollmentRow);
-};
+  (prisma.scheduleSlot.findMany as any) = async () => [];
+  (prisma.attendanceSession.findMany as any) = async () => [];
+  (prisma.attendance.findMany as any) = async () => rows.flatMap((row) => [
+    {
+      id: row.id * 10,
+      studentId: row.studentId,
+      courseId: 7,
+      semester: 1,
+      academicYear: 2026,
+      sessionId: null,
+      status: 'ABSENT',
+      remarks: null,
+      date: new Date('2026-09-10T00:00:00.000Z'),
+    },
+    ...Array.from({ length: 4 }, (_, index) => ({
+      id: row.id * 10 + index + 1,
+      studentId: row.studentId,
+      courseId: 7,
+      semester: 1,
+      academicYear: 2026,
+      sessionId: null,
+      status: 'PRESENT',
+      remarks: null,
+      date: new Date(`2026-09-${String(index + 11).padStart(2, '0')}T00:00:00.000Z`),
+    })),
+  ]);
+  (prisma.absenceThresholdPolicy.findMany as any) = async () => [
+    { id: 1, courseId: null, departmentId: null, maxAbsencePercent: 25 },
+  ];
+}
 
-async function testSearchFiltersTheFullScopeBeforePagination() {
-  let capturedQuery: any;
-  installSharedMocks();
-  (prisma as any).$queryRaw = async (query: any) => {
-    capturedQuery = query;
-    return [{
-      totalMonitored: 1,
-      blockedCount: 0,
-      finalWarningCount: 1,
-      firstWarningCount: 0,
-      safeCount: 0,
-      pageRows: [sqlRow(201)],
-    }];
-  };
-
+async function testSearchFiltersBeforeCalculationAndPagination() {
+  rows = [enrollmentRow(201, 'Needle')];
   const result = await AttendanceService.getStaffAbsenceWarnings(
     { role: 'SUPER_ADMIN', id: 1 },
     { page: 1, limit: 20, search: 'Needle' } as any
   );
-
-  const sql = capturedQuery.strings.join('?');
-  assert.match(sql, /ILIKE/);
-  assert.ok(
-    capturedQuery.values.some((value: unknown) =>
-      String(value).toLowerCase().includes('needle')
-    )
+  assert.equal(capturedEnrollmentWhere.OR[0].student.studentId, 'Needle');
+  assert.equal(capturedEnrollmentWhere.OR[1].course.courseCode, 'Needle');
+  assert.equal(
+    capturedEnrollmentWhere.OR[2].student.firstName.contains,
+    'Needle'
   );
-  assert.ok(sql.indexOf('ILIKE') < sql.lastIndexOf('LIMIT'));
   assert.equal(result.warningRecords[0]?.enrollmentId, 201);
   assert.equal(result.pagination.total, 1);
 }
 
-async function testExportReturnsMoreThanTheFirstPageWithFilters() {
-  let capturedQuery: any;
-  installSharedMocks();
-  (prisma as any).$queryRaw = async (query: any) => {
-    capturedQuery = query;
-    return [{
-      totalMonitored: 145,
-      blockedCount: 0,
-      finalWarningCount: 145,
-      firstWarningCount: 0,
-      safeCount: 0,
-      pageRows: Array.from({ length: 145 }, (_, index) => sqlRow(index + 1)),
-    }];
-  };
-
-  const result = await (AttendanceService as any).exportStaffAbsenceWarnings(
+async function testExportReturnsMoreThanFirstPageWithFilters() {
+  rows = Array.from({ length: 145 }, (_, index) => enrollmentRow(index + 1));
+  const result = await AttendanceService.exportStaffAbsenceWarnings(
     { role: 'SUPER_ADMIN', id: 1 },
     {
       courseId: 7,
@@ -114,46 +118,24 @@ async function testExportReturnsMoreThanTheFirstPageWithFilters() {
       endDate: '2026-09-30',
     }
   );
-
+  assert.deepEqual(capturedEnrollmentWhere.courseId.in, [7]);
+  assert.equal(capturedEnrollmentWhere.student.year, 2);
   assert.equal(result.records.length, 145);
   assert.equal(result.total, 145);
   assert.equal(result.capped, false);
   assert.equal(result.limit, 10_000);
-  assert.ok(capturedQuery.values.includes(7));
-  assert.ok(capturedQuery.values.includes(2));
-  assert.ok(capturedQuery.values.includes('FINAL_WARNING'));
-  assert.ok(capturedQuery.values.includes(10_000));
-  assert.equal(
-    capturedQuery.values.filter((value: unknown) => value instanceof Date).length,
-    2
-  );
-  assert.ok(
-    capturedQuery.values.some((value: unknown) =>
-      String(value).toLowerCase().includes('student')
-    )
-  );
 }
 
-const failures: unknown[] = [];
 try {
-  for (const test of [
-    testSearchFiltersTheFullScopeBeforePagination,
-    testExportReturnsMoreThanTheFirstPageWithFilters,
-  ]) {
-    try {
-      await test();
-    } catch (error) {
-      failures.push(error);
-    }
-  }
+  installSharedMocks();
+  await testSearchFiltersBeforeCalculationAndPagination();
+  await testExportReturnsMoreThanFirstPageWithFilters();
+  console.log('Attendance warning search/export checks passed');
 } finally {
   prisma.course.findMany = originals.courseFindMany;
   prisma.enrollment.findMany = originals.enrollmentFindMany;
-  (prisma as any).$queryRaw = originals.queryRaw;
+  prisma.scheduleSlot.findMany = originals.slotFindMany;
+  prisma.attendanceSession.findMany = originals.sessionFindMany;
+  prisma.attendance.findMany = originals.attendanceFindMany;
+  prisma.absenceThresholdPolicy.findMany = originals.policyFindMany;
 }
-
-if (failures.length > 0) {
-  throw new AggregateError(failures, 'Attendance warning search/export regressions failed');
-}
-
-console.log('Attendance warning search/export checks passed');

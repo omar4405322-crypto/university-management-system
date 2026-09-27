@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import { TimetableService } from '../services/timetable.service';
@@ -15,10 +16,16 @@ import { getAdminMutationScopeWhere } from '../utils/adminMutationScope.utils';
  */
 export const getTimetables = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { user } = req;
-  const { collegeId, departmentId, academicYear, semester, status } = req.query as Record<
+  const { collegeId, departmentId, academicYear, semester, status, page: pageParam, limit: limitParam } = req.query as Record<
     string,
     string
   >;
+  const parsedPage = Number(pageParam);
+  const parsedLimit = Number(limitParam);
+  const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+  const limit = Number.isSafeInteger(parsedLimit) && parsedLimit > 0
+    ? Math.min(parsedLimit, 100)
+    : 20;
 
   let where: any = {};
 
@@ -61,16 +68,30 @@ export const getTimetables = catchAsync(async (req: Request, res: Response, next
     }
   }
 
-  const timetables = await prisma.timetable.findMany({
-    where,
-    include: {
-      college: { select: { name: true } },
-      department: { select: { name: true } },
-    },
-    orderBy: { updatedAt: 'desc' },
-  });
+  const [timetables, total] = await Promise.all([
+    prisma.timetable.findMany({
+      where,
+      include: {
+        college: { select: { name: true } },
+        department: { select: { name: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.timetable.count({ where }),
+  ]);
 
-  res.json({ success: true, data: timetables });
+  res.json({
+    success: true,
+    data: timetables,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    },
+  });
 });
 
 /**
@@ -200,6 +221,8 @@ export const createTimetable = catchAsync(
         },
       });
 
+      await auditLog('CREATE_TIMETABLE', 'Timetable', created.id, req, { after: created }, tx);
+
       return created;
     });
 
@@ -241,6 +264,15 @@ export const updateTimetable = catchAsync(
         },
       });
 
+      await auditLog(
+        'UPDATE_TIMETABLE',
+        'Timetable',
+        id,
+        req,
+        { before: existing, after: updated },
+        tx
+      );
+
       return updated;
     });
 
@@ -267,10 +299,34 @@ export const deleteTimetable = catchAsync(
         return next(new AuthorizationError('Access denied'));
     }
 
-    await prisma.timetable.delete({
-      where: { id: parseInt(req.params.id as string) },
-    });
-    auditLog('DELETE_TIMETABLE', 'Timetable', req.params.id as string, req);
+    await prisma.$transaction(async (tx) => {
+      const evidencedSlot = await tx.scheduleSlot.findFirst({
+        where: {
+          timetableId: existing.id,
+          OR: [
+            { attendanceSessions: { some: {} } },
+            { attendances: { some: {} } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (evidencedSlot) {
+        throw new AppError(
+          'Cannot delete timetable: attendance evidence exists. Unpublish it to retain historical session requirements.',
+          409
+        );
+      }
+
+      await tx.timetable.delete({ where: { id: existing.id } });
+      await auditLog(
+        'DELETE_TIMETABLE',
+        'Timetable',
+        existing.id,
+        req,
+        { before: existing, after: null },
+        tx
+      );
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     res.json({ success: true, message: 'Timetable deleted successfully' });
   }
 );
@@ -293,12 +349,18 @@ export const publishTimetable = catchAsync(
         where: { id },
         data: { status: 'PUBLISHED' },
       });
+      await auditLog(
+        'PUBLISH_TIMETABLE',
+        'Timetable',
+        id,
+        req,
+        { before: { status: existing.status }, after: { status: updated.status } },
+        tx
+      );
       return updated;
     });
 
     await invalidateCache('dashboard:*');
-    auditLog('PUBLISH_TIMETABLE', 'Timetable', id.toString(), req);
-
     res.json({ success: true, data: timetable, message: 'Timetable published successfully' });
   }
 );
@@ -321,12 +383,18 @@ export const unpublishTimetable = catchAsync(
         where: { id },
         data: { status: 'DRAFT' },
       });
+      await auditLog(
+        'UNPUBLISH_TIMETABLE',
+        'Timetable',
+        id,
+        req,
+        { before: { status: existing.status }, after: { status: updated.status } },
+        tx
+      );
       return updated;
     });
 
     await invalidateCache('dashboard:*');
-    auditLog('UNPUBLISH_TIMETABLE', 'Timetable', id.toString(), req);
-
     res.json({ success: true, data: timetable, message: 'Timetable set to draft mode' });
   }
 );

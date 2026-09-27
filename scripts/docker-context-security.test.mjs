@@ -69,7 +69,7 @@ const sensitiveCanaries = [
   'artifacts/api-server/.env.production',
   'artifacts/api-server/private.env',
   'artifacts/api-server/src/client-secret.json',
-  'lib/db/src/secrets.yaml',
+  'lib/api-zod/src/secrets.yaml',
   'artifacts/api-server/prisma/migrations/999_canary/.env',
   'artifacts/api-server/prisma/migrations/999_canary/private.key',
   'artifacts/api-server/server_err.log',
@@ -82,7 +82,7 @@ const sensitiveCanaries = [
   'artifacts/api-server/credentials.json',
   'artifacts/api-server/service-account-prod.json',
   'artifacts/api-server/.npmrc',
-  'lib/db/.npmrc',
+  'lib/api-zod/.npmrc',
   'artifacts/api-server/.yarnrc.yml',
   'artifacts/api-server/backups/production.dump',
   'artifacts/api-server/backups/production.bak',
@@ -95,10 +95,10 @@ const sensitiveCanaries = [
   'artifacts/api-server/uploads/profiles/student.jpg',
   'artifacts/api-server/node_modules/package/index.js',
   'artifacts/api-server/dist/index.mjs',
-  'lib/db/tsconfig.tsbuildinfo',
+  'lib/api-zod/tsconfig.tsbuildinfo',
   '.git/config',
   'artifacts/api-server/.DS_Store',
-  'lib/db/Thumbs.db',
+  'lib/api-zod/Thumbs.db',
   'artifacts/api-server/.cache/tool-state.json',
   'artifacts/api-server/.local/runtime-state.json',
   'artifacts/api-server/.expo/settings.json',
@@ -112,12 +112,12 @@ const requiredBuildInputs = [
   'package.json',
   'pnpm-workspace.yaml',
   'pnpm-lock.yaml',
-  'lib/db/src/index.ts',
   'lib/api-zod/src/index.ts',
   'artifacts/api-server/src/index.ts',
   'artifacts/api-server/src/attendance/drivers/QrDriver.ts',
   'artifacts/api-server/build.mjs',
   'artifacts/api-server/package.json',
+  'artifacts/api-server/prisma.config.ts',
   'artifacts/api-server/prisma/schema.prisma',
   'artifacts/api-server/prisma/migrations/0000_baseline_existing_database/migration.sql',
   'artifacts/api-server/prisma/migrations/migration_lock.toml',
@@ -206,6 +206,7 @@ assert.equal(rules[0], '**', 'Docker build context must be default-deny');
 
 const requiredDockerCopies = [
   /COPY\s+artifacts\/api-server\/package\.json\s+\.\/artifacts\/api-server\//u,
+  /COPY\s+artifacts\/api-server\/prisma\.config\.ts\s+\.\/artifacts\/api-server\//u,
   /COPY\s+artifacts\/api-server\/src\/\s+\.\/artifacts\/api-server\/src\//u,
   /COPY\s+artifacts\/api-server\/prisma\/schema\.prisma\s+\.\/artifacts\/api-server\/prisma\//u,
   /COPY\s+artifacts\/api-server\/prisma\/migrations\/\s+\.\/artifacts\/api-server\/prisma\/migrations\//u,
@@ -230,6 +231,7 @@ assert.doesNotMatch(
 );
 
 const runnerStage = dockerfile.slice(dockerfile.indexOf('FROM node:20-alpine AS runner'));
+assert.match(runnerStage, /^ENV PORT=5000$/mu, 'The standalone container must have a safe default port');
 assert.match(runnerStage, /^RUN mkdir -p \/app\/uploads && chown node:node \/app\/uploads$/mu);
 assert.match(runnerStage, /^USER node$/mu, 'The runtime image must drop root privileges');
 assert(

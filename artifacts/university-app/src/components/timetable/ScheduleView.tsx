@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Card from '../ui/card';
-import Badge from '../ui/Badge';
+import Badge from '../ui/badge';
 import Modal from '../ui/Modal';
 import {
   MapPin,
@@ -25,7 +25,7 @@ import { EmptyState } from '../ui/EmptyState';
 const getSessionBadgeColor = (type: string) => {
   switch (type) {
     case 'LECTURE':
-      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
+      return 'bg-brand-primary-100 text-brand-primary-700 dark:bg-brand-primary-950/40 dark:text-brand-primary-300 border border-brand-primary-200 dark:border-brand-primary-800';
     case 'LAB':
       return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
     case 'SECTION':
@@ -59,11 +59,142 @@ interface SlotCellProps {
   isVisible: boolean;
   canManage: boolean;
   onAddSlot?: (day: string, time: string) => void;
-  renderEntryCard: (entry: any, isCompact?: boolean) => React.ReactNode;
+  renderEntryCard: (entry: any, isCompact?: boolean, hideTime?: boolean) => React.ReactNode;
   hasRealConflict: (entries: any[]) => boolean;
   onOpenConflictModal: (day: string, time: string, entries: any[]) => void;
-  t: any;
   isRTL: boolean;
+  role: 'STUDENT' | 'DOCTOR' | 'TA' | 'ALL';
+}
+
+interface ExactTimeGroup {
+  key: string;
+  startTime: string;
+  endTime: string;
+  entries: any[];
+}
+
+const groupEntriesByExactTime = (
+  entries: any[],
+  day: string,
+  fallbackTime = ''
+): ExactTimeGroup[] => {
+  const groups = new Map<string, ExactTimeGroup>();
+
+  entries.forEach((entry) => {
+    const dateKey = entry.date || entry.scheduleDate || entry.weekDate || day;
+    const startTime = entry.startTime || fallbackTime;
+    const endTime = entry.endTime || '';
+    const key = `${dateKey}|${startTime}|${endTime}`;
+    const existing = groups.get(key);
+
+    if (existing) {
+      existing.entries.push(entry);
+    } else {
+      groups.set(key, { key, startTime, endTime, entries: [entry] });
+    }
+  });
+
+  return Array.from(groups.values());
+};
+
+const getCompactInstructorName = (entry: any, role: SlotCellProps['role']) => {
+  if (role === 'TA') {
+    if (entry.teachingAssistant) {
+      return `${entry.teachingAssistant.firstName || ''} ${entry.teachingAssistant.lastName || ''}`.trim();
+    }
+    return entry.teachingAssistantName || '';
+  }
+
+  if (entry.doctor) {
+    return `${entry.doctor.firstName || ''} ${entry.doctor.lastName || ''}`.trim();
+  }
+  return entry.doctorName?.replace(/^(Dr\.|د\.)\s*/i, '').trim() || '';
+};
+
+function CompactLectureItem({ entry, role }: { entry: any; role: SlotCellProps['role'] }) {
+  const instructor = getCompactInstructorName(entry, role);
+  const courseName = entry.course?.name || entry.courseName || '—';
+  const courseCode = entry.course?.courseCode || entry.courseCode;
+
+  return (
+    <div className="min-w-0 rounded-xl border border-brand-primary-200/70 bg-white/80 px-2.5 py-2 text-start dark:border-brand-primary-800/50 dark:bg-brand-navy-900/35">
+      <div className="flex min-w-0 items-baseline gap-1.5">
+        <span className="min-w-0 flex-1 truncate text-[11px] font-black text-brand-text-primary" title={courseName}>
+          {courseName}
+        </span>
+        {courseCode ? (
+          <span dir="ltr" className="shrink-0 rounded bg-brand-primary-500/10 px-1.5 py-0.5 font-mono text-[9px] font-black text-brand-primary-700 dark:text-brand-primary-300">
+            {courseCode}
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-1 flex min-w-0 items-center gap-1 text-[9px] font-semibold text-brand-text-secondary">
+        {instructor ? <span className="min-w-0 truncate" title={instructor}>{instructor}</span> : null}
+        {instructor && entry.room ? <span aria-hidden="true">•</span> : null}
+        {entry.room ? <span className="shrink-0 font-mono">{entry.room}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function ConcurrentLectureGroup({
+  group,
+  role,
+  isConflicted,
+  onOpen,
+  isRTL,
+}: {
+  group: ExactTimeGroup;
+  role: SlotCellProps['role'];
+  isConflicted: boolean;
+  onOpen: () => void;
+  isRTL: boolean;
+}) {
+  const count = group.entries.length;
+  const visibleEntries = group.entries.slice(0, 2);
+  const remaining = count - visibleEntries.length;
+  const accessibleLabel = isRTL
+    ? `${count} محاضرات متزامنة من الساعة ${group.startTime} إلى ${group.endTime}`
+    : `${count} concurrent lectures from ${group.startTime} to ${group.endTime}`;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={accessibleLabel}
+      className={`w-full rounded-2xl border p-2.5 text-start shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand-primary-500/40 ${
+        isConflicted
+          ? 'border-rose-300 bg-rose-50/70 dark:border-rose-800 dark:bg-rose-950/25'
+          : 'border-brand-primary-300/80 bg-brand-primary-50/70 dark:border-brand-primary-800/70 dark:bg-brand-primary-950/25'
+      }`}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span dir="ltr" className="whitespace-nowrap font-mono text-[10px] font-black text-brand-text-primary">
+          <TimeRange start={group.startTime} end={group.endTime} />
+        </span>
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[9px] font-black ${
+          isConflicted
+            ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300'
+            : 'bg-brand-primary-500/12 text-brand-primary-700 dark:text-brand-primary-300'
+        }`}>
+          {isConflicted ? <AlertTriangle size={10} /> : <Layers size={10} />}
+          {isRTL ? `${count} متزامنة` : `${count} concurrent`}
+        </span>
+      </div>
+
+      <div className="space-y-1.5">
+        {visibleEntries.map((entry, index) => (
+          <CompactLectureItem key={entry.id || `${group.key}-${index}`} entry={entry} role={role} />
+        ))}
+      </div>
+
+      {remaining > 0 ? (
+        <div className="mt-2 flex min-h-8 items-center justify-center rounded-xl border border-dashed border-brand-primary-300/80 bg-white/55 px-2 text-[10px] font-black text-brand-primary-700 dark:border-brand-primary-800 dark:bg-brand-navy-900/30 dark:text-brand-primary-300">
+          {isRTL ? `+ ${remaining} محاضرات أخرى` : `+ ${remaining} more lectures`}
+        </div>
+      ) : null}
+    </button>
+  );
 }
 
 function SlotCell({
@@ -77,15 +208,13 @@ function SlotCell({
   renderEntryCard,
   hasRealConflict,
   onOpenConflictModal,
-  t,
   isRTL,
+  role,
 }: SlotCellProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const safeIndex = currentIndex < entries.length ? currentIndex : 0;
-  const isMulti = entries.length > 1;
-  const isConflicted = hasRealConflict(entries);
-  const currentEntry = entries[safeIndex];
+  const exactTimeGroups = useMemo(
+    () => groupEntriesByExactTime(entries, day, time),
+    [day, entries, time]
+  );
 
   return (
     <td
@@ -103,101 +232,27 @@ function SlotCell({
               onClick={() => onAddSlot?.(day, time)}
               className="absolute inset-1 m-1 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex items-center justify-center text-slate-400 
               opacity-100 hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-brand-primary-400 hover:text-brand-primary-500
-              [@media(hover:hover)and(pointer:fine)]:opacity-0 [@media(hover:hover)and(pointer:fine)]:group-hover/cell:opacity-100 transition-all duration-200"
+              [@media(hover:hover)_and_(pointer:fine)]:opacity-0 [@media(hover:hover)_and_(pointer:fine)]:group-hover/cell:opacity-100 transition-all duration-200"
             >
               <Plus size={20} />
             </button>
           )}
         </>
       ) : (
-        <div className="space-y-1.5 flex flex-col h-full justify-between">
-          {/* Multi-Session Navigator Bar */}
-          {isMulti && (
-            <div className="flex items-center justify-between gap-1 px-2 py-1 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 text-[10px] font-bold shadow-2xs">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentIndex((prev) => (prev > 0 ? prev - 1 : entries.length - 1));
-                }}
-                className="w-5 h-5 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all cursor-pointer shadow-2xs"
-                title={isRTL ? 'المحاضرة السابقة' : 'Previous session'}
-              >
-                {isRTL ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
-              </button>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenConflictModal(day, time, entries);
-                }}
-                className={`flex items-center gap-1 px-1.5 py-0.5 rounded-lg font-black text-[10px] transition-all hover:opacity-80 cursor-pointer ${
-                  isConflicted
-                    ? 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50'
-                    : 'text-brand-primary-600 dark:text-brand-primary-400 bg-brand-primary-50 dark:bg-brand-primary-950/50'
-                }`}
-                title={isRTL ? 'انقر لعرض القائمة الشاملة' : 'Click to view full list'}
-              >
-                {isConflicted ? (
-                  <AlertTriangle size={11} className="shrink-0 text-rose-500" />
-                ) : (
-                  <Layers size={11} className="shrink-0 text-brand-primary-500" />
-                )}
-                <span>
-                  {safeIndex + 1} / {entries.length}
-                </span>
-                <span className="text-[9px] font-semibold opacity-75 ms-0.5">
-                  {isConflicted ? (isRTL ? 'تعارض' : 'Conflict') : (isRTL ? 'متزامنة' : 'Parallel')}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentIndex((prev) => (prev < entries.length - 1 ? prev + 1 : 0));
-                }}
-                className="w-5 h-5 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all cursor-pointer shadow-2xs"
-                title={isRTL ? 'المحاضرة التالية' : 'Next session'}
-              >
-                {isRTL ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
-              </button>
-            </div>
-          )}
-
-          {/* Conflict Alert Banner if non-multi collision */}
-          {isConflicted && !isMulti && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-rose-500/15 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700/60 font-bold text-[10px] shadow-2xs">
-              <AlertTriangle size={11} className="shrink-0 text-rose-500" />
-              <span className="truncate">{t('schedule.conflictsDetected', 'Conflict Detected')}</span>
-            </div>
-          )}
-
-          {/* Active Card */}
-          <div key={currentEntry?.id || `${day}_${time}_${safeIndex}`} className="animate-in fade-in duration-150 flex-1">
-            {renderEntryCard(currentEntry, isMulti)}
-          </div>
-
-          {/* Dot Pagination indicators if <= 6 sessions */}
-          {isMulti && entries.length <= 6 && (
-            <div className="flex items-center justify-center gap-1 pt-0.5">
-              {entries.map((_, dotIdx) => (
-                <button
-                  key={dotIdx}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentIndex(dotIdx);
-                  }}
-                  className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                    dotIdx === safeIndex
-                      ? 'w-3.5 bg-brand-primary-500'
-                      : 'w-1.5 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400'
-                  }`}
-                />
-              ))}
-            </div>
+        <div className="space-y-2">
+          {exactTimeGroups.map((group) =>
+            group.entries.length === 1 ? (
+              <React.Fragment key={group.key}>{renderEntryCard(group.entries[0], false)}</React.Fragment>
+            ) : (
+              <ConcurrentLectureGroup
+                key={group.key}
+                group={group}
+                role={role}
+                isConflicted={hasRealConflict(group.entries)}
+                onOpen={() => onOpenConflictModal(day, group.startTime, group.entries)}
+                isRTL={isRTL}
+              />
+            )
           )}
         </div>
       )}
@@ -232,6 +287,7 @@ export function ScheduleView({
   const [activeConflictData, setActiveConflictData] = useState<{
     day: string;
     time: string;
+    endTime: string;
     entries: any[];
     isConflicted: boolean;
   } | null>(null);
@@ -287,7 +343,13 @@ export function ScheduleView({
   // Open Multi-Session / Conflict Detail Modal
   const handleOpenConflictModal = (day: string, time: string, entries: any[]) => {
     const isConflicted = hasRealConflict(entries);
-    setActiveConflictData({ day, time, entries, isConflicted });
+    setActiveConflictData({
+      day,
+      time: entries[0]?.startTime || time,
+      endTime: entries[0]?.endTime || '',
+      entries,
+      isConflicted,
+    });
     setConflictModalOpen(true);
   };
 
@@ -301,6 +363,11 @@ export function ScheduleView({
   }, [selectedIndex, days.length]);
 
   const visibleDays = days.slice(visibleStartIndex, visibleStartIndex + 3);
+
+  const mobileExactTimeGroups = useMemo(
+    () => groupEntriesByExactTime(timetable?.[selectedDay] || [], selectedDay),
+    [selectedDay, timetable]
+  );
 
   const handlePrevTablet = () => {
     const newIndex = Math.max(selectedIndex - 3, 0);
@@ -346,13 +413,13 @@ export function ScheduleView({
   };
 
   // Render a Single Clean Session Card
-  const renderEntryCard = (entry: any, isCompact = false) => {
+  const renderEntryCard = (entry: any, isCompact = false, hideTime = false) => {
     const isLecture = entry.slotType === 'LECTURE';
     const isLab = entry.slotType === 'LAB';
     const docName = getDoctorName(entry);
 
     const cardBgClass = isLecture
-      ? 'bg-blue-50/80 dark:bg-blue-950/30 border-s-blue-500 border-blue-200/70 dark:border-blue-900/40 text-blue-900 dark:text-blue-100'
+      ? 'bg-brand-primary-50/80 dark:bg-brand-primary-950/30 border-s-brand-primary-500 border-brand-primary-200/70 dark:border-brand-primary-900/40 text-brand-primary-900 dark:text-brand-primary-100'
       : isLab
       ? 'bg-amber-50/80 dark:bg-amber-950/30 border-s-amber-500 border-amber-200/70 dark:border-amber-900/40 text-amber-900 dark:text-amber-100'
       : 'bg-purple-50/80 dark:bg-purple-950/30 border-s-purple-500 border-purple-200/70 dark:border-purple-900/40 text-purple-900 dark:text-purple-100';
@@ -367,8 +434,8 @@ export function ScheduleView({
           canManage ? 'cursor-pointer' : ''
         }`}
       >
-        <div className="flex justify-between items-center gap-1 mb-1.5">
-          <div className="flex items-center gap-1 flex-wrap">
+        <div className={`flex items-center gap-1 mb-1.5 ${hideTime ? 'justify-end' : 'justify-between'}`}>
+          {!hideTime ? <div className="flex items-center gap-1 flex-wrap">
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 dark:bg-slate-800/90 shadow-xs border border-slate-200/60 dark:border-slate-700/60 text-slate-700 dark:text-slate-200 backdrop-blur-xs">
               <TimeRange start={entry.startTime} end={entry.endTime} />
             </span>
@@ -377,7 +444,7 @@ export function ScheduleView({
                 {t('schedule.temporaryChange', 'Temporary')}
               </span>
             )}
-          </div>
+          </div> : null}
           {entry.slotType && (
             <span
               className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${getSessionBadgeColor(
@@ -662,8 +729,8 @@ export function ScheduleView({
                                   renderEntryCard={renderEntryCard}
                                   hasRealConflict={hasRealConflict}
                                   onOpenConflictModal={handleOpenConflictModal}
-                                  t={t}
                                   isRTL={isRTL}
+                                  role={role}
                                 />
                               );
                             })}
@@ -681,11 +748,22 @@ export function ScheduleView({
             <p className="text-[10px] font-black uppercase text-brand-text-muted text-center tracking-widest animate-pulse">
               {t('schedule.swipeHint', 'Swipe to see other days')}
             </p>
-            {times.flatMap((time) => getEntriesForTimeSlot(selectedDay, time)).length > 0 ? (
+            {mobileExactTimeGroups.length > 0 ? (
               <div className="space-y-3">
-                {times
-                  .flatMap((time) => getEntriesForTimeSlot(selectedDay, time))
-                  .map((entry) => renderEntryCard(entry, false))}
+                {mobileExactTimeGroups.map((group) =>
+                  group.entries.length === 1 ? (
+                    <React.Fragment key={group.key}>{renderEntryCard(group.entries[0], false)}</React.Fragment>
+                  ) : (
+                    <ConcurrentLectureGroup
+                      key={group.key}
+                      group={group}
+                      role={role}
+                      isConflicted={hasRealConflict(group.entries)}
+                      onOpen={() => handleOpenConflictModal(selectedDay, group.startTime, group.entries)}
+                      isRTL={isRTL}
+                    />
+                  )
+                )}
               </div>
             ) : (
               <EmptyState
@@ -702,21 +780,23 @@ export function ScheduleView({
       <Modal
         isOpen={conflictModalOpen}
         onClose={() => setConflictModalOpen(false)}
-        title={`${
-          activeConflictData?.isConflicted
-            ? isRTL
-              ? 'تعارض في المواعيد'
-              : t('schedule.conflictModalTitle', 'Schedule Conflict')
-            : isRTL
-            ? 'المحاضرات المتزامنة في هذا الموعد'
-            : 'Parallel Sessions'
-        }: ${
-          activeConflictData
-            ? `${t(`days.${activeConflictData.day.toLowerCase()}`, activeConflictData.day)} (${formatTime(
-                activeConflictData.time
-              )})`
-            : ''
-        }`}
+        size="lg"
+        title={activeConflictData?.isConflicted
+          ? (isRTL ? 'تعارض في المواعيد' : t('schedule.conflictModalTitle', 'Schedule Conflict'))
+          : (isRTL ? 'المحاضرات المتزامنة' : 'Concurrent Lectures')}
+        subtitle={activeConflictData ? (
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span>{t(`days.${activeConflictData.day.toLowerCase()}`, activeConflictData.day)}</span>
+            <span aria-hidden="true">•</span>
+            <span dir="ltr"><TimeRange start={activeConflictData.time} end={activeConflictData.endTime} /></span>
+            <span aria-hidden="true">•</span>
+            <span>
+              {isRTL
+                ? `${activeConflictData.entries.length} محاضرة في نفس الموعد`
+                : `${activeConflictData.entries.length} lectures at the same time`}
+            </span>
+          </span>
+        ) : undefined}
       >
         <div className="space-y-4">
           {activeConflictData?.isConflicted ? (
@@ -739,15 +819,15 @@ export function ScheduleView({
             </div>
           )}
 
-          <div className="space-y-2.5 max-h-[60vh] overflow-y-auto custom-scrollbar p-1">
+          <div className="grid grid-cols-1 gap-3 p-1 sm:grid-cols-2">
             {activeConflictData?.entries.map((entry, idx) => (
               <div key={entry.id || idx} className="relative">
-                {renderEntryCard(entry, false)}
+                {renderEntryCard(entry, false, true)}
               </div>
             ))}
           </div>
 
-          <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="sticky bottom-0 flex justify-end border-t border-brand-border bg-brand-bg-elevated/95 pt-3 backdrop-blur-sm">
             <button
               type="button"
               onClick={() => setConflictModalOpen(false)}

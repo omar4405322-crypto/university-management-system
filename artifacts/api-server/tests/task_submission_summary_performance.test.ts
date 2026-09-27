@@ -21,22 +21,26 @@ const student = {
 };
 
 try {
+  let taskFindUniqueQuery: any;
   const enrollmentFindManyQueries: any[] = [];
   const submissionCountQueries: any[] = [];
   const submissionFindManyQueries: any[] = [];
 
-  (prisma.task.findUnique as any) = async () => ({
-    id: 10,
-    doctorId: 5,
-    dueDate,
-    course: {
-      id: 7,
-      name: 'Course 7',
-      year: 2,
-      departmentId: 3,
-      department: { id: 3, collegeId: 2 },
-    },
-  });
+  (prisma.task.findUnique as any) = async (args: any) => {
+    taskFindUniqueQuery = args;
+    return ({
+      id: 10,
+      doctorId: 5,
+      dueDate,
+      course: {
+        id: 7,
+        name: 'Course 7',
+        year: 2,
+        departmentId: 3,
+        department: { id: 3, collegeId: 2 },
+      },
+    });
+  };
   (prisma.enrollment.count as any) = async () => 250;
   (prisma.enrollment.findMany as any) = async (args: any) => {
     enrollmentFindManyQueries.push(args);
@@ -79,6 +83,13 @@ try {
     10,
     { status: 'ALL', page: 1, limit: 25 }
   );
+
+  assert.equal(
+    taskFindUniqueQuery.include.course.include,
+    undefined,
+    'course selection must not combine include and select at the same relation level'
+  );
+  assert.equal(taskFindUniqueQuery.include.course.select.department, true);
 
   assert.equal(result.summary.late, 1);
   assert.equal(

@@ -1,21 +1,27 @@
-// @ts-nocheck
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useTeachingAssistants } from '../../hooks/useTeachingAssistants';
-import teachingAssistantsService from '../../services/teachingAssistants.service';
-import AddTAModal from './AddTAModal';
-import EditTAModal from './EditTAModal';
-import AssignDoctorModal from './AssignDoctorModal';
-import AssignTACourseModal from './AssignTACourseModal';
-import { PageHeader } from '../../components/ui/PageHeader';
-import Card, { StatCard } from '../../components/ui/card';
-import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody, ActionMenu } from '../../components/ui/Table';
-import Pagination from '../../components/ui/pagination';
-import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
-import Button from '../../components/ui/button';
-import { downloadCsv } from '../../utils/exportCsv';
-import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../context/AuthContext';
-import useScope from '../../hooks/useScope';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useTeachingAssistants } from "../../hooks/useTeachingAssistants";
+import teachingAssistantsService from "../../services/teachingAssistants.service";
+import AddTAModal from "./AddTAModal";
+import EditTAModal from "./EditTAModal";
+import AssignDoctorModal from "./AssignDoctorModal";
+import AssignTACourseModal from "./AssignTACourseModal";
+import { PageHeader } from "../../components/ui/PageHeader";
+import Card, { StatCard } from "../../components/ui/card";
+import Table, {
+  TableRow,
+  TableCell,
+  TableHeader,
+  TableHead,
+  TableBody,
+  ActionMenu,
+} from "../../components/ui/table";
+import Pagination from "../../components/ui/pagination";
+import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
+import Button from "../../components/ui/button";
+import { downloadCsv } from "../../utils/exportCsv";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "../../context/AuthContext";
+import useScope from "../../hooks/useScope";
 import {
   Users,
   Briefcase,
@@ -32,21 +38,31 @@ import {
   Calendar,
   X,
   BookOpen,
-} from 'lucide-react';
-import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
-import { useNavigate } from 'react-router-dom';
-import { logger } from '../../lib/logger';
-import { useToast } from '../../context/ToastContext';
-import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
+} from "lucide-react";
+import ResetPasswordModal from "../../components/ui/ResetPasswordModal";
+import { useNavigate } from "react-router-dom";
+import { logger } from "../../lib/logger";
+import { useToast } from "../../context/ToastContext";
+import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
 
 const TeachingAssistantsList = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { scopeParams } = useScope();
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const [pageSize, setPageSize] = useState(10);
-  const { data: tas, loading, error, search, setSearch, page, setPage, total, refetch } = useTeachingAssistants({
+  const {
+    data: tas,
+    loading,
+    error,
+    search,
+    setSearch,
+    page,
+    setPage,
+    total,
+    refetch,
+  } = useTeachingAssistants({
     limit: pageSize,
   });
   const limit = pageSize;
@@ -60,37 +76,37 @@ const TeachingAssistantsList = () => {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isAssignCourseModalOpen, setIsAssignCourseModalOpen] = useState(false);
   const [assignCourseTA, setAssignCourseTA] = useState<any>(null);
-  const [selectedTA, setSelectedTA] = useState(null);
-  const [resetPasswordTA, setResetPasswordTA] = useState(null);
+  const [selectedTA, setSelectedTA] = useState<any>(null);
+  const [resetPasswordTA, setResetPasswordTA] = useState<any>(null);
   const { showToast } = useToast();
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
 
   useEffect(() => {
-    const mainEl = document.querySelector('main');
+    const mainEl = document.querySelector("main");
     if (mainEl) {
-      mainEl.classList.add('bg-slate-50', 'dark:bg-slate-900');
+      mainEl.classList.add("bg-slate-50", "dark:bg-slate-900");
     }
     return () => {
       if (mainEl) {
-        mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
+        mainEl.classList.remove("bg-slate-50", "dark:bg-slate-900");
       }
     };
   }, []);
 
-  const isRTL = i18n.language === 'ar';
+  const isRTL = i18n.language === "ar";
 
   const filteredTAs = useMemo(() => {
     const list = Array.isArray(tas) ? tas : [];
     return list.filter((ta) => {
-      if (statusFilter === 'all') return true;
-      if (statusFilter === 'active') return ta.status === 'ACTIVE';
-      if (statusFilter === 'inactive') return ta.status === 'INACTIVE';
-      if (statusFilter === 'onleave') return ta.status === 'ON_LEAVE';
+      if (statusFilter === "all") return true;
+      if (statusFilter === "active") return ta.status === "ACTIVE";
+      if (statusFilter === "inactive") return ta.status === "INACTIVE";
+      if (statusFilter === "onleave") return ta.status === "ON_LEAVE";
       return true;
     });
   }, [tas, statusFilter]);
@@ -105,23 +121,31 @@ const TeachingAssistantsList = () => {
 
   const handleSelectOne = (id: string | number) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
   const handleBulkClear = () => setSelectedIds([]);
 
   const handleBulkExport = () => {
-    const selectedList = filteredTAs.filter((ta: any) => selectedIds.includes(ta.id));
+    const selectedList = filteredTAs.filter((ta: any) =>
+      selectedIds.includes(ta.id),
+    );
     const exportData = selectedList.map((ta: any) => ({
       EmployeeID: ta.employeeId,
-      Specialization: ta.specialization || 'N/A',
-      Department: ta.department?.name || 'N/A',
-      Email: ta.user?.email || 'N/A',
+      Specialization: ta.specialization || "N/A",
+      Department: ta.department?.name || "N/A",
+      Email: ta.user?.email || "N/A",
       Status: ta.status,
     }));
-    downloadCsv(exportData, `teaching_assistants_selected_${new Date().toISOString().split('T')[0]}.csv`);
-    showToast(isRTL ? 'تم تصدير المعيدين المحددين' : 'Exported selected records', 'success');
+    downloadCsv(
+      exportData,
+      `teaching_assistants_selected_${new Date().toISOString().split("T")[0]}.csv`,
+    );
+    showToast(
+      isRTL ? "تم تصدير المعيدين المحددين" : "Exported selected records",
+      "success",
+    );
   };
 
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
@@ -136,24 +160,44 @@ const TeachingAssistantsList = () => {
     try {
       setBulkDeleteLoading(true);
       for (const id of selectedIds) {
-        await teachingAssistantsService.deleteTeachingAssistant(id);
+        await teachingAssistantsService.deleteTeachingAssistant(String(id));
       }
-      showToast(isRTL ? 'تم حذف المعيدين المحددين' : 'Deleted selected teaching assistants', 'success');
+      showToast(
+        isRTL
+          ? "تم حذف المعيدين المحددين"
+          : "Deleted selected teaching assistants",
+        "success",
+      );
       setSelectedIds([]);
       fetchTAs();
       fetchStats();
       setIsBulkDeleteModalOpen(false);
     } catch (_err: any) {
-      showToast(t('common.error'), 'error');
+      showToast(t("common.error"), "error");
     } finally {
       setBulkDeleteLoading(false);
     }
   };
 
   const [stats, setStats] = useState([
-    { label: t('teachingAssistants.totalTAs'), value: '0', icon: Users, bgClass: 'bg-brand-primary-500/10 text-brand-primary-500' },
-    { label: t('teachingAssistants.activeTAs'), value: '0', icon: UserCheck, bgClass: 'bg-green-500/10 text-green-500' },
-    { label: t('teachingAssistants.onLeaveTAs'), value: '0', icon: Briefcase, bgClass: 'bg-amber-500/10 text-amber-500' },
+    {
+      label: t("teachingAssistants.totalTAs"),
+      value: "0",
+      icon: Users,
+      bgClass: "bg-brand-primary-500/10 text-brand-primary-500",
+    },
+    {
+      label: t("teachingAssistants.activeTAs"),
+      value: "0",
+      icon: UserCheck,
+      bgClass: "bg-green-500/10 text-green-500",
+    },
+    {
+      label: t("teachingAssistants.onLeaveTAs"),
+      value: "0",
+      icon: Briefcase,
+      bgClass: "bg-amber-500/10 text-amber-500",
+    },
   ]);
 
   const fetchStats = useCallback(async () => {
@@ -163,27 +207,27 @@ const TeachingAssistantsList = () => {
         const d = result.data;
         setStats([
           {
-            label: t('teachingAssistants.totalTAs'),
+            label: t("teachingAssistants.totalTAs"),
             value: (d.totalTAs ?? 0).toLocaleString(),
             icon: Users,
-            bgClass: 'bg-brand-primary-500/10 text-brand-primary-500',
+            bgClass: "bg-brand-primary-500/10 text-brand-primary-500",
           },
           {
-            label: t('teachingAssistants.activeTAs'),
+            label: t("teachingAssistants.activeTAs"),
             value: (d.activeTAs ?? 0).toLocaleString(),
             icon: UserCheck,
-            bgClass: 'bg-green-500/10 text-green-500',
+            bgClass: "bg-green-500/10 text-green-500",
           },
           {
-            label: t('teachingAssistants.onLeaveTAs'),
+            label: t("teachingAssistants.onLeaveTAs"),
             value: (d.onLeaveTAs ?? 0).toLocaleString(),
             icon: Briefcase,
-            bgClass: 'bg-amber-500/10 text-amber-500',
+            bgClass: "bg-amber-500/10 text-amber-500",
           },
         ]);
       }
     } catch (error: any) {
-      logger.error('Error fetching TA stats:', error);
+      logger.error("Error fetching TA stats:", error);
     }
   }, [t]);
 
@@ -194,20 +238,28 @@ const TeachingAssistantsList = () => {
   const handleExportCsv = useCallback(async () => {
     try {
       setExporting(true);
-      const result = await teachingAssistantsService.getTeachingAssistants({ search: debouncedSearch, page: 1, limit: 5000 });
+      const result = await teachingAssistantsService.getTeachingAssistants({
+        search: debouncedSearch,
+        page: 1,
+        limit: 5000,
+      });
       const list = result.data?.teachingAssistants || [];
       downloadCsv(
         `teaching-assistants-${new Date().toISOString().slice(0, 10)}.csv`,
-        [t('teachingAssistants.employeeId'), t('teachingAssistants.specialization'), t('auth.email')],
+        [
+          t("teachingAssistants.employeeId"),
+          t("teachingAssistants.specialization"),
+          t("auth.email"),
+        ],
         list.map((ta: any) => [
           ta.employeeId,
-          ta.specialization || '',
-          ta.user?.email || '',
-        ])
+          ta.specialization || "",
+          ta.user?.email || "",
+        ]),
       );
-      showToast(t('common.exportSuccess'), 'success');
+      showToast(t("common.exportSuccess"), "success");
     } catch {
-      showToast(t('common.exportError'), 'error');
+      showToast(t("common.exportError"), "error");
     } finally {
       setExporting(false);
     }
@@ -217,15 +269,20 @@ const TeachingAssistantsList = () => {
     if (!deleteTarget) return;
     try {
       setDeleteLoading(true);
-      const result = await teachingAssistantsService.deleteTeachingAssistant(deleteTarget.id);
+      const result = await teachingAssistantsService.deleteTeachingAssistant(
+        String(deleteTarget.id),
+      );
       if (result.success) {
-        showToast(t('teachingAssistants.deleteSuccess'), 'success');
+        showToast(t("teachingAssistants.deleteSuccess"), "success");
         setDeleteTarget(null);
         fetchTAs();
         fetchStats();
       }
     } catch (error: any) {
-      showToast(error.response?.data?.message || t('teachingAssistants.deleteError'), 'error');
+      showToast(
+        error.response?.data?.message || t("teachingAssistants.deleteError"),
+        "error",
+      );
     } finally {
       setDeleteLoading(false);
     }
@@ -244,13 +301,14 @@ const TeachingAssistantsList = () => {
   return (
     <div className="pt-6 section-gap animate-in fade-in duration-700">
       <PageHeader
-        title={t('teachingAssistants.title')}
-        subtitle={t('teachingAssistants.subtitle')}
+        title={t("teachingAssistants.title")}
+        subtitle={t("teachingAssistants.subtitle")}
         action={{
-          label: t('teachingAssistants.addTA'),
+          label: t("teachingAssistants.addTA"),
           onClick: () => setIsAddModalOpen(true),
           icon: Plus,
-          className: "bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2"
+          className:
+            "bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2",
         }}
       />
 
@@ -260,7 +318,7 @@ const TeachingAssistantsList = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         <StatCard
           compact
-          title={t('teachingAssistants.totalTAs', 'Total TAs')}
+          title={t("teachingAssistants.totalTAs", "Total TAs")}
           value={stats[0]?.value || (tas || []).length}
           icon={Users}
           color="primary"
@@ -268,24 +326,34 @@ const TeachingAssistantsList = () => {
 
         <StatCard
           compact
-          title={t('teachingAssistants.activeTAs', 'Active TAs')}
-          value={stats[1]?.value || (tas || []).filter((ta: any) => ta.status === 'ACTIVE' || !ta.status).length}
+          title={t("teachingAssistants.activeTAs", "Active TAs")}
+          value={
+            stats[1]?.value ||
+            (tas || []).filter(
+              (ta: any) => ta.status === "ACTIVE" || !ta.status,
+            ).length
+          }
           icon={UserCheck}
           color="emerald"
         />
 
         <StatCard
           compact
-          title={t('teachingAssistants.onLeaveTAs', 'On Leave')}
-          value={stats[2]?.value || (tas || []).filter((ta: any) => ta.status === 'ON_LEAVE').length}
+          title={t("teachingAssistants.onLeaveTAs", "On Leave")}
+          value={
+            stats[2]?.value ||
+            (tas || []).filter((ta: any) => ta.status === "ON_LEAVE").length
+          }
           icon={Briefcase}
           color="amber"
         />
 
         <StatCard
           compact
-          title={isRTL ? 'غير نشط' : 'Inactive'}
-          value={(tas || []).filter((ta: any) => ta.status === 'INACTIVE').length}
+          title={isRTL ? "غير نشط" : "Inactive"}
+          value={
+            (tas || []).filter((ta: any) => ta.status === "INACTIVE").length
+          }
           icon={GraduationCap}
           color="rose"
         />
@@ -297,7 +365,10 @@ const TeachingAssistantsList = () => {
       <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-4">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search
+            size={14}
+            className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
           <input
             type="text"
             value={search}
@@ -305,13 +376,16 @@ const TeachingAssistantsList = () => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder={t('teachingAssistants.searchPlaceholder', 'Search by name, email, or department...')}
+            placeholder={t(
+              "teachingAssistants.searchPlaceholder",
+              "Search by name, email, or department...",
+            )}
             className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
           />
           {search && (
             <button
               onClick={() => {
-                setSearch('');
+                setSearch("");
                 setPage(1);
               }}
               className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
@@ -327,26 +401,34 @@ const TeachingAssistantsList = () => {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
-          <option value="all">{t('teachingAssistants.filterAll', 'All Statuses')}</option>
-          <option value="active">{t('teachingAssistants.filterActive', 'Active')}</option>
-          <option value="onleave">{t('teachingAssistants.filterOnLeave', 'On Leave')}</option>
-          <option value="inactive">{t('teachingAssistants.filterInactive', 'Inactive')}</option>
+          <option value="all">
+            {t("teachingAssistants.filterAll", "All Statuses")}
+          </option>
+          <option value="active">
+            {t("teachingAssistants.filterActive", "Active")}
+          </option>
+          <option value="onleave">
+            {t("teachingAssistants.filterOnLeave", "On Leave")}
+          </option>
+          <option value="inactive">
+            {t("teachingAssistants.filterInactive", "Inactive")}
+          </option>
         </select>
 
         {/* Clear Filters */}
-        {(search || statusFilter !== 'all') && (
+        {(search || statusFilter !== "all") && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
-              setSearch('');
-              setStatusFilter('all');
+              setSearch("");
+              setStatusFilter("all");
               setPage(1);
             }}
             className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
           >
             <X size={13} className="me-1" />
-            {isRTL ? 'مسح' : 'Clear'}
+            {isRTL ? "مسح" : "Clear"}
           </Button>
         )}
 
@@ -359,7 +441,11 @@ const TeachingAssistantsList = () => {
           className="h-8.5 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer shadow-2xs ms-auto"
         >
           <Download size={13} className="text-slate-500" />
-          <span>{exporting ? t('common.loading') : t('teachingAssistants.exportCsv', 'Export CSV')}</span>
+          <span>
+            {exporting
+              ? t("common.loading")
+              : t("teachingAssistants.exportCsv", "Export CSV")}
+          </span>
         </Button>
       </div>
 
@@ -367,9 +453,11 @@ const TeachingAssistantsList = () => {
       <div className="min-h-0">
         {error ? (
           <div className="p-8">
-            <div className="text-center text-red-500 font-medium mb-4">{error}</div>
+            <div className="text-center text-red-500 font-medium mb-4">
+              {error}
+            </div>
             <div className="flex justify-center">
-              <Button onClick={fetchTAs}>{t('common.retry')}</Button>
+              <Button onClick={() => fetchTAs()}>{t("common.retry")}</Button>
             </div>
           </div>
         ) : filteredTAs.length === 0 ? (
@@ -378,10 +466,10 @@ const TeachingAssistantsList = () => {
               <GraduationCap className="w-10 h-10 text-brand-primary-500" />
             </div>
             <h3 className="text-lg font-bold text-brand-text-primary dark:text-white mb-1">
-              {t('teachingAssistants.noTAs')}
+              {t("teachingAssistants.noTAs")}
             </h3>
             <p className="text-sm text-brand-text-secondary dark:text-slate-400 mb-6">
-              {t('teachingAssistants.noTAsDesc')}
+              {t("teachingAssistants.noTAsDesc")}
             </p>
           </div>
         ) : (
@@ -394,56 +482,79 @@ const TeachingAssistantsList = () => {
                       <input
                         type="checkbox"
                         className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
-                        checked={filteredTAs.length > 0 && selectedIds.length === filteredTAs.length}
+                        checked={
+                          filteredTAs.length > 0 &&
+                          selectedIds.length === filteredTAs.length
+                        }
                         onChange={handleSelectAll}
-                        title={isRTL ? 'تحديد الكل' : 'Select All'}
+                        title={isRTL ? "تحديد الكل" : "Select All"}
                       />
                     </TableHead>
                     <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {t('teachingAssistants.colTA')}
+                      {t("teachingAssistants.colTA")}
                     </TableHead>
-                    <TableHead hideOnMobile className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {t('teachingAssistants.colDepartment')}
+                    <TableHead
+                      hideOnMobile
+                      className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      {t("teachingAssistants.colDepartment")}
                     </TableHead>
-                    <TableHead hideOnMobile className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {t('teachingAssistants.colEmail')}
+                    <TableHead
+                      hideOnMobile
+                      className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      {t("teachingAssistants.colEmail")}
                     </TableHead>
-                    <TableHead hideOnMobile className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {t('teachingAssistants.colDoctors')}
+                    <TableHead
+                      hideOnMobile
+                      className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      {t("teachingAssistants.colDoctors")}
                     </TableHead>
                     <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {t('teachingAssistants.colStatus')}
+                      {t("teachingAssistants.colStatus")}
                     </TableHead>
                     <TableHead className="text-end p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 pe-6">
-                      {t('teachingAssistants.colActions')}
+                      {t("teachingAssistants.colActions")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredTAs.map((ta: any) => {
-                    const initials = ta.specialization?.[0]?.toUpperCase() || 'TA';
+                    const initials =
+                      ta.specialization?.[0]?.toUpperCase() || "TA";
                     const isSelected = selectedIds.includes(ta.id);
-                    
-                    let statusClass = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-                    let statusLabel = t('teachingAssistants.statusActive');
-                    
-                    if (ta.status === 'INACTIVE') {
-                      statusClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-                      statusLabel = t('teachingAssistants.statusInactive');
-                    } else if (ta.status === 'ON_LEAVE') {
-                      statusClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-                      statusLabel = t('teachingAssistants.statusOnLeave');
+
+                    let statusClass =
+                      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+                    let statusLabel = t("teachingAssistants.statusActive");
+
+                    if (ta.status === "INACTIVE") {
+                      statusClass =
+                        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+                      statusLabel = t("teachingAssistants.statusInactive");
+                    } else if (ta.status === "ON_LEAVE") {
+                      statusClass =
+                        "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+                      statusLabel = t("teachingAssistants.statusOnLeave");
                     }
 
                     return (
-                      <TableRow 
-                        key={ta.id} 
-                        onClick={() => navigate(`/teaching-assistants/${ta.id}`)}
+                      <TableRow
+                        key={ta.id}
+                        onClick={() =>
+                          navigate(`/teaching-assistants/${ta.id}`)
+                        }
                         className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors cursor-pointer ${
-                          isSelected ? 'bg-brand-primary-500/5 dark:bg-brand-primary-500/10' : ''
+                          isSelected
+                            ? "bg-brand-primary-500/5 dark:bg-brand-primary-500/10"
+                            : ""
                         }`}
                       >
-                        <TableCell className="w-12 text-center p-4" onClick={(e) => e.stopPropagation()}>
+                        <TableCell
+                          className="w-12 text-center p-4"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <input
                             type="checkbox"
                             className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
@@ -458,25 +569,45 @@ const TeachingAssistantsList = () => {
                             </div>
                             <div className="flex flex-col">
                               <span className="font-bold text-brand-text-primary dark:text-white hover:text-purple-600 transition-colors">
-                                {ta.firstName ? `م. ${ta.firstName} ${ta.lastName || ''}` : ta.employeeId}
+                                {ta.firstName
+                                  ? `م. ${ta.firstName} ${ta.lastName || ""}`
+                                  : ta.employeeId}
                               </span>
                               <span className="text-xs text-brand-text-secondary dark:text-slate-400">
-                                {ta.specialization ? `${ta.specialization} (${ta.employeeId})` : ta.employeeId}
+                                {ta.specialization
+                                  ? `${ta.specialization} (${ta.employeeId})`
+                                  : ta.employeeId}
                               </span>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell hideOnMobile className="p-4 text-start font-medium">
-                          {isRTL ? (ta.department?.nameAr || ta.department?.name || '—') : (ta.department?.name || '—')}
+                        <TableCell
+                          hideOnMobile
+                          className="p-4 text-start font-medium"
+                        >
+                          {isRTL
+                            ? ta.department?.nameAr ||
+                              ta.department?.name ||
+                              "—"
+                            : ta.department?.name || "—"}
                         </TableCell>
-                        <TableCell hideOnMobile className="p-4 text-start font-medium text-slate-500 dark:text-slate-400">
-                          {ta.user?.email || '—'}
+                        <TableCell
+                          hideOnMobile
+                          className="p-4 text-start font-medium text-slate-500 dark:text-slate-400"
+                        >
+                          {ta.user?.email || "—"}
                         </TableCell>
-                        <TableCell hideOnMobile className="p-4 text-start font-medium text-slate-500 dark:text-slate-400">
+                        <TableCell
+                          hideOnMobile
+                          className="p-4 text-start font-medium text-slate-500 dark:text-slate-400"
+                        >
                           {ta.doctors?.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {ta.doctors.slice(0, 2).map((d: any) => (
-                                <span key={d.id} className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">
+                                <span
+                                  key={d.id}
+                                  className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded"
+                                >
                                   {d.doctor.firstName} {d.doctor.lastName}
                                 </span>
                               ))}
@@ -487,62 +618,75 @@ const TeachingAssistantsList = () => {
                               )}
                             </div>
                           ) : (
-                            '—'
+                            "—"
                           )}
                         </TableCell>
                         <TableCell className="p-4 text-center">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${statusClass}`}>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${statusClass}`}
+                          >
                             {statusLabel}
                           </span>
                         </TableCell>
-                        <TableCell className="p-4 text-end pe-6" onClick={(e) => e.stopPropagation()}>
+                        <TableCell
+                          className="p-4 text-end pe-6"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <ActionMenu
                             actions={[
                               {
-                                label: isRTL ? 'عرض الملف والتفاصيل' : 'View Profile',
+                                label: isRTL
+                                  ? "عرض الملف والتفاصيل"
+                                  : "View Profile",
                                 icon: Eye,
-                                variant: 'view',
-                                onClick: () => navigate(`/teaching-assistants/${ta.id}`),
+                                variant: "view",
+                                onClick: () =>
+                                  navigate(`/teaching-assistants/${ta.id}`),
                               },
                               {
-                                label: isRTL ? 'إسناد مقرر / معمل' : 'Assign Course / Lab',
+                                label: isRTL
+                                  ? "إسناد مقرر / معمل"
+                                  : "Assign Course / Lab",
                                 icon: BookOpen,
-                                variant: 'view',
+                                variant: "view",
                                 onClick: () => {
                                   setAssignCourseTA(ta);
                                   setIsAssignCourseModalOpen(true);
                                 },
                               },
                               {
-                                label: isRTL ? 'عرض الجدول' : 'View Schedule',
+                                label: isRTL ? "عرض الجدول" : "View Schedule",
                                 icon: Calendar,
-                                variant: 'view',
-                                onClick: () => navigate(`/schedules/ta?taId=${ta.id}`),
+                                variant: "view",
+                                onClick: () =>
+                                  navigate(`/schedules/ta?taId=${ta.id}`),
                               },
                               {
-                                label: t('teachingAssistants.assignDoctor'),
+                                label: t("teachingAssistants.assignDoctor"),
                                 icon: Link,
-                                variant: 'view',
+                                variant: "view",
                                 onClick: () => handleAssign(ta),
                               },
                               {
-                                label: t('common.edit'),
+                                label: t("common.edit"),
                                 icon: Edit2,
-                                variant: 'edit',
+                                variant: "edit",
                                 onClick: () => handleEdit(ta),
                               },
                               {
-                                label: isRTL ? 'إعادة تعيين كلمة المرور' : 'Reset Password',
+                                label: isRTL
+                                  ? "إعادة تعيين كلمة المرور"
+                                  : "Reset Password",
                                 icon: KeyRound,
-                                variant: 'edit',
+                                variant: "edit",
                                 onClick: () => setResetPasswordTA(ta),
                               },
                               ...(isSuperAdmin
                                 ? [
                                     {
-                                      label: t('common.delete'),
+                                      label: t("common.delete"),
                                       icon: Trash2,
-                                      variant: 'delete',
+                                      variant: "delete",
                                       onClick: () =>
                                         setDeleteTarget({
                                           id: ta.id,
@@ -560,11 +704,11 @@ const TeachingAssistantsList = () => {
                 </TableBody>
               </Table>
             </div>
-            
-            <Pagination 
-              page={page} 
-              totalPages={totalPages} 
-              onPageChange={setPage} 
+
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
               total={totalRecords}
               pageSize={limit}
               onPageSizeChange={(newSize) => {
@@ -593,8 +737,12 @@ const TeachingAssistantsList = () => {
 
       <ConfirmDeleteModal
         isOpen={isBulkDeleteModalOpen}
-        title={isRTL ? 'تأكيد الحذف المتعدد' : 'Confirm Bulk Deletion'}
-        message={isRTL ? `هل أنت متأكد من حذف ${selectedIds.length} معيد محدد؟` : `Are you sure you want to delete ${selectedIds.length} selected assistant(s)?`}
+        title={isRTL ? "تأكيد الحذف المتعدد" : "Confirm Bulk Deletion"}
+        message={
+          isRTL
+            ? `هل أنت متأكد من حذف ${selectedIds.length} معيد محدد؟`
+            : `Are you sure you want to delete ${selectedIds.length} selected assistant(s)?`
+        }
         onClose={() => !bulkDeleteLoading && setIsBulkDeleteModalOpen(false)}
         onConfirm={confirmBulkDelete}
         loading={bulkDeleteLoading}
@@ -605,7 +753,7 @@ const TeachingAssistantsList = () => {
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={() => {
           setIsAddModalOpen(false);
-          showToast(t('teachingAssistants.createSuccess'), 'success');
+          showToast(t("teachingAssistants.createSuccess"), "success");
           fetchTAs();
           fetchStats();
         }}
@@ -622,7 +770,7 @@ const TeachingAssistantsList = () => {
           onSuccess={() => {
             setIsEditModalOpen(false);
             setSelectedTA(null);
-            showToast(t('teachingAssistants.updateSuccess'), 'success');
+            showToast(t("teachingAssistants.updateSuccess"), "success");
             fetchTAs();
             fetchStats();
           }}
@@ -660,7 +808,15 @@ const TeachingAssistantsList = () => {
       <ResetPasswordModal
         isOpen={!!resetPasswordTA}
         onClose={() => setResetPasswordTA(null)}
-        person={resetPasswordTA ? { ...resetPasswordTA, firstName: resetPasswordTA.employeeId, lastName: '' } : null}
+        person={
+          resetPasswordTA
+            ? {
+                ...resetPasswordTA,
+                firstName: resetPasswordTA.employeeId,
+                lastName: "",
+              }
+            : null
+        }
         type="teaching-assistant"
       />
     </div>

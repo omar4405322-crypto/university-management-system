@@ -69,9 +69,12 @@ export const getTranscript = catchAsync(async (req: Request, res: Response) => {
 
   // Case 1: Student Record view (Specific student)
   if (targetStudentId) {
+    const transcriptEnrollments = await EnrollmentService.getStudentTranscriptEnrollments(
+      targetStudentId
+    );
     const [enrollments, gpaResult] = await Promise.all([
-      EnrollmentService.getStudentTranscript(targetStudentId),
-      calculateStudentGpa(targetStudentId),
+      EnrollmentService.getStudentTranscript(targetStudentId, transcriptEnrollments),
+      calculateStudentGpa(targetStudentId, transcriptEnrollments),
     ]);
 
     const byYear = enrollments.reduce((acc: any, e: any) => {
@@ -103,17 +106,12 @@ export const getTranscript = catchAsync(async (req: Request, res: Response) => {
     throw new AuthorizationError('Access denied: Your role cannot view transcript overviews');
   }
 
-  const [exams, quizzes, tasks] = await Promise.all([
+  const [exams, quizzes, tasks, examSubmissionStats] = await Promise.all([
     prisma.exam.findMany({
       where: overviewWhere.exam,
       include: {
         course: { select: { id: true, name: true, courseCode: true } },
-        submissions: {
-          include: {
-            student: { select: { id: true, firstName: true, lastName: true, studentId: true } },
-          },
-        },
-        _count: { select: { questions: true } },
+        _count: { select: { questions: true, submissions: true } },
       },
       orderBy: { date: 'desc' },
     }),
@@ -121,11 +119,7 @@ export const getTranscript = catchAsync(async (req: Request, res: Response) => {
       where: overviewWhere.quiz,
       include: {
         course: { select: { id: true, name: true, courseCode: true } },
-        submissions: {
-          include: {
-            student: { select: { id: true, firstName: true, lastName: true, studentId: true } },
-          },
-        },
+        _count: { select: { submissions: true } },
       },
       orderBy: { createdAt: 'desc' },
     }),
@@ -133,20 +127,20 @@ export const getTranscript = catchAsync(async (req: Request, res: Response) => {
       where: overviewWhere.task,
       include: {
         course: { select: { id: true, name: true, courseCode: true } },
-        submissions: {
-          include: {
-            student: { select: { id: true, firstName: true, lastName: true, studentId: true } },
-          },
-        },
+        _count: { select: { submissions: true } },
       },
       orderBy: { dueDate: 'desc' },
     }),
+    prisma.examSubmission.aggregate({
+      where: { exam: overviewWhere.exam },
+      _count: { _all: true },
+      _avg: { score: true },
+    }),
   ]);
 
-  const totalSubmissions = exams.reduce((sum, e) => sum + e.submissions.length, 0);
-  const scoredExams = exams.flatMap((e) => e.submissions.map((s) => s.score).filter((sc) => sc !== null)) as number[];
-  const averageScore = scoredExams.length > 0
-    ? (scoredExams.reduce((a, b) => a + b, 0) / scoredExams.length).toFixed(1)
+  const totalSubmissions = examSubmissionStats._count._all;
+  const averageScore = examSubmissionStats._avg.score !== null
+    ? examSubmissionStats._avg.score.toFixed(1)
     : '0';
 
   return res.json({
@@ -167,30 +161,21 @@ export const getTranscript = catchAsync(async (req: Request, res: Response) => {
         endTime: ex.endTime,
         room: ex.room,
         questionsCount: ex._count.questions,
-        submissionsCount: ex.submissions.length,
-        submissions: ex.submissions.map((sub) => ({
-          id: sub.id,
-          studentName: `${sub.student.firstName} ${sub.student.lastName}`,
-          studentCode: sub.student.studentId,
-          score: sub.score,
-          maxScore: sub.maxScore,
-          status: sub.status,
-          submittedAt: sub.submittedAt,
-        })),
+        submissionsCount: ex._count.submissions,
       })),
       quizzes: quizzes.map((q) => ({
         id: q.id,
         courseName: q.course.name,
         courseCode: q.course.courseCode,
         title: q.title,
-        submissionsCount: q.submissions.length,
+        submissionsCount: q._count.submissions,
       })),
       tasks: tasks.map((t) => ({
         id: t.id,
         courseName: t.course.name,
         courseCode: t.course.courseCode,
         title: t.title,
-        submissionsCount: t.submissions.length,
+        submissionsCount: t._count.submissions,
       })),
     },
   });

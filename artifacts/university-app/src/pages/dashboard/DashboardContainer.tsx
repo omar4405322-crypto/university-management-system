@@ -1,10 +1,10 @@
-// @ts-nocheck
-import React from 'react';
+import React, { lazy } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { USER_ROLES } from '../../constants/roles';
-import AdminDashboard from './AdminDashboard';
-import DoctorDashboard from './DoctorDashboard';
-import StudentDashboard from './StudentDashboard';
+
+const AdminDashboard = lazy(() => import('./AdminDashboard'));
+const DoctorDashboard = lazy(() => import('./DoctorDashboard'));
+const StudentDashboard = lazy(() => import('./StudentDashboard'));
 
 const dashboardMap: Record<string, React.ComponentType> = {
   [USER_ROLES.SUPER_ADMIN]: AdminDashboard,

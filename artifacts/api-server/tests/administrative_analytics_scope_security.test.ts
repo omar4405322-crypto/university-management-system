@@ -57,7 +57,7 @@ async function runAdministrativeAnalyticsScopeSecurityTests() {
     [prisma.payment, 'groupBy'],
     [prisma.student, 'groupBy'],
     [prisma.department, 'findMany'],
-    [prisma.student, 'findMany'],
+    [prisma as any, '$queryRaw'],
     [prisma.exam, 'groupBy'],
     [prisma.attendance, 'groupBy'],
   ];
@@ -99,6 +99,8 @@ async function runAdministrativeAnalyticsScopeSecurityTests() {
     assert.deepEqual(analyticsQueries[3].args.where, {
       AND: [{ collegeId: 4 }, { id: 7 }],
     });
+    assert.match(analyticsQueries[4].args.sql, /DATE_TRUNC\('month'/i);
+    assert.deepEqual(analyticsQueries[4].args.values.slice(2), [4, 7]);
     assert.deepEqual(analyticsQueries[5].args.where, {
       AND: [
         { course: { department: { collegeId: 4 } } },
@@ -156,13 +158,19 @@ async function runAdministrativeAnalyticsScopeSecurityTests() {
     const userCounts = dashboardQueries.filter(
       (query) => query.delegate === prisma.user && query.method === 'count'
     );
-    assert.deepEqual(userCounts[0].args.where.AND[1], {
-      OR: [
-        { departmentId: 7 },
-        { managedDepartmentId: 7 },
-        { student: { departmentId: 7 } },
-        { doctor: { departmentId: 7 } },
-        { teachingAssistant: { departmentId: 7 } },
+    assert.deepEqual(userCounts[0].args.where, {
+      AND: [
+        { role: { in: ['ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'] } },
+        { isActive: true },
+        {
+          OR: [
+            { departmentId: 7 },
+            { managedDepartmentId: 7 },
+            { student: { departmentId: 7 } },
+            { doctor: { departmentId: 7 } },
+            { teachingAssistant: { departmentId: 7 } },
+          ],
+        },
       ],
     });
     assert.deepEqual(userCounts[1].args.where, {

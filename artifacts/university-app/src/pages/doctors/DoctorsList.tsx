@@ -1,24 +1,30 @@
-// @ts-nocheck
 // FIXED: Phase 7 — empty state, CSV export, delete confirm modal
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useDoctors } from '../../hooks/useDoctors';
-import doctorsService from '../../services/doctors.service';
-import AddDoctorModal from './AddDoctorModal';
-import EditDoctorModal from './EditDoctorModal';
-import { PageHeader } from '../../components/ui/PageHeader';
-import Card, { StatCard } from '../../components/ui/card';
-import Table, { TableRow, TableCell, TableHeader, TableHead, TableBody, ActionMenu } from '../../components/ui/Table';
-import Badge from '../../components/ui/Badge';
-import FilterBar from '../../components/ui/FilterBar';
-import Pagination from '../../components/ui/pagination';
-import { EmptyState } from '../../components/ui/EmptyState';
-import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
-import Button from '../../components/ui/button';
-import { downloadCsv } from '../../utils/exportCsv';
-import DoctorAvatar from '../../components/DoctorAvatar';
-import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../context/AuthContext';
-import useScope from '../../hooks/useScope';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useDoctors } from "../../hooks/useDoctors";
+import doctorsService from "../../services/doctors.service";
+import AddDoctorModal from "./AddDoctorModal";
+import EditDoctorModal from "./EditDoctorModal";
+import { PageHeader } from "../../components/ui/PageHeader";
+import Card, { StatCard } from "../../components/ui/card";
+import Table, {
+  TableRow,
+  TableCell,
+  TableHeader,
+  TableHead,
+  TableBody,
+  ActionMenu,
+} from "../../components/ui/table";
+import Badge from "../../components/ui/badge";
+import FilterBar from "../../components/ui/FilterBar";
+import Pagination from "../../components/ui/pagination";
+import { EmptyState } from "../../components/ui/EmptyState";
+import ErrorState from "../../components/ui/ErrorState";
+import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
+import Button from "../../components/ui/button";
+import { downloadCsv } from "../../utils/exportCsv";
+import DoctorAvatar from "../../components/DoctorAvatar";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "../../context/AuthContext";
 import {
   Users,
   BookOpen,
@@ -36,45 +42,60 @@ import {
   Search,
   Calendar,
   X,
-} from 'lucide-react';
-import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
-import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import collegeService from '../../services/college.service';
-import departmentService from '../../services/department.service';
-import { logger } from '../../lib/logger';
-import { useToast } from '../../context/ToastContext';
+} from "lucide-react";
+import ResetPasswordModal from "../../components/ui/ResetPasswordModal";
+import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import collegeService from "../../services/college.service";
+import departmentService from "../../services/department.service";
+import { logger } from "../../lib/logger";
+import { useToast } from "../../context/ToastContext";
 
 const DoctorsList = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
-  const { scopeParams, _isCollegeAdmin } = useScope();
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
-  const [selectedCollege, setSelectedCollege] = useState(() => searchParams.get('collegeId') || '');
-  const [selectedDept, setSelectedDept] = useState(() => searchParams.get('departmentId') || '');
+  const [selectedCollege, setSelectedCollege] = useState(
+    () => searchParams.get("collegeId") || "",
+  );
+  const [selectedDept, setSelectedDept] = useState(
+    () => searchParams.get("departmentId") || "",
+  );
   const [colleges, setColleges] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
 
   useEffect(() => {
-    const cId = searchParams.get('collegeId');
-    const dId = searchParams.get('departmentId');
+    const cId = searchParams.get("collegeId");
+    const dId = searchParams.get("departmentId");
     if (cId !== null) setSelectedCollege(cId);
     if (dId !== null) setSelectedDept(dId);
   }, [searchParams]);
 
   useEffect(() => {
-    collegeService.getColleges().then((res) => {
-      if (res.success) setColleges(Array.isArray(res.data) ? res.data : res.data?.data || []);
-    }).catch(() => {});
+    collegeService
+      .getColleges()
+      .then((res) => {
+        if (res.success)
+          setColleges(
+            Array.isArray(res.data) ? res.data : res.data?.data || [],
+          );
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
-    departmentService.getDepartments(selectedCollege ? { collegeId: selectedCollege } : {}).then((res) => {
-      if (res.success) setDepartments(Array.isArray(res.data) ? res.data : res.data?.data || []);
-    }).catch(() => {});
+    departmentService
+      .getDepartments(selectedCollege ? { collegeId: selectedCollege } : {})
+      .then((res) => {
+        if (res.success)
+          setDepartments(
+            Array.isArray(res.data) ? res.data : res.data?.data || [],
+          );
+      })
+      .catch(() => {});
   }, [selectedCollege]);
 
   const activeFilters = useMemo(() => {
@@ -85,7 +106,17 @@ const DoctorsList = () => {
   }, [selectedCollege, selectedDept]);
 
   const [pageSize, setPageSize] = useState(10);
-  const { data: doctors, loading, error, search, setSearch, page, setPage, total, refetch } = useDoctors({
+  const {
+    data: doctors,
+    loading,
+    error,
+    search,
+    setSearch,
+    page,
+    setPage,
+    total,
+    refetch,
+  } = useDoctors({
     filters: activeFilters,
     limit: pageSize,
   });
@@ -94,41 +125,42 @@ const DoctorsList = () => {
   const totalRecords = total;
   const fetchDoctors = refetch;
   const debouncedSearch = search; // useDoctors already debounces internally
-  
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
-  const [resetPasswordDoctor, setResetPasswordDoctor] = useState(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
+  const [resetPasswordDoctor, setResetPasswordDoctor] = useState<any>(null);
   const { showToast } = useToast();
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
 
   useEffect(() => {
-    const mainEl = document.querySelector('main');
+    const mainEl = document.querySelector("main");
     if (mainEl) {
-      mainEl.classList.add('bg-slate-50', 'dark:bg-slate-900');
+      mainEl.classList.add("bg-slate-50", "dark:bg-slate-900");
     }
     return () => {
       if (mainEl) {
-        mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
+        mainEl.classList.remove("bg-slate-50", "dark:bg-slate-900");
       }
     };
   }, []);
 
-  const isRTL = i18n.language === 'ar';
+  const isRTL = i18n.language === "ar";
 
   const filteredDoctors = useMemo(() => {
     const list = Array.isArray(doctors) ? doctors : [];
-    return list.filter((d) => {
-      if (d.user?.role && d.user.role !== 'DOCTOR') return false;
-      if (statusFilter === 'all') return true;
-      if (statusFilter === 'active') return d.status === 'active';
-      if (statusFilter === 'inactive') return d.status === 'inactive';
-      if (statusFilter === 'onleave') return d.status === 'on_leave' || d.status === 'onleave';
+    return list.filter((d: any) => {
+      if (d.user?.role && d.user.role !== "DOCTOR") return false;
+      if (statusFilter === "all") return true;
+      if (statusFilter === "active") return d.status === "active";
+      if (statusFilter === "inactive") return d.status === "inactive";
+      if (statusFilter === "onleave")
+        return d.status === "on_leave" || d.status === "onleave";
       return true;
     });
   }, [doctors, statusFilter]);
@@ -143,23 +175,28 @@ const DoctorsList = () => {
 
   const handleSelectOne = (id: string | number) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
   const handleBulkClear = () => setSelectedIds([]);
 
   const handleBulkExport = () => {
-    const selectedDocs = filteredDoctors.filter((d: any) => selectedIds.includes(d.id));
+    const selectedDocs = filteredDoctors.filter((d: any) =>
+      selectedIds.includes(d.id),
+    );
     const exportData = selectedDocs.map((d: any) => ({
       ID: d.doctorId || d.id,
       Name: `${d.firstName} ${d.lastName}`,
-      Email: d.user?.email || 'N/A',
-      Department: d.department?.name || 'N/A',
-      Status: d.status || 'active',
+      Email: d.user?.email || "N/A",
+      Department: d.department?.name || "N/A",
+      Status: d.status || "active",
     }));
-    downloadCsv(exportData, `doctors_selected_${new Date().toISOString().split('T')[0]}.csv`);
-    showToast(t('common.exporting', 'Exported selected records'), 'success');
+    downloadCsv(
+      exportData,
+      `doctors_selected_${new Date().toISOString().split("T")[0]}.csv`,
+    );
+    showToast(t("common.exporting", "Exported selected records"), "success");
   };
 
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
@@ -174,25 +211,48 @@ const DoctorsList = () => {
     try {
       setBulkDeleteLoading(true);
       for (const id of selectedIds) {
-        await doctorsService.deleteDoctor(id);
+        await doctorsService.deleteDoctor(String(id));
       }
-      showToast(t('doctors.bulkDeleteSuccess', 'Deleted selected doctors'), 'success');
+      showToast(
+        t("doctors.bulkDeleteSuccess", "Deleted selected doctors"),
+        "success",
+      );
       setSelectedIds([]);
       fetchDoctors();
       fetchStats();
       setIsBulkDeleteModalOpen(false);
     } catch (_err: any) {
-      showToast(t('common.error'), 'error');
+      showToast(t("common.error"), "error");
     } finally {
       setBulkDeleteLoading(false);
     }
   };
 
   const [stats, setStats] = useState([
-    { label: t('doctors.totalDoctors'), value: '0', icon: Users, bgClass: 'bg-brand-primary-500/10 text-brand-primary-500' },
-    { label: t('doctors.activeDoctors'), value: '0', icon: UserCheck, bgClass: 'bg-green-500/10 text-green-500' },
-    { label: t('doctors.totalCourses'), value: '0', icon: BookOpen, bgClass: 'bg-blue-500/10 text-blue-500' },
-    { label: t('doctors.researchProjects'), value: '0', icon: Briefcase, bgClass: 'bg-amber-500/10 text-amber-500' },
+    {
+      label: t("doctors.totalDoctors"),
+      value: "0",
+      icon: Users,
+      bgClass: "bg-brand-primary-500/10 text-brand-primary-500",
+    },
+    {
+      label: t("doctors.activeDoctors"),
+      value: "0",
+      icon: UserCheck,
+      bgClass: "bg-green-500/10 text-green-500",
+    },
+    {
+      label: t("doctors.totalCourses"),
+      value: "0",
+      icon: BookOpen,
+      bgClass: "bg-blue-500/10 text-blue-500",
+    },
+    {
+      label: t("doctors.researchProjects"),
+      value: "0",
+      icon: Briefcase,
+      bgClass: "bg-amber-500/10 text-amber-500",
+    },
   ]);
 
   const fetchStats = useCallback(async () => {
@@ -202,33 +262,33 @@ const DoctorsList = () => {
         const d = result.data;
         setStats([
           {
-            label: t('doctors.totalDoctors'),
+            label: t("doctors.totalDoctors"),
             value: (d.totalFaculty ?? 0).toLocaleString(),
             icon: Users,
-            bgClass: 'bg-brand-primary-500/10 text-brand-primary-500',
+            bgClass: "bg-brand-primary-500/10 text-brand-primary-500",
           },
           {
-            label: t('doctors.activeDoctors'),
+            label: t("doctors.activeDoctors"),
             value: (d.activeProfessors ?? 0).toLocaleString(),
             icon: UserCheck,
-            bgClass: 'bg-green-500/10 text-green-500',
+            bgClass: "bg-green-500/10 text-green-500",
           },
           {
-            label: t('doctors.totalCourses'),
+            label: t("doctors.totalCourses"),
             value: (d.totalCourses ?? 0).toLocaleString(),
             icon: BookOpen,
-            bgClass: 'bg-blue-500/10 text-blue-500',
+            bgClass: "bg-blue-500/10 text-blue-500",
           },
           {
-            label: t('doctors.researchProjects'),
+            label: t("doctors.researchProjects"),
             value: (d.researchProjects ?? 0).toLocaleString(),
             icon: Briefcase,
-            bgClass: 'bg-amber-500/10 text-amber-500',
+            bgClass: "bg-amber-500/10 text-amber-500",
           },
         ]);
       }
     } catch (error: any) {
-      logger.error('Error fetching doctor stats:', error);
+      logger.error("Error fetching doctor stats:", error);
     }
   }, [t]);
 
@@ -239,21 +299,30 @@ const DoctorsList = () => {
   const handleExportCsv = useCallback(async () => {
     try {
       setExporting(true);
-            const result = await doctorsService.getDoctors({ search: debouncedSearch, page: 1, limit: 5000 });
+      const result = await doctorsService.getDoctors({
+        search: debouncedSearch,
+        page: 1,
+        limit: 5000,
+      });
       const list = result.data?.doctors || [];
       downloadCsv(
         `faculty-${new Date().toISOString().slice(0, 10)}.csv`,
-        [t('doctors.doctorId'), t('students.fullName'), t('doctors.specialty'), t('auth.email')],
-        list.map((d) => [
+        [
+          t("doctors.doctorId"),
+          t("students.fullName"),
+          t("doctors.specialty"),
+          t("auth.email"),
+        ],
+        list.map((d: any) => [
           d.doctorId,
           `${d.firstName} ${d.lastName}`,
-          d.specialty || '',
-          d.user?.email || '',
-        ])
+          d.specialty || "",
+          d.user?.email || "",
+        ]),
       );
-      showToast(t('common.exportSuccess'), 'success');
+      showToast(t("common.exportSuccess"), "success");
     } catch {
-      showToast(t('common.exportError'), 'error');
+      showToast(t("common.exportError"), "error");
     } finally {
       setExporting(false);
     }
@@ -263,21 +332,24 @@ const DoctorsList = () => {
     if (!deleteTarget) return;
     try {
       setDeleteLoading(true);
-      const result = await doctorsService.deleteDoctor(deleteTarget.id);
+      const result = await doctorsService.deleteDoctor(String(deleteTarget.id));
       if (result.success) {
-        showToast(t('doctors.deleteSuccess'), 'success');
+        showToast(t("doctors.deleteSuccess"), "success");
         setDeleteTarget(null);
         fetchDoctors();
         fetchStats();
       }
     } catch (error: any) {
-      showToast(error.response?.data?.message || t('doctors.deleteError'), 'error');
+      showToast(
+        error.response?.data?.message || t("doctors.deleteError"),
+        "error",
+      );
     } finally {
       setDeleteLoading(false);
     }
   }, [deleteTarget, fetchDoctors, fetchStats, t, showToast]);
 
-  const handleEdit = useCallback(async (doctor) => {
+  const handleEdit = useCallback(async (doctor: any) => {
     // Start with list data immediately so modal opens fast
     setSelectedDoctor(doctor);
     setIsEditModalOpen(true);
@@ -295,13 +367,14 @@ const DoctorsList = () => {
   return (
     <div className="pt-6 section-gap animate-in fade-in duration-700">
       <PageHeader
-        title={t('doctors.title')}
-        subtitle={t('doctors.subtitle')}
+        title={t("doctors.title")}
+        subtitle={t("doctors.subtitle")}
         action={{
-          label: t('doctors.addDoctor'),
+          label: t("doctors.addDoctor"),
           onClick: () => setIsAddModalOpen(true),
           icon: Plus,
-          className: "bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2"
+          className:
+            "bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2",
         }}
       />
 
@@ -311,7 +384,7 @@ const DoctorsList = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         <StatCard
           compact
-          title={t('doctors.totalDoctors', 'Total Doctors')}
+          title={t("doctors.totalDoctors", "Total Doctors")}
           value={stats[0]?.value || filteredDoctors.length}
           icon={Users}
           color="primary"
@@ -319,24 +392,29 @@ const DoctorsList = () => {
 
         <StatCard
           compact
-          title={t('doctors.activeDoctors', 'Active Faculty')}
-          value={stats[1]?.value || filteredDoctors.filter((d: any) => d.status === 'active' || !d.status).length}
+          title={t("doctors.activeDoctors", "Active Faculty")}
+          value={
+            stats[1]?.value ||
+            filteredDoctors.filter(
+              (d: any) => d.status === "active" || !d.status,
+            ).length
+          }
           icon={UserCheck}
           color="emerald"
         />
 
         <StatCard
           compact
-          title={t('doctors.totalCourses', 'Assigned Courses')}
-          value={stats[2]?.value || '0'}
+          title={t("doctors.totalCourses", "Assigned Courses")}
+          value={stats[2]?.value || "0"}
           icon={BookOpen}
           color="blue"
         />
 
         <StatCard
           compact
-          title={t('doctors.researchProjects', 'Research & Depts')}
-          value={stats[3]?.value || '0'}
+          title={t("doctors.researchProjects", "Research & Depts")}
+          value={stats[3]?.value || "0"}
           icon={Briefcase}
           color="amber"
         />
@@ -348,7 +426,10 @@ const DoctorsList = () => {
       <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-4">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search
+            size={14}
+            className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
           <input
             type="text"
             value={search}
@@ -356,13 +437,16 @@ const DoctorsList = () => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder={t('doctors.searchPlaceholder', 'Search by name, email, or specialization...')}
+            placeholder={t(
+              "doctors.searchPlaceholder",
+              "Search by name, email, or specialization...",
+            )}
             className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
           />
           {search && (
             <button
               onClick={() => {
-                setSearch('');
+                setSearch("");
                 setPage(1);
               }}
               className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
@@ -378,7 +462,7 @@ const DoctorsList = () => {
             value={selectedCollege}
             onChange={(e) => {
               setSelectedCollege(e.target.value);
-              setSelectedDept('');
+              setSelectedDept("");
               setPage(1);
               if (e.target.value) {
                 setSearchParams({ collegeId: e.target.value });
@@ -388,7 +472,9 @@ const DoctorsList = () => {
             }}
             className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
           >
-            <option value="">{t('colleges.allColleges', 'All Colleges')}</option>
+            <option value="">
+              {t("colleges.allColleges", "All Colleges")}
+            </option>
             {colleges.map((c) => (
               <option key={c.id} value={c.id}>
                 {isRTL ? c.nameAr || c.name : c.name}
@@ -406,7 +492,9 @@ const DoctorsList = () => {
           }}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
-          <option value="">{t('departments.allDepartments', 'All Departments')}</option>
+          <option value="">
+            {t("departments.allDepartments", "All Departments")}
+          </option>
           {departments.map((d) => (
             <option key={d.id} value={d.id}>
               {isRTL ? d.nameAr || d.name : d.name}
@@ -420,29 +508,36 @@ const DoctorsList = () => {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
-          <option value="all">{t('doctors.filterAll', 'All Statuses')}</option>
-          <option value="active">{t('doctors.filterActive', 'Active')}</option>
-          <option value="onleave">{t('doctors.filterOnLeave', 'On Leave')}</option>
-          <option value="inactive">{t('doctors.filterInactive', 'Inactive')}</option>
+          <option value="all">{t("doctors.filterAll", "All Statuses")}</option>
+          <option value="active">{t("doctors.filterActive", "Active")}</option>
+          <option value="onleave">
+            {t("doctors.filterOnLeave", "On Leave")}
+          </option>
+          <option value="inactive">
+            {t("doctors.filterInactive", "Inactive")}
+          </option>
         </select>
 
         {/* Clear Filters Button */}
-        {(search || selectedCollege || selectedDept || statusFilter !== 'all') && (
+        {(search ||
+          selectedCollege ||
+          selectedDept ||
+          statusFilter !== "all") && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
-              setSearch('');
-              setSelectedCollege('');
-              setSelectedDept('');
-              setStatusFilter('all');
+              setSearch("");
+              setSelectedCollege("");
+              setSelectedDept("");
+              setStatusFilter("all");
               setSearchParams({});
               setPage(1);
             }}
             className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
           >
             <X size={13} className="me-1" />
-            {isRTL ? 'مسح' : 'Clear'}
+            {isRTL ? "مسح" : "Clear"}
           </Button>
         )}
 
@@ -455,7 +550,11 @@ const DoctorsList = () => {
           className="h-8.5 px-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer shadow-2xs ms-auto"
         >
           <Download size={13} className="text-slate-500" />
-          <span>{exporting ? t('common.loading') : t('doctors.exportCsv', 'Export CSV')}</span>
+          <span>
+            {exporting
+              ? t("common.loading")
+              : t("doctors.exportCsv", "Export CSV")}
+          </span>
         </Button>
       </div>
 
@@ -471,10 +570,10 @@ const DoctorsList = () => {
               <Users className="w-10 h-10 text-brand-primary-500" />
             </div>
             <h3 className="text-lg font-bold text-brand-text-primary dark:text-white mb-1">
-              {t('doctors.noDoctors')}
+              {t("doctors.noDoctors")}
             </h3>
             <p className="text-sm text-brand-text-secondary dark:text-slate-400 mb-6">
-              {t('doctors.noDoctorsDesc')}
+              {t("doctors.noDoctorsDesc")}
             </p>
           </div>
         ) : (
@@ -487,52 +586,74 @@ const DoctorsList = () => {
                       <input
                         type="checkbox"
                         className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
-                        checked={filteredDoctors.length > 0 && selectedIds.length === filteredDoctors.length}
+                        checked={
+                          filteredDoctors.length > 0 &&
+                          selectedIds.length === filteredDoctors.length
+                        }
                         onChange={handleSelectAll}
                       />
                     </TableHead>
                     <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {t('doctors.colDoctor')}
+                      {t("doctors.colDoctor")}
                     </TableHead>
-                    <TableHead hideOnMobile className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {t('doctors.colDepartment')}
+                    <TableHead
+                      hideOnMobile
+                      className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      {t("doctors.colDepartment")}
                     </TableHead>
-                    <TableHead hideOnMobile className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {t('doctors.colEmail')}
+                    <TableHead
+                      hideOnMobile
+                      className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      {t("doctors.colEmail")}
                     </TableHead>
-                    <TableHead hideOnMobile className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {t('doctors.colCourses')}
+                    <TableHead
+                      hideOnMobile
+                      className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      {t("doctors.colCourses")}
                     </TableHead>
                     <TableHead className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {t('doctors.colStatus')}
+                      {t("doctors.colStatus")}
                     </TableHead>
                     <TableHead className="text-end p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 pe-6">
-                      {t('doctors.colActions')}
+                      {t("doctors.colActions")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredDoctors.map((doctor) => {
-                    const initials = `${doctor.firstName?.[0] || ''}${doctor.lastName?.[0] || ''}`.toUpperCase();
+                  {filteredDoctors.map((doctor: any) => {
+                    const initials =
+                      `${doctor.firstName?.[0] || ""}${doctor.lastName?.[0] || ""}`.toUpperCase();
                     const isSelected = selectedIds.includes(doctor.id);
-                    
-                    let statusClass = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-                    let statusLabel = t('doctors.statusActive');
-                    
-                    if (doctor.status === 'inactive') {
-                      statusClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-                      statusLabel = t('doctors.statusInactive');
-                    } else if (doctor.status === 'on_leave' || doctor.status === 'onleave') {
-                      statusClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-                      statusLabel = t('doctors.statusOnLeave');
+
+                    let statusClass =
+                      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+                    let statusLabel = t("doctors.statusActive");
+
+                    if (doctor.status === "inactive") {
+                      statusClass =
+                        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+                      statusLabel = t("doctors.statusInactive");
+                    } else if (
+                      doctor.status === "on_leave" ||
+                      doctor.status === "onleave"
+                    ) {
+                      statusClass =
+                        "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+                      statusLabel = t("doctors.statusOnLeave");
                     }
 
                     return (
-                      <TableRow 
-                        key={doctor.id} 
-                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors ${isSelected ? 'bg-brand-primary-500/5 dark:bg-brand-primary-500/10' : ''}`}
+                      <TableRow
+                        key={doctor.id}
+                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 last:border-b-0 transition-colors ${isSelected ? "bg-brand-primary-500/5 dark:bg-brand-primary-500/10" : ""}`}
                       >
-                        <TableCell className="w-12 text-center p-4" onClick={(e) => e.stopPropagation()}>
+                        <TableCell
+                          className="w-12 text-center p-4"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <input
                             type="checkbox"
                             className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
@@ -555,17 +676,32 @@ const DoctorsList = () => {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell hideOnMobile className="p-4 text-start font-medium">
-                          {isRTL ? (doctor.department?.nameAr || doctor.department?.name || '—') : (doctor.department?.name || '—')}
+                        <TableCell
+                          hideOnMobile
+                          className="p-4 text-start font-medium"
+                        >
+                          {isRTL
+                            ? doctor.department?.nameAr ||
+                              doctor.department?.name ||
+                              "—"
+                            : doctor.department?.name || "—"}
                         </TableCell>
-                        <TableCell hideOnMobile className="p-4 text-start font-medium text-slate-500 dark:text-slate-400">
-                          {doctor.user?.email || '—'}
+                        <TableCell
+                          hideOnMobile
+                          className="p-4 text-start font-medium text-slate-500 dark:text-slate-400"
+                        >
+                          {doctor.user?.email || "—"}
                         </TableCell>
-                        <TableCell hideOnMobile className="p-4 text-center font-medium">
+                        <TableCell
+                          hideOnMobile
+                          className="p-4 text-center font-medium"
+                        >
                           {doctor._count?.courses || 0}
                         </TableCell>
                         <TableCell className="p-4 text-center">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${statusClass}`}>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${statusClass}`}
+                          >
                             {statusLabel}
                           </span>
                         </TableCell>
@@ -573,35 +709,41 @@ const DoctorsList = () => {
                           <ActionMenu
                             actions={[
                               {
-                                label: t('common.view', 'View'),
+                                label: t("common.view", "View"),
                                 icon: Eye,
-                                variant: 'view',
-                                onClick: () => navigate(`/doctors/${doctor.id}`),
+                                variant: "view",
+                                onClick: () =>
+                                  navigate(`/doctors/${doctor.id}`),
                               },
                               {
-                                label: isRTL ? 'عرض الجدول' : 'View Schedule',
+                                label: isRTL ? "عرض الجدول" : "View Schedule",
                                 icon: Calendar,
-                                variant: 'view',
-                                onClick: () => navigate(`/schedules/doctor?doctorId=${doctor.id}`),
+                                variant: "view",
+                                onClick: () =>
+                                  navigate(
+                                    `/schedules/doctor?doctorId=${doctor.id}`,
+                                  ),
                               },
                               {
-                                label: t('common.edit'),
+                                label: t("common.edit"),
                                 icon: Edit2,
-                                variant: 'edit',
+                                variant: "edit",
                                 onClick: () => handleEdit(doctor),
                               },
                               {
-                                label: isRTL ? 'إعادة تعيين كلمة المرور' : 'Reset Password',
+                                label: isRTL
+                                  ? "إعادة تعيين كلمة المرور"
+                                  : "Reset Password",
                                 icon: KeyRound,
-                                variant: 'edit',
+                                variant: "edit",
                                 onClick: () => setResetPasswordDoctor(doctor),
                               },
                               ...(isSuperAdmin
                                 ? [
                                     {
-                                      label: t('common.delete'),
+                                      label: t("common.delete"),
                                       icon: Trash2,
-                                      variant: 'delete',
+                                      variant: "delete",
                                       onClick: () =>
                                         setDeleteTarget({
                                           id: doctor.id,
@@ -619,11 +761,11 @@ const DoctorsList = () => {
                 </TableBody>
               </Table>
             </div>
-            
-            <Pagination 
-              page={page} 
-              totalPages={totalPages} 
-              onPageChange={setPage} 
+
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
               total={totalRecords}
               pageSize={limit}
               onPageSizeChange={(newSize) => {
@@ -645,8 +787,12 @@ const DoctorsList = () => {
 
       <ConfirmDeleteModal
         isOpen={isBulkDeleteModalOpen}
-        title={t('doctors.bulkDeleteTitle', 'Confirm Bulk Deletion')}
-        message={t('doctors.confirmBulkDelete', `Are you sure you want to delete ${selectedIds.length} selected doctor(s)?`, { count: selectedIds.length })}
+        title={t("doctors.bulkDeleteTitle", "Confirm Bulk Deletion")}
+        message={t(
+          "doctors.confirmBulkDelete",
+          `Are you sure you want to delete ${selectedIds.length} selected doctor(s)?`,
+          { count: selectedIds.length },
+        )}
         onClose={() => !bulkDeleteLoading && setIsBulkDeleteModalOpen(false)}
         onConfirm={confirmBulkDelete}
         loading={bulkDeleteLoading}
@@ -658,7 +804,7 @@ const DoctorsList = () => {
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={() => {
           setIsAddModalOpen(false);
-          showToast(t('doctors.createSuccess'), 'success');
+          showToast(t("doctors.createSuccess"), "success");
           fetchDoctors();
           fetchStats();
         }}
@@ -675,7 +821,7 @@ const DoctorsList = () => {
           onSuccess={() => {
             setIsEditModalOpen(false);
             setSelectedDoctor(null);
-            showToast(t('doctors.updateSuccess'), 'success');
+            showToast(t("doctors.updateSuccess"), "success");
             fetchDoctors();
             fetchStats();
           }}

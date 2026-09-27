@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
@@ -16,7 +15,13 @@ import {
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 
-const AddTAModal = ({ isOpen, onClose, onSuccess }) => {
+interface AddTAModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+const AddTAModal: React.FC<AddTAModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -29,11 +34,11 @@ const AddTAModal = ({ isOpen, onClose, onSuccess }) => {
   });
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
       !formData.firstName ||

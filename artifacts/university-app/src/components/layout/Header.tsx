@@ -222,7 +222,7 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
               </span>
               <span className={`text-[10px] font-black uppercase tracking-tighter transition-colors ${isProfileOpen ? 'text-brand-green' : 'text-brand-brand-green-dark'
                 }`}>
-                {user?.role?.replace('_', ' ')}
+                {user?.role ? t(`roles.${user.role}`, user.role.replace('_', ' ')) : ''}
               </span>
             </div>
             <ChevronDown
@@ -275,7 +275,7 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
               <div className="my-2 border-t border-brand-border" />
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-error hover:bg-error hover:text-white rounded-2xl transition-all group"
+                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-error-text hover:bg-error-strong hover:text-white rounded-2xl transition-all group"
               >
                 <div className="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
                   <LogOut size={18} className="rtl:-scale-x-100" />

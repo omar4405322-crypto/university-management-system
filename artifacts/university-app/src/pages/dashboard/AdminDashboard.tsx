@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie,
@@ -28,10 +27,8 @@ export default function AdminDashboard() {
   const { isDark } = useTheme();
   const { user } = useAuth();
 
-  const CHART_GREEN = '#9EBC48';
-  const CHART_COLORS = isDark
-    ? ['#9EBC48', '#B8D068', '#7A9A2E', '#D6BA34', '#3B82F6', '#10B981']
-    : ['#7A9A2E', '#9EBC48', '#142632', '#D6BA34', '#3B82F6', '#10B981'];
+  const CHART_GREEN = '#8BB83C';
+  const CHART_COLORS = ['#8BB83C', '#132231', '#D6BA34', '#2F6B87', '#A1C04F', '#8BB8C9'];
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -180,7 +177,7 @@ export default function AdminDashboard() {
     kpis.find(k => k.id === 'totalDoctors'),
     kpis.find(k => k.id === 'totalColleges'),
     kpis.find(k => k.id === 'totalPayments')
-  ].filter(Boolean);
+  ].filter((kpi): kpi is (typeof kpis)[number] => kpi !== undefined);
 
   return (
     <div className="flex flex-col gap-6 animate-page">
@@ -206,7 +203,6 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <Button
               variant="outline"
-              size="md"
               className="border-white/15 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-widest transition-all"
               onClick={() => navigate('/notifications')}
             >
@@ -214,7 +210,6 @@ export default function AdminDashboard() {
             </Button>
             <Button
               variant="outline"
-              size="md"
               className="border-white/15 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-widest transition-all"
               onClick={() => navigate('/settings')}
             >
@@ -255,7 +250,7 @@ export default function AdminDashboard() {
       {/* === Second Row: Subscription + Academic Overview === */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 min-w-0">
-          <Card variant="default" className="rounded-2xl border border-brand-border/60 shadow-sm p-6 flex flex-col justify-between h-full bg-brand-bg-card">
+          <Card className="rounded-2xl border border-brand-border/60 shadow-sm p-6 flex flex-col justify-between h-full bg-brand-bg-card">
             <div className="space-y-5">
               <div className="space-y-1.5">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-text-muted">{t('dashboard.subscription')}</h4>
@@ -299,7 +294,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="lg:col-span-2 min-w-0">
-          <Card variant="default" className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card">
+          <Card className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card">
             <div className="mb-4">
               <h3 className="text-lg font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
                 {t('dashboard.academicOverview')}
@@ -338,7 +333,7 @@ export default function AdminDashboard() {
 
       {/* === Third Row: Charts === */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card variant="default" className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card min-w-0">
+        <Card className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card min-w-0">
           <div className="mb-4">
             <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
               {t('dashboard.collegeDistribution')}
@@ -368,7 +363,7 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        <Card variant="default" className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card min-w-0">
+        <Card className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card min-w-0">
           <div className="mb-4">
             <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
               {t('dashboard.financialOverview')}
@@ -399,7 +394,7 @@ export default function AdminDashboard() {
 
       {/* === Bottom Row: Activity & Health === */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card variant="default" noPadding className="border border-brand-border/60 overflow-hidden shadow-sm bg-brand-bg-card rounded-2xl">
+        <Card noPadding className="border border-brand-border/60 overflow-hidden shadow-sm bg-brand-bg-card rounded-2xl">
           <div className="p-5 pb-3 border-b border-brand-border/40">
             <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none">
               {t('dashboard.recentActivity')}
@@ -437,7 +432,7 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        <Card variant="default" className="border border-brand-border/60 shadow-sm bg-brand-bg-card rounded-2xl">
+        <Card className="border border-brand-border/60 shadow-sm bg-brand-bg-card rounded-2xl">
           <div className="p-2 flex flex-col gap-4">
             <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
               {t('dashboard.systemStatus')}

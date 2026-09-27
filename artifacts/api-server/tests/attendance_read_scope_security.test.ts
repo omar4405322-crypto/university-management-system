@@ -27,13 +27,14 @@ async function runAttendanceReadScopeSecurityTests() {
     assert.equal(slotQueryCount, 1, 'An empty scoped query must not trigger a fallback query');
     assert.deepEqual(capturedSlotWhere, {
       course: { scheduleSlots: { some: { doctorId: 5 } } },
+      isArchived: false,
     });
 
     let capturedEnrollmentWhere: unknown;
     let attendanceQueryReached = false;
     (prisma.student as any).findFirst = async () => ({ id: 44 });
     (prisma.student as any).findUnique = async (args: any) => {
-      capturedEnrollmentWhere = args.include.enrollments.where;
+      capturedEnrollmentWhere = args.select.enrollments.where;
       return { id: 44, groupId: null, enrollments: [] };
     };
     (prisma.scheduleSlot as any).findMany = async () => {
@@ -50,7 +51,8 @@ async function runAttendanceReadScopeSecurityTests() {
     assert.equal(inaccessibleAttendance.pagination.total, 0);
     assert.equal(attendanceQueryReached, false);
     assert.deepEqual(capturedEnrollmentWhere, {
-      status: 'ENROLLED',
+      status: { in: ['ENROLLED', 'BLOCKED'] },
+      courseId: 22,
       course: { scheduleSlots: { some: { doctorId: 5 } } },
     });
 

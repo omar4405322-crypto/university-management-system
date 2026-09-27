@@ -1,11 +1,10 @@
-// @ts-nocheck
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import Card from '../../components/ui/card';
-import Button from '../../components/ui/button';
-import Input from '../../components/ui/input';
-import Badge from '../../components/ui/Badge';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useEffect } from "react";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
+import Card from "../../components/ui/card";
+import Button from "../../components/ui/button";
+import Input from "../../components/ui/input";
+import Badge from "../../components/ui/badge";
+import { useAuth } from "../../context/AuthContext";
 import {
   Shield,
   Camera,
@@ -30,14 +29,14 @@ import {
   Check,
   Smartphone,
   Globe,
-} from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { useLanguage } from '../../context/LanguageContext';
-import api, { getDynamicBaseUrl } from '../../services/api';
-import Modal from '../../components/ui/Modal';
-import { Textarea } from '../../components/ui/textarea';
-import { logger } from '../../lib/logger';
-import { FEATURE_FLAGS } from '../../constants/featureFlags';
+} from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "../../context/LanguageContext";
+import api, { getDynamicBaseUrl } from "../../services/api";
+import Modal from "../../components/ui/Modal";
+import { Textarea } from "../../components/ui/textarea";
+import { logger } from "../../lib/logger";
+import { FEATURE_FLAGS } from "../../constants/featureFlags";
 
 export function Profile() {
   const { user, setUser } = useAuth();
@@ -47,60 +46,62 @@ export function Profile() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<'PERSONAL' | 'ACADEMIC' | 'SECURITY'>('PERSONAL');
+  const [activeTab, setActiveTab] = useState<
+    "PERSONAL" | "ACADEMIC" | "SECURITY"
+  >("PERSONAL");
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
+  const [message, setMessage] = useState({ type: "", text: "" });
   const [copiedEmail, setCopiedEmail] = useState(false);
 
   // Avatar Modal State
   const [isPicModalOpen, setIsPicModalOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
 
   // Password Modal State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState({
     current: false,
     new: false,
     confirm: false,
   });
-  const [passwordError, setPasswordError] = useState('');
+  const [passwordError, setPasswordError] = useState("");
 
   // Profile Form Data
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    phone: '',
-    address: '',
-    bio: '',
-    gender: '',
-    birthDate: '',
+    firstName: "",
+    lastName: "",
+    phone: "",
+    address: "",
+    bio: "",
+    gender: "",
+    birthDate: "",
   });
 
-  const [fullProfile, setFullProfile] = useState(null);
+  const [fullProfile, setFullProfile] = useState<any>(null);
 
   // Sync profile data
   useEffect(() => {
     if (user) {
       const profile = user.profile || {};
       setFormData({
-        firstName: profile.firstName || user.firstName || '',
-        lastName: profile.lastName || user.lastName || '',
-        phone: profile.phone || user.phone || '',
-        address: profile.address || user.address || '',
-        bio: profile.bio || user.bio || '',
-        gender: profile.gender || user.gender || '',
+        firstName: profile.firstName || user.firstName || "",
+        lastName: profile.lastName || user.lastName || "",
+        phone: profile.phone || user.phone || "",
+        address: profile.address || user.address || "",
+        bio: profile.bio || user.bio || "",
+        gender: profile.gender || user.gender || "",
         birthDate:
           profile.birthDate || user.birthDate
-            ? (profile.birthDate || user.birthDate).split('T')[0]
-            : '',
+            ? (profile.birthDate || user.birthDate).split("T")[0]
+            : "",
       });
     }
   }, [user]);
@@ -110,30 +111,51 @@ export function Profile() {
 
     const fetchFullProfile = async () => {
       try {
-        const response = await api.get('/users/profile', { signal: controller.signal });
+        const response = await api.get("/users/profile", {
+          signal: controller.signal,
+        });
         if (response.data.success) {
           const profileData = response.data.data;
           setFullProfile(profileData);
 
           // Merge loaded fields into form if currently empty
           setFormData((prev) => ({
-            firstName: prev.firstName || profileData.firstName || profileData.user?.firstName || '',
-            lastName: prev.lastName || profileData.lastName || profileData.user?.lastName || '',
-            phone: prev.phone || profileData.phone || profileData.user?.phone || '',
-            address: prev.address || profileData.address || profileData.user?.address || '',
-            bio: prev.bio || profileData.bio || profileData.user?.bio || '',
-            gender: prev.gender || profileData.gender || profileData.user?.gender || '',
+            firstName:
+              prev.firstName ||
+              profileData.firstName ||
+              profileData.user?.firstName ||
+              "",
+            lastName:
+              prev.lastName ||
+              profileData.lastName ||
+              profileData.user?.lastName ||
+              "",
+            phone:
+              prev.phone || profileData.phone || profileData.user?.phone || "",
+            address:
+              prev.address ||
+              profileData.address ||
+              profileData.user?.address ||
+              "",
+            bio: prev.bio || profileData.bio || profileData.user?.bio || "",
+            gender:
+              prev.gender ||
+              profileData.gender ||
+              profileData.user?.gender ||
+              "",
             birthDate:
               prev.birthDate ||
               (profileData.birthDate || profileData.user?.birthDate
-                ? (profileData.birthDate || profileData.user?.birthDate).split('T')[0]
-                : ''),
+                ? (profileData.birthDate || profileData.user?.birthDate).split(
+                    "T",
+                  )[0]
+                : ""),
           }));
         }
       } catch (error: any) {
-        import('axios').then((axios) => {
+        import("axios").then((axios) => {
           if (!axios.default.isCancel(error)) {
-            logger.error('Error fetching full profile:', error);
+            logger.error("Error fetching full profile:", error);
           }
         });
       }
@@ -160,11 +182,21 @@ export function Profile() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setMessage({ type: 'error', text: isRTL ? 'حجم الصورة يجب أن يكون أقل من 5MB' : 'Image size must be under 5MB' });
+        setMessage({
+          type: "error",
+          text: isRTL
+            ? "حجم الصورة يجب أن يكون أقل من 5MB"
+            : "Image size must be under 5MB",
+        });
         return;
       }
-      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        setMessage({ type: 'error', text: isRTL ? 'يُسمح فقط بصيغ JPG, PNG, WEBP' : 'Only JPG, PNG, WEBP allowed' });
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        setMessage({
+          type: "error",
+          text: isRTL
+            ? "يُسمح فقط بصيغ JPG, PNG, WEBP"
+            : "Only JPG, PNG, WEBP allowed",
+        });
         return;
       }
       setSelectedFile(file);
@@ -179,16 +211,22 @@ export function Profile() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
-    setMessage({ type: '', text: '' });
+    setMessage({ type: "", text: "" });
     try {
-      const response = await api.put('/users/profile', formData);
+      const response = await api.put("/users/profile", formData);
       if (response.data.success) {
-        setUser({ ...user, ...response.data.data });
-        setMessage({ type: 'success', text: t('profile.successUpdate', 'Profile updated successfully') });
+        if (user) setUser({ ...user, ...response.data.data });
+        setMessage({
+          type: "success",
+          text: t("profile.successUpdate", "Profile updated successfully"),
+        });
       }
     } catch (error: any) {
-      logger.error('Update profile error:', error);
-      setMessage({ type: 'error', text: t('profile.errorUpdate', 'Failed to update profile') });
+      logger.error("Update profile error:", error);
+      setMessage({
+        type: "error",
+        text: t("profile.errorUpdate", "Failed to update profile"),
+      });
     } finally {
       setLoading(false);
     }
@@ -197,23 +235,42 @@ export function Profile() {
   const handleEnableTwoFactor = async () => {
     setTwoFactorLoading(true);
     try {
-      const response = await api.patch('/users/profile/two-factor', { enabled: !user?.twoFactorEnabled });
+      const response = await api.patch("/users/profile/two-factor", {
+        enabled: !user?.twoFactorEnabled,
+      });
       if (response.data.success) {
         const isEnabled = !user?.twoFactorEnabled;
-        const updated = { ...user, ...response.data.data, twoFactorEnabled: isEnabled };
+        const updated = {
+          ...user,
+          ...response.data.data,
+          twoFactorEnabled: isEnabled,
+        };
         setUser(updated);
-        localStorage.setItem('user', JSON.stringify(updated));
+        try {
+          localStorage.removeItem("user");
+          localStorage.removeItem("profile");
+        } catch (_) {}
         setMessage({
-          type: 'success',
+          type: "success",
           text: isEnabled
-            ? t('profile.twoFactorEnabled', 'Two-factor authentication enabled.')
-            : isRTL ? 'تم تعطيل المصادقة الثنائية.' : 'Two-factor authentication disabled.',
+            ? t(
+                "profile.twoFactorEnabled",
+                "Two-factor authentication enabled.",
+              )
+            : isRTL
+              ? "تم تعطيل المصادقة الثنائية."
+              : "Two-factor authentication disabled.",
         });
       }
     } catch (error: any) {
       setMessage({
-        type: 'error',
-        text: error.message || t('profile.twoFactorError', 'Could not enable two-factor authentication.'),
+        type: "error",
+        text:
+          error.message ||
+          t(
+            "profile.twoFactorError",
+            "Could not enable two-factor authentication.",
+          ),
       });
     } finally {
       setTwoFactorLoading(false);
@@ -225,22 +282,38 @@ export function Profile() {
     setLoading(true);
     try {
       const form = new FormData();
-      form.append('profilePicture', selectedFile);
+      form.append("profilePicture", selectedFile);
 
-      const response = await api.put('/users/profile/picture', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const response = await api.put("/users/profile/picture", form, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (response.data.success) {
-        setUser({ ...user, profilePicture: response.data.data.profilePicture });
+        if (user)
+          setUser({
+            ...user,
+            profilePicture: response.data.data.profilePicture,
+          });
         setIsPicModalOpen(false);
         setSelectedFile(null);
-        setPreviewUrl('');
-        setMessage({ type: 'success', text: t('profile.successUpdatePic', 'Profile picture updated successfully') });
+        setPreviewUrl("");
+        const uploadFallback = response.data.data.fallback;
+        setMessage({
+          type: uploadFallback ? "error" : "success",
+          text: uploadFallback
+            ? response.data.message
+            : t(
+                "profile.successUpdatePic",
+                "Profile picture updated successfully",
+              ),
+        });
       }
     } catch (error: any) {
-      logger.error('Update picture error:', error);
-      setMessage({ type: 'error', text: t('profile.errorUpdatePic', 'Failed to update profile picture') });
+      logger.error("Update picture error:", error);
+      setMessage({
+        type: "error",
+        text: t("profile.errorUpdatePic", "Failed to update profile picture"),
+      });
     } finally {
       setLoading(false);
     }
@@ -248,35 +321,57 @@ export function Profile() {
 
   const handlePasswordSubmit = async (e: any) => {
     e.preventDefault();
-    setPasswordError('');
+    setPasswordError("");
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError(t('profile.passwordMismatch', 'Passwords do not match'));
+      setPasswordError(t("profile.passwordMismatch", "Passwords do not match"));
       return;
     }
 
     if (passwordForm.newPassword.length < 8) {
-      setPasswordError(t('profile.passwordMinLength', 'Password must be at least 8 characters long and contain at least one uppercase letter and one number'));
+      setPasswordError(
+        t(
+          "profile.passwordMinLength",
+          "Password must be at least 8 characters long and contain at least one uppercase letter and one number",
+        ),
+      );
       return;
     }
 
     setPasswordLoading(true);
     try {
-      const res = await api.patch('/users/profile/password', {
+      const res = await api.patch("/users/profile/password", {
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
       });
 
       if (res.data.success) {
-        setMessage({ type: 'success', text: t('profile.passwordSuccess', 'Password updated successfully') });
+        setMessage({
+          type: "success",
+          text: t("profile.passwordSuccess", "Password updated successfully"),
+        });
         setIsPasswordModalOpen(false);
-        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
       } else {
-        setPasswordError(res.data.message || t('profile.passwordError', 'Failed to update password. Please check your current password.'));
+        setPasswordError(
+          res.data.message ||
+            t(
+              "profile.passwordError",
+              "Failed to update password. Please check your current password.",
+            ),
+        );
       }
     } catch (err: any) {
       setPasswordError(
-        err.response?.data?.message || t('profile.passwordError', 'Failed to update password. Please check your current password.')
+        err.response?.data?.message ||
+          t(
+            "profile.passwordError",
+            "Failed to update password. Please check your current password.",
+          ),
       );
     } finally {
       setPasswordLoading(false);
@@ -284,31 +379,42 @@ export function Profile() {
   };
 
   const getInitials = () => {
-    const f = formData.firstName || user?.firstName || '';
-    const l = formData.lastName || user?.lastName || '';
+    const f = formData.firstName || user?.firstName || "";
+    const l = formData.lastName || user?.lastName || "";
     if (f && l) return `${f[0]}${l[0]}`.toUpperCase();
     if (f) return f[0].toUpperCase();
-    return user?.email?.substring(0, 2).toUpperCase() || 'U';
+    return user?.email?.substring(0, 2).toUpperCase() || "U";
   };
 
   const getProfilePictureUrl = (path?: string) => {
-    if (!path) return '';
-    if (path.startsWith('http')) return path;
-    const baseUrl = getDynamicBaseUrl().replace(/\/api$/, '') || 'http://localhost:5000';
-    return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    const baseUrl =
+      getDynamicBaseUrl().replace(/\/api$/, "") || "http://localhost:5000";
+    return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
   };
 
   const roleLabel = user?.role
-    ? user.role === 'SUPER_ADMIN'
-      ? isRTL ? 'مدير النظام العام' : 'Super Admin'
-      : user.role === 'ADMIN'
-      ? isRTL ? 'مدير النظام' : 'System Admin'
-      : user.role === 'DOCTOR'
-      ? isRTL ? 'عضو هيئة تدريس' : 'Faculty Doctor'
-      : user.role === 'TEACHING_ASSISTANT'
-      ? isRTL ? 'مساعد تدريس (معيد)' : 'Teaching Assistant'
-      : isRTL ? 'طالب جامعي' : 'Student'
-    : '';
+    ? user.role === "SUPER_ADMIN"
+      ? isRTL
+        ? "مدير النظام العام"
+        : "Super Admin"
+      : user.role === "ADMIN"
+        ? isRTL
+          ? "مدير النظام"
+          : "System Admin"
+        : user.role === "DOCTOR"
+          ? isRTL
+            ? "عضو هيئة تدريس"
+            : "Faculty Doctor"
+          : user.role === "TEACHING_ASSISTANT"
+            ? isRTL
+              ? "مساعد تدريس (معيد)"
+              : "Teaching Assistant"
+            : isRTL
+              ? "طالب جامعي"
+              : "Student"
+    : "";
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
@@ -316,16 +422,23 @@ export function Profile() {
       {message.text && (
         <div
           className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs font-semibold ${
-            message.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-              : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+            message.type === "success"
+              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+              : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
           }`}
         >
           <div className="flex items-center gap-2">
-            {message.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+            {message.type === "success" ? (
+              <CheckCircle2 size={16} />
+            ) : (
+              <AlertTriangle size={16} />
+            )}
             <span>{message.text}</span>
           </div>
-          <button onClick={() => setMessage({ type: '', text: '' })} className="p-1 hover:opacity-75 cursor-pointer">
+          <button
+            onClick={() => setMessage({ type: "", text: "" })}
+            className="p-1 hover:opacity-75 cursor-pointer"
+          >
             <X size={14} />
           </button>
         </div>
@@ -363,7 +476,7 @@ export function Profile() {
                 <button
                   onClick={() => setIsPicModalOpen(true)}
                   className="absolute bottom-1 end-1 p-1.5 rounded-lg bg-brand-primary-600 hover:bg-brand-primary-700 text-white shadow-md border border-white dark:border-slate-800 transition-all cursor-pointer"
-                  title={t('profile.uploadPic', 'Update Photo')}
+                  title={t("profile.uploadPic", "Update Photo")}
                 >
                   <Camera size={13} />
                 </button>
@@ -375,7 +488,7 @@ export function Profile() {
                   <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
                     {formData.firstName || formData.lastName
                       ? `${formData.firstName} ${formData.lastName}`.trim()
-                      : user?.email?.split('@')[0]}
+                      : user?.email?.split("@")[0]}
                   </h1>
                   <Badge className="bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-700 dark:text-brand-primary-300 border border-brand-primary-200/40 text-[10px] font-bold">
                     {roleLabel}
@@ -386,9 +499,13 @@ export function Profile() {
                   <button
                     onClick={handleCopyEmail}
                     className="p-1 text-slate-400 hover:text-brand-primary-600 cursor-pointer"
-                    title={isRTL ? 'نسخ البريد' : 'Copy'}
+                    title={isRTL ? "نسخ البريد" : "Copy"}
                   >
-                    {copiedEmail ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                    {copiedEmail ? (
+                      <Check size={12} className="text-emerald-500" />
+                    ) : (
+                      <Copy size={12} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -403,7 +520,7 @@ export function Profile() {
                 className="h-8.5 px-3 rounded-lg text-xs font-semibold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 gap-1.5 cursor-pointer shadow-2xs"
               >
                 <KeyRound size={13} />
-                <span>{t('profile.changePassword', 'Change Password')}</span>
+                <span>{t("profile.changePassword", "Change Password")}</span>
               </Button>
             </div>
           </div>
@@ -413,35 +530,43 @@ export function Profile() {
             {/* Affiliation */}
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/50">
               <span className="text-[10px] text-slate-400 block font-semibold">
-                {isRTL ? 'الجهة الأكاديمية' : 'Affiliation'}
+                {isRTL ? "الجهة الأكاديمية" : "Affiliation"}
               </span>
               <span className="font-bold text-slate-800 dark:text-slate-200 truncate block mt-0.5">
-                {fullProfile?.department?.college?.name || fullProfile?.department?.name || (isRTL ? 'الإدارة العامة' : 'General Admin')}
+                {fullProfile?.department?.college?.name ||
+                  fullProfile?.department?.name ||
+                  (isRTL ? "الإدارة العامة" : "General Admin")}
               </span>
             </div>
 
             {/* University ID */}
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/50">
               <span className="text-[10px] text-slate-400 block font-semibold">
-                {isRTL ? 'الرقم التعريفي' : 'ID Code'}
+                {isRTL ? "الرقم التعريفي" : "ID Code"}
               </span>
               <span className="font-bold text-slate-800 dark:text-slate-200 font-mono block mt-0.5">
-                {fullProfile?.studentId || fullProfile?.doctorId || user?.id || '—'}
+                {fullProfile?.studentId ||
+                  fullProfile?.doctorId ||
+                  user?.id ||
+                  "—"}
               </span>
             </div>
 
             {/* Joined Date */}
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/50">
               <span className="text-[10px] text-slate-400 block font-semibold">
-                {t('profile.joined', 'Joined')}
+                {t("profile.joined", "Joined")}
               </span>
               <span className="font-bold text-slate-800 dark:text-slate-200 block mt-0.5">
                 {user?.createdAt
-                  ? new Date(user.createdAt).toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', {
-                      month: 'short',
-                      year: 'numeric',
-                    })
-                  : '—'}
+                  ? new Date(user.createdAt).toLocaleDateString(
+                      isRTL ? "ar-EG" : "en-US",
+                      {
+                        month: "short",
+                        year: "numeric",
+                      },
+                    )
+                  : "—"}
               </span>
             </div>
 
@@ -449,21 +574,27 @@ export function Profile() {
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-slate-400 block font-semibold">
-                  {t('profile.twoFactor', 'Two-Factor Authentication')}
+                  {t("profile.twoFactor", "Two-Factor Authentication")}
                 </span>
                 <span
                   className={`text-xs font-bold block mt-0.5 ${
                     user?.twoFactorEnabled
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-amber-600 dark:text-amber-400'
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-amber-600 dark:text-amber-400"
                   }`}
                 >
-                  {user?.twoFactorEnabled ? t('profile.enabled', 'Enabled') : (isRTL ? 'غير مفعلة' : 'Disabled')}
+                  {user?.twoFactorEnabled
+                    ? t("profile.enabled", "Enabled")
+                    : isRTL
+                      ? "غير مفعلة"
+                      : "Disabled"}
                 </span>
               </div>
               <Shield
                 size={16}
-                className={user?.twoFactorEnabled ? 'text-emerald-500' : 'text-amber-500'}
+                className={
+                  user?.twoFactorEnabled ? "text-emerald-500" : "text-amber-500"
+                }
               />
             </div>
           </div>
@@ -475,54 +606,57 @@ export function Profile() {
       {/* ========================================================================= */}
       <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-fit">
         <button
-          onClick={() => setActiveTab('PERSONAL')}
+          onClick={() => setActiveTab("PERSONAL")}
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'PERSONAL'
-              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+            activeTab === "PERSONAL"
+              ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs"
+              : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
           }`}
         >
           <User size={14} />
-          <span>{t('profile.personalTab', 'Personal Information')}</span>
+          <span>{t("profile.personalTab", "Personal Information")}</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('ACADEMIC')}
+          onClick={() => setActiveTab("ACADEMIC")}
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'ACADEMIC'
-              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+            activeTab === "ACADEMIC"
+              ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs"
+              : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
           }`}
         >
           <GraduationCap size={14} />
-          <span>{t('profile.academicTab', 'Academic & Role Record')}</span>
+          <span>{t("profile.academicTab", "Academic & Role Record")}</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('SECURITY')}
+          onClick={() => setActiveTab("SECURITY")}
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'SECURITY'
-              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+            activeTab === "SECURITY"
+              ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs"
+              : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
           }`}
         >
           <Shield size={14} />
-          <span>{t('profile.securityTab', 'Security & Credentials')}</span>
+          <span>{t("profile.securityTab", "Security & Credentials")}</span>
         </button>
       </div>
 
       {/* ========================================================================= */}
       {/* 3. TAB 1: PERSONAL INFORMATION FORM                                       */}
       {/* ========================================================================= */}
-      {activeTab === 'PERSONAL' && (
+      {activeTab === "PERSONAL" && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="border-b border-slate-100 dark:border-slate-700/60 pb-3">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                {t('profile.personalInfo', 'Personal Information')}
+                {t("profile.personalInfo", "Personal Information")}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                {t('profile.personalSubtitle', 'Update your basic details here.')}
+                {t(
+                  "profile.personalSubtitle",
+                  "Update your basic details here.",
+                )}
               </p>
             </div>
 
@@ -530,14 +664,14 @@ export function Profile() {
               {/* First Name */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('profile.firstName', 'First Name')}
+                  {t("profile.firstName", "First Name")}
                 </label>
                 <input
                   type="text"
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleChange}
-                  placeholder={t('profile.firstName', 'First Name')}
+                  placeholder={t("profile.firstName", "First Name")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
@@ -545,14 +679,14 @@ export function Profile() {
               {/* Last Name */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('profile.lastName', 'Last Name')}
+                  {t("profile.lastName", "Last Name")}
                 </label>
                 <input
                   type="text"
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleChange}
-                  placeholder={t('profile.lastName', 'Last Name')}
+                  placeholder={t("profile.lastName", "Last Name")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
@@ -560,11 +694,11 @@ export function Profile() {
               {/* Official Email (Read-only) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('profile.email', 'Email Address')}
+                  {t("profile.email", "Email Address")}
                 </label>
                 <input
                   type="email"
-                  value={user?.email || ''}
+                  value={user?.email || ""}
                   disabled
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-mono cursor-not-allowed opacity-80"
                 />
@@ -573,7 +707,7 @@ export function Profile() {
               {/* Phone Number */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('profile.phone', 'Phone Number')}
+                  {t("profile.phone", "Phone Number")}
                 </label>
                 <input
                   type="tel"
@@ -588,7 +722,7 @@ export function Profile() {
               {/* Date of Birth */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('profile.birthDate', 'Date of Birth')}
+                  {t("profile.birthDate", "Date of Birth")}
                 </label>
                 <input
                   type="date"
@@ -602,14 +736,18 @@ export function Profile() {
               {/* Address / City */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('profile.address', 'Address / City')}
+                  {t("profile.address", "Address / City")}
                 </label>
                 <input
                   type="text"
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
-                  placeholder={isRTL ? 'مثال: 6 أكتوبر، الجيزة' : 'e.g. 6th of October City'}
+                  placeholder={
+                    isRTL
+                      ? "مثال: 6 أكتوبر، الجيزة"
+                      : "e.g. 6th of October City"
+                  }
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
@@ -617,14 +755,17 @@ export function Profile() {
               {/* Bio / About */}
               <div className="sm:col-span-2 md:col-span-3">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('profile.bio', 'Bio')}
+                  {t("profile.bio", "Bio")}
                 </label>
                 <textarea
                   name="bio"
                   value={formData.bio}
                   onChange={handleChange}
                   rows={3}
-                  placeholder={t('profile.bioPlaceholder', 'Tell us about yourself...')}
+                  placeholder={t(
+                    "profile.bioPlaceholder",
+                    "Tell us about yourself...",
+                  )}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
@@ -636,7 +777,9 @@ export function Profile() {
                 disabled={loading}
                 className="h-9 px-5 bg-brand-primary-600 hover:bg-brand-primary-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
               >
-                {loading ? t('common.loading', 'Loading...') : t('profile.saveChanges', 'Save Changes')}
+                {loading
+                  ? t("common.loading", "Loading...")
+                  : t("profile.saveChanges", "Save Changes")}
               </Button>
             </div>
           </form>
@@ -646,15 +789,18 @@ export function Profile() {
       {/* ========================================================================= */}
       {/* 4. TAB 2: ACADEMIC & ROLE IDENTITY                                        */}
       {/* ========================================================================= */}
-      {activeTab === 'ACADEMIC' && (
+      {activeTab === "ACADEMIC" && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs space-y-4">
           <div className="border-b border-slate-100 dark:border-slate-700/60 pb-3 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                {t('profile.academicInfo', 'Academic Information')}
+                {t("profile.academicInfo", "Academic Information")}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                {t('profile.academicSubtitle', 'View your university records and academic status')}
+                {t(
+                  "profile.academicSubtitle",
+                  "View your university records and academic status",
+                )}
               </p>
             </div>
             <Badge variant="info" className="text-xs font-bold">
@@ -666,77 +812,97 @@ export function Profile() {
             {/* College */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/50">
               <span className="text-[10px] text-slate-400 block font-semibold">
-                {t('profile.college', 'College')}
+                {t("profile.college", "College")}
               </span>
               <span className="font-bold text-xs text-slate-900 dark:text-white block mt-1">
-                {fullProfile?.department?.college?.name || (isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October Technological University')}
+                {fullProfile?.department?.college?.name ||
+                  (isRTL
+                    ? "جامعة 6 أكتوبر التكنولوجية"
+                    : "6th of October Technological University")}
               </span>
             </div>
 
             {/* Department */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/50">
               <span className="text-[10px] text-slate-400 block font-semibold">
-                {t('profile.department', 'Department')}
+                {t("profile.department", "Department")}
               </span>
               <span className="font-bold text-xs text-slate-900 dark:text-white block mt-1">
-                {fullProfile?.department?.name || (isRTL ? 'الإدارة المركزية' : 'Central Admin')}
+                {fullProfile?.department?.name ||
+                  (isRTL ? "الإدارة المركزية" : "Central Admin")}
               </span>
             </div>
 
             {/* Role-Specific: Student Year / Group */}
-            {user?.role === 'STUDENT' && (
+            {user?.role === "STUDENT" && (
               <>
                 <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/50">
                   <span className="text-[10px] text-slate-400 block font-semibold">
-                    {t('profile.year', 'Academic Year')}
+                    {t("profile.year", "Academic Year")}
                   </span>
                   <span className="font-bold text-xs text-slate-900 dark:text-white block mt-1">
-                    {isRTL ? `الفرقة ${fullProfile?.year || 1}` : `Year ${fullProfile?.year || 1}`}
+                    {isRTL
+                      ? `الفرقة ${fullProfile?.year || 1}`
+                      : `Year ${fullProfile?.year || 1}`}
                   </span>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/50">
                   <span className="text-[10px] text-slate-400 block font-semibold">
-                    {isRTL ? 'المجموعة / السكشن' : 'Group / Section'}
+                    {isRTL ? "المجموعة / السكشن" : "Group / Section"}
                   </span>
                   <span className="font-bold text-xs text-slate-900 dark:text-white block mt-1">
                     {fullProfile?.group
                       ? fullProfile.group.parentGroup
                         ? `${fullProfile.group.parentGroup.name} (${fullProfile.group.name})`
                         : fullProfile.group.name
-                      : (isRTL ? 'غير محدد' : 'Unassigned')}
+                      : isRTL
+                        ? "غير محدد"
+                        : "Unassigned"}
                   </span>
                 </div>
               </>
             )}
 
             {/* Doctor / TA Specialty */}
-            {(user?.role === 'DOCTOR' || user?.role === 'TEACHING_ASSISTANT') && (
+            {(user?.role === "DOCTOR" ||
+              user?.role === "TEACHING_ASSISTANT") && (
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/50">
                 <span className="text-[10px] text-slate-400 block font-semibold">
-                  {isRTL ? 'التخصص الأكاديمي' : 'Specialty'}
+                  {isRTL ? "التخصص الأكاديمي" : "Specialty"}
                 </span>
                 <span className="font-bold text-xs text-slate-900 dark:text-white block mt-1">
-                  {fullProfile?.specialty || (isRTL ? 'تكنولوجيا المعلومات' : 'Information Technology')}
+                  {fullProfile?.specialty ||
+                    (isRTL ? "تكنولوجيا المعلومات" : "Information Technology")}
                 </span>
               </div>
             )}
 
             {/* Admin Scope */}
-            {['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role || '') && (
+            {[
+              "SUPER_ADMIN",
+              "ADMIN",
+              "COLLEGE_ADMIN",
+              "DEPARTMENT_ADMIN",
+            ].includes(user?.role || "") && (
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/50">
                 <span className="text-[10px] text-slate-400 block font-semibold">
-                  {isRTL ? 'نطاق الصلاحيات' : 'Access Level'}
+                  {isRTL ? "نطاق الصلاحيات" : "Access Level"}
                 </span>
                 <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400 block mt-1">
-                  {isRTL ? 'صلاحيات إدارة كاملة بالنظام' : 'Full Administrative Access'}
+                  {isRTL
+                    ? "صلاحيات إدارة كاملة بالنظام"
+                    : "Full Administrative Access"}
                 </span>
               </div>
             )}
           </div>
 
           <p className="text-[11px] text-slate-400 italic pt-2">
-            {t('profile.academicInfoNote', 'Note: Academic information can only be changed by the administrator.')}
+            {t(
+              "profile.academicInfoNote",
+              "Note: Academic information can only be changed by the administrator.",
+            )}
           </p>
         </div>
       )}
@@ -744,7 +910,7 @@ export function Profile() {
       {/* ========================================================================= */}
       {/* 5. TAB 3: SECURITY, PASSWORD, & 2FA                                       */}
       {/* ========================================================================= */}
-      {activeTab === 'SECURITY' && (
+      {activeTab === "SECURITY" && (
         <div className="space-y-3.5">
           {/* Password Security Card */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-4 shadow-2xs flex items-center justify-between gap-3">
@@ -754,10 +920,13 @@ export function Profile() {
               </div>
               <div>
                 <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                  {t('profile.changePassword', 'Change Password')}
+                  {t("profile.changePassword", "Change Password")}
                 </h3>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  {t('profile.changePasswordSubtitle', 'Update your account password regularly.')}
+                  {t(
+                    "profile.changePasswordSubtitle",
+                    "Update your account password regularly.",
+                  )}
                 </p>
               </div>
             </div>
@@ -767,7 +936,7 @@ export function Profile() {
               onClick={() => setIsPasswordModalOpen(true)}
               className="h-8 px-3.5 bg-brand-primary-600 hover:bg-brand-primary-700 text-white rounded-lg text-xs font-bold cursor-pointer"
             >
-              {t('common.update', 'Refresh')}
+              {t("common.update", "Refresh")}
             </Button>
           </div>
 
@@ -777,39 +946,42 @@ export function Profile() {
               <div
                 className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                   user?.twoFactorEnabled
-                    ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400'
+                    ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400"
+                    : "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400"
                 }`}
               >
                 <Shield size={18} />
               </div>
               <div>
                 <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                  {t('profile.twoFactor', 'Two-Factor Authentication')}
+                  {t("profile.twoFactor", "Two-Factor Authentication")}
                 </h3>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  {t('profile.twoFactorSubtitle', 'Protect your account with an extra verification step')}
+                  {t(
+                    "profile.twoFactorSubtitle",
+                    "Protect your account with an extra verification step",
+                  )}
                 </p>
               </div>
             </div>
 
             <Button
               size="sm"
-              variant={user?.twoFactorEnabled ? 'outline' : 'default'}
+              variant={user?.twoFactorEnabled ? "outline" : "default"}
               onClick={handleEnableTwoFactor}
               disabled={twoFactorLoading}
               className={`h-8 px-3.5 rounded-lg text-xs font-bold cursor-pointer ${
                 user?.twoFactorEnabled
-                  ? 'border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300'
-                  : 'bg-amber-600 hover:bg-amber-700 text-white'
+                  ? "border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                  : "bg-amber-600 hover:bg-amber-700 text-white"
               }`}
             >
               {twoFactorLoading ? (
                 <Loader2 className="animate-spin" size={14} />
               ) : user?.twoFactorEnabled ? (
-                t('profile.enabled', 'Enabled')
+                t("profile.enabled", "Enabled")
               ) : (
-                t('profile.enable2fa', 'Enable 2FA')
+                t("profile.enable2fa", "Enable 2FA")
               )}
             </Button>
           </div>
@@ -818,22 +990,27 @@ export function Profile() {
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-4 shadow-2xs">
             <h3 className="text-xs font-bold text-slate-900 dark:text-white mb-2.5 flex items-center gap-2">
               <Globe size={14} className="text-brand-primary-500" />
-              <span>{isRTL ? 'جلسة تسجيل الدخول الحالية' : 'Current Active Session'}</span>
+              <span>
+                {isRTL ? "جلسة تسجيل الدخول الحالية" : "Current Active Session"}
+              </span>
             </h3>
             <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 text-xs">
               <div className="flex items-center gap-2.5">
                 <Smartphone size={16} className="text-slate-400" />
                 <div>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 block">
-                    {navigator.userAgent.includes('Windows') ? 'Windows PC' : 'Web Device'} — Chrome / Browser
+                    {navigator.userAgent.includes("Windows")
+                      ? "Windows PC"
+                      : "Web Device"}{" "}
+                    — Chrome / Browser
                   </span>
                   <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                    ● {isRTL ? 'الجلسة الحالية النشطة' : 'Active Now'}
+                    ● {isRTL ? "الجلسة الحالية النشطة" : "Active Now"}
                   </span>
                 </div>
               </div>
               <Badge variant="success" className="text-[10px] font-bold">
-                {isRTL ? 'آمن وموثق' : 'Verified'}
+                {isRTL ? "آمن وموثق" : "Verified"}
               </Badge>
             </div>
           </div>
@@ -849,10 +1026,13 @@ export function Profile() {
         isOpen={isPasswordModalOpen}
         onClose={() => {
           setIsPasswordModalOpen(false);
-          setPasswordError('');
+          setPasswordError("");
         }}
-        title={t('profile.changePassword', 'Change Password')}
-        subtitle={t('profile.changePasswordSubtitle', 'Update your account password regularly.')}
+        title={t("profile.changePassword", "Change Password")}
+        subtitle={t(
+          "profile.changePasswordSubtitle",
+          "Update your account password regularly.",
+        )}
         size="sm"
       >
         <form onSubmit={handlePasswordSubmit} className="space-y-3 pt-1">
@@ -865,22 +1045,36 @@ export function Profile() {
           {/* Current Password */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {t('profile.currentPassword', 'Current Password')}
+              {t("profile.currentPassword", "Current Password")}
             </label>
             <div className="relative">
               <input
-                type={showPassword.current ? 'text' : 'password'}
+                type={showPassword.current ? "text" : "password"}
                 required
                 value={passwordForm.currentPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    currentPassword: e.target.value,
+                  })
+                }
                 className="w-full ps-3 pe-8 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
               />
               <button
                 type="button"
-                onClick={() => setShowPassword({ ...showPassword, current: !showPassword.current })}
+                onClick={() =>
+                  setShowPassword({
+                    ...showPassword,
+                    current: !showPassword.current,
+                  })
+                }
                 className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
-                {showPassword.current ? <EyeOff size={13} /> : <Eye size={13} />}
+                {showPassword.current ? (
+                  <EyeOff size={13} />
+                ) : (
+                  <Eye size={13} />
+                )}
               </button>
             </div>
           </div>
@@ -888,19 +1082,26 @@ export function Profile() {
           {/* New Password */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {t('profile.newPassword', 'New Password')}
+              {t("profile.newPassword", "New Password")}
             </label>
             <div className="relative">
               <input
-                type={showPassword.new ? 'text' : 'password'}
+                type={showPassword.new ? "text" : "password"}
                 required
                 value={passwordForm.newPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    newPassword: e.target.value,
+                  })
+                }
                 className="w-full ps-3 pe-8 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
               />
               <button
                 type="button"
-                onClick={() => setShowPassword({ ...showPassword, new: !showPassword.new })}
+                onClick={() =>
+                  setShowPassword({ ...showPassword, new: !showPassword.new })
+                }
                 className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 {showPassword.new ? <EyeOff size={13} /> : <Eye size={13} />}
@@ -911,22 +1112,36 @@ export function Profile() {
           {/* Confirm Password */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {t('profile.confirmPassword', 'Confirm New Password')}
+              {t("profile.confirmPassword", "Confirm New Password")}
             </label>
             <div className="relative">
               <input
-                type={showPassword.confirm ? 'text' : 'password'}
+                type={showPassword.confirm ? "text" : "password"}
                 required
                 value={passwordForm.confirmPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    confirmPassword: e.target.value,
+                  })
+                }
                 className="w-full ps-3 pe-8 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
               />
               <button
                 type="button"
-                onClick={() => setShowPassword({ ...showPassword, confirm: !showPassword.confirm })}
+                onClick={() =>
+                  setShowPassword({
+                    ...showPassword,
+                    confirm: !showPassword.confirm,
+                  })
+                }
                 className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
-                {showPassword.confirm ? <EyeOff size={13} /> : <Eye size={13} />}
+                {showPassword.confirm ? (
+                  <EyeOff size={13} />
+                ) : (
+                  <Eye size={13} />
+                )}
               </button>
             </div>
           </div>
@@ -939,7 +1154,7 @@ export function Profile() {
               onClick={() => setIsPasswordModalOpen(false)}
               className="text-xs font-semibold"
             >
-              {t('common.cancel', 'Cancel')}
+              {t("common.cancel", "Cancel")}
             </Button>
             <Button
               type="submit"
@@ -947,7 +1162,9 @@ export function Profile() {
               disabled={passwordLoading}
               className="bg-brand-primary-600 hover:bg-brand-primary-700 text-white text-xs font-bold"
             >
-              {passwordLoading ? t('common.loading', 'Loading...') : t('common.save', 'Save')}
+              {passwordLoading
+                ? t("common.loading", "Loading...")
+                : t("common.save", "Save")}
             </Button>
           </div>
         </form>
@@ -957,7 +1174,7 @@ export function Profile() {
       <Modal
         isOpen={isPicModalOpen}
         onClose={() => setIsPicModalOpen(false)}
-        title={t('profile.uploadPic', 'Update Photo')}
+        title={t("profile.uploadPic", "Update Photo")}
         size="sm"
       >
         <div className="space-y-4 pt-1">
@@ -972,7 +1189,7 @@ export function Profile() {
                 <button
                   onClick={() => {
                     setSelectedFile(null);
-                    setPreviewUrl('');
+                    setPreviewUrl("");
                   }}
                   className="absolute -top-2 -right-2 p-1 bg-rose-600 text-white rounded-full shadow-md hover:bg-rose-700"
                 >
@@ -985,14 +1202,14 @@ export function Profile() {
                   <Camera size={28} />
                 </div>
                 <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
-                  {t('profile.dropPic', 'Drop your image here')}
+                  {t("profile.dropPic", "Drop your image here")}
                 </p>
                 <span className="text-[10px] text-slate-400 mb-3">
                   PNG, JPG أو WebP (بحد أقصى 5MB)
                 </span>
                 <label className="cursor-pointer">
                   <span className="bg-brand-primary-600 hover:bg-brand-primary-700 text-white px-4 py-2 rounded-xl text-xs font-bold inline-block shadow-xs">
-                    {t('profile.browseFiles', 'Browse files')}
+                    {t("profile.browseFiles", "Browse files")}
                   </span>
                   <input
                     type="file"
@@ -1013,7 +1230,7 @@ export function Profile() {
               onClick={() => setIsPicModalOpen(false)}
               className="text-xs font-semibold"
             >
-              {t('common.cancel', 'Cancel')}
+              {t("common.cancel", "Cancel")}
             </Button>
             <Button
               size="sm"
@@ -1021,7 +1238,9 @@ export function Profile() {
               disabled={!selectedFile || loading}
               className="bg-brand-primary-600 hover:bg-brand-primary-700 text-white text-xs font-bold"
             >
-              {loading ? t('common.loading', 'Loading...') : t('profile.savePic', 'Save Picture')}
+              {loading
+                ? t("common.loading", "Loading...")
+                : t("profile.savePic", "Save Picture")}
             </Button>
           </div>
         </div>

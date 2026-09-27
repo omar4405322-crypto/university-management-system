@@ -1,6 +1,54 @@
 import logger from './logger';
 import prisma from './prismaClient';
 
+const REDACTED = '[REDACTED]';
+const SENSITIVE_FIELDS = new Set([
+  'password',
+  'newpassword',
+  'currentpassword',
+  'token',
+  'accesstoken',
+  'refreshtoken',
+  'secret',
+  'secretkey',
+  'twofactorsecret',
+  'authorization',
+  'answers',
+  'correct',
+  'correctanswer',
+  'questions',
+  'rfidtag',
+]);
+
+function normalizeFieldName(field: string): string {
+  return field.replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+
+export function sanitizeAuditValue(value: any): any {
+  if (Array.isArray(value)) return value.map((entry) => sanitizeAuditValue(entry));
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([field, fieldValue]) => [
+      field,
+      SENSITIVE_FIELDS.has(normalizeFieldName(field))
+        ? REDACTED
+        : sanitizeAuditValue(fieldValue),
+    ])
+  );
+}
+
+export const SYSTEM_AUDIT_ACTORS = {
+  ATTENDANCE_CRON: {
+    actorEmail: 'system:attendance-cron',
+    userRole: 'SYSTEM',
+  },
+  ATTENDANCE_ENGINE: {
+    actorEmail: 'system:attendance-engine',
+    userRole: 'SYSTEM',
+  },
+} as const;
+
 export interface AuditLogEntry {
   action: string;
   resourceType: string;
@@ -45,6 +93,7 @@ export async function auditLog(
   const userRole = req.user?.role || req.userRole || null;
   const ipAddress = req.ip || (typeof req.get === 'function' ? req.get('x-forwarded-for') : undefined);
   const userAgent = typeof req.get === 'function' ? req.get('User-Agent') : req.userAgent;
+  const safeChanges = changes ? sanitizeAuditValue(changes) : undefined;
 
   const entry: AuditLogEntry = {
     action,
@@ -55,14 +104,15 @@ export async function auditLog(
     actorEmail: actorEmail ?? undefined,
     ip: ipAddress,
     timestamp: new Date().toISOString(),
-    ...(changes && { changes }),
+    ...(safeChanges && { changes: safeChanges }),
   };
 
   logger[level]('AUDIT', entry);
 
   const client = tx || prisma;
-  const promise = client.auditLog
-    .create({
+  req.auditLogWritten = true;
+  try {
+    await client.auditLog.create({
       data: {
         userId: parsedUserId,
         userEmail: actorEmail,
@@ -71,18 +121,23 @@ export async function auditLog(
         action,
         entity: resourceType,
         entityId: resourceId !== null && resourceId !== undefined ? String(resourceId) : null,
-        details: changes ? changes : undefined,
+        details: safeChanges,
         ipAddress: ipAddress || null,
         userAgent: userAgent || null,
       },
     });
-
-  if (tx) {
-    await promise;
-  } else {
-    promise.catch((err: any) => {
-      logger.error('Failed to write audit log to database', { error: err?.message || err });
+  } catch (err: any) {
+    logger.error('Failed to write audit log to database', {
+      error: err?.message || err,
+      action,
+      entity: resourceType,
+      entityId: resourceId !== null && resourceId !== undefined ? String(resourceId) : null,
+      actorUserId: parsedUserId,
+      actorEmail,
+      actorRole: userRole,
+      transactional: Boolean(tx),
     });
+    if (tx) throw err;
   }
 }
 

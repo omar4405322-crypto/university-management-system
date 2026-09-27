@@ -29,10 +29,14 @@ async function runRfidRedesignTests() {
   const storedEncryptedKey = encrypt(rawSigningKey);
 
   const originalFindUniqueDevice = prisma.rfidDevice.findUnique;
-  const originalFindUniqueStudent = prisma.student.findUnique;
+  const originalFindFirstStudent = prisma.student.findFirst;
   const originalFindFirstSession = prisma.attendanceSession.findFirst;
+  const originalFindFirstDoctor = prisma.doctor.findFirst;
+  const originalFindUniqueDoctor = prisma.doctor.findUnique;
 
   try {
+    (prisma.doctor as any).findFirst = async () => ({ id: 1, userId: 100 });
+    (prisma.doctor as any).findUnique = async () => ({ id: 1, userId: 100 });
     (prisma.rfidDevice as any).findUnique = async ({ where }: any) => {
       if (where.roomId === testRoomId) {
         return {
@@ -67,8 +71,14 @@ async function runRfidRedesignTests() {
       return null;
     };
 
-    (prisma.student as any).findUnique = async ({ where }: any) => {
-      if (where.rfidTag === testTag) {
+    (prisma.student as any).findFirst = async ({ where }: any) => {
+      assert.deepEqual(where, {
+        AND: [
+          { rfidTag: testTag },
+          { isActive: true, user: { is: { isActive: true } } },
+        ],
+      });
+      if (where.AND[0].rfidTag === testTag) {
         return {
           id: 77,
           studentId: 'STU-00077',
@@ -235,8 +245,10 @@ async function runRfidRedesignTests() {
     process.exit(0);
   } finally {
     (prisma.rfidDevice as any).findUnique = originalFindUniqueDevice;
-    (prisma.student as any).findUnique = originalFindUniqueStudent;
+    (prisma.student as any).findFirst = originalFindFirstStudent;
     (prisma.attendanceSession as any).findFirst = originalFindFirstSession;
+    (prisma.doctor as any).findFirst = originalFindFirstDoctor;
+    (prisma.doctor as any).findUnique = originalFindUniqueDoctor;
   }
 }
 

@@ -14,6 +14,8 @@ const original = {
   sessionFindMany: prisma.attendanceSession.findMany,
   sessionCount: prisma.attendanceSession.count,
   slotFindUnique: prisma.scheduleSlot.findUnique,
+  slotFindMany: prisma.scheduleSlot.findMany,
+  policyFindMany: prisma.absenceThresholdPolicy.findMany,
   queryRaw: prisma.$queryRaw,
 };
 
@@ -175,11 +177,10 @@ async function testSlotSessionHistoryIsBoundedAndFiltered() {
   assert.equal((result as any).pagination.total, 180);
 }
 
-async function testStaffWarningsUseSqlAggregationAndPageDetailsOnly() {
-  let rawQueryCalls = 0;
-  const rawQueries: any[] = [];
+async function testStaffWarningsUseBatchedSharedCalculation() {
   let enrollmentRowsRequested = 0;
-  let rawAttendanceReadReached = false;
+  let pageDetailRowsRequested = 0;
+  let attendanceReads = 0;
 
   (prisma.course.findMany as any) = async (args: any) => {
     if (args?.select?.id && Object.keys(args.select).length === 1) {
@@ -187,88 +188,102 @@ async function testStaffWarningsUseSqlAggregationAndPageDetailsOnly() {
     }
     return [{ id: 7, courseCode: 'C7', name: 'Course 7', year: 2, semester: 1 }];
   };
-  (prisma as any).$queryRaw = async (query: any) => {
-    rawQueryCalls += 1;
-    rawQueries.push(query);
-    return [{
-      totalMonitored: 350,
-      blockedCount: 75,
-      finalWarningCount: 80,
-      firstWarningCount: 95,
-      safeCount: 100,
-      pageRows: Array.from({ length: 25 }, (_, index) => ({
-        enrollmentId: index + 1,
-        warningStage: 'FINAL_WARNING',
-        absencePercent: 20,
-        maxAbsencePercent: 25,
-        total: 10,
-        present: 7,
-        late: 2,
-        absent: 1,
-        excused: 0,
-        pendingReview: 0,
-      })),
-    }];
-  };
   (prisma.enrollment.findMany as any) = async (args: any) => {
-    enrollmentRowsRequested = args.where.id.in.length;
-    return args.where.id.in.map((id: number) => ({
-      id,
-      studentId: id,
+    if (args.where.id?.in) {
+      pageDetailRowsRequested = args.where.id.in.length;
+      return args.where.id.in.map((id: number) => ({
+        id,
+        status: 'ENROLLED',
+        student: {
+          id,
+          studentId: `S${id}`,
+          firstName: 'Student',
+          lastName: String(id),
+          year: 2,
+          department: null,
+          user: { email: `s${id}@example.test` },
+        },
+        course: {
+          id: 7,
+          courseCode: 'C7',
+          name: 'Course 7',
+          year: 2,
+          semester: 1,
+        },
+        exemptionPeriods: [],
+      }));
+    }
+    assert.deepEqual(args.where.courseId.in, [7]);
+    enrollmentRowsRequested = 50;
+    return Array.from({ length: 50 }, (_, index) => ({
+      id: index + 1,
+      studentId: index + 1,
       courseId: 7,
+      semester: 1,
+      academicYear: 2026,
+      enrolledAt: new Date('2026-01-01T00:00:00.000Z'),
+      customAbsenceThreshold: null,
       status: 'ENROLLED',
       student: {
-        id,
-        studentId: `S${id}`,
+        id: index + 1,
+        groupId: null,
+        studentId: `S${index + 1}`,
         firstName: 'Student',
-        lastName: String(id),
+        lastName: String(index + 1),
         year: 2,
         department: null,
-        user: { email: `s${id}@example.test` },
+        user: { email: `s${index + 1}@example.test` },
       },
       course: {
         id: 7,
         courseCode: 'C7',
         name: 'Course 7',
+        credits: 3,
         year: 2,
         semester: 1,
+        departmentId: 4,
       },
       exemptionPeriods: [],
     }));
   };
+  (prisma.scheduleSlot.findMany as any) = async () => [];
   (prisma.attendance.findMany as any) = async () => {
-    rawAttendanceReadReached = true;
-    return [];
+    attendanceReads += 1;
+    return Array.from({ length: 50 }, (_, index) => ({
+      id: index + 1,
+      studentId: index + 1,
+      courseId: 7,
+      semester: 1,
+      academicYear: 2026,
+      sessionId: null,
+      status: 'LATE',
+      remarks: null,
+      date: new Date('2026-02-01T00:00:00.000Z'),
+    }));
   };
+  (prisma.absenceThresholdPolicy.findMany as any) = async () => [
+    { id: 1, courseId: null, departmentId: null, maxAbsencePercent: 55 },
+  ];
 
   const result = await AttendanceService.getStaffAbsenceWarnings(
     { role: 'SUPER_ADMIN', id: 1 },
     { page: 2, limit: 25, courseId: 7, year: 2, warningStage: 'FINAL_WARNING' } as any
   );
 
-  assert.equal(rawQueryCalls, 1);
-  const sql = rawQueries[0].strings.join('?');
-  assert.match(sql, /GROUP BY warning_stage/);
-  assert.match(sql, /NOT EXISTS/);
-  assert.match(sql, /WHERE warning_stage =/);
-  assert.match(sql, /LIMIT/);
-  assert.match(sql, /OFFSET/);
-  assert.ok(rawQueries[0].values.includes(7));
-  assert.ok(rawQueries[0].values.includes(2));
-  assert.ok(rawQueries[0].values.includes('FINAL_WARNING'));
-  assert.equal(enrollmentRowsRequested, 25);
-  assert.equal(rawAttendanceReadReached, false);
+  assert.equal(enrollmentRowsRequested, 50);
+  assert.equal(pageDetailRowsRequested, 25);
+  assert.equal(attendanceReads, 1);
   assert.equal(result.warningRecords.length, 25);
-  assert.equal((result as any).pagination.total, 80);
-  assert.equal(result.summary.totalMonitored, 350);
-  assert.equal(result.summary.finalWarningCount, 80);
+  assert.equal((result as any).pagination.total, 50);
+  assert.equal(result.summary.totalMonitored, 50);
+  assert.equal(result.summary.finalWarningCount, 50);
 }
 
 try {
   await testCourseAttendanceIsBoundedAndFiltered();
   await testMyAttendancePagesRowsAndAggregatesSeparately();
   await testSlotSessionHistoryIsBoundedAndFiltered();
-  await testStaffWarningsUseSqlAggregationAndPageDetailsOnly();
+  await testStaffWarningsUseBatchedSharedCalculation();
   console.log('Attendance pagination performance checks passed');
 } finally {
   prisma.course.findFirst = original.courseFindFirst;
@@ -281,5 +296,7 @@ try {
   prisma.attendanceSession.findMany = original.sessionFindMany;
   prisma.attendanceSession.count = original.sessionCount;
   prisma.scheduleSlot.findUnique = original.slotFindUnique;
+  prisma.scheduleSlot.findMany = original.slotFindMany;
+  prisma.absenceThresholdPolicy.findMany = original.policyFindMany;
   (prisma as any).$queryRaw = original.queryRaw;
 }

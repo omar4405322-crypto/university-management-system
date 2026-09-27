@@ -5,6 +5,8 @@ import { toZonedTime, format } from 'date-fns-tz';
 import path from 'path';
 import fs from 'fs';
 import { createRequire } from 'module';
+import { Prisma } from '@prisma/client';
+import { formatMonetaryAmount } from '../utils/currency.utils';
 
 const bidi = bidiFactory();
 const CAIRO_TZ = 'Africa/Cairo';
@@ -20,7 +22,7 @@ export interface ReceiptData {
   collegeName?: string;
   universityName?: string;
   feeType: string;
-  amount: number;
+  amount: number | string | Prisma.Decimal;
   currency?: string;
   paymentDate: Date | string;
   paymentMethod?: string;
@@ -124,10 +126,7 @@ export class ReceiptService {
 
         const universityName = data.universityName || 'جامعة 6 أكتوبر التكنولوجية';
         const currency = data.currency || 'ج.م';
-        const formattedAmount = `${data.amount.toLocaleString('en-US', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })} ${currency}`;
+        const formattedAmount = `${formatMonetaryAmount(data.amount)} ${currency}`;
 
         // Format Date in Africa/Cairo timezone
         const cairoDate = toZonedTime(new Date(data.paymentDate), CAIRO_TZ);

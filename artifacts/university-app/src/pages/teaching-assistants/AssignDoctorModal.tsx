@@ -1,5 +1,4 @@
-// @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
 import doctorsService from '../../services/doctors.service';
@@ -7,22 +6,23 @@ import Button from '../../components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { X, Search, Loader2, Link, Trash2 } from 'lucide-react';
 
-const AssignDoctorModal = ({ isOpen, onClose, onSuccess, ta }) => {
+interface AssignDoctorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  ta: any;
+}
+
+const AssignDoctorModal: React.FC<AssignDoctorModalProps> = ({ isOpen, onClose, onSuccess, ta }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [doctors, setDoctors] = useState([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [fetchingDoctors, setFetchingDoctors] = useState(false);
-  const [assigningDoctorId, setAssigningDoctorId] = useState(null);
-  const [unassigningDoctorId, setUnassigningDoctorId] = useState(null);
+  const [assigningDoctorId, setAssigningDoctorId] = useState<any>(null);
+  const [unassigningDoctorId, setUnassigningDoctorId] = useState<any>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchDoctors();
-    }
-  }, [isOpen, search]);
-
-  const fetchDoctors = async () => {
+  const fetchDoctors = useCallback(async () => {
     setFetchingDoctors(true);
     try {
       const res = await doctorsService.getDoctors({ limit: 50, search });
@@ -34,9 +34,15 @@ const AssignDoctorModal = ({ isOpen, onClose, onSuccess, ta }) => {
     } finally {
       setFetchingDoctors(false);
     }
-  };
+  }, [search]);
 
-  const handleAssign = async (doctorId: string) => {
+  useEffect(() => {
+    if (isOpen) {
+      fetchDoctors();
+    }
+  }, [isOpen, fetchDoctors]);
+
+  const handleAssign = async (doctorId: any) => {
     try {
       setAssigningDoctorId(doctorId);
       const res = await teachingAssistantsService.assignToDoctor(ta.id, doctorId);
@@ -53,7 +59,7 @@ const AssignDoctorModal = ({ isOpen, onClose, onSuccess, ta }) => {
     }
   };
 
-  const handleUnassign = async (doctorId: string) => {
+  const handleUnassign = async (doctorId: any) => {
     try {
       setUnassigningDoctorId(doctorId);
       const res = await teachingAssistantsService.unassignFromDoctor(ta.id, doctorId);

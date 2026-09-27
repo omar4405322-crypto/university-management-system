@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
@@ -7,7 +6,14 @@ import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { X, User, Phone, Briefcase } from 'lucide-react';
 
-const EditTAModal = ({ isOpen, onClose, onSuccess, ta }) => {
+interface EditTAModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  ta: any;
+}
+
+const EditTAModal: React.FC<EditTAModalProps> = ({ isOpen, onClose, onSuccess, ta }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -28,11 +34,11 @@ const EditTAModal = ({ isOpen, onClose, onSuccess, ta }) => {
     }
   }, [ta]);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.firstName || !formData.lastName) {
       toast.error(t('teachingAssistants.fillRequired'));
@@ -145,8 +151,8 @@ const EditTAModal = ({ isOpen, onClose, onSuccess, ta }) => {
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" loading={loading} className="min-w-[120px]">
-              {t('common.saveChanges')}
+            <Button type="submit" disabled={loading} className="min-w-[120px]">
+              {loading ? <span className="animate-spin mr-2">...</span> : t('common.saveChanges')}
             </Button>
           </div>
         </form>

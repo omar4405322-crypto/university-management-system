@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import quizService from '../../services/quiz.service';
 import { useAuth } from '../../context/AuthContext';
@@ -23,7 +23,7 @@ import {
   MinusSquare,
 } from 'lucide-react';
 import Card, { StatCard } from '../../components/ui/card';
-import Badge from '../../components/ui/Badge';
+import Badge from '../../components/ui/badge';
 import Button from '../../components/ui/button';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 import { downloadCsv } from '../../utils/exportCsv';
@@ -48,7 +48,7 @@ const QuizzesList = () => {
   const [submissionsQuiz, setSubmissionsQuiz] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
 
-  const fetchQuizzes = async () => {
+  const fetchQuizzes = useCallback(async () => {
     try {
       setLoading(true);
       const result = await quizService.getQuizzes({});
@@ -60,11 +60,11 @@ const QuizzesList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     fetchQuizzes();
-  }, []);
+  }, [fetchQuizzes]);
 
   const totalQuestions = useMemo(
     () => (Array.isArray(quizzes) ? quizzes : []).reduce((acc, q) => acc + (q._count?.questions || q.questions?.length || 0), 0),

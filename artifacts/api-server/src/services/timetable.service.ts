@@ -84,6 +84,7 @@ class TimetableService {
       const baseSlotConflicts = await tx.scheduleSlot.findMany({
         where: {
           dayOfWeek: dayUpper,
+          isArchived: false,
           room: { equals: trimmedRoom, mode: 'insensitive' },
           ...timeOverlap,
           ...excludeCondition,
@@ -166,7 +167,7 @@ class TimetableService {
     if (doctorId) {
       const docId = Number(doctorId);
       const doctorConflict = await tx.scheduleSlot.findFirst({
-        where: { dayOfWeek: dayUpper, doctorId: docId, ...timeOverlap, ...excludeCondition },
+        where: { dayOfWeek: dayUpper, doctorId: docId, isArchived: false, ...timeOverlap, ...excludeCondition },
         include: {
           course: { select: { name: true, department: { select: { name: true } } } },
           doctor: { select: { firstName: true, lastName: true } },
@@ -223,7 +224,7 @@ class TimetableService {
     if (teachingAssistantId) {
       const taId = String(teachingAssistantId);
       const taConflict = await tx.scheduleSlot.findFirst({
-        where: { dayOfWeek: dayUpper, teachingAssistantId: taId, ...timeOverlap, ...excludeCondition },
+        where: { dayOfWeek: dayUpper, teachingAssistantId: taId, isArchived: false, ...timeOverlap, ...excludeCondition },
         include: {
           course: { select: { name: true, department: { select: { name: true } } } },
           teachingAssistant: { select: { firstName: true, lastName: true } },
@@ -331,6 +332,7 @@ class TimetableService {
         const groupConflict = await tx.scheduleSlot.findFirst({
           where: {
             dayOfWeek: dayUpper,
+            isArchived: false,
             ...timeOverlap,
             ...excludeCondition,
             groupId: { in: lineageGroupIds },

@@ -3,6 +3,28 @@ import prisma from '../utils/prismaClient';
 import catchAsync from '../utils/catchAsync';
 import { AuthorizationError, ValidationError } from '../utils/appError';
 import { getAdministrativeAnalyticsScopes } from '../utils/administrativeAnalyticsScope.utils';
+import { Prisma } from '@prisma/client';
+import { getCache, setCache } from '../utils/redis.utils';
+
+export const ANALYTICS_CACHE_TTL_SECONDS = 60;
+
+interface AnalyticsCacheAdapter {
+  get: (key: string) => Promise<any | null>;
+  set: (key: string, value: unknown, ttlSeconds: number) => Promise<void>;
+}
+
+export async function withAnalyticsCache<T>(
+  key: string,
+  load: () => Promise<T>,
+  cache: AnalyticsCacheAdapter = { get: getCache, set: setCache }
+): Promise<T> {
+  const cached = await cache.get(key);
+  if (cached !== null) return cached as T;
+
+  const value = await load();
+  await cache.set(key, value, ANALYTICS_CACHE_TTL_SECONDS);
+  return value;
+}
 
 export const getGeneralAnalytics = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -36,6 +58,40 @@ export const getGeneralAnalytics = catchAsync(
     const relatedDepartmentFilter = requestedDepartmentId
       ? { course: { departmentId: requestedDepartmentId } }
       : {};
+
+    const cacheKey = [
+      'dashboard:analytics',
+      scopes.cacheScope,
+      `department:${requestedDepartmentId ?? 'all'}`,
+      `start:${String(startDate || 'default')}`,
+      `end:${String(endDate || 'default')}`,
+    ].join(':');
+
+    const data = await withAnalyticsCache(cacheKey, async () => {
+      const now = new Date();
+      const defaultTrendStart = new Date(now);
+      defaultTrendStart.setFullYear(defaultTrendStart.getFullYear() - 1);
+      const trendStart = startDate ? new Date(startDate as string) : defaultTrendStart;
+      const trendEnd = endDate ? new Date(endDate as string) : now;
+      const monthlyConditions: Prisma.Sql[] = [
+        Prisma.sql`s."enrolledAt" >= ${trendStart}`,
+        Prisma.sql`s."enrolledAt" <= ${trendEnd}`,
+      ];
+
+      if (scopes.cacheScope.startsWith('college:')) {
+        const scopedCollegeId = Number(scopes.cacheScope.split(':')[1]);
+        monthlyConditions.push(
+          Prisma.sql`s."departmentId" IN (
+            SELECT d."id" FROM "Department" d WHERE d."collegeId" = ${scopedCollegeId}
+          )`
+        );
+      } else if (scopes.cacheScope.startsWith('department:')) {
+        const scopedDepartmentId = Number(scopes.cacheScope.split(':')[1]);
+        monthlyConditions.push(Prisma.sql`s."departmentId" = ${scopedDepartmentId}`);
+      }
+      if (requestedDepartmentId !== undefined) {
+        monthlyConditions.push(Prisma.sql`s."departmentId" = ${requestedDepartmentId}`);
+      }
 
     const [
       enrollmentByCollege,
@@ -96,21 +152,15 @@ export const getGeneralAnalytics = catchAsync(
         },
       }),
 
-      // 5. Monthly Enrollment Trends (Last 12 months)
-      prisma.student.findMany({
-        where: {
-          AND: [
-            scopes.student,
-            studentDepartmentFilter,
-            {
-              enrolledAt: {
-                gte: new Date(new Date().setFullYear(new Date().getFullYear() - 1)),
-              },
-            },
-          ],
-        },
-        select: { enrolledAt: true },
-      }),
+      // 5. Monthly Enrollment Trends, aggregated before leaving PostgreSQL
+      prisma.$queryRaw<Array<{ month: Date; count: bigint | number }>>(Prisma.sql`
+        SELECT DATE_TRUNC('month', s."enrolledAt") AS "month",
+               COUNT(*)::bigint AS "count"
+        FROM "Student" s
+        WHERE ${Prisma.join(monthlyConditions, ' AND ')}
+        GROUP BY DATE_TRUNC('month', s."enrolledAt")
+        ORDER BY "month" ASC
+      `),
 
       // 6. Exam Statistics
       prisma.exam.groupBy({
@@ -161,20 +211,18 @@ export const getGeneralAnalytics = catchAsync(
       'Nov',
       'Dec',
     ];
-    const trendData = monthlyEnrollment.reduce((acc: any, student: any) => {
-      const month = months[new Date(student.enrolledAt).getMonth()];
-      acc[month] = (acc[month] || 0) + 1;
-      return acc;
-    }, {});
+      const trendData = monthlyEnrollment.reduce((acc: Record<string, number>, row) => {
+        const month = months[new Date(row.month).getMonth()];
+        acc[month] = (acc[month] || 0) + Number(row.count);
+        return acc;
+      }, {});
 
-    const trendArray = months.map((month) => ({
-      name: month,
-      count: trendData[month] || 0,
-    }));
+      const trendArray = months.map((month) => ({
+        name: month,
+        count: trendData[month] || 0,
+      }));
 
-    res.json({
-      success: true,
-      data: {
+      return {
         collegeDistribution: collegeData,
         finance: financialOverview,
         yearDistribution: studentYearDistribution,
@@ -182,7 +230,9 @@ export const getGeneralAnalytics = catchAsync(
         enrollmentTrends: trendArray,
         examStats,
         attendanceOverview,
-      },
+      };
     });
+
+    res.json({ success: true, data });
   }
 );

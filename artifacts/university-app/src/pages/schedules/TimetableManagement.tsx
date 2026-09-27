@@ -359,7 +359,7 @@ const TimetableManagement = () => {
       {/* 1. Sleek Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2.5">
+          <h1 className="page-title flex items-center gap-2.5">
             <span className="p-2 rounded-xl bg-brand-primary-500/10 text-brand-primary-600 dark:text-brand-primary-400">
               <Calendar size={22} />
             </span>

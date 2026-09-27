@@ -9,7 +9,7 @@ import {
 import attendanceService from '../../services/attendance.service';
 import studentsService from '../../services/students.service';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
-import { Badge } from '../../components/ui/Badge';
+import { Badge } from '../../components/ui/badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StudentAttendanceScanner } from '../../components/attendance/StudentAttendanceScanner';
 import { SessionCountdown } from '../../components/attendance/SessionCountdown';
@@ -50,8 +50,8 @@ export function StudentAttendanceDashboard() {
       .then(res => {
         const courses = res.data || [];
         setMyCourses(courses);
-        if (courses.length > 0 && selectedCourseId === null) {
-          setSelectedCourseId(courses[0].id);
+        if (courses.length > 0) {
+          setSelectedCourseId((prev) => (prev === null ? courses[0].id : prev));
         }
       })
       .catch((err) => console.error('Failed to load courses:', err));
@@ -194,7 +194,7 @@ export function StudentAttendanceDashboard() {
   const getGaugeStyle = (pct: number) => {
     if (pct >= 85) {
       return {
-        stroke: '#84BD3A', // brand-primary-500
+        stroke: '#8BB83C', // university green
         text: 'text-brand-primary-600 dark:text-brand-primary-400',
         label: isRTL ? 'ممتاز' : 'Excellent',
         badgeClass: 'bg-brand-primary-100 text-brand-primary-800 dark:bg-brand-primary-950/60 dark:text-brand-primary-300 border-brand-primary-300 dark:border-brand-primary-800'
@@ -202,7 +202,7 @@ export function StudentAttendanceDashboard() {
     }
     if (pct >= 75) {
       return {
-        stroke: '#F59E0B', // amber-500
+        stroke: '#D6BA34', // university yellow
         text: 'text-amber-600 dark:text-amber-400',
         label: isRTL ? 'مقبول' : 'Fair',
         badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800'

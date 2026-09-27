@@ -1,4 +1,5 @@
 import prisma from './prismaClient';
+import type { TranscriptEnrollment } from '../services/enrollment.service';
 
 export interface SupersededAttempt {
   academicYear: number;
@@ -58,8 +59,11 @@ export function getGradeScale(grade: number | null, status: string): { letterGra
  * - Prior attempts for retaken courses are superseded and excluded from GPA points and hours.
  * - FAILED courses with no subsequent retake count as 0.0 grade points toward attempted credit hours.
  */
-export async function calculateStudentGpa(studentId: number): Promise<StudentGpaResult> {
-  const enrollments = await prisma.enrollment.findMany({
+export async function calculateStudentGpa(
+  studentId: number,
+  providedEnrollments?: TranscriptEnrollment[]
+): Promise<StudentGpaResult> {
+  const enrollments = providedEnrollments ?? await prisma.enrollment.findMany({
     where: { studentId },
     include: {
       course: {

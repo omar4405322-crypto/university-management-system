@@ -7,7 +7,10 @@ import bcrypt from 'bcryptjs';
 import catchAsync from '../utils/catchAsync';
 import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
 
-import { getScopeWhere } from '../utils/scope.utils';
+import {
+  getEffectiveActiveDoctorWhere,
+  getScopeWhere,
+} from '../utils/scope.utils';
 import {
   getAdminMutationScopeWhere,
   getAdminMutationTargetWhere,
@@ -57,20 +60,20 @@ export const getDoctorStats = catchAsync(
     const [totalFaculty, activeProfessors, assignedCourses, totalCourses, researchTasks, quizzesCount] = await Promise.all([
       prisma.doctor.count({ where: doctorWhere }),
       prisma.doctor.count({
-        where: {
-          ...doctorWhere,
-          user: { role: 'DOCTOR', isActive: true },
-        },
+        where: getEffectiveActiveDoctorWhere(doctorWhere),
       }),
       prisma.course.count({
         where: {
           ...courseWhere,
-          scheduleSlots: { some: { doctorId: { not: null } } },
+          scheduleSlots: { some: { doctorId: { not: null }, isArchived: false } },
         },
       }),
       prisma.course.count({ where: courseWhere }),
       prisma.task.count({
-        where: Object.keys(scopeWhere).length ? { doctor: doctorWhere } : {},
+        where: {
+          isDeleted: false,
+          ...(Object.keys(scopeWhere).length ? { doctor: doctorWhere } : {}),
+        },
       }),
       prisma.quiz.count({
         where: Object.keys(scopeWhere).length ? { doctor: doctorWhere } : {},
@@ -107,13 +110,12 @@ export const getSuggestedDoctors = catchAsync(async (req: Request, res: Response
     return next(new NotFoundError('Course not found'));
   }
 
-  const scopeWhere: any = getScopeWhere(req.user!);
+  const scopeWhere: any = getScopeWhere(req.user!, 'doctor');
 
   const allDoctors = await prisma.doctor.findMany({
-    where: {
-      ...scopeWhere,
-      user: { role: 'DOCTOR' },
-    },
+    where: getEffectiveActiveDoctorWhere({
+      AND: [scopeWhere, { user: { is: { role: 'DOCTOR' } } }],
+    }),
     include: {
       user: {
         select: {
@@ -125,7 +127,7 @@ export const getSuggestedDoctors = catchAsync(async (req: Request, res: Response
         include: { college: true },
       },
       scheduleSlots: {
-        where: { courseId: course.id },
+        where: { courseId: course.id, isArchived: false },
       },
     },
   });
@@ -197,6 +199,7 @@ export const getAllDoctors = catchAsync(async (req: Request, res: Response, next
   const where = {
     AND: [
       scopeWhere,
+      getEffectiveActiveDoctorWhere(),
       ...queryFilters,
     ],
   };
@@ -237,8 +240,10 @@ export const getAllDoctors = catchAsync(async (req: Request, res: Response, next
 });
 
 export const getDoctorById = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const doctor = await prisma.doctor.findUnique({
-    where: { id: parseInt(req.params.id as string) },
+  const doctor = await prisma.doctor.findFirst({
+    where: getEffectiveActiveDoctorWhere({
+      id: parseInt(req.params.id as string),
+    }),
     include: {
       user: {
         select: {
@@ -251,6 +256,7 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
         include: { college: true },
       },
       scheduleSlots: {
+        where: { isArchived: false },
         include: {
           course: {
             include: {
@@ -299,7 +305,9 @@ export const assignDoctorCourse = catchAsync(async (req: Request, res: Response,
   }
 
   const doctor = await prisma.doctor.findFirst({
-    where: getAdminMutationTargetWhere(req.user!, 'doctor', doctorId),
+    where: getEffectiveActiveDoctorWhere(
+      getAdminMutationTargetWhere(req.user!, 'doctor', doctorId)
+    ),
   });
   if (!doctor) return next(new AuthorizationError('Doctor is outside your managed scope'));
 
@@ -310,7 +318,7 @@ export const assignDoctorCourse = catchAsync(async (req: Request, res: Response,
 
   // Check if doctor is already assigned to a slot for this course
   const existingSlot = await prisma.scheduleSlot.findFirst({
-    where: { doctorId, courseId: course.id }
+    where: { doctorId, courseId: course.id, isArchived: false }
   });
 
   // Check for scheduling conflicts across all departments and colleges
@@ -489,6 +497,22 @@ export const createDoctor = catchAsync(async (req: Request, res: Response, next:
       },
     });
 
+    await auditLog(
+      'CREATE_DOCTOR',
+      'Doctor',
+      doctor.id,
+      req,
+      {
+        after: {
+          doctorId: doctor.doctorId,
+          userId: doctor.userId,
+          departmentId: doctor.departmentId,
+          specialty: doctor.specialty,
+        },
+      },
+      tx
+    );
+
     return doctor;
   });
 
@@ -540,27 +564,53 @@ export const updateDoctor = catchAsync(async (req: Request, res: Response, next:
     }
   }
 
-  const updatedDoctor = await prisma.doctor.update({
-    where: { id },
-    data: {
-      firstName,
-      lastName,
-      phone,
-      specialty,
-      departmentId:
-        departmentId !== undefined && departmentId !== ''
-          ? parseInt(departmentId as string)
-          : undefined,
-    },
-    include: {
-      user: {
-        select: {
-          email: true,
-          role: true,
+  const updatedDoctor = await prisma.$transaction(async (tx) => {
+    const updated = await tx.doctor.update({
+      where: { id },
+      data: {
+        firstName,
+        lastName,
+        phone,
+        specialty,
+        departmentId:
+          departmentId !== undefined && departmentId !== ''
+            ? parseInt(departmentId as string)
+            : undefined,
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+            role: true,
+          },
+        },
+        department: true,
+      },
+    });
+    await auditLog(
+      'UPDATE_DOCTOR',
+      'Doctor',
+      id,
+      req,
+      {
+        before: {
+          firstName: doctor.firstName,
+          lastName: doctor.lastName,
+          phone: doctor.phone,
+          specialty: doctor.specialty,
+          departmentId: doctor.departmentId,
+        },
+        after: {
+          firstName: updated.firstName,
+          lastName: updated.lastName,
+          phone: updated.phone,
+          specialty: updated.specialty,
+          departmentId: updated.departmentId,
         },
       },
-      department: true,
-    },
+      tx
+    );
+    return updated;
   });
 
   res.json({ success: true, data: updatedDoctor });

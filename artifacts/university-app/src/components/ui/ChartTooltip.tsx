@@ -1,14 +1,20 @@
-// @ts-nocheck
 import React from 'react';
 
-export const ChartTooltip = ({
+export interface ChartTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name?: string;
+    value?: number | string;
+    color?: string;
+    fill?: string;
+  }>;
+  label?: React.ReactNode;
+}
+
+export const ChartTooltip: React.FC<ChartTooltipProps> = ({
   active,
   payload,
   label,
-}: {
-  active?: Record<string, unknown>;
-  payload?: Record<string, unknown>;
-  label?: Record<string, unknown>;
 }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -19,7 +25,7 @@ export const ChartTooltip = ({
         </p>
       )}
       <div className="space-y-1.5">
-                {payload.map((entry, i) => (
+        {payload.map((entry, i) => (
           <div key={i} className="flex items-center gap-2">
             <div
               className="w-2 h-2 rounded-full"

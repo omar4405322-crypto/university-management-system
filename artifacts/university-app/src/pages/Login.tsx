@@ -159,9 +159,11 @@ const Login = () => {
         .login-input::placeholder {
           opacity: 0.5 !important;
         }
-        .login-input:focus {
+        .login-input:focus, .login-input:focus-visible {
+          outline: 2px solid #84cc16 !important;
+          outline-offset: 2px !important;
           border-color: #84cc16 !important;
-          box-shadow: 0 0 0 3px rgba(132,204,22,0.15) !important;
+          box-shadow: 0 0 0 3px rgba(132,204,22,0.25) !important;
         }
         .login-btn {
           background: linear-gradient(135deg, #65a30d, #84cc16) !important;
@@ -238,7 +240,7 @@ const Login = () => {
               {!show2FA ? (
                 <>
                   <div className="space-y-2 text-start">
-                    <label className="text-xs font-black uppercase tracking-widest text-brand-text-muted ms-1">
+                    <label htmlFor="login-email" className="text-xs font-black uppercase tracking-widest text-brand-text-muted ms-1">
                       {t('auth.emailAddress')}
                     </label>
                     <div className="relative group">
@@ -249,6 +251,7 @@ const Login = () => {
                       />
                       <input
                         {...register('email')}
+                        id="login-email"
                         type="email"
                         placeholder={t('auth.emailPlaceholder')}
                         autoComplete="email"
@@ -266,7 +269,7 @@ const Login = () => {
 
                   <div className="space-y-2 text-start">
                     <div className="flex items-center justify-between mx-1">
-                      <label className="text-xs font-black uppercase tracking-widest text-brand-text-muted">
+                      <label htmlFor="login-password" className="text-xs font-black uppercase tracking-widest text-brand-text-muted">
                         {t('auth.password')}
                       </label>
                       <button
@@ -285,6 +288,7 @@ const Login = () => {
                       />
                       <input
                         {...register('password')}
+                        id="login-password"
                         type={showPassword ? 'text' : 'password'}
                         placeholder={t('auth.passwordPlaceholder')}
                         autoComplete="current-password"
@@ -320,7 +324,7 @@ const Login = () => {
                   </div>
 
                   <div className="space-y-2 text-start">
-                    <label className="text-xs font-black uppercase tracking-widest text-brand-text-muted ms-1">
+                    <label htmlFor="login-totp" className="text-xs font-black uppercase tracking-widest text-brand-text-muted ms-1">
                       Code
                     </label>
                     <div className="relative group">
@@ -331,6 +335,7 @@ const Login = () => {
                       />
                       <input
                         {...register('totpToken')}
+                        id="login-totp"
                         type="text"
                         autoFocus
                         placeholder="000000"

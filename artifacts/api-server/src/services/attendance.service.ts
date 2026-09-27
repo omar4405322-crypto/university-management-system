@@ -1,8 +1,14 @@
 import { AttendanceMethod, AttendanceStatus, Prisma } from '@prisma/client';
 import { fromZonedTime } from 'date-fns-tz';
 import prisma from '../utils/prismaClient';
-import { AppError, AuthorizationError, NotFoundError } from '../utils/appError';
+import {
+  AppError,
+  AuthorizationError,
+  ConflictError,
+  NotFoundError,
+} from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
+import type { AuthActor } from '../types/auth.types';
 import attendanceEngine, { BulkManualRecord } from '../attendance/attendance.engine';
 import { DriverValidationContext } from '../attendance/drivers/IAttendanceDriver';
 import {
@@ -12,11 +18,31 @@ import {
 import { isAdminMutationScopeConfigured } from '../utils/adminMutationScope.utils';
 import crypto from 'crypto';
 import { encrypt } from '../utils/encryption.utils';
+import {
+  calculateAttendanceAttempts,
+  combineAttendanceCalculations,
+  selectAbsenceThreshold,
+} from '../attendance/attendance.calculation';
 
-const ATTENDANCE_TIME_ZONE = 'Africa/Cairo';
-const DEFAULT_ATTENDANCE_PAGE_SIZE = 20;
-const MAX_ATTENDANCE_PAGE_SIZE = 100;
-const STAFF_WARNING_EXPORT_LIMIT = 10_000;
+import { AttendanceDeviceService } from '../attendance/attendance.devices';
+import {
+  AttendanceWarningService,
+  StaffWarningStage,
+  StaffWarningOptions,
+  StaffWarningSqlRow,
+  StaffWarningQueryRow,
+  ATTENDANCE_TIME_ZONE,
+  DEFAULT_ATTENDANCE_PAGE_SIZE,
+  MAX_ATTENDANCE_PAGE_SIZE,
+  STAFF_WARNING_EXPORT_LIMIT,
+} from '../attendance/attendance.warnings';
+
+export type {
+  StaffWarningStage,
+  StaffWarningOptions,
+  StaffWarningSqlRow,
+  StaffWarningQueryRow,
+};
 
 type AttendanceHistoryOptions = {
   date?: string;
@@ -30,46 +56,6 @@ type AttendanceHistoryOptions = {
 
 type MyAttendanceOptions = AttendanceHistoryOptions & {
   courseId?: number;
-};
-
-type StaffWarningStage =
-  | 'BLOCKED'
-  | 'FINAL_WARNING'
-  | 'FIRST_WARNING'
-  | 'SAFE';
-
-type StaffWarningOptions = {
-  courseId?: number;
-  year?: number;
-  warningStage?: StaffWarningStage;
-  search?: string;
-  date?: string;
-  startDate?: string;
-  endDate?: string;
-  page?: number;
-  limit?: number;
-};
-
-type StaffWarningSqlRow = {
-  enrollmentId: number;
-  warningStage: StaffWarningStage;
-  absencePercent: number;
-  maxAbsencePercent: number;
-  total: number;
-  present: number;
-  late: number;
-  absent: number;
-  excused: number;
-  pendingReview: number;
-};
-
-type StaffWarningQueryRow = {
-  totalMonitored: number;
-  blockedCount: number;
-  finalWarningCount: number;
-  firstWarningCount: number;
-  safeCount: number;
-  pageRows: StaffWarningSqlRow[];
 };
 
 const normalizePagination = (page?: number, limit?: number) => {
@@ -345,7 +331,7 @@ class AttendanceService {
   }
 
   static async getCourseAttendance(
-    user: any,
+    user: AuthActor,
     courseId: number,
     dateOrOptions?: string | AttendanceHistoryOptions
   ) {
@@ -413,7 +399,7 @@ class AttendanceService {
     ]);
 
     return {
-      data: attendance.map((record: any) => ({
+      data: attendance.map((record) => ({
         ...record,
         recordedBy: record.recordedBy
           ? {
@@ -443,7 +429,7 @@ class AttendanceService {
   }
 
   static async getStudentAttendance(
-    user: any,
+    user: AuthActor,
     studentId: number,
     courseId?: number,
     page: number = 1,
@@ -472,28 +458,38 @@ class AttendanceService {
     const skip = (page - 1) * limit;
 
     const courseScope = getScopeWhere(user, 'course');
-    const enrollmentWhere: any = { status: 'ENROLLED' };
+    const enrollmentWhere: Prisma.EnrollmentWhereInput = {
+      status: { in: ['ENROLLED', 'BLOCKED'] },
+      ...(courseId !== undefined && { courseId }),
+    };
     if (Object.keys(courseScope).length > 0) {
       enrollmentWhere.course = courseScope;
     }
 
     const student = await prisma.student.findUnique({
       where: { id: studentId },
-      include: {
+      select: {
+        id: true,
+        groupId: true,
         enrollments: {
           where: enrollmentWhere,
-          select: { courseId: true },
+          select: {
+            id: true,
+            studentId: true,
+            courseId: true,
+            semester: true,
+            academicYear: true,
+            enrolledAt: true,
+            exemptionPeriods: {
+              select: { startDate: true, endDate: true },
+            },
+          },
         },
       },
     });
 
-    const enrolledCourseIds =
-      student?.enrollments.map((e) => e.courseId) || [];
-
-    // ENROLLED-Only Scope Guard:
-    // If a specific courseId is requested, verify that the student has an active ENROLLED status.
-    // If the student is not enrolled (or has WITHDRAWN), return early with empty stats rather than fabricating numbers.
-    if (courseId && !enrolledCourseIds.includes(courseId)) {
+    const attempts = student?.enrollments ?? [];
+    if (!student || attempts.length === 0) {
       return {
         data: [],
         pagination: {
@@ -513,130 +509,61 @@ class AttendanceService {
       };
     }
 
-    // Explicitly scope "All Courses" (courseId is undefined) strictly to ENROLLED courses.
-    if (!courseId && enrolledCourseIds.length === 0) {
-      return {
-        data: [],
-        pagination: {
-          total: 0,
-          page,
-          totalPages: 0,
+    const standaloneAttemptClauses: Prisma.AttendanceWhereInput[] = attempts.map(
+      (attempt) => ({
+        studentId,
+        courseId: attempt.courseId,
+        semester: attempt.semester,
+        academicYear: attempt.academicYear,
+        sessionId: null,
+      })
+    );
+    const calculations = await calculateAttendanceAttempts(
+      attempts.map((attempt) => ({
+        ...attempt,
+        groupId: student.groupId,
+      }))
+    );
+    const requiredSessionIds = Array.from(
+      new Set(
+        [...calculations.values()].flatMap((calculation) =>
+          calculation.sessions.map((session) => session.sessionId)
+        )
+      )
+    );
+    const recordClauses: Prisma.AttendanceWhereInput[] = [
+      ...standaloneAttemptClauses,
+      ...(requiredSessionIds.length > 0
+        ? [{ studentId, sessionId: { in: requiredSessionIds } }]
+        : []),
+    ];
+    const [paginatedAttendance, recordCount] = await Promise.all([
+      prisma.attendance.findMany({
+        where: { OR: recordClauses },
+        include: {
+          course: { select: { name: true, courseCode: true } },
         },
-        stats: {
-          total: 0,
-          PRESENT: 0,
-          ABSENT: 0,
-          LATE: 0,
-          EXCUSED: 0,
-          PENDING_REVIEW: 0,
-          percentage: 0,
-        },
-      };
-    }
-
-    const targetCourseFilter = courseId
-      ? courseId
-      : { in: enrolledCourseIds };
-
-    const slots = await prisma.scheduleSlot.findMany({
-      where: {
-        courseId: targetCourseFilter,
-        OR: [{ groupId: student?.groupId }, { groupId: null }],
-      },
-      select: { id: true },
-    });
-    const slotIds = slots.map((s) => s.id);
-
-    const sessions = await prisma.attendanceSession.findMany({
-      where: { scheduleSlotId: { in: slotIds } },
-      select: { id: true },
-    });
-    const totalHeldSessions = sessions.length;
-    const sessionIds = sessions.map((s) => s.id);
-
-    const [sessionAttendances, standaloneAttendances, paginatedAttendance, recordCount] =
-      await Promise.all([
-        prisma.attendance.findMany({
-          where: {
-            studentId,
-            sessionId: { in: sessionIds },
-          },
-          select: { status: true },
-        }),
-        prisma.attendance.findMany({
-          where: {
-            studentId,
-            courseId: targetCourseFilter,
-            sessionId: null,
-          },
-          select: { status: true },
-        }),
-        // Intentionally scope paginated raw records and count to targetCourseFilter
-        // (single requested enrolled course or all currently ENROLLED courses).
-        // This ensures the All Courses aggregate path never leaks historical records
-        // from courses that the student has withdrawn from or is not actively enrolled in.
-        prisma.attendance.findMany({
-          where: {
-            studentId,
-            courseId: targetCourseFilter,
-          },
-          include: {
-            course: { select: { name: true, courseCode: true } },
-          },
-          orderBy: { date: 'desc' },
-          skip,
-          take: limit,
-        }),
-        prisma.attendance.count({
-          where: {
-            studentId,
-            courseId: targetCourseFilter,
-          },
-        }),
-      ]);
-
-    let present = 0;
-    let late = 0;
-    let excused = 0;
-    let explicitAbsent = 0;
-    let pendingReview = 0;
-
-    sessionAttendances.forEach((a: any) => {
-      if (a.status === 'PRESENT') present++;
-      else if (a.status === 'LATE') late++;
-      else if (a.status === 'EXCUSED') excused++;
-      else if (a.status === 'ABSENT') explicitAbsent++;
-      else if (a.status === 'PENDING_REVIEW') pendingReview++;
-    });
-
-    standaloneAttendances.forEach((a: any) => {
-      if (a.status === 'PRESENT') present++;
-      else if (a.status === 'LATE') late++;
-      else if (a.status === 'EXCUSED') excused++;
-      else if (a.status === 'ABSENT') explicitAbsent++;
-      else if (a.status === 'PENDING_REVIEW') pendingReview++;
-    });
-
-    // Unattended held sessions without an explicit record are counted as ABSENT
-    const recordedSessionCount = sessionAttendances.length;
-    const unrecordedAbsent = Math.max(0, totalHeldSessions - recordedSessionCount);
-    const totalAbsent = explicitAbsent + unrecordedAbsent;
-    const totalSessions = totalHeldSessions + standaloneAttendances.length;
-
-    const effectiveTotal = totalSessions - excused - pendingReview;
-    const percentage =
-      effectiveTotal > 0
-        ? ((present + late * 0.5) / effectiveTotal) * 100
-        : 0;
+        orderBy: { date: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.attendance.count({ where: { OR: recordClauses } }),
+    ]);
+    const calculation = combineAttendanceCalculations(
+      attempts.flatMap((attempt) => {
+        const value = calculations.get(attempt.id);
+        return value ? [value] : [];
+      })
+    );
 
     const stats = {
-      total: totalSessions,
-      PRESENT: present,
-      ABSENT: totalAbsent,
-      LATE: late,
-      EXCUSED: excused,
-      PENDING_REVIEW: pendingReview,
-      percentage: Math.round(percentage * 100) / 100,
+      total: calculation.total,
+      PRESENT: calculation.present,
+      ABSENT: calculation.absent,
+      LATE: calculation.late,
+      EXCUSED: calculation.excused,
+      PENDING_REVIEW: calculation.pendingReview,
+      percentage: Math.round(calculation.attendancePercentage * 100) / 100,
     };
 
     return {
@@ -650,7 +577,7 @@ class AttendanceService {
     };
   }
 
-  static async getMyCourses(user: any) {
+  static async getMyCourses(user: AuthActor) {
     const userRole = user.role;
 
     const courseSelect = {
@@ -677,6 +604,7 @@ class AttendanceService {
         },
       },
       scheduleSlots: {
+        where: { isArchived: false },
         select: {
           id: true,
           dayOfWeek: true,
@@ -701,10 +629,10 @@ class AttendanceService {
       },
     };
 
-    const mapCourseSlots = (courseList: any[]) =>
-      courseList.map((c: any) => ({
+    const mapCourseSlots = (courseList: Array<Record<string, unknown>>) =>
+  courseList.map((c) => ({
         ...c,
-        scheduleSlots: c.scheduleSlots?.map((slot: any) => ({
+        scheduleSlots: (c['scheduleSlots'] as Array<Record<string, unknown>> | undefined)?.map((slot) => ({
           ...slot,
           studentGroupId: slot.groupId,
           studentGroup: slot.group,
@@ -737,7 +665,7 @@ class AttendanceService {
         select: { courseId: true },
       });
 
-      const enrolledCourseIds = enrollments.map((e: any) => e.courseId);
+      const enrolledCourseIds = enrollments.map((e) => e.courseId);
 
       if (enrolledCourseIds.length === 0) {
         return [];
@@ -757,12 +685,12 @@ class AttendanceService {
       if (!myTA) return [];
 
       const slots = await prisma.scheduleSlot.findMany({
-        where: { teachingAssistantId: myTA.id },
+        where: { teachingAssistantId: myTA.id, isArchived: false },
         select: { courseId: true },
       });
 
       const courseIds = Array.from(
-        new Set(slots.map((s: any) => s.courseId))
+        new Set(slots.map((s) => s.courseId))
       );
       let courses = await prisma.course.findMany({
         where: { id: { in: courseIds } },
@@ -786,12 +714,12 @@ class AttendanceService {
       if (!myDoctor) return [];
 
       const slots = await prisma.scheduleSlot.findMany({
-        where: { doctorId: myDoctor.id },
+        where: { doctorId: myDoctor.id, isArchived: false },
         select: { courseId: true },
       });
 
       const courseIds = Array.from(
-        new Set(slots.map((s: any) => s.courseId))
+        new Set(slots.map((s) => s.courseId))
       );
       let courses = await prisma.course.findMany({
         where: { id: { in: courseIds } },
@@ -811,7 +739,7 @@ class AttendanceService {
     return [];
   }
 
-  static async getMySlots(user: any) {
+  static async getMySlots(user: AuthActor) {
     const userRole = user.role;
 
     const selectFields = {
@@ -820,7 +748,7 @@ class AttendanceService {
       doctor: { select: { firstName: true, lastName: true } },
       teachingAssistant: { select: { firstName: true, lastName: true } },
     };
-    const orderBy: any = [
+    const orderBy: Prisma.ScheduleSlotOrderByWithRelationInput[] = [
       { dayOfWeek: 'asc' },
       { startTime: 'asc' },
     ];
@@ -834,11 +762,11 @@ class AttendanceService {
       'TEACHING_ASSISTANT',
     ]);
     if (staffRoles.has(userRole)) {
-      const courseScope: any = getScopeWhere(user, 'course');
-      const where: any =
+      const courseScope = getScopeWhere(user, 'course') as Record<string, unknown>;
+    const where: Prisma.ScheduleSlotWhereInput =
         courseScope && Object.keys(courseScope).length > 0
-          ? { course: courseScope }
-          : {};
+          ? { course: courseScope, isArchived: false }
+          : { isArchived: false };
       return prisma.scheduleSlot.findMany({
         where,
         include: selectFields,
@@ -966,7 +894,7 @@ class AttendanceService {
     });
 
     const attendanceMap = new Map();
-    attendances.forEach((a: any) => attendanceMap.set(a.sessionId, a));
+    attendances.forEach((a) => attendanceMap.set(a.sessionId, a));
 
     return {
       data: sessions.map((session) => {
@@ -989,8 +917,8 @@ class AttendanceService {
     };
   }
 
-  static async getAttendanceSummary(user: any, courseId: number) {
-    const courseScope: any = getScopeWhere(user, 'course');
+  static async getAttendanceSummary(user: AuthActor, courseId: number) {
+    const courseScope = getScopeWhere(user, 'course') as Record<string, unknown>;
     const course = await prisma.course.findFirst({
       where: { AND: [{ id: courseId }, courseScope] },
     });
@@ -1005,13 +933,13 @@ class AttendanceService {
       where: { courseId },
       _count: true,
     });
-    const stats: any = { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0, PENDING_REVIEW: 0 };
+    const stats: Record<string, number> = { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0, PENDING_REVIEW: 0 };
     statsData.forEach((item) => (stats[item.status] = item._count));
     return stats;
   }
 
   static async getAttendanceRecords(
-    user: any,
+    user: AuthActor,
     options: {
       courseId?: number;
       date?: string;
@@ -1030,7 +958,7 @@ class AttendanceService {
       limit = 50,
     } = options;
 
-    const where: any = {};
+    const where: Prisma.AttendanceWhereInput = {};
 
     if (courseId) where.courseId = courseId;
     if (date) {
@@ -1047,7 +975,7 @@ class AttendanceService {
       where.course = { department: { collegeId } };
     }
 
-    const courseScope: any = getScopeWhere(user, 'course');
+    const courseScope = getScopeWhere(user, 'course') as Record<string, unknown>;
     if (courseScope && Object.keys(courseScope).length) {
       if (where.course) {
         where.course = { AND: [where.course, courseScope] };
@@ -1090,7 +1018,7 @@ class AttendanceService {
       prisma.attendance.count({ where }),
     ]);
 
-    const mappedData = attendance.map((record: any) => ({
+      const mappedData = attendance.map((record) => ({
       ...record,
       recordedBy: record.recordedBy
         ? {
@@ -1120,7 +1048,7 @@ class AttendanceService {
     };
   }
 
-  static async unblockEnrollment(user: any, enrollmentId: number) {
+  static async unblockEnrollment(user: AuthActor, enrollmentId: number) {
     const enrollment = await prisma.enrollment.findUnique({
       where: { id: enrollmentId },
       include: { course: true, student: true },
@@ -1130,7 +1058,7 @@ class AttendanceService {
       throw new NotFoundError('Enrollment not found');
     }
 
-    const courseScope: any = getScopeWhere(user, 'course');
+    const courseScope = getScopeWhere(user, 'course') as Record<string, unknown>;
     if (courseScope && Object.keys(courseScope).length) {
       const courseCheck = await prisma.course.findFirst({
         where: { AND: [{ id: enrollment.courseId }, courseScope] },
@@ -1154,7 +1082,7 @@ class AttendanceService {
     return { message: 'Student unblocked successfully' };
   }
 
-  static async getAuditDuplicateDevices(user: any) {
+  static async getAuditDuplicateDevices(user: AuthActor) {
     if (!isAdminMutationScopeConfigured(user)) {
       throw new AuthorizationError('Managed scope is required for device audit');
     }
@@ -1207,7 +1135,7 @@ class AttendanceService {
   }
 
   static async overrideFlaggedRecord(
-    user: any,
+    user: AuthActor,
     attendanceId: number,
     note?: string
   ) {
@@ -1219,11 +1147,22 @@ class AttendanceService {
     if (!attendanceRecord) {
       throw new NotFoundError('Record not found');
     }
+    if (
+      attendanceRecord.status !== 'PENDING_REVIEW' ||
+      !attendanceRecord.locationFlagged
+    ) {
+      throw new ConflictError('Attendance record has already been resolved');
+    }
 
     const nextStatus = attendanceRecord.pendingApprovedStatus || 'PRESENT';
 
     const updated = await prisma.attendance.updateMany({
-      where: accessWhere,
+      where: {
+        AND: [
+          accessWhere,
+          { status: 'PENDING_REVIEW', locationFlagged: true },
+        ],
+      },
       data: {
         status: nextStatus,
         pendingApprovedStatus: null,
@@ -1233,19 +1172,21 @@ class AttendanceService {
       },
     });
     if (updated.count !== 1) {
-      throw new AuthorizationError('Attendance record left your authorized scope');
+      throw new ConflictError('Attendance record was resolved concurrently');
     }
 
     await attendanceEngine.recalculateAbsence(
       attendanceRecord.studentId,
-      attendanceRecord.courseId
+      attendanceRecord.courseId,
+      attendanceRecord.semester,
+      attendanceRecord.academicYear
     );
 
     return prisma.attendance.findUnique({ where: { id: attendanceId } });
   }
 
   static async rejectFlaggedRecord(
-    user: any,
+    user: AuthActor,
     attendanceId: number,
     note?: string
   ) {
@@ -1257,9 +1198,20 @@ class AttendanceService {
     if (!attendanceRecord) {
       throw new NotFoundError('Record not found');
     }
+    if (
+      attendanceRecord.status !== 'PENDING_REVIEW' ||
+      !attendanceRecord.locationFlagged
+    ) {
+      throw new ConflictError('Attendance record has already been resolved');
+    }
 
     const updated = await prisma.attendance.updateMany({
-      where: accessWhere,
+      where: {
+        AND: [
+          accessWhere,
+          { status: 'PENDING_REVIEW', locationFlagged: true },
+        ],
+      },
       data: {
         status: 'ABSENT',
         pendingApprovedStatus: null,
@@ -1269,260 +1221,28 @@ class AttendanceService {
       },
     });
     if (updated.count !== 1) {
-      throw new AuthorizationError('Attendance record left your authorized scope');
+      throw new ConflictError('Attendance record was resolved concurrently');
     }
 
     await attendanceEngine.recalculateAbsence(
       attendanceRecord.studentId,
-      attendanceRecord.courseId
+      attendanceRecord.courseId,
+      attendanceRecord.semester,
+      attendanceRecord.academicYear
     );
 
     return prisma.attendance.findUnique({ where: { id: attendanceId } });
   }
 
   static async getMyAbsenceWarnings(
-    user: any,
+    user: AuthActor,
     options: StaffWarningOptions = {}
   ) {
-    if (user.role !== 'STUDENT') {
-      return this.getStaffAbsenceWarnings(user, options);
-    }
-
-    const student = await prisma.student.findUnique({
-      where: { userId: user.id },
-      include: {
-        enrollments: {
-          where: {
-            status: { in: ['ENROLLED', 'BLOCKED'] },
-          },
-          include: {
-            course: {
-              select: {
-                id: true,
-                courseCode: true,
-                name: true,
-                departmentId: true,
-              },
-            },
-            exemptionPeriods: {
-              select: {
-                id: true,
-                startDate: true,
-                endDate: true,
-                reason: true,
-                createdAt: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!student) {
-      return {
-        isStaff: false,
-        courses: [],
-        notifications: [],
-      };
-    }
-
-    const activeCourseIds = student.enrollments
-      .filter((enrollment) => enrollment.status === 'ENROLLED')
-      .map((enrollment) => enrollment.courseId);
-    const departmentIds = Array.from(
-      new Set(
-        student.enrollments
-          .map((enrollment) => enrollment.course.departmentId)
-          .filter((departmentId): departmentId is number => departmentId !== null)
-      )
-    );
-
-    const slots = await prisma.scheduleSlot.findMany({
-      where: {
-        courseId: { in: activeCourseIds },
-        OR: [{ groupId: student.groupId }, { groupId: null }],
-      },
-      select: { id: true, courseId: true },
-    });
-    const slotToCourse = new Map(slots.map((slot) => [slot.id, slot.courseId]));
-
-    const sessions = await prisma.attendanceSession.findMany({
-      where: { scheduleSlotId: { in: slots.map((slot) => slot.id) } },
-      select: { id: true, scheduleSlotId: true },
-    });
-    const sessionToCourse = new Map<number, number>();
-    const heldSessionsByCourse = new Map<number, number>();
-    for (const session of sessions) {
-      const sessionCourseId = slotToCourse.get(session.scheduleSlotId!);
-      if (sessionCourseId === undefined) continue;
-      sessionToCourse.set(session.id, sessionCourseId);
-      heldSessionsByCourse.set(
-        sessionCourseId,
-        (heldSessionsByCourse.get(sessionCourseId) ?? 0) + 1
-      );
-    }
-
-    const notificationWhere = {
-      userId: user.id,
-      OR: [
-        { title: { contains: 'Enrollment', mode: 'insensitive' as const } },
-        { title: { contains: 'Absence', mode: 'insensitive' as const } },
-        { title: { contains: 'حرمان', mode: 'insensitive' as const } },
-        { title: { contains: 'غياب', mode: 'insensitive' as const } },
-        { title: { contains: 'إنذار', mode: 'insensitive' as const } },
-        { message: { contains: 'absence', mode: 'insensitive' as const } },
-        { message: { contains: 'غياب', mode: 'insensitive' as const } },
-        { message: { contains: 'blocked', mode: 'insensitive' as const } },
-        { message: { contains: 'restored', mode: 'insensitive' as const } },
-      ],
-    };
-    const [sessionGroups, standaloneGroups, policies, notifications] =
-      await Promise.all([
-        prisma.attendance.groupBy({
-          by: ['sessionId', 'status'],
-          where: {
-            studentId: student.id,
-            sessionId: { in: sessions.map((session) => session.id) },
-          },
-          _count: { _all: true },
-        }),
-        prisma.attendance.groupBy({
-          by: ['courseId', 'status'],
-          where: {
-            studentId: student.id,
-            courseId: { in: activeCourseIds },
-            sessionId: null,
-          },
-          _count: { _all: true },
-        }),
-        prisma.absenceThresholdPolicy.findMany({
-          where: {
-            OR: [
-              { courseId: { in: student.enrollments.map((item) => item.courseId) } },
-              ...(departmentIds.length > 0
-                ? [{ departmentId: { in: departmentIds } }]
-                : []),
-              { departmentId: null, courseId: null },
-            ],
-          },
-        }),
-        prisma.notification.findMany({
-          where: notificationWhere,
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-        }),
-      ]);
-
-    type WarningStats = {
-      PRESENT: number;
-      ABSENT: number;
-      LATE: number;
-      EXCUSED: number;
-      PENDING_REVIEW: number;
-      recordedSessions: number;
-      standalone: number;
-    };
-    const emptyStats = (): WarningStats => ({
-      PRESENT: 0,
-      ABSENT: 0,
-      LATE: 0,
-      EXCUSED: 0,
-      PENDING_REVIEW: 0,
-      recordedSessions: 0,
-      standalone: 0,
-    });
-    const statsByCourse = new Map<number, WarningStats>();
-    const getStats = (courseId: number) => {
-      const existing = statsByCourse.get(courseId);
-      if (existing) return existing;
-      const created = emptyStats();
-      statsByCourse.set(courseId, created);
-      return created;
-    };
-
-    for (const group of sessionGroups) {
-      if (group.sessionId === null) continue;
-      const sessionCourseId = sessionToCourse.get(group.sessionId);
-      if (sessionCourseId === undefined) continue;
-      const stats = getStats(sessionCourseId);
-      stats[group.status] += group._count._all;
-      stats.recordedSessions += group._count._all;
-    }
-    for (const group of standaloneGroups) {
-      const stats = getStats(group.courseId);
-      stats[group.status] += group._count._all;
-      stats.standalone += group._count._all;
-    }
-
-    const coursesData = student.enrollments.map((enrollment) => {
-      const stats = statsByCourse.get(enrollment.courseId) ?? emptyStats();
-      const totalHeldSessions = heldSessionsByCourse.get(enrollment.courseId) ?? 0;
-      const unrecordedAbsent = Math.max(
-        0,
-        totalHeldSessions - stats.recordedSessions
-      );
-      const absent = stats.ABSENT + unrecordedAbsent;
-      const totalSessions = totalHeldSessions + stats.standalone;
-      const activeTotal =
-        totalSessions - stats.EXCUSED - stats.PENDING_REVIEW;
-      const absencePercent =
-        activeTotal > 0
-          ? Math.round(((absent + stats.LATE * 0.5) / activeTotal) * 1000) / 10
-          : 0;
-
-      let maxAbsencePercent = enrollment.customAbsenceThreshold ?? 25.0;
-      if (
-        enrollment.customAbsenceThreshold === null ||
-        enrollment.customAbsenceThreshold === undefined
-      ) {
-        const policy =
-          policies.find((candidate) => candidate.courseId === enrollment.courseId) ||
-          policies.find(
-            (candidate) =>
-              candidate.departmentId === enrollment.course.departmentId
-          ) ||
-          policies.find(
-            (candidate) =>
-              candidate.courseId === null && candidate.departmentId === null
-          );
-        if (policy) maxAbsencePercent = policy.maxAbsencePercent;
-      }
-
-      const isBlocked = enrollment.status === 'BLOCKED';
-      const isExceeding = absencePercent >= maxAbsencePercent;
-      const isNearLimit =
-        !isExceeding && absencePercent >= Math.max(0, maxAbsencePercent - 5);
-
-      return {
-        enrollmentId: enrollment.id,
-        courseId: enrollment.course.id,
-        courseCode: enrollment.course.courseCode,
-        courseName: enrollment.course.name,
-        status: enrollment.status,
-        isBlocked,
-        absencePercent,
-        maxAbsencePercent,
-        isExceeding,
-        isNearLimit,
-        totalSessions,
-        present: stats.PRESENT,
-        late: stats.LATE,
-        absent,
-        excused: stats.EXCUSED,
-        pendingReview: stats.PENDING_REVIEW,
-        exemptionPeriods: enrollment.exemptionPeriods,
-      };
-    });
-
-    return {
-      isStaff: false,
-      courses: coursesData,
-      notifications,
-    };
+    return AttendanceWarningService.getMyAbsenceWarnings(user, options);
   }
 
   static async getStaffAbsenceWarnings(
-    user: any,
+    user: AuthActor,
     options: StaffWarningOptions = {},
     paginationOverride?: {
       page: number;
@@ -1531,372 +1251,26 @@ class AttendanceService {
       includeCoursesList?: boolean;
     }
   ) {
-    const { page, limit, skip } = paginationOverride ??
-      normalizePagination(options.page, options.limit);
-    const validWarningStages = new Set<StaffWarningStage>([
-      'BLOCKED',
-      'FINAL_WARNING',
-      'FIRST_WARNING',
-      'SAFE',
-    ]);
-    if (
-      options.warningStage &&
-      !validWarningStages.has(options.warningStage)
-    ) {
-      throw new AppError('Invalid warning stage', 400);
-    }
-
-    const userRole = user.role;
-    let courseIds: number[] = [];
-
-    if (['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(userRole)) {
-      const courseScope = getScopeWhere(user, 'course');
-      const courses = await prisma.course.findMany({
-        where: courseScope,
-        select: { id: true },
-      });
-      courseIds = courses.map((c) => c.id);
-    } else if (userRole === 'DOCTOR') {
-      const courseScope = getScopeWhere(user, 'course');
-      const courses = await prisma.course.findMany({
-        where: courseScope,
-        select: { id: true },
-      });
-      courseIds = courses.map((c) => c.id);
-    } else if (userRole === 'TEACHING_ASSISTANT') {
-      const ta = await prisma.teachingAssistant.findUnique({ where: { userId: user.id } });
-      if (ta) {
-        const slots = await prisma.scheduleSlot.findMany({
-          where: { teachingAssistantId: ta.id },
-          select: { courseId: true },
-        });
-        courseIds = Array.from(new Set(slots.map((s) => s.courseId)));
-        if (courseIds.length === 0 && ta.departmentId) {
-          const deptCourses = await prisma.course.findMany({
-            where: { departmentId: ta.departmentId },
-            select: { id: true },
-          });
-          courseIds = deptCourses.map((c) => c.id);
-        }
-      }
-    }
-
-    if (courseIds.length === 0) {
-      return {
-        isStaff: true,
-        summary: {
-          totalMonitored: 0,
-          blockedCount: 0,
-          finalWarningCount: 0,
-          firstWarningCount: 0,
-          safeCount: 0,
-        },
-        warningRecords: [],
-        coursesList: [],
-        pagination: { page, limit, total: 0, totalPages: 0 },
-      };
-    }
-
-    if (options.courseId && !courseIds.includes(options.courseId)) {
-      return {
-        isStaff: true,
-        summary: {
-          totalMonitored: 0,
-          blockedCount: 0,
-          finalWarningCount: 0,
-          firstWarningCount: 0,
-          safeCount: 0,
-        },
-        warningRecords: [],
-        coursesList: [],
-        pagination: { page, limit, total: 0, totalPages: 0 },
-      };
-    }
-
-    const baseSql = buildStaffWarningSql(courseIds, options);
-    const warningStageFilter = options.warningStage
-      ? Prisma.sql`WHERE warning_stage = ${options.warningStage}`
-      : Prisma.empty;
-
-    const [warningQueryRows, coursesList] = await Promise.all([
-      prisma.$queryRaw<StaffWarningQueryRow[]>(Prisma.sql`
-        ${baseSql}
-        , summary_counts AS (
-          SELECT warning_stage, COUNT(*)::int AS count
-          FROM warning_rows
-          GROUP BY warning_stage
-        )
-        SELECT
-          COALESCE(SUM(summary_counts.count), 0)::int AS "totalMonitored",
-          COALESCE(MAX(summary_counts.count) FILTER (
-            WHERE summary_counts.warning_stage = 'BLOCKED'
-          ), 0)::int AS "blockedCount",
-          COALESCE(MAX(summary_counts.count) FILTER (
-            WHERE summary_counts.warning_stage = 'FINAL_WARNING'
-          ), 0)::int AS "finalWarningCount",
-          COALESCE(MAX(summary_counts.count) FILTER (
-            WHERE summary_counts.warning_stage = 'FIRST_WARNING'
-          ), 0)::int AS "firstWarningCount",
-          COALESCE(MAX(summary_counts.count) FILTER (
-            WHERE summary_counts.warning_stage = 'SAFE'
-          ), 0)::int AS "safeCount",
-          COALESCE((
-            SELECT JSONB_AGG(JSONB_BUILD_OBJECT(
-              'enrollmentId', page.enrollment_id,
-              'warningStage', page.warning_stage,
-              'absencePercent', page.absence_percent,
-              'maxAbsencePercent', page.max_absence_percent,
-              'total', page.total,
-              'present', page.present,
-              'late', page.late,
-              'absent', page.absent,
-              'excused', page.excused,
-              'pendingReview', page.pending_review
-            ) ORDER BY page.enrollment_id)
-            FROM (
-              SELECT *
-              FROM warning_rows
-              ${warningStageFilter}
-              ORDER BY enrollment_id ASC
-              LIMIT ${limit}
-              OFFSET ${skip}
-            ) page
-          ), '[]'::jsonb) AS "pageRows"
-        FROM summary_counts
-      `),
-      paginationOverride?.includeCoursesList === false
-        ? Promise.resolve([])
-        : prisma.course.findMany({
-            where: {
-              id: { in: courseIds },
-              enrollments: {
-                some: { status: { in: ['ENROLLED', 'BLOCKED'] } },
-              },
-            },
-            select: {
-              id: true,
-              courseCode: true,
-              name: true,
-              year: true,
-              semester: true,
-            },
-            orderBy: [{ courseCode: 'asc' }, { id: 'asc' }],
-          }),
-    ]);
-
-    const warningQuery = warningQueryRows[0] ?? {
-      totalMonitored: 0,
-      blockedCount: 0,
-      finalWarningCount: 0,
-      firstWarningCount: 0,
-      safeCount: 0,
-      pageRows: [],
-    };
-    const blockedCount = Number(warningQuery.blockedCount);
-    const finalWarningCount = Number(warningQuery.finalWarningCount);
-    const firstWarningCount = Number(warningQuery.firstWarningCount);
-    const safeCount = Number(warningQuery.safeCount);
-    const totalMonitored = Number(warningQuery.totalMonitored);
-    const filteredTotal = options.warningStage
-      ? {
-          BLOCKED: blockedCount,
-          FINAL_WARNING: finalWarningCount,
-          FIRST_WARNING: firstWarningCount,
-          SAFE: safeCount,
-        }[options.warningStage]
-      : totalMonitored;
-    const pageRows = warningQuery.pageRows ?? [];
-
-    const enrollmentIds = pageRows.map((row) => Number(row.enrollmentId));
-    const enrollments = enrollmentIds.length > 0
-      ? await prisma.enrollment.findMany({
-          where: { id: { in: enrollmentIds } },
-          include: {
-            student: {
-              select: {
-                id: true,
-                studentId: true,
-                firstName: true,
-                lastName: true,
-                year: true,
-                department: {
-                  select: {
-                    id: true,
-                    name: true,
-                    nameAr: true,
-                    college: {
-                      select: { id: true, name: true, nameAr: true },
-                    },
-                  },
-                },
-                user: { select: { email: true } },
-              },
-            },
-            course: {
-              select: {
-                id: true,
-                courseCode: true,
-                name: true,
-                credits: true,
-                year: true,
-                semester: true,
-                departmentId: true,
-              },
-            },
-            exemptionPeriods: {
-              select: {
-                id: true,
-                startDate: true,
-                endDate: true,
-                reason: true,
-                createdAt: true,
-              },
-            },
-          },
-        })
-      : [];
-    const enrollmentById = new Map(
-      enrollments.map((enrollment) => [enrollment.id, enrollment])
+    return AttendanceWarningService.getStaffAbsenceWarnings(
+      user,
+      options,
+      paginationOverride
     );
-    const warningRecords = pageRows.flatMap((row) => {
-      const enrollment = enrollmentById.get(Number(row.enrollmentId));
-      if (!enrollment) return [];
-
-      return [{
-        enrollmentId: enrollment.id,
-        studentId: enrollment.student.id,
-        studentCode: enrollment.student.studentId,
-        studentName: `${enrollment.student.firstName} ${enrollment.student.lastName}`.trim(),
-        studentEmail: enrollment.student.user?.email,
-        studentYear: enrollment.student.year || enrollment.course.year || 1,
-        departmentName: enrollment.student.department?.name,
-        departmentNameAr: enrollment.student.department?.nameAr,
-        collegeName: enrollment.student.department?.college?.name,
-        collegeNameAr: enrollment.student.department?.college?.nameAr,
-        courseId: enrollment.course.id,
-        courseCode: enrollment.course.courseCode,
-        courseName: enrollment.course.name,
-        courseYear: enrollment.course.year,
-        courseSemester: enrollment.course.semester,
-        status: enrollment.status,
-        warningStage: row.warningStage,
-        absencePercent: Number(row.absencePercent),
-        maxAbsencePercent: Number(row.maxAbsencePercent),
-        totalSessions: Number(row.total),
-        present: Number(row.present),
-        late: Number(row.late),
-        absent: Number(row.absent),
-        excused: Number(row.excused),
-        pendingReview: Number(row.pendingReview),
-        exemptionPeriods: enrollment.exemptionPeriods || [],
-      }];
-    });
-
-    return {
-      isStaff: true,
-      summary: {
-        totalMonitored,
-        blockedCount,
-        finalWarningCount,
-        firstWarningCount,
-        safeCount,
-      },
-      warningRecords,
-      coursesList,
-      pagination: {
-        page,
-        limit,
-        total: filteredTotal,
-        totalPages: Math.ceil(filteredTotal / limit),
-      },
-    };
   }
 
   static async exportStaffAbsenceWarnings(
-    user: any,
+    user: AuthActor,
     options: Omit<StaffWarningOptions, 'page' | 'limit'> = {}
   ) {
-    const result = await this.getStaffAbsenceWarnings(
-      user,
-      options,
-      {
-        page: 1,
-        limit: STAFF_WARNING_EXPORT_LIMIT,
-        skip: 0,
-        includeCoursesList: false,
-      }
-    );
-
-    return {
-      records: result.warningRecords,
-      total: result.pagination.total,
-      capped: result.pagination.total > STAFF_WARNING_EXPORT_LIMIT,
-      limit: STAFF_WARNING_EXPORT_LIMIT,
-    };
+    return AttendanceWarningService.exportStaffAbsenceWarnings(user, options);
   }
 
-  /**
-   * Provisions a new RFID hardware device.
-   * Generates a 32-byte cryptographic signing key server-side, encrypts it
-   * at rest using AES-256-GCM, and returns the raw plaintext key exactly once
-   * for flashing into device firmware.
-   */
   static async provisionRfidDevice(data: { roomId: string; label?: string }) {
-    const roomId = data.roomId?.trim();
-    if (!roomId) {
-      throw new AppError('Room ID (device identifier) is required', 400);
-    }
-
-    const existing = await prisma.rfidDevice.findUnique({
-      where: { roomId },
-    });
-    if (existing) {
-      throw new AppError(`An RFID device is already provisioned for room: ${roomId}`, 409);
-    }
-
-    // Generate 32-byte (256-bit) cryptographically strong signing key
-    const signingKey = crypto.randomBytes(32).toString('hex');
-    const signingKeyEncrypted = encrypt(signingKey);
-
-    const device = await prisma.rfidDevice.create({
-      data: {
-        roomId,
-        label: data.label?.trim() || null,
-        signingKeyEncrypted,
-        isActive: true,
-      },
-      select: {
-        id: true,
-        roomId: true,
-        label: true,
-        isActive: true,
-        createdAt: true,
-      },
-    });
-
-    return {
-      ...device,
-      signingKey, // Returned exactly once in provisioning response!
-      warning:
-        'Store this signing key securely and flash it directly into device firmware. The plaintext key is encrypted at rest and cannot be retrieved again.',
-    };
+    return AttendanceDeviceService.provisionRfidDevice(data);
   }
 
-  /**
-   * Lists provisioned RFID devices (never exposes signing keys).
-   */
   static async listRfidDevices() {
-    return prisma.rfidDevice.findMany({
-      select: {
-        id: true,
-        roomId: true,
-        label: true,
-        isActive: true,
-        lastSeenAt: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    return AttendanceDeviceService.listRfidDevices();
   }
 }
 

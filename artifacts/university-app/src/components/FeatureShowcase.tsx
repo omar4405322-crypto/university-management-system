@@ -24,8 +24,8 @@ const CARDS: ShowcaseCard[] = [
   {
     id: 'exams',
     icon: '📝',
-    color: '#EEF7E0',
-    accent: '#84BD3A',
+    color: '#F4F8EA',
+    accent: '#8BB83C',
     titleAr: 'نظام الامتحانات الإلكتروني',
     titleEn: 'Online Exam System',
     descAr: 'امتحانات إلكترونية متكاملة مع نظام مكافحة الغش ومتابعة الأداء في الوقت الفعلي',
@@ -34,8 +34,8 @@ const CARDS: ShowcaseCard[] = [
   {
     id: 'schedule',
     icon: '📅',
-    color: '#E8F0FE',
-    accent: '#4285F4',
+    color: '#F4F6F7',
+    accent: '#132231',
     titleAr: 'الجداول الدراسية',
     titleEn: 'Smart Timetables',
     descAr: 'جداول دراسية ذكية تُحدَّث تلقائياً مع إشعارات فورية لأي تغييرات',
@@ -44,8 +44,8 @@ const CARDS: ShowcaseCard[] = [
   {
     id: 'grades',
     icon: '🎓',
-    color: '#FFF8E1',
-    accent: '#F9A825',
+    color: '#FBF8E9',
+    accent: '#D6BA34',
     titleAr: 'إدارة الدرجات والنتائج',
     titleEn: 'Grades & Results',
     descAr: 'تتبع درجاتك ونتائجك أولاً بأول مع تحليلات تفصيلية لأدائك الأكاديمي',
@@ -54,8 +54,8 @@ const CARDS: ShowcaseCard[] = [
   {
     id: 'attendance',
     icon: '✅',
-    color: '#F3E5F5',
-    accent: '#8E24AA',
+    color: '#EEF5F8',
+    accent: '#2F6B87',
     titleAr: 'نظام الحضور والغياب',
     titleEn: 'Attendance Tracking',
     descAr: 'نظام حضور رقمي دقيق مع تنبيهات تلقائية عند الاقتراب من حد الغياب المسموح',
@@ -64,8 +64,8 @@ const CARDS: ShowcaseCard[] = [
   {
     id: 'courses',
     icon: '📚',
-    color: '#E8F5E9',
-    accent: '#2E7D32',
+    color: '#E8F0D3',
+    accent: '#70952F',
     titleAr: 'إدارة المقررات',
     titleEn: 'Course Management',
     descAr: 'استعراض وتسجيل المقررات الدراسية بكل سهولة مع المواد التعليمية المرفقة',
@@ -291,7 +291,7 @@ function AttendanceSVG({ accent, active }: { accent: string; active: boolean }) 
             x={28 + col * 28}
             y={60 + row * 26}
             width={22} height={20} rx="5"
-            fill={present ? accent : '#e5e7eb'}
+            fill={present ? accent : '#DDE1E4'}
             opacity={present ? 0.85 : 1}
           />
         );
@@ -414,7 +414,7 @@ function NavBtn({
       style={{
         width: 44, height: 44, borderRadius: '50%',
         border: '1.5px solid #ccc',
-        background: hov ? '#84BD3A' : 'white',
+        background: hov ? '#8BB83C' : 'white',
         color: hov ? 'white' : '#333',
         cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -568,7 +568,7 @@ export function FeatureShowcase() {
       id="features"
       role="region"
       aria-label="مميزات نظام إدارة الجامعة"
-      style={{ background: '#F5F4F0', padding: '80px 0', overflow: 'hidden' }}
+      style={{ background: '#F4F6F7', padding: '80px 0', overflow: 'hidden' }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -576,10 +576,10 @@ export function FeatureShowcase() {
       <div style={{ textAlign: 'center', marginBottom: 48, padding: '0 24px' }}>
         <p style={{
           fontSize: 12, fontWeight: 800, letterSpacing: '0.12em',
-          textTransform: 'uppercase', color: '#84BD3A', margin: '0 0 10px',
+          textTransform: 'uppercase', color: '#8BB83C', margin: '0 0 10px',
         }}>النظام الأكاديمي</p>
         <h2 style={{
-          fontSize: 34, fontWeight: 700, color: '#1a1a1a',
+          fontSize: 34, fontWeight: 700, color: '#132231',
           margin: '0 0 12px', lineHeight: 1.25,
         }}>مميزات نظام إدارة الجامعة</h2>
         <p style={{ fontSize: 16, color: '#777', maxWidth: 480, margin: '0 auto', lineHeight: 1.7 }}>
@@ -682,7 +682,7 @@ export function FeatureShowcase() {
                   display: 'flex', alignItems: 'center',
                   justifyContent: 'space-between', gap: 8,
                 }}>
-                  <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a1a', margin: 0, lineHeight: 1.3 }}>
+                  <h3 style={{ fontSize: 20, fontWeight: 700, color: '#132231', margin: 0, lineHeight: 1.3 }}>
                     {card.titleAr}
                   </h3>
                   <span style={{ fontSize: 26, flexShrink: 0 }} role="img" aria-label={card.titleEn}>
@@ -736,7 +736,7 @@ export function FeatureShowcase() {
               style={{
                 width: i === realIdx ? 24 : 8,
                 height: 8, borderRadius: 4, border: 'none', padding: 0,
-                background: i === realIdx ? '#84BD3A' : '#ccc',
+                background: i === realIdx ? '#8BB83C' : '#8796A1',
                 cursor: 'pointer',
                 transition: 'width 300ms ease, background 300ms ease',
                 flexShrink: 0,

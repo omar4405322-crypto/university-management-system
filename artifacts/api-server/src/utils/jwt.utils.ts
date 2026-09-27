@@ -101,6 +101,7 @@ export const hashRefreshToken = (token: string): string =>
  */
 export const generateAccessToken = (userId: number, tokenVersion: number = 0): string => {
   return jwt.sign({ id: userId, tokenVersion }, process.env.JWT_SECRET as string, {
+    algorithm: 'HS256',
     expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as jwt.SignOptions['expiresIn'],
     issuer: 'Smart University Platform',
     audience: 'University Users',
@@ -140,6 +141,7 @@ export const generateRefreshToken = async (
 export const verifyToken = (token: string): TokenPayload => {
   try {
     return jwt.verify(token, process.env.JWT_SECRET as string, {
+      algorithms: ['HS256'],
       issuer: 'Smart University Platform',
       audience: 'University Users',
     }) as TokenPayload;

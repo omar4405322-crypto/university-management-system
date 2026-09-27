@@ -60,11 +60,21 @@ async function runManualAttendanceScopeSecurityTests() {
 
   const originalCourseFindFirst = prisma.course.findFirst;
   const originalSessionFindFirst = prisma.attendanceSession.findFirst;
+  const originalStudentFindFirst = prisma.student.findFirst;
   let courseQueries = 0;
   let sessionQueries = 0;
   let capturedWhere: unknown;
 
   try {
+    (prisma.student as any).findFirst = async (args: any) => {
+      assert.deepEqual(args.where, {
+        AND: [
+          { id: 4 },
+          { isActive: true, user: { is: { isActive: true } } },
+        ],
+      });
+      return { id: 4 };
+    };
     (prisma.course as any).findFirst = async (args: any) => {
       courseQueries += 1;
       capturedWhere = args.where;
@@ -139,6 +149,16 @@ async function runManualAttendanceScopeSecurityTests() {
       AuthorizationError
     );
 
+    (prisma.student as any).findFirst = async () => null;
+    const inactiveResult = await driver.validate(
+      { studentId: 4, courseId: 11, status: 'PRESENT' },
+      doctorContext
+    );
+    assert.equal(inactiveResult.valid, false);
+    assert.equal(inactiveResult.errorCode, 'STUDENT_INACTIVE');
+
+    (prisma.student as any).findFirst = async () => ({ id: 4 });
+
     await assert.rejects(
       attendanceEngine.recordBulkManual(
         [{ studentId: 4, status: 'PRESENT' }],
@@ -149,6 +169,7 @@ async function runManualAttendanceScopeSecurityTests() {
   } finally {
     (prisma.course as any).findFirst = originalCourseFindFirst;
     (prisma.attendanceSession as any).findFirst = originalSessionFindFirst;
+    (prisma.student as any).findFirst = originalStudentFindFirst;
   }
 }
 

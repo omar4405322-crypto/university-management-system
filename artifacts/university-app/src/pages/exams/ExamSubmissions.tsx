@@ -1,5 +1,4 @@
-// @ts-nocheck
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -38,8 +37,8 @@ import {
   getExamLabel,
 } from './examUtils';
 
-const ExamSubmissions = () => {
-  const { id } = useParams();
+const ExamSubmissions: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language?.startsWith('ar');
@@ -58,11 +57,8 @@ const ExamSubmissions = () => {
   const [gradeValue, setGradeValue] = useState<number | string>('');
   const [savingGrade, setSavingGrade] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [id]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!id) return;
     try {
       setLoading(true);
       const [examRes, subRes, qRes] = await Promise.all([
@@ -79,7 +75,11 @@ const ExamSubmissions = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, t]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleSaveGrade = async (submissionId: number | string) => {
     const score = Number(gradeValue);

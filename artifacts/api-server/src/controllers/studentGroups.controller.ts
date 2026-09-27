@@ -8,6 +8,8 @@ import {
   getAdminStudentGroupScopeWhere,
   resolveStudentGroupReadScopeWhere,
 } from '../utils/studentGroupScope.utils';
+import { getEffectiveActiveStudentWhere } from '../utils/scope.utils';
+import { auditLog } from '../utils/audit.utils';
 import {
   validatePositiveSafeInteger,
   validateRequestedGroupCount,
@@ -35,20 +37,23 @@ export const autoDivideStudents = async (req: Request, res: Response, next: Next
     if (hasNumberOfGroups === hasMaxGroupSize) {
       return res.status(400).json({ success: false, message: 'Exactly one of numberOfGroups or maxGroupSize must be provided' });
     }
-
     const allocationField = hasNumberOfGroups ? 'numberOfGroups' : 'maxGroupSize';
     const allocationValue = hasNumberOfGroups ? numberOfGroups : maxGroupSize;
     const allocationError = validatePositiveSafeInteger(allocationValue, allocationField);
     if (allocationError) {
       return res.status(400).json({ success: false, message: allocationError });
     }
+
     const department = await prisma.department.findFirst({
       where: getAdminMutationTargetWhere(req.user!, 'department', departmentId),
     });
     if (!department) return next(new AuthorizationError('Department is outside your managed scope'));
 
     const students = await prisma.student.findMany({
-      where: { departmentId, year: academicYear, isActive: true },
+      where: getEffectiveActiveStudentWhere({
+        departmentId,
+        year: academicYear,
+      }),
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }]
     });
 
@@ -57,12 +62,12 @@ export const autoDivideStudents = async (req: Request, res: Response, next: Next
     if (maxGroupSize) {
       numberOfGroups = Math.ceil(students.length / maxGroupSize);
     }
-
-    // Check if we need confirmation for overwriting existing tree
     const groupCountError = validateRequestedGroupCount(numberOfGroups, students.length);
     if (groupCountError) {
       return res.status(400).json({ success: false, message: groupCountError });
     }
+
+    // Check if we need confirmation for overwriting existing tree
     const existingGroups = await prisma.studentGroup.findMany({ where: { departmentId, year: academicYear, parentGroupId: null } });
     if (existingGroups.length > 0 && !confirmed) {
       return res.json({ success: true, requiresConfirmation: true, message: 'This will overwrite existing groups for this year. Confirm to proceed.' });
@@ -101,6 +106,20 @@ export const autoDivideStudents = async (req: Request, res: Response, next: Next
           });
         }
       }
+      await auditLog(
+        'GENERATE_STUDENT_GROUPS',
+        'StudentGroup',
+        `${departmentId}:${academicYear}`,
+        req,
+        {
+          departmentId,
+          year: academicYear,
+          replacedGroupIds: existingGroups.map((group) => group.id),
+          createdGroupIds: groups.map((group) => group.id),
+          studentCount: students.length,
+        },
+        tx
+      );
     });
 
     return res.json({ success: true, message: `Successfully divided ${students.length} students into ${numberOfGroups} groups.` });
@@ -153,11 +172,11 @@ export const splitGroup = async (req: Request, res: Response, next: NextFunction
     }
 
     const students = await prisma.student.findMany({
-      where: {
+      where: getEffectiveActiveStudentWhere({
         groupId,
         departmentId: group.departmentId,
         year: group.year,
-      },
+      }),
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }]
     });
 
@@ -204,6 +223,18 @@ export const splitGroup = async (req: Request, res: Response, next: NextFunction
           });
         }
       }
+      await auditLog(
+        'SPLIT_STUDENT_GROUP',
+        'StudentGroup',
+        group.id,
+        req,
+        {
+          parentGroupId: group.id,
+          createdGroupIds: subgroups.map((subgroup) => subgroup.id),
+          studentCount: students.length,
+        },
+        tx
+      );
     });
 
     return res.json({ success: true, message: `Successfully split group into ${numberOfSubgroups} subgroups.` });
@@ -252,6 +283,17 @@ export const deleteGroup = async (req: Request, res: Response, next: NextFunctio
       await tx.studentGroup.updateMany({ where: { id: { in: affectedGroupIds } }, data: { parentGroupId: null } });
       // Delete all affected groups
       await tx.studentGroup.deleteMany({ where: { id: { in: affectedGroupIds } } });
+      await auditLog(
+        'DELETE_STUDENT_GROUP',
+        'StudentGroup',
+        groupId,
+        req,
+        {
+          deletedGroupIds: affectedGroupIds,
+          reassignedToGroupId: targetParentGroupId,
+        },
+        tx
+      );
     });
 
     return res.json({ success: true, message: 'Group deleted successfully' });
@@ -328,7 +370,7 @@ export const manualOverrideGroup = async (req: Request, res: Response, next: Nex
     await prisma.$transaction(async (tx) => {
       const student = await tx.student.findFirst({
         where: getAdminMutationTargetWhere(req.user!, 'student', studentId),
-        select: { id: true, departmentId: true, year: true },
+        select: { id: true, departmentId: true, year: true, groupId: true },
       });
       if (!student) {
         throw new AuthorizationError('Student is outside your managed scope');
@@ -362,6 +404,14 @@ export const manualOverrideGroup = async (req: Request, res: Response, next: Nex
         where: { id: student.id },
         data: { groupId: parsedGroupId },
       });
+      await auditLog(
+        'REASSIGN_STUDENT_GROUP',
+        'Student',
+        student.id,
+        req,
+        { groupId: { from: student.groupId, to: parsedGroupId } },
+        tx
+      );
     });
 
     return res.json({ success: true, message: 'Student group updated manually' });

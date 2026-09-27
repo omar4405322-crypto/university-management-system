@@ -1,58 +1,92 @@
-import assert from 'node:assert/strict';
-import rateLimit from 'express-rate-limit';
-import { loginLimiter } from '../src/middleware/rateLimiter.middleware';
+import assert from "node:assert/strict";
+import {
+  loginLimiter,
+  loginIpLimiter,
+  loginAccountLimiter,
+  shouldFailClosedRateLimiter,
+} from "../src/middleware/rateLimiter.middleware";
 
 async function runSec25LoginLimiterTests() {
-  console.log('=== SEC-25: Rate Limiter Hardening Verification Suite ===');
+  console.log(
+    "=== SEC-25 / SEC-04: Layered Rate Limiter Hardening Verification Suite ===",
+  );
 
-  // 1. Verify passOnStoreError availability trade-off
-  // Fail-open is intentionally configured so Redis outages do not lock out all users
+  assert.equal(shouldFailClosedRateLimiter({ NODE_ENV: "production" }), true);
+  assert.equal(shouldFailClosedRateLimiter({ NODE_ENV: "development" }), false);
+  assert.equal(shouldFailClosedRateLimiter({ NODE_ENV: "test" }), false);
+
+  // 1. Verify environment-sensitive store failure policy.
+  // Production fails closed; tests/development retain the local fallback.
   assert.equal(
     (loginLimiter as any).passOnStoreError ?? true,
     true,
-    'loginLimiter must retain passOnStoreError: true for institutional availability'
+    "The test environment must retain the local fallback",
   );
-  console.log('✔ [PASS] Verified passOnStoreError remains true with fail-open availability trade-off');
+  console.log(
+    "✔ [PASS] Verified production fail-closed and local fallback rate-limit policies",
+  );
 
-  // 2. Build a test rate limiter matching loginLimiter logic to test bucket sharing behavior
-  const keyGen = (loginLimiter as any).keyGenerator || ((req: any) => {
-    const email = typeof req.body?.email === 'string' ? req.body.email.toLowerCase().trim() : '';
-    if (email) return `email:${email}`;
-    const ip = req.ip || req.get?.('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    return `ip:${ip}`;
+  // 2. Unit test: Key Generator produces per-(IP + normalized email) compound key
+  const keyGen = (loginLimiter as any).keyGenerator;
+  assert.ok(
+    typeof keyGen === "function",
+    "loginLimiter must expose keyGenerator helper",
+  );
+
+  const key1 = keyGen({
+    body: { email: "Student1@University.edu " },
+    ip: "10.0.0.1",
   });
-
-  // Direct Key Generator unit tests
-  const key1 = keyGen({ body: { email: 'Student1@University.edu ' }, ip: '10.0.0.1' });
-  const key2 = keyGen({ body: { email: 'student1@university.edu' }, ip: '192.168.1.50' });
-  const key3 = keyGen({ body: { email: 'doctor2@university.edu' }, ip: '10.0.0.1' });
-  const keyFallback = keyGen({ body: {}, ip: '10.0.0.1' });
-
-  assert.equal(key1, 'email:student1@university.edu', 'Should normalize and prefix email');
-  assert.equal(key1, key2, 'Same email from different IPs must produce identical rate limit key');
-  assert.notEqual(key1, key3, 'Different emails from the same IP must produce different rate limit keys');
-  assert.equal(keyFallback, 'ip:10.0.0.1', 'Missing email must fall back to IP key');
-  console.log('✔ [PASS] Verified compound key generator normalization and IP fallback');
-
-  // 3. Functional middleware test: simulating hits across multiple IPs for the same account
-  const testLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    keyGenerator: keyGen,
-    validate: { keyGeneratorIpFallback: false },
-    message: { success: false, message: 'Too many login attempts, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
+  const key2 = keyGen({
+    body: { email: "student1@university.edu" },
+    ip: "192.168.1.50",
   });
+  const key3 = keyGen({
+    body: { email: "doctor2@university.edu" },
+    ip: "10.0.0.1",
+  });
+  const keyFallback = keyGen({ body: {}, ip: "10.0.0.1" });
 
-  const simulateRequest = (ip: string, email?: string): Promise<{ status: number; calledNext: boolean }> => {
+  assert.equal(
+    key1,
+    "10.0.0.1:student1@university.edu",
+    "Should normalize email and prefix with client IP",
+  );
+  assert.equal(key2, "192.168.1.50:student1@university.edu");
+  assert.notEqual(
+    key1,
+    key2,
+    "SEC-04 fix: Same email from different IPs must have distinct keys to prevent cross-IP account lockout",
+  );
+  assert.notEqual(
+    key1,
+    key3,
+    "Different emails from same IP must produce distinct account keys",
+  );
+  assert.equal(
+    keyFallback,
+    "10.0.0.1",
+    "Missing email must fall back to client IP",
+  );
+  console.log(
+    "✔ [PASS] Verified layered key generator produces IP+email compound keys without global account lockout",
+  );
+
+  // 3. Functional middleware test using the real loginLimiter middleware chain
+  const simulateRequest = (
+    limiter: any,
+    ip: string,
+    email?: string,
+    headers: Record<string, string> = {},
+  ): Promise<{ status: number; calledNext: boolean; body?: any }> => {
     return new Promise((resolve) => {
       let nextCalled = false;
       const req: any = {
         ip,
         body: email !== undefined ? { email } : {},
-        headers: {},
-        get: (h: string) => (h.toLowerCase() === 'x-forwarded-for' ? ip : undefined),
+        headers,
+        get: (h: string) => headers[h.toLowerCase()],
+        socket: { remoteAddress: ip },
       };
       const res: any = {
         statusCode: 200,
@@ -60,62 +94,125 @@ async function runSec25LoginLimiterTests() {
           this.statusCode = code;
           return this;
         },
+        json(data: any) {
+          resolve({
+            status: this.statusCode,
+            calledNext: nextCalled,
+            body: data,
+          });
+        },
         send(data: any) {
-          resolve({ status: this.statusCode, calledNext: nextCalled });
+          resolve({
+            status: this.statusCode,
+            calledNext: nextCalled,
+            body: data,
+          });
         },
         setHeader() {},
         getHeader() {},
       };
-      const next = () => {
+      const next = (err?: any) => {
+        if (err) {
+          resolve({ status: 500, calledNext: false, body: err });
+          return;
+        }
         nextCalled = true;
         resolve({ status: res.statusCode, calledNext: true });
       };
 
-      testLimiter(req, res, next);
+      limiter(req, res, next);
     });
   };
 
-  const targetEmail = 'victim_account@uni.edu';
+  const victimEmail = "victim_sec04@university.edu";
+  const attackerIp = "198.51.100.10";
+  const victimIp = "203.0.113.25";
 
-  // Hits 1, 2, 3: from IP A
-  for (let i = 1; i <= 3; i++) {
-    const res = await simulateRequest('10.1.1.1', targetEmail);
-    assert.equal(res.calledNext, true, `Attempt ${i} from IP A should be allowed`);
+  // Attacker makes 5 failed attempts against victimEmail from attackerIp
+  for (let i = 1; i <= 5; i++) {
+    const res = await simulateRequest(loginLimiter, attackerIp, victimEmail);
+    assert.equal(
+      res.calledNext,
+      true,
+      `Attacker attempt ${i} allowed within 5 attempts`,
+    );
     assert.equal(res.status, 200);
   }
 
-  // Hits 4, 5: from IP B (different IP, same email)
-  for (let i = 4; i <= 5; i++) {
-    const res = await simulateRequest('10.2.2.2', targetEmail);
-    assert.equal(res.calledNext, true, `Attempt ${i} from IP B should be allowed within max=5`);
-    assert.equal(res.status, 200);
-  }
-
-  // Hit 6: from IP C (yet another IP, same email) -> MUST BE BLOCKED (shared bucket exhausted!)
-  const blockedRes = await simulateRequest('10.3.3.3', targetEmail);
+  // Attacker 6th attempt from attackerIp is BLOCKED (429)
+  const attackerBlocked = await simulateRequest(
+    loginLimiter,
+    attackerIp,
+    victimEmail,
+  );
   assert.equal(
-    blockedRes.calledNext,
+    attackerBlocked.calledNext,
     false,
-    'Attempt 6 from IP C for the same email must be rate-limited'
+    "Attacker 6th attempt must be blocked by loginAccountLimiter",
   );
   assert.equal(
-    blockedRes.status,
+    attackerBlocked.status,
     429,
-    'Exhausted email bucket must return HTTP 429 Too Many Requests'
+    "Exhausted IP+email bucket must return HTTP 429",
   );
-  console.log('✔ [PASS] Same email hit from multiple different IPs correctly shares one rate-limit bucket');
+  console.log(
+    "✔ [PASS] Single-source brute force against victim email is throttled after 5 attempts",
+  );
 
-  // Hit from IP A (which made attempts 1-3) but with a DIFFERENT email
-  const differentEmailRes = await simulateRequest('10.1.1.1', 'another_student@uni.edu');
+  // SEC-04 CRITICAL TEST: Legitimate user from victimIp logging into victimEmail MUST NOT be blocked!
+  const victimAttempt = await simulateRequest(
+    loginLimiter,
+    victimIp,
+    victimEmail,
+  );
   assert.equal(
-    differentEmailRes.calledNext,
+    victimAttempt.calledNext,
     true,
-    'Different email from an already-seen IP must NOT be blocked'
+    "SEC-04: Legitimate victim from different IP must NOT be locked out by attacker IP exhaustion",
   );
-  assert.equal(differentEmailRes.status, 200);
-  console.log('✔ [PASS] Different email from the same IP does not share the exhausted bucket');
+  assert.equal(victimAttempt.status, 200);
+  console.log(
+    "✔ [PASS] Account-lockout regression eliminated: Victim from distinct IP retains legitimate access",
+  );
 
-  console.log('=== All SEC-25 loginLimiter security tests PASSED ===\n');
+  // 4. Horizontal credential spraying test: single IP testing 20 different accounts
+  const sprayerIp = "198.51.100.99";
+  for (let i = 1; i <= 20; i++) {
+    const res = await simulateRequest(
+      loginLimiter,
+      sprayerIp,
+      `user_${i}@university.edu`,
+    );
+    assert.equal(
+      res.calledNext,
+      true,
+      `Sprayer attempt ${i} under IP limit 20`,
+    );
+  }
+
+  // 21st attempt from sprayerIp across another account is blocked by loginIpLimiter
+  const sprayerBlocked = await simulateRequest(
+    loginLimiter,
+    sprayerIp,
+    "user_21@university.edu",
+  );
+  assert.equal(
+    sprayerBlocked.calledNext,
+    false,
+    "Sprayer 21st attempt must be blocked by loginIpLimiter",
+  );
+  assert.equal(
+    sprayerBlocked.status,
+    429,
+    "Exhausted IP limit must return HTTP 429",
+  );
+  console.log(
+    "✔ [PASS] Horizontal credential spraying from single IP throttled at 20 attempts",
+  );
+
+  console.log(
+    "=== All SEC-25 / SEC-04 loginLimiter regression tests PASSED ===\n",
+  );
 }
 
 await runSec25LoginLimiterTests();

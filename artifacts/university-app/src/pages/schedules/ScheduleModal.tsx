@@ -284,11 +284,11 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
     const collegeId = (course.collegeId || course.department?.collegeId || course.department?.college?.id)?.toString();
     const courseYear = course.year ? Number(course.year) : undefined;
 
-    if (collegeId && !selectedCollegeId) {
-      setSelectedCollegeId(collegeId);
+    if (collegeId) {
+      setSelectedCollegeId(prev => prev || collegeId);
     }
     if (departmentId) {
-      if (!selectedDepartmentId) setSelectedDepartmentId(departmentId);
+      setSelectedDepartmentId(prev => prev || departmentId);
       setLoadingGroups(true);
       studentGroupsService.getDepartmentGroups(departmentId, courseYear)
         .then(res => {

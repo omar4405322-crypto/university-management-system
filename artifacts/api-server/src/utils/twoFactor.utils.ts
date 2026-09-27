@@ -63,7 +63,8 @@ export const claimTotpCounter = async (
 export const verifyTOTP = async (
   secret: string,
   token: string,
-  userId: number
+  userId: number,
+  client: RedisEvalClient | null = redis
 ): Promise<boolean> => {
   const step = 30;
   const verified = speakeasy.totp.verifyDelta({
@@ -84,7 +85,7 @@ export const verifyTOTP = async (
   return claimTotpCounter(
     userId,
     currentCounter + verified.delta,
-    redis,
+    client,
     secretScope
   );
 };

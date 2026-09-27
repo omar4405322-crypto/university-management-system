@@ -24,11 +24,12 @@ const detectedTypeAllowlist: Record<string, ReadonlySet<string>> = {
   'image/webp': new Set(['.webp']),
   'video/mp4': new Set(['.mp4']),
   'video/webm': new Set(['.webm']),
-  'video/x-matroska': new Set(['.mkv']),
+  'video/matroska': new Set(['.mkv']),
 };
 
 const declaredMimeAllowlist = new Set([
   ...Object.keys(detectedTypeAllowlist),
+  'video/x-matroska',
   'application/msword',
   'application/vnd.ms-excel',
   'application/vnd.ms-powerpoint',

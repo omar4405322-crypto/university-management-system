@@ -1,27 +1,39 @@
-import { AttendanceMethod, AttendanceStatus } from '@prisma/client';
+import { AttendanceMethod, AttendanceStatus } from "@prisma/client";
 import {
   IAttendanceDriver,
   DriverValidationContext,
   DriverValidationResult,
   AttendanceIntent,
-} from './IAttendanceDriver';
-import { AppError } from '../../utils/appError';
-import prisma from '../../utils/prismaClient';
+} from "./IAttendanceDriver";
+import { AppError } from "../../utils/appError";
+import prisma from "../../utils/prismaClient";
 
 export class GpsDriver implements IAttendanceDriver {
   readonly method: AttendanceMethod = AttendanceMethod.GPS;
 
   async validate(
     rawPayload: Record<string, any>,
-    ctx: DriverValidationContext
+    ctx: DriverValidationContext,
   ): Promise<DriverValidationResult> {
     const sessionId = rawPayload.sessionId;
 
     if (!sessionId) {
       return {
         valid: false,
-        errorCode: 'MISSING_SESSION_ID',
-        errorMessage: 'معرف الجلسة مطلوب لتسجيل الحضور عبر GPS',
+        errorCode: "MISSING_SESSION_ID",
+        errorMessage: "معرف الجلسة مطلوب لتسجيل الحضور عبر GPS",
+      };
+    }
+
+    const requiredDeviceId =
+      typeof rawPayload.deviceId === "string"
+        ? rawPayload.deviceId.trim().toLowerCase()
+        : "";
+    if (requiredDeviceId.length < 8 || requiredDeviceId.length > 255) {
+      return {
+        valid: false,
+        errorCode: "DEVICE_REQUIRED",
+        errorMessage: "A valid device ID is required for GPS attendance",
       };
     }
 
@@ -33,67 +45,89 @@ export class GpsDriver implements IAttendanceDriver {
     if (!session || !session.isActive) {
       return {
         valid: false,
-        errorCode: 'SESSION_INACTIVE',
-        errorMessage: 'الجلسة غير موجودة أو غير نشطة',
+        errorCode: "SESSION_INACTIVE",
+        errorMessage: "الجلسة غير موجودة أو غير نشطة",
       };
     }
 
     if (session.expiresAt && new Date() > session.expiresAt) {
       return {
         valid: false,
-        errorCode: 'SESSION_EXPIRED',
-        errorMessage: 'انتهت صلاحية هذه الجلسة',
+        errorCode: "SESSION_EXPIRED",
+        errorMessage: "انتهت صلاحية هذه الجلسة",
       };
     }
 
     if (session.latitude == null || session.longitude == null) {
       return {
         valid: false,
-        errorCode: 'SESSION_LOCATION_NOT_CONFIGURED',
-        errorMessage: 'موقع الجلسة غير محدد من قبل المحاضر',
+        errorCode: "SESSION_LOCATION_NOT_CONFIGURED",
+        errorMessage: "موقع الجلسة غير محدد من قبل المحاضر",
       };
     }
 
-    const latitude = rawPayload.latitude != null ? parseFloat(rawPayload.latitude) : null;
-    const longitude = rawPayload.longitude != null ? parseFloat(rawPayload.longitude) : null;
+    const latitude =
+      rawPayload.latitude != null ? parseFloat(rawPayload.latitude) : null;
+    const longitude =
+      rawPayload.longitude != null ? parseFloat(rawPayload.longitude) : null;
     const accuracy =
       rawPayload.accuracy != null && !isNaN(parseFloat(rawPayload.accuracy))
         ? parseFloat(rawPayload.accuracy)
         : null;
 
-    if (latitude == null || longitude == null || isNaN(latitude) || isNaN(longitude)) {
+    if (
+      latitude == null ||
+      longitude == null ||
+      isNaN(latitude) ||
+      isNaN(longitude)
+    ) {
       return {
         valid: false,
-        errorCode: 'MISSING_LOCATION_DATA',
-        errorMessage: 'موقع الجهاز مطلوب لتسجيل الحضور',
+        errorCode: "MISSING_LOCATION_DATA",
+        errorMessage: "موقع الجهاز مطلوب لتسجيل الحضور",
       };
     }
 
-    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    if (
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
       return {
         valid: false,
-        errorCode: 'INVALID_COORDINATES',
-        errorMessage: 'إحداثيات الموقع خارج النطاق المسموح به (-90 إلى 90 لخط العرض، -180 إلى 180 لخط الطول)',
+        errorCode: "INVALID_COORDINATES",
+        errorMessage:
+          "إحداثيات الموقع خارج النطاق المسموح به (-90 إلى 90 لخط العرض، -180 إلى 180 لخط الطول)",
       };
     }
 
     return {
       valid: true,
-      metadata: { session, latitude, longitude, accuracy },
+      metadata: {
+        session,
+        latitude,
+        longitude,
+        accuracy,
+        deviceId: requiredDeviceId,
+      },
     };
   }
 
   async buildIntent(
     rawPayload: Record<string, any>,
-    ctx: DriverValidationContext
+    ctx: DriverValidationContext,
   ): Promise<AttendanceIntent> {
     const validation = await this.validate(rawPayload, ctx);
     if (!validation.valid) {
-      throw new AppError(validation.errorMessage || 'Invalid GPS attendance payload', 400);
+      throw new AppError(
+        validation.errorMessage || "Invalid GPS attendance payload",
+        400,
+      );
     }
 
-    const { session, latitude, longitude, accuracy } = validation.metadata!;
-    const { deviceId } = rawPayload;
+    const { session, latitude, longitude, accuracy, deviceId } =
+      validation.metadata!;
 
     // Haversine formula matching QrDriver geofencing logic
     const R = 6371e3; // Earth radius in meters
@@ -113,7 +147,7 @@ export class GpsDriver implements IAttendanceDriver {
     const elapsedMinutes = (now.getTime() - sessionStartTime) / (1000 * 60);
     const gracePeriodMinutes = session.gracePeriodMins ?? 15;
     const computedStatus: AttendanceStatus =
-      elapsedMinutes <= gracePeriodMinutes ? 'PRESENT' : 'LATE';
+      elapsedMinutes <= gracePeriodMinutes ? "PRESENT" : "LATE";
 
     // Out of range check:
     // When distance exceeds session.radius (default 120):
@@ -128,7 +162,7 @@ export class GpsDriver implements IAttendanceDriver {
 
     if (isOutOfRange) {
       locationFlagged = true;
-      finalStatus = 'PENDING_REVIEW' as AttendanceStatus;
+      finalStatus = "PENDING_REVIEW" as AttendanceStatus;
       pendingApprovedStatus = computedStatus;
     }
 
@@ -144,11 +178,10 @@ export class GpsDriver implements IAttendanceDriver {
       status: finalStatus,
       pendingApprovedStatus,
       ipAddress: ctx.ipAddress || null,
-      deviceId: deviceId || null,
+      deviceId,
       locationData: { lat: latitude, lng: longitude, accuracy },
       locationFlagged,
       date: attendanceDate,
     };
   }
 }
-

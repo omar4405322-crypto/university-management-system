@@ -7,6 +7,8 @@ import {
 } from './IAttendanceDriver';
 import { AppError } from '../../utils/appError';
 import { requireManualAttendanceAccess } from '../../utils/manualAttendanceScope.utils';
+import prisma from '../../utils/prismaClient';
+import { getEffectiveActiveStudentWhere } from '../../utils/scope.utils';
 
 export class ManualDriver implements IAttendanceDriver {
   readonly method: AttendanceMethod = AttendanceMethod.MANUAL;
@@ -41,7 +43,21 @@ export class ManualDriver implements IAttendanceDriver {
       };
     }
 
+    // Preserve the authorization-first ordering from the manual attendance
+    // scope guard before revealing whether the target student is active.
     await requireManualAttendanceAccess(rawPayload, ctx);
+
+    const activeStudent = await prisma.student.findFirst({
+      where: getEffectiveActiveStudentWhere({ id: parseInt(studentId) }),
+      select: { id: true },
+    });
+    if (!activeStudent) {
+      return {
+        valid: false,
+        errorCode: 'STUDENT_INACTIVE',
+        errorMessage: 'Student account is inactive',
+      };
+    }
 
     return { valid: true, metadata: {} };
   }

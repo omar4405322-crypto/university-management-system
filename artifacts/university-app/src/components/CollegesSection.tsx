@@ -18,14 +18,14 @@ export const collegesKeys: CollegeKeyItem[] = [
     nameKey: 'landing.colleges.industry.name',
     descKey: 'landing.colleges.industry.desc',
     studentsKey: 'landing.colleges.industry.students',
-    image: '/assets/university/ne/campus-building.png',
+    image: '/assets/university/ne/campus-building.webp',
   },
   {
     id: 2,
     nameKey: 'landing.colleges.health.name',
     descKey: 'landing.colleges.health.desc',
     studentsKey: 'landing.colleges.health.students',
-    image: '/assets/university/ne/campus-entrance.png',
+    image: '/assets/university/ne/campus-entrance.webp',
   },
 ];
 
@@ -41,8 +41,8 @@ export const CollegesSection: React.FC<CollegesSectionProps> = ({ colleges, isLo
   const isRTL = i18n.language?.startsWith('ar');
 
   const defaultImages = [
-    '/assets/university/ne/campus-building.png',
-    '/assets/university/ne/campus-entrance.png',
+    '/assets/university/ne/campus-building.webp',
+    '/assets/university/ne/campus-entrance.webp',
   ];
 
   const hasDbColleges = colleges && colleges.length > 0;

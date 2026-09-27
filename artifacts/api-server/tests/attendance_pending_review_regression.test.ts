@@ -1,601 +1,695 @@
-import assert from 'node:assert/strict';
-import prisma from '../src/utils/prismaClient';
-import { GpsDriver } from '../src/attendance/drivers/GpsDriver';
-import attendanceEngine from '../src/attendance/attendance.engine';
-import { AttendanceService } from '../src/services/attendance.service';
-import { autoResolvePendingAttendance } from '../src/utils/cron';
+import assert from "node:assert/strict";
+import prisma from "../src/utils/prismaClient";
+import attendanceEngine from "../src/attendance/attendance.engine";
+import { calculateAttendanceAttempts } from "../src/attendance/attendance.calculation";
+import { GpsDriver } from "../src/attendance/drivers/GpsDriver";
+import { QrDriver } from "../src/attendance/drivers/QrDriver";
+import { AttendanceService } from "../src/services/attendance.service";
+import { autoResolvePendingAttendance } from "../src/utils/cron";
 
-async function runPendingReviewRegressionSuite() {
-  console.log('--- Starting PENDING_REVIEW Regression Suite ---');
-
-  // =========================================================================
-  // 1. GpsDriver Coordinate Bounds Validation & Accuracy Acceptance
-  // =========================================================================
-  console.log('Testing GpsDriver coordinate bounds and accuracy...');
-  const gpsDriver = new GpsDriver();
-
-  const mockSession = {
-    id: 101,
+async function testLocationFlagPolicy() {
+  const originalSessionFind = prisma.attendanceSession.findUnique;
+  const session = {
+    id: 1,
+    createdAt: new Date(Date.now() - 60_000),
     isActive: true,
-    latitude: 30.0444,
-    longitude: 31.2357,
-    radius: 100, // 100 meters
+    expiresAt: new Date(Date.now() + 60_000),
+    latitude: 30,
+    longitude: 31,
+    radius: 10,
     gracePeriodMins: 15,
-    createdAt: new Date(),
-    expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-    scheduleSlot: { id: 50, courseId: 10 },
+    scheduleSlot: { id: 2, courseId: 3, course: { id: 3 } },
   };
-
-  const origFindUnique = prisma.attendanceSession.findUnique;
-  (prisma.attendanceSession as any).findUnique = async () => mockSession;
-
   try {
-    // 1a. Out of bounds latitude (> 90)
-    const latOverResult = await gpsDriver.validate(
-      { sessionId: 101, latitude: 95.0, longitude: 31.2357, accuracy: 15.0 },
-      { studentId: 1 }
+    (prisma.attendanceSession.findUnique as any) = async () => session;
+    const gps = new GpsDriver();
+    const missingDevice = await gps.validate(
+      { sessionId: 1, latitude: 30, longitude: 31 },
+      { studentId: 4 },
     );
-    assert.equal(latOverResult.valid, false);
-    assert.equal(latOverResult.errorCode, 'INVALID_COORDINATES');
+    assert.equal(missingDevice.valid, false);
+    assert.equal(missingDevice.errorCode, "DEVICE_REQUIRED");
 
-    // 1b. Out of bounds latitude (< -90)
-    const latUnderResult = await gpsDriver.validate(
-      { sessionId: 101, latitude: -91.0, longitude: 31.2357 },
-      { studentId: 1 }
-    );
-    assert.equal(latUnderResult.valid, false);
-    assert.equal(latUnderResult.errorCode, 'INVALID_COORDINATES');
-
-    // 1c. Out of bounds longitude (> 180)
-    const lngOverResult = await gpsDriver.validate(
-      { sessionId: 101, latitude: 30.0444, longitude: 181.0 },
-      { studentId: 1 }
-    );
-    assert.equal(lngOverResult.valid, false);
-    assert.equal(lngOverResult.errorCode, 'INVALID_COORDINATES');
-
-    // 1d. Out of bounds longitude (< -180)
-    const lngUnderResult = await gpsDriver.validate(
-      { sessionId: 101, latitude: 30.0444, longitude: -185.0 },
-      { studentId: 1 }
-    );
-    assert.equal(lngUnderResult.valid, false);
-    assert.equal(lngUnderResult.errorCode, 'INVALID_COORDINATES');
-
-    // 1e. In-range check-in (within 100m) with accuracy
-    // Session is at (30.0444, 31.2357); device at same location
-    const inRangeIntent = await gpsDriver.buildIntent(
-      { sessionId: 101, latitude: 30.0444, longitude: 31.2357, accuracy: 8.5 },
-      { studentId: 1 }
-    );
-    assert.equal(inRangeIntent.status, 'PRESENT');
-    assert.equal(inRangeIntent.locationFlagged, false);
-    assert.equal(inRangeIntent.pendingApprovedStatus, null);
-    assert.deepEqual(inRangeIntent.locationData, {
-      lat: 30.0444,
-      lng: 31.2357,
-      accuracy: 8.5,
-    });
-
-    // 1f. Out-of-range check-in (e.g. ~5km away in Cairo)
-    const outOfRangeIntent = await gpsDriver.buildIntent(
-      { sessionId: 101, latitude: 30.0800, longitude: 31.2800, accuracy: 12.0 },
-      { studentId: 1 }
-    );
-    assert.equal(outOfRangeIntent.status, 'PENDING_REVIEW');
-    assert.equal(outOfRangeIntent.locationFlagged, true);
-    assert.equal(outOfRangeIntent.pendingApprovedStatus, 'PRESENT');
-    assert.equal(outOfRangeIntent.locationData?.accuracy, 12.0);
-
-    // 1g. High accuracy out-of-range must NEVER be auto-forgiven
-    const highAccOutOfRangeIntent = await gpsDriver.buildIntent(
-      { sessionId: 101, latitude: 30.0800, longitude: 31.2800, accuracy: 1.5 },
-      { studentId: 1 }
-    );
-    assert.equal(highAccOutOfRangeIntent.status, 'PENDING_REVIEW');
-    assert.equal(highAccOutOfRangeIntent.locationFlagged, true);
-    assert.equal(highAccOutOfRangeIntent.pendingApprovedStatus, 'PRESENT');
-
-    // 1h. Out-of-range past grace period -> pendingApprovedStatus should be LATE
-    const lateSession = {
-      ...mockSession,
-      createdAt: new Date(Date.now() - 30 * 60 * 1000), // 30 mins ago, grace period 15 mins
-    };
-    (prisma.attendanceSession.findUnique as any) = async () => lateSession;
-    const outOfRangeLateIntent = await gpsDriver.buildIntent(
-      { sessionId: 101, latitude: 30.0800, longitude: 31.2800, accuracy: 5.0 },
-      { studentId: 1 }
-    );
-    assert.equal(outOfRangeLateIntent.status, 'PENDING_REVIEW');
-    assert.equal(outOfRangeLateIntent.locationFlagged, true);
-    assert.equal(outOfRangeLateIntent.pendingApprovedStatus, 'LATE');
-
-    console.log('✅ GpsDriver bounds, accuracy, and PENDING_REVIEW tests passed.');
-  } finally {
-    prisma.attendanceSession.findUnique = origFindUnique;
-  }
-
-  // =========================================================================
-  // 2. AttendanceService.overrideFlaggedRecord (Approve)
-  // =========================================================================
-  console.log('Testing AttendanceService.overrideFlaggedRecord (Approve)...');
-  const origAttendanceFindFirst = prisma.attendance.findFirst;
-  const origAttendanceUpdateMany = prisma.attendance.updateMany;
-  const origAttendanceFindUnique = prisma.attendance.findUnique;
-  const origRecalculate = attendanceEngine.recalculateAbsence;
-
-  let recalculatedStudentId: number | null = null;
-  let recalculatedCourseId: number | null = null;
-  attendanceEngine.recalculateAbsence = async (sId, cId) => {
-    recalculatedStudentId = sId;
-    recalculatedCourseId = cId;
-  };
-
-  try {
-    let updatedData: any = null;
-    (prisma.attendance.findFirst as any) = async () => ({
-      id: 501,
-      studentId: 77,
-      courseId: 12,
-      status: 'PENDING_REVIEW',
-      locationFlagged: true,
-      pendingApprovedStatus: 'LATE',
-    });
-    (prisma.attendance.updateMany as any) = async (args: any) => {
-      updatedData = args.data;
-      return { count: 1 };
-    };
-    (prisma.attendance.findUnique as any) = async () => ({
-      id: 501,
-      studentId: 77,
-      courseId: 12,
-      status: 'LATE',
-      locationFlagged: false,
-      pendingApprovedStatus: null,
-    });
-
-    const user = { role: 'ADMIN', id: 1, email: 'admin@uni.edu' };
-    const approved = await AttendanceService.overrideFlaggedRecord(
-      user,
-      501,
-      'Location verified by doctor'
-    );
-
-    assert.equal(updatedData.status, 'LATE');
-    assert.equal(updatedData.pendingApprovedStatus, null);
-    assert.equal(updatedData.locationFlagged, false);
-    assert.equal(updatedData.overriddenBy, 'admin@uni.edu');
-    assert.equal(updatedData.overrideNote, 'Location verified by doctor');
-    assert.equal(recalculatedStudentId, 77);
-    assert.equal(recalculatedCourseId, 12);
-    assert.equal(approved?.status, 'LATE');
-
-    console.log('✅ AttendanceService.overrideFlaggedRecord tests passed.');
-  } finally {
-    prisma.attendance.findFirst = origAttendanceFindFirst;
-    prisma.attendance.updateMany = origAttendanceUpdateMany;
-    prisma.attendance.findUnique = origAttendanceFindUnique;
-    attendanceEngine.recalculateAbsence = origRecalculate;
-  }
-
-  // =========================================================================
-  // 3. AttendanceService.rejectFlaggedRecord (Reject)
-  // =========================================================================
-  console.log('Testing AttendanceService.rejectFlaggedRecord (Reject)...');
-  try {
-    let updatedData: any = null;
-    let rejectedStudentId: number | null = null;
-    let rejectedCourseId: number | null = null;
-
-    attendanceEngine.recalculateAbsence = async (sId, cId) => {
-      rejectedStudentId = sId;
-      rejectedCourseId = cId;
-    };
-
-    (prisma.attendance.findFirst as any) = async () => ({
-      id: 502,
-      studentId: 88,
-      courseId: 15,
-      status: 'PENDING_REVIEW',
-      locationFlagged: true,
-      pendingApprovedStatus: 'PRESENT',
-    });
-    (prisma.attendance.updateMany as any) = async (args: any) => {
-      updatedData = args.data;
-      return { count: 1 };
-    };
-    (prisma.attendance.findUnique as any) = async () => ({
-      id: 502,
-      studentId: 88,
-      courseId: 15,
-      status: 'ABSENT',
-      locationFlagged: false,
-      pendingApprovedStatus: null,
-    });
-
-    const user = { role: 'ADMIN', id: 1, email: 'admin@uni.edu' };
-    const rejected = await AttendanceService.rejectFlaggedRecord(
-      user,
-      502,
-      'Student not in classroom'
-    );
-
-    assert.equal(updatedData.status, 'ABSENT');
-    assert.equal(updatedData.pendingApprovedStatus, null);
-    assert.equal(updatedData.locationFlagged, false);
-    assert.equal(updatedData.overriddenBy, 'admin@uni.edu');
-    assert.equal(updatedData.overrideNote, 'Student not in classroom');
-    assert.equal(rejectedStudentId, 88);
-    assert.equal(rejectedCourseId, 15);
-    assert.equal(rejected?.status, 'ABSENT');
-
-    console.log('✅ AttendanceService.rejectFlaggedRecord tests passed.');
-  } finally {
-    prisma.attendance.findFirst = origAttendanceFindFirst;
-    prisma.attendance.updateMany = origAttendanceUpdateMany;
-    prisma.attendance.findUnique = origAttendanceFindUnique;
-    attendanceEngine.recalculateAbsence = origRecalculate;
-  }
-
-  // =========================================================================
-  // 4. Cron Auto-Resolve Job (autoResolvePendingAttendance)
-  // =========================================================================
-  console.log('Testing autoResolvePendingAttendance (Cron Auto-Resolve)...');
-  const origAttendanceFindMany = prisma.attendance.findMany;
-  try {
-    const expiredList = [
-      { id: 601, studentId: 10, courseId: 100 },
-      { id: 602, studentId: 10, courseId: 100 }, // same pair
-      { id: 603, studentId: 20, courseId: 200 },
-    ];
-    let capturedWhere: any = null;
-    let capturedUpdateData: any = null;
-    const recalcCalls: { sId: number; cId: number }[] = [];
-
-    (prisma.attendance.findMany as any) = async (args: any) => {
-      capturedWhere = args.where;
-      return expiredList;
-    };
-    (prisma.attendance.updateMany as any) = async (args: any) => {
-      capturedUpdateData = args.data;
-      return { count: expiredList.length };
-    };
-    attendanceEngine.recalculateAbsence = async (sId, cId) => {
-      recalcCalls.push({ sId, cId });
-    };
-
-    const count = await autoResolvePendingAttendance();
-    assert.equal(count, 3);
-    assert.equal(capturedWhere.status, 'PENDING_REVIEW');
-    assert.ok(capturedWhere.createdAt.lte instanceof Date);
-
-    assert.equal(capturedUpdateData.status, 'ABSENT');
-    assert.equal(capturedUpdateData.pendingApprovedStatus, null);
-    assert.equal(capturedUpdateData.locationFlagged, false);
-    assert.ok(capturedUpdateData.overrideNote.includes('5 calendar days'));
-
-    // Should recalculate for unique student:course pairs (10:100 and 20:200)
-    assert.equal(recalcCalls.length, 2);
-    assert.deepEqual(recalcCalls, [
-      { sId: 10, cId: 100 },
-      { sId: 20, cId: 200 },
-    ]);
-
-    // Test when no records are expired
-    (prisma.attendance.findMany as any) = async () => [];
-    const countEmpty = await autoResolvePendingAttendance();
-    assert.equal(countEmpty, 0);
-
-    console.log('✅ autoResolvePendingAttendance tests passed.');
-  } finally {
-    prisma.attendance.findMany = origAttendanceFindMany;
-    prisma.attendance.updateMany = origAttendanceUpdateMany;
-    attendanceEngine.recalculateAbsence = origRecalculate;
-  }
-
-  // =========================================================================
-  // 5. Absence Percentage Calculation Exclusion (ALL FOUR SITES)
-  // =========================================================================
-  console.log('Testing absence percentage calculation exclusion across all 4 sites...');
-
-  // -------------------------------------------------------------------------
-  // Site 1: attendanceEngine.recalculateAbsence
-  // Student has: 1 PRESENT, 1 ABSENT, 1 PENDING_REVIEW.
-  // Active total must be 2 (3 - 1 PENDING_REVIEW), NOT 3!
-  // Absence count is 1. Absence percent must be (1 / 2) * 100 = 50.0% (NOT 33.3%).
-  // -------------------------------------------------------------------------
-  const origRecalcEnrollmentFindMany = prisma.enrollment.findMany;
-  const origEnrollmentUpdate = prisma.enrollment.update;
-  const origCourseFindUnique = prisma.course.findUnique;
-  const origPoliciesFindMany = prisma.absenceThresholdPolicy.findMany;
-  const origRecalcAttendanceGroupBy = prisma.attendance.groupBy;
-  const origNotificationCreate = prisma.notification.create;
-
-  try {
-    let customAbsenceThreshold = 25.0;
-    (prisma.enrollment.findMany as any) = async () => [{
-      id: 99,
-      studentId: 44,
-      courseId: 22,
-      semester: 1,
-      academicYear: 2026,
-      status: 'ENROLLED',
-      customAbsenceThreshold,
-      exemptionPeriods: [],
-      student: { userId: 440 },
-      course: {
-        id: 22,
-        name: 'Computer Networks',
-        departmentId: 1,
+    for (const payload of [
+      {
+        sessionId: 1,
+        deviceId: "test-device-gps",
+        latitude: 90.1,
+        longitude: 31,
       },
-    }];
+      {
+        sessionId: 1,
+        deviceId: "test-device-gps",
+        latitude: -90.1,
+        longitude: 31,
+      },
+      {
+        sessionId: 1,
+        deviceId: "test-device-gps",
+        latitude: 30,
+        longitude: 180.1,
+      },
+      {
+        sessionId: 1,
+        deviceId: "test-device-gps",
+        latitude: 30,
+        longitude: -180.1,
+      },
+    ]) {
+      const validation = await gps.validate(payload, { studentId: 4 });
+      assert.equal(validation.valid, false);
+      assert.equal(validation.errorCode, "INVALID_COORDINATES");
+    }
 
-    (prisma.attendance.groupBy as any) = async () => [
-      { studentId: 44, courseId: 22, status: 'PRESENT', _count: { _all: 1 } },
-      { studentId: 44, courseId: 22, status: 'ABSENT', _count: { _all: 1 } },
-      { studentId: 44, courseId: 22, status: 'PENDING_REVIEW', _count: { _all: 1 } },
+    const inRange = await gps.buildIntent(
+      {
+        sessionId: 1,
+        deviceId: "test-device-gps",
+        latitude: 30,
+        longitude: 31,
+        accuracy: 8.5,
+      },
+      { studentId: 4 },
+    );
+    assert.equal(inRange.status, "PRESENT");
+    assert.equal(inRange.pendingApprovedStatus, null);
+    assert.equal(inRange.locationFlagged, false);
+    assert.deepEqual(inRange.locationData, { lat: 30, lng: 31, accuracy: 8.5 });
+
+    const gpsOutOfRange = await gps.buildIntent(
+      {
+        sessionId: 1,
+        deviceId: "test-device-gps",
+        latitude: 31,
+        longitude: 32,
+        accuracy: 5,
+      },
+      { studentId: 4 },
+    );
+    assert.equal(gpsOutOfRange.status, "PENDING_REVIEW");
+    assert.equal(gpsOutOfRange.pendingApprovedStatus, "PRESENT");
+    assert.equal(gpsOutOfRange.locationFlagged, true);
+
+    const qr = new QrDriver();
+    (qr as any).validate = async () => ({
+      valid: true,
+      metadata: {
+        session,
+        deviceId: "test-device-qr",
+        latitude: 31,
+        longitude: 32,
+        accuracy: 5,
+      },
+    });
+    const qrOutOfRange = await qr.buildIntent(
+      { latitude: 31, longitude: 32 },
+      { studentId: 4 },
+    );
+    assert.equal(qrOutOfRange.status, "PENDING_REVIEW");
+    assert.equal(qrOutOfRange.pendingApprovedStatus, "PRESENT");
+    assert.equal(qrOutOfRange.locationFlagged, true);
+
+    console.log(
+      "Finding 13: GPS validation and QR/GPS location-flag convergence",
+    );
+  } finally {
+    prisma.attendanceSession.findUnique = originalSessionFind;
+  }
+}
+
+async function testSharedAttemptCalculation() {
+  const originals = {
+    groups: prisma.studentGroup.findMany,
+    slots: prisma.scheduleSlot.findMany,
+    sessions: prisma.attendanceSession.findMany,
+    attendance: prisma.attendance.findMany,
+    student: prisma.student.findUnique,
+    enrollments: prisma.enrollment.findMany,
+    policies: prisma.absenceThresholdPolicy.findMany,
+    enrollmentUpdate: prisma.enrollment.updateMany,
+    notifications: prisma.notification.findMany,
+    notificationCreate: prisma.notification.create,
+    transaction: prisma.$transaction,
+  };
+  const enrollment = {
+    id: 99,
+    studentId: 44,
+    courseId: 22,
+    semester: 1,
+    academicYear: 2026,
+    status: "ENROLLED",
+    enrolledAt: new Date("2026-01-01T00:00:00.000Z"),
+    customAbsenceThreshold: 40,
+    exemptionPeriods: [
+      {
+        id: 1,
+        startDate: new Date("2026-02-03T00:00:00.000Z"),
+        endDate: new Date("2026-02-03T23:59:59.999Z"),
+        reason: "medical",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    ],
+    student: {
+      id: 44,
+      userId: 440,
+      groupId: 9,
+      studentId: "S44",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      year: 2,
+      user: { email: "ada@example.edu" },
+      department: null,
+    },
+    course: {
+      id: 22,
+      courseCode: "CS22",
+      name: "Networks",
+      credits: 3,
+      year: 2,
+      semester: 1,
+      departmentId: 4,
+    },
+  };
+  let targetStatus: string | undefined;
+
+  try {
+    (prisma.studentGroup.findMany as any) = async () => [
+      { id: 9, parentGroupId: 8 },
+      { id: 8, parentGroupId: null },
+      { id: 7, parentGroupId: null },
+    ];
+    (prisma.scheduleSlot.findMany as any) = async () => [
+      {
+        id: 10,
+        courseId: 22,
+        groupId: 8,
+        timetable: { semester: 1 },
+        course: { semester: 1 },
+      },
+      {
+        id: 11,
+        courseId: 22,
+        groupId: 7,
+        timetable: { semester: 1 },
+        course: { semester: 1 },
+      },
+    ];
+    (prisma.attendanceSession.findMany as any) = async () => [
+      {
+        id: 101,
+        scheduleSlotId: 10,
+        createdAt: new Date("2026-02-01T10:00:00.000Z"),
+      },
+      {
+        id: 102,
+        scheduleSlotId: 10,
+        createdAt: new Date("2026-02-02T10:00:00.000Z"),
+      },
+      {
+        id: 103,
+        scheduleSlotId: 10,
+        createdAt: new Date("2026-02-03T10:00:00.000Z"),
+      },
+      {
+        id: 104,
+        scheduleSlotId: 11,
+        createdAt: new Date("2026-02-04T10:00:00.000Z"),
+      },
+    ];
+    (prisma.attendance.findMany as any) = async () => [
+      {
+        id: 1,
+        studentId: 44,
+        courseId: 22,
+        semester: 1,
+        academicYear: 2026,
+        sessionId: 101,
+        status: "PRESENT",
+        remarks: null,
+        date: new Date("2026-02-01T00:00:00.000Z"),
+      },
     ];
     (prisma.absenceThresholdPolicy.findMany as any) = async () => [];
+    (prisma.notification.findMany as any) = async () => [];
     (prisma.notification.create as any) = async (args: any) => args.data;
-
-    (prisma.course.findUnique as any) = async () => ({
-      id: 22,
-      name: 'Computer Networks',
-      departmentId: 1,
-    });
-
-    let enrollmentUpdatedData: any = null;
-    (prisma.enrollment.update as any) = async (args: any) => {
-      enrollmentUpdatedData = args.data;
-      return { id: 99, ...args.data };
+    (prisma.enrollment.updateMany as any) = async (args: any) => {
+      targetStatus = args.data.status;
+      assert.deepEqual(args.where, { id: 99, status: "ENROLLED" });
+      return { count: 1 };
     };
-
-    await attendanceEngine.recalculateAbsence(44, 22);
-
-    // Threshold is 25%.
-    // With 1 PRESENT and 1 ABSENT (PENDING_REVIEW excluded), absence is 50%, so student is BLOCKED!
-    // (If PENDING_REVIEW were treated as PRESENT in denominator, 1/3 = 33.3%, still blocked,
-    // but let's test a case where denominator exclusion makes the exact difference):
-    assert.equal(enrollmentUpdatedData?.status, 'BLOCKED');
-
-    // Now test with threshold = 40%:
-    // If activeTotal = 2 (excluded PENDING_REVIEW), absence = 1/2 = 50% -> BLOCKED (> 40%).
-    // If PENDING_REVIEW were counted in denominator as PRESENT: activeTotal = 3, absence = 1/3 = 33.3% -> ENROLLED (<= 40%).
-    customAbsenceThreshold = 40.0;
-
-    enrollmentUpdatedData = null;
-    await attendanceEngine.recalculateAbsence(44, 22);
-    // Because 50% >= 40%, student MUST be blocked!
-    assert.equal(
-      enrollmentUpdatedData?.status,
-      'BLOCKED',
-      'Site 1 failed: PENDING_REVIEW was not excluded from denominator in recalculateAbsence!'
-    );
-
-    console.log('✅ Site 1 (attendanceEngine.recalculateAbsence) verified: PENDING_REVIEW correctly excluded.');
-  } finally {
-    prisma.enrollment.findMany = origRecalcEnrollmentFindMany;
-    prisma.enrollment.update = origEnrollmentUpdate;
-    prisma.course.findUnique = origCourseFindUnique;
-    prisma.attendance.findMany = origAttendanceFindMany;
-    prisma.attendance.groupBy = origRecalcAttendanceGroupBy;
-    prisma.absenceThresholdPolicy.findMany = origPoliciesFindMany;
-    prisma.notification.create = origNotificationCreate;
-  }
-
-  // -------------------------------------------------------------------------
-  // Site 2: attendanceService.getStudentAttendance & getMyAbsenceWarnings
-  // -------------------------------------------------------------------------
-  const origStudentFindUnique = prisma.student.findUnique;
-  const origScheduleSlotFindMany = prisma.scheduleSlot.findMany;
-  const origAttendanceSessionFindMany = prisma.attendanceSession.findMany;
-  const origAttendanceCount = prisma.attendance.count;
-  const origWarningAttendanceGroupBy = prisma.attendance.groupBy;
-
-  try {
+    (prisma as any).$transaction = async (callback: any) =>
+      callback({
+        enrollment: { updateMany: prisma.enrollment.updateMany },
+        auditLog: { create: async () => ({ id: 1 }) },
+      });
+    (prisma.enrollment.findMany as any) = async () => [enrollment];
     (prisma.student.findUnique as any) = async () => ({
       id: 44,
       userId: 440,
-      groupId: 1,
-      enrollments: [
-        {
-          id: 99,
-          courseId: 22,
-          status: 'ENROLLED',
-          customAbsenceThreshold: 25.0,
-          course: { id: 22, courseCode: 'CS101', name: 'CS 101', departmentId: 1 },
-          exemptionPeriods: [],
-        },
-      ],
+      groupId: 9,
+      enrollments: [enrollment],
     });
 
-    (prisma.scheduleSlot.findMany as any) = async () => [{ id: 10, courseId: 22 }];
-    (prisma.attendanceSession.findMany as any) = async () => [
-      { id: 101, scheduleSlotId: 10 },
-      { id: 102, scheduleSlotId: 10 },
-      { id: 103, scheduleSlotId: 10 },
-    ]; // 3 sessions held
-
-    // sessionAttendances: 1 PRESENT, 1 ABSENT, 1 PENDING_REVIEW
-    (prisma.attendance.findMany as any) = async (args: any) => {
-      if (args?.where?.sessionId) {
-        return [
-          { status: 'PRESENT' },
-          { status: 'ABSENT' },
-          { status: 'PENDING_REVIEW' },
-        ];
-      }
-      return [];
-    };
-    (prisma.attendance.count as any) = async () => 3;
-    (prisma.attendance.groupBy as any) = async (args: any) => {
-      if (args?.where?.sessionId === null) return [];
-      return [
-        { sessionId: 101, status: 'PRESENT', _count: { _all: 1 } },
-        { sessionId: 102, status: 'ABSENT', _count: { _all: 1 } },
-        { sessionId: 103, status: 'PENDING_REVIEW', _count: { _all: 1 } },
-      ];
-    };
-
-    // Test getStudentAttendance
-    const user = { role: 'STUDENT', id: 440 };
-    const result = await AttendanceService.getStudentAttendance(user, 44, 22);
-
-    assert.equal(result.stats.total, 3);
-    assert.equal(result.stats.PRESENT, 1);
-    assert.equal(result.stats.ABSENT, 1);
-    assert.equal(result.stats.PENDING_REVIEW, 1);
-    // effectiveTotal = 3 - 0 - 1 = 2.
-    // percentage (attendance rate) = (1 / 2) * 100 = 50%
-    assert.equal(result.stats.percentage, 50);
-
-    // Test getMyAbsenceWarnings (Student View)
-    (prisma.absenceThresholdPolicy.findMany as any) = async () => [
-      { courseId: 22, maxAbsencePercent: 25 },
-    ];
-    (prisma.notification.findMany as any) = async () => [];
-
-    const warnings = await AttendanceService.getMyAbsenceWarnings(user);
-    const courseWarning = warnings.courses[0];
-
-    // absencePercent must be 50.0% (1 absent / 2 active sessions)
-    assert.equal(
-      courseWarning.absencePercent,
-      50.0,
-      'Site 2 failed: PENDING_REVIEW was not excluded from activeTotal in getMyAbsenceWarnings!'
-    );
-    assert.equal(courseWarning.pendingReview, 1);
-    assert.equal(courseWarning.isExceeding, true);
-
-    console.log('✅ Site 2 (getStudentAttendance & getMyAbsenceWarnings) verified: PENDING_REVIEW correctly excluded.');
-  } finally {
-    prisma.student.findUnique = origStudentFindUnique;
-    prisma.scheduleSlot.findMany = origScheduleSlotFindMany;
-    prisma.attendanceSession.findMany = origAttendanceSessionFindMany;
-    prisma.attendance.findMany = origAttendanceFindMany;
-    prisma.attendance.count = origAttendanceCount;
-    prisma.attendance.groupBy = origWarningAttendanceGroupBy;
-    prisma.absenceThresholdPolicy.findMany = origPoliciesFindMany;
-  }
-
-  // -------------------------------------------------------------------------
-  // Site 3: attendanceService.getStaffAbsenceWarnings (Staff/Faculty View)
-  // -------------------------------------------------------------------------
-  const origCourseFindMany = prisma.course.findMany;
-  const origEnrollmentFindMany = prisma.enrollment.findMany;
-  const origQueryRaw = prisma.$queryRaw;
-  try {
-    const facultyUser = { role: 'ADMIN', id: 1 };
-
-    (prisma.course.findMany as any) = async () => [
-      { id: 22 },
-    ];
-
-    (prisma.enrollment.findMany as any) = async () => [
+    const calculations = await calculateAttendanceAttempts([
       {
         id: 99,
         studentId: 44,
         courseId: 22,
-        status: 'ENROLLED',
-        customAbsenceThreshold: 25.0,
-        student: {
-          id: 44,
-          studentId: 'STU-44',
-          firstName: 'Amr',
-          lastName: 'Hassan',
-          year: 3,
-          user: { email: 'amr@uni.edu' },
-          department: { name: 'CS', nameAr: 'حاسبات', college: { name: 'Engineering', nameAr: 'هندسة' } },
-        },
-        course: { id: 22, courseCode: 'CS101', name: 'CS 101', year: 3, semester: 1 },
-        exemptionPeriods: [],
+        semester: 1,
+        academicYear: 2026,
+        groupId: 9,
+        enrolledAt: enrollment.enrolledAt,
+        exemptionPeriods: enrollment.exemptionPeriods,
       },
-    ];
+    ]);
+    const calculation = calculations.get(99)!;
+    assert.equal(calculation.total, 2);
+    assert.equal(calculation.present, 1);
+    assert.equal(calculation.absent, 1);
+    assert.equal(calculation.absencePercent, 50);
 
-    (prisma as any).$queryRaw = async () => {
-      return [{
-        totalMonitored: 1,
-        blockedCount: 1,
-        finalWarningCount: 0,
-        firstWarningCount: 0,
-        safeCount: 0,
-        pageRows: [{
-          enrollmentId: 99,
-          warningStage: 'BLOCKED',
-          absencePercent: 50,
-          maxAbsencePercent: 25,
-          total: 3,
-          present: 1,
-          absent: 1,
-          late: 0,
-          excused: 0,
-          pendingReview: 1,
-        }],
-      }];
-    };
+    await attendanceEngine.recalculateAbsence(44, 22, 1, 2026);
+    assert.equal(targetStatus, "BLOCKED");
 
-    const staffWarnings = await AttendanceService.getMyAbsenceWarnings(facultyUser);
-    const staffRecord = staffWarnings.warningRecords[0];
-
-    assert.equal(staffRecord.present, 1);
-    assert.equal(staffRecord.absent, 1);
-    assert.equal(staffRecord.pendingReview, 1);
-    // activeTotal must be totalHeld (3) - pendingReview (1) = 2.
-    // absencePercent must be (1 / 2) * 100 = 50.0%
-    assert.equal(
-      staffRecord.absencePercent,
-      50.0,
-      'Site 3 failed: PENDING_REVIEW was not excluded from activeTotal in getStaffAbsenceWarnings!'
-    );
-    assert.equal(staffRecord.warningStage, 'BLOCKED');
-
-    console.log('✅ Site 3 (getStaffAbsenceWarnings) verified: PENDING_REVIEW correctly excluded.');
-  } finally {
-    prisma.course.findMany = origCourseFindMany;
-    prisma.enrollment.findMany = origEnrollmentFindMany;
-    prisma.scheduleSlot.findMany = origScheduleSlotFindMany;
-    prisma.attendanceSession.findMany = origAttendanceSessionFindMany;
-    prisma.attendance.findMany = origAttendanceFindMany;
-    prisma.absenceThresholdPolicy.findMany = origPoliciesFindMany;
-    (prisma as any).$queryRaw = origQueryRaw;
-  }
-
-  // -------------------------------------------------------------------------
-  // Site 4: attendanceService.getAttendanceSummary
-  // -------------------------------------------------------------------------
-  const origCourseFindFirst = prisma.course.findFirst;
-  const origAttendanceGroupBy = prisma.attendance.groupBy;
-  try {
-    (prisma.course.findFirst as any) = async () => ({ id: 22, name: 'CS 101' });
-    (prisma.attendance.groupBy as any) = async () => [
-      { status: 'PRESENT', _count: 15 },
-      { status: 'ABSENT', _count: 3 },
-      { status: 'LATE', _count: 2 },
-      { status: 'EXCUSED', _count: 1 },
-      { status: 'PENDING_REVIEW', _count: 4 },
-    ];
-
-    const adminUser = { role: 'ADMIN', id: 1 };
-    const summary = await AttendanceService.getAttendanceSummary(adminUser, 22);
-
-    assert.deepEqual(summary, {
-      PRESENT: 15,
-      ABSENT: 3,
-      LATE: 2,
-      EXCUSED: 1,
-      PENDING_REVIEW: 4,
+    const warnings = await AttendanceService.getMyAbsenceWarnings({
+      id: 440,
+      role: "STUDENT",
     });
-
-    console.log('✅ Site 4 (getAttendanceSummary) verified: PENDING_REVIEW included in summary stats.');
+    assert.equal(warnings.courses[0].totalSessions, 2);
+    assert.equal(warnings.courses[0].absent, 1);
+    assert.equal(warnings.courses[0].absencePercent, 50);
+    console.log(
+      "Findings 10/11/14: enforcement and reporting share attempt, ancestry, exemption, and missing-row math",
+    );
   } finally {
-    prisma.course.findFirst = origCourseFindFirst;
-    prisma.attendance.groupBy = origAttendanceGroupBy;
+    prisma.studentGroup.findMany = originals.groups;
+    prisma.scheduleSlot.findMany = originals.slots;
+    prisma.attendanceSession.findMany = originals.sessions;
+    prisma.attendance.findMany = originals.attendance;
+    prisma.student.findUnique = originals.student;
+    prisma.enrollment.findMany = originals.enrollments;
+    prisma.absenceThresholdPolicy.findMany = originals.policies;
+    prisma.enrollment.updateMany = originals.enrollmentUpdate;
+    prisma.notification.findMany = originals.notifications;
+    prisma.notification.create = originals.notificationCreate;
+    prisma.$transaction = originals.transaction;
   }
-
-  console.log('--- ALL PENDING_REVIEW REGRESSION TESTS PASSED SUCCESSFULLY! ---');
 }
 
-runPendingReviewRegressionSuite().catch((err) => {
-  console.error('❌ REGRESSION TEST FAILURE:', err);
-  process.exit(1);
-});
+async function testPendingReviewExcludedAtEveryConsumptionPoint() {
+  const originals = {
+    slots: prisma.scheduleSlot.findMany,
+    attendanceFind: prisma.attendance.findMany,
+    attendanceCount: prisma.attendance.count,
+    attendanceGroupBy: prisma.attendance.groupBy,
+    studentFindUnique: prisma.student.findUnique,
+    studentFindFirst: prisma.student.findFirst,
+    enrollmentFind: prisma.enrollment.findMany,
+    enrollmentUpdate: prisma.enrollment.updateMany,
+    courseFind: prisma.course.findMany,
+    courseFindFirst: prisma.course.findFirst,
+    policies: prisma.absenceThresholdPolicy.findMany,
+    notificationsFind: prisma.notification.findMany,
+    notificationsCreate: prisma.notification.create,
+    transaction: prisma.$transaction,
+  };
+  const rows = [
+    {
+      id: 1,
+      studentId: 44,
+      courseId: 22,
+      semester: 1,
+      academicYear: 2026,
+      sessionId: null,
+      status: "PRESENT",
+      remarks: null,
+      date: new Date("2026-02-01T00:00:00.000Z"),
+    },
+    {
+      id: 2,
+      studentId: 44,
+      courseId: 22,
+      semester: 1,
+      academicYear: 2026,
+      sessionId: null,
+      status: "ABSENT",
+      remarks: null,
+      date: new Date("2026-02-02T00:00:00.000Z"),
+    },
+    {
+      id: 3,
+      studentId: 44,
+      courseId: 22,
+      semester: 1,
+      academicYear: 2026,
+      sessionId: null,
+      status: "PENDING_REVIEW",
+      remarks: null,
+      date: new Date("2026-02-03T00:00:00.000Z"),
+    },
+  ];
+  const enrollment = {
+    id: 99,
+    studentId: 44,
+    courseId: 22,
+    semester: 1,
+    academicYear: 2026,
+    status: "ENROLLED",
+    enrolledAt: new Date("2026-01-01T00:00:00.000Z"),
+    customAbsenceThreshold: 40,
+    exemptionPeriods: [],
+    student: {
+      id: 44,
+      userId: 440,
+      groupId: null,
+      studentId: "S44",
+      firstName: "Ada",
+      lastName: "Lovelace",
+      year: 2,
+      user: { email: "ada@example.edu" },
+      department: null,
+    },
+    course: {
+      id: 22,
+      courseCode: "CS22",
+      name: "Networks",
+      credits: 3,
+      year: 2,
+      semester: 1,
+      departmentId: 4,
+    },
+  };
+  let engineTargetStatus: string | undefined;
+
+  try {
+    (prisma.scheduleSlot.findMany as any) = async () => [];
+    (prisma.attendance.findMany as any) = async () => rows;
+    (prisma.attendance.count as any) = async () => rows.length;
+    (prisma.absenceThresholdPolicy.findMany as any) = async () => [];
+    (prisma.notification.findMany as any) = async () => [];
+    (prisma.notification.create as any) = async (args: any) => args.data;
+    (prisma.enrollment.updateMany as any) = async (args: any) => {
+      engineTargetStatus = args.data.status;
+      return { count: 1 };
+    };
+    (prisma as any).$transaction = async (callback: any) =>
+      callback({
+        enrollment: { updateMany: prisma.enrollment.updateMany },
+        auditLog: { create: async () => ({ id: 1 }) },
+      });
+    (prisma.enrollment.findMany as any) = async (args: any) =>
+      args.where?.id?.in ? [enrollment] : [enrollment];
+    (prisma.student.findUnique as any) = async (args: any) =>
+      args.where?.userId === 440
+        ? { id: 44, userId: 440, groupId: null, enrollments: [enrollment] }
+        : { id: 44, groupId: null, enrollments: [enrollment] };
+    (prisma.student.findFirst as any) = async () => ({ id: 44 });
+    (prisma.course.findMany as any) = async (args: any) =>
+      args.select?.id && Object.keys(args.select).length === 1
+        ? [{ id: 22 }]
+        : [enrollment.course];
+    (prisma.course.findFirst as any) = async () => enrollment.course;
+
+    await attendanceEngine.recalculateAbsence(44, 22, 1, 2026);
+    assert.equal(engineTargetStatus, "BLOCKED");
+
+    const history = await AttendanceService.getStudentAttendance(
+      { id: 1, role: "SUPER_ADMIN" },
+      44,
+      22,
+    );
+    assert.deepEqual(history.stats, {
+      total: 3,
+      PRESENT: 1,
+      ABSENT: 1,
+      LATE: 0,
+      EXCUSED: 0,
+      PENDING_REVIEW: 1,
+      percentage: 50,
+    });
+
+    const studentWarnings = await AttendanceService.getMyAbsenceWarnings({
+      id: 440,
+      role: "STUDENT",
+    });
+    assert.equal(studentWarnings.courses[0].totalSessions, 3);
+    assert.equal(studentWarnings.courses[0].pendingReview, 1);
+    assert.equal(studentWarnings.courses[0].absencePercent, 50);
+
+    const staffWarnings = await AttendanceService.getStaffAbsenceWarnings({
+      id: 1,
+      role: "SUPER_ADMIN",
+    });
+    assert.equal(staffWarnings.warningRecords[0].totalSessions, 3);
+    assert.equal(staffWarnings.warningRecords[0].pendingReview, 1);
+    assert.equal(staffWarnings.warningRecords[0].absencePercent, 50);
+
+    (prisma.attendance.groupBy as any) = async () => [
+      { status: "PRESENT", _count: 1 },
+      { status: "ABSENT", _count: 1 },
+      { status: "PENDING_REVIEW", _count: 1 },
+    ];
+    const summary = await AttendanceService.getAttendanceSummary(
+      { id: 1, role: "SUPER_ADMIN" },
+      22,
+    );
+    assert.deepEqual(summary, {
+      PRESENT: 1,
+      ABSENT: 1,
+      LATE: 0,
+      EXCUSED: 0,
+      PENDING_REVIEW: 1,
+    });
+    console.log(
+      "Pending-review denominator: engine, student history/warnings, staff warnings, and summary covered",
+    );
+  } finally {
+    prisma.scheduleSlot.findMany = originals.slots;
+    prisma.attendance.findMany = originals.attendanceFind;
+    prisma.attendance.count = originals.attendanceCount;
+    prisma.attendance.groupBy = originals.attendanceGroupBy;
+    prisma.student.findUnique = originals.studentFindUnique;
+    prisma.student.findFirst = originals.studentFindFirst;
+    prisma.enrollment.findMany = originals.enrollmentFind;
+    prisma.enrollment.updateMany = originals.enrollmentUpdate;
+    prisma.course.findMany = originals.courseFind;
+    prisma.course.findFirst = originals.courseFindFirst;
+    prisma.absenceThresholdPolicy.findMany = originals.policies;
+    prisma.notification.findMany = originals.notificationsFind;
+    prisma.notification.create = originals.notificationsCreate;
+    prisma.$transaction = originals.transaction;
+  }
+}
+
+async function testExactlyOnceResolution() {
+  const originals = {
+    sessionFind: prisma.attendanceSession.findUnique,
+    findFirst: prisma.attendance.findFirst,
+    findUnique: prisma.attendance.findUnique,
+    findMany: prisma.attendance.findMany,
+    updateMany: prisma.attendance.updateMany,
+    recalculate: attendanceEngine.recalculateAbsence,
+    transaction: prisma.$transaction,
+  };
+  try {
+    const lateSession = {
+      id: 41,
+      createdAt: new Date(Date.now() - 30 * 60_000),
+      isActive: true,
+      expiresAt: new Date(Date.now() + 60_000),
+      latitude: 30,
+      longitude: 31,
+      radius: 10,
+      gracePeriodMins: 15,
+      scheduleSlot: { id: 2, courseId: 12, course: { id: 12 } },
+    };
+    (prisma.attendanceSession.findUnique as any) = async () => lateSession;
+    const lateIntent = await new GpsDriver().buildIntent(
+      {
+        sessionId: 41,
+        deviceId: "test-device-gps",
+        latitude: 31,
+        longitude: 32,
+        accuracy: 5,
+      },
+      { studentId: 77 },
+    );
+    assert.equal(lateIntent.status, "PENDING_REVIEW");
+    assert.equal(lateIntent.pendingApprovedStatus, "LATE");
+
+    const record = {
+      id: 501,
+      studentId: 77,
+      courseId: 12,
+      semester: 1,
+      academicYear: 2026,
+      status: "PENDING_REVIEW",
+      locationFlagged: true,
+      pendingApprovedStatus: lateIntent.pendingApprovedStatus,
+    };
+    const recalculations: any[][] = [];
+    const updateCalls: any[] = [];
+    (prisma.attendance.findFirst as any) = async () => record;
+    attendanceEngine.recalculateAbsence = async (...args: any[]) => {
+      recalculations.push(args);
+    };
+
+    (prisma.attendance.updateMany as any) = async (args: any) => {
+      updateCalls.push(args);
+      return { count: 1 };
+    };
+    (prisma.attendance.findUnique as any) = async () => ({
+      ...record,
+      status: "LATE",
+      pendingApprovedStatus: null,
+      locationFlagged: false,
+      overriddenBy: "admin@example.edu",
+      overrideNote: "Location verified",
+    });
+    const approved = await AttendanceService.overrideFlaggedRecord(
+      { role: "SUPER_ADMIN", id: 1, email: "admin@example.edu" },
+      501,
+      "Location verified",
+    );
+    assert.equal(updateCalls[0].data.status, "LATE");
+    assert.equal(updateCalls[0].data.pendingApprovedStatus, null);
+    assert.equal(updateCalls[0].data.locationFlagged, false);
+    assert.equal(updateCalls[0].data.overriddenBy, "admin@example.edu");
+    assert.equal(updateCalls[0].data.overrideNote, "Location verified");
+    assert.deepEqual(recalculations[0], [77, 12, 1, 2026]);
+    assert.equal(approved?.status, "LATE");
+
+    updateCalls.length = 0;
+    recalculations.length = 0;
+    (prisma.attendance.findUnique as any) = async () => ({
+      ...record,
+      status: "ABSENT",
+      pendingApprovedStatus: null,
+      locationFlagged: false,
+      overriddenBy: "admin@example.edu",
+      overrideNote: "Outside permitted area",
+    });
+    const rejected = await AttendanceService.rejectFlaggedRecord(
+      { role: "SUPER_ADMIN", id: 1, email: "admin@example.edu" },
+      501,
+      "Outside permitted area",
+    );
+    assert.equal(updateCalls[0].data.status, "ABSENT");
+    assert.equal(updateCalls[0].data.pendingApprovedStatus, null);
+    assert.equal(updateCalls[0].data.locationFlagged, false);
+    assert.equal(updateCalls[0].data.overriddenBy, "admin@example.edu");
+    assert.equal(updateCalls[0].data.overrideNote, "Outside permitted area");
+    assert.deepEqual(recalculations[0], [77, 12, 1, 2026]);
+    assert.equal(rejected?.status, "ABSENT");
+
+    (prisma.attendance.updateMany as any) = async () => ({ count: 0 });
+    await assert.rejects(
+      AttendanceService.overrideFlaggedRecord(
+        { role: "SUPER_ADMIN", id: 1, email: "admin@example.edu" },
+        501,
+      ),
+      (error: any) => error?.statusCode === 409,
+    );
+
+    (prisma.attendance.findMany as any) = async () => [record];
+    (prisma.attendance.updateMany as any) = async (args: any) => {
+      assert.equal(args.where.status, "PENDING_REVIEW");
+      assert.equal(args.where.locationFlagged, true);
+      return { count: 0 };
+    };
+    assert.equal(await autoResolvePendingAttendance(), 0);
+    console.log(
+      "Reviewer approval/rejection success, late preservation, and conflict paths covered",
+    );
+  } finally {
+    prisma.attendanceSession.findUnique = originals.sessionFind;
+    prisma.attendance.findFirst = originals.findFirst;
+    prisma.attendance.findUnique = originals.findUnique;
+    prisma.attendance.findMany = originals.findMany;
+    prisma.attendance.updateMany = originals.updateMany;
+    attendanceEngine.recalculateAbsence = originals.recalculate;
+  }
+}
+
+async function testCronExpirySuccessAndEmptyList() {
+  const originals = {
+    findMany: prisma.attendance.findMany,
+    updateMany: prisma.attendance.updateMany,
+    recalculate: attendanceEngine.recalculateAbsence,
+    transaction: prisma.$transaction,
+  };
+  const cutoff = new Date("2026-03-10T00:00:00.000Z");
+  const expiredRecords = [
+    { id: 601, studentId: 77, courseId: 12, semester: 1, academicYear: 2026 },
+    { id: 602, studentId: 77, courseId: 12, semester: 1, academicYear: 2026 },
+    { id: 603, studentId: 88, courseId: 13, semester: 2, academicYear: 2026 },
+  ];
+  const updates: any[] = [];
+  const recalculations: any[][] = [];
+  try {
+    (prisma.attendance.findMany as any) = async (args: any) => {
+      assert.equal(args.where.status, "PENDING_REVIEW");
+      assert.deepEqual(args.where.createdAt, { lte: cutoff });
+      assert.equal("method" in args.where, false);
+      return expiredRecords;
+    };
+    (prisma.attendance.updateMany as any) = async (args: any) => {
+      updates.push(args);
+      return { count: 1 };
+    };
+    (prisma as any).$transaction = async (callback: any) =>
+      callback({
+        attendance: { updateMany: prisma.attendance.updateMany },
+        auditLog: { create: async () => ({ id: 1 }) },
+      });
+    attendanceEngine.recalculateAbsence = async (...args: any[]) => {
+      recalculations.push(args);
+    };
+
+    assert.equal(await autoResolvePendingAttendance(cutoff), 3);
+    assert.deepEqual(
+      updates.map((call) => call.where.id),
+      [601, 602, 603],
+    );
+    for (const call of updates) {
+      assert.equal(call.where.status, "PENDING_REVIEW");
+      assert.equal(call.where.locationFlagged, true);
+      assert.deepEqual(call.where.createdAt, { lte: cutoff });
+      assert.deepEqual(call.data, {
+        status: "ABSENT",
+        pendingApprovedStatus: null,
+        locationFlagged: false,
+        overrideNote:
+          "Auto-resolved to ABSENT after 5 calendar days review window",
+      });
+    }
+    assert.deepEqual(recalculations, [
+      [77, 12, 1, 2026],
+      [88, 13, 2, 2026],
+    ]);
+
+    updates.length = 0;
+    recalculations.length = 0;
+    (prisma.attendance.findMany as any) = async () => [];
+    assert.equal(await autoResolvePendingAttendance(cutoff), 0);
+    assert.deepEqual(updates, []);
+    assert.deepEqual(recalculations, []);
+    console.log(
+      "Cron expiry: multi-record success, attempt-pair deduplication, and empty list covered",
+    );
+  } finally {
+    prisma.attendance.findMany = originals.findMany;
+    prisma.attendance.updateMany = originals.updateMany;
+    attendanceEngine.recalculateAbsence = originals.recalculate;
+    prisma.$transaction = originals.transaction;
+  }
+}
+
+await testLocationFlagPolicy();
+await testSharedAttemptCalculation();
+await testPendingReviewExcludedAtEveryConsumptionPoint();
+await testExactlyOnceResolution();
+await testCronExpirySuccessAndEmptyList();
+console.log(
+  "Attendance pending-review and shared-calculation regression checks passed",
+);

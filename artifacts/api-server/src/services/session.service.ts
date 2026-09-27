@@ -22,7 +22,8 @@ export const revokeAllUserSessions = async (userId: number): Promise<void> => {
 
 export const replacePasswordAndRevokeAllUserSessions = async (
   userId: number,
-  hashedPassword: string
+  hashedPassword: string,
+  withinTransaction?: (tx: Prisma.TransactionClient) => Promise<void>
 ): Promise<void> => {
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
@@ -33,5 +34,6 @@ export const replacePasswordAndRevokeAllUserSessions = async (
       },
     });
     await tx.refreshToken.deleteMany({ where: { userId } });
+    if (withinTransaction) await withinTransaction(tx);
   });
 };

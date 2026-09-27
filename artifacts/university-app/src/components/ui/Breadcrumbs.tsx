@@ -1,11 +1,19 @@
-// @ts-nocheck
 // FIXED: Reusable breadcrumb navigation - Phase 6
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext';
+import React from "react";
+import { Link } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
-const Breadcrumbs = ({ items = [] }) => {
+interface BreadcrumbItem {
+  label: React.ReactNode;
+  link?: string;
+}
+
+interface BreadcrumbsProps {
+  items?: BreadcrumbItem[];
+}
+
+const Breadcrumbs = ({ items = [] }: BreadcrumbsProps) => {
   const { isRTL } = useLanguage();
 
   if (!items.length) return null;
@@ -16,23 +24,25 @@ const Breadcrumbs = ({ items = [] }) => {
         {items.map((item, i) => {
           const isLast = i === items.length - 1;
           return (
-                        <li key={`${item.label}-${i}`} className="flex items-center gap-1">
+            <li key={`${item.label}-${i}`} className="flex items-center gap-1">
               {i > 0 && (
                 <ChevronRight
                   size={14}
-                  className={`shrink-0 text-brand-text-muted/60 ${isRTL ? 'rotate-180' : ''}`}
+                  className={`shrink-0 text-brand-text-muted/60 ${isRTL ? "rotate-180" : ""}`}
                   aria-hidden
                 />
               )}
-                            {item.link && !isLast ? (
+              {item.link && !isLast ? (
                 <Link
-                                    to={item.link}
+                  to={item.link}
                   className="text-brand-primary-600 hover:text-brand-primary-600 transition-colors"
                 >
-                                    {item.label}
+                  {item.label}
                 </Link>
               ) : (
-                                <span className={isLast ? 'text-brand-text-primary' : ''}>{item.label}</span>
+                <span className={isLast ? "text-brand-text-primary" : ""}>
+                  {item.label}
+                </span>
               )}
             </li>
           );

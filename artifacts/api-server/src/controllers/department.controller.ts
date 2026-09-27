@@ -1,7 +1,12 @@
 import { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
-import { getScopeWhere } from '../utils/scope.utils';
+import {
+  getEffectiveActiveDoctorWhere,
+  getEffectiveActiveStudentWhere,
+  getScopeWhere,
+} from '../utils/scope.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError, AuthorizationError, ValidationError, AppError } from '../utils/appError';
 import { getAdminMutationTargetWhere } from '../utils/adminMutationScope.utils';
@@ -49,7 +54,11 @@ export const getAllDepartments = catchAsync(async (req: Request, res: Response) 
     include: {
       college: true,
       _count: {
-        select: { students: true, doctors: true, courses: true },
+        select: {
+          students: { where: getEffectiveActiveStudentWhere() },
+          doctors: { where: getEffectiveActiveDoctorWhere() },
+          courses: true,
+        },
       },
     },
   });
@@ -57,53 +66,106 @@ export const getAllDepartments = catchAsync(async (req: Request, res: Response) 
 });
 
 export const getDepartmentById = catchAsync(async (req: Request, res: Response) => {
-  const department = await prisma.department.findUnique({
-    where: { id: parseInt(req.params.id as string) },
-    include: {
-      college: true,
-      students: {
-        select: { id: true, firstName: true, lastName: true, studentId: true, year: true },
-        orderBy: { lastName: 'asc' },
-      },
-      courses: {
-        select: {
-          id: true,
-          name: true,
-          courseCode: true,
-          credits: true,
-          year: true,
-          semester: true,
+  const departmentId = parseInt(req.params.id as string);
+  const userRole = req.user?.role;
+  const adminRoles = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'];
+  const nonAdminRoles = ['STUDENT', 'DOCTOR', 'TEACHING_ASSISTANT'];
+
+  // Non-administrative users legitimately need minimal department metadata for navigation,
+  // but must never receive student or faculty rosters, courses relations, or sensitive counts.
+  if (userRole && nonAdminRoles.includes(userRole)) {
+    const department = await prisma.department.findUnique({
+      where: { id: departmentId },
+      select: {
+        id: true,
+        name: true,
+        nameAr: true,
+        collegeId: true,
+        college: {
+          select: {
+            id: true,
+            name: true,
+            nameAr: true,
+          },
         },
-        orderBy: { name: 'asc' },
       },
-      doctors: {
-        select: { id: true, firstName: true, lastName: true, doctorId: true, specialty: true },
-        orderBy: { lastName: 'asc' },
-      },
-      _count: { select: { students: true, courses: true, doctors: true } },
-    },
-  });
-  if (!department) {
-    throw new NotFoundError('Department not found');
+    });
+
+    if (!department) {
+      throw new NotFoundError('Department not found');
+    }
+
+    return res.json({ success: true, data: department });
   }
 
-  // Enforce scope: COLLEGE_ADMIN/DEPARTMENT_ADMIN
-  if (
-    req.user &&
-    req.user.role === 'COLLEGE_ADMIN' &&
-    department.collegeId !== req.user.managedCollegeId
-  ) {
-    throw new AuthorizationError('Access denied');
-  }
-  if (
-    req.user &&
-    req.user.role === 'DEPARTMENT_ADMIN' &&
-    department.id !== req.user.managedDepartmentId
-  ) {
-    throw new AuthorizationError('Access denied');
+  // Administrative users: enforce centralized fail-closed scope
+  if (userRole && adminRoles.includes(userRole)) {
+    const department = await prisma.department.findUnique({
+      where: { id: departmentId },
+      include: {
+        college: true,
+        students: {
+          where: getEffectiveActiveStudentWhere(),
+          select: { id: true, firstName: true, lastName: true, studentId: true, year: true },
+          orderBy: { lastName: 'asc' },
+        },
+        courses: {
+          select: {
+            id: true,
+            name: true,
+            courseCode: true,
+            credits: true,
+            year: true,
+            semester: true,
+          },
+          orderBy: { name: 'asc' },
+        },
+        doctors: {
+          where: getEffectiveActiveDoctorWhere(),
+          select: { id: true, firstName: true, lastName: true, doctorId: true, specialty: true },
+          orderBy: { lastName: 'asc' },
+        },
+        _count: {
+          select: {
+            students: { where: getEffectiveActiveStudentWhere() },
+            courses: true,
+            doctors: { where: getEffectiveActiveDoctorWhere() },
+          },
+        },
+      },
+    });
+
+    if (!department) {
+      throw new NotFoundError('Department not found');
+    }
+
+    if (!req.user) {
+      throw new AuthorizationError('Authentication required');
+    }
+
+    if (userRole === 'SUPER_ADMIN') {
+      // Super admin has institution-wide administrative access
+    } else if (userRole === 'COLLEGE_ADMIN') {
+      if (!req.user.managedCollegeId || department.collegeId !== req.user.managedCollegeId) {
+        throw new AuthorizationError('Access denied');
+      }
+    } else if (userRole === 'DEPARTMENT_ADMIN') {
+      if (!req.user.managedDepartmentId || department.id !== req.user.managedDepartmentId) {
+        throw new AuthorizationError('Access denied');
+      }
+    } else if (userRole === 'ADMIN') {
+      if (!req.user.managedCollegeId || department.collegeId !== req.user.managedCollegeId) {
+        throw new AuthorizationError('Access denied');
+      }
+    } else {
+      throw new AuthorizationError('Access denied');
+    }
+
+    return res.json({ success: true, data: department });
   }
 
-  res.json({ success: true, data: department });
+  // Unknown role or missing authenticated role: fail closed
+  throw new AuthorizationError('Access denied');
 });
 
 export const createDepartment = catchAsync(async (req: Request, res: Response) => {
@@ -126,8 +188,12 @@ export const createDepartment = catchAsync(async (req: Request, res: Response) =
     throw new AuthorizationError('Access denied: College is outside your managed scope');
   }
 
-  const department = await prisma.department.create({
-    data: { name, nameAr, collegeId: destinationCollege.id },
+  const department = await prisma.$transaction(async (tx) => {
+    const created = await tx.department.create({
+      data: { name, nameAr, collegeId: destinationCollege.id },
+    });
+    await auditLog('CREATE_DEPARTMENT', 'Department', created.id, req, { after: created }, tx);
+    return created;
   });
   res.status(201).json({ success: true, data: department });
 });
@@ -158,9 +224,20 @@ export const updateDepartment = catchAsync(async (req: Request, res: Response) =
     destinationCollegeId = destinationCollege.id;
   }
 
-  const department = await prisma.department.update({
-    where: { id: deptId },
-    data: { name, nameAr, collegeId: destinationCollegeId },
+  const department = await prisma.$transaction(async (tx) => {
+    const updated = await tx.department.update({
+      where: { id: deptId },
+      data: { name, nameAr, collegeId: destinationCollegeId },
+    });
+    await auditLog(
+      'UPDATE_DEPARTMENT',
+      'Department',
+      deptId,
+      req,
+      { before: existing, after: updated },
+      tx
+    );
+    return updated;
   });
   res.json({ success: true, data: department });
 });
@@ -171,35 +248,75 @@ export const deleteDepartment = catchAsync(async (req: Request, res: Response) =
   // Fetch and scope check
   const existing = await prisma.department.findFirst({
     where: getAdminMutationTargetWhere(req.user, 'department', departmentId),
-    include: { studentGroups: true },
+    include: {
+      _count: {
+        select: {
+          students: true,
+          courses: true,
+          doctors: true,
+          teachingAssistants: true,
+          admins: true,
+          managedAdmins: true,
+          registrationRequests: true,
+          timetables: true,
+          studentGroups: true,
+        },
+      },
+    },
   });
   if (!existing) {
     throw new NotFoundError('Department not found');
   }
 
-  if (existing.studentGroups && existing.studentGroups.length > 0) {
-    const groupNames = existing.studentGroups.map((g: any) => g.name).join(', ');
+  const linkedRecords = Object.entries(existing._count)
+    .filter(([, count]) => count > 0)
+    .map(([relation, count]) => `${count} ${relation}`);
+  if (linkedRecords.length > 0) {
     throw new AppError(
-      `Cannot delete department: It is referenced by ${existing.studentGroups.length} active student group(s) (${groupNames}). Please reassign or delete them first.`, 400
+      `Cannot delete department: linked records remain (${linkedRecords.join(', ')}). Reassign or explicitly remove them first.`,
+      409
     );
   }
 
   await prisma.$transaction(async (tx) => {
-    // 1. Nullify references in related models
-    await tx.student.updateMany({ where: { departmentId }, data: { departmentId: null } });
-    await tx.doctor.updateMany({ where: { departmentId }, data: { departmentId: null } });
-    await tx.course.updateMany({ where: { departmentId }, data: { departmentId: null } });
-    await tx.user.updateMany({ where: { departmentId }, data: { departmentId: null } });
-
-    // 2. Delete dependent records that can't exist without a department
-    await tx.registrationRequest.deleteMany({ where: { departmentId } });
-
-    // 3. Delete the department
-    await tx.department.delete({
+    const current = await tx.department.findUnique({
       where: { id: departmentId },
+      include: {
+        _count: {
+          select: {
+            students: true,
+            courses: true,
+            doctors: true,
+            teachingAssistants: true,
+            admins: true,
+            managedAdmins: true,
+            registrationRequests: true,
+            timetables: true,
+            studentGroups: true,
+          },
+        },
+      },
     });
-  });
+    if (!current) throw new NotFoundError('Department not found');
 
-  auditLog('DELETE_DEPARTMENT', 'Department', req.params.id as string, req);
+    const concurrentLinks = Object.values(current._count).some((count) => count > 0);
+    if (concurrentLinks) {
+      throw new AppError(
+        'Cannot delete department: linked records changed during deletion. Reassign or explicitly remove them first.',
+        409
+      );
+    }
+
+    await tx.department.delete({ where: { id: departmentId } });
+    await auditLog(
+      'DELETE_DEPARTMENT',
+      'Department',
+      departmentId,
+      req,
+      { before: current, after: null },
+      tx
+    );
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
   res.json({ success: true, message: 'Department deleted successfully' });
 });

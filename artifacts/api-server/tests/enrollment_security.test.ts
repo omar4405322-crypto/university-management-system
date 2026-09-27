@@ -52,6 +52,7 @@ async function runEnrollmentSecurityTests() {
   const originalCourseFindFirst = prisma.course.findFirst.bind(prisma.course);
   const originalEnrollStudent = EnrollmentService.enrollStudent.bind(EnrollmentService);
   const originalWithdrawStudent = EnrollmentService.withdrawStudent.bind(EnrollmentService);
+  const originalTransaction = prisma.$transaction.bind(prisma);
 
   (prisma.auditLog.create as any) = async () => ({ id: 1 });
 
@@ -246,6 +247,13 @@ async function runEnrollmentSecurityTests() {
       status: updatedGradeData?.data.status || 'ENROLLED',
       finalGrade: updatedGradeData?.data.finalGrade ?? null,
     });
+    (prisma as any).$transaction = async (callback: any) => callback({
+      enrollment: {
+        updateMany: prisma.enrollment.updateMany,
+        findUnique: prisma.enrollment.findUnique,
+      },
+      auditLog: { create: prisma.auditLog.create },
+    });
 
     const doctorUser = {
       id: 20,
@@ -381,6 +389,7 @@ async function runEnrollmentSecurityTests() {
     prisma.auditLog.create = originalAuditLogCreate;
     EnrollmentService.enrollStudent = originalEnrollStudent;
     EnrollmentService.withdrawStudent = originalWithdrawStudent;
+    prisma.$transaction = originalTransaction;
     await prisma.$disconnect();
   }
 }

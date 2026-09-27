@@ -5,7 +5,10 @@ import bcrypt from 'bcryptjs';
 
 import catchAsync from '../utils/catchAsync';
 import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
-import { getScopeWhere } from '../utils/scope.utils';
+import {
+  getEffectiveActiveTeachingAssistantWhere,
+  getScopeWhere,
+} from '../utils/scope.utils';
 import {
   getAdminMutationScopeWhere,
   getAdminMutationTargetWhere,
@@ -47,7 +50,9 @@ export const getTAStats = catchAsync(async (req: Request, res: Response, next: N
 
   const [totalTAs, activeTAs, onLeaveTAs] = await Promise.all([
     prisma.teachingAssistant.count({ where: scopeWhere }),
-    prisma.teachingAssistant.count({ where: { ...scopeWhere, status: 'ACTIVE' } }),
+    prisma.teachingAssistant.count({
+      where: getEffectiveActiveTeachingAssistantWhere(scopeWhere),
+    }),
     prisma.teachingAssistant.count({ where: { ...scopeWhere, status: 'ON_LEAVE' } }),
   ]);
 
@@ -76,10 +81,10 @@ export const getSuggestedTeachingAssistants = catchAsync(async (req: Request, re
     return next(new NotFoundError('Course not found'));
   }
 
-  const scopeWhere: any = getScopeWhere(req.user!);
+  const scopeWhere: any = getScopeWhere(req.user!, 'teachingAssistant');
 
   const allTAs = await prisma.teachingAssistant.findMany({
-    where: scopeWhere,
+    where: getEffectiveActiveTeachingAssistantWhere(scopeWhere),
     include: {
       user: {
         select: {
@@ -91,7 +96,7 @@ export const getSuggestedTeachingAssistants = catchAsync(async (req: Request, re
         include: { college: true },
       },
       scheduleSlots: {
-        where: { courseId: course.id },
+        where: { courseId: course.id, isArchived: false },
       },
     },
   });
@@ -153,6 +158,7 @@ export const getAllTeachingAssistants = catchAsync(async (req: Request, res: Res
   const where = {
     AND: [
       scopeWhere,
+      getEffectiveActiveTeachingAssistantWhere(),
       ...queryFilters,
     ],
   };
@@ -190,8 +196,10 @@ export const getAllTeachingAssistants = catchAsync(async (req: Request, res: Res
 });
 
 export const getTeachingAssistantById = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  const ta = await prisma.teachingAssistant.findUnique({
-    where: { id: (req.params.id as string) },
+  const ta = await prisma.teachingAssistant.findFirst({
+    where: getEffectiveActiveTeachingAssistantWhere({
+      id: req.params.id as string,
+    }),
     include: {
       user: {
         select: {
@@ -203,6 +211,7 @@ export const getTeachingAssistantById = catchAsync(async (req: Request, res: Res
         include: { college: true },
       },
       scheduleSlots: {
+        where: { isArchived: false },
         include: {
           course: {
             include: {
@@ -251,7 +260,9 @@ export const assignTACourse = catchAsync(async (req: Request, res: Response, nex
   }
 
   const ta = await prisma.teachingAssistant.findFirst({
-    where: getAdminMutationTargetWhere(req.user!, 'teachingAssistant', taId),
+    where: getEffectiveActiveTeachingAssistantWhere(
+      getAdminMutationTargetWhere(req.user!, 'teachingAssistant', taId)
+    ),
     include: { department: true }
   });
   if (!ta) return next(new AuthorizationError('Teaching assistant is outside your managed scope'));
@@ -263,7 +274,7 @@ export const assignTACourse = catchAsync(async (req: Request, res: Response, nex
   if (!course) return next(new AuthorizationError('Course is outside your managed scope'));
 
   const existingSlot = await prisma.scheduleSlot.findFirst({
-    where: { teachingAssistantId: taId, courseId: course.id }
+    where: { teachingAssistantId: taId, courseId: course.id, isArchived: false }
   });
 
   const targetDay = (dayOfWeek || existingSlot?.dayOfWeek || 'MONDAY').toUpperCase();
@@ -412,6 +423,7 @@ export const createTeachingAssistant = catchAsync(async (req: Request, res: Resp
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
+  const initialStatus = status || 'ACTIVE';
 
   const result = await prisma.$transaction(async (tx: any) => {
     const user = await tx.user.create({
@@ -419,6 +431,7 @@ export const createTeachingAssistant = catchAsync(async (req: Request, res: Resp
         email,
         password: hashedPassword,
         role: 'TEACHING_ASSISTANT',
+        isActive: initialStatus === 'ACTIVE',
       },
     });
 
@@ -429,7 +442,7 @@ export const createTeachingAssistant = catchAsync(async (req: Request, res: Resp
         lastName: lastName || 'Staff',
         employeeId,
         specialization,
-        status: status || 'ACTIVE',
+        status: initialStatus,
         departmentId:
           departmentId !== undefined && departmentId !== ''
             ? parseInt(departmentId as string)
@@ -445,6 +458,23 @@ export const createTeachingAssistant = catchAsync(async (req: Request, res: Resp
         department: true,
       },
     });
+
+    await auditLog(
+      'CREATE_TEACHING_ASSISTANT',
+      'TeachingAssistant',
+      ta.id,
+      req,
+      {
+        after: {
+          employeeId: ta.employeeId,
+          userId: ta.userId,
+          departmentId: ta.departmentId,
+          specialization: ta.specialization,
+          status: ta.status,
+        },
+      },
+      tx
+    );
 
     return ta;
   });
@@ -495,27 +525,70 @@ export const updateTeachingAssistant = catchAsync(async (req: Request, res: Resp
     }
   }
 
-  const updatedTA = await prisma.teachingAssistant.update({
-    where: { id },
-    data: {
-      firstName,
-      lastName,
-      specialization,
-      status,
-      departmentId:
-        departmentId !== undefined && departmentId !== ''
-          ? parseInt(departmentId as string)
-          : undefined,
-    },
-    include: {
-      user: {
-        select: {
-          email: true,
-          role: true,
+  const updatedTA = await prisma.$transaction(async tx => {
+    const updated = await tx.teachingAssistant.update({
+      where: { id },
+      data: {
+        firstName,
+        lastName,
+        specialization,
+        status,
+        departmentId:
+          departmentId !== undefined && departmentId !== ''
+            ? parseInt(departmentId as string)
+            : undefined,
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+            role: true,
+          },
+        },
+        department: true,
+      },
+    });
+
+    if (status !== undefined) {
+      const isActive = status === 'ACTIVE';
+      await tx.user.update({
+        where: { id: ta.userId },
+        data: {
+          isActive,
+          deactivatedAt: isActive ? null : new Date(),
+          ...(!isActive && { tokenVersion: { increment: 1 } }),
+        },
+      });
+      if (!isActive) {
+        await tx.refreshToken.deleteMany({ where: { userId: ta.userId } });
+      }
+    }
+
+    await auditLog(
+      'UPDATE_TEACHING_ASSISTANT',
+      'TeachingAssistant',
+      id,
+      req,
+      {
+        before: {
+          firstName: ta.firstName,
+          lastName: ta.lastName,
+          specialization: ta.specialization,
+          status: ta.status,
+          departmentId: ta.departmentId,
+        },
+        after: {
+          firstName: updated.firstName,
+          lastName: updated.lastName,
+          specialization: updated.specialization,
+          status: updated.status,
+          departmentId: updated.departmentId,
         },
       },
-      department: true,
-    },
+      tx
+    );
+
+    return updated;
   });
 
   res.json({ success: true, data: updatedTA });
@@ -525,7 +598,10 @@ export const deleteTeachingAssistant = catchAsync(async (req: Request, res: Resp
   const id = (req.params.id as string);
   const ta = await prisma.teachingAssistant.findUnique({
     where: { id },
-    include: { department: true },
+    include: {
+      department: true,
+      scheduleSlots: { select: { id: true } },
+    },
   });
 
   if (!ta) {
@@ -534,6 +610,15 @@ export const deleteTeachingAssistant = catchAsync(async (req: Request, res: Resp
 
   if (!assertTAScope(ta, req.user!)) {
     return res.status(403).json({ message: 'Access denied' });
+  }
+
+  if (ta.scheduleSlots.length > 0) {
+    return next(
+      new AppError(
+        `Cannot delete teaching assistant: This teaching assistant has ${ta.scheduleSlots.length} active schedule slots. Reassign them before deletion.`,
+        400
+      )
+    );
   }
 
   await prisma.$transaction(async (tx: any) => {
