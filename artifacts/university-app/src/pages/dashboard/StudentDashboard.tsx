@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import Card, { StatCard } from '../../components/ui/card';
+import Card, { StatCard, type StatCardColor } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
@@ -72,7 +72,16 @@ export default function StudentDashboard() {
     return <ErrorState message={error} onRetry={fetchStats} />;
   }
 
-  const kpis = [
+  const kpis: Array<{
+    id: string;
+    title: string;
+    value: string | number;
+    change: string;
+    trend: string;
+    icon: React.ComponentType<{ className?: string; size?: number }>;
+    color: StatCardColor;
+    link: string;
+  }> = [
     {
       id: 'academicYear',
       title: t('dashboard.academicYear'),
@@ -187,7 +196,7 @@ export default function StudentDashboard() {
             value={kpi.value}
             subtitle={kpi.change}
             icon={kpi.icon}
-            color={kpi.color as any}
+            color={kpi.color}
             onClick={() => kpi.link && navigate(kpi.link)}
             hasLink={Boolean(kpi.link)}
           />

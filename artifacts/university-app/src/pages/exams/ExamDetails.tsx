@@ -563,12 +563,12 @@ const ExamDetails: React.FC = () => {
                     {t('exams.mcqOptionsLabel')}
                   </label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {[
-                      { key: 'optionA', code: 'A' },
-                      { key: 'optionB', code: 'B' },
-                      { key: 'optionC', code: 'C' },
-                      { key: 'optionD', code: 'D' },
-                    ].map((opt) => (
+                    {([
+                      { key: 'optionA' as const, code: 'A' },
+                      { key: 'optionB' as const, code: 'B' },
+                      { key: 'optionC' as const, code: 'C' },
+                      { key: 'optionD' as const, code: 'D' },
+                    ]).map((opt) => (
                       <div
                         key={opt.key}
                         className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all ${
@@ -590,7 +590,7 @@ const ExamDetails: React.FC = () => {
                         </label>
                         <input
                           type="text"
-                          value={(newQuestion as any)[opt.key]}
+                          value={newQuestion[opt.key]}
                           onChange={(e) => setNewQuestion({ ...newQuestion, [opt.key]: e.target.value })}
                           placeholder={t('exams.optionPlaceholder', { code: opt.code })}
                           className="w-full text-xs font-semibold bg-transparent focus:outline-none text-brand-text-primary dark:text-white"

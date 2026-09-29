@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import studentsService from '../services/students.service';
 import { useDebounce } from './useDebounce';
+import type { StudentRow } from '../types/domain';
 
 interface UseStudentsOptions {
   initialPage?: number;
   limit?: number;
   initialSearch?: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   includeStats?: boolean;
@@ -21,7 +22,7 @@ export function useStudents({
   sortOrder = 'desc',
   includeStats = false,
 }: UseStudentsOptions = {}) {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(initialSearch);
@@ -30,36 +31,45 @@ export function useStudents({
   const debouncedSearch = useDebounce(search, 400);
 
   const filtersKey = JSON.stringify(filters);
-  const parsedFilters = useMemo(() => JSON.parse(filtersKey), [filtersKey]);
+  const parsedFilters = useMemo(() => JSON.parse(filtersKey) as Record<string, unknown>, [filtersKey]);
 
-  const fetchData = useCallback(async (extraParams: Record<string, unknown> = {}) => {
-    setLoading(true);
-    setError(null);
-    const params = {
-      page,
-      limit,
-      search: debouncedSearch,
-      sortBy,
-      sortOrder,
-      ...(includeStats ? { includeStats: 'true' } : {}),
-      ...parsedFilters,
-      ...extraParams,
-    };
-    try {
-      const res = await studentsService.getStudents(params);
-      if (res.success) {
-        const arr = Array.isArray(res.data) ? res.data : (res.data?.data || res.data?.students || res.data?.courses || res.data?.departments || res.data?.doctors || []);
-        setData(arr);
-        setTotal(res.pagination?.total ?? res.data?.pagination?.total ?? res.data?.total ?? 0);
-      } else {
-        setError(res.message ?? 'Failed to load data');
+  const fetchData = useCallback(
+    async (extraParams: Record<string, unknown> = {}) => {
+      setLoading(true);
+      setError(null);
+      const params = {
+        page,
+        limit,
+        search: debouncedSearch,
+        sortBy,
+        sortOrder,
+        ...(includeStats ? { includeStats: 'true' } : {}),
+        ...parsedFilters,
+        ...extraParams,
+      };
+      try {
+        const res = await studentsService.getStudents(params);
+        if (res.success) {
+          const raw = res.data as any;
+          const arr: StudentRow[] = Array.isArray(raw)
+            ? (raw as StudentRow[])
+            : ((raw as { students?: StudentRow[] })?.students ??
+              (raw as { data?: StudentRow[] })?.data ??
+              []);
+          setData(arr);
+          const totalVal = res.pagination?.total ?? raw?.pagination?.total ?? raw?.total ?? arr.length;
+          setTotal(typeof totalVal === 'number' ? totalVal : 0);
+        } else {
+          setError(res.message ?? 'Failed to load data');
+        }
+      } catch (_err: unknown) {
+        setError('Error fetching data');
+      } finally {
+        setLoading(false);
       }
-    } catch (_err: any) {
-      setError('Error fetching data');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, limit, debouncedSearch, sortBy, sortOrder, includeStats, parsedFilters]);
+    },
+    [page, limit, debouncedSearch, sortBy, sortOrder, includeStats, parsedFilters]
+  );
 
   useEffect(() => {
     fetchData();

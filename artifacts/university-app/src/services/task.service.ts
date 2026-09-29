@@ -41,12 +41,12 @@ const taskService = {
   getTasks: (params?: GetTasksParams): Promise<ApiResponse<any>> =>
     apiRequest(() => api.get('/tasks', { params })),
 
-  createTask: (data?: Record<string, unknown>): Promise<ApiResponse<any>> =>
+  createTask: (data?: Record<string, unknown> | object): Promise<ApiResponse<any>> =>
     apiRequest(() => api.post('/tasks', data)),
 
   updateTask: (
     id: number | string,
-    data: Record<string, unknown>
+    data: Record<string, unknown> | object
   ): Promise<ApiResponse<any>> =>
     apiRequest(() => api.put(`/tasks/${id}`, data)),
 
@@ -57,7 +57,7 @@ const taskService = {
     ),
 
   submitTask: (
-    id: number | string, data: Record<string, unknown>): Promise<ApiResponse<any>> =>
+    id: number | string, data: Record<string, unknown> | object): Promise<ApiResponse<any>> =>
     apiRequest(() => api.post(`/tasks/${id}/submit`, data)),
 
   gradeSubmission: (

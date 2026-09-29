@@ -60,9 +60,10 @@ const EnrollCourseModal: React.FC<EnrollCourseModalProps> = ({
       setErrorMessage(null);
       const res = await coursesService.getCourses({ limit: 150 });
       if (res.success) {
-        const rawData = Array.isArray(res.data)
-          ? res.data
-          : (res.data as any)?.courses || (res.data as any)?.data || [];
+        const resData = res.data as { courses?: CourseItem[]; data?: CourseItem[] } | CourseItem[] | null;
+        const rawData = Array.isArray(resData)
+          ? resData
+          : resData?.courses || resData?.data || [];
         setCourses(rawData);
       } else {
         setCourses([]);

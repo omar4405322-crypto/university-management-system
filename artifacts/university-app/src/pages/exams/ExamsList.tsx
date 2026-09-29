@@ -49,6 +49,7 @@ import {
   getTypeBadgeConfig,
   getExamTimeWindowStatus,
 } from "./examUtils";
+import type { ExamItem, DepartmentRow } from "../../types/domain";
 
 const ExamsList = () => {
   const { t } = useTranslation();
@@ -70,9 +71,9 @@ const ExamsList = () => {
   const [viewMode, setViewMode] = useState<"CARD" | "LIST">("CARD");
 
   // Loading & Data States
-  const [exams, setExams] = useState<any[]>([]);
+  const [exams, setExams] = useState<ExamItem[]>([]);
   const [colleges, setColleges] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<DepartmentRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filter States
@@ -95,7 +96,7 @@ const ExamsList = () => {
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
-    id: string;
+    id: string | number;
     name: string;
   } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -394,7 +395,7 @@ const ExamsList = () => {
     statusFilter !== "ALL";
 
   // Format Time (12-hour AM/PM)
-  const formatTime = (timeStr: string) => {
+  const formatTime = (timeStr?: string) => {
     if (!timeStr) return "";
     const [hours, minutes] = timeStr.split(":");
     const hour = parseInt(hours, 10);
@@ -404,8 +405,8 @@ const ExamsList = () => {
   };
 
   // Type badge renderer
-  const renderTypeBadge = (type: string) => {
-    const c = getTypeBadgeConfig(type, t);
+  const renderTypeBadge = (type?: string) => {
+    const c = getTypeBadgeConfig(type || "REGULAR", t);
     return (
       <span
         className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${c.bg} ${c.text}`}

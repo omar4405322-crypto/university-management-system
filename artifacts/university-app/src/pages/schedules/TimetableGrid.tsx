@@ -116,8 +116,8 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
 
   // ── Scope helpers & Permissions ─────────────────────────────────────────────
   const canManage = ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user?.role || '');
-  const collegeId = user?.managedCollegeId ?? user?.collegeId ?? scopeParams?.collegeId;
-  const deptId = user?.managedDepartmentId ?? user?.departmentId ?? scopeParams?.departmentId;
+  const collegeId = user?.managedCollegeId ?? user?.collegeId ?? (scopeParams?.collegeId as string | number | undefined);
+  const deptId = user?.managedDepartmentId ?? user?.departmentId ?? (scopeParams?.departmentId as string | number | undefined);
   const isDeptAdminLocked = user?.role === 'DEPARTMENT_ADMIN';
 
   // ── Remote data ──────────────────────────────────────────────────────────────
@@ -290,7 +290,8 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
           semester: filters.semester,
         });
 
-        const list = (res as any).data?.conflicts || (res as any).conflicts || [];
+        const resData = res.data as { conflicts?: Array<{ messageAr?: string; messageEn?: string }> } | null;
+        const list = resData?.conflicts || [];
         if (list.length > 0) {
           list.forEach((c: any) => {
             foundConflicts.push({

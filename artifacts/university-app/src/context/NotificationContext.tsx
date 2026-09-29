@@ -3,13 +3,22 @@ import api from '../services/api';
 import { useAuth } from './AuthContext';
 import { logger } from '../lib/logger';
 
+// ── Domain types ──────────────────────────────────────────────────────────────
+
 interface Notification {
   id: string;
   title: string;
   message: string;
   isRead: boolean;
   createdAt: string;
-  [key: string]: any;
+  type?: string;
+  link?: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface RegistrationRequest {
+  id: string | number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
 interface NotificationContextType {
@@ -47,10 +56,11 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       setLoading(true);
       const response = await api.get('/notifications');
       if (response.data.success) {
-        setNotifications(response.data.data);
-        setUnreadCount(response.data.data.filter((n: Notification) => !n.isRead).length);
+        const data = response.data.data as Notification[];
+        setNotifications(data);
+        setUnreadCount(data.filter((n) => !n.isRead).length);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Fetch notifications error:', error);
     } finally {
       setLoading(false);
@@ -70,10 +80,11 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     try {
       const response = await api.get('/auth/requests');
       if (response.data.success) {
-        const pendingCount = response.data.data.filter((r: any) => r.status === 'PENDING').length;
+        const requests = response.data.data as RegistrationRequest[];
+        const pendingCount = requests.filter((r) => r.status === 'PENDING').length;
         setPendingRequestsCount(pendingCount);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Fetch pending requests count error:', error);
     }
   }, [user]);
@@ -96,7 +107,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Mark as read error:', error);
     }
   };
@@ -108,7 +119,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
         setUnreadCount(0);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Mark all as read error:', error);
     }
   };
@@ -123,7 +134,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           setUnreadCount((prev) => Math.max(0, prev - 1));
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Delete notification error:', error);
     }
   };

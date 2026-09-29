@@ -462,7 +462,7 @@ const TimetableManagement = () => {
 
         <StatCard
           compact
-          title={t('groups.allDepartments', 'Departments Covered')}
+          title={t('timetables.departmentsCoveredKpi', 'Departments Covered')}
           value={coveredDeptsCount}
           icon={Layers}
           color="blue"
@@ -743,9 +743,12 @@ const TimetableManagement = () => {
                         </span>
                       </div>
 
-                      {item.college?.name && (
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 truncate max-w-[130px]">
-                          {item.college.name}
+                      {(item.college?.name || item.college?.nameAr) && (
+                        <span
+                          className="text-[10px] font-bold text-slate-400 dark:text-slate-500 truncate max-w-[150px]"
+                          dir={isRTL ? 'rtl' : 'ltr'}
+                        >
+                          {isRTL ? item.college.nameAr || item.college.name : item.college.name || item.college.nameAr}
                         </span>
                       )}
                     </div>

@@ -22,7 +22,7 @@ import { CAMPUS_HERO_1 } from '../../constants/universityAssets';
 import { logger } from '../../lib/logger';
 
 export default function AdminDashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { isDark } = useTheme();
   const { user } = useAuth();
@@ -182,11 +182,14 @@ export default function AdminDashboard() {
   return (
     <div className="flex flex-col gap-6 animate-page">
       {/* === Hero Header === */}
-      <div className="relative overflow-hidden rounded-2xl bg-brand-navy-500 text-white min-h-[9rem] py-6 flex items-center transition-all duration-300">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-brand-navy-500 via-brand-navy-600 to-[#1e3a5f] text-white min-h-[9rem] py-6 flex items-center shadow-elevated border border-white/10 transition-all duration-300">
+        <div className="absolute -end-10 -bottom-10 opacity-10 pointer-events-none select-none text-white">
+          <Building2 size={180} />
+        </div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between w-full px-8 gap-6">
           <div className="space-y-1.5">
             <h1 className="text-2xl md:text-3xl font-black text-white mb-0 leading-tight">
-              {t('dashboard.welcomeBack')}, {user?.email.split('@')[0]}
+              {t('dashboard.welcomeBack')}, <bdi>{user?.firstName ? `${user.firstName} ${user.lastName}` : user?.email.split('@')[0]}</bdi>
             </h1>
             <div className="flex flex-wrap items-center gap-3 text-xs text-white/60">
               <span className="px-2 py-0.5 rounded bg-white/10 text-white font-bold text-[10px] uppercase tracking-wider">
@@ -194,7 +197,7 @@ export default function AdminDashboard() {
               </span>
               <span>•</span>
               <span>
-                {new Date().toLocaleDateString(undefined, {
+                {new Date().toLocaleDateString(i18n.language === 'ar' ? 'ar-EG' : 'en-US', {
                   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
                 })}
               </span>
@@ -268,7 +271,7 @@ export default function AdminDashboard() {
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-bold text-brand-text-secondary">{t('dashboard.quotaUsage')}</span>
                   <span className="font-black text-brand-text-primary dark:text-brand-text-main">
-                    {totalStudentsCount.toLocaleString()} / {subscriptionLimit.toLocaleString()}
+                    <bdi dir="ltr">{totalStudentsCount.toLocaleString()} / {subscriptionLimit.toLocaleString()}</bdi>
                   </span>
                 </div>
                 <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -284,8 +287,8 @@ export default function AdminDashboard() {
             </div>
 
             <Button
-              variant="primary"
-              className="w-full font-black uppercase tracking-[0.15em] py-3 mt-6 shadow-sm animate-interactive"
+              variant="outline"
+              className="w-full text-xs font-bold uppercase tracking-wider py-2.5 mt-6 border-brand-border hover:bg-surface-subtle transition-all"
               onClick={() => navigate('/settings')}
             >
               {t('dashboard.manageSubscription')}

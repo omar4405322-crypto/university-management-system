@@ -53,6 +53,7 @@ import { downloadCsv } from "../../utils/exportCsv";
 import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
 import { useSavedViews, SavedView } from "../../hooks/useSavedViews";
 import { useToast } from "../../context/ToastContext";
+import type { StudentRow } from "../../types/domain";
 
 const defaultView: SavedView = {
   id: "default",
@@ -205,12 +206,12 @@ const StudentsList = () => {
     };
   }, []);
 
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<any>(null);
-  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [editingStudent, setEditingStudent] = useState<StudentRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string | number; name: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [resetPasswordStudent, setResetPasswordStudent] = useState<any>(null);
+  const [resetPasswordStudent, setResetPasswordStudent] = useState<StudentRow | null>(null);
   const { showToast } = useToast();
 
   // Active filter count
@@ -250,7 +251,7 @@ const StudentsList = () => {
         showToast(t("common.noDataToExport", "No data to export"), "error");
         return;
       }
-      const exportData = exportList.map((s: any) => ({
+      const exportData = exportList.map((s: StudentRow) => ({
         "Student ID": s.studentId || s.id,
         Name: `${s.firstName} ${s.lastName}`,
         Division: s.year ? `Division ${s.year}` : "N/A",
@@ -275,7 +276,7 @@ const StudentsList = () => {
   }, [students, showToast, t, isRTL]);
 
   const handleToggleStatus = useCallback(
-    async (student: any) => {
+    async (student: StudentRow) => {
       try {
         const result = await studentService.toggleStatus(student.id);
         if (result.success) {
@@ -318,14 +319,14 @@ const StudentsList = () => {
         (students || []).forEach((s) => newIds.add(s.id));
         setSelectedIds(Array.from(newIds));
       } else {
-        const visibleIds = (students || []).map((s) => s.id);
+        const visibleIds: (string | number)[] = (students || []).map((s) => s.id);
         setSelectedIds(selectedIds.filter((id) => !visibleIds.includes(id)));
       }
     },
     [students, selectedIds],
   );
 
-  const handleSelectOne = useCallback((id: string) => {
+  const handleSelectOne = useCallback((id: string | number) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
@@ -432,7 +433,7 @@ const StudentsList = () => {
           title={isRTL ? "الطلاب النشطون" : "Active Students"}
           value={
             Array.isArray(students)
-              ? students.filter((s: any) => s.isActive).length
+              ? students.filter((s: StudentRow) => s.isActive).length
               : 0
           }
           icon={UserCheck}
@@ -444,7 +445,7 @@ const StudentsList = () => {
           title={isRTL ? "الحسابات المعطلة" : "Inactive / Suspended"}
           value={
             Array.isArray(students)
-              ? students.filter((s: any) => !s.isActive).length
+              ? students.filter((s: StudentRow) => !s.isActive).length
               : 0
           }
           icon={UserX}

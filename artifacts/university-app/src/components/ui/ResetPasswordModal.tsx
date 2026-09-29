@@ -4,7 +4,7 @@ import Button from './button';
 import api from '../../services/api';
 
 export interface ResetPasswordPerson {
-  id: number;
+  id: number | string;
   firstName?: string;
   lastName?: string;
   name?: string;

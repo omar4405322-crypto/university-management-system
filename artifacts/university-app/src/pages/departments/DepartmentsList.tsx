@@ -50,6 +50,7 @@ import {
 import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
 import { downloadCsv } from "../../utils/exportCsv";
 import { logger } from "../../lib/logger";
+import type { DepartmentRow } from "../../types/domain";
 
 const DepartmentDetails = React.lazy(() => import("./DepartmentDetails"));
 
@@ -94,7 +95,7 @@ const DepartmentsList: React.FC = () => {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState<any>(null);
+  const [selectedDepartment, setSelectedDepartment] = useState<DepartmentRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string | number;
     name: string;
@@ -437,7 +438,7 @@ const DepartmentsList: React.FC = () => {
           {/* Sort Select */}
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as "name" | "students" | "courses" | "faculty")}
             className="h-9 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer font-medium"
           >
             <option value="name">
@@ -468,8 +469,8 @@ const DepartmentsList: React.FC = () => {
               }`}
               title={
                 isAllSelected
-                  ? t("common.deselectAll", "إلغاء تحديد الكل")
-                  : t("common.selectAll", "تحديد الكل")
+                  ? t("common.deselectAll", "Deselect All")
+                  : t("common.selectAll", "Select All")
               }
             >
               {isAllSelected ? (
@@ -481,8 +482,8 @@ const DepartmentsList: React.FC = () => {
               )}
               <span>
                 {isAllSelected
-                  ? t("common.deselectAll", "إلغاء تحديد الكل")
-                  : t("common.selectAll", "تحديد الكل")}
+                  ? t("common.deselectAll", "Deselect All")
+                  : t("common.selectAll", "Select All")}
               </span>
             </button>
           )}
@@ -775,8 +776,8 @@ const DepartmentsList: React.FC = () => {
                       className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors p-1"
                       title={
                         isAllSelected
-                          ? t("common.deselectAll", "إلغاء تحديد الكل")
-                          : t("common.selectAll", "تحديد الكل")
+                          ? t("common.deselectAll", "Deselect All")
+                          : t("common.selectAll", "Select All")
                       }
                     >
                       {isAllSelected ? (

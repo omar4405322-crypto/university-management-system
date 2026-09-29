@@ -43,6 +43,7 @@ import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
 import EnrollCourseModal from './EnrollCourseModal';
 import ManageAbsenceModal from './ManageAbsenceModal';
 import { useToast } from '../../context/ToastContext';
+import type { StudentProfile, EnrollmentRow, PaymentRow } from '../../types/domain';
 
 interface StudentDetailsProps {
   studentId?: string;
@@ -64,7 +65,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
     user && ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)
   );
 
-  const [student, setStudent] = useState<any>(null);
+  const [student, setStudent] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'payments'>('overview');
@@ -72,9 +73,9 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
-  const [withdrawingEnrollment, setWithdrawingEnrollment] = useState<any>(null);
+  const [withdrawingEnrollment, setWithdrawingEnrollment] = useState<EnrollmentRow | null>(null);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const [absenceManagingEnrollment, setAbsenceManagingEnrollment] = useState<any>(null);
+  const [absenceManagingEnrollment, setAbsenceManagingEnrollment] = useState<EnrollmentRow | null>(null);
 
   const enrolledCourses = student?.enrollments || [];
 
@@ -371,7 +372,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
       </div>
 
       {/* Quick Stats Metrics Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3.5">
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
             <GraduationCap size={24} />
@@ -422,7 +423,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               {isRTL ? 'القسم الأكاديمي' : 'Department'}
             </span>
-            <span className="text-sm font-bold text-slate-900 dark:text-white truncate" title={deptName || '—'}>
+            <span className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight" title={deptName || '—'}>
               {deptName || '—'}
             </span>
           </div>
@@ -483,7 +484,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
           >
             <CreditCard size={18} />
             <span>{isRTL ? 'المدفوعات والرسوم' : 'Payments & Fees'}</span>
-            {student.payments?.length > 0 && (
+            {student.payments && student.payments.length > 0 && (
               <span className="ms-1 px-2 py-0.5 rounded-full text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-mono">
                 {student.payments.length}
               </span>
@@ -787,7 +788,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {student.payments.map((p: any, idx: number) => (
+                  {student.payments.map((p: PaymentRow, idx: number) => (
                     <tr key={p.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                       <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
                         {isRTL ? 'ج.م ' : 'EGP '}{p.amount?.toLocaleString()}
@@ -841,7 +842,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
           studentName={`${student.firstName} ${student.lastName}`}
           studentCode={student.studentId}
           departmentId={student.departmentId}
-          alreadyEnrolledCourseIds={enrolledCourses.map((e: any) => e.course?.id || e.courseId).filter(Boolean)}
+          alreadyEnrolledCourseIds={enrolledCourses.map((e: EnrollmentRow) => e.course?.id || e.courseId).filter((id): id is number => typeof id === 'number')}
           onSuccess={() => {
             fetchStudent();
           }}

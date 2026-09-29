@@ -14,6 +14,48 @@ import type {
   College,
 } from '../types/timetable.types';
 
+// ── Raw API shapes for mapping ────────────────────────────────────────────────
+
+interface RawScheduleSlot {
+  id?: number;
+  dayOfWeek?: string;
+  day?: string;
+  startTime?: string;
+  endTime?: string;
+  room?: string;
+  slotType?: string;
+  courseId?: number;
+  course?: { name?: string } | null;
+  doctorId?: number;
+  doctor?: { firstName?: string; lastName?: string } | null;
+  teachingAssistantId?: string | number;
+  teachingAssistant?: { firstName?: string; lastName?: string } | null;
+  groupId?: number | null;
+  timetableId?: number;
+}
+
+interface RawTimetableSlot {
+  day?: string;
+  dayOfWeek?: string;
+  startTime?: string;
+  endTime?: string;
+  room?: string;
+  slotType?: string;
+  courseName?: string;
+  instructor?: string;
+  doctorName?: string;
+  courseId?: number;
+  doctorId?: number;
+  teachingAssistantId?: string | number;
+}
+
+interface RawTimetable {
+  id: number;
+  scheduleData?: {
+    slots?: RawTimetableSlot[];
+  };
+}
+
 interface UseTimetableDataReturn {
   slots: SlotsMap;
   setSlots: React.Dispatch<React.SetStateAction<SlotsMap>>;
@@ -63,13 +105,16 @@ export function useTimetableData(
     setLoadingColleges(true);
     collegeService
       .getColleges()
-      .then((res: { success: boolean; data?: College[] | { data?: { colleges?: College[] }, colleges?: College[] } | null }) => {
+      .then((res: { success: boolean; data?: unknown }) => {
         if (controller.signal.aborted) return;
         if (res.success) {
           const raw = res.data;
           const arr: College[] = Array.isArray(raw)
-            ? raw
-            : (raw as any)?.data?.colleges ?? (raw as any)?.colleges ?? (raw as any)?.data ?? [];
+            ? (raw as College[])
+            : ((raw as { data?: { colleges?: College[] } })?.data?.colleges ??
+              (raw as { colleges?: College[] })?.colleges ??
+              (raw as { data?: College[] })?.data ??
+              []);
           setColleges(arr);
         }
       })
@@ -127,62 +172,69 @@ export function useTimetableData(
         departmentId: filters.departmentId,
         year: filters.academicYear,
         semester: filters.semester,
-      })
+      }),
     ])
-      .then(([timetableRes, schedulesRes]: any) => {
+      .then(([timetableRes, schedulesRes]) => {
         if (controller.signal.aborted) return;
-        
+
+        // Resolve the timetable document
         const rawTimetables = Array.isArray(timetableRes.data)
-          ? timetableRes.data
-          : timetableRes.data?.timetables ?? timetableRes.data?.data ?? [];
-        const timetable = rawTimetables[0];
+          ? (timetableRes.data as RawTimetable[])
+          : ((timetableRes.data as { timetables?: RawTimetable[] })?.timetables ??
+            (timetableRes.data as { data?: RawTimetable[] })?.data ??
+            []);
+        const timetable: RawTimetable | undefined = rawTimetables[0];
         setTimetableId(timetable?.id ?? null);
-        
-        const slotsArray = Array.isArray(schedulesRes.data?.data)
-          ? schedulesRes.data.data
-          : Array.isArray(schedulesRes.data)
-          ? schedulesRes.data
-          : [];
+
+        // Resolve schedule slots from the weekly endpoint
+        const rawSchedules = schedulesRes.data as RawScheduleSlot[] | null;
+        const slotsArray: RawScheduleSlot[] = Array.isArray(rawSchedules) ? rawSchedules : [];
+
         if (slotsArray.length > 0) {
           const mapped: SlotsMap = {};
-          slotsArray.forEach((slot: any) => {
+          slotsArray.forEach((slot) => {
             const rawDay = slot.dayOfWeek || slot.day || '';
-            const dayFormatted = rawDay ? rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase() : '';
+            const dayFormatted = rawDay
+              ? rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase()
+              : '';
             const key = `${dayFormatted}_${slot.startTime}-${slot.endTime}`;
             mapped[key] = {
               courseName: slot.course?.name || `Course ${slot.courseId}`,
               doctorName:
-                (slot.slotType === 'LAB' || slot.slotType === 'SECTION') && slot.teachingAssistant?.firstName
+                (slot.slotType === 'LAB' || slot.slotType === 'SECTION') &&
+                slot.teachingAssistant?.firstName
                   ? `${slot.teachingAssistant.firstName} ${slot.teachingAssistant.lastName}`
                   : slot.doctor?.firstName
                   ? `${slot.doctor.firstName} ${slot.doctor.lastName}`
                   : '',
               room: slot.room || '',
-              slotType: slot.slotType || 'LECTURE',
-              timetableId: slot.timetableId,
+              slotType: (slot.slotType as 'LECTURE' | 'LAB' | 'SECTION') || 'LECTURE',
+              timetableId: slot.timetableId ?? null,
               courseId: slot.courseId,
               doctorId: slot.doctorId,
-              teachingAssistantId: slot.teachingAssistantId,
+              teachingAssistantId: slot.teachingAssistantId as string | undefined,
               groupId: slot.groupId,
-              id: slot.id
+              id: slot.id,
             };
           });
           setSlots(mapped);
         } else if (timetable?.scheduleData?.slots && Array.isArray(timetable.scheduleData.slots)) {
           const mapped: SlotsMap = {};
-          timetable.scheduleData.slots.forEach((slot: any) => {
+          timetable.scheduleData.slots.forEach((slot: RawTimetableSlot) => {
             const rawDay = slot.day || slot.dayOfWeek || '';
-            const dayFormatted = rawDay ? rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase() : '';
+            const dayFormatted = rawDay
+              ? rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase()
+              : '';
             const key = `${dayFormatted}_${slot.startTime}-${slot.endTime}`;
             mapped[key] = {
               courseName: slot.courseName || '',
               doctorName: slot.instructor || slot.doctorName || '',
               room: slot.room || '',
-              slotType: slot.slotType || 'LECTURE',
-              timetableId: timetable.id,
+              slotType: (slot.slotType as 'LECTURE' | 'LAB' | 'SECTION') || 'LECTURE',
+              timetableId: timetable.id ?? null,
               courseId: slot.courseId,
               doctorId: slot.doctorId,
-              teachingAssistantId: slot.teachingAssistantId,
+              teachingAssistantId: slot.teachingAssistantId as string | undefined,
             };
           });
           setSlots(mapped);
@@ -214,34 +266,29 @@ export function useTimetableData(
       coursesService.getCourses({ departmentId: filters.departmentId }),
       doctorsService.getDoctors({ limit: 1000 }),
     ])
-      .then(
-        ([coursesRes, doctorsRes]: [
-          { success: boolean; data?: unknown },
-          { success: boolean; data?: unknown },
-        ]) => {
-          if (controller.signal.aborted) return;
-          if (coursesRes.success) {
-            const raw = coursesRes.data;
-            const arr: Course[] = Array.isArray(raw)
-              ? (raw as Course[])
-              : ((raw as { data?: { courses?: Course[] }; courses?: Course[] })?.data?.courses ??
-                (raw as { courses?: Course[] })?.courses ??
-                (raw as { data?: Course[] })?.data ??
-                []);
-            setCourses(arr);
-          }
-          if (doctorsRes.success) {
-            const raw = doctorsRes.data;
-            const arr: Doctor[] = Array.isArray(raw)
-              ? (raw as Doctor[])
-              : ((raw as { doctors?: Doctor[] })?.doctors ??
-                (raw as { data?: { doctors?: Doctor[] } })?.data?.doctors ??
-                (raw as { data?: Doctor[] })?.data ??
-                []);
-            setDoctors(arr);
-          }
+      .then(([coursesRes, doctorsRes]) => {
+        if (controller.signal.aborted) return;
+        if (coursesRes.success) {
+          const raw = coursesRes.data as unknown;
+          const arr: Course[] = Array.isArray(raw)
+            ? (raw as Course[])
+            : ((raw as { data?: { courses?: Course[] } })?.data?.courses ??
+              (raw as { courses?: Course[] })?.courses ??
+              (raw as { data?: Course[] })?.data ??
+              []);
+          setCourses(arr);
         }
-      )
+        if (doctorsRes.success) {
+          const raw = doctorsRes.data as unknown;
+          const arr: Doctor[] = Array.isArray(raw)
+            ? (raw as Doctor[])
+            : ((raw as { doctors?: Doctor[] })?.doctors ??
+              (raw as { data?: { doctors?: Doctor[] } })?.data?.doctors ??
+              (raw as { data?: Doctor[] })?.data ??
+              []);
+          setDoctors(arr);
+        }
+      })
       .catch((err: unknown) => {
         if (!controller.signal.aborted) setError(String(err));
       })

@@ -4,6 +4,7 @@ import { useDoctors } from "../../hooks/useDoctors";
 import doctorsService from "../../services/doctors.service";
 import AddDoctorModal from "./AddDoctorModal";
 import EditDoctorModal from "./EditDoctorModal";
+import type { DoctorRow } from "../../types/domain";
 import { PageHeader } from "../../components/ui/PageHeader";
 import Card, { StatCard } from "../../components/ui/card";
 import Table, {
@@ -128,10 +129,10 @@ const DoctorsList = () => {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
-  const [resetPasswordDoctor, setResetPasswordDoctor] = useState<any>(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<DoctorRow | null>(null);
+  const [resetPasswordDoctor, setResetPasswordDoctor] = useState<DoctorRow | null>(null);
   const { showToast } = useToast();
-  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string | number; name: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 

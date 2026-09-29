@@ -304,7 +304,7 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               {isRTL ? 'القسم' : 'Department'}
             </span>
-            <span className="text-sm font-black text-slate-900 dark:text-white truncate" title={deptName}>
+            <span className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight" title={deptName}>
               {deptName || '—'}
             </span>
           </div>

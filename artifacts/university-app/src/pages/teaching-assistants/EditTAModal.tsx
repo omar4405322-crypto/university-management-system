@@ -6,11 +6,13 @@ import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import { X, User, Phone, Briefcase } from 'lucide-react';
 
+import type { TeachingAssistantRow } from '../../types/domain';
+
 interface EditTAModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  ta: any;
+  ta: TeachingAssistantRow;
 }
 
 const EditTAModal: React.FC<EditTAModalProps> = ({ isOpen, onClose, onSuccess, ta }) => {
@@ -47,7 +49,7 @@ const EditTAModal: React.FC<EditTAModalProps> = ({ isOpen, onClose, onSuccess, t
 
     try {
       setLoading(true);
-      const result = await teachingAssistantsService.updateTeachingAssistant(ta.id, formData);
+      const result = await teachingAssistantsService.updateTeachingAssistant(String(ta.id), formData);
       if (result.success) {
         onSuccess();
       } else {

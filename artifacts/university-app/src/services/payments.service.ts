@@ -32,14 +32,16 @@ const paymentsService = {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (error: any) {
-      if (error?.response?.data instanceof Blob) {
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: unknown } };
+      if (axiosErr?.response?.data instanceof Blob) {
         try {
-          const text = await error.response.data.text();
-          const parsed = JSON.parse(text);
+          const text = await (axiosErr.response.data as Blob).text();
+          const parsed = JSON.parse(text) as { message?: string; error?: string };
           throw new Error(parsed.message || parsed.error || 'Failed to download receipt');
-        } catch (e: any) {
-          if (e.message && !e.message.includes('JSON')) throw e;
+        } catch (e: unknown) {
+          const innerErr = e as Error;
+          if (innerErr.message && !innerErr.message.includes('JSON')) throw innerErr;
         }
       }
       throw error;

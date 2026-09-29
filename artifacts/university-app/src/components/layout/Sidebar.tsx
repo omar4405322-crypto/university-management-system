@@ -44,25 +44,25 @@ const SidebarItem: React.FC<any> = React.memo(({ item, isCollapsed, isChild = fa
     <NavLink
       to={item.path}
       className={({ isActive }) => `
-        group flex items-center gap-3 rounded-2xl transition-all duration-150 w-full relative
-        ${isChild ? 'px-4 py-2 text-xs' : 'px-4 py-3 text-sm'}
+        group flex items-center gap-3 rounded-xl transition-all duration-150 w-full relative
+        ${isChild ? 'px-3.5 py-2 text-xs' : 'px-3.5 py-2.5 text-sm'}
         ${
           isActive
-            ? 'bg-brand-primary-600 text-white shadow-elevated shadow-brand-primary-600/20'
-            : 'text-slate-300 hover:bg-white/5 hover:text-white/90 dark:text-slate-400 dark:hover:text-white/90'
+            ? 'bg-brand-primary-500/15 text-white font-semibold shadow-xs border-s-[3px] border-brand-primary-400'
+            : 'text-slate-300 hover:bg-white/5 hover:text-white dark:text-slate-400 dark:hover:text-white'
         }
-        ${isCollapsed ? 'justify-center px-2' : ''}
+        ${isCollapsed ? 'justify-center px-2 border-s-0' : ''}
       `}
     >
       {({ isActive }) => (
         <>
           <item.icon
             size={isChild ? 16 : 20}
-            className={`shrink-0 transition-all duration-150 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-white/90 group-hover:scale-110'}`}
+            className={`shrink-0 transition-all duration-150 ${isActive ? 'text-brand-primary-400 scale-105' : 'text-slate-400 group-hover:text-white group-hover:scale-105'}`}
           />
           {!isCollapsed && (
             <span
-              className={`font-black uppercase tracking-widest transition-all ${isActive ? 'translate-x-1 rtl:-translate-x-1' : ''}`}
+              className={`font-semibold tracking-normal transition-all truncate ${isActive ? 'text-white' : ''}`}
             >
               {t(item.title)}
             </span>
@@ -77,7 +77,7 @@ const SidebarItem: React.FC<any> = React.memo(({ item, isCollapsed, isChild = fa
           )}
 
           {isActive && !isCollapsed && !isChild && !isRequestsItem && (
-            <div className="ms-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            <div className="ms-auto w-1.5 h-1.5 rounded-full bg-brand-primary-400 animate-pulse" />
           )}
         </>
       )}
@@ -432,12 +432,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
             {/* Text identity */}
             <div className="flex min-w-0 flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
-              <span className="truncate text-sm font-black leading-tight text-white"
-                style={{ letterSpacing: '0.01em' }}>
+              <span className="text-xs font-bold leading-snug text-white line-clamp-2">
                 {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
               </span>
-              <span className="text-[10px] font-bold leading-tight tracking-wide text-brand-primary-400 mt-0.5">
-                {isRTL ? 'نظام الإدارة' : 'Management System'}
+              <span className="text-[10px] font-semibold leading-tight tracking-wide text-brand-primary-400 mt-0.5">
+                {isRTL ? 'نظام الإدارة الأكاديمية' : 'Academic Management System'}
               </span>
             </div>
           </Link>
@@ -483,18 +482,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <NavLink
               to="/dashboard"
               className={({ isActive }) => `
-                group flex items-center gap-3 rounded-2xl transition-all duration-150 w-full px-4 py-3 text-sm
+                group flex items-center gap-3 rounded-xl transition-all duration-150 w-full px-3.5 py-2.5 text-sm
                 ${isActive
-                  ? 'bg-brand-primary-600 text-white shadow-elevated shadow-brand-primary-600/20'
-                  : 'text-slate-300 hover:bg-white/5 hover:text-white/90 dark:text-slate-400 dark:hover:text-white/90'
+                  ? 'bg-brand-primary-500/15 text-white font-semibold shadow-xs border-s-[3px] border-brand-primary-400'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white dark:text-slate-400 dark:hover:text-white'
                 }
-                ${isCollapsed ? 'justify-center px-2' : ''}
+                ${isCollapsed ? 'justify-center px-2 border-s-0' : ''}
               `}
             >
               {({ isActive }) => (
                 <>
-                  <LayoutDashboard size={20} className={`shrink-0 transition-all duration-150 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-white/90 group-hover:scale-110'}`} />
-                  {!isCollapsed && <span className={`font-black uppercase tracking-widest transition-all ${isActive ? 'translate-x-1 rtl:-translate-x-1' : ''}`}>{t('nav.dashboard', 'Dashboard')}</span>}
+                  <LayoutDashboard size={20} className={`shrink-0 transition-all duration-150 ${isActive ? 'text-brand-primary-400 scale-105' : 'text-slate-400 group-hover:text-white group-hover:scale-105'}`} />
+                  {!isCollapsed && <span className={`font-semibold tracking-normal transition-all truncate ${isActive ? 'text-white' : ''}`}>{t('nav.dashboard', 'Dashboard')}</span>}
                 </>
               )}
             </NavLink>

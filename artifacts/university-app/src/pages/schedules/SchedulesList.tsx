@@ -178,8 +178,8 @@ const SchedulesList = () => {
       };
       const result = await schedulesService.getAllSchedules(params);
       if (result.success || result.data) {
-        const rawData = result.data as any;
-        const arr = Array.isArray(rawData)
+        const rawData = result.data as ScheduleSlot[] | { schedules?: ScheduleSlot[]; data?: ScheduleSlot[] } | null;
+        const arr: ScheduleSlot[] = Array.isArray(rawData)
           ? rawData
           : rawData?.schedules || rawData?.data || [];
         setSchedules(arr);

@@ -37,6 +37,7 @@ import AssignTACourseModal from './AssignTACourseModal';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { useToast } from '../../context/ToastContext';
+import type { TeachingAssistantRow, CourseRow } from '../../types/domain';
 
 export default function TeachingAssistantDetails({ isDrawerMode = false }: { isDrawerMode?: boolean }) {
   const { id } = useParams();
@@ -45,7 +46,7 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
   const { isRTL } = useLanguage();
   const { showToast } = useToast();
 
-  const [ta, setTa] = useState<any>(null);
+  const [ta, setTa] = useState<TeachingAssistantRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'courses'>('overview');
@@ -91,7 +92,7 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
   };
 
   const confirmUnassignCourse = async () => {
-    if (!unassignCourseTarget) return;
+    if (!unassignCourseTarget || !ta) return;
     try {
       setActionLoading(true);
       await api.delete(`/teaching-assistants/${ta.id}/courses/${unassignCourseTarget.courseId}`);
@@ -410,7 +411,7 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {taughtCourses.map((c: any) => {
+                  {taughtCourses.map((c: CourseRow) => {
                     const cDept = isRTL
                       ? c.department?.nameAr || c.department?.name
                       : c.department?.name || c.department?.nameAr;
@@ -545,14 +546,14 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
             </Card>
           ) : (
             <div className="grid grid-cols-1 gap-4">
-              {taughtCourses.map((course: any) => {
+              {taughtCourses.map((course: CourseRow) => {
                 const cDept = isRTL
                   ? course.department?.nameAr || course.department?.name
                   : course.department?.name || course.department?.nameAr;
                 const cCol = isRTL
                   ? course.department?.college?.nameAr || course.department?.college?.name
                   : course.department?.college?.name || course.department?.college?.nameAr;
-                const slots = scheduleSlots.filter((s: any) => s.courseId === course.id);
+                const slots = scheduleSlots.filter((s: { courseId?: number }) => s.courseId === course.id);
 
                 return (
                   <Card
@@ -631,7 +632,7 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
                         </p>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                          {slots.map((slot: any) => (
+                          {slots.map((slot: { id?: number | string; dayOfWeek?: string; slotType?: string; startTime?: string; endTime?: string; room?: string }) => (
                             <div
                               key={slot.id}
                               className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs"
@@ -661,7 +662,7 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
 
                               <button
                                 type="button"
-                                onClick={() => handleUnassignSlot(slot.id)}
+                                onClick={() => slot.id != null && handleUnassignSlot(Number(slot.id))}
                                 className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all"
                                 title={isRTL ? 'حذف الموعد' : 'Remove slot'}
                               >

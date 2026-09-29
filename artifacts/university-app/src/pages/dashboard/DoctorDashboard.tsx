@@ -101,7 +101,7 @@ export default function DoctorDashboard() {
                 <span className="text-white/60 text-xs">• {collegeName}</span>
               </div>
               <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
-                {isRTL ? `أهلاً بك، د. ${doctorName}` : `Welcome, Dr. ${doctorName}`}
+                {isRTL ? <>أهلاً بك، د. <bdi>{doctorName}</bdi></> : <>Welcome, Dr. <bdi>{doctorName}</bdi></>}
               </h1>
               <p className="text-xs md:text-sm text-white/80 font-medium flex items-center gap-2">
                 <Award size={14} className="text-brand-brand-green" />
@@ -114,7 +114,7 @@ export default function DoctorDashboard() {
             <Button
               variant="primary"
               size="default"
-              className="bg-brand-brand-green hover:bg-brand-brand-green-dark text-white font-bold text-xs shadow-overlay shadow-brand-brand-green/30 border-0 flex items-center gap-2 py-2.5 px-5 rounded-xl transition-all"
+              className="bg-brand-brand-green hover:bg-brand-brand-green-dark text-brand-navy-950 font-bold text-xs shadow-overlay shadow-brand-brand-green/30 border-0 flex items-center gap-2 py-2.5 px-5 rounded-xl transition-all"
               onClick={() => navigate('/attendance')}
             >
               <QrCode size={16} /> {isRTL ? 'بدء تسجيل الحضور (QR)' : 'Take Attendance'}

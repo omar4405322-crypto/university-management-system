@@ -117,7 +117,8 @@ export default function SlotModal({
           slotType: form.slotType,
         });
 
-        const conflictData = (res as any).data?.conflicts || (res as any).conflicts || [];
+        const resData = res.data as { conflicts?: Array<{ type: string; messageAr: string; messageEn: string; conflictingSlot?: unknown }> } | null;
+        const conflictData = resData?.conflicts || [];
         setConflicts(conflictData);
       } catch (err) {
         console.error('Conflict check error:', err);

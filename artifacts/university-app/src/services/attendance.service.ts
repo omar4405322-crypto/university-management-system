@@ -62,9 +62,17 @@ export interface RfidAttendanceParams {
   secret: string;
 }
 
+export interface AttendanceRecordData {
+  id?: number;
+  status?: string;
+  locationFlagged?: boolean;
+  recordedAt?: string;
+  [key: string]: unknown;
+}
+
 export interface RecordAttendanceResponse {
   success: boolean;
-  data?: any;
+  data?: AttendanceRecordData;
   existingStatus?: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
   alreadyRecorded?: boolean;
   recordedAt?: string;
@@ -77,6 +85,8 @@ export interface RecordAttendanceResponse {
   };
   message?: string;
   flagged?: boolean;
+  locationFlagged?: boolean;
+  status?: string;
 }
 
 const attendanceService = {
@@ -104,20 +114,20 @@ const attendanceService = {
     return response.data;
   },
 
-  recordFace: async (params: Record<string, any>): Promise<RecordAttendanceResponse> => {
+  recordFace: async (params: Record<string, unknown>): Promise<RecordAttendanceResponse> => {
     const response = await api.post('/attendance/face', params);
-    return response.data;
+    return response.data as RecordAttendanceResponse;
   },
 
-  recordGps: async (params: Record<string, any>): Promise<RecordAttendanceResponse> => {
+  recordGps: async (params: Record<string, unknown>): Promise<RecordAttendanceResponse> => {
     const response = await api.post('/attendance/gps', params);
-    return response.data;
+    return response.data as RecordAttendanceResponse;
   },
 
   getCourseAttendance: async (
     courseId: number,
     date?: string,
-    options: Record<string, any> = {}
+    options: Record<string, unknown> = {}
   ) => {
     const params = { ...options, ...(date ? { date } : {}) };
     const response = await api.get(`/attendance/course/${courseId}`, { params });
@@ -125,7 +135,7 @@ const attendanceService = {
   },
 
   getCourseRoster: async (courseId: number, date?: string, groupId?: number | null) => {
-    const params: any = {};
+    const params: Record<string, unknown> = {};
     if (date) params.date = date;
     if (groupId) params.groupId = groupId;
     const response = await api.get(`/courses/${courseId}/roster`, { params });
@@ -138,19 +148,19 @@ const attendanceService = {
     return response.data;
   },
 
-  getMyCourses: async (params?: Record<string, any>): Promise<ApiResponse<MyAttendanceCourse[]>> => {
+  getMyCourses: async (params?: Record<string, unknown>): Promise<ApiResponse<MyAttendanceCourse[]>> => {
     const response = await api.get('/attendance/my-courses', { params });
-    return response.data;
+    return response.data as ApiResponse<MyAttendanceCourse[]>;
   },
 
-  getMySlots: async (params?: Record<string, any>) => {
+  getMySlots: async (params?: Record<string, unknown>) => {
     const response = await api.get('/attendance/my-slots', { params });
     return response.data;
   },
 
   getMyAttendance: async (
     courseId?: number,
-    options: Record<string, any> = {}
+    options: Record<string, unknown> = {}
   ) => {
     const params = { ...options, ...(courseId ? { courseId } : {}) };
     const response = await api.get('/attendance/my-attendance', { params });
@@ -167,17 +177,17 @@ const attendanceService = {
     return response.data;
   },
 
-  getAttendanceRecords: async (params: Record<string, any>) => {
+  getAttendanceRecords: async (params: Record<string, unknown>) => {
     const response = await api.get('/attendance/records', { params });
     return response.data;
   },
 
-  getMyWarnings: async (params: Record<string, any> = {}) => {
+  getMyWarnings: async (params: Record<string, unknown> = {}) => {
     const response = await api.get('/attendance/my-warnings', { params });
     return response.data;
   },
 
-  exportWarnings: async (params: Record<string, any> = {}) => {
+  exportWarnings: async (params: Record<string, unknown> = {}) => {
     const response = await api.get('/attendance/warnings/export', {
       params,
       responseType: 'blob',
@@ -201,7 +211,7 @@ const attendanceService = {
   },
 
   getActiveSession: async (courseId?: number, scheduleSlotId?: number) => {
-    const params: any = {};
+    const params: Record<string, unknown> = {};
     if (courseId) params.courseId = courseId;
     if (scheduleSlotId) params.scheduleSlotId = scheduleSlotId;
     const response = await api.get('/attendance/sessions/active', { params });
@@ -214,8 +224,15 @@ const attendanceService = {
   },
 
   recordAttendanceWithQR: async (payload: { sessionId: number; token: string; deviceId: string; step?: number }, location?: { latitude: number; longitude: number }): Promise<RecordAttendanceResponse> => {
-    const data = { ...payload, ...location };
-    return attendanceService.recordQr(data as any);
+    const data: QrAttendanceParams = {
+      sessionId: payload.sessionId,
+      token: payload.token,
+      deviceId: payload.deviceId,
+      step: payload.step,
+      latitude: location?.latitude,
+      longitude: location?.longitude,
+    };
+    return attendanceService.recordQr(data);
   },
 
   scanQr: async (data: QrAttendanceParams): Promise<RecordAttendanceResponse> => {
@@ -239,7 +256,7 @@ const attendanceService = {
 
   getSlotSessions: async (
     slotId: number,
-    params: Record<string, any> = {}
+    params: Record<string, unknown> = {}
   ) => {
     const response = await api.get(`/attendance/slot/${slotId}/sessions`, {
       params,

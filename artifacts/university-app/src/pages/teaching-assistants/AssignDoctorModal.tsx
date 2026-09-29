@@ -6,21 +6,23 @@ import Button from '../../components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { X, Search, Loader2, Link, Trash2 } from 'lucide-react';
 
+import type { TeachingAssistantRow, DoctorRow } from '../../types/domain';
+
 interface AssignDoctorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  ta: any;
+  ta: TeachingAssistantRow;
 }
 
 const AssignDoctorModal: React.FC<AssignDoctorModalProps> = ({ isOpen, onClose, onSuccess, ta }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [doctors, setDoctors] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<DoctorRow[]>([]);
   const [search, setSearch] = useState('');
   const [fetchingDoctors, setFetchingDoctors] = useState(false);
-  const [assigningDoctorId, setAssigningDoctorId] = useState<any>(null);
-  const [unassigningDoctorId, setUnassigningDoctorId] = useState<any>(null);
+  const [assigningDoctorId, setAssigningDoctorId] = useState<number | string | null>(null);
+  const [unassigningDoctorId, setUnassigningDoctorId] = useState<number | string | null>(null);
 
   const fetchDoctors = useCallback(async () => {
     setFetchingDoctors(true);
@@ -42,10 +44,10 @@ const AssignDoctorModal: React.FC<AssignDoctorModalProps> = ({ isOpen, onClose, 
     }
   }, [isOpen, fetchDoctors]);
 
-  const handleAssign = async (doctorId: any) => {
+  const handleAssign = async (doctorId: number | string) => {
     try {
       setAssigningDoctorId(doctorId);
-      const res = await teachingAssistantsService.assignToDoctor(ta.id, doctorId);
+      const res = await teachingAssistantsService.assignToDoctor(String(ta.id), Number(doctorId));
       if (res.success) {
         toast.success(t('teachingAssistants.assignSuccess'));
         onSuccess();
@@ -59,10 +61,10 @@ const AssignDoctorModal: React.FC<AssignDoctorModalProps> = ({ isOpen, onClose, 
     }
   };
 
-  const handleUnassign = async (doctorId: any) => {
+  const handleUnassign = async (doctorId: number | string) => {
     try {
       setUnassigningDoctorId(doctorId);
-      const res = await teachingAssistantsService.unassignFromDoctor(ta.id, doctorId);
+      const res = await teachingAssistantsService.unassignFromDoctor(String(ta.id), Number(doctorId));
       if (res.success) {
         toast.success(t('teachingAssistants.unassignSuccess'));
         onSuccess();
@@ -78,7 +80,7 @@ const AssignDoctorModal: React.FC<AssignDoctorModalProps> = ({ isOpen, onClose, 
 
   if (!isOpen || !ta) return null;
 
-  const assignedDoctorIds = new Set(ta.doctors?.map((d: any) => d.doctorId) || []);
+  const assignedDoctorIds = new Set(ta.doctors?.map((d: { doctorId: number }) => d.doctorId) || []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -103,17 +105,17 @@ const AssignDoctorModal: React.FC<AssignDoctorModalProps> = ({ isOpen, onClose, 
             <h3 className="text-sm font-bold text-brand-text-main mb-3">{t('teachingAssistants.currentlyAssigned')}</h3>
             {ta.doctors && ta.doctors.length > 0 ? (
               <div className="space-y-2">
-                {ta.doctors.map((d: any) => (
-                  <div key={d.id} className="flex items-center justify-between p-3 border border-brand-border rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                {ta.doctors.map((d: { id?: number | string; doctorId: number; doctor?: { firstName?: string; lastName?: string; doctorId?: string } }) => (
+                  <div key={d.id || d.doctorId} className="flex items-center justify-between p-3 border border-brand-border rounded-xl bg-slate-50 dark:bg-slate-800/50">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-brand-primary-500/10 flex items-center justify-center text-brand-primary-600 font-bold text-xs">
-                        {d.doctor.firstName?.[0]}{d.doctor.lastName?.[0]}
+                        {d.doctor?.firstName?.[0]}{d.doctor?.lastName?.[0]}
                       </div>
                       <div>
                         <div className="font-semibold text-sm text-brand-text-primary dark:text-white">
-                          {d.doctor.firstName} {d.doctor.lastName}
+                          {d.doctor?.firstName} {d.doctor?.lastName}
                         </div>
-                        <div className="text-xs text-brand-text-secondary">{d.doctor.doctorId}</div>
+                        <div className="text-xs text-brand-text-secondary">{d.doctor?.doctorId}</div>
                       </div>
                     </div>
                     <Button
@@ -152,7 +154,7 @@ const AssignDoctorModal: React.FC<AssignDoctorModalProps> = ({ isOpen, onClose, 
               {fetchingDoctors && doctors.length === 0 ? (
                 <div className="flex justify-center p-4"><Loader2 className="w-6 h-6 animate-spin text-brand-primary-500" /></div>
               ) : doctors.filter(doc => !assignedDoctorIds.has(doc.id)).length > 0 ? (
-                doctors.filter(doc => !assignedDoctorIds.has(doc.id)).map((doc: any) => (
+                doctors.filter(doc => !assignedDoctorIds.has(doc.id)).map((doc: DoctorRow) => (
                   <div key={doc.id} className="flex items-center justify-between p-3 border border-brand-border rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-xs">

@@ -5,9 +5,12 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import type { TFunction } from 'i18next';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
+import { UNIVERSITY_LOGO, UNIVERSITY_LOGO_WHITE } from '../constants/universityAssets';
 import {
   LogIn,
   Mail,
@@ -19,12 +22,15 @@ import {
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
+  Globe,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import Button from '../components/ui/button';
 import Input from '../components/ui/input';
 
 // ── Zod schema ──────────────────────────────────────────────────────────────
-const getLoginSchema = (t: any) => z.object({
+const getLoginSchema = (t: TFunction) => z.object({
   email: z.string().min(1, { message: t('validation.emailRequired') }).email({ message: t('validation.emailInvalid') }),
   password: z.string().min(1, { message: t('validation.passwordRequired') }).min(8, { message: t('validation.passwordMin') }),
   totpToken: z.string().optional(),
@@ -45,7 +51,8 @@ const Login = () => {
   const [apiError, setApiError] = useState('');
 
   const { t } = useTranslation();
-  const { isRTL } = useLanguage();
+  const { isRTL, language, toggleLanguage } = useLanguage();
+  const { isDark, toggleTheme } = useTheme();
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -195,58 +202,104 @@ const Login = () => {
         }}
       />
 
-      <Link
-        to="/"
-        className="fixed top-5 end-6 z-20 flex items-center gap-2 text-white/85 hover:text-white font-bold text-sm transition-all duration-200 hover:underline group"
-      >
-        <span>{isRTL ? 'العودة للرئيسية' : 'Back to Home'}</span>
-        {isRTL ? (
-          <ArrowLeft size={18} strokeWidth={2} className="group-hover:-translate-x-1 transition-transform" />
-        ) : (
-          <ArrowRight size={18} strokeWidth={2} className="group-hover:translate-x-1 transition-transform" />
-        )}
-      </Link>
+      {/* ── Top Navigation Bar with Brand, Language & Theme Controls ── */}
+      <div className="fixed top-5 inset-x-6 z-20 flex items-center justify-between pointer-events-none">
+        <Link
+          to="/"
+          className="pointer-events-auto flex items-center gap-3 text-white/90 hover:text-white transition-opacity"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 backdrop-blur-md">
+            <img src={UNIVERSITY_LOGO_WHITE} alt="Logo" className="h-6 w-6 object-contain" />
+          </div>
+          <span className="text-xs font-bold hidden sm:inline-block text-white leading-tight">
+            {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
+          </span>
+        </Link>
+
+        <div className="pointer-events-auto flex items-center gap-2.5">
+          {/* Language Toggle */}
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold backdrop-blur-md border border-white/15 transition-all cursor-pointer"
+            aria-label="Toggle language"
+          >
+            <Globe size={14} />
+            <span>{language === 'ar' ? 'English' : 'العربية'}</span>
+          </button>
+
+          {/* Theme Toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/15 transition-all cursor-pointer"
+            aria-label="Toggle theme"
+          >
+            {isDark ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+
+          {/* Back to Home Link */}
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold backdrop-blur-md border border-white/15 transition-all"
+          >
+            <span>{isRTL ? 'الرئيسية' : 'Home'}</span>
+            {isRTL ? (
+              <ArrowLeft size={14} strokeWidth={2} />
+            ) : (
+              <ArrowRight size={14} strokeWidth={2} />
+            )}
+          </Link>
+        </div>
+      </div>
 
       <div className="absolute top-1/2 left-1/2 z-10 w-full max-w-[420px] px-4 sm:px-0 card-entrance">
         <div 
-          className="rounded-[16px] shadow-[0_25px_50px_rgba(0,0,0,0.4)] transition-all duration-300 w-full bg-white"
+          className="rounded-2xl shadow-2xl transition-all duration-300 w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white"
           style={{
-            padding: '48px 40px',
-            borderTop: '3px solid #84cc16',
+            padding: '36px 32px',
+            borderTop: '3px solid var(--color-brand-primary-500)',
           }}
         >
           <div className="text-center flex flex-col items-center justify-center">
-            <h1 className="text-[18px] font-bold text-slate-800 leading-tight">
+            {/* University Crest Logo */}
+            <div className="flex justify-center mb-3">
+              <div className="h-12 w-12 rounded-xl bg-brand-navy-500 flex items-center justify-center p-2 shadow-sm ring-1 ring-white/10">
+                <img src={UNIVERSITY_LOGO_WHITE} alt="Logo" className="h-full w-full object-contain" />
+              </div>
+            </div>
+
+            <h1 className="text-base font-bold text-slate-800 dark:text-slate-200 leading-tight">
               {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
             </h1>
-            <div className="w-10 h-[3px] bg-[#84cc16] rounded-full mx-auto mt-2.5 mb-2.5" />
-            <p className="text-[12px] text-gray-400 font-semibold">
+            <div className="w-10 h-[3px] bg-brand-primary-500 rounded-full mx-auto mt-2 mb-2" />
+            <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold">
               {isRTL ? 'نظام الإدارة الأكاديمية' : 'Academic Management System'}
             </p>
-            <h2 className="text-[26px] font-black text-slate-900 tracking-tight leading-tight mt-5">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight mt-4">
               {isRTL ? 'تسجيل الدخول' : 'Sign In'}
             </h2>
           </div>
 
-          <div className="w-full mt-6 space-y-6">
+          <div className="w-full mt-6 space-y-5">
             {apiError && (
-              <div className="p-4 bg-red-50 border-s-4 border-s-[var(--error)] rounded-e-xl text-red-700 text-sm font-medium flex items-center gap-3 animate-in fade-in zoom-in-95">
-                <AlertCircle size={20} strokeWidth={2} className="shrink-0 text-red-500" />
+              <div className="p-3.5 bg-red-50 dark:bg-red-950/30 border-s-4 border-s-red-500 rounded-e-xl text-red-700 dark:text-red-400 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in zoom-in-95">
+                <AlertCircle size={18} strokeWidth={2} className="shrink-0 text-red-500" />
                 <span>{apiError}</span>
               </div>
             )}
 
-            <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
               {!show2FA ? (
                 <>
-                  <div className="space-y-2 text-start">
-                    <label htmlFor="login-email" className="text-xs font-black uppercase tracking-widest text-brand-text-muted ms-1">
+                  <div className="space-y-1.5 text-start">
+                    <label htmlFor="login-email" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 ms-1">
                       {t('auth.emailAddress')}
                     </label>
                     <div className="relative group">
                       <Mail
-                        className="absolute start-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#84cc16] transition-colors"
-                        size={18}
+                        className="absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary-500 transition-colors"
+                        size={17}
                         strokeWidth={2}
                       />
                       <input
@@ -255,10 +308,10 @@ const Login = () => {
                         type="email"
                         placeholder={t('auth.emailPlaceholder')}
                         autoComplete="email"
-                        className={`login-input w-full h-[52px] ps-12 pe-4 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-[15px] focus:outline-none transition-all duration-200 ${
+                        className={`login-input w-full h-[48px] ps-11 pe-4 rounded-xl border bg-slate-50/60 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none transition-all duration-200 ${
                           errors.email
                             ? 'border-rose-500'
-                            : 'border-[var(--brand-border)]'
+                            : 'border-slate-200 dark:border-slate-700'
                         }`}
                       />
                     </div>
@@ -267,23 +320,23 @@ const Login = () => {
                     )}
                   </div>
 
-                  <div className="space-y-2 text-start">
+                  <div className="space-y-1.5 text-start">
                     <div className="flex items-center justify-between mx-1">
-                      <label htmlFor="login-password" className="text-xs font-black uppercase tracking-widest text-brand-text-muted">
+                      <label htmlFor="login-password" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         {t('auth.password')}
                       </label>
                       <button
                         type="button"
                         onClick={() => setShowForgotModal(true)}
-                        className="text-xs font-bold text-[#84cc16] hover:text-[#65a30d] transition-colors cursor-pointer"
+                        className="text-xs font-semibold text-brand-navy-600 dark:text-brand-primary-400 hover:text-brand-primary-600 dark:hover:text-brand-primary-300 transition-colors cursor-pointer"
                       >
                         {isRTL ? 'نسيت كلمة المرور؟' : 'Forgot password?'}
                       </button>
                     </div>
                     <div className="relative group">
                       <Lock
-                        className="absolute start-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#84cc16] transition-colors"
-                        size={18}
+                        className="absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary-500 transition-colors"
+                        size={17}
                         strokeWidth={2}
                       />
                       <input
@@ -292,19 +345,19 @@ const Login = () => {
                         type={showPassword ? 'text' : 'password'}
                         placeholder={t('auth.passwordPlaceholder')}
                         autoComplete="current-password"
-                        className={`login-input w-full h-[52px] ps-12 pe-12 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-[15px] focus:outline-none transition-all duration-200 ${
+                        className={`login-input w-full h-[48px] ps-11 pe-11 rounded-xl border bg-slate-50/60 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none transition-all duration-200 ${
                           errors.password
                             ? 'border-rose-500'
-                            : 'border-[var(--brand-border)]'
+                            : 'border-slate-200 dark:border-slate-700'
                         }`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute end-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        className="absolute end-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                         aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                       >
-                        {showPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+                        {showPassword ? <EyeOff size={17} strokeWidth={2} /> : <Eye size={17} strokeWidth={2} />}
                       </button>
                     </div>
                     {errors.password && (
@@ -314,23 +367,23 @@ const Login = () => {
                 </>
               ) : (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
-                  <div className="p-4 bg-brand-primary-50 rounded-2xl border border-brand-primary-100 text-center">
-                    <p className="text-sm font-bold text-brand-primary-600">
+                  <div className="p-4 bg-brand-primary-50 dark:bg-brand-primary-950/30 rounded-xl border border-brand-primary-200 dark:border-brand-primary-900 text-center">
+                    <p className="text-sm font-bold text-brand-primary-700 dark:text-brand-primary-400">
                       Two-Factor Authentication
                     </p>
-                    <p className="text-xs text-brand-text-secondary mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Enter the 6-digit code
                     </p>
                   </div>
 
-                  <div className="space-y-2 text-start">
-                    <label htmlFor="login-totp" className="text-xs font-black uppercase tracking-widest text-brand-text-muted ms-1">
+                  <div className="space-y-1.5 text-start">
+                    <label htmlFor="login-totp" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 ms-1">
                       Code
                     </label>
                     <div className="relative group">
                       <Lock
-                        className="absolute start-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#84cc16] transition-colors"
-                        size={18}
+                        className="absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary-500 transition-colors"
+                        size={17}
                         strokeWidth={2}
                       />
                       <input
@@ -340,10 +393,10 @@ const Login = () => {
                         autoFocus
                         placeholder="000000"
                         maxLength={6}
-                        className={`login-input w-full h-[52px] ps-12 pe-4 rounded-[10px] border-[1.5px] bg-white text-brand-navy placeholder:text-brand-text-muted text-sm text-center font-mono tracking-[0.5em] focus:outline-none transition-all ${
+                        className={`login-input w-full h-[48px] ps-11 pe-4 rounded-xl border bg-slate-50/60 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm text-center font-mono tracking-[0.5em] focus:outline-none transition-all ${
                           errors.totpToken
                             ? 'border-rose-500'
-                            : 'border-[var(--brand-border)]'
+                            : 'border-slate-200 dark:border-slate-700'
                         }`}
                       />
                     </div>
@@ -352,9 +405,9 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={() => setShow2FA(false)}
-                    className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted hover:text-brand-text-primary transition-colors"
+                    className="text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    {isRTL ? '← العودة لتسجيل الدخول' : '← Back to login'}
+                    {isRTL ? '→ العودة لتسجيل الدخول' : '← Back to login'}
                   </button>
                 </div>
               )}
@@ -362,30 +415,30 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="login-btn w-full h-[52px] text-white font-bold rounded-[10px] shadow-lg transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full h-[48px] bg-brand-primary-500 hover:bg-brand-primary-400 text-brand-navy-950 font-black rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2.5 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer text-sm uppercase tracking-wider"
               >
                 {isSubmitting ? (
-                  <Loader2 className="animate-spin" size={24} strokeWidth={2} />
+                  <Loader2 className="animate-spin text-brand-navy-950" size={20} strokeWidth={2.5} />
                 ) : (
                   <span>{show2FA ? (isRTL ? 'التحقق' : 'Verify') : t('auth.login')}</span>
                 )}
               </button>
             </form>
 
-            <div className="text-center pt-2">
-              <p className="text-sm text-gray-500 font-medium">
+            <div className="text-center pt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 {t('auth.noAccount')}{' '}
                 <Link
                   to="/register"
-                  className="text-[#84cc16] font-bold hover:underline transition-colors"
+                  className="text-brand-primary-600 dark:text-brand-primary-400 font-bold hover:underline transition-colors"
                 >
                   {t('auth.registerHere')}
                 </Link>
               </p>
             </div>
 
-            <div className="text-[11px] text-gray-400 text-center mt-8">
-              © 2024 جامعة 6 أكتوبر التكنولوجية
+            <div className="text-[11px] text-slate-400 dark:text-slate-500 text-center mt-6">
+              © {new Date().getFullYear()} {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
             </div>
           </div>
         </div>

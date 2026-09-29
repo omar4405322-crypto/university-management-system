@@ -134,7 +134,7 @@ const Pagination: React.FC<PaginationProps> = ({
   return (
     <div
       role="navigation"
-      aria-label={t('common.pagination', 'التنقل بين الصفحات')}
+      aria-label={t('common.pagination', isRTL ? 'التنقل بين الصفحات' : 'Pagination Navigation')}
       className={cn(
         'flex flex-wrap items-center justify-between gap-3 p-4 border-t border-slate-200/80 dark:border-slate-700/80 bg-slate-50/60 dark:bg-slate-900/30 text-xs text-slate-500 dark:text-slate-400 select-none',
         className

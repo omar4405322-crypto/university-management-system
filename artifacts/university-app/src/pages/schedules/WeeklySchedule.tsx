@@ -27,7 +27,8 @@ import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import useScope from '../../hooks/useScope';
 import type { College, Department } from '../../types/timetable.types';
-import type { ScheduleSlot, TimetableDayRecord } from './DoctorSchedule';
+import type { ScheduleSlotData } from '../../services/schedules.service';
+import type { TimetableDayRecord, ScheduleSlot } from './DoctorSchedule';
 
 const getSessionBadgeColor = (type: string) => {
   switch (type) {
@@ -114,7 +115,7 @@ const WeeklySchedule = () => {
       if (!isPolling) setLoading(true);
       if (!isPolling) setError(null);
 
-      const params: any = { ...scopeParams };
+      const params: Record<string, unknown> = { ...scopeParams };
       if (!isCollegeAdmin) {
         if (selectedCollege) params.collegeId = selectedCollege;
         if (selectedDept) params.departmentId = selectedDept;
@@ -124,18 +125,43 @@ const WeeklySchedule = () => {
 
       const result = await schedulesService.getAllWeeklyTimetable(params);
       if (result.success && result.data && Array.isArray(result.data)) {
-        const grouped = result.data.reduce((acc: TimetableDayRecord, slot: ScheduleSlot) => {
+        const grouped = result.data.reduce((acc: TimetableDayRecord, slot: ScheduleSlotData) => {
           if (!slot.dayOfWeek) return acc;
           const dayName = slot.dayOfWeek.charAt(0).toUpperCase() + slot.dayOfWeek.slice(1).toLowerCase();
           if (!acc[dayName]) acc[dayName] = [];
-          acc[dayName].push(slot);
+          const slotItem: ScheduleSlot = {
+            id: slot.id,
+            isArchived: slot.isArchived,
+            dayOfWeek: slot.dayOfWeek,
+            startTime: slot.startTime || '',
+            endTime: slot.endTime,
+            room: slot.room,
+            slotType: slot.slotType,
+            year: slot.year,
+            semester: slot.semester,
+            doctorId: slot.doctorId,
+            doctor: slot.doctor,
+            teachingAssistantId: slot.teachingAssistantId,
+            teachingAssistant: slot.teachingAssistant,
+            courseId: slot.courseId,
+            course: slot.course
+              ? {
+                  id: slot.course.id,
+                  name: slot.course.name,
+                  courseCode: slot.course.code,
+                }
+              : null,
+            groupId: slot.groupId,
+            group: slot.group,
+          };
+          acc[dayName].push(slotItem);
           return acc;
-        }, {});
+        }, {} as TimetableDayRecord);
         setTimetable(grouped);
       } else {
         setTimetable(null);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Error fetching timetable:', err);
       setError(t('common.errorFetching'));
     } finally {

@@ -43,6 +43,7 @@ import CourseModal from "./CourseModal";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import { logger } from "../../lib/logger";
 import { useToast } from "../../context/ToastContext";
+import type { CourseRow } from "../../types/domain";
 import useScope from "../../hooks/useScope";
 import { downloadCsv } from "../../utils/exportCsv";
 import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
@@ -85,7 +86,7 @@ export function CoursesList() {
 
   const totalPages = Math.ceil(total / pageSize) || 1;
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [selectedCourse, setSelectedCourse] = useState<CourseRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string | number;
     name: string;
@@ -102,7 +103,7 @@ export function CoursesList() {
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       setSelectedIds(
-        Array.isArray(courses) ? courses.map((c: any) => c.id) : [],
+        Array.isArray(courses) ? courses.map((c: CourseRow) => c.id) : [],
       );
     } else {
       setSelectedIds([]);
@@ -119,9 +120,9 @@ export function CoursesList() {
 
   const handleBulkExport = () => {
     const selectedCourses = (Array.isArray(courses) ? courses : []).filter(
-      (c: any) => selectedIds.includes(c.id),
+      (c: CourseRow) => selectedIds.includes(c.id),
     );
-    const exportData = selectedCourses.map((c: any) => ({
+    const exportData = selectedCourses.map((c: CourseRow) => ({
       Code: c.courseCode,
       Name: c.name,
       Credits: c.credits,
@@ -665,19 +666,16 @@ export function CoursesList() {
 
               <TableBody>
                 {courses.map((course) => {
-                  const slots = course.sections || course.scheduleSlots || [];
-                  const uniqueDoctors = slots
-                    ? Array.from(
-                        new Map(
-                          slots
-                            .filter((s: any) => s.doctor)
-                            .map((s: any) => [s.doctor.id, s.doctor]) as [
-                            string | number,
-                            any,
-                          ][],
-                        ).values(),
-                      )
-                    : [];
+                  const slots = (course.sections || course.scheduleSlots || []) as Array<{
+                    doctor?: { id: number | string; firstName?: string; lastName?: string } | null;
+                  }>;
+                  const doctorMap = new Map<string | number, { id: number | string; firstName?: string; lastName?: string }>();
+                  for (const s of slots) {
+                    if (s.doctor && s.doctor.id != null) {
+                      doctorMap.set(s.doctor.id, s.doctor);
+                    }
+                  }
+                  const uniqueDoctors = Array.from(doctorMap.values());
                   const isSelected = selectedIds.includes(course.id);
 
                   return (

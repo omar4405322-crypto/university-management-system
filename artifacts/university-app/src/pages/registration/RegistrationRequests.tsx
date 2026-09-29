@@ -1,49 +1,23 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Users,
   Clock,
   CheckCircle2,
   XCircle,
-  Search,
-  Filter,
   Download,
   RotateCw,
-  LayoutGrid,
-  LayoutList,
-  Eye,
   Check,
   X,
-  Building2,
   GraduationCap,
-  Calendar,
-  Mail,
-  Phone,
-  AlertTriangle,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  ShieldCheck,
-  UserCheck,
-  FileSpreadsheet,
-  Trash2,
+  Users,
 } from "lucide-react";
 
-import Card, { StatCard } from "../../components/ui/card";
-import Badge from "../../components/ui/badge";
+import Card from "../../components/ui/card";
 import Button from "../../components/ui/button";
-import Modal from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState } from "../../components/ui/EmptyState";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import Pagination from "../../components/ui/pagination";
-import Table, {
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "../../components/ui/table";
 import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
 import registrationService from "../../services/registration.service";
 import collegeService from "../../services/college.service";
@@ -57,9 +31,19 @@ import {
   PRESET_REASONS,
 } from "./components/RegistrationRejectModal";
 import { RegistrationDetailsModal } from "./components/RegistrationDetailsModal";
+import { RegistrationKpiStats } from "./components/RegistrationKpiStats";
+import { RegistrationFilterBar } from "./components/RegistrationFilterBar";
+import { RegistrationRequestsTable } from "./components/RegistrationRequestsTable";
+import { RegistrationRequestsCards } from "./components/RegistrationRequestsCards";
 
-type StatusFilterType = "PENDING" | "APPROVED" | "REJECTED" | "ALL";
-type ViewModeType = "table" | "cards";
+import type {
+  RegistrationRequestItem,
+  CollegeOption,
+  RegistrationKpiCounts,
+  StatusFilterType,
+  ViewModeType,
+  StatusBadgeConfig,
+} from "./types";
 
 const RegistrationRequests: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -68,8 +52,8 @@ const RegistrationRequests: React.FC = () => {
   const { fetchPendingRequestsCount } = useNotifications();
 
   // Data states
-  const [requests, setRequests] = useState<any[]>([]);
-  const [colleges, setColleges] = useState<any[]>([]);
+  const [requests, setRequests] = useState<RegistrationRequestItem[]>([]);
+  const [colleges, setColleges] = useState<CollegeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -89,22 +73,23 @@ const RegistrationRequests: React.FC = () => {
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   // Single action states
-  const [actionLoadingId, setActionLoadingId] = useState<
-    string | number | null
-  >(null);
+  const [actionLoadingId, setActionLoadingId] = useState<string | number | null>(null);
 
   // Modals
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [selectedRequest, setSelectedRequest] =
+    useState<RegistrationRequestItem | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
-  const [rejectTarget, setRejectTarget] = useState<any>(null);
+  const [rejectTarget, setRejectTarget] =
+    useState<RegistrationRequestItem | null>(null);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [selectedPresetReason, setSelectedPresetReason] = useState<string>("");
   const [customRejectionReason, setCustomRejectionReason] =
     useState<string>("");
 
   // Delete states
-  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] =
+    useState<RegistrationRequestItem | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [showBulkRejectModal, setShowBulkRejectModal] = useState(false);
@@ -136,15 +121,15 @@ const RegistrationRequests: React.FC = () => {
         ]);
 
         if (resRequests.success && Array.isArray(resRequests.data)) {
-          setRequests(resRequests.data);
+          setRequests(resRequests.data as RegistrationRequestItem[]);
         } else {
           setRequests([]);
         }
 
         if (resColleges.success && Array.isArray(resColleges.data)) {
-          setColleges(resColleges.data);
+          setColleges(resColleges.data as CollegeOption[]);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         logger.error("Error fetching registration requests:", error);
         showToast(t("common.errorFetching", "Error fetching data"), "error");
         setRequests([]);
@@ -162,7 +147,7 @@ const RegistrationRequests: React.FC = () => {
   }, [fetchRequests]);
 
   // Derived KPI Counts
-  const counts = useMemo(() => {
+  const counts: RegistrationKpiCounts = useMemo(() => {
     const total = requests.length;
     const pending = requests.filter((r) => r.status === "PENDING").length;
     const approved = requests.filter((r) => r.status === "APPROVED").length;
@@ -181,12 +166,10 @@ const RegistrationRequests: React.FC = () => {
     const query = search.trim().toLowerCase();
 
     return requests.filter((req) => {
-      // Status filter
       if (statusFilter !== "ALL" && req.status !== statusFilter) {
         return false;
       }
 
-      // College filter
       if (selectedCollege !== "ALL") {
         const collegeId =
           req.department?.collegeId || req.department?.college?.id;
@@ -195,12 +178,10 @@ const RegistrationRequests: React.FC = () => {
         }
       }
 
-      // Role filter
       if (selectedRole !== "ALL" && req.role !== selectedRole) {
         return false;
       }
 
-      // Search query
       if (query) {
         const fullName =
           `${req.firstName || ""} ${req.lastName || ""}`.toLowerCase();
@@ -274,7 +255,7 @@ const RegistrationRequests: React.FC = () => {
   };
 
   // Actions: Open Reject Modal
-  const handleOpenRejectModal = (req: any) => {
+  const handleOpenRejectModal = (req: RegistrationRequestItem) => {
     setRejectTarget(req);
     setSelectedPresetReason(PRESET_REASONS[0]);
     setCustomRejectionReason("");
@@ -364,7 +345,7 @@ const RegistrationRequests: React.FC = () => {
   };
 
   // Batch Actions: Bulk Reject
-  const handleBulkReject = async () => {
+  const handleBulkReject = () => {
     if (selectedIds.length === 0) return;
     const pendingSelected = requests.filter(
       (r) => selectedIds.includes(r.id) && r.status === "PENDING",
@@ -425,7 +406,7 @@ const RegistrationRequests: React.FC = () => {
   };
 
   // Actions: Single Delete
-  const handleDeleteClick = (req: any) => {
+  const handleDeleteClick = (req: RegistrationRequestItem) => {
     setDeleteTarget(req);
     setIsDeleteModalOpen(true);
   };
@@ -565,12 +546,12 @@ const RegistrationRequests: React.FC = () => {
     );
   };
 
-  const handleView = (req: any) => {
+  const handleView = (req: RegistrationRequestItem) => {
     setSelectedRequest(req);
     setIsDetailsModalOpen(true);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string): StatusBadgeConfig => {
     switch (status) {
       case "APPROVED":
         return {
@@ -605,6 +586,13 @@ const RegistrationRequests: React.FC = () => {
           dotClass: "bg-slate-400",
         };
     }
+  };
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setStatusFilter("ALL");
+    setSelectedCollege("ALL");
+    setSelectedRole("ALL");
   };
 
   return (
@@ -668,662 +656,100 @@ const RegistrationRequests: React.FC = () => {
         }
       />
 
-      {/* ========================================================================= */}
-      {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        <StatCard
-          compact
-          title={t("registration.pendingReview", "Pending Review")}
-          value={counts.pending}
-          icon={Clock}
-          color="amber"
-          alert={counts.pending > 0}
-          alertLabel={isRTL ? "معلق" : "Pending"}
-          isActive={statusFilter === "PENDING"}
-          onClick={() =>
-            setStatusFilter(statusFilter === "PENDING" ? "ALL" : "PENDING")
-          }
-        />
+      {/* 2. Executive 4-Metric Ribbon */}
+      <RegistrationKpiStats
+        counts={counts}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        isRTL={isRTL}
+      />
 
-        <StatCard
-          compact
-          title={t("registration.approvedTotal", "Approved Requests")}
-          value={counts.approved}
-          icon={CheckCircle2}
-          color="emerald"
-          isActive={statusFilter === "APPROVED"}
-          onClick={() =>
-            setStatusFilter(statusFilter === "APPROVED" ? "ALL" : "APPROVED")
-          }
-        />
+      {/* 3. Filter & Search Controls Card */}
+      <RegistrationFilterBar
+        search={search}
+        setSearch={setSearch}
+        selectedCollege={selectedCollege}
+        setSelectedCollege={setSelectedCollege}
+        selectedRole={selectedRole}
+        setSelectedRole={setSelectedRole}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        colleges={colleges}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        isRTL={isRTL}
+      />
 
-        <StatCard
-          compact
-          title={t("registration.rejectedTotal", "Rejected Requests")}
-          value={counts.rejected}
-          icon={XCircle}
-          color="rose"
-          isActive={statusFilter === "REJECTED"}
-          onClick={() =>
-            setStatusFilter(statusFilter === "REJECTED" ? "ALL" : "REJECTED")
-          }
-        />
-
-        <StatCard
-          compact
-          title={t("registration.totalRegistrations", "Total Registrations")}
-          value={counts.total}
-          icon={Users}
-          color="primary"
-          isActive={statusFilter === "ALL"}
-          onClick={() => setStatusFilter("ALL")}
-        />
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. UNIFIED COMPACT FILTER TOOLBAR                                         */}
-      {/* ========================================================================= */}
-      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2 mb-4">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search
-            size={14}
-            className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400"
-          />
-          <input
-            type="text"
-            placeholder={t(
-              "registration.searchPlaceholder",
-              "Search by name, email, or student ID...",
-            )}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-            >
-              <X size={12} />
-            </button>
-          )}
-        </div>
-
-        {/* College Filter */}
-        <select
-          value={selectedCollege}
-          onChange={(e) => setSelectedCollege(e.target.value)}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="ALL">
-            {t("registration.allColleges", "All Colleges")}
-          </option>
-          {colleges.map((c) => (
-            <option key={c.id} value={c.id}>
-              {isRTL ? c.nameAr || c.name : c.name}
-            </option>
-          ))}
-        </select>
-
-        {/* Role Filter */}
-        <select
-          value={selectedRole}
-          onChange={(e) => setSelectedRole(e.target.value)}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="ALL">{t("registration.allRoles", "All Roles")}</option>
-          <option value="STUDENT">{t("roles.STUDENT", "Student")}</option>
-          <option value="DOCTOR">{t("roles.DOCTOR", "Professor")}</option>
-        </select>
-
-        {/* Clear Filters Button */}
-        {(search ||
-          selectedCollege !== "ALL" ||
-          selectedRole !== "ALL" ||
-          statusFilter !== "ALL") && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setSearch("");
-              setSelectedCollege("ALL");
-              setSelectedRole("ALL");
-              setStatusFilter("ALL");
-            }}
-            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
-          >
-            <X size={13} className="me-1" />
-            {isRTL ? "مسح" : "Clear"}
-          </Button>
-        )}
-
-        {/* View Mode Switcher */}
-        <div className="flex items-center bg-slate-100 dark:bg-slate-900/80 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 ms-auto">
-          <button
-            onClick={() => setViewMode("table")}
-            title={t("registration.tableView", "Table View")}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
-              viewMode === "table"
-                ? "bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-            }`}
-          >
-            <LayoutList size={13} />
-            <span className="hidden sm:inline">{isRTL ? "جدول" : "Table"}</span>
-          </button>
-          <button
-            onClick={() => setViewMode("cards")}
-            title={t("registration.cardView", "Card View")}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
-              viewMode === "cards"
-                ? "bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-            }`}
-          >
-            <LayoutGrid size={13} />
-            <span className="hidden sm:inline">
-              {isRTL ? "بطاقات" : "Cards"}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* 4. Main List View (Inbox / Table / Grid) */}
-      <div className="min-h-[350px]">
+      {/* 4. Main Data Display: Table or Cards */}
+      <div className="space-y-4">
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-72 gap-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-            <div className="animate-spin rounded-full h-10 w-10 border-3 border-brand-primary-500/20 border-t-brand-primary-600"></div>
-            <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          <div className="py-20 flex flex-col items-center justify-center">
+            <RotateCw
+              size={36}
+              className="animate-spin text-brand-primary-500 mb-4"
+            />
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
               {t("common.loading", "Loading...")}
             </p>
           </div>
         ) : filteredRequests.length === 0 ? (
-          /* Empty State */
-          <div className="p-12 flex flex-col items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xs text-center">
-            {statusFilter === "PENDING" &&
-            !search &&
-            selectedCollege === "ALL" &&
-            selectedRole === "ALL" ? (
-              /* Celebration / All Caught Up State */
-              <div className="space-y-3 max-w-md">
-                <div className="w-16 h-16 rounded-3xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
-                  <Sparkles size={32} />
-                </div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                  {t(
-                    "registration.noPendingTitle",
-                    "All caught up! No pending requests",
-                  )}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {t(
-                    "registration.noPendingDesc",
-                    "All incoming registration applications have been reviewed and processed.",
-                  )}
-                </p>
-                <div className="pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setStatusFilter("ALL")}
-                    className="rounded-xl text-xs font-bold"
-                  >
-                    {t("requests.filterAll", "All")}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <EmptyState
-                icon={
-                  <GraduationCap
-                    size={44}
-                    className="text-slate-400 dark:text-slate-500"
-                  />
-                }
-                title={t(
-                  "registration.noRequests",
-                  "No registration requests found",
-                )}
-                subtitle={t(
-                  "registration.noRequestsDesc",
-                  "No registration records match the current filter criteria.",
-                )}
-                action={
-                  search || selectedCollege !== "ALL" || selectedRole !== "ALL"
-                    ? {
-                        label: isRTL ? "مسح الفلاتر والبحث" : "Clear Filters",
-                        onClick: () => {
-                          setSearch("");
-                          setSelectedCollege("ALL");
-                          setSelectedRole("ALL");
-                        },
-                      }
-                    : undefined
-                }
-              />
-            )}
-          </div>
+          <EmptyState
+            icon={<Users size={32} />}
+            title={
+              statusFilter === "PENDING" && !search
+                ? isRTL
+                  ? "لا توجد طلبات معلقة بانتظار المراجعة"
+                  : "All caught up! No pending requests"
+                : t("registration.noRequests", "No registration requests found")
+            }
+            subtitle={
+              statusFilter === "PENDING" && !search
+                ? isRTL
+                  ? "صندوق البريد خالي تماماً، تم التدقيق في جميع الطلبات المقدمة."
+                  : "Zero pending inbox! All submissions have been processed."
+                : t(
+                    "registration.noRequestsDesc",
+                    "Try adjusting your filters, search keyword, or status filter.",
+                  )
+            }
+            action={
+              statusFilter !== "ALL" || search
+                ? {
+                    label: isRTL ? "عرض كافة الطلبات" : "View All Requests",
+                    onClick: handleClearFilters,
+                  }
+                : undefined
+            }
+          />
         ) : viewMode === "table" ? (
-          /* ============================================================ */
-          /* 4A. TABLE VIEW (High Density, Fast Processing)               */
-          /* ============================================================ */
-          <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-xs overflow-hidden p-0">
-            <div className="overflow-x-auto">
-              <Table className="w-full">
-                <TableHeader className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-700/80">
-                  <TableRow>
-                    <TableHead className="w-12 text-center p-3.5">
-                      <input
-                        type="checkbox"
-                        aria-label={isRTL ? "تحديد الكل" : "Select all"}
-                        className="rounded border-slate-300 dark:border-slate-700 text-brand-primary-600 focus:ring-brand-primary-500/20 w-4 h-4 cursor-pointer align-middle"
-                        checked={isAllVisibleSelected}
-                        onChange={handleSelectAll}
-                      />
-                    </TableHead>
-                    <TableHead className="text-start p-3.5 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {isRTL ? "مقدم الطلب" : "Applicant"}
-                    </TableHead>
-                    <TableHead className="text-start p-3.5 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {isRTL ? "الكلية والقسم" : "College & Dept"}
-                    </TableHead>
-                    <TableHead className="text-center p-3.5 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {isRTL ? "الرقم الأكاديمي" : "Student ID"}
-                    </TableHead>
-                    <TableHead className="text-center p-3.5 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {isRTL ? "تاريخ التقديم" : "Applied Date"}
-                    </TableHead>
-                    <TableHead className="text-center p-3.5 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      {isRTL ? "الحالة" : "Status"}
-                    </TableHead>
-                    <TableHead className="text-end p-3.5 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 pe-6">
-                      {isRTL ? "الإجراءات" : "Actions"}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-
-                <TableBody>
-                  {paginatedRequests.map((req) => {
-                    const isSelected = selectedIds.includes(req.id);
-                    const statusConfig = getStatusBadge(req.status);
-                    const collegeName =
-                      req.department?.college?.name ||
-                      req.department?.college?.nameAr;
-                    const deptName =
-                      req.department?.name || req.department?.nameAr;
-                    const isActioning = actionLoadingId === req.id;
-
-                    return (
-                      <TableRow
-                        key={req.id}
-                        className={`transition-colors hover:bg-slate-50/75 dark:hover:bg-slate-700/30 ${
-                          isSelected
-                            ? "bg-brand-primary-50/40 dark:bg-brand-primary-950/20"
-                            : ""
-                        }`}
-                      >
-                        {/* Checkbox */}
-                        <TableCell className="w-12 text-center p-3.5">
-                          <input
-                            type="checkbox"
-                            aria-label={
-                              isRTL
-                                ? `تحديد ${req.firstName} ${req.lastName}`
-                                : `Select ${req.firstName} ${req.lastName}`
-                            }
-                            className="rounded border-slate-300 dark:border-slate-700 text-brand-primary-600 focus:ring-brand-primary-500/20 w-4 h-4 cursor-pointer align-middle"
-                            checked={isSelected}
-                            onChange={() => handleSelectOne(req.id)}
-                          />
-                        </TableCell>
-
-                        {/* Applicant Name & Email */}
-                        <TableCell className="p-3.5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-primary-500 to-brand-primary-600 text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
-                              {req.firstName?.[0] || "U"}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-slate-900 dark:text-white text-sm truncate">
-                                  {req.firstName} {req.lastName}
-                                </span>
-                                {req.role && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] px-1.5 py-0 rounded-md font-semibold border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                                  >
-                                    {req.role}
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-400 mt-0.5">
-                                <span className="truncate">{req.email}</span>
-                                {req.phone && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{req.phone}</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-
-                        {/* College & Department */}
-                        <TableCell className="p-3.5">
-                          <div className="min-w-0 space-y-0.5">
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
-                              <Building2
-                                size={13}
-                                className="text-slate-400 shrink-0"
-                              />
-                              <span className="truncate">
-                                {collegeName ||
-                                  (isRTL ? "غير محدد" : "Not assigned")}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-400 ps-4 truncate">
-                              {deptName || (isRTL ? "غير محدد" : "General")}
-                            </div>
-                          </div>
-                        </TableCell>
-
-                        {/* Student ID / Year */}
-                        <TableCell className="p-3.5 text-center">
-                          {req.studentId ? (
-                            <div className="space-y-0.5 inline-block">
-                              <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded-md block">
-                                {req.studentId}
-                              </span>
-                              {req.year && (
-                                <span className="text-[10px] text-slate-400 block font-medium">
-                                  {isRTL
-                                    ? req.year === 1
-                                      ? "الفرقة الأولى"
-                                      : req.year === 2
-                                        ? "الفرقة الثانية"
-                                        : req.year === 3
-                                          ? "الفرقة الثالثة"
-                                          : req.year === 4
-                                            ? "الفرقة الرابعة"
-                                            : `الفرقة ${req.year}`
-                                    : `Division ${req.year}`}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400">-</span>
-                          )}
-                        </TableCell>
-
-                        {/* Applied Date */}
-                        <TableCell className="p-3.5 text-center">
-                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300 block">
-                            {req.createdAt
-                              ? new Date(req.createdAt).toLocaleDateString(
-                                  isRTL ? "ar-EG" : "en-US",
-                                )
-                              : "-"}
-                          </span>
-                        </TableCell>
-
-                        {/* Status Badge */}
-                        <TableCell className="p-3.5 text-center">
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-2xs">
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotClass}`}
-                            ></span>
-                            <span
-                              className={
-                                statusConfig.className.split(" ")[1] || ""
-                              }
-                            >
-                              {statusConfig.label}
-                            </span>
-                          </div>
-                          {req.status === "REJECTED" && req.rejectionReason && (
-                            <p
-                              className="text-[10px] text-rose-500 dark:text-rose-400 mt-1 max-w-[140px] truncate mx-auto"
-                              title={req.rejectionReason}
-                            >
-                              {req.rejectionReason}
-                            </p>
-                          )}
-                        </TableCell>
-
-                        {/* Actions */}
-                        <TableCell className="p-3.5 text-end pe-4">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => handleView(req)}
-                              title={t("common.view", "View")}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-brand-primary-600 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/30 transition-colors cursor-pointer"
-                            >
-                              <Eye size={16} />
-                            </button>
-
-                            {req.status === "PENDING" && (
-                              <>
-                                <button
-                                  onClick={() => handleOpenRejectModal(req)}
-                                  disabled={isActioning}
-                                  title={t("common.reject", "Reject")}
-                                  className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer disabled:opacity-50"
-                                >
-                                  <X size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleApprove(req.id)}
-                                  disabled={isActioning}
-                                  title={t("common.approve", "Approve")}
-                                  className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer disabled:opacity-50"
-                                >
-                                  {isActioning ? (
-                                    <RotateCw
-                                      size={16}
-                                      className="animate-spin"
-                                    />
-                                  ) : (
-                                    <Check size={16} />
-                                  )}
-                                </button>
-                              </>
-                            )}
-
-                            <button
-                              onClick={() => handleDeleteClick(req)}
-                              title={t(
-                                "registration.deleteRequest",
-                                "Delete Request",
-                              )}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
+          <RegistrationRequestsTable
+            requests={paginatedRequests}
+            selectedIds={selectedIds}
+            isAllVisibleSelected={isAllVisibleSelected}
+            handleSelectAll={handleSelectAll}
+            handleSelectOne={handleSelectOne}
+            handleView={handleView}
+            handleOpenRejectModal={handleOpenRejectModal}
+            handleApprove={handleApprove}
+            handleDeleteClick={handleDeleteClick}
+            actionLoadingId={actionLoadingId}
+            getStatusBadge={getStatusBadge}
+            isRTL={isRTL}
+          />
         ) : (
-          /* ============================================================ */
-          /* 4B. MODERN CARD VIEW (Grid)                                  */
-          /* ============================================================ */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in duration-300">
-            {paginatedRequests.map((req) => {
-              const isSelected = selectedIds.includes(req.id);
-              const statusConfig = getStatusBadge(req.status);
-              const isActioning = actionLoadingId === req.id;
-              const collegeName =
-                req.department?.college?.name ||
-                req.department?.college?.nameAr;
-              const deptName = req.department?.name || req.department?.nameAr;
-
-              return (
-                <Card
-                  key={req.id}
-                  noPadding
-                  className={`bg-white dark:bg-slate-800 rounded-2xl border transition-all duration-200 p-5 flex flex-col justify-between shadow-xs hover:shadow-md ${
-                    isSelected
-                      ? "border-brand-primary-500 ring-2 ring-brand-primary-500/20"
-                      : "border-slate-200/90 dark:border-slate-700"
-                  }`}
-                >
-                  <div>
-                    {/* Header: Checkbox, ID & Status Badge */}
-                    <div className="flex items-center justify-between gap-2 mb-3.5">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          aria-label={
-                            isRTL
-                              ? `تحديد ${req.firstName} ${req.lastName}`
-                              : `Select ${req.firstName} ${req.lastName}`
-                          }
-                          className="rounded border-slate-300 dark:border-slate-700 text-brand-primary-600 focus:ring-brand-primary-500/20 w-4 h-4 cursor-pointer align-middle"
-                          checked={isSelected}
-                          onChange={() => handleSelectOne(req.id)}
-                        />
-                        <span className="text-xs font-mono font-bold text-slate-400">
-                          #{req.id}
-                        </span>
-                      </div>
-                      <div
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${statusConfig.className}`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotClass}`}
-                        ></span>
-                        <span>{statusConfig.label}</span>
-                      </div>
-                    </div>
-
-                    {/* Applicant Profile */}
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-brand-primary-500 to-brand-primary-600 text-white font-bold text-sm flex items-center justify-center shadow-xs shrink-0">
-                        {req.firstName?.[0] || "U"}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-base font-extrabold text-slate-900 dark:text-white truncate">
-                          {req.firstName} {req.lastName}
-                        </h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium">
-                          {req.email}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Info Grid */}
-                    <div className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-3 border border-slate-100 dark:border-slate-700/60 space-y-2 mb-4 text-xs">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-slate-400 font-medium">
-                          {t("auth.college", "College")}:
-                        </span>
-                        <span
-                          className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[170px]"
-                          title={collegeName || "N/A"}
-                        >
-                          {collegeName || (isRTL ? "غير محدد" : "N/A")}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-slate-400 font-medium">
-                          {t("auth.department", "Department")}:
-                        </span>
-                        <span
-                          className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[170px]"
-                          title={deptName || "N/A"}
-                        >
-                          {deptName || (isRTL ? "عام" : "General")}
-                        </span>
-                      </div>
-                      {req.studentId && (
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-slate-400 font-medium">
-                            {t("auth.studentId", "Student ID Number")}:
-                          </span>
-                          <span className="font-mono font-bold text-brand-primary-600 dark:text-brand-primary-400">
-                            {req.studentId}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
-                        <span className="text-slate-400 font-medium">
-                          {t("registration.appliedDate", "Applied Date")}:
-                        </span>
-                        <span className="font-medium text-slate-600 dark:text-slate-300">
-                          {req.createdAt
-                            ? new Date(req.createdAt).toLocaleDateString(
-                                isRTL ? "ar-EG" : "en-US",
-                              )
-                            : "-"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Rejection Note Preview */}
-                    {req.status === "REJECTED" && req.rejectionReason && (
-                      <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-xs text-rose-700 dark:text-rose-300 mb-4 flex items-start gap-2">
-                        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                        <p className="line-clamp-2">{req.rejectionReason}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions Footer */}
-                  <div className="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/60 mt-auto">
-                    <button
-                      onClick={() => handleView(req)}
-                      className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer"
-                    >
-                      <Eye size={14} />
-                      <span>{t("common.view", "View")}</span>
-                    </button>
-
-                    {req.status === "PENDING" && (
-                      <>
-                        <button
-                          onClick={() => handleOpenRejectModal(req)}
-                          disabled={isActioning}
-                          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                        >
-                          <X size={14} />
-                          <span>{t("common.reject", "Reject")}</span>
-                        </button>
-                        <button
-                          onClick={() => handleApprove(req.id)}
-                          disabled={isActioning}
-                          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-brand-primary-500 hover:bg-brand-primary-600 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer disabled:opacity-50"
-                        >
-                          {isActioning ? (
-                            <RotateCw size={14} className="animate-spin" />
-                          ) : (
-                            <Check size={14} />
-                          )}
-                          <span>{t("common.approve", "Approve")}</span>
-                        </button>
-                      </>
-                    )}
-
-                    <button
-                      onClick={() => handleDeleteClick(req)}
-                      title={t("registration.deleteRequest", "Delete Request")}
-                      className="h-9 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 text-xs font-bold transition-all cursor-pointer flex items-center justify-center"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          <RegistrationRequestsCards
+            requests={paginatedRequests}
+            selectedIds={selectedIds}
+            onSelectOne={handleSelectOne}
+            onView={handleView}
+            onApprove={handleApprove}
+            onReject={handleOpenRejectModal}
+            onDelete={handleDeleteClick}
+            actionLoadingId={actionLoadingId}
+            getStatusBadge={getStatusBadge}
+            isRTL={isRTL}
+            t={t}
+          />
         )}
 
         {/* 5. Pagination Footer */}
@@ -1408,7 +834,6 @@ const RegistrationRequests: React.FC = () => {
         setIsDetailsModalOpen={setIsDetailsModalOpen}
         isRTL={isRTL}
       />
-
 
       {/* 9. Single Delete Confirmation Modal */}
       <ConfirmDeleteModal

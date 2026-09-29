@@ -64,9 +64,10 @@ const EnrollStudentModal: React.FC<EnrollStudentModalProps> = ({
       }
       const res = await studentsService.getStudents(params);
       if (res.success) {
-        const rawData = Array.isArray(res.data)
-          ? res.data
-          : (res.data as any)?.students || (res.data as any)?.data || [];
+        const resData = res.data as { students?: StudentItem[]; data?: StudentItem[] } | StudentItem[] | null;
+        const rawData = Array.isArray(resData)
+          ? resData
+          : resData?.students || resData?.data || [];
         setStudents(rawData);
       } else {
         setStudents([]);

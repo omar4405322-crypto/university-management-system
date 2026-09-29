@@ -5,15 +5,15 @@ import api from './api';
 const studentsService = {
   getStudents: (params?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.get('/students', { params })),
 
-  getStudentById: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/students/${id}`)),
+  getStudentById: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/students/${id}`)),
 
   createStudent: (data?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post('/students', data)),
 
-  updateStudent: (id: string, data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/students/${id}`, data)),
+  updateStudent: (id: string | number, data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/students/${id}`, data)),
 
-  deleteStudent: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/students/${id}`)),
+  deleteStudent: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/students/${id}`)),
 
-  toggleStatus: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.patch(`/students/${id}/status`)),
+  toggleStatus: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.patch(`/students/${id}/status`)),
 
   getStudentStatistics: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/students/${id}/statistics`)),
 };

@@ -1,14 +1,68 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
 import api, { setAccessToken } from '../services/api';
 
+// ── Domain types ──────────────────────────────────────────────────────────────
+
 export interface User {
   id: string;
   email: string;
   role: string;
   firstName?: string;
   lastName?: string;
+  name?: string;
   twoFactorEnabled?: boolean;
-  [key: string]: any;
+  // Profile fields returned by /auth/me or /auth/refresh
+  avatar?: string;
+  profilePicture?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+  gender?: string;
+  birthDate?: string;
+  createdAt?: string;
+  // College/department IDs (from session)
+  collegeId?: string | number;
+  departmentId?: string | number;
+  managedCollegeId?: string | number;
+  managedDepartmentId?: string | number;
+  studentId?: string;
+  year?: number;
+  // Nested objects returned by /auth/me on some server versions
+  college?: { id: number; name: string; nameAr?: string } | null;
+  department?: { id: number; name: string; nameAr?: string } | null;
+  managedCollege?: { id: number; name: string; nameAr?: string } | null;
+  // Doctor profile (present when role === 'DOCTOR')
+  doctor?: { id: number; firstName?: string; lastName?: string; departmentId?: number } | null;
+  // Teaching assistant profile (present when role === 'TEACHING_ASSISTANT')
+  teachingAssistant?: { id: number; firstName?: string; lastName?: string; departmentId?: number } | null;
+  // Student profile (present when role === 'STUDENT')
+  student?: { id?: number; firstName?: string; lastName?: string; year?: number; [key: string]: unknown } | null;
+  // Nested profile sub-object used by some endpoints
+  profile?: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    avatar?: string;
+    address?: string;
+    bio?: string;
+    gender?: string;
+    birthDate?: string;
+  } | null;
+  [key: string]: unknown; // allow additional server fields without losing assignability
+}
+
+/** Payload accepted by the registration endpoint. */
+export interface RegisterPayload {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role?: string;
+  departmentId?: string | number;
+  studentId?: string;
+  year?: number;
+  phone?: string;
+  [key: string]: unknown; // allow additional fields the backend may accept
 }
 
 export interface AuthContextType {
@@ -28,7 +82,7 @@ export interface AuthContextType {
     message?: string;
     status?: number;
   }>;
-  register: (data: any) => Promise<{ success: boolean; message: string }>;
+  register: (data: RegisterPayload) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -72,7 +126,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         // Try to get a new access token via the httpOnly refresh cookie
         const refreshResponse = await api.post('/auth/refresh');
-        const { accessToken, user: userData } = refreshResponse.data.data;
+        const { accessToken, user: userData } = refreshResponse.data.data as {
+          accessToken: string;
+          user?: User;
+        };
         setToken(accessToken);
 
         if (userData) {
@@ -81,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           // Fallback: concurrent-rotation edge case may not include user data
           const meResponse = await api.get('/auth/me');
-          const me = meResponse.data.data;
+          const me = meResponse.data.data as User;
           setUser({ ...me, twoFactorEnabled: Boolean(me.twoFactorEnabled) });
         }
       } catch (err) {
@@ -121,9 +178,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, requires2FA: true };
       }
 
-      const { accessToken, user: userData } = response.data.data;
+      const { accessToken, user: userData } = response.data.data as {
+        accessToken: string;
+        user: User;
+      };
 
-      const normalizedUser = {
+      const normalizedUser: User = {
         ...userData,
         twoFactorEnabled: Boolean(userData.twoFactorEnabled),
       };
@@ -132,23 +192,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
 
       return { success: true, user: normalizedUser };
-    } catch (err: any) {
-      const message = err.message || 'Login failed';
-      const status = err.status;
+    } catch (err: unknown) {
+      const normalized = err as { message?: string; status?: number };
+      const message = normalized.message || 'Login failed';
+      const status = normalized.status;
       setError(message);
       return { success: false, message, status };
     }
   };
 
-  const register = async (data: any) => {
+  const register = async (data: RegisterPayload) => {
     try {
       // NOTE: Do NOT touch `loading` here — it's reserved for session hydration (initAuth).
       // Toggling it during registration causes re-renders that unmount the Register page prematurely.
       setError(null);
       const response = await api.post('/auth/register', data);
-      return { success: true, message: response.data.message };
-    } catch (err: any) {
-      const message = err.message || 'Registration failed';
+      return { success: true, message: response.data.message as string };
+    } catch (err: unknown) {
+      const normalized = err as { message?: string };
+      const message = normalized.message || 'Registration failed';
       setError(message);
       return { success: false, message };
     }

@@ -11,6 +11,7 @@ import { useToast } from "../../context/ToastContext";
 import usersService from "../../services/users.service";
 import collegeService from "../../services/college.service";
 import { downloadCsv } from "../../utils/exportCsv";
+import type { AdminUser } from "../../types/domain";
 
 import Card, { StatCard } from "../../components/ui/card";
 import Button from "../../components/ui/button";
@@ -65,7 +66,7 @@ const AdminsList = () => {
   const { showToast } = useToast();
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
-  const [admins, setAdmins] = useState<any[]>([]);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [colleges, setColleges] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -91,16 +92,16 @@ const AdminsList = () => {
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingAdmin, setEditingAdmin] = useState<any>(null);
-  const [resetPasswordAdmin, setResetPasswordAdmin] = useState<any>(null);
-  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
+  const [resetPasswordAdmin, setResetPasswordAdmin] = useState<AdminUser | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [reactivateTarget, setReactivateTarget] = useState<any>(null);
+  const [reactivateTarget, setReactivateTarget] = useState<AdminUser | null>(null);
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [showBulkReactivateModal, setShowBulkReactivateModal] = useState(false);
   const [showBulkHardDeleteModal, setShowBulkHardDeleteModal] = useState(false);
-  const [hardDeleteTarget, setHardDeleteTarget] = useState<any>(null);
+  const [hardDeleteTarget, setHardDeleteTarget] = useState<AdminUser | null>(null);
   const [hardDeleteConfirmInput, setHardDeleteConfirmInput] = useState("");
   const [bulkHardDeleteConfirmInput, setBulkHardDeleteConfirmInput] =
     useState("");
@@ -649,7 +650,7 @@ const AdminsList = () => {
         {/* Status Filter */}
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
+          onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="all">{isRTL ? "جميع الحسابات" : "All Status"}</option>

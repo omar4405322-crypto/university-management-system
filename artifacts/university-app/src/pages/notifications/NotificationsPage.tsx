@@ -34,7 +34,7 @@ const NotificationsPage = () => {
     return true;
   });
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type?: string) => {
     switch (type) {
       case "SUCCESS":
         return <CheckCircle2 className="text-brand-accent-emerald" size={20} />;

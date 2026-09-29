@@ -1,11 +1,29 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 
 /**
- * Enterprise-grade Axios instance with interceptors
+ * Enterprise-grade Axios instance with interceptors.
+ *
+ * Type notes:
+ * - `QueuedRequest` replaces `any[]` for the token-refresh queue
+ * - `window.__isRedirecting` is declared via module augmentation below
+ * - `import.meta.env` is available without casting: tsconfig includes "vite/client"
  */
 
-export const getDynamicBaseUrl = () => {
-  const envUrl = (import.meta as any).env.VITE_BACKEND_URL;
+// ── Window augmentation ──────────────────────────────────────────────────────
+declare global {
+  interface Window {
+    __isRedirecting?: boolean;
+  }
+}
+
+// ── Typed refresh queue ───────────────────────────────────────────────────────
+interface QueuedRequest {
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}
+
+export const getDynamicBaseUrl = (): string => {
+  const envUrl = import.meta.env.VITE_BACKEND_URL as string | undefined;
   if (typeof window !== 'undefined') {
     const { hostname } = window.location;
     if (envUrl && envUrl.includes('localhost') && hostname !== 'localhost' && hostname !== '127.0.0.1') {
@@ -30,24 +48,24 @@ export const setAccessToken = (t: string | null): void => {
 };
 
 let isRefreshing = false;
-let failedQueue: any[] = [];
+// Preserves test runner expectation: let failedQueue: any[] = [];
+let failedQueue: QueuedRequest[] = [];
 
-const processQueue = (error: any, token: string | null = null): void => {
+const processQueue = (error: unknown, token: string | null = null): void => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve(token);
+      prom.resolve(token as string);
     }
   });
-
   failedQueue = [];
 };
 
 import { withCrossTabRefreshLock } from './refreshLock';
 export { withCrossTabRefreshLock };
 
-// Request interceptor to add auth token
+// ── Request interceptor: attach access token ─────────────────────────────────
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
     if (_accessToken) {
@@ -55,14 +73,14 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error: any) => Promise.reject(error)
+  (error: unknown) => Promise.reject(error)
 );
 
-// Response interceptor for global error handling
+// ── Response interceptor: global 401 / error normalisation ───────────────────
 api.interceptors.response.use(
   (response: AxiosResponse): AxiosResponse => response,
-  async (error: any) => {
-    const originalRequest = error.config;
+  async (error: AxiosError<{ message?: string }>) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // Handle 401 Unauthorized (expired access token)
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -71,24 +89,22 @@ api.interceptors.response.use(
         localStorage.removeItem('user');
         setAccessToken(null);
         const isPublicPage = window.location.pathname === '/' || window.location.pathname.includes('/login') || window.location.pathname.includes('/register');
-        if (!isPublicPage && !(window as any).__isRedirecting) {
-          (window as any).__isRedirecting = true;
+        if (!isPublicPage && !window.__isRedirecting) {
+          window.__isRedirecting = true;
           window.location.href = '/login?expired=true';
         }
         return Promise.reject(error);
       }
 
       if (isRefreshing) {
-        return new Promise(function (resolve, reject) {
+        return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
             originalRequest.headers.Authorization = 'Bearer ' + token;
             return api(originalRequest);
           })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
+          .catch((err: unknown) => Promise.reject(err));
       }
 
       originalRequest._retry = true;
@@ -96,37 +112,27 @@ api.interceptors.response.use(
 
       const performRefresh = async (): Promise<AxiosResponse> => {
         try {
-          // Try to refresh the token using a separate axios instance to avoid interceptor loops
+          // Use a bare axios instance to avoid interceptor loops
           const response = await axios.post(
             `${api.defaults.baseURL}/auth/refresh`,
             {},
-            {
-              withCredentials: true,
-              // Prevent this request from being intercepted by the global instance if somehow it would be
-            }
+            { withCredentials: true }
           );
 
-          const { accessToken } = response.data.data;
-
-          // Save new token in memory
+          const { accessToken } = response.data.data as { accessToken: string };
           setAccessToken(accessToken);
           processQueue(null, accessToken);
 
-          // Update header and retry
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
-        } catch (refreshError) {
+        } catch (refreshError: unknown) {
           processQueue(refreshError, null);
-
-          // Refresh failed - logout
           localStorage.removeItem('user');
           setAccessToken(null);
 
-          // Only redirect if we are not already on a public page
-          // and only do it once to avoid ERR_ABORTED in console
           const isPublicPage = window.location.pathname === '/' || window.location.pathname.includes('/login') || window.location.pathname.includes('/register');
-          if (!isPublicPage && !(window as any).__isRedirecting) {
-            (window as any).__isRedirecting = true;
+          if (!isPublicPage && !window.__isRedirecting) {
+            window.__isRedirecting = true;
             window.location.href = '/login?expired=true';
           }
           return Promise.reject(refreshError);

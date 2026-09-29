@@ -25,17 +25,18 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import { logger } from "../../lib/logger";
 import { useToast } from "../../context/ToastContext";
+import type { CollegeRow } from "../../types/domain";
 
 const CollegesList = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isRTL } = useLanguage();
-  const [colleges, setColleges] = useState<any[]>([]);
+  const [colleges, setColleges] = useState<CollegeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedCollege, setSelectedCollege] = useState<any>(null);
+  const [selectedCollege, setSelectedCollege] = useState<CollegeRow | null>(null);
   const { showToast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string | number;
@@ -154,131 +155,135 @@ const CollegesList = () => {
             <Card
               key={college.id}
               noPadding
-              className="group border border-brand-border/60 bg-brand-bg-card rounded-2xl overflow-hidden hover:shadow-[0_8px_30px_rgba(139,184,60,0.18)] hover:-translate-y-1.5 hover:border-brand-primary-500/50 transition-all duration-300"
+              className="group border border-brand-border/70 bg-brand-bg-card rounded-2xl overflow-hidden shadow-2xs hover:shadow-card hover:-translate-y-1 hover:border-brand-primary-500/40 transition-all duration-200 flex flex-col justify-between"
             >
-              <div className="relative h-64 w-full overflow-hidden">
-                <CollegeCardImage
-                  name={college.name}
-                  image={college.image}
-                  collegeId={college.id}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-brand-navy-900/90 via-brand-navy-900/20 to-transparent z-10" />
+              <div>
+                <div className="relative h-44 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                  <CollegeCardImage
+                    name={college.name}
+                    image={college.image}
+                    collegeId={college.id}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10" />
 
-                <div className="absolute top-6 right-6 z-20 flex gap-2">
-                  {user?.role === "SUPER_ADMIN" && (
-                    <>
-                      <button
-                        onClick={() => handleEdit(college)}
-                        className="w-10 h-10 rounded-xl bg-white/10 p-2.5 text-white backdrop-blur-xl hover:bg-brand-primary-600 transition-all duration-300 shadow-xl border border-white/10 flex items-center justify-center"
-                        title={t("common.edit")}
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <button
-                        onClick={() =>
-                          setDeleteTarget({
-                            id: college.id,
-                            name: isRTL
-                              ? college.nameAr || college.name
-                              : college.name,
-                          })
-                        }
-                        className="w-10 h-10 rounded-xl bg-white/10 p-2.5 text-white backdrop-blur-xl hover:bg-error transition-all duration-300 shadow-xl border border-white/10 flex items-center justify-center"
-                        title={t("common.delete")}
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </>
-                  )}
+                  <div className="absolute top-3 end-3 z-20 flex items-center gap-1.5">
+                    {user?.role === "SUPER_ADMIN" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(college)}
+                          className="w-8 h-8 rounded-lg bg-black/50 p-1.5 text-white backdrop-blur-md hover:bg-brand-primary-500 hover:text-brand-navy-950 transition-all shadow-sm border border-white/10 flex items-center justify-center cursor-pointer"
+                          title={t("common.edit")}
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDeleteTarget({
+                              id: college.id,
+                              name: isRTL
+                                ? college.nameAr || college.name
+                                : college.name,
+                            })
+                          }
+                          className="w-8 h-8 rounded-lg bg-black/50 p-1.5 text-white backdrop-blur-md hover:bg-error transition-all shadow-sm border border-white/10 flex items-center justify-center cursor-pointer"
+                          title={t("common.delete")}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="absolute bottom-3 start-3 z-20">
+                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-brand-primary-500 text-brand-navy-950 shadow-sm">
+                      {t("colleges.active")}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="absolute bottom-6 right-6 left-6 z-20">
-                  <Badge
-                    variant="success"
-                    className="mb-3 px-3 py-1 text-[10px] font-black tracking-widest uppercase bg-brand-primary-600/90 text-white border-none shadow-lg"
-                  >
-                    {t("colleges.active")}
-                  </Badge>
-                  <h3 className="text-3xl font-black text-white tracking-tight drop-shadow-lg uppercase leading-tight">
+                <div className="p-5">
+                  <h3 className="text-base font-bold text-brand-text-primary dark:text-brand-text-main leading-snug mb-1.5 line-clamp-2">
                     {isRTL ? college.nameAr || college.name : college.name}
                   </h3>
+
+                  <p
+                    dir="auto"
+                    className="text-xs text-brand-text-secondary dark:text-brand-text-sub text-start line-clamp-2 min-h-[2.25rem] leading-relaxed mb-4"
+                  >
+                    {isRTL
+                      ? college.descriptionAr || college.description
+                      : college.description}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3 border-t border-brand-border/60 pt-3">
+                    <div className="space-y-0.5">
+                      <p className="label-stat text-slate-400 dark:text-slate-500">{t("nav.departments")}</p>
+                      <p className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tight">
+                        {college._count?.departments || 0}
+                      </p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="label-stat text-slate-400 dark:text-slate-500">{t("profile.status")}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <div className="w-2 h-2 rounded-full bg-brand-primary-500 animate-pulse" />
+                        <span className="text-[11px] font-bold text-brand-primary-600 dark:text-brand-primary-400">
+                          {t("colleges.operational")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Assigned Admin Section */}
+                  <div className="mt-3.5 p-2.5 bg-surface-subtle rounded-xl text-start border border-brand-border/40">
+                    <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+                      {t("colleges.assignedAdmin") || "Assigned Admin"}
+                    </p>
+                    {college.assignedAdmin ? (
+                      <div className="flex flex-col">
+                        <p
+                          dir="auto"
+                          className="font-bold text-xs text-brand-text-primary dark:text-brand-text-main truncate"
+                        >
+                          {college.assignedAdmin.name ||
+                            college.assignedAdmin.email}
+                        </p>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
+                          {college.assignedAdmin.email}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                        <AlertCircle size={13} />
+                        <span className="text-[11px] font-semibold">
+                          {t("colleges.noAdminAssigned") || "No admin assigned"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="p-8">
-                <p
-                  dir="auto"
-                  className="text-sm text-brand-text-muted text-start line-clamp-2 min-h-[3rem] leading-relaxed"
-                >
-                  {isRTL
-                    ? college.descriptionAr || college.description
-                    : college.description}
-                </p>
-
-                <div className="mt-8 grid grid-cols-2 gap-6 border-t border-brand-border dark:border-brand-border pt-6">
-                  <div className="space-y-1">
-                    <p className="label-stat">{t("nav.departments")}</p>
-                    <p className="text-3xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tighter">
-                      {college._count?.departments || 0}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="label-stat">{t("profile.status")}</p>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-brand-primary-600 animate-pulse" />
-                      <p className="text-[10px] font-black text-brand-primary-600 uppercase tracking-widest">
-                        {t("colleges.operational")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Assigned Admin Section */}
-                <div className="mt-6 p-3 bg-brand-bg-page rounded-xl text-start">
-                  <p className="text-[10px] font-black text-brand-text-muted uppercase tracking-widest mb-2">
-                    {t("colleges.assignedAdmin") || "Assigned Admin"}
-                  </p>
-                  {college.assignedAdmin ? (
-                    <div className="flex flex-col">
-                      <p
-                        dir="auto"
-                        className="font-semibold text-sm text-brand-text-primary dark:text-brand-text-main"
-                      >
-                        {college.assignedAdmin.name ||
-                          college.assignedAdmin.email}
-                      </p>
-                      <p className="text-xs text-brand-text-muted">
-                        {college.assignedAdmin.email}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-brand-accent-amber">
-                      <AlertCircle size={14} />
-                      <span className="text-xs font-bold">
-                        {t("colleges.noAdminAssigned") || "No admin assigned"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-8 flex items-center gap-3">
+              <div className="p-5 pt-0">
+                <div className="flex items-center gap-2 pt-2 border-t border-brand-border/40">
                   <Button
-                    variant="primary"
-                    className="flex-1 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl shadow-sm flex items-center justify-center gap-2"
+                    variant="outline"
+                    className="flex-1 text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5"
                     onClick={() =>
                       navigate(`/departments?collegeId=${college.id}`)
                     }
                   >
-                    <Layers size={14} />
+                    <Layers size={13} />
                     <span>{t("colleges.manageDepts")}</span>
                   </Button>
                   <Button
-                    variant="secondary"
-                    className="btn-secondary flex-1 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl shadow-sm flex items-center justify-center gap-2"
+                    variant="default"
+                    className="flex-1 text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 bg-brand-navy-500 hover:bg-brand-navy-600 text-white"
                     onClick={() => navigate(`/colleges/${college.id}`)}
                   >
                     <span>{t("colleges.viewDetails")}</span>
-                    <ExternalLink size={14} className="rtl:-scale-x-100" />
+                    <ExternalLink size={13} className="rtl:-scale-x-100" />
                   </Button>
                 </div>
               </div>

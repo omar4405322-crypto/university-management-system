@@ -170,7 +170,7 @@ const GlobalSearch = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleInputKeyDown}
-            placeholder={t('search.placeholder') + "..."}
+            placeholder={t('search.placeholder').replace(/[.…]+$/, '') + '...'}
             className="flex-1 bg-transparent px-4 py-2 text-lg text-brand-text-primary focus:outline-none placeholder:text-brand-text-muted"
           />
           <button onClick={() => setOpen(false)} className="p-2 rounded-xl hover:bg-surface-subtle text-brand-text-muted transition-colors">
@@ -242,13 +242,13 @@ const GlobalSearch = () => {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="hidden md:flex items-center justify-between w-64 lg:w-80 h-10 px-4 rounded-xl border border-brand-border bg-surface-subtle hover:bg-brand-bg-card hover:border-brand-brand-green-dark/50 transition-all group"
+        className="hidden md:flex items-center justify-between w-64 lg:w-80 h-10 px-3.5 rounded-xl border border-brand-border bg-surface-subtle hover:bg-brand-bg-card hover:border-brand-primary-500/50 transition-all group overflow-hidden"
       >
-        <div className="flex items-center gap-2 text-brand-text-muted group-hover:text-brand-brand-green-dark transition-colors">
-          <Search size={16} />
-          <span className="text-sm">{t('search.placeholder')}...</span>
+        <div className="flex min-w-0 flex-1 items-center gap-2 text-brand-text-muted group-hover:text-brand-primary-600 transition-colors">
+          <Search size={16} className="shrink-0" />
+          <span className="text-sm truncate leading-none">{t('search.placeholder').replace(/[.…]+$/, '')}...</span>
         </div>
-        <kbd className="hidden lg:flex items-center gap-1 text-[10px] font-bold text-brand-text-muted bg-brand-bg-card px-2 py-1 rounded-lg border border-brand-border shadow-sm">
+        <kbd className="hidden lg:flex shrink-0 items-center gap-1 text-[10px] font-bold text-brand-text-muted bg-brand-bg-card px-2 py-0.5 rounded-lg border border-brand-border shadow-2xs ms-2">
           {isMac ? <Command size={12} /> : 'Ctrl'} K
         </kbd>
       </button>

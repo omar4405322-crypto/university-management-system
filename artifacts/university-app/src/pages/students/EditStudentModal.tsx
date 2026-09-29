@@ -66,14 +66,14 @@ interface StudentData {
   user?: {
     email?: string;
     profilePicture?: string;
-  };
+  } | null;
   department?: {
     id: number;
     name: string;
     nameAr?: string;
     collegeId?: number;
     college?: { id: number; name: string; nameAr?: string };
-  };
+  } | null;
 }
 
 interface EditStudentModalProps {
@@ -415,7 +415,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                     if (currentDeptId) {
                       const dept = departments.find((d) => d.id === Number(currentDeptId));
                       if (dept && (dept.collegeId || dept.college?.id) !== newCollegeId) {
-                        setValue('departmentId', 0 as any);
+                        setValue('departmentId', 0);
                       }
                     }
                   },

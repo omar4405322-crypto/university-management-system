@@ -14,6 +14,7 @@ import Badge from '../ui/badge';
 import Button from '../ui/button';
 import taskService, {
   SubmissionsStatus,
+  type GetTaskSubmissionsParams,
 } from '../../services/task.service';
 import { EmptyState } from '../ui/EmptyState';
 import { getSubmissionDestinationHostname } from '../../utils/taskSubmissionUrl';
@@ -288,7 +289,7 @@ const SubmissionRow = memo(function SubmissionRowImpl({
                     {t('tasks.statusSubmitted')}
                   </label>
                   <Badge
-                    variant={statusBadgeVariant as any}
+                    variant={statusBadgeVariant}
                     className="text-[10px] w-full justify-center"
                   >
                     {statusBadgeLabel}
@@ -383,10 +384,10 @@ const SubmissionsGradingModal: React.FC<SubmissionsGradingModalProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const params: Record<string, unknown> = { page, limit, status };
+      const params: GetTaskSubmissionsParams = { page, limit, status };
       if (debouncedSearch) params.search = debouncedSearch;
       if (studentYear !== 'ALL') params.studentYear = Number(studentYear);
-      const res = await taskService.getTaskSubmissions(taskId, params as any);
+      const res = await taskService.getTaskSubmissions(taskId, params);
       if (res?.success && res?.data) {
         setRows(res.data.rows ?? []);
         setPagination(res.data.pagination ?? null);

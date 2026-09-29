@@ -6,11 +6,12 @@ export async function apiRequest<T>(
   try {
     const res = await fn();
     return res.data;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const normalized = error as { message?: string; response?: { data?: { message?: string; error?: string } } };
     const message =
-      error?.message ||
-      error?.response?.data?.message ||
-      error?.response?.data?.error ||
+      normalized?.message ||
+      normalized?.response?.data?.message ||
+      normalized?.response?.data?.error ||
       'An unexpected error occurred';
 
     return {

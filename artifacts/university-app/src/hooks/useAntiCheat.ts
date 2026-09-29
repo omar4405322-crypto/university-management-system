@@ -71,14 +71,30 @@ function parseUserAgent(): { deviceType: string; browserName: string; browserVer
  * returns "unknown" when the API is unavailable rather than omitting or guessing.
  * @see https://developer.mozilla.org/en-US/docs/Web/API/NetworkInformation
  */
+
+/** Chromium-specific Network Information API — not in standard DOM lib. */
+interface NetworkInformation {
+  type?: string;
+  effectiveType?: string;
+}
+interface NavigatorWithNetworkInfo extends Navigator {
+  connection?: NetworkInformation;
+  mozConnection?: NetworkInformation;
+  webkitConnection?: NetworkInformation;
+}
+
 function getNetworkType(): string {
-  const conn = (navigator as any).connection
-    || (navigator as any).mozConnection
-    || (navigator as any).webkitConnection;
+  const nav = navigator as NavigatorWithNetworkInfo;
+  const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
   if (!conn) return 'unknown';
   // .type gives: 'bluetooth', 'cellular', 'ethernet', 'wifi', 'wimax', 'other', 'none', 'unknown'
   // .effectiveType gives: 'slow-2g', '2g', '3g', '4g'
   return conn.type || conn.effectiveType || 'unknown';
+}
+
+/** Multi-Screen Window Placement API — not in standard DOM lib. */
+interface ScreenWithExtended extends Screen {
+  isExtended?: boolean;
 }
 
 export function collectDeviceInfo(): DeviceInfo {
@@ -93,7 +109,7 @@ export function collectDeviceInfo(): DeviceInfo {
     language: navigator.language || 'unknown',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown',
     touchSupport: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
-    concurrentScreens: (window.screen as any).isExtended ? 2 : 1,
+    concurrentScreens: (window.screen as ScreenWithExtended).isExtended ? 2 : 1,
     networkType: getNetworkType(),
   };
 }

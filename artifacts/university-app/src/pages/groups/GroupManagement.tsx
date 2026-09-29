@@ -41,6 +41,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/ToastContext';
 import Badge from '../../components/ui/badge';
+import type { StudentGroup, DepartmentRow } from '../../types/domain';
 
 export default function GroupManagement() {
   const { t } = useTranslation();
@@ -49,9 +50,9 @@ export default function GroupManagement() {
   const { showToast } = useToast();
 
   // Core Data States
-  const [allGroups, setAllGroups] = useState<any[]>([]);
+  const [allGroups, setAllGroups] = useState<StudentGroup[]>([]);
   const [colleges, setColleges] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<DepartmentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 

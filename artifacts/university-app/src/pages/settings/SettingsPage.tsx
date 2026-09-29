@@ -46,7 +46,7 @@ export function SettingsPage() {
     "account" | "security" | "appearance" | "system"
   >("account");
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<any>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Account Data
   const [accountData, setAccountData] = useState({
@@ -198,7 +198,11 @@ export function SettingsPage() {
               : "Student"
     : "";
 
-  const tabs = [
+  const tabs: Array<{
+    id: "account" | "security" | "appearance" | "system";
+    label: string;
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+  }> = [
     {
       id: "account",
       label: isRTL ? "الحساب والبيانات" : "Account & Info",
@@ -217,7 +221,7 @@ export function SettingsPage() {
     ...(isAdmin
       ? [
           {
-            id: "system",
+            id: "system" as const,
             label: isRTL ? "إعدادات النظام والجدول" : "System & Timetable",
             icon: Sliders,
           },
@@ -250,7 +254,7 @@ export function SettingsPage() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === tab.id
                   ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs"

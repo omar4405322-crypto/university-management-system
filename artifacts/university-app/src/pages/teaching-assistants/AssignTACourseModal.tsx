@@ -17,13 +17,15 @@ import Button from '../../components/ui/button';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 
+import type { TeachingAssistantRow, CourseRow } from '../../types/domain';
+
 interface AssignTACourseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  ta: any;
+  ta: TeachingAssistantRow;
   onSuccess: () => void;
   preselectedCourseId?: string | number;
-  existingAssignments?: any[];
+  existingAssignments?: Array<{ courseId?: number | string; course?: { id?: number | string; name?: string; courseCode?: string } }>;
 }
 
 export default function AssignTACourseModal({
@@ -38,7 +40,7 @@ export default function AssignTACourseModal({
   const { isRTL } = useLanguage();
   const { showToast } = useToast();
 
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<CourseRow[]>([]);
   const [fetchingCourses, setFetchingCourses] = useState(false);
   const [courseSearch, setCourseSearch] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');

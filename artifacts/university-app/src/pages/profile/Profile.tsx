@@ -98,10 +98,10 @@ export function Profile() {
         address: profile.address || user.address || "",
         bio: profile.bio || user.bio || "",
         gender: profile.gender || user.gender || "",
-        birthDate:
-          profile.birthDate || user.birthDate
-            ? (profile.birthDate || user.birthDate).split("T")[0]
-            : "",
+        birthDate: (() => {
+          const rawDate = profile.birthDate || user.birthDate;
+          return rawDate ? rawDate.split("T")[0] : "";
+        })(),
       });
     }
   }, [user]);

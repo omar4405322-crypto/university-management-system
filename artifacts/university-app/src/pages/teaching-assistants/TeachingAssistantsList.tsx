@@ -44,6 +44,7 @@ import { useNavigate } from "react-router-dom";
 import { logger } from "../../lib/logger";
 import { useToast } from "../../context/ToastContext";
 import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
+import type { TeachingAssistantRow } from "../../types/domain";
 
 const TeachingAssistantsList = () => {
   const { t, i18n } = useTranslation();
@@ -75,11 +76,11 @@ const TeachingAssistantsList = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isAssignCourseModalOpen, setIsAssignCourseModalOpen] = useState(false);
-  const [assignCourseTA, setAssignCourseTA] = useState<any>(null);
-  const [selectedTA, setSelectedTA] = useState<any>(null);
-  const [resetPasswordTA, setResetPasswordTA] = useState<any>(null);
+  const [assignCourseTA, setAssignCourseTA] = useState<TeachingAssistantRow | null>(null);
+  const [selectedTA, setSelectedTA] = useState<TeachingAssistantRow | null>(null);
+  const [resetPasswordTA, setResetPasswordTA] = useState<TeachingAssistantRow | null>(null);
   const { showToast } = useToast();
-  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TeachingAssistantRow | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -113,7 +114,7 @@ const TeachingAssistantsList = () => {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedIds(filteredTAs.map((ta: any) => ta.id));
+      setSelectedIds(filteredTAs.map((ta: TeachingAssistantRow) => ta.id));
     } else {
       setSelectedIds([]);
     }
@@ -128,10 +129,10 @@ const TeachingAssistantsList = () => {
   const handleBulkClear = () => setSelectedIds([]);
 
   const handleBulkExport = () => {
-    const selectedList = filteredTAs.filter((ta: any) =>
+    const selectedList = filteredTAs.filter((ta: TeachingAssistantRow) =>
       selectedIds.includes(ta.id),
     );
-    const exportData = selectedList.map((ta: any) => ({
+    const exportData = selectedList.map((ta: TeachingAssistantRow) => ({
       EmployeeID: ta.employeeId,
       Specialization: ta.specialization || "N/A",
       Department: ta.department?.name || "N/A",
@@ -251,7 +252,7 @@ const TeachingAssistantsList = () => {
           t("teachingAssistants.specialization"),
           t("auth.email"),
         ],
-        list.map((ta: any) => [
+        list.map((ta: TeachingAssistantRow) => [
           ta.employeeId,
           ta.specialization || "",
           ta.user?.email || "",
@@ -288,12 +289,12 @@ const TeachingAssistantsList = () => {
     }
   }, [deleteTarget, fetchTAs, fetchStats, t, showToast]);
 
-  const handleEdit = useCallback((ta: any) => {
+  const handleEdit = useCallback((ta: TeachingAssistantRow) => {
     setSelectedTA(ta);
     setIsEditModalOpen(true);
   }, []);
 
-  const handleAssign = useCallback((ta: any) => {
+  const handleAssign = useCallback((ta: TeachingAssistantRow) => {
     setSelectedTA(ta);
     setIsAssignModalOpen(true);
   }, []);
@@ -330,7 +331,7 @@ const TeachingAssistantsList = () => {
           value={
             stats[1]?.value ||
             (tas || []).filter(
-              (ta: any) => ta.status === "ACTIVE" || !ta.status,
+              (ta: TeachingAssistantRow) => ta.status === "ACTIVE" || !ta.status,
             ).length
           }
           icon={UserCheck}
@@ -342,7 +343,7 @@ const TeachingAssistantsList = () => {
           title={t("teachingAssistants.onLeaveTAs", "On Leave")}
           value={
             stats[2]?.value ||
-            (tas || []).filter((ta: any) => ta.status === "ON_LEAVE").length
+            (tas || []).filter((ta: TeachingAssistantRow) => ta.status === "ON_LEAVE").length
           }
           icon={Briefcase}
           color="amber"
@@ -352,7 +353,7 @@ const TeachingAssistantsList = () => {
           compact
           title={isRTL ? "غير نشط" : "Inactive"}
           value={
-            (tas || []).filter((ta: any) => ta.status === "INACTIVE").length
+            (tas || []).filter((ta: TeachingAssistantRow) => ta.status === "INACTIVE").length
           }
           icon={GraduationCap}
           color="rose"
@@ -520,7 +521,7 @@ const TeachingAssistantsList = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTAs.map((ta: any) => {
+                  {filteredTAs.map((ta) => {
                     const initials =
                       ta.specialization?.[0]?.toUpperCase() || "TA";
                     const isSelected = selectedIds.includes(ta.id);
@@ -601,14 +602,14 @@ const TeachingAssistantsList = () => {
                           hideOnMobile
                           className="p-4 text-start font-medium text-slate-500 dark:text-slate-400"
                         >
-                          {ta.doctors?.length > 0 ? (
+                          {ta.doctors && ta.doctors.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {ta.doctors.slice(0, 2).map((d: any) => (
+                              {ta.doctors.slice(0, 2).map((d: { doctorId?: number; id?: number | string; doctor?: { id?: number; firstName?: string; lastName?: string } }) => (
                                 <span
-                                  key={d.id}
+                                  key={d.id || d.doctorId}
                                   className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded"
                                 >
-                                  {d.doctor.firstName} {d.doctor.lastName}
+                                  {d.doctor?.firstName} {d.doctor?.lastName}
                                 </span>
                               ))}
                               {ta.doctors.length > 2 && (
@@ -688,10 +689,7 @@ const TeachingAssistantsList = () => {
                                       icon: Trash2,
                                       variant: "delete",
                                       onClick: () =>
-                                        setDeleteTarget({
-                                          id: ta.id,
-                                          name: ta.employeeId,
-                                        }),
+                                        setDeleteTarget(ta),
                                     },
                                   ]
                                 : []),
@@ -729,7 +727,7 @@ const TeachingAssistantsList = () => {
 
       <ConfirmDeleteModal
         isOpen={Boolean(deleteTarget)}
-        itemName={deleteTarget?.name}
+        itemName={deleteTarget?.employeeId || `${deleteTarget?.firstName || ''} ${deleteTarget?.lastName || ''}`.trim()}
         onClose={() => !deleteLoading && setDeleteTarget(null)}
         onConfirm={confirmDelete}
         loading={deleteLoading}
@@ -759,7 +757,7 @@ const TeachingAssistantsList = () => {
         }}
       />
 
-      {isEditModalOpen && (
+      {isEditModalOpen && selectedTA && (
         <EditTAModal
           isOpen={isEditModalOpen}
           onClose={() => {
@@ -777,7 +775,7 @@ const TeachingAssistantsList = () => {
         />
       )}
 
-      {isAssignModalOpen && (
+      {isAssignModalOpen && selectedTA && (
         <AssignDoctorModal
           isOpen={isAssignModalOpen}
           onClose={() => {
@@ -791,7 +789,7 @@ const TeachingAssistantsList = () => {
         />
       )}
 
-      {isAssignCourseModalOpen && (
+      {isAssignCourseModalOpen && assignCourseTA && (
         <AssignTACourseModal
           isOpen={isAssignCourseModalOpen}
           onClose={() => {
