@@ -18,7 +18,12 @@ const schema = z.object({
   lastName: z.string().min(1, 'Last name is required'),
   studentId: z.string().min(1, 'Student ID is required'),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must include at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must include at least one lowercase letter')
+    .regex(/\d/, 'Password must include at least one number'),
   phone: z.string().optional(),
   address: z.string().optional(),
   year: z.coerce.number().min(1, 'Academic division is required').max(4, 'Division must be between 1 and 4'),

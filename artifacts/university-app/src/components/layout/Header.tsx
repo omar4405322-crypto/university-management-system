@@ -67,7 +67,8 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
       <div className="flex items-center gap-6">
         <button
           onClick={onMenuClick}
-          className="rounded-xl p-2 text-brand-text-primary dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden transition-colors"
+          data-testid="mobile-menu-button"
+          className="rounded-xl p-2 text-brand-text-primary dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden transition-colors cursor-pointer"
           aria-label={t('nav.openMenu')}
         >
           <Menu size={22} />

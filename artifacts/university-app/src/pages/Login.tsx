@@ -120,18 +120,18 @@ const Login = () => {
       if (result.status === 429) {
         setApiError(t('auth.tooManyAttempts'));
       } else if (result.status === 401) {
-        setApiError(result.message || t('auth.invalidCredentials'));
+        setApiError(t('auth.invalidCredentials'));
       } else {
-        setApiError(result.message || t('common.errorOccurred'));
+        setApiError(result.message && !result.message.includes('status code') ? result.message : t('common.errorOccurred'));
       }
     } catch (err: unknown) {
       const e = err as { status?: number; message?: string };
       if (e.status === 429) {
         setApiError(t('auth.tooManyAttempts'));
       } else if (e.status === 401) {
-        setApiError(e.message || t('auth.invalidCredentials'));
+        setApiError(t('auth.invalidCredentials'));
       } else {
-        setApiError(e.message || t('common.errorOccurred'));
+        setApiError(e.message && !e.message.includes('status code') ? e.message : t('common.errorOccurred'));
       }
     }
   };
@@ -283,7 +283,11 @@ const Login = () => {
 
           <div className="w-full mt-6 space-y-5">
             {apiError && (
-              <div className="p-3.5 bg-red-50 dark:bg-red-950/30 border-s-4 border-s-red-500 rounded-e-xl text-red-700 dark:text-red-400 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in zoom-in-95">
+              <div 
+                role="alert"
+                aria-live="polite"
+                className="p-3.5 bg-red-50 dark:bg-red-950/30 border-s-4 border-s-red-500 rounded-e-xl text-red-700 dark:text-red-400 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in zoom-in-95"
+              >
                 <AlertCircle size={18} strokeWidth={2} className="shrink-0 text-red-500" />
                 <span>{apiError}</span>
               </div>

@@ -668,7 +668,10 @@ const DoctorsList = () => {
                               {initials}
                             </div>
                             <div className="flex flex-col">
-                              <span className="font-bold text-brand-text-primary dark:text-white">
+                              <span 
+                                onClick={() => navigate(`/doctors/${doctor.id}`)}
+                                className="font-bold text-brand-text-primary dark:text-white hover:text-brand-primary-600 dark:hover:text-brand-primary-400 hover:underline cursor-pointer transition-colors"
+                              >
                                 {doctor.firstName} {doctor.lastName}
                               </span>
                               <span className="text-xs text-brand-text-secondary dark:text-slate-400">

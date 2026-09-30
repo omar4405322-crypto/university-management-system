@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "bootstrap:admin": "tsx scripts/bootstrapAdmin.ts",
+    "bootstrap:test-student": "tsx scripts/bootstrapTestStudent.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },

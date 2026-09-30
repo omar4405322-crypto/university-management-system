@@ -98,7 +98,7 @@ const GlobalSearch = () => {
               id: d.id,
               title: `${d.firstName} ${d.lastName}`,
               meta: d.doctorId,
-              path: '/doctors',
+              path: `/doctors/${d.id}`,
             })) || [],
         },
         {

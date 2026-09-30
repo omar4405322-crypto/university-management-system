@@ -104,6 +104,26 @@ const Unauthorized = () => {
   );
 };
 
+const ScheduleRedirect = () => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+
+  switch (user.role) {
+    case 'DOCTOR':
+      return <Navigate to="/schedules/doctor" replace />;
+    case 'STUDENT':
+      return <Navigate to="/schedules/student" replace />;
+    case 'TEACHING_ASSISTANT':
+      return <Navigate to="/schedules/ta" replace />;
+    case 'SUPER_ADMIN':
+    case 'ADMIN':
+    case 'COLLEGE_ADMIN':
+    case 'DEPARTMENT_ADMIN':
+    default:
+      return <Navigate to="/timetables-management" replace />;
+  }
+};
+
 import DebugOverflowPanel from './components/ui/DebugOverflowPanel';
 
 const AppContent = () => {
@@ -229,6 +249,10 @@ const AppContent = () => {
                             </PageWrapper>
                           </ProtectedRoute>
                         }
+                      />
+                      <Route
+                        path="schedules"
+                        element={<ScheduleRedirect />}
                       />
                       <Route
                         path="schedules/doctor"
@@ -493,6 +517,10 @@ const AppContent = () => {
                             </PageWrapper>
                           </ProtectedRoute>
                         }
+                      />
+                      <Route
+                        path="records"
+                        element={<Navigate to="/record" replace />}
                       />
                       <Route
                         path="degree-audit/:studentId"

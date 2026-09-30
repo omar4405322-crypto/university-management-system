@@ -37,7 +37,12 @@ const registerSchema = z.object({
   lastName: z.string().min(2, { message: 'Last name is required' }),
   email: z.string().email({ message: 'Please enter a valid email address' }),
   phone: z.string().optional(),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
+  password: z
+    .string()
+    .min(8, { message: 'Password must be at least 8 characters' })
+    .regex(/[A-Z]/, { message: 'Password must include at least one uppercase letter' })
+    .regex(/[a-z]/, { message: 'Password must include at least one lowercase letter' })
+    .regex(/\d/, { message: 'Password must include at least one number' }),
   collegeId: z.string().min(1, { message: 'College is required' }),
   departmentId: z.string().min(1, { message: 'Department is required' }),
   studentId: z.string().min(1, { message: 'Student ID is required' }),
