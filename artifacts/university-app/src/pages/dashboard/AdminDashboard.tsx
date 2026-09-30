@@ -186,7 +186,7 @@ export default function AdminDashboard() {
         <div className="absolute -end-10 -bottom-10 opacity-10 pointer-events-none select-none text-white">
           <Building2 size={180} />
         </div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between w-full px-8 gap-6">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between w-full px-4 sm:px-6 md:px-8 gap-6">
           <div className="space-y-1.5">
             <h1 className="text-2xl md:text-3xl font-black text-white mb-0 leading-tight">
               {t('dashboard.welcomeBack')}, <bdi>{user?.firstName ? `${user.firstName} ${user.lastName}` : user?.email.split('@')[0]}</bdi>
@@ -256,11 +256,11 @@ export default function AdminDashboard() {
           <Card className="rounded-2xl border border-brand-border/60 shadow-sm p-6 flex flex-col justify-between h-full bg-brand-bg-card">
             <div className="space-y-5">
               <div className="space-y-1.5">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-text-muted">{t('dashboard.subscription')}</h4>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-400">{t('dashboard.subscription')}</p>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-2xl font-black uppercase text-brand-text-primary dark:text-brand-text-main leading-none mb-0">
+                  <h2 className="text-2xl font-black uppercase text-brand-text-primary dark:text-brand-text-main leading-none mb-0">
                     {t('dashboard.enterprise')}
-                  </h3>
+                  </h2>
                   <span className="px-2 py-0.5 text-[9px] font-black text-brand-primary-700 bg-brand-primary-50 dark:text-brand-primary-300 dark:bg-brand-primary-950/30 rounded-md uppercase tracking-wider">
                     {t('common.active')}
                   </span>
@@ -280,7 +280,7 @@ export default function AdminDashboard() {
                     style={{ width: `${subscriptionUsagePercent}%` }}
                   />
                 </div>
-                <p className="text-[10px] font-bold text-brand-text-muted">
+                <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
                   {subscriptionUsagePercent}% {t('dashboard.quotaUsage')} · {totalStudentsCount.toLocaleString()} {t('dashboard.totalStudents').toLowerCase()}
                 </p>
               </div>
@@ -299,9 +299,9 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2 min-w-0">
           <Card className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card">
             <div className="mb-4">
-              <h3 className="text-lg font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
+              <h2 className="text-lg font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
                 {t('dashboard.academicOverview')}
-              </h3>
+              </h2>
               <p className="text-xs text-brand-text-secondary dark:text-brand-text-sub font-medium">
                 {t('dashboard.growthTrend')}
               </p>
@@ -338,9 +338,9 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card min-w-0">
           <div className="mb-4">
-            <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
+            <h2 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
               {t('dashboard.collegeDistribution')}
-            </h3>
+            </h2>
             <p className="text-[11px] text-brand-text-secondary dark:text-brand-text-sub font-medium">
               {t('dashboard.enrollmentTrends')}
             </p>
@@ -368,9 +368,9 @@ export default function AdminDashboard() {
 
         <Card className="rounded-2xl border border-brand-border/60 shadow-sm p-6 bg-brand-bg-card min-w-0">
           <div className="mb-4">
-            <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
+            <h2 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
               {t('dashboard.financialOverview')}
-            </h3>
+            </h2>
             <p className="text-[11px] text-brand-text-secondary dark:text-brand-text-sub font-medium">
               {t('dashboard.paymentsStatus')}
             </p>
@@ -399,9 +399,9 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card noPadding className="border border-brand-border/60 overflow-hidden shadow-sm bg-brand-bg-card rounded-2xl">
           <div className="p-5 pb-3 border-b border-brand-border/40">
-            <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none">
+            <h2 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none">
               {t('dashboard.recentActivity')}
-            </h3>
+            </h2>
           </div>
           <div className="divide-y divide-brand-border/40">
             {!stats?.recentActivity?.length ? (
@@ -437,9 +437,9 @@ export default function AdminDashboard() {
 
         <Card className="border border-brand-border/60 shadow-sm bg-brand-bg-card rounded-2xl">
           <div className="p-2 flex flex-col gap-4">
-            <h3 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
+            <h2 className="text-base font-black text-brand-text-primary dark:text-brand-text-main leading-none mb-1">
               {t('dashboard.systemStatus')}
-            </h3>
+            </h2>
             <div className="p-4 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-950/10 border border-brand-primary-100/30 dark:border-brand-primary-900/20 flex items-center gap-3">
               <div className="relative flex h-3 w-3 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-primary-500 opacity-75"></span>

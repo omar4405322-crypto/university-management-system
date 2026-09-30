@@ -494,11 +494,12 @@ export function Profile() {
                     {roleLabel}
                   </Badge>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mt-0.5 font-medium">
                   <span className="font-mono">{user?.email}</span>
                   <button
                     onClick={handleCopyEmail}
-                    className="p-1 text-slate-400 hover:text-brand-primary-600 cursor-pointer"
+                    className="p-1 text-slate-500 hover:text-brand-primary-600 dark:text-slate-400 dark:hover:text-brand-primary-400 cursor-pointer"
+                    aria-label={isRTL ? "نسخ البريد" : "Copy email address"}
                     title={isRTL ? "نسخ البريد" : "Copy"}
                   >
                     {copiedEmail ? (
@@ -663,82 +664,93 @@ export function Profile() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
               {/* First Name */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="profile-firstname" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("profile.firstName", "First Name")}
                 </label>
                 <input
+                  id="profile-firstname"
                   type="text"
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleChange}
                   placeholder={t("profile.firstName", "First Name")}
+                  aria-label={t("profile.firstName", "First Name")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
 
               {/* Last Name */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="profile-lastname" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("profile.lastName", "Last Name")}
                 </label>
                 <input
+                  id="profile-lastname"
                   type="text"
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleChange}
                   placeholder={t("profile.lastName", "Last Name")}
+                  aria-label={t("profile.lastName", "Last Name")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
 
               {/* Official Email (Read-only) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="profile-email" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("profile.email", "Email Address")}
                 </label>
                 <input
+                  id="profile-email"
                   type="email"
                   value={user?.email || ""}
                   disabled
+                  aria-label={t("profile.email", "Email Address")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-mono cursor-not-allowed opacity-80"
                 />
               </div>
 
               {/* Phone Number */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="profile-phone" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("profile.phone", "Phone Number")}
                 </label>
                 <input
+                  id="profile-phone"
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="010XXXXXXXX"
+                  aria-label={t("profile.phone", "Phone Number")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
 
               {/* Date of Birth */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="profile-birthdate" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("profile.birthDate", "Date of Birth")}
                 </label>
                 <input
+                  id="profile-birthdate"
                   type="date"
                   name="birthDate"
                   value={formData.birthDate}
                   onChange={handleChange}
+                  aria-label={t("profile.birthDate", "Date of Birth")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer"
                 />
               </div>
 
               {/* Address / City */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="profile-address" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("profile.address", "Address / City")}
                 </label>
                 <input
+                  id="profile-address"
                   type="text"
                   name="address"
                   value={formData.address}
@@ -748,6 +760,7 @@ export function Profile() {
                       ? "مثال: 6 أكتوبر، الجيزة"
                       : "e.g. 6th of October City"
                   }
+                  aria-label={t("profile.address", "Address / City")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
@@ -1044,13 +1057,15 @@ export function Profile() {
 
           {/* Current Password */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="profile-current-password" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               {t("profile.currentPassword", "Current Password")}
             </label>
             <div className="relative">
               <input
+                id="profile-current-password"
                 type={showPassword.current ? "text" : "password"}
                 required
+                aria-label={t("profile.currentPassword", "Current Password")}
                 value={passwordForm.currentPassword}
                 onChange={(e) =>
                   setPasswordForm({
@@ -1062,6 +1077,7 @@ export function Profile() {
               />
               <button
                 type="button"
+                aria-label={showPassword.current ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
                 onClick={() =>
                   setShowPassword({
                     ...showPassword,
@@ -1081,13 +1097,15 @@ export function Profile() {
 
           {/* New Password */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="profile-new-password" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               {t("profile.newPassword", "New Password")}
             </label>
             <div className="relative">
               <input
+                id="profile-new-password"
                 type={showPassword.new ? "text" : "password"}
                 required
+                aria-label={t("profile.newPassword", "New Password")}
                 value={passwordForm.newPassword}
                 onChange={(e) =>
                   setPasswordForm({
@@ -1099,6 +1117,7 @@ export function Profile() {
               />
               <button
                 type="button"
+                aria-label={showPassword.new ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
                 onClick={() =>
                   setShowPassword({ ...showPassword, new: !showPassword.new })
                 }
@@ -1111,13 +1130,15 @@ export function Profile() {
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="profile-confirm-password" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               {t("profile.confirmPassword", "Confirm New Password")}
             </label>
             <div className="relative">
               <input
+                id="profile-confirm-password"
                 type={showPassword.confirm ? "text" : "password"}
                 required
+                aria-label={t("profile.confirmPassword", "Confirm New Password")}
                 value={passwordForm.confirmPassword}
                 onChange={(e) =>
                   setPasswordForm({

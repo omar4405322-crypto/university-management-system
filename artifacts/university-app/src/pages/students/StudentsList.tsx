@@ -482,6 +482,10 @@ const StudentsList = () => {
               "students.searchPlaceholder",
               "Search by name, student ID, or email...",
             )}
+            aria-label={t(
+              "students.searchPlaceholder",
+              "Search by name, student ID, or email...",
+            )}
             className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
           />
           {search && (
@@ -500,6 +504,7 @@ const StudentsList = () => {
         {/* College Dropdown */}
         {isSuperAdmin && (
           <select
+            aria-label={t("colleges.allColleges", "All Colleges")}
             value={selectedCollege}
             onChange={(e) => {
               setSelectedCollege(e.target.value);
@@ -527,6 +532,7 @@ const StudentsList = () => {
 
         {/* Department Dropdown */}
         <select
+          aria-label={t("students.allDepartments", "All Departments")}
           value={selectedDept}
           onChange={(e) => {
             setSelectedDept(e.target.value);
@@ -547,6 +553,7 @@ const StudentsList = () => {
 
         {/* Academic Year Dropdown */}
         <select
+          aria-label={t("students.allYears", "All Years")}
           value={selectedYear}
           onChange={(e) => {
             setSelectedYear(e.target.value);
@@ -563,6 +570,7 @@ const StudentsList = () => {
 
         {/* Status Dropdown */}
         <select
+          aria-label={t("students.filterAll", "All Statuses")}
           value={statusFilter}
           onChange={(e) => {
             setStatusFilter(e.target.value);
@@ -582,6 +590,7 @@ const StudentsList = () => {
 
         {/* Sort Select */}
         <select
+          aria-label={t("common.sortBy", "Sort By")}
           value={sortBy}
           onChange={(e) => {
             setSortBy(e.target.value);
@@ -675,7 +684,9 @@ const StudentsList = () => {
                         className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
                         checked={isAllVisibleSelected}
                         onChange={handleSelectAll}
+                        aria-label={t("common.selectAll", "Select all students")}
                       />
+                      <span className="sr-only">{t("common.selectAll", "Select all students")}</span>
                     </TableHead>
 
                     {/* Student Name Column with Alphabetical Sorting Indicator */}
@@ -782,6 +793,7 @@ const StudentsList = () => {
                             className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
                             checked={isSelected}
                             onChange={() => handleSelectOne(student.id)}
+                            aria-label={`${t("common.select", "Select")} ${student.firstName} ${student.lastName}`}
                           />
                         </TableCell>
                         <TableCell className="p-4 text-start">
@@ -790,12 +802,13 @@ const StudentsList = () => {
                               {initials}
                             </div>
                             <div className="flex flex-col">
-                              <span 
+                              <button 
+                                type="button"
                                 onClick={() => navigate(`/students/${student.id}`)}
-                                className="font-bold text-brand-text-primary dark:text-white hover:text-brand-primary-600 dark:hover:text-brand-primary-400 hover:underline cursor-pointer transition-colors"
+                                className="font-bold text-brand-text-primary dark:text-white hover:text-brand-primary-600 dark:hover:text-brand-primary-400 hover:underline cursor-pointer transition-colors text-start p-0 bg-transparent border-0"
                               >
                                 {student.firstName} {student.lastName}
-                              </span>
+                              </button>
                               <span className="text-xs text-brand-text-secondary dark:text-slate-400 font-mono">
                                 {student.studentId}
                               </span>

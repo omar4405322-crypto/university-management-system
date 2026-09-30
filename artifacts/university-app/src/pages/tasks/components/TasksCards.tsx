@@ -122,9 +122,9 @@ export const TasksCards: React.FC<TasksCardsProps> = ({
               </div>
 
               {/* Task Title */}
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug mb-1 line-clamp-1">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-snug mb-1 line-clamp-1">
                 {task.title}
-              </h3>
+              </h2>
 
               {/* Task Description */}
               <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3 leading-relaxed">

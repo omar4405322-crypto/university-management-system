@@ -503,6 +503,7 @@ export function TASchedule() {
             setSelectedCollegeId(e.target.value);
             setSelectedDeptId('all');
           }}
+          aria-label={isRTL ? 'كل الكليات' : 'All Colleges'}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="all">{isRTL ? 'كل الكليات' : 'All Colleges'}</option>
@@ -517,6 +518,7 @@ export function TASchedule() {
         <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
+          aria-label={isRTL ? 'تصفية حسب السنة' : 'Filter by year'}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="">{isRTL ? 'كل السنوات' : 'All Years'}</option>
@@ -531,6 +533,7 @@ export function TASchedule() {
         <select
           value={selectedSemester}
           onChange={(e) => setSelectedSemester(e.target.value)}
+          aria-label={isRTL ? 'تصفية حسب الفصل الدراسي' : 'Filter by semester'}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="">{isRTL ? 'كل الفصول' : 'All Semesters'}</option>

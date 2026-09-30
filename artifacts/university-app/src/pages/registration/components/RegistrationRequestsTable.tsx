@@ -62,6 +62,7 @@ export const RegistrationRequestsTable: React.FC<RegistrationRequestsTableProps>
                   checked={isAllVisibleSelected}
                   onChange={handleSelectAll}
                 />
+                <span className="sr-only">{isRTL ? "تحديد الكل" : "Select all"}</span>
               </TableHead>
               <TableHead className="text-start p-3.5 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 {isRTL ? "مقدم الطلب" : "Applicant"}

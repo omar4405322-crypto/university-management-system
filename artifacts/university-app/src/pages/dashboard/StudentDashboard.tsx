@@ -151,9 +151,9 @@ export default function StudentDashboard() {
           style={{ backgroundImage: `url(${CAMPUS_HERO_1}), linear-gradient(135deg, var(--color-brand-navy-500) 0%, var(--color-brand-teal) 100%)` }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/25 rtl:bg-gradient-to-l" />
-        <div className="relative z-10 flex flex-col gap-6 p-6 md:flex-row md:items-end md:justify-between md:p-8">
+        <div className="relative z-10 flex flex-col gap-6 p-4 sm:p-6 md:flex-row md:items-end md:justify-between md:p-8">
           <div className="space-y-2 max-w-2xl">
-            <h1 className="text-3xl font-black tracking-tight text-white md:text-4xl">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white md:text-4xl">
               {t('dashboard.welcomeBack')}, {user?.student?.firstName || user?.email.split('@')[0]}
             </h1>
             <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-white/85">
@@ -165,7 +165,7 @@ export default function StudentDashboard() {
               </span>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex flex-wrap shrink-0 items-center gap-3">
             <Button
               variant="outline"
               size="default"
@@ -177,7 +177,7 @@ export default function StudentDashboard() {
             <Button
               variant="primary"
               size="default"
-              className="shadow-overlay shadow-brand-brand-green-dark/30 font-bold text-xs uppercase tracking-widest"
+              className="bg-brand-navy-900 hover:bg-brand-navy-800 text-white shadow-overlay shadow-brand-navy-900/40 font-bold text-xs uppercase tracking-widest border-0"
               onClick={() => navigate('/settings')}
             >
               <Zap size={16} /> {t('dashboard.quickActions')}
@@ -208,7 +208,7 @@ export default function StudentDashboard() {
         <div className="lg:col-span-8 xl:col-span-9 2xl:col-span-9 min-w-0 section-gap">
           <Card className="shadow-md">
             <div className="mb-4">
-              <h3 className="text-lg font-black text-brand-text-main mb-1">{t('dashboard.academicOverview')}</h3>
+              <h2 className="text-lg font-black text-brand-text-main mb-1">{t('dashboard.academicOverview')}</h2>
               <p className="text-xs text-brand-text-secondary dark:text-brand-text-sub font-medium">
                 {t('dashboard.growthTrend')}
               </p>
@@ -242,7 +242,7 @@ export default function StudentDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card noPadding>
               <div className="p-5 pb-3 border-b border-brand-border">
-                <h3 className="text-lg font-black text-brand-text-main mb-0">{t('dashboard.recentActivity')}</h3>
+                <h2 className="text-lg font-black text-brand-text-main mb-0">{t('dashboard.recentActivity')}</h2>
               </div>
               <div className="divide-y divide-brand-border">
                 {!stats?.recentActivity?.length ? (
@@ -278,7 +278,7 @@ export default function StudentDashboard() {
 
             <Card noPadding>
               <div className="p-6 flex flex-col items-center justify-center gap-4 min-h-[160px]">
-                <h3 className="text-lg font-black text-brand-text-main mb-2">{t('dashboard.systemStatus')}</h3>
+                <h2 className="text-lg font-black text-brand-text-main mb-2">{t('dashboard.systemStatus')}</h2>
                 <div className="p-4 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-900/10 border border-brand-primary-100 dark:border-brand-primary-900/20 flex items-center gap-3 w-full">
                   <div className="w-2.5 h-2.5 rounded-full bg-brand-brand-green-dark animate-ping shrink-0" />
                   <p className="text-xs font-black text-brand-brand-green-dark uppercase tracking-widest">{t('dashboard.allSystemsOperational')}</p>
@@ -294,7 +294,7 @@ export default function StudentDashboard() {
         <div className="lg:col-span-4 xl:col-span-3 2xl:col-span-3 min-w-0 section-gap">
           <Card noPadding>
             <div className="p-6 space-y-5">
-              <h3 className="text-lg font-black text-brand-text-main mb-2">{t('dashboard.upcomingEvents')}</h3>
+              <h2 className="text-lg font-black text-brand-text-main mb-2">{t('dashboard.upcomingEvents')}</h2>
               {!stats?.upcomingEvents?.length ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
                   <Calendar size={28} className="text-brand-text-muted opacity-30" />
@@ -310,7 +310,7 @@ export default function StudentDashboard() {
                         <span className="text-[9px] font-black uppercase text-brand-text-secondary group-hover:text-white/80 transition-colors">{d.toLocaleString('default', { month: 'short' })}</span>
                       </div>
                       <div className="flex-1 pt-1">
-                        <h5 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight group-hover:text-brand-brand-green-dark transition-colors">{event.title}</h5>
+                        <h3 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight group-hover:text-brand-brand-green-dark transition-colors">{event.title}</h3>
                         <p className="text-caption mt-1">{event.location || ''}</p>
                       </div>
                     </div>
@@ -325,7 +325,7 @@ export default function StudentDashboard() {
               <div className="flex gap-4">
                 <div className="p-3 bg-brand-accent-yellow/20 text-brand-accent-yellow rounded-xl h-fit shrink-0"><Bell size={18} /></div>
                 <div className="space-y-1.5">
-                  <h6 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight">{stats.latestAnnouncement.title || t('dashboard.examSchedulePublished')}</h6>
+                  <h3 className="text-sm font-black text-brand-text-primary dark:text-brand-text-main leading-tight">{stats.latestAnnouncement.title || t('dashboard.examSchedulePublished')}</h3>
                   <p className="text-xs text-brand-text-secondary font-medium leading-relaxed">{stats.latestAnnouncement.body || t('dashboard.examScheduleNote')}</p>
                 </div>
               </div>

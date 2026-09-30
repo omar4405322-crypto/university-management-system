@@ -287,10 +287,11 @@ export function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
               {/* First Name */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="settings-first-name" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("auth.firstName", "First Name")}
                 </label>
                 <input
+                  id="settings-first-name"
                   type="text"
                   value={accountData.firstName}
                   onChange={(e) =>
@@ -303,16 +304,18 @@ export function SettingsPage() {
                     "settings.firstNamePlaceholder",
                     "Enter your first name",
                   )}
+                  aria-label={t("auth.firstName", "First Name")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
 
               {/* Last Name */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="settings-last-name" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("auth.lastName", "Last Name")}
                 </label>
                 <input
+                  id="settings-last-name"
                   type="text"
                   value={accountData.lastName}
                   onChange={(e) =>
@@ -322,35 +325,40 @@ export function SettingsPage() {
                     "settings.lastNamePlaceholder",
                     "Enter your last name",
                   )}
+                  aria-label={t("auth.lastName", "Last Name")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
 
               {/* Phone */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="settings-phone" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("profile.phone", "Phone Number")}
                 </label>
                 <input
+                  id="settings-phone"
                   type="tel"
                   value={accountData.phone}
                   onChange={(e) =>
                     setAccountData({ ...accountData, phone: e.target.value })
                   }
                   placeholder="010XXXXXXXX"
+                  aria-label={t("profile.phone", "Phone Number")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
 
               {/* Email (Read-only) */}
               <div className="sm:col-span-2 md:col-span-3">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="settings-email" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("auth.emailAddress", "Email Address")}
                 </label>
                 <input
+                  id="settings-email"
                   type="email"
                   value={user?.email || ""}
                   disabled
+                  aria-label={t("auth.emailAddress", "Email Address")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-900/60 text-slate-500 font-mono cursor-not-allowed opacity-80"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
@@ -403,10 +411,11 @@ export function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               {/* Current Password */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="settings-current-password" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("settings.currentPassword", "Current Password")}
                 </label>
                 <input
+                  id="settings-current-password"
                   type="password"
                   required
                   value={passwordData.currentPassword}
@@ -417,16 +426,18 @@ export function SettingsPage() {
                     })
                   }
                   placeholder="••••••••"
+                  aria-label={t("settings.currentPassword", "Current Password")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
 
               {/* New Password */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="settings-new-password" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("settings.newPassword", "New Password")}
                 </label>
                 <input
+                  id="settings-new-password"
                   type="password"
                   required
                   value={passwordData.newPassword}
@@ -437,16 +448,18 @@ export function SettingsPage() {
                     })
                   }
                   placeholder="8 أحرف على الأقل"
+                  aria-label={t("settings.newPassword", "New Password")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
 
               {/* Confirm Password */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="settings-confirm-password" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("settings.confirmPassword", "Confirm New Password")}
                 </label>
                 <input
+                  id="settings-confirm-password"
                   type="password"
                   required
                   value={passwordData.confirmPassword}
@@ -457,6 +470,7 @@ export function SettingsPage() {
                     })
                   }
                   placeholder="تأكيد الكلمة"
+                  aria-label={t("settings.confirmPassword", "Confirm New Password")}
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 />
               </div>
@@ -608,7 +622,7 @@ export function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {/* Lecture Start Time */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="settings-lecture-start-time" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("settings.lectureStartTime", "Daily Schedule Start Time")}
                 </label>
                 <div className="flex items-center gap-2">
@@ -617,6 +631,8 @@ export function SettingsPage() {
                     className="text-brand-primary-500 shrink-0"
                   />
                   <select
+                    id="settings-lecture-start-time"
+                    aria-label={t("settings.lectureStartTime", "Daily Schedule Start Time")}
                     value={scheduleStartTime}
                     onChange={(e) => setScheduleStartTimeState(e.target.value)}
                     className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer"
@@ -634,13 +650,15 @@ export function SettingsPage() {
 
               {/* Schedule Time Step */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="settings-schedule-time-step" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t(
                     "settings.scheduleStepMinutes",
                     "Session Interval (Minutes)",
                   )}
                 </label>
                 <select
+                  id="settings-schedule-time-step"
+                  aria-label={t("settings.scheduleStepMinutes", "Session Interval (Minutes)")}
                   value={scheduleTimeStep}
                   onChange={(e) =>
                     setScheduleTimeStepState(Number(e.target.value))

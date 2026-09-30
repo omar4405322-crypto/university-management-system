@@ -489,7 +489,9 @@ const TeachingAssistantsList = () => {
                         }
                         onChange={handleSelectAll}
                         title={isRTL ? "تحديد الكل" : "Select All"}
+                        aria-label={t("common.selectAll", "Select all teaching assistants")}
                       />
+                      <span className="sr-only">{t("common.selectAll", "Select all teaching assistants")}</span>
                     </TableHead>
                     <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {t("teachingAssistants.colTA")}
@@ -561,6 +563,7 @@ const TeachingAssistantsList = () => {
                             className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
                             checked={isSelected}
                             onChange={() => handleSelectOne(ta.id)}
+                            aria-label={`${t("common.select", "Select")} ${ta.firstName ? `${ta.firstName} ${ta.lastName || ""}` : ta.employeeId}`}
                           />
                         </TableCell>
                         <TableCell className="p-4 text-start">

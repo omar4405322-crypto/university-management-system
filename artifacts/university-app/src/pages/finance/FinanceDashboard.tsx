@@ -489,9 +489,9 @@ export function FinanceDashboard() {
           {/* Revenue Over Time */}
           <div className="lg:col-span-2 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                 {t('finance.revenueOverTime', 'Revenue Over Time')}
-              </h3>
+              </h2>
               <span className="text-[11px] text-slate-400 font-semibold">
                 {isRTL ? 'تقرير الإيرادات المحصلة' : 'Revenue Trend'}
               </span>
@@ -528,9 +528,9 @@ export function FinanceDashboard() {
           {/* Revenue By Type */}
           <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                 {t('finance.revenueByType', 'Revenue by Type')}
-              </h3>
+              </h2>
             </div>
 
             <div className="h-[240px] w-full flex items-center justify-center">

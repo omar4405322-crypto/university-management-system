@@ -189,7 +189,7 @@ export default function DoctorDashboard() {
           <Button
             variant="ghost"
             size="sm"
-            className="text-xs font-bold text-brand-brand-green-dark hover:bg-brand-primary-50"
+            className="text-xs font-bold text-brand-primary-700 dark:text-brand-primary-300 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/40"
             onClick={() => navigate('/courses')}
           >
             {isRTL ? 'إدارة جميع المقررات' : 'Manage All Courses'}
@@ -197,7 +197,7 @@ export default function DoctorDashboard() {
         </div>
 
         {myCourses.length === 0 ? (
-          <div className="text-center py-12 text-brand-text-muted text-sm font-bold">
+          <div className="text-center py-12 text-slate-500 dark:text-slate-400 text-sm font-bold">
             {isRTL ? 'لا توجد مقررات دراسية مسجلة حالياً' : 'No active courses currently assigned'}
           </div>
         ) : (
@@ -205,25 +205,25 @@ export default function DoctorDashboard() {
             {myCourses.map((course: any) => (
               <div
                 key={course.id}
-                className="p-5 rounded-2xl bg-surface-subtle border border-brand-border hover:border-brand-brand-green/40 hover:shadow-md transition-all space-y-4"
+                className="p-5 rounded-2xl bg-surface-subtle border border-brand-border hover:border-brand-primary-500/40 hover:shadow-md transition-all space-y-4"
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
-                    <span className="px-2.5 py-0.5 rounded text-xs font-black bg-brand-primary-50 text-brand-brand-green-dark border border-brand-primary-200">
+                    <span className="px-2.5 py-0.5 rounded text-xs font-black bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-800 dark:text-brand-primary-200 border border-brand-primary-200 dark:border-brand-primary-800/40">
                       {course.courseCode || 'MTR'}
                     </span>
                     <h3 className="text-base font-bold text-brand-text-primary dark:text-brand-text-main pt-1">
                       {course.name}
                     </h3>
                   </div>
-                  <span className="text-xs font-semibold text-brand-text-muted bg-surface-card px-2.5 py-1 rounded-lg border border-brand-border">
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-surface-card px-2.5 py-1 rounded-lg border border-brand-border">
                     {course.credits ? `${course.credits} ${isRTL ? 'ساعات معتمدة' : 'Credits'}` : ''}
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-brand-text-secondary">
+                <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-600 dark:text-slate-300">
                   {course.department && (
-                    <span className="flex items-center gap-1 text-brand-brand-green-dark font-semibold">
+                    <span className="flex items-center gap-1 text-brand-primary-800 dark:text-brand-primary-300 font-bold">
                       <Building2 size={13} />
                       {isRTL ? (course.department.nameAr || course.department.name) : (course.department.name || course.department.nameAr)}
                       {course.department.college && ` • ${isRTL ? (course.department.college.nameAr || course.department.college.name) : (course.department.college.name || course.department.college.nameAr)}`}
@@ -238,7 +238,7 @@ export default function DoctorDashboard() {
                   <Button
                     variant="primary"
                     size="sm"
-                    className="flex-1 bg-brand-brand-green hover:bg-brand-brand-green-dark text-white font-bold text-xs py-2.5 shadow-sm flex items-center justify-center gap-2 border-0"
+                    className="flex-1 bg-brand-navy-900 hover:bg-brand-navy-800 text-white font-bold text-xs py-2.5 shadow-sm flex items-center justify-center gap-2 border-0"
                     onClick={() => navigate('/attendance')}
                   >
                     <QrCode size={15} /> {isRTL ? 'بدء تسجيل الحضور' : 'Start QR Session'}
@@ -263,14 +263,14 @@ export default function DoctorDashboard() {
         {/* Today's Schedule (8 cols) */}
         <div className="lg:col-span-8 bg-surface-card rounded-3xl border border-brand-border p-6 shadow-card space-y-4">
           <div className="flex items-center justify-between border-b border-brand-border pb-3">
-            <h3 className="text-base font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+            <h2 className="text-base font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
               <Clock size={18} className="text-brand-brand-green-dark" />
               {isRTL ? 'محاضرات ومواعيد اليوم' : "Today's Lectures"}
-            </h3>
+            </h2>
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs font-bold text-brand-text-muted"
+              className="text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-brand-primary-600 dark:hover:text-brand-primary-400"
               onClick={() => navigate('/schedules/doctor')}
             >
               {isRTL ? 'الجدول الكامل' : 'Full Schedule'}
@@ -279,8 +279,8 @@ export default function DoctorDashboard() {
 
           {todaySchedule.length === 0 ? (
             <div className="py-8 text-center space-y-2">
-              <CheckCircle2 size={32} className="mx-auto text-brand-brand-green-dark/60" />
-              <p className="text-xs font-bold text-brand-text-muted">
+              <CheckCircle2 size={32} className="mx-auto text-brand-primary-600 dark:text-brand-primary-400" />
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
                 {isRTL ? 'لا توجد محاضرات مجدولة لهذا اليوم' : 'No lectures scheduled for today'}
               </p>
             </div>
@@ -289,12 +289,12 @@ export default function DoctorDashboard() {
               {todaySchedule.map((slot: any) => (
                 <div key={slot.id} className="p-4 rounded-xl bg-surface-subtle border border-brand-border flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="px-3 py-1.5 rounded-lg bg-brand-primary-50 text-brand-brand-green-dark font-bold text-xs shrink-0">
+                    <div className="px-3 py-1.5 rounded-lg bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-800 dark:text-brand-primary-200 font-bold text-xs shrink-0">
                       {slot.startTime} - {slot.endTime}
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main">{slot.courseName}</h4>
-                      <p className="text-xs text-brand-text-muted">
+                      <h3 className="text-sm font-bold text-brand-text-primary dark:text-brand-text-main">{slot.courseName}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         {slot.room} • {slot.slotType}
                         {slot.departmentName && ` • ${slot.departmentName}`}
                         {slot.collegeName && ` (${slot.collegeName})`}
@@ -304,7 +304,7 @@ export default function DoctorDashboard() {
                   <Button
                     variant="primary"
                     size="sm"
-                    className="bg-brand-brand-green hover:bg-brand-brand-green-dark text-white font-bold text-xs border-0"
+                    className="bg-brand-navy-900 hover:bg-brand-navy-800 text-white font-bold text-xs border-0"
                     onClick={() => navigate('/attendance')}
                   >
                     <QrCode size={14} /> {isRTL ? 'حضور' : 'Attendance'}
@@ -318,11 +318,16 @@ export default function DoctorDashboard() {
         {/* Upcoming Exams (4 cols) */}
         <div className="lg:col-span-4 bg-surface-card rounded-3xl border border-brand-border p-6 shadow-card space-y-4">
           <div className="flex items-center justify-between border-b border-brand-border pb-3">
-            <h3 className="text-base font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+            <h2 className="text-base font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
               <Calendar size={18} className="text-brand-accent-gold" />
               {isRTL ? 'الاختبارات القادمة' : 'Upcoming Exams'}
-            </h3>
-            <Button variant="ghost" size="sm" className="text-xs font-bold text-brand-text-muted" onClick={() => navigate('/exams')}>
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-brand-primary-600 dark:hover:text-brand-primary-400"
+              onClick={() => navigate('/exams')}
+            >
               {isRTL ? 'عرض' : 'View'}
             </Button>
           </div>

@@ -138,7 +138,7 @@ const Login = () => {
 
   return (
     <div 
-      className="min-h-screen w-full relative overflow-hidden font-arabic select-none" 
+      className="min-h-screen w-full relative overflow-x-hidden overflow-y-auto font-arabic select-none flex flex-col items-center justify-center p-4" 
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <style>{`
@@ -150,11 +150,11 @@ const Login = () => {
         @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translate(-50%, calc(-50% + 20px));
+            transform: translateY(20px);
           }
           to {
             opacity: 1;
-            transform: translate(-50%, -50%);
+            transform: translateY(0);
           }
         }
         .card-entrance {
@@ -203,13 +203,13 @@ const Login = () => {
       />
 
       {/* ── Top Navigation Bar with Brand, Language & Theme Controls ── */}
-      <div className="fixed top-5 inset-x-6 z-20 flex items-center justify-between pointer-events-none">
+      <header className="fixed top-5 inset-x-4 sm:inset-x-6 z-20 flex items-center justify-between pointer-events-none">
         <Link
           to="/"
           className="pointer-events-auto flex items-center gap-3 text-white/90 hover:text-white transition-opacity"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 backdrop-blur-md">
-            <img src={UNIVERSITY_LOGO_WHITE} alt="Logo" className="h-6 w-6 object-contain" />
+            <img src={UNIVERSITY_LOGO_WHITE} alt={isRTL ? 'شعار الجامعة' : 'University Logo'} className="h-6 w-6 object-contain" />
           </div>
           <span className="text-xs font-bold hidden sm:inline-block text-white leading-tight">
             {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
@@ -251,9 +251,9 @@ const Login = () => {
             )}
           </Link>
         </div>
-      </div>
+      </header>
 
-      <div className="absolute top-1/2 left-1/2 z-10 w-full max-w-[420px] px-4 sm:px-0 card-entrance">
+      <main className="relative z-10 w-full max-w-[420px] px-0 my-auto py-16 card-entrance">
         <div 
           className="rounded-2xl shadow-2xl transition-all duration-300 w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white"
           style={{
@@ -358,7 +358,7 @@ const Login = () => {
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute end-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                        className="absolute end-1 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
                         aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                       >
                         {showPassword ? <EyeOff size={17} strokeWidth={2} /> : <Eye size={17} strokeWidth={2} />}
@@ -434,19 +434,19 @@ const Login = () => {
                 {t('auth.noAccount')}{' '}
                 <Link
                   to="/register"
-                  className="text-brand-primary-600 dark:text-brand-primary-400 font-bold hover:underline transition-colors"
+                  className="text-brand-primary-700 dark:text-brand-primary-400 font-bold hover:underline transition-colors"
                 >
                   {t('auth.registerHere')}
                 </Link>
               </p>
             </div>
 
-            <div className="text-[11px] text-slate-400 dark:text-slate-500 text-center mt-6">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 text-center mt-6">
               © {new Date().getFullYear()} {isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       <div className="branding-overlay-block absolute bottom-8 start-8 z-10 hidden md:flex flex-col gap-4 text-start items-start animate-in fade-in slide-in-from-bottom-8 duration-700">
         <div className="flex items-center gap-3">

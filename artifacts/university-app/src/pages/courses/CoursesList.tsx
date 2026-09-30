@@ -445,11 +445,16 @@ export function CoursesList() {
               "courses.searchPlaceholder",
               "Search by name or code...",
             )}
+            aria-label={t(
+              "courses.searchPlaceholder",
+              "Search by name or code...",
+            )}
             className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
           />
           {search && (
             <button
               onClick={() => setSearch("")}
+              aria-label={isRTL ? "مسح البحث" : "Clear search"}
               className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
             >
               <X size={12} />
@@ -462,6 +467,7 @@ export function CoursesList() {
           <select
             value={selectedCollege}
             onChange={handleCollegeChange}
+            aria-label={t("colleges.allColleges", "All Colleges")}
             className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
           >
             <option value="">
@@ -485,6 +491,7 @@ export function CoursesList() {
               setPage(1);
             }}
             disabled={!selectedCollege && departments.length === 0}
+            aria-label={t("departments.allDepartments", "All Departments")}
             className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer disabled:opacity-50"
           >
             <option value="">
@@ -506,6 +513,7 @@ export function CoursesList() {
             setSelectedYear(e.target.value);
             setPage(1);
           }}
+          aria-label={isRTL ? "تصفية حسب السنة" : "Filter by year"}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="">{isRTL ? "كل السنوات" : "All Years"}</option>
@@ -523,6 +531,7 @@ export function CoursesList() {
             setSelectedSemester(e.target.value);
             setPage(1);
           }}
+          aria-label={isRTL ? "تصفية حسب الفصل" : "Filter by semester"}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="">{isRTL ? "كل الفصول" : "All Semesters"}</option>
@@ -635,7 +644,9 @@ export function CoursesList() {
                         }
                         onChange={handleSelectAll}
                         title={isRTL ? "تحديد الكل" : "Select All"}
+                        aria-label={isRTL ? "تحديد كل المقررات" : "Select all courses"}
                       />
+                      <span className="sr-only">{isRTL ? "تحديد كل المقررات" : "Select all courses"}</span>
                     </TableHead>
                   )}
                   <TableHead
@@ -697,15 +708,16 @@ export function CoursesList() {
                             className="rounded border-slate-300 dark:border-slate-700 text-brand-primary-500 focus:ring-brand-primary-500/20 w-4 h-4 cursor-pointer align-middle"
                             checked={isSelected}
                             onChange={() => handleSelectOne(course.id)}
+                            aria-label={`${t("common.select", "Select")} ${course.name}`}
                           />
                         </TableCell>
                       )}
 
                       {/* Course Code */}
                       <TableCell
-                        className={`${canManage ? "" : "ps-4"} font-mono font-bold text-xs text-brand-primary-600 dark:text-brand-primary-400`}
+                        className={`${canManage ? "" : "ps-4"} font-mono font-bold text-xs`}
                       >
-                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-brand-primary-700 dark:text-brand-primary-300">
                           {course.courseCode}
                         </span>
                       </TableCell>
@@ -713,14 +725,15 @@ export function CoursesList() {
                       {/* Course Name & Credits */}
                       <TableCell className="font-semibold text-xs text-slate-900 dark:text-white">
                         <div className="flex items-center gap-2">
-                          <span
+                          <button
+                            type="button"
                             onClick={() => navigate(`/courses/${course.id}`)}
-                            className="hover:text-brand-primary-600 cursor-pointer font-bold transition-colors"
+                            className="hover:text-brand-primary-600 cursor-pointer font-bold transition-colors text-start p-0 bg-transparent border-0"
                           >
                             <TruncatedText text={course.name} maxWidth={280} />
-                          </span>
+                          </button>
 
-                          <span className="text-[10px] text-slate-400 font-mono">
+                          <span className="text-[10px] text-slate-600 dark:text-slate-300 font-mono font-semibold">
                             ({course.credits || 3} {isRTL ? "معتمدة" : "Cr"})
                           </span>
 

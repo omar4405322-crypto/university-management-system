@@ -818,9 +818,9 @@ export function FacultyAttendanceDashboard() {
               <div className="flex items-center gap-2.5">
                 <GraduationCap className="w-5 h-5 text-brand-primary-400" />
                 <div>
-                  <h3 className="text-sm font-bold">
+                  <h2 className="text-sm font-bold">
                     {t('attendance.rosterStaffModalTitle', 'Attendance Roster & Course Staff')}
-                  </h3>
+                  </h2>
                   <p className="text-slate-400 text-xs">
                     {courses.find((c) => c.id === selectedCourseId)?.name || 'المقرر الدراسي'}
                   </p>
@@ -1211,9 +1211,9 @@ export function FacultyAttendanceDashboard() {
                       </div>
 
                       {/* Course Title */}
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug mb-1 line-clamp-1">
+                      <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-snug mb-1 line-clamp-1">
                         {course.name}
-                      </h3>
+                      </h2>
 
                       {/* Department / College */}
                       <p className="text-[11px] text-slate-400 truncate mb-2.5">
@@ -1225,7 +1225,7 @@ export function FacultyAttendanceDashboard() {
                         <span className="text-slate-500 font-medium text-[11px] truncate max-w-[140px]">
                           {sectionsList ? `سكشن: ${sectionsList}` : 'عام'}
                         </span>
-                        <span className="text-brand-primary-600 dark:text-brand-primary-400 font-semibold font-mono text-[11px]">
+                        <span className="text-brand-primary-700 dark:text-brand-primary-300 font-bold font-mono text-[11px]">
                           {enrolledCount} طالب
                         </span>
                       </div>
@@ -1243,6 +1243,7 @@ export function FacultyAttendanceDashboard() {
                               [course.id]: parseInt(e.target.value, 10),
                             })
                           }
+                          aria-label={isRTL ? `فترة السماح لمقرر ${course.name}` : `Grace period for ${course.name}`}
                           className="h-6 px-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
                         >
                           {GRACE_PERIOD_OPTIONS.map((m) => (
@@ -1341,6 +1342,7 @@ export function FacultyAttendanceDashboard() {
                                   [course.id]: parseInt(e.target.value, 10),
                                 })
                               }
+                              aria-label={isRTL ? `فترة السماح لمقرر ${course.name}` : `Grace period for ${course.name}`}
                               className="h-6 px-1 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-[11px] font-medium"
                             >
                               {GRACE_PERIOD_OPTIONS.map((m) => (

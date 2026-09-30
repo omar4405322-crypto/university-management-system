@@ -450,11 +450,13 @@ export function DoctorSchedule() {
     [filteredSlots]
   );
 
-  const doctorNameDisplay = activeDoctor
-    ? formatDoctorName(activeDoctor)
-    : selectedDoctorId === 'all'
-    ? isRTL ? 'الجدول الشامل لجميع المحاضرات والأساتذة' : 'University Master Lecture Schedule'
-    : `${user?.firstName || ''} ${user?.lastName || ''}`;
+  const doctorNameDisplay =
+    (activeDoctor
+      ? formatDoctorName(activeDoctor)
+      : selectedDoctorId === 'all'
+      ? (isRTL ? 'الجدول الشامل لجميع المحاضرات والأساتذة' : 'University Master Lecture Schedule')
+      : `${user?.firstName || ''} ${user?.lastName || ''}`.trim()) ||
+    (isRTL ? 'جدول المحاضرات' : 'Lecture Schedule');
 
   const deptNameDisplay =
     activeDoctor?.department?.name ||
@@ -521,11 +523,13 @@ export function DoctorSchedule() {
             </Button>
 
             <button
+              type="button"
               onClick={fetchSchedule}
               className="h-8.5 w-8.5 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer shadow-2xs transition-all"
               title={isRTL ? 'تحديث' : 'Refresh'}
+              aria-label={isRTL ? 'تحديث الجدول' : 'Refresh schedule'}
             >
-              <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
+              <RotateCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -618,6 +622,7 @@ export function DoctorSchedule() {
             setSelectedCollegeId(e.target.value);
             setSelectedDeptId('all');
           }}
+          aria-label={isRTL ? 'كل الكليات' : 'All Colleges'}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="all">{isRTL ? 'كل الكليات' : 'All Colleges'}</option>
@@ -633,6 +638,7 @@ export function DoctorSchedule() {
           value={selectedDeptId}
           onChange={(e) => setSelectedDeptId(e.target.value)}
           disabled={selectedCollegeId === 'all' && filteredDepartments.length === 0}
+          aria-label={isRTL ? 'كل الأقسام' : 'All Departments'}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer disabled:opacity-50"
         >
           <option value="all">{isRTL ? 'كل الأقسام' : 'All Departments'}</option>
@@ -647,6 +653,7 @@ export function DoctorSchedule() {
         <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
+          aria-label={isRTL ? 'تصفية حسب السنة' : 'Filter by year'}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="">{isRTL ? 'كل السنوات' : 'All Years'}</option>
@@ -661,6 +668,7 @@ export function DoctorSchedule() {
         <select
           value={selectedSemester}
           onChange={(e) => setSelectedSemester(e.target.value)}
+          aria-label={isRTL ? 'تصفية حسب الفصل الدراسي' : 'Filter by semester'}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="">{isRTL ? 'كل الفصول' : 'All Semesters'}</option>

@@ -775,7 +775,9 @@ const AdminsList = () => {
                         className="rounded border-slate-300 dark:border-slate-700 text-brand-primary-600 focus:ring-brand-primary-500/20 w-4 h-4 cursor-pointer align-middle"
                         checked={isAllVisibleSelected}
                         onChange={handleSelectAll}
+                        aria-label={isRTL ? "تحديد كل المسؤولين" : "Select all admins"}
                       />
+                      <span className="sr-only">{isRTL ? "تحديد كل المسؤولين" : "Select all admins"}</span>
                     </TableHead>
                     <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {isRTL ? "المسؤول" : "Admin"}
@@ -909,6 +911,7 @@ const AdminsList = () => {
                             className="rounded border-slate-300 dark:border-slate-700 text-brand-primary-600 focus:ring-brand-primary-500/20 w-4 h-4 cursor-pointer align-middle"
                             checked={isSelected}
                             onChange={() => handleSelectOne(admin.id)}
+                            aria-label={`${t("common.select", "Select")} ${admin.email || "admin"}`}
                           />
                         </TableCell>
 

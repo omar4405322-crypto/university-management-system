@@ -235,7 +235,7 @@ const Register = () => {
         <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-navy/5 blur-[120px]" />
       </div>
 
-      <div className="w-full max-w-[560px] relative z-10">
+      <main className="w-full max-w-[560px] relative z-10">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center mb-6">
             <img src={UNIVERSITY_LOGO} alt="University Logo" className="h-20 w-auto" />
@@ -246,7 +246,7 @@ const Register = () => {
           </p>
         </div>
 
-        <div className="bg-brand-bg-card rounded-3xl shadow-2xl shadow-brand-navy/10 p-8 md:p-10 border border-brand-border/10">
+        <div className="bg-brand-bg-card rounded-3xl shadow-2xl shadow-brand-navy/10 p-5 sm:p-8 md:p-10 border border-brand-border/10">
           <form className="form-section" onSubmit={handleSubmit(onSubmit)}>
             {apiError && (
               <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 rounded-2xl text-rose-600 text-sm font-medium flex items-center gap-3">
@@ -268,104 +268,127 @@ const Register = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">
+                <label htmlFor="reg-first-name" className="text-brand-text-sub font-bold text-brand-text-main ml-1">
                   {t('auth.firstName')} *
                 </label>
                 <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} aria-hidden="true" />
                   <Input
                     {...register('firstName')}
+                    id="reg-first-name"
                     type="text"
+                    aria-required="true"
+                    aria-invalid={!!errors.firstName}
+                    aria-describedby={errors.firstName ? 'reg-first-name-err' : undefined}
                     placeholder={t('auth.firstNamePlaceholder')}
                     className={`pl-12 h-12 ${errors.firstName ? 'border-red-500' : ''}`}
                   />
                 </div>
-                {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
+                {errors.firstName && <p id="reg-first-name-err" className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">
+                <label htmlFor="reg-last-name" className="text-brand-text-sub font-bold text-brand-text-main ml-1">
                   {t('auth.lastName')} *
                 </label>
                 <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} aria-hidden="true" />
                   <Input
                     {...register('lastName')}
+                    id="reg-last-name"
                     type="text"
+                    aria-required="true"
+                    aria-invalid={!!errors.lastName}
+                    aria-describedby={errors.lastName ? 'reg-last-name-err' : undefined}
                     placeholder={t('auth.lastNamePlaceholder')}
                     className={`pl-12 h-12 ${errors.lastName ? 'border-red-500' : ''}`}
                   />
                 </div>
-                {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
+                {errors.lastName && <p id="reg-last-name-err" className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>}
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">
+              <label htmlFor="reg-email" className="text-brand-text-sub font-bold text-brand-text-main ml-1">
                 {t('auth.emailAddress')} *
               </label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} aria-hidden="true" />
                 <Input
                   {...register('email')}
+                  id="reg-email"
                   type="email"
                   autoComplete="off"
+                  aria-required="true"
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? 'reg-email-err' : undefined}
                   placeholder={t('auth.emailPlaceholder')}
                   className={`pl-12 h-12 ${errors.email ? 'border-red-500' : ''}`}
                 />
               </div>
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+              {errors.email && <p id="reg-email-err" className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">
+              <label htmlFor="reg-phone" className="text-brand-text-sub font-bold text-brand-text-main ml-1">
                 {t('profile.phone')}
               </label>
               <div className="relative group">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} aria-hidden="true" />
                 <Input
                   {...register('phone')}
+                  id="reg-phone"
                   type="tel"
+                  aria-invalid={!!errors.phone}
+                  aria-describedby={errors.phone ? 'reg-phone-err' : undefined}
                   placeholder={t('students.phonePlaceholder')}
                   className={`pl-12 h-12 ${errors.phone ? 'border-red-500' : ''}`}
                 />
               </div>
-              {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
+              {errors.phone && <p id="reg-phone-err" className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">
+              <label htmlFor="reg-password" className="text-brand-text-sub font-bold text-brand-text-main ml-1">
                 {t('auth.password')} *
               </label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10 rtl:left-auto rtl:right-4" size={18} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10 rtl:left-auto rtl:right-4" size={18} aria-hidden="true" />
                 <Input
                   {...register('password')}
+                  id="reg-password"
                   type={showPassword ? 'text' : 'password'}
+                  aria-required="true"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'reg-password-err' : undefined}
                   placeholder={t('auth.passwordPlaceholder')}
                   className={`pl-12 pr-12 h-12 rtl:pr-12 rtl:pl-12 ${errors.password ? 'border-red-500' : ''}`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 rtl:right-auto rtl:left-4 text-brand-text-muted hover:text-brand-text-primary transition-colors"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 z-10 rtl:right-auto rtl:left-1 min-w-[44px] min-h-[44px] flex items-center justify-center text-brand-text-muted hover:text-brand-text-primary transition-colors cursor-pointer"
                   aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+              {errors.password && <p id="reg-password-err" className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">
+                <label htmlFor="reg-college" className="text-brand-text-sub font-bold text-brand-text-main ml-1">
                   {t('auth.college')} *
                 </label>
                 <div className="relative group">
-                  <School className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
+                  <School className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} aria-hidden="true" />
                   <select
                     {...register('collegeId')}
+                    id="reg-college"
                     disabled={collegesLoading}
+                    aria-required="true"
+                    aria-invalid={!!errors.collegeId}
+                    aria-describedby={errors.collegeId ? 'reg-college-err' : undefined}
                     className={`w-full h-12 pl-12 pr-12 bg-brand-bg-page/30 border ${errors.collegeId ? 'border-red-500' : 'border-brand-border'} rounded-xl font-bold appearance-none cursor-pointer`}
                   >
                     <option value="">
@@ -377,19 +400,23 @@ const Register = () => {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none" size={18} />
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none" size={18} aria-hidden="true" />
                 </div>
-                {errors.collegeId && <p className="text-red-500 text-xs mt-1">{errors.collegeId.message}</p>}
+                {errors.collegeId && <p id="reg-college-err" className="text-red-500 text-xs mt-1">{errors.collegeId.message}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">
+                <label htmlFor="reg-department" className="text-brand-text-sub font-bold text-brand-text-main ml-1">
                   {t('auth.department')} *
                 </label>
                 <div className="relative group">
-                  <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
+                  <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} aria-hidden="true" />
                   <select
                     {...register('departmentId')}
+                    id="reg-department"
                     disabled={!selectedCollegeId || departmentsLoading}
+                    aria-required="true"
+                    aria-invalid={!!errors.departmentId}
+                    aria-describedby={errors.departmentId ? 'reg-department-err' : undefined}
                     className={`w-full h-12 pl-12 pr-12 bg-brand-bg-page/30 border ${errors.departmentId ? 'border-red-500' : 'border-brand-border'} rounded-xl font-bold appearance-none cursor-pointer disabled:opacity-50`}
                   >
                     <option value="">
@@ -401,36 +428,44 @@ const Register = () => {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none" size={18} />
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none" size={18} aria-hidden="true" />
                 </div>
-                {errors.departmentId && <p className="text-red-500 text-xs mt-1">{errors.departmentId.message}</p>}
+                {errors.departmentId && <p id="reg-department-err" className="text-red-500 text-xs mt-1">{errors.departmentId.message}</p>}
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">
+                <label htmlFor="reg-student-id" className="text-brand-text-sub font-bold text-brand-text-main ml-1">
                   {t('auth.studentId')} *
                 </label>
                 <div className="relative group">
-                  <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
+                  <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} aria-hidden="true" />
                   <Input
                     {...register('studentId')}
+                    id="reg-student-id"
                     type="text"
+                    aria-required="true"
+                    aria-invalid={!!errors.studentId}
+                    aria-describedby={errors.studentId ? 'reg-student-id-err' : undefined}
                     placeholder={t('auth.studentIdPlaceholder')}
                     className={`pl-12 h-12 ${errors.studentId ? 'border-red-500' : ''}`}
                   />
                 </div>
-                {errors.studentId && <p className="text-red-500 text-xs mt-1">{errors.studentId.message}</p>}
+                {errors.studentId && <p id="reg-student-id-err" className="text-red-500 text-xs mt-1">{errors.studentId.message}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-brand-text-sub font-bold text-brand-text-main ml-1">
+                <label htmlFor="reg-year" className="text-brand-text-sub font-bold text-brand-text-main ml-1">
                   {t('auth.year')} *
                 </label>
                 <div className="relative group">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} />
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-text-muted z-10" size={18} aria-hidden="true" />
                   <select
                     {...register('year')}
+                    id="reg-year"
+                    aria-required="true"
+                    aria-invalid={!!errors.year}
+                    aria-describedby={errors.year ? 'reg-year-err' : undefined}
                     className={`w-full h-12 pl-12 pr-12 bg-brand-bg-page/30 border ${errors.year ? 'border-red-500' : 'border-brand-border'} rounded-xl font-bold appearance-none cursor-pointer`}
                   >
                     <option value="1">{t('auth.year1')}</option>
@@ -438,9 +473,9 @@ const Register = () => {
                     <option value="3">{t('auth.year3')}</option>
                     <option value="4">{t('auth.year4')}</option>
                   </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none" size={18} />
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-muted pointer-events-none" size={18} aria-hidden="true" />
                 </div>
-                {errors.year && <p className="text-red-500 text-xs mt-1">{errors.year.message}</p>}
+                {errors.year && <p id="reg-year-err" className="text-red-500 text-xs mt-1">{errors.year.message}</p>}
               </div>
             </div>
 
@@ -468,7 +503,7 @@ const Register = () => {
             </p>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

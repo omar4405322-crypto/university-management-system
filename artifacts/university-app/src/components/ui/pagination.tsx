@@ -157,6 +157,7 @@ const Pagination: React.FC<PaginationProps> = ({
               {isRTL ? 'لكل صفحة:' : 'Per page:'}
             </span>
             <select
+              aria-label={t('common.perPage', isRTL ? 'عدد العناصر لكل صفحة' : 'Items per page')}
               value={activePageSize}
               onChange={(e) => handleSizeChange(Number(e.target.value))}
               className="h-7.5 px-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-1 focus:ring-brand-primary-500 cursor-pointer"

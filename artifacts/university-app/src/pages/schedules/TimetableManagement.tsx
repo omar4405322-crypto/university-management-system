@@ -502,6 +502,7 @@ const TimetableManagement = () => {
               setSelectedCollege(e.target.value);
               setSelectedDept('');
             }}
+            aria-label={t('common.allColleges', 'All Colleges')}
             className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
           >
             <option value="">{t('common.allColleges', 'All Colleges')}</option>
@@ -517,6 +518,7 @@ const TimetableManagement = () => {
         <select
           value={selectedDept}
           onChange={(e) => setSelectedDept(e.target.value)}
+          aria-label={t('common.allDepartments', 'All Departments')}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="">{t('common.allDepartments', 'All Departments')}</option>
@@ -531,6 +533,7 @@ const TimetableManagement = () => {
         <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
+          aria-label={t('schedules.academicDivision', 'Academic Year')}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="">{t('schedules.academicDivision', 'Year')}: {t('common.all', 'All')}</option>
@@ -544,6 +547,7 @@ const TimetableManagement = () => {
         <select
           value={selectedSemester}
           onChange={(e) => setSelectedSemester(e.target.value)}
+          aria-label={t('schedule.allSemesters', 'Semester')}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="">{t('schedule.allSemesters', 'Semester')}: {t('common.all', 'All')}</option>
@@ -556,6 +560,7 @@ const TimetableManagement = () => {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label={t('common.status', 'Status')}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="ALL">{t('common.all', 'All Statuses')}</option>
@@ -576,6 +581,7 @@ const TimetableManagement = () => {
                 : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300'
             }`}
             title={isAllSelected ? t('timetables.deselectAll', 'إلغاء تحديد الكل') : t('timetables.selectAll', 'تحديد الكل')}
+            aria-label={isAllSelected ? t('timetables.deselectAll', 'إلغاء تحديد الكل') : t('timetables.selectAll', 'تحديد الكل')}
           >
             {isAllSelected ? (
               <CheckSquare size={14} />
@@ -617,7 +623,7 @@ const TimetableManagement = () => {
       ) : error ? (
         <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
           <AlertCircle size={36} className="text-rose-500 mb-2" />
-          <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2">{error}</h3>
+          <h2 className="text-base font-bold text-slate-800 dark:text-white mb-2">{error}</h2>
           <button
             type="button"
             onClick={fetchTimetables}
@@ -631,9 +637,9 @@ const TimetableManagement = () => {
           <div className="w-14 h-14 rounded-full bg-brand-primary-500/10 text-brand-primary-500 flex items-center justify-center text-2xl mb-3">
             <Calendar size={28} />
           </div>
-          <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
+          <h2 className="text-base font-bold text-slate-800 dark:text-white mb-1">
             {hasActiveFilters ? t('schedules.noResultsFound', 'No Timetables Found') : t('timetables.emptyTitle', 'No timetables yet')}
-          </h3>
+          </h2>
           <p className="text-xs text-slate-400 font-medium max-w-sm mb-4">
             {hasActiveFilters
               ? t('schedules.noResultsFoundDesc', 'Try adjusting your search criteria or resetting filters.')
@@ -719,6 +725,7 @@ const TimetableManagement = () => {
                             type="button"
                             onClick={() => handleToggleSelect(item.id)}
                             className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
+                            aria-label={isSelected ? t('timetables.deselectItem', 'Deselect') : `${t('timetables.selectItem', 'Select')} ${item.title}`}
                           >
                             {isSelected ? (
                               <CheckSquare size={16} className="text-brand-primary-600" />
@@ -754,9 +761,9 @@ const TimetableManagement = () => {
                     </div>
 
                     {/* Timetable Title */}
-                    <h3 className="text-sm md:text-base font-bold text-slate-900 dark:text-white leading-snug mb-1">
+                    <h2 className="text-sm md:text-base font-bold text-slate-900 dark:text-white leading-snug mb-1">
                       {item.title}
-                    </h3>
+                    </h2>
 
                     {/* Department */}
                     <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium mb-3">
@@ -870,6 +877,7 @@ const TimetableManagement = () => {
                         onClick={handleToggleSelectAll}
                         className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
                         title={isAllSelected ? t('schedules.deselectAll', 'Deselect All') : t('schedules.selectAll', 'Select All')}
+                        aria-label={isAllSelected ? t('schedules.deselectAll', 'Deselect All') : t('schedules.selectAll', 'Select All')}
                       >
                         {isAllSelected ? (
                           <CheckSquare size={16} className="text-brand-primary-600" />
@@ -907,6 +915,7 @@ const TimetableManagement = () => {
                             type="button"
                             onClick={() => handleToggleSelect(item.id)}
                             className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
+                            aria-label={isSelected ? t('timetables.deselectItem', 'Deselect') : `${t('timetables.selectItem', 'Select')} ${item.title}`}
                           >
                             {isSelected ? (
                               <CheckSquare size={16} className="text-brand-primary-600" />

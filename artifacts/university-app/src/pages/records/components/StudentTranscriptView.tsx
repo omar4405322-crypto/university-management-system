@@ -43,7 +43,9 @@ export const StudentTranscriptView: React.FC<StudentTranscriptViewProps> = ({
               <GraduationCap className="w-8 h-8 text-brand-primary-300" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">{user?.name}</h2>
+              <h2 className="text-lg font-bold text-white">
+                {user?.name || t("transcript.studentTranscript", "Student Academic Transcript")}
+              </h2>
               <p className="text-xs text-slate-300 mt-0.5">
                 {user?.college?.name} - {user?.department?.name}
               </p>

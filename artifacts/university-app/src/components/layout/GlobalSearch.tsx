@@ -160,10 +160,15 @@ const GlobalSearch = () => {
 
   const modal = open ? createPortal(
     <div className="fixed inset-0 z-[200] bg-brand-navy-500/60 backdrop-blur-sm flex items-start justify-center pt-[10vh] px-4">
-      <div className="absolute inset-0" onClick={() => setOpen(false)} />
-      <div className="relative w-full max-w-2xl bg-brand-bg-card rounded-3xl shadow-2xl overflow-hidden border border-brand-border flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      <div className="absolute inset-0" onClick={() => setOpen(false)} aria-hidden="true" />
+      <div 
+        role="dialog" 
+        aria-modal="true" 
+        aria-label={t('search.placeholder')}
+        className="relative w-full max-w-2xl bg-brand-bg-card rounded-3xl shadow-2xl overflow-hidden border border-brand-border flex flex-col animate-in fade-in zoom-in-95 duration-200"
+      >
         <div className="flex items-center px-4 py-4 border-b border-brand-border">
-          <Search className="h-5 w-5 text-brand-text-muted shrink-0" />
+          <Search className="h-5 w-5 text-brand-text-muted shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
             type="text"
@@ -171,9 +176,15 @@ const GlobalSearch = () => {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleInputKeyDown}
             placeholder={t('search.placeholder').replace(/[.…]+$/, '') + '...'}
+            aria-label={t('search.placeholder')}
             className="flex-1 bg-transparent px-4 py-2 text-lg text-brand-text-primary focus:outline-none placeholder:text-brand-text-muted"
           />
-          <button onClick={() => setOpen(false)} className="p-2 rounded-xl hover:bg-surface-subtle text-brand-text-muted transition-colors">
+          <button 
+            type="button"
+            onClick={() => setOpen(false)} 
+            aria-label={t('common.close', 'Close')}
+            className="p-2 rounded-xl hover:bg-surface-subtle text-brand-text-muted transition-colors cursor-pointer"
+          >
             <X size={20} />
           </button>
         </div>
@@ -224,11 +235,11 @@ const GlobalSearch = () => {
             })
           ) : (
             <div className="py-8 px-4 flex flex-col items-center justify-center text-center">
-              <div className="flex items-center gap-2 text-brand-text-muted mb-4">
-                <kbd className="px-2 py-1 bg-surface-subtle border border-brand-border rounded-lg font-mono text-xs font-bold">↑</kbd>
-                <kbd className="px-2 py-1 bg-surface-subtle border border-brand-border rounded-lg font-mono text-xs font-bold">↓</kbd>
+              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 mb-4">
+                <kbd className="px-2 py-1 bg-surface-subtle border border-brand-border rounded-lg font-mono text-xs font-bold text-slate-700 dark:text-slate-200">↑</kbd>
+                <kbd className="px-2 py-1 bg-surface-subtle border border-brand-border rounded-lg font-mono text-xs font-bold text-slate-700 dark:text-slate-200">↓</kbd>
                 <span className="text-xs font-medium px-2">to navigate</span>
-                <kbd className="px-2 py-1 bg-surface-subtle border border-brand-border rounded-lg font-mono text-xs font-bold">↵</kbd>
+                <kbd className="px-2 py-1 bg-surface-subtle border border-brand-border rounded-lg font-mono text-xs font-bold text-slate-700 dark:text-slate-200">↵</kbd>
                 <span className="text-xs font-medium px-2">to select</span>
               </div>
             </div>
@@ -241,24 +252,28 @@ const GlobalSearch = () => {
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        className="hidden md:flex items-center justify-between w-64 lg:w-80 h-10 px-3.5 rounded-xl border border-brand-border bg-surface-subtle hover:bg-brand-bg-card hover:border-brand-primary-500/50 transition-all group overflow-hidden"
+        aria-label={t('search.placeholder')}
+        className="hidden md:flex items-center justify-between w-64 lg:w-80 h-10 px-3.5 rounded-xl border border-brand-border bg-surface-subtle hover:bg-brand-bg-card hover:border-brand-primary-500/50 transition-all group overflow-hidden cursor-pointer"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-2 text-brand-text-muted group-hover:text-brand-primary-600 transition-colors">
-          <Search size={16} className="shrink-0" />
+        <div className="flex min-w-0 flex-1 items-center gap-2 text-slate-600 dark:text-slate-300 group-hover:text-brand-primary-600 transition-colors">
+          <Search size={16} className="shrink-0" aria-hidden="true" />
           <span className="text-sm truncate leading-none">{t('search.placeholder').replace(/[.…]+$/, '')}...</span>
         </div>
-        <kbd className="hidden lg:flex shrink-0 items-center gap-1 text-[10px] font-bold text-brand-text-muted bg-brand-bg-card px-2 py-0.5 rounded-lg border border-brand-border shadow-2xs ms-2">
+        <kbd className="hidden lg:flex shrink-0 items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-brand-bg-card px-2 py-0.5 rounded-lg border border-brand-border shadow-2xs ms-2">
           {isMac ? <Command size={12} /> : 'Ctrl'} K
         </kbd>
       </button>
       
       {/* Mobile search button */}
       <button 
+        type="button"
         onClick={() => setOpen(true)}
-        className="md:hidden p-2 text-brand-text-primary dark:text-brand-text-main rounded-xl hover:bg-surface-subtle transition-colors"
+        aria-label={t('search.placeholder')}
+        className="md:hidden p-2 text-brand-text-primary dark:text-brand-text-main rounded-xl hover:bg-surface-subtle transition-colors cursor-pointer"
       >
-        <Search size={20} />
+        <Search size={20} aria-hidden="true" />
       </button>
 
       {modal}

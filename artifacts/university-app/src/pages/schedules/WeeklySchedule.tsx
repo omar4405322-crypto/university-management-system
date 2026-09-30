@@ -228,7 +228,7 @@ const WeeklySchedule = () => {
           <div className="h-20 w-20 rounded-full bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center mb-6 border border-rose-200 dark:border-rose-700">
             <AlertCircle size={40} className="text-rose-500" />
           </div>
-          <h3 className="text-2xl font-black text-brand-text-main">{error}</h3>
+          <h2 className="text-2xl font-black text-brand-text-main">{error}</h2>
           <button
             onClick={() => fetchTargetedTimetable()}
             className="mt-4 px-6 py-2.5 rounded-xl bg-brand-primary-500 text-white font-semibold text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
@@ -329,7 +329,7 @@ const WeeklySchedule = () => {
           <div className="h-20 w-20 rounded-full bg-brand-yellow/10 flex items-center justify-center mb-6 border border-brand-yellow/20">
             <Calendar size={40} className="text-brand-yellow" />
           </div>
-          <h3 className="text-2xl font-black text-brand-text-main">{t('common.noData')}</h3>
+          <h2 className="text-2xl font-black text-brand-text-main">{t('common.noData')}</h2>
           <p className="text-brand-text-sub font-semibold mt-2 max-w-md mx-auto">
             {t('timetables.noSlots')}
           </p>

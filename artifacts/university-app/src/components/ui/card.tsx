@@ -303,9 +303,9 @@ export const StatCard: React.FC<StatCardProps> = ({
             )}
           </div>
           <div className="flex items-baseline gap-2">
-            <h3 className="m-0 text-xl sm:text-2xl font-black text-brand-text-primary font-mono tracking-tight transition-colors duration-200">
+            <span className="m-0 text-xl sm:text-2xl font-black text-brand-text-primary font-mono tracking-tight transition-colors duration-200 block">
               {value}
-            </h3>
+            </span>
             {subtitle && (
               <span className="text-xs text-brand-text-secondary font-medium truncate">
                 {subtitle}

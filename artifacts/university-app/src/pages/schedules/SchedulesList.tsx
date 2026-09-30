@@ -766,6 +766,7 @@ const SchedulesList = () => {
                 : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300'
             }`}
             title={isAllSelected ? t('schedules.deselectAll', 'إلغاء تحديد الكل') : t('schedules.selectAll', 'تحديد الكل')}
+            aria-label={isAllSelected ? t('schedules.deselectAll', 'إلغاء تحديد الكل') : t('schedules.selectAll', 'تحديد الكل')}
           >
             {isAllSelected ? (
               <CheckSquare size={14} />
@@ -807,7 +808,7 @@ const SchedulesList = () => {
       ) : error ? (
         <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
           <AlertCircle size={36} className="text-rose-500 mb-2" />
-          <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2">{error}</h3>
+          <h2 className="text-base font-bold text-slate-800 dark:text-white mb-2">{error}</h2>
           <button
             type="button"
             onClick={fetchSchedules}
@@ -821,9 +822,9 @@ const SchedulesList = () => {
           <div className="w-14 h-14 rounded-full bg-brand-primary-500/10 text-brand-primary-500 flex items-center justify-center text-2xl mb-3">
             <Calendar size={28} />
           </div>
-          <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
+          <h2 className="text-base font-bold text-slate-800 dark:text-white mb-1">
             {hasActiveFilters ? t('schedules.noResultsFound', 'No Sessions Found') : t('schedules.EMPTY_TITLE', 'No schedules yet')}
-          </h3>
+          </h2>
           <p className="text-xs text-slate-400 font-medium max-w-sm mb-4">
             {hasActiveFilters
               ? t('schedules.noResultsFoundDesc', 'Try adjusting your search criteria or resetting filters.')
@@ -881,6 +882,9 @@ const SchedulesList = () => {
               <button
                 type="button"
                 onClick={handleToggleSelectAll}
+                aria-label={isAllSelected
+                  ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
+                  : (isRTL ? `تحديد جميع الحصص (${allFilteredIds.length})` : `Select All Sessions (${allFilteredIds.length})`)}
                 className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-brand-primary-600 transition-colors cursor-pointer"
               >
                 {isAllSelected ? (
@@ -939,6 +943,7 @@ const SchedulesList = () => {
                           <button
                             type="button"
                             onClick={() => handleToggleSelect(slotId)}
+                            aria-label={isSelected ? t('schedules.deselectItem', 'Deselect session') : `${t('schedules.selectItem', 'Select session')} ${course.name || ''}`}
                             className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
                           >
                             {isSelected ? (
@@ -998,9 +1003,9 @@ const SchedulesList = () => {
                             {course.courseCode}
                           </span>
                         )}
-                        <h4 className="font-bold text-slate-900 dark:text-white text-xs md:text-sm leading-snug">
+                        <h2 className="font-bold text-slate-900 dark:text-white text-xs md:text-sm leading-snug">
                           {course.name || t('common.untitledCourse', 'Untitled Course')}
-                        </h4>
+                        </h2>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                         {course.department?.nameAr || course.department?.name || t('common.generalDept', 'General')}
@@ -1097,6 +1102,7 @@ const SchedulesList = () => {
                         onClick={handleToggleSelectAll}
                         className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
                         title={isAllSelected ? t('schedules.deselectAll', 'Deselect All') : t('schedules.selectAll', 'Select All')}
+                        aria-label={isAllSelected ? t('schedules.deselectAll', 'Deselect All') : t('schedules.selectAll', 'Select All')}
                       >
                         {isAllSelected ? (
                           <CheckSquare size={16} className="text-brand-primary-600" />
@@ -1150,6 +1156,7 @@ const SchedulesList = () => {
                             <button
                               type="button"
                               onClick={() => handleToggleSelect(slotId)}
+                              aria-label={isSelected ? t('schedules.deselectItem', 'Deselect session') : `${t('schedules.selectItem', 'Select session')} ${course.name || ''}`}
                               className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
                             >
                               {isSelected ? (

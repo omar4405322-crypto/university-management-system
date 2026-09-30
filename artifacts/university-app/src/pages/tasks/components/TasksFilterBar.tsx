@@ -67,6 +67,10 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
               "tasks.searchPlaceholder",
               "Search assignments by title or instructions...",
             )}
+            aria-label={t(
+              "tasks.searchPlaceholder",
+              "Search assignments by title or instructions...",
+            )}
             value={searchInput}
             onChange={(e) => {
               if (onChange) onChange(e);
@@ -81,6 +85,7 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
           {/* Course filter */}
           <div className="relative">
             <select
+              aria-label={t("tasks.allCourses", "All Courses")}
               value={courseIdParam}
               onChange={(e) => updateParam("courseId", e.target.value)}
               className="h-8.5 text-xs px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
@@ -97,6 +102,7 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
           {/* Academic Division filter */}
           <div className="relative">
             <select
+              aria-label={t("tasks.allYears", "All Years")}
               value={yearParam}
               onChange={(e) => updateParam("year", e.target.value)}
               className="h-8.5 text-xs px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
@@ -120,6 +126,7 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
           {/* Status filter */}
           <div className="relative">
             <select
+              aria-label={t("tasks.allStatuses", "All Statuses")}
               value={statusParam}
               onChange={(e) => updateParam("status", e.target.value)}
               className="h-8.5 text-xs px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
@@ -146,6 +153,7 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
           {/* Sort filter */}
           <div className="relative">
             <select
+              aria-label={t("tasks.sortBy", "Sort: Default")}
               value={sortByParam}
               onChange={(e) => updateParam("sortBy", e.target.value)}
               className="h-8.5 text-xs px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
@@ -180,6 +188,7 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
         {/* View mode toggle */}
         <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/60 p-1 rounded-xl">
           <button
+            type="button"
             onClick={() => onViewModeChange("cards")}
             className={`p-1.5 rounded-md text-xs transition-all cursor-pointer ${
               viewMode === "cards"
@@ -187,10 +196,12 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
                 : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             }`}
             title={isRTL ? "عرض البطاقات" : "Cards"}
+            aria-label={isRTL ? "عرض البطاقات" : "Cards View"}
           >
             <LayoutGrid size={15} />
           </button>
           <button
+            type="button"
             onClick={() => onViewModeChange("table")}
             className={`p-1.5 rounded-md text-xs transition-all cursor-pointer ${
               viewMode === "table"
@@ -198,6 +209,7 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
                 : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             }`}
             title={isRTL ? "عرض الجدول" : "Table"}
+            aria-label={isRTL ? "عرض الجدول" : "Table View"}
           >
             <LayoutList size={15} />
           </button>
@@ -216,6 +228,7 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
             onChange={(e) => updateParam("dueFrom", e.target.value)}
             className="h-7 px-2 text-[11px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 cursor-pointer"
             title={t("tasks.dueDateFrom", "Due From")}
+            aria-label={t("tasks.dueDateFrom", "Due From")}
           />
           <span>→</span>
           <input
@@ -224,6 +237,7 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
             onChange={(e) => updateParam("dueTo", e.target.value)}
             className="h-7 px-2 text-[11px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 cursor-pointer"
             title={t("tasks.dueDateTo", "Due To")}
+            aria-label={t("tasks.dueDateTo", "Due To")}
           />
         </div>
 

@@ -12,17 +12,17 @@ const AdminFooter = () => {
         <div className="flex items-center gap-2">
           <img
             src={UNIVERSITY_LOGO}
-            alt="University Logo"
-            className="h-5 w-5 object-contain opacity-60"
+            alt={t('footer.universityName') || 'University Logo'}
+            className="h-5 w-5 object-contain opacity-70"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
             }}
           />
-          <span className="text-xs text-brand-text-muted font-medium">
+          <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
             {t('footer.universityName')} © {currentYear}
           </span>
         </div>
-        <span className="text-xs text-brand-text-muted">v1.0.0</span>
+        <span className="text-xs text-slate-600 dark:text-slate-400">v1.0.0</span>
       </div>
     </footer>
   );

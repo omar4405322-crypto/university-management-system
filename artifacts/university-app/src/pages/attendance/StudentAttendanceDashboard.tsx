@@ -344,9 +344,9 @@ export function StudentAttendanceDashboard() {
                     {isRTL ? 'جلسة حضور نشطة الآن' : 'Active Lecture Session'}
                   </span>
                 </div>
-                <h4 className="text-base font-black text-white truncate">
+                <h2 className="text-base font-black text-white truncate">
                   {selectedCourse ? `${selectedCourse.courseCode ? `${selectedCourse.courseCode} - ` : ''}${selectedCourse.name}` : (isRTL ? 'محاضرة جارية' : 'Ongoing Lecture')}
-                </h4>
+                </h2>
               </div>
             </div>
 
@@ -406,9 +406,9 @@ export function StudentAttendanceDashboard() {
 
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold text-sm text-slate-800 dark:text-white">
+                  <h2 className="font-bold text-sm text-slate-800 dark:text-white">
                     {txt('attendance.attendanceRate', 'Attendance Rate')}
-                  </h3>
+                  </h2>
                   <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${gaugeStyle.badgeClass}`}>
                     {gaugeStyle.label}
                   </span>

@@ -209,11 +209,14 @@ const QuizzesList = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={isRTL ? 'البحث بعنوان الاختبار أو المقرر...' : 'Search by quiz title or course...'}
+            aria-label={isRTL ? 'البحث بعنوان الاختبار أو المقرر...' : 'Search by quiz title or course...'}
             className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
           />
           {search && (
             <button
+              type="button"
               onClick={() => setSearch('')}
+              aria-label={isRTL ? 'مسح البحث' : 'Clear search'}
               className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
             >
               <X size={12} />
@@ -225,6 +228,7 @@ const QuizzesList = () => {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
+          aria-label={isRTL ? 'ترتيب الاختبارات' : 'Sort quizzes'}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="latest">{isRTL ? 'ترتيب: أبجدياً' : 'Sort: Alphabetical'}</option>
@@ -343,9 +347,9 @@ const QuizzesList = () => {
                     </div>
                   </div>
 
-                <h3 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tight mb-3 group-hover:text-brand-primary-600 transition-colors">
+                <h2 className="text-2xl font-black text-brand-text-primary dark:text-brand-text-main tracking-tight mb-3 group-hover:text-brand-primary-600 transition-colors">
                   {quiz.title}
-                </h3>
+                </h2>
                 <p className="text-sm font-bold text-brand-text-secondary mb-8 line-clamp-2 leading-relaxed opacity-80">
                   {quiz.description || t('common.noData')}
                 </p>

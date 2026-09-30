@@ -18,9 +18,9 @@ export function EmptyState({
         {icon}
       </div>
 
-      <h3 className="text-xl font-black text-brand-text-primary tracking-tight uppercase mb-2">
+      <h2 className="text-xl font-black text-brand-text-primary tracking-tight uppercase mb-2">
         {title}
-      </h3>
+      </h2>
 
       <p className="text-brand-text-secondary font-bold max-w-sm mb-8 leading-relaxed">
         {subtitle}

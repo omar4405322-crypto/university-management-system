@@ -604,6 +604,10 @@ const ExamsList = () => {
               "exams.searchPlaceholder",
               "Search by exam title, course code, or room...",
             )}
+            aria-label={t(
+              "exams.searchPlaceholder",
+              "Search by exam title, course code, or room...",
+            )}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
@@ -612,6 +616,7 @@ const ExamsList = () => {
             <button
               type="button"
               onClick={() => setSearch("")}
+              aria-label={isRTL ? "مسح البحث" : "Clear search"}
               className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
             >
               <X size={12} />
@@ -627,6 +632,7 @@ const ExamsList = () => {
               setSelectedCollege(e.target.value);
               setSelectedDept("");
             }}
+            aria-label={t("common.allColleges", "All Colleges")}
             className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
           >
             <option value="">{t("common.allColleges", "All Colleges")}</option>
@@ -642,6 +648,7 @@ const ExamsList = () => {
         <select
           value={selectedDept}
           onChange={(e) => setSelectedDept(e.target.value)}
+          aria-label={t("common.allDepartments", "All Departments")}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="">
@@ -658,6 +665,7 @@ const ExamsList = () => {
         <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
+          aria-label={isRTL ? "تصفية حسب السنة" : "Filter by year"}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="">
@@ -673,6 +681,7 @@ const ExamsList = () => {
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
+          aria-label={t("exams.allTypes", "All Types")}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
         >
           <option value="ALL">{t("exams.allTypes", "All Types")}</option>
@@ -733,11 +742,11 @@ const ExamsList = () => {
           <div className="w-14 h-14 rounded-full bg-brand-primary-500/10 text-brand-primary-500 flex items-center justify-center text-2xl mb-3">
             <Calendar size={28} />
           </div>
-          <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
+          <h2 className="text-base font-bold text-slate-800 dark:text-white mb-1">
             {hasActiveFilters
               ? t("exams.noExams", "No Exams Found")
               : t("exams.noExamsSubtitle", "No exams scheduled yet")}
-          </h3>
+          </h2>
           <p className="text-xs text-slate-400 font-medium max-w-sm mb-4">
             {hasActiveFilters
               ? t(
@@ -821,9 +830,9 @@ const ExamsList = () => {
                             {exam.course.courseCode}
                           </span>
                         )}
-                        <h4 className="font-bold text-slate-900 dark:text-white text-xs md:text-sm leading-snug">
+                        <h2 className="font-bold text-slate-900 dark:text-white text-xs md:text-sm leading-snug">
                           {getExamLabel(exam, t)}
-                        </h4>
+                        </h2>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">
                         {exam.course?.name || exam.title}

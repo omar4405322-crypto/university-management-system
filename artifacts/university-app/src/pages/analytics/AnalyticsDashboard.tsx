@@ -381,9 +381,9 @@ export function AnalyticsDashboard() {
           <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                   {t("analytics.enrollmentTrends", "Enrollment Trends")}
-                </h3>
+                </h2>
                 <p className="text-[11px] text-slate-400">
                   {t(
                     "analytics.enrollmentTrendsDesc",
@@ -463,12 +463,12 @@ export function AnalyticsDashboard() {
           <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                   {t(
                     "analytics.yearDistribution",
                     "analytics.yearDistribution",
                   )}
-                </h3>
+                </h2>
                 <p className="text-[11px] text-slate-400">
                   {t(
                     "analytics.yearDistributionDesc",
@@ -547,12 +547,12 @@ export function AnalyticsDashboard() {
           <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                   {t(
                     "analytics.attendanceSummary",
                     "analytics.attendanceSummary",
                   )}
-                </h3>
+                </h2>
                 <p className="text-[11px] text-slate-400">
                   {isRTL
                     ? "توزيع نسب الحضور والغياب والتأخير"
@@ -608,12 +608,12 @@ export function AnalyticsDashboard() {
           <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                   {t(
                     "analytics.examTypesSummary",
                     "analytics.examTypesSummary",
                   )}
-                </h3>
+                </h2>
                 <p className="text-[11px] text-slate-400">
                   {isRTL
                     ? "إجمالي الاختبارات الفصلية والنهائية والقصيرة"
@@ -683,9 +683,9 @@ export function AnalyticsDashboard() {
           <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                   {t("analytics.collegeDistribution", "College Distribution")}
-                </h3>
+                </h2>
                 <p className="text-[11px] text-slate-400">
                   {t(
                     "analytics.collegeDistributionDesc",
@@ -763,9 +763,9 @@ export function AnalyticsDashboard() {
                     <Building2 size={15} />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-snug">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white leading-snug">
                       {dept.name}
-                    </h4>
+                    </h3>
                     <span className="text-[10px] text-slate-400">
                       {t("analytics.coursesCount", {
                         count: dept._count.courses,

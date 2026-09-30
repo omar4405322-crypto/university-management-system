@@ -442,6 +442,10 @@ const DoctorsList = () => {
               "doctors.searchPlaceholder",
               "Search by name, email, or specialization...",
             )}
+            aria-label={t(
+              "doctors.searchPlaceholder",
+              "Search by name, email, or specialization...",
+            )}
             className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
           />
           {search && (
@@ -460,6 +464,7 @@ const DoctorsList = () => {
         {/* College Dropdown */}
         {isSuperAdmin && (
           <select
+            aria-label={t("colleges.allColleges", "All Colleges")}
             value={selectedCollege}
             onChange={(e) => {
               setSelectedCollege(e.target.value);
@@ -486,6 +491,7 @@ const DoctorsList = () => {
 
         {/* Department Dropdown */}
         <select
+          aria-label={t("departments.allDepartments", "All Departments")}
           value={selectedDept}
           onChange={(e) => {
             setSelectedDept(e.target.value);
@@ -505,6 +511,7 @@ const DoctorsList = () => {
 
         {/* Status Dropdown */}
         <select
+          aria-label={t("doctors.filterAll", "All Statuses")}
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
@@ -592,7 +599,9 @@ const DoctorsList = () => {
                           selectedIds.length === filteredDoctors.length
                         }
                         onChange={handleSelectAll}
+                        aria-label={t("common.selectAll", "Select all doctors")}
                       />
+                      <span className="sr-only">{t("common.selectAll", "Select all doctors")}</span>
                     </TableHead>
                     <TableHead className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {t("doctors.colDoctor")}
@@ -660,6 +669,7 @@ const DoctorsList = () => {
                             className="rounded border-slate-300 dark:border-slate-700 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer align-middle"
                             checked={isSelected}
                             onChange={() => handleSelectOne(doctor.id)}
+                            aria-label={`${t("common.select", "Select")} ${doctor.firstName} ${doctor.lastName}`}
                           />
                         </TableCell>
                         <TableCell className="p-4 text-start">
@@ -668,12 +678,13 @@ const DoctorsList = () => {
                               {initials}
                             </div>
                             <div className="flex flex-col">
-                              <span 
+                              <button 
+                                type="button"
                                 onClick={() => navigate(`/doctors/${doctor.id}`)}
-                                className="font-bold text-brand-text-primary dark:text-white hover:text-brand-primary-600 dark:hover:text-brand-primary-400 hover:underline cursor-pointer transition-colors"
+                                className="font-bold text-brand-text-primary dark:text-white hover:text-brand-primary-600 dark:hover:text-brand-primary-400 hover:underline cursor-pointer transition-colors text-start p-0 bg-transparent border-0"
                               >
                                 {doctor.firstName} {doctor.lastName}
-                              </span>
+                              </button>
                               <span className="text-xs text-brand-text-secondary dark:text-slate-400">
                                 {doctor.doctorId}
                               </span>

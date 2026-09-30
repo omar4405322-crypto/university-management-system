@@ -18,7 +18,12 @@ import { useLanguage } from '../../context/LanguageContext';
 import GlobalSearch from './GlobalSearch';
 import { getDynamicBaseUrl } from '../../services/api';
 
-const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
+interface HeaderProps {
+  onMenuClick: () => void;
+  isSidebarOpen?: boolean;
+}
+
+const Header = ({ onMenuClick, isSidebarOpen = false }: HeaderProps) => {
   const { user, logout } = useAuth();
   const { notifications, unreadCount, pendingRequestsCount, markAsRead, markAllAsRead } = useNotifications();
   const { t } = useTranslation();
@@ -38,8 +43,18 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
         setIsNotificationsOpen(false);
       }
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsProfileOpen(false);
+        setIsNotificationsOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -63,32 +78,38 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-brand-border bg-brand-bg-card/90 px-4 backdrop-blur-xl md:px-8 transition-colors duration-300">
-      <div className="flex items-center gap-6">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-brand-border bg-brand-bg-card/90 px-2 sm:px-4 md:px-8 backdrop-blur-xl transition-colors duration-300">
+      <div className="flex items-center gap-2 sm:gap-6">
         <button
+          type="button"
           onClick={onMenuClick}
           data-testid="mobile-menu-button"
-          className="rounded-xl p-2 text-brand-text-primary dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden transition-colors cursor-pointer"
+          className="rounded-xl p-2 text-brand-text-primary dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden transition-colors cursor-pointer shrink-0"
           aria-label={t('nav.openMenu')}
+          aria-expanded={isSidebarOpen}
+          aria-controls="app-sidebar"
         >
-          <Menu size={22} />
+          <Menu size={22} aria-hidden="true" />
         </button>
 
         <GlobalSearch />
       </div>
 
-      <div className="flex items-center gap-2 md:gap-4">
+      <div className="flex items-center gap-1.5 sm:gap-2 md:gap-4 shrink-0">
         <LanguageToggle />
         <ThemeToggle />
 
         <div className="relative" ref={notificationsRef}>
           <button
+            type="button"
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className="relative rounded-xl p-2 text-brand-text-secondary dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+            className="relative rounded-xl p-2 text-brand-text-secondary dark:text-brand-text-main hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
             aria-label={t('header.notifications')}
             aria-expanded={isNotificationsOpen}
+            aria-haspopup="dialog"
+            aria-controls="notifications-panel"
           >
-            <Bell size={20} />
+            <Bell size={20} aria-hidden="true" />
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 rtl:-right-auto rtl:-left-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-brand-green-dark text-[10px] font-black text-white ring-2 ring-brand-bg-card shadow-sm">
                 {unreadCount}
@@ -103,6 +124,9 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
 
           {isNotificationsOpen && (
             <div
+              id="notifications-panel"
+              role="region"
+              aria-label={t('header.notifications')}
               className={`fixed inset-x-2 top-20 z-50 md:absolute md:inset-x-auto ${isRTL ? 'md:left-0' : 'md:right-0'} md:top-full mt-3 w-[calc(100vw-2rem)] md:w-96 origin-top-right rounded-[2rem] border border-brand-border bg-brand-bg-card shadow-elevated ring-1 ring-black/5 animate-in fade-in slide-in-from-top-4 duration-300`}
             >
               <div className="flex items-center justify-between border-b border-brand-border px-6 py-5">
@@ -154,8 +178,16 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
                   notifications.map((notification) => (
                     <div
                       key={notification.id}
+                      role="button"
+                      tabIndex={0}
                       className={`px-6 py-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer border-b border-brand-border last:border-0 ${!notification.isRead ? 'bg-brand-brand-green-dark/5' : ''}`}
                       onClick={() => markAsRead(notification.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          markAsRead(notification.id);
+                        }
+                      }}
                     >
                       <div className="flex gap-4">
                         <div
@@ -187,7 +219,7 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
                       navigate('/notifications');
                       setIsNotificationsOpen(false);
                     }}
-                    className="label-stat text-brand-brand-green-dark hover:text-brand-primary-600 transition-colors flex items-center justify-center gap-2 mx-auto"
+                    className="label-stat text-brand-brand-green-dark hover:text-brand-primary-600 transition-colors flex items-center justify-center gap-2 mx-auto cursor-pointer"
                   >
                     {t('header.viewAllNotifications')}{' '}
                     <ChevronRight size={14} className="rtl:-scale-x-100" />
@@ -200,8 +232,13 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
 
         <div className="relative" ref={profileRef}>
           <button
+            type="button"
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className={`flex items-center gap-2 md:gap-3 rounded-2xl border transition-all shadow-sm p-1.5 md:pr-4 md:rtl:pl-4 md:rtl:pr-1.5 ${isProfileOpen
+            aria-label={`${t('header.signedInAs')}: ${user?.firstName || ''} ${user?.lastName || ''}`.trim()}
+            aria-haspopup="menu"
+            aria-expanded={isProfileOpen}
+            aria-controls="user-profile-menu"
+            className={`flex items-center gap-2 md:gap-3 rounded-2xl border transition-all shadow-sm p-1.5 md:pr-4 md:rtl:pl-4 md:rtl:pr-1.5 cursor-pointer ${isProfileOpen
                 ? 'border-brand-green bg-brand-primary-50/50 dark:bg-brand-primary-950/20'
                 : 'border-brand-border bg-slate-50 dark:bg-slate-800/30 hover:border-brand-green/50 hover:bg-brand-bg-card'
               }`}
@@ -235,7 +272,10 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
 
           {isProfileOpen && (
             <div
-              className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-3 w-64 origin-top-right rounded-[2rem] border border-brand-border bg-brand-bg-card p-2 shadow-elevated ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200`}
+              id="user-profile-menu"
+              role="menu"
+              aria-label={t('header.signedInAs')}
+              className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-3 w-64 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-[2rem] border border-brand-border bg-brand-bg-card p-2 shadow-elevated ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-200`}
             >
               <div className="px-4 py-4 mb-2 border-b border-brand-border">
                 <p className="label-stat text-brand-text-muted mb-1">{t('header.signedInAs')}</p>
@@ -244,11 +284,13 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
                 </p>
               </div>
               <button
+                type="button"
+                role="menuitem"
                 onClick={() => {
                   navigate('/profile');
                   setIsProfileOpen(false);
                 }}
-                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text-primary dark:text-brand-text-main hover:bg-brand-green-dark hover:text-white transition-all group rounded-2xl"
+                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text-primary dark:text-brand-text-main hover:bg-brand-green-dark hover:text-white transition-all group rounded-2xl cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-white/20 transition-colors">
                   <UserIcon
@@ -259,11 +301,13 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
                 <span className="label-stat group-hover:text-white">{t('nav.profile')}</span>
               </button>
               <button
+                type="button"
+                role="menuitem"
                 onClick={() => {
                   navigate('/settings');
                   setIsProfileOpen(false);
                 }}
-                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text-primary dark:text-brand-text-main hover:bg-brand-green-dark hover:text-white transition-all group rounded-2xl"
+                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-brand-text-primary dark:text-brand-text-main hover:bg-brand-green-dark hover:text-white transition-all group rounded-2xl cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-white/20 transition-colors">
                   <Settings
@@ -275,8 +319,10 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
               </button>
               <div className="my-2 border-t border-brand-border" />
               <button
+                type="button"
+                role="menuitem"
                 onClick={handleLogout}
-                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-error-text hover:bg-error-strong hover:text-white rounded-2xl transition-all group"
+                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-error-text hover:bg-error-strong hover:text-white rounded-2xl transition-all group cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
                   <LogOut size={18} className="rtl:-scale-x-100" />

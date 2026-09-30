@@ -229,7 +229,9 @@ function SlotCell({
           </div>
           {canManage && (
             <button
+              type="button"
               onClick={() => onAddSlot?.(day, time)}
+              aria-label={isRTL ? `إضافة محاضرة: يوم ${day} الساعة ${time}` : `Add class slot for ${day} at ${time}`}
               className="absolute inset-1 m-1 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl flex items-center justify-center text-slate-400 
               opacity-100 hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-brand-primary-400 hover:text-brand-primary-500
               [@media(hover:hover)_and_(pointer:fine)]:opacity-0 [@media(hover:hover)_and_(pointer:fine)]:group-hover/cell:opacity-100 transition-all duration-200"
@@ -648,21 +650,25 @@ export function ScheduleView({
               {/* Tablet specific headers with arrows */}
               <div className="flex items-center justify-between p-4 lg:hidden border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
                 <button
+                  type="button"
                   onClick={isRTL ? handleNextTablet : handlePrevTablet}
                   disabled={isRTL ? !canGoNext : !canGoPrev}
-                  className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50 text-slate-500 hover:text-brand-primary-600"
+                  aria-label={isRTL ? t('common.next', 'الأيام التالية') : t('common.previous', 'Previous days')}
+                  className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50 text-slate-500 hover:text-brand-primary-600 cursor-pointer"
                 >
-                  <ChevronLeft size={20} />
+                  <ChevronLeft size={20} aria-hidden="true" />
                 </button>
                 <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   {t(`days.${visibleDays[0]?.toLowerCase()}`)} - {t(`days.${visibleDays[visibleDays.length - 1]?.toLowerCase()}`)}
                 </div>
                 <button
+                  type="button"
                   onClick={isRTL ? handlePrevTablet : handleNextTablet}
                   disabled={isRTL ? !canGoPrev : !canGoNext}
-                  className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50 text-slate-500 hover:text-brand-primary-600"
+                  aria-label={isRTL ? t('common.previous', 'الأيام السابقة') : t('common.next', 'Next days')}
+                  className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-50 text-slate-500 hover:text-brand-primary-600 cursor-pointer"
                 >
-                  <ChevronRight size={20} />
+                  <ChevronRight size={20} aria-hidden="true" />
                 </button>
               </div>
 

@@ -17,19 +17,27 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div 
-      className="min-h-screen bg-brand-bg-page transition-all duration-300 lg:grid"
+      className="min-h-screen bg-brand-bg-page transition-all duration-300 lg:grid overflow-x-hidden w-full max-w-full"
       style={{
         gridTemplateColumns: `var(--sidebar-width, 0px) 1fr`,
         '--sidebar-width': isSidebarCollapsed ? '80px' : '288px'
       } as React.CSSProperties}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
+      {/* WCAG 2.4.1: Skip to main content landmark */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:start-4 focus:z-[9999] focus:px-4 focus:py-2.5 focus:bg-brand-primary-600 focus:text-white focus:font-black focus:rounded-xl focus:shadow-2xl focus:outline-none focus:ring-2 focus:ring-white"
+      >
+        {isRTL ? 'الانتقال إلى المحتوى الرئيسي' : 'Skip to main content'}
+      </a>
+
       <Sidebar isOpen={isSidebarOpen} onClose={handleSidebarClose} />
 
-      <div className="flex flex-col min-h-screen min-w-0 lg:col-start-2">
-        <Header onMenuClick={handleMenuClick} />
+      <div className="flex flex-col min-h-screen min-w-0 w-full max-w-full lg:col-start-2 overflow-x-hidden">
+        <Header onMenuClick={handleMenuClick} isSidebarOpen={isSidebarOpen} />
 
-        <main className="flex-1 min-h-0 overflow-y-auto page-padding">
+        <main id="main-content" tabIndex={-1} className="flex-1 min-h-0 overflow-y-auto page-padding outline-none">
           <div className="mx-auto content-container pb-8">
             <SuperAdminTwoFactorBanner />
             {children}

@@ -35,7 +35,12 @@ import { useNotifications } from '../../context/NotificationContext';
 import { hasCapability, Capability } from '../../config/capabilities';
 
 // PERF: React.memo prevents re-render when item's own props haven't changed
-const SidebarItem: React.FC<any> = React.memo(({ item, isCollapsed, isChild = false }) => {
+const SidebarItem: React.FC<{
+  item: any;
+  isCollapsed: boolean;
+  isChild?: boolean;
+  onItemClick?: () => void;
+}> = React.memo(({ item, isCollapsed, isChild = false, onItemClick }) => {
   const { t } = useTranslation();
   const { pendingRequestsCount } = useNotifications();
   const isRequestsItem = item.path === '/registration-requests';
@@ -43,6 +48,9 @@ const SidebarItem: React.FC<any> = React.memo(({ item, isCollapsed, isChild = fa
   return (
     <NavLink
       to={item.path}
+      onClick={onItemClick}
+      title={t(item.title)}
+      aria-label={t(item.title)}
       className={({ isActive }) => `
         group flex items-center gap-3 rounded-xl transition-all duration-150 w-full relative
         ${isChild ? 'px-3.5 py-2 text-xs' : 'px-3.5 py-2.5 text-sm'}
@@ -102,6 +110,7 @@ interface SidebarGroupType {
 interface SidebarGroupProps {
   group: SidebarGroupType;
   isCollapsed: boolean;
+  onItemClick?: () => void;
 }
 
 const groupIcons: Record<string, React.ComponentType<any>> = {
@@ -112,7 +121,7 @@ const groupIcons: Record<string, React.ComponentType<any>> = {
 };
 
 // PERF: React.memo prevents full group re-render when unrelated routes change
-const SidebarGroup: React.FC<SidebarGroupProps> = React.memo(({ group, isCollapsed }) => {
+const SidebarGroup: React.FC<SidebarGroupProps> = React.memo(({ group, isCollapsed, onItemClick }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(true);
   const location = useLocation();
@@ -127,7 +136,7 @@ const SidebarGroup: React.FC<SidebarGroupProps> = React.memo(({ group, isCollaps
     return (
       <div className="py-2 space-y-1">
         {group.items.map((item: SidebarItemType) => (
-          <SidebarItem key={item.path} item={item} isCollapsed={true} />
+          <SidebarItem key={item.path} item={item} isCollapsed={true} onItemClick={onItemClick} />
         ))}
       </div>
     );
@@ -156,7 +165,7 @@ const SidebarGroup: React.FC<SidebarGroupProps> = React.memo(({ group, isCollaps
       {isOpen && (
         <div className="space-y-1 animate-in slide-in-from-top-2 duration-300">
           {group.items.map((item: SidebarItemType) => (
-            <SidebarItem key={item.path} item={item} isCollapsed={false} />
+            <SidebarItem key={item.path} item={item} isCollapsed={false} onItemClick={onItemClick} />
           ))}
         </div>
       )}
@@ -171,10 +180,21 @@ export interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { isSidebarCollapsed: isCollapsed, toggleSidebar } = useTheme();
+
+  const prevPathname = React.useRef(location.pathname);
+  useEffect(() => {
+    if (prevPathname.current !== location.pathname) {
+      prevPathname.current = location.pathname;
+      if (isOpen) {
+        onClose();
+      }
+    }
+  }, [location.pathname, onClose, isOpen]);
 
   const navigationConfig: SidebarGroupType[] = useMemo(() => [
       {
@@ -388,16 +408,32 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     return user?.email?.split('@')[0] || 'User';
   }, [user]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, onClose]);
+
   return (
     <>
       <div
         className={`fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm transition-opacity lg:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={onClose}
+        aria-hidden="true"
       />
 
       <aside
+        id="app-sidebar"
+        tabIndex={isOpen ? 0 : -1}
+        aria-label={t('nav.mainNav', 'Main Navigation')}
         className={`
-        fixed top-0 z-50 h-full border-white/10 bg-brand-sidebar dark:bg-slate-900 transition-all duration-300 shadow-elevated
+        fixed top-0 z-50 h-full border-white/10 bg-brand-sidebar dark:bg-slate-900 transition-all duration-300 shadow-elevated outline-none
         start-0 border-e
         ${isCollapsed ? 'w-20' : 'w-72'}
         ${isOpen ? 'translate-x-0' : isRTL ? 'translate-x-full' : '-translate-x-full'}
@@ -477,42 +513,47 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
 
         <div className="flex flex-col h-[calc(100%-5rem)]">
-          {/* ALWAYS VISIBLE HOME BUTTON (Right below logo area) */}
-          <div className="px-4 py-2 border-b border-white/5 shrink-0">
-            <NavLink
-              to="/dashboard"
-              className={({ isActive }) => `
-                group flex items-center gap-3 rounded-xl transition-all duration-150 w-full px-3.5 py-2.5 text-sm
-                ${isActive
-                  ? 'bg-brand-primary-500/15 text-white font-semibold shadow-xs border-s-[3px] border-brand-primary-400'
-                  : 'text-slate-300 hover:bg-white/5 hover:text-white dark:text-slate-400 dark:hover:text-white'
-                }
-                ${isCollapsed ? 'justify-center px-2 border-s-0' : ''}
-              `}
-            >
-              {({ isActive }) => (
-                <>
-                  <LayoutDashboard size={20} className={`shrink-0 transition-all duration-150 ${isActive ? 'text-brand-primary-400 scale-105' : 'text-slate-400 group-hover:text-white group-hover:scale-105'}`} />
-                  {!isCollapsed && <span className={`font-semibold tracking-normal transition-all truncate ${isActive ? 'text-white' : ''}`}>{t('nav.dashboard', 'Dashboard')}</span>}
-                </>
-              )}
-            </NavLink>
-          </div>
+          <nav aria-label={t('nav.mainNav', 'Main Navigation')} className="flex flex-col flex-1 min-h-0">
+            {/* ALWAYS VISIBLE HOME BUTTON (Right below logo area) */}
+            <div className="px-4 py-2 border-b border-white/5 shrink-0">
+              <NavLink
+                to="/dashboard"
+                onClick={onClose}
+                title={t('nav.dashboard', 'Dashboard')}
+                aria-label={t('nav.dashboard', 'Dashboard')}
+                className={({ isActive }) => `
+                  group flex items-center gap-3 rounded-xl transition-all duration-150 w-full px-3.5 py-2.5 text-sm
+                  ${isActive
+                    ? 'bg-brand-primary-500/15 text-white font-semibold shadow-xs border-s-[3px] border-brand-primary-400'
+                    : 'text-slate-300 hover:bg-white/5 hover:text-white dark:text-slate-400 dark:hover:text-white'
+                  }
+                  ${isCollapsed ? 'justify-center px-2 border-s-0' : ''}
+                `}
+              >
+                {({ isActive }) => (
+                  <>
+                    <LayoutDashboard size={20} className={`shrink-0 transition-all duration-150 ${isActive ? 'text-brand-primary-400 scale-105' : 'text-slate-400 group-hover:text-white group-hover:scale-105'}`} aria-hidden="true" />
+                    {!isCollapsed && <span className={`font-semibold tracking-normal transition-all truncate ${isActive ? 'text-white' : ''}`}>{t('nav.dashboard', 'Dashboard')}</span>}
+                  </>
+                )}
+              </NavLink>
+            </div>
 
-          <div className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar space-y-8">
-            {filteredNav.map((group, idx) => {
-              if (group.flat) {
-                return (
-                  <div key={idx} className="space-y-1">
-                    {group.items.map((item) => (
-                      <SidebarItem key={item.path} item={item} isCollapsed={isCollapsed} />
-                    ))}
-                  </div>
-                );
-              }
-              return <SidebarGroup key={idx} group={group} isCollapsed={isCollapsed} />;
-            })}
-          </div>
+            <div className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar space-y-8">
+              {filteredNav.map((group, idx) => {
+                if (group.flat) {
+                  return (
+                    <div key={idx} className="space-y-1">
+                      {group.items.map((item) => (
+                        <SidebarItem key={item.path} item={item} isCollapsed={isCollapsed} onItemClick={onClose} />
+                      ))}
+                    </div>
+                  );
+                }
+                return <SidebarGroup key={idx} group={group} isCollapsed={isCollapsed} onItemClick={onClose} />;
+              })}
+            </div>
+          </nav>
 
           <div className="p-6 border-t border-white/5 bg-black/10 backdrop-blur-md">
             <div className={`flex items-center gap-4 ${isCollapsed ? 'justify-center' : 'px-2'}`}>
