@@ -149,6 +149,17 @@ async function runAdministrativeAnalyticsScopeSecurityTests() {
       user: { role: 'DEPARTMENT_ADMIN', managedDepartmentId: 7 },
     });
     assert.equal(dashboardResult.error, undefined);
+    assert.equal(dashboardResult.body?.success, true);
+    assert.deepEqual(
+      {
+        totalColleges: dashboardResult.body?.data?.counts?.totalColleges,
+        totalDepartments: dashboardResult.body?.data?.counts?.totalDepartments,
+        totalStudents: dashboardResult.body?.data?.counts?.totalStudents,
+        totalDoctors: dashboardResult.body?.data?.counts?.totalDoctors,
+        totalCourses: dashboardResult.body?.data?.counts?.totalCourses,
+      },
+      { totalColleges: 0, totalDepartments: 0, totalStudents: 0, totalDoctors: 0, totalCourses: 0 },
+    );
 
     const collegeQueries = dashboardQueries.filter((query) => query.delegate === prisma.college);
     assert.deepEqual(collegeQueries[0].args.where, { departments: { some: { id: 7 } } });

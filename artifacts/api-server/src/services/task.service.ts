@@ -1,4 +1,5 @@
 import type { AuthActor } from "../types/auth.types";
+import type { Prisma } from "@prisma/client";
 import { TaskScopeService } from "./task/taskScope.service";
 import {
   TaskQueriesService,
@@ -55,8 +56,8 @@ export type {
 };
 
 export class TaskService {
-  static createTask(user: AuthActor, data: CreateTaskDTO) {
-    return TaskMutationsService.createTask(user, data);
+  static createTask(user: AuthActor, data: CreateTaskDTO, txClient?: Prisma.TransactionClient) {
+    return TaskMutationsService.createTask(user, data, txClient);
   }
 
   static getTasks(

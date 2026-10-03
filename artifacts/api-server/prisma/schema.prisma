@@ -26,25 +26,31 @@ model User {
   managedDepartmentId Int?
   managedDepartment   Department? @relation("ManagedDepartment", fields: [managedDepartmentId], references: [id])
 
-  profilePicture           String?
-  twoFactorEnabled         Boolean                  @default(false)
-  twoFactorSecret          String? // TOTP secret
-  tokenVersion             Int                      @default(0)
-  createdAt                DateTime                 @default(now())
-  doctor                   Doctor?
-  teachingAssistant        TeachingAssistant?
-  student                  Student?
-  notifications            Notification[]
-  auditLogs                AuditLog[]
-  refreshTokens            RefreshToken[]
-  scheduleOverrides        ScheduleOverride[]
-  recordedAttendances      Attendance[]
-  scheduleRequests         ScheduleChangeRequest[]
-  resolvedScheduleRequests ScheduleChangeRequest[]  @relation("ResolvedRequests")
-  uploadedMaterials        CourseMaterial[]
-  absenceExemptions        AbsenceExemptionPeriod[]
-  isActive                 Boolean                  @default(true)
-  deactivatedAt            DateTime?
+  profilePicture             String?
+  twoFactorEnabled           Boolean                    @default(false)
+  twoFactorSecret            String? // TOTP secret
+  tokenVersion               Int                        @default(0)
+  createdAt                  DateTime                   @default(now())
+  doctor                     Doctor?
+  teachingAssistant          TeachingAssistant?
+  student                    Student?
+  notifications              Notification[]
+  auditLogs                  AuditLog[]
+  refreshTokens              RefreshToken[]
+  scheduleOverrides          ScheduleOverride[]
+  recordedAttendances        Attendance[]
+  scheduleRequests           ScheduleChangeRequest[]
+  resolvedScheduleRequests   ScheduleChangeRequest[]    @relation("ResolvedRequests")
+  uploadedMaterials          CourseMaterial[]
+  absenceExemptions          AbsenceExemptionPeriod[]
+  aiConversations            AIConversation[]
+  actionProposals            AIActionProposal[]
+  aiAttachments              AIConversationAttachment[]
+  uploadedKnowledgeDocuments KnowledgeDocument[]        @relation("DocumentCreator")
+  uploadedKnowledgeVersions  KnowledgeDocumentVersion[] @relation("VersionUploader")
+  quickActionUsages          AIQuickActionUsage[]
+  isActive                   Boolean                    @default(true)
+  deactivatedAt              DateTime?
 
   @@index([role])
   @@index([email])
@@ -98,17 +104,18 @@ model Notification {
 }
 
 model College {
-  id            Int          @id @default(autoincrement())
-  name          String
-  nameAr        String?
-  description   String?
-  descriptionAr String?
-  departments   Department[]
-  admins        User[]
+  id                 Int                 @id @default(autoincrement())
+  name               String
+  nameAr             String?
+  description        String?
+  descriptionAr      String?
+  departments        Department[]
+  admins             User[]
   // Back relation for scoped ADMIN users who manage a single college
-  managedAdmins User[]       @relation("ManagedCollege")
-  timetables    Timetable[]
-  createdAt     DateTime     @default(now())
+  managedAdmins      User[]              @relation("ManagedCollege")
+  timetables         Timetable[]
+  knowledgeDocuments KnowledgeDocument[]
+  createdAt          DateTime            @default(now())
 }
 
 model Department {
@@ -129,6 +136,7 @@ model Department {
   createdAt            DateTime                 @default(now())
   absencePolicies      AbsenceThresholdPolicy[]
   studentGroups        StudentGroup[]
+  knowledgeDocuments   KnowledgeDocument[]
 
   @@index([collegeId])
 }
@@ -892,4 +900,250 @@ model RfidDevice {
   isActive            Boolean   @default(true)
   lastSeenAt          DateTime?
   createdAt           DateTime  @default(now())
+}
+
+enum AIMessageRole {
+  USER
+  ASSISTANT
+}
+
+model AIConversation {
+  id              String                     @id @default(uuid())
+  userId          Int
+  user            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  archivedAt      DateTime?
+  pinnedAt        DateTime?
+  messages        AIMessage[]
+  actionProposals AIActionProposal[]
+  attachments     AIConversationAttachment[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, archivedAt])
+  @@index([userId, pinnedAt])
+}
+
+model AIMessage {
+  id             String                     @id @default(uuid())
+  conversationId String
+  conversation   AIConversation             @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           AIMessageRole
+  content        String
+  createdAt      DateTime                   @default(now())
+  sequence       Int
+  citations      AIMessageCitation[]
+  attachments    AIConversationAttachment[]
+
+  @@index([conversationId, sequence])
+  @@index([conversationId, createdAt])
+}
+
+model AIConversationAttachment {
+  id               String                    @id @default(uuid())
+  userId           Int
+  user             User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId   String
+  conversation     AIConversation            @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  messageId        String?
+  message          AIMessage?                @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  originalFilename String
+  mimeType         String
+  byteSize         Int
+  fileHash         String
+  storageKey       String
+  processingStatus KnowledgeProcessingStatus @default(PENDING)
+  extractedText    String?                   @db.Text
+  pageCount        Int?
+  errorMessage     String?
+  createdAt        DateTime                  @default(now())
+
+  @@index([conversationId, userId])
+  @@index([userId, fileHash])
+  @@index([messageId])
+}
+
+enum KnowledgeDocumentType {
+  BYLAW
+  REGULATION
+  HANDBOOK
+  POLICY
+  PROCEDURE
+  ANNOUNCEMENT
+}
+
+enum KnowledgeDocumentScope {
+  GLOBAL
+  COLLEGE
+  DEPARTMENT
+}
+
+enum KnowledgeDocumentStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum KnowledgeProcessingStatus {
+  PENDING
+  PROCESSING
+  READY
+  REQUIRES_OCR
+  FAILED
+}
+
+model KnowledgeDocument {
+  id              String                     @id @default(uuid())
+  title           String
+  titleAr         String?
+  description     String?
+  documentType    KnowledgeDocumentType      @default(REGULATION)
+  scope           KnowledgeDocumentScope     @default(GLOBAL)
+  collegeId       Int?
+  college         College?                   @relation(fields: [collegeId], references: [id], onDelete: SetNull)
+  departmentId    Int?
+  department      Department?                @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  status          KnowledgeDocumentStatus    @default(ACTIVE)
+  createdById     Int?
+  createdBy       User?                      @relation("DocumentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  activeVersionId String?                    @unique
+  activeVersion   KnowledgeDocumentVersion?  @relation("ActiveDocumentVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+  versions        KnowledgeDocumentVersion[] @relation("DocumentVersions")
+  chunks          KnowledgeChunk[]
+
+  @@index([scope, status])
+  @@index([collegeId])
+  @@index([departmentId])
+  @@index([documentType])
+}
+
+model KnowledgeDocumentVersion {
+  id                String                    @id @default(uuid())
+  documentId        String
+  document          KnowledgeDocument         @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  version           Int                       @default(1)
+  versionTag        String?
+  originalFilename  String
+  fileUrl           String
+  mimeType          String
+  fileSize          Int
+  fileHash          String
+  uploadedById      Int?
+  uploadedBy        User?                     @relation("VersionUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedAt        DateTime                  @default(now())
+  processingStatus  KnowledgeProcessingStatus @default(PENDING)
+  processingError   String?
+  effectiveDate     DateTime?
+  supersededAt      DateTime?
+  chunkCount        Int                       @default(0)
+  activeForDocument KnowledgeDocument?        @relation("ActiveDocumentVersion")
+  chunks            KnowledgeChunk[]
+  citations         AIMessageCitation[]
+
+  @@unique([documentId, version])
+  @@index([fileHash])
+  @@index([processingStatus])
+  @@index([effectiveDate])
+}
+
+model KnowledgeChunk {
+  id                String                   @id @default(uuid())
+  documentId        String
+  document          KnowledgeDocument        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentVersionId String
+  documentVersion   KnowledgeDocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  chunkIndex        Int
+  pageNumber        Int?
+  sectionTitle      String?
+  articleNumber     String?
+  content           String                   @db.Text
+  tokenCount        Int?
+  embedding         Json?
+  citations         AIMessageCitation[]
+
+  @@index([documentVersionId, chunkIndex])
+  @@index([documentId])
+  @@index([pageNumber])
+}
+
+model AIMessageCitation {
+  id                String                   @id @default(uuid())
+  messageId         String
+  message           AIMessage                @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  documentVersionId String
+  documentVersion   KnowledgeDocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  chunkId           String?
+  chunk             KnowledgeChunk?          @relation(fields: [chunkId], references: [id], onDelete: SetNull)
+  documentTitle     String
+  documentTitleAr   String?
+  version           Int?
+  pageNumber        Int?
+  sectionTitle      String?
+  articleNumber     String?
+  quote             String?                  @db.Text
+  createdAt         DateTime                 @default(now())
+
+  @@index([messageId])
+  @@index([documentVersionId])
+}
+
+enum AIActionStatus {
+  PROPOSED
+  CONFIRMED
+  EXECUTING
+  SUCCEEDED
+  FAILED
+  CANCELED
+  EXPIRED
+  STALE
+}
+
+model AIActionProposal {
+  id                     String          @id @default(uuid())
+  userId                 Int
+  user                   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId         String?
+  conversation           AIConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  sourceUserMessageId    String?
+  idempotencyKey         String?         @unique
+  actionType             String
+  normalizedPayload      Json
+  payloadHash            String
+  humanReadableSummary   String
+  humanReadableSummaryAr String?
+  previewData            Json
+  status                 AIActionStatus  @default(PROPOSED)
+  failureCode            String?
+  failureReason          String?
+  executionResult        Json?
+  targetEntityId         String?
+  expiresAt              DateTime
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @default(now()) @updatedAt
+  confirmedAt            DateTime?
+  executedAt             DateTime?
+  canceledAt             DateTime?
+
+  @@index([userId, status])
+  @@index([conversationId])
+  @@index([payloadHash, userId, status])
+  @@index([expiresAt])
+}
+
+model AIQuickActionUsage {
+  id         String   @id @default(uuid())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionKey  String
+  usageDate  DateTime @db.Date
+  count      Int      @default(1)
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, actionKey, usageDate])
+  @@index([userId, usageDate])
+  @@index([userId, lastUsedAt])
 }

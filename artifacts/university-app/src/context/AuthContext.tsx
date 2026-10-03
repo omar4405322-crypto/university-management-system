@@ -164,7 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAccessToken(token);
   }, [token]);
 
-  const login = async (email: string, password: string, totpToken: string | null = null) => {
+  const login = useCallback(async (email: string, password: string, totpToken: string | null = null) => {
     try {
       setError(null);
       const normalizedEmail = email.trim().toLowerCase();
@@ -199,9 +199,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(message);
       return { success: false, message, status };
     }
-  };
+  }, []);
 
-  const register = async (data: RegisterPayload) => {
+  const register = useCallback(async (data: RegisterPayload) => {
     try {
       // NOTE: Do NOT touch `loading` here — it's reserved for session hydration (initAuth).
       // Toggling it during registration causes re-renders that unmount the Register page prematurely.
@@ -214,9 +214,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(message);
       return { success: false, message };
     }
-  };
+  }, []);
 
-  const value: AuthContextType = {
+  const value = React.useMemo<AuthContextType>(() => ({
     user,
     setUser,
     token,
@@ -226,7 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     isAuthenticated: !!token && !!user,
-  };
+  }), [user, token, loading, error, login, register, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

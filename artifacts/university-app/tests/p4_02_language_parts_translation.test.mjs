@@ -2,6 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
+test('P8-I18N: Arabic and English dictionaries have identical nonempty translation keys', async () => {
+  const dictionaries = await Promise.all(['en', 'ar'].map(async (locale) => JSON.parse(await readFile(new URL(`../src/i18n/${locale}.json`, import.meta.url), 'utf8'))));
+  function flatten(value, prefix = '') {
+    return Object.entries(value).flatMap(([key, child]) => {
+      const name = `${prefix}${key}`;
+      if (child && typeof child === 'object') return flatten(child, `${name}.`);
+      assert.ok(typeof child === 'string' && child.trim(), `Translation ${name} must be a nonempty string`);
+      return [name];
+    });
+  }
+  assert.deepEqual(flatten(dictionaries[1]).sort(), flatten(dictionaries[0]).sort(), 'Arabic and English translation key sets must match');
+});
+
 test('P4-02: All required application roles exist in both Arabic and English dictionaries', async () => {
   const [enRaw, arRaw] = await Promise.all([
     readFile(new URL('../src/i18n/en.json', import.meta.url), 'utf8'),

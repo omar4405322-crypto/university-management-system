@@ -52,10 +52,12 @@ export class TaskMutationsService {
   static async createTask(
     user: AuthActor,
     data: CreateTaskDTO,
+    txClient?: Prisma.TransactionClient,
   ): Promise<TaskCreatedPayload> {
+    const db = txClient ?? prisma;
     const doctor = await TaskScopeService.getDoctorOrThrow(user.id);
 
-    const course = await prisma.course.findUnique({
+    const course = await db.course.findUnique({
       where: { id: data.courseId },
       include: { department: true },
     });
@@ -69,30 +71,50 @@ export class TaskMutationsService {
 
     await TaskScopeService.validateCourseScope(user, course);
 
-    const task = await prisma.task.create({
-      data: {
-        title: data.title,
-        description: data.description,
-        courseId: data.courseId,
-        academicYear: toZonedTime(new Date(), CAIRO_TZ).getFullYear(),
-        semester: course.semester || 1,
-        doctorId: doctor.id,
-        dueDate: data.dueDate,
-        maxScore: data.maxScore,
-      },
-      include: {
-        course: { select: { name: true } },
-      },
-    });
+    const taskData = {
+      title: data.title,
+      description: data.description,
+      courseId: data.courseId,
+      academicYear: toZonedTime(new Date(), CAIRO_TZ).getFullYear(),
+      semester: course.semester || 1,
+      doctorId: doctor.id,
+      dueDate: data.dueDate,
+      maxScore: data.maxScore,
+    };
+    const taskInclude = {
+      course: { select: { name: true } },
+    };
 
-    await notifyStudentsInCourse({
-      courseId: task.courseId,
-      title: "New Assignment Posted",
-      message: `A new assignment "${task.title}" has been posted for course ${task.course.name}.`,
-      type: "info",
-    });
+    const task = txClient
+      ? await txClient.task.create({
+          data: taskData,
+          include: taskInclude,
+        })
+      : await prisma.task.create({
+          data: {
+            title: data.title,
+            description: data.description,
+            courseId: data.courseId,
+            academicYear: toZonedTime(new Date(), CAIRO_TZ).getFullYear(),
+            semester: course.semester || 1,
+            doctorId: doctor.id,
+            dueDate: data.dueDate,
+            maxScore: data.maxScore,
+          },
+          include: taskInclude,
+        });
 
-    auditLog("CREATE_TASK", "Task", String(task.id), { userId: user.id });
+    await notifyStudentsInCourse(
+      {
+        courseId: task.courseId,
+        title: "New Assignment Posted",
+        message: `A new assignment "${task.title}" has been posted for course ${task.course.name}.`,
+        type: "info",
+      },
+      txClient,
+    );
+
+    await auditLog("CREATE_TASK", "Task", String(task.id), { userId: user.id }, undefined, txClient);
 
     return task;
   }

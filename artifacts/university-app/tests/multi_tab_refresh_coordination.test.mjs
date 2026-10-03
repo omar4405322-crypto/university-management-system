@@ -35,11 +35,13 @@ describe('SESSION-P1C-01: Multi-Tab Refresh Coordination (Production Runtime Ver
   let originalNavigator;
 
   beforeEach(() => {
-    originalNavigator = globalThis.navigator;
+    originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, writable: true, value: undefined });
   });
 
   afterEach(() => {
-    globalThis.navigator = originalNavigator;
+    if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator);
+    else delete globalThis.navigator;
   });
 
   it('1. Lock Name & Runtime Execution: Actual production helper requests "auth-token-refresh"', async () => {

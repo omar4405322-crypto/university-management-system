@@ -23,6 +23,8 @@ const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const DashboardContainer = lazy(() => import('./pages/dashboard/DashboardContainer'));
+const ShaheenLabPage = import.meta.env.DEV ? lazy(() => import('./pages/ai/ShaheenLabPage')) : () => null;
+const AiAssistantPage = lazy(() => import('./pages/ai/AiAssistantPage'));
 const CoursesList = lazy(() => import('./pages/courses/CoursesList'));
 const CourseDetails = lazy(() => import('./pages/courses/CourseDetails'));
 const DoctorsList = lazy(() => import('./pages/doctors/DoctorsList'));
@@ -70,6 +72,7 @@ const DegreeAudit = lazy(() => import('./pages/degree-audit/DegreeAudit'));
 const GroupManagement = lazy(() => import('./pages/groups/GroupManagement'));
 const StudentStatisticsPage = lazy(() => import('./pages/statistics/StudentStatisticsPage'));
 const StudentWarningsPage = lazy(() => import('./pages/attendance/StudentWarningsPage'));
+const KnowledgeBaseAdminPage = lazy(() => import('./pages/knowledge/KnowledgeBaseAdminPage'));
 
 const LazyRoute = ({ children }: { children: React.ReactNode }) => (
   <ErrorBoundary>
@@ -143,6 +146,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
         <Route path="/login" element={<Login />} />
+        {import.meta.env.DEV ? <Route path="/shaheen-lab" element={<LazyRoute><ShaheenLabPage /></LazyRoute>} /> : null}
         <Route path="/register" element={<Register />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
@@ -154,6 +158,26 @@ const AppContent = () => {
                 <SuperAdminGuard>
                   <ErrorBoundary>
                     <Routes>
+                      <Route
+                        path="ai-assistant"
+                        element={
+                          <PageWrapper>
+                            <LazyRoute>
+                              <AiAssistantPage />
+                            </LazyRoute>
+                          </PageWrapper>
+                        }
+                      />
+                      <Route
+                        path="ai-assistant/:conversationId"
+                        element={
+                          <PageWrapper>
+                            <LazyRoute>
+                              <AiAssistantPage />
+                            </LazyRoute>
+                          </PageWrapper>
+                        }
+                      />
                       <Route
                         path="dashboard"
                         element={
@@ -477,6 +501,18 @@ const AppContent = () => {
                             <PageWrapper>
                               <LazyRoute>
                                 <AdminsList />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="knowledge-base"
+                        element={
+                          <ProtectedRoute capability="knowledge_base.view">
+                            <PageWrapper>
+                              <LazyRoute>
+                                <KnowledgeBaseAdminPage />
                               </LazyRoute>
                             </PageWrapper>
                           </ProtectedRoute>

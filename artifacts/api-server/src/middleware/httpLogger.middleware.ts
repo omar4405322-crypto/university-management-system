@@ -39,11 +39,11 @@ export const httpLoggerMiddleware = (
     };
 
     if (res.statusCode >= 500) {
-      logger.error(`[HTTP] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${durationMs}ms)`, logData);
+      logger.error(`[HTTP] ${req.method} ${logData.path} -> ${res.statusCode} (${durationMs}ms)`, logData);
     } else if (res.statusCode >= 400) {
-      logger.warn(`[HTTP] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${durationMs}ms)`, logData);
+      logger.warn(`[HTTP] ${req.method} ${logData.path} -> ${res.statusCode} (${durationMs}ms)`, logData);
     } else {
-      logger.info(`[HTTP] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${durationMs}ms)`, logData);
+      logger.info(`[HTTP] ${req.method} ${logData.path} -> ${res.statusCode} (${durationMs}ms)`, logData);
     }
   });
 

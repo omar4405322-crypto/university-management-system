@@ -71,3 +71,5 @@ backups/
 # Audit and review artifacts
 review_batch.txt
 SECURITY-AUDIT-2026-09-03.md
+# Playwright CLI output (may contain credentials)
+.playwright-cli/

@@ -14,6 +14,9 @@ import {
  * SEC-001: Structured production error logging without raw stack traces or internal leaks.
  */
 const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+  if (err?.type === 'entity.parse.failed') {
+    err = new AppError('Malformed JSON body', 400);
+  }
   const isDev = process.env.NODE_ENV === 'development';
 
   // In development, log to console for developer workflow; never in production
@@ -87,7 +90,7 @@ const sendErrorDev = (err: any, req: Request, res: Response, errorId: string) =>
   logger.error(`[DEV ERROR] ${err.message}`, {
     errorId,
     stack: err.stack,
-    path: req.originalUrl,
+    path: req.originalUrl?.split('?')[0],
     method: req.method,
   });
 
@@ -106,7 +109,7 @@ const sendErrorProd = (err: any, req: Request, res: Response, errorId: string) =
   if (err.isOperational) {
     logger.warn(`[OP ERROR] ${err.message}`, {
       errorId,
-      path: req.originalUrl,
+      path: req.originalUrl?.split('?')[0],
       method: req.method,
       statusCode: err.statusCode,
       code: err.code || err.name,
@@ -126,7 +129,7 @@ const sendErrorProd = (err: any, req: Request, res: Response, errorId: string) =
       errorId,
       type: err.name || 'InternalServerError',
       statusCode: 500,
-      path: req.originalUrl,
+      path: req.originalUrl?.split('?')[0],
       method: req.method,
       timestamp: new Date().toISOString(),
     });

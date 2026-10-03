@@ -1,5 +1,5 @@
 import prisma from './prismaClient';
-import { Role } from '@prisma/client';
+import { Role, type Prisma } from '@prisma/client';
 
 export interface BaseNotificationParams {
   title: string;
@@ -64,15 +64,19 @@ export interface NotifyStudentsParams extends BaseNotificationParams {
 /**
  * Creates notifications for all students enrolled in a specific course
  */
-export const notifyStudentsInCourse = async ({
-  courseId,
-  title,
-  message,
-  type = 'info',
-}: NotifyStudentsParams) => {
+export const notifyStudentsInCourse = async (
+  {
+    courseId,
+    title,
+    message,
+    type = 'info',
+  }: NotifyStudentsParams,
+  txClient?: Prisma.TransactionClient,
+) => {
+  const db = txClient ?? prisma;
   try {
     const parsedCourseId = typeof courseId === 'string' ? parseInt(courseId, 10) : courseId;
-    const course = await prisma.course.findUnique({
+    const course = await db.course.findUnique({
       where: { id: parsedCourseId },
       include: {
         enrollments: {
@@ -93,11 +97,12 @@ export const notifyStudentsInCourse = async ({
       })
     );
 
-    return await prisma.notification.createMany({
+    return await db.notification.createMany({
       data: notifications,
     });
   } catch (error) {
     console.error('Error notifying students in course:', error);
+    if (txClient) throw error;
     return null;
   }
 };

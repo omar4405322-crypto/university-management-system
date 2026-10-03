@@ -2,6 +2,9 @@
   "name": "workspace",
   "version": "0.0.0",
   "packageManager": "pnpm@10.34.4",
+  "engines": {
+    "node": "24.x"
+  },
   "license": "MIT",
   "scripts": {
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
@@ -12,7 +15,7 @@
     "test:api:unit": "node scripts/run-api-tests.mjs --unit",
     "test:api:integration": "node scripts/run-api-tests.mjs --integration",
     "test:web": "pnpm --filter @workspace/university-app test",
-    "test:coverage": "node --test --experimental-test-coverage artifacts/university-app/tests",
+    "test:coverage": "node --test --experimental-test-coverage \"artifacts/university-app/tests/*.test.mjs\"",
     "test:contract": "pnpm --filter @workspace/scripts exec tsx ./contract_drift_check.ts",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",

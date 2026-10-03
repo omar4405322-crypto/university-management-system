@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import LanguageToggle from '../ui/LanguageToggle';
 import { useLanguage } from '../../context/LanguageContext';
 import GlobalSearch from './GlobalSearch';
-import { getDynamicBaseUrl } from '../../services/api';
+import UserAvatar from '../ui/UserAvatar';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -57,28 +57,15 @@ const Header = ({ onMenuClick, isSidebarOpen = false }: HeaderProps) => {
     };
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = React.useCallback(() => {
     logout();
     navigate('/login');
-  };
+  }, [logout, navigate]);
 
-  const getInitials = () => {
-    if (!user) return '?';
-    if (user.firstName && user.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
-    }
-    return user.email.substring(0, 2).toUpperCase();
-  };
 
-  const getProfilePictureUrl = (path?: string) => {
-    if (!path) return '';
-    if (path.startsWith('http')) return path;
-    const baseUrl = getDynamicBaseUrl().replace(/\/api$/, '') || 'http://localhost:5000';
-    return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
-  };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-brand-border bg-brand-bg-card/90 px-2 sm:px-4 md:px-8 backdrop-blur-xl transition-colors duration-300">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-brand-border bg-brand-bg-card/95 px-2 sm:px-4 md:px-8 backdrop-blur-xs transition-colors duration-200">
       <div className="flex items-center gap-2 sm:gap-6">
         <button
           type="button"
@@ -243,17 +230,7 @@ const Header = ({ onMenuClick, isSidebarOpen = false }: HeaderProps) => {
                 : 'border-brand-border bg-slate-50 dark:bg-slate-800/30 hover:border-brand-green/50 hover:bg-brand-bg-card'
               }`}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-brand-green-dark font-black text-white shadow-lg shadow-brand-brand-green-dark/20 ring-2 ring-brand-bg-card transition-transform group-hover:scale-105 shrink-0 overflow-hidden">
-              {user?.profilePicture ? (
-                <img
-                  src={getProfilePictureUrl(user.profilePicture)}
-                  alt="Avatar"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                getInitials()
-              )}
-            </div>
+            <UserAvatar user={user} size="sm" className="transition-transform group-hover:scale-105" />
             <div className="hidden md:flex flex-col items-end">
               <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main truncate max-w-[120px]">
                 {user?.firstName} {user?.lastName}
@@ -337,4 +314,4 @@ const Header = ({ onMenuClick, isSidebarOpen = false }: HeaderProps) => {
   );
 };
 
-export default Header;
+export default React.memo(Header);

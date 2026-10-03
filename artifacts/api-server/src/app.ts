@@ -52,6 +52,8 @@ import studentGroupsRoutes from './routes/studentGroups.routes';
 import requestsRoutes from './routes/requests.routes';
 import { protect, authorize } from './middleware/auth.middleware';
 import roomRoutes from './routes/room.routes';
+import aiRoutes from './routes/ai.routes';
+import knowledgeRoutes from './routes/knowledge.routes';
 
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './utils/swagger';
@@ -280,6 +282,8 @@ app.use('/api/colleges', collegeRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/quizzes', protect, quizRoutes);
 app.use('/api/tasks', protect, taskRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/knowledge', knowledgeRoutes);
 
 app.use('/api/users', protect, usersRoutes);
 app.use('/api/notifications', protect, notificationRoutes);

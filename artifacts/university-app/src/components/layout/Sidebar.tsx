@@ -23,6 +23,7 @@ import {
   Layers,
   CheckSquare,
   Activity,
+  MessageSquareText,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { UNIVERSITY_LOGO, UNIVERSITY_LOGO_WHITE } from '../../constants/universityAssets';
 import { useNotifications } from '../../context/NotificationContext';
+import UserAvatar from '../ui/UserAvatar';
 import { hasCapability, Capability } from '../../config/capabilities';
 
 // PERF: React.memo prevents re-render when item's own props haven't changed
@@ -301,6 +303,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             icon: ShieldCheck,
             capability: 'admins.view' as Capability,
           },
+          {
+            title: 'nav.knowledgeBase',
+            path: '/knowledge-base',
+            icon: BookOpen,
+            capability: 'knowledge_base.view' as Capability,
+          },
         ],
       },
       {
@@ -347,6 +355,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {
         title: 'nav.system',
         items: [
+          {
+            title: 'nav.aiAssistant',
+            path: '/ai-assistant',
+            icon: MessageSquareText,
+          },
           {
             title: 'nav.notifications',
             path: '/notifications',
@@ -557,9 +570,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
           <div className="p-6 border-t border-white/5 bg-black/10 backdrop-blur-md">
             <div className={`flex items-center gap-4 ${isCollapsed ? 'justify-center' : 'px-2'}`}>
-              <div className="w-11 h-11 rounded-2xl bg-brand-primary-600 text-white flex items-center justify-center font-black shadow-lg shadow-brand-primary-600/30 ring-2 ring-white/10">
-                {initials}
-              </div>
+              <UserAvatar
+                user={user}
+                size="md"
+                shape="square"
+                className="ring-2 ring-white/10 shadow-lg shadow-brand-primary-600/30"
+              />
               {!isCollapsed && (
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black text-white truncate uppercase tracking-wider">

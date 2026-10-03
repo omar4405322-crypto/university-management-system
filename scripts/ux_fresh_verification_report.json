@@ -1,0 +1,573 @@
+{
+  "timestamp": "2026-09-30T07:46:06.074Z",
+  "testResults": [
+    {
+      "role": "ANONYMOUS",
+      "route": "/login",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Invalid Login Error Feedback",
+      "result": "PASS",
+      "notes": "Error: \"بيانات الدخول غير صحيحة\""
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/dashboard",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Super Admin Login & Redirect",
+      "result": "PASS",
+      "notes": "Landed on http://localhost:5173/dashboard"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/students",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Students List Load",
+      "result": "PASS",
+      "notes": "6 students rendered"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "http://localhost:5173/students/2502",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Direct Student Detail Navigation",
+      "result": "PASS",
+      "notes": "Navigated to http://localhost:5173/students/2502"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/doctors",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Doctors List Load",
+      "result": "PASS",
+      "notes": "4 doctors rendered"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "http://localhost:5173/doctors/255",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Direct Doctor Detail Navigation",
+      "result": "PASS",
+      "notes": "Navigated to http://localhost:5173/doctors/255"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/teaching-assistants",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "TAs List Load",
+      "result": "PASS",
+      "notes": "Loaded cleanly"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/colleges",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Colleges List Load",
+      "result": "PASS",
+      "notes": "10 colleges displayed"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/departments",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Departments List Load",
+      "result": "PASS",
+      "notes": "Loaded cleanly"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/courses",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Courses List Load",
+      "result": "PASS",
+      "notes": "10 courses loaded"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/registration-requests",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Registration Requests Inbox",
+      "result": "PASS",
+      "notes": "Loaded cleanly with status tabs"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/attendance",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Attendance Dashboard",
+      "result": "PASS",
+      "notes": "Loaded cleanly"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/schedules",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Weekly Schedules Role Redirect",
+      "result": "PASS",
+      "notes": "Landed on http://localhost:5173/timetables-management"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/exams",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Exams Module",
+      "result": "PASS",
+      "notes": "Loaded cleanly"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/quizzes",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Quizzes Module",
+      "result": "PASS",
+      "notes": "Loaded cleanly"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/tasks",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Tasks Module",
+      "result": "PASS",
+      "notes": "Loaded cleanly"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/records",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Records Route Redirect",
+      "result": "PASS",
+      "notes": "Redirected cleanly to http://localhost:5173/record"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/finance",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Finance Dashboard",
+      "result": "PASS",
+      "notes": "Loaded cleanly"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/analytics",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Analytics Dashboard",
+      "result": "PASS",
+      "notes": "Loaded cleanly"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/notifications",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Notifications Center",
+      "result": "PASS",
+      "notes": "Loaded cleanly"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/profile",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Super Admin Profile",
+      "result": "PASS",
+      "notes": "Loaded cleanly"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/settings",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "System Settings",
+      "result": "PASS",
+      "notes": "Loaded cleanly"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/dashboard",
+      "viewport": "430px",
+      "locale": "en",
+      "action": "Mobile Hamburger Menu Button Presence",
+      "result": "PASS",
+      "notes": "Button found: true"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/dashboard",
+      "viewport": "430px",
+      "locale": "en",
+      "action": "Mobile Drawer Open Interaction",
+      "result": "PASS",
+      "notes": "Drawer visible: true"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/students",
+      "viewport": "430px",
+      "locale": "en",
+      "action": "Mobile Layout Fit (No Horizontal Overflow)",
+      "result": "PASS",
+      "notes": "Overflow: false"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/courses",
+      "viewport": "430px",
+      "locale": "en",
+      "action": "Mobile Layout Fit (No Horizontal Overflow)",
+      "result": "PASS",
+      "notes": "Overflow: false"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/tasks",
+      "viewport": "430px",
+      "locale": "en",
+      "action": "Mobile Layout Fit (No Horizontal Overflow)",
+      "result": "PASS",
+      "notes": "Overflow: false"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/dashboard",
+      "viewport": "390px",
+      "locale": "en",
+      "action": "Mobile Hamburger Menu Button Presence",
+      "result": "PASS",
+      "notes": "Button found: true"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/dashboard",
+      "viewport": "390px",
+      "locale": "en",
+      "action": "Mobile Drawer Open Interaction",
+      "result": "PASS",
+      "notes": "Drawer visible: true"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/students",
+      "viewport": "390px",
+      "locale": "en",
+      "action": "Mobile Layout Fit (No Horizontal Overflow)",
+      "result": "PASS",
+      "notes": "Overflow: false"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/courses",
+      "viewport": "390px",
+      "locale": "en",
+      "action": "Mobile Layout Fit (No Horizontal Overflow)",
+      "result": "PASS",
+      "notes": "Overflow: false"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/tasks",
+      "viewport": "390px",
+      "locale": "en",
+      "action": "Mobile Layout Fit (No Horizontal Overflow)",
+      "result": "PASS",
+      "notes": "Overflow: false"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/dashboard",
+      "viewport": "360px",
+      "locale": "en",
+      "action": "Mobile Hamburger Menu Button Presence",
+      "result": "PASS",
+      "notes": "Button found: true"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/dashboard",
+      "viewport": "360px",
+      "locale": "en",
+      "action": "Mobile Drawer Open Interaction",
+      "result": "PASS",
+      "notes": "Drawer visible: true"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/students",
+      "viewport": "360px",
+      "locale": "en",
+      "action": "Mobile Layout Fit (No Horizontal Overflow)",
+      "result": "PASS",
+      "notes": "Overflow: false"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/courses",
+      "viewport": "360px",
+      "locale": "en",
+      "action": "Mobile Layout Fit (No Horizontal Overflow)",
+      "result": "PASS",
+      "notes": "Overflow: false"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/tasks",
+      "viewport": "360px",
+      "locale": "en",
+      "action": "Mobile Layout Fit (No Horizontal Overflow)",
+      "result": "PASS",
+      "notes": "Overflow: false"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/dashboard",
+      "viewport": "1440x900",
+      "locale": "ar",
+      "action": "Arabic RTL Direction Switch",
+      "result": "PASS",
+      "notes": "Direction = rtl"
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/students",
+      "viewport": "1440x900",
+      "locale": "ar",
+      "action": "Arabic Route Rendering",
+      "result": "PASS",
+      "notes": "Heading: \"إدارة الطلاب\""
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/courses",
+      "viewport": "1440x900",
+      "locale": "ar",
+      "action": "Arabic Route Rendering",
+      "result": "PASS",
+      "notes": "Heading: \"كتالوج المقررات\""
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/tasks",
+      "viewport": "1440x900",
+      "locale": "ar",
+      "action": "Arabic Route Rendering",
+      "result": "PASS",
+      "notes": "Heading: \"التكاليف والواجبات\""
+    },
+    {
+      "role": "SUPER_ADMIN",
+      "route": "/record",
+      "viewport": "1440x900",
+      "locale": "ar",
+      "action": "Arabic Route Rendering",
+      "result": "PASS",
+      "notes": "Heading: \"سجل وأرشيف الامتحانات\""
+    },
+    {
+      "role": "DOCTOR",
+      "route": "/dashboard",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Doctor Login & Redirect",
+      "result": "PASS",
+      "notes": "Landed on http://localhost:5173/dashboard"
+    },
+    {
+      "role": "DOCTOR",
+      "route": "/dashboard",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Doctor Role Boundaries Check",
+      "result": "PASS",
+      "notes": "No admin actions exposed"
+    },
+    {
+      "role": "DOCTOR",
+      "route": "/courses",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Doctor Assigned Courses",
+      "result": "PASS",
+      "notes": "Loaded assigned courses"
+    },
+    {
+      "role": "DOCTOR",
+      "route": "/attendance",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Doctor Attendance Session Management",
+      "result": "PASS",
+      "notes": "Loaded faculty attendance view"
+    },
+    {
+      "role": "DOCTOR",
+      "route": "/schedules",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Doctor Weekly Schedule Redirect",
+      "result": "PASS",
+      "notes": "Landed on http://localhost:5173/schedules/doctor"
+    },
+    {
+      "role": "DOCTOR",
+      "route": "/tasks",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Doctor Tasks & Submissions View",
+      "result": "PASS",
+      "notes": "Loaded doctor task list"
+    },
+    {
+      "role": "DOCTOR",
+      "route": "/quizzes",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Doctor Quizzes",
+      "result": "PASS",
+      "notes": "Loaded quiz management"
+    },
+    {
+      "role": "DOCTOR",
+      "route": "/exams",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Doctor Exams",
+      "result": "PASS",
+      "notes": "Loaded exams management"
+    },
+    {
+      "role": "STUDENT",
+      "route": "/dashboard",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Login & Redirect",
+      "result": "PASS",
+      "notes": "Landed on http://localhost:5173/dashboard"
+    },
+    {
+      "role": "STUDENT",
+      "route": "/dashboard",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Role Boundaries Check",
+      "result": "PASS",
+      "notes": "No admin/doctor actions exposed"
+    },
+    {
+      "role": "STUDENT",
+      "route": "/schedules",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Schedule Role Redirect",
+      "result": "PASS",
+      "notes": "Landed on http://localhost:5173/schedules/student"
+    },
+    {
+      "role": "STUDENT",
+      "route": "/courses",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Courses Catalog",
+      "result": "PASS",
+      "notes": "Heading: \"كتالوج المقررات\""
+    },
+    {
+      "role": "STUDENT",
+      "route": "/tasks",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Tasks List",
+      "result": "PASS",
+      "notes": "Heading: \"التكاليف والواجبات\""
+    },
+    {
+      "role": "STUDENT",
+      "route": "/quizzes",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Quizzes List",
+      "result": "PASS",
+      "notes": "Heading: \"الاختبارات\""
+    },
+    {
+      "role": "STUDENT",
+      "route": "/exams",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Exams View",
+      "result": "PASS",
+      "notes": "Heading: \"إدارة وجداول الامتحانات\""
+    },
+    {
+      "role": "STUDENT",
+      "route": "/record",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Academic Record",
+      "result": "PASS",
+      "notes": "Heading: \"سجل وأرشيف الامتحانات\""
+    },
+    {
+      "role": "STUDENT",
+      "route": "/attendance",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Attendance Portal",
+      "result": "PASS",
+      "notes": "Heading: \"بوابة الحضور والانصراف\""
+    },
+    {
+      "role": "STUDENT",
+      "route": "/notifications",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Notifications",
+      "result": "PASS",
+      "notes": "Heading: \"الإشعارات\""
+    },
+    {
+      "role": "STUDENT",
+      "route": "/profile",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Profile",
+      "result": "PASS",
+      "notes": "Heading: \"Test Student\""
+    },
+    {
+      "role": "STUDENT",
+      "route": "/settings",
+      "viewport": "1440x900",
+      "locale": "en",
+      "action": "Student Settings",
+      "result": "PASS",
+      "notes": "Heading: \"جامعة 6 أكتوبر التكنولوجية\""
+    },
+    {
+      "role": "STUDENT",
+      "route": "/dashboard",
+      "viewport": "390px",
+      "locale": "en",
+      "action": "Student Mobile Menu Trigger",
+      "result": "FAIL",
+      "notes": "Button accessible"
+    }
+  ],
+  "journeyMatrix": []
+}

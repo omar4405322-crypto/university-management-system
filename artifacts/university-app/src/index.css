@@ -963,6 +963,13 @@ html {
   outline-offset: 2px !important;
 }
 
+/* Seamless inner inputs inside unified shells (e.g. AI composer) delegate focus to the container */
+.seamless-input:focus-visible,
+textarea.seamless-input:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
@@ -972,4 +979,34 @@ html {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * AI Assistant Real Fullscreen API Mode
+ * ══════════════════════════════════════════════════════════════════════ */
+.ai-workspace-root:fullscreen {
+  width: 100vw !important;
+  max-width: 100% !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  background-color: #ffffff !important;
+  overflow: hidden !important;
+}
+
+:is(.dark) .ai-workspace-root:fullscreen,
+.dark .ai-workspace-root:fullscreen {
+  background-color: #0f172a !important;
+}
+
+.ai-workspace-root:fullscreen .ai-workspace-card {
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  height: 100% !important;
+  max-height: 100% !important;
 }

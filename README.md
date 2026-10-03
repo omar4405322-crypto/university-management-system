@@ -24,7 +24,7 @@ The platform is built as a hardened, multi-container system:
 graph LR
     Web["Client / Browser (React 18 + Vite)"]
     Nginx["Reverse Proxy (Nginx)"]
-    API["API Cluster (Node.js 20+ / Express 5)"]
+    API["API Cluster (Node.js 24 LTS / Express 5)"]
     DB[("PostgreSQL 16 (Prisma v6)")]
     Cache[("Redis 7 (Adapter, Locks, Limits)")]
 
@@ -36,7 +36,7 @@ graph LR
 ```
 
 ### Core Technologies
-- **Runtime & Workspace:** Node.js 20+ / 24, pnpm workspaces (`pnpm@10.34.4`), TypeScript 5.9.
+- **Runtime & Workspace:** Node.js 24 LTS, pnpm workspaces (`pnpm@10.34.4`), TypeScript 5.9.
 - **Frontend App:** React 18, Vite 7, Tailwind CSS v4, Radix UI, Axios, `i18next` (Arabic RTL primary, English secondary).
 - **Backend API:** Express 5, TypeScript (compiled via esbuild/swc ESM), single unified bootstrap (`src/bootstrap.ts`).
 - **Database & ORM:** PostgreSQL 16 with Prisma ORM v6 as the sole data-access layer.
@@ -83,7 +83,7 @@ graph LR
 ## 4. Local Development Quick Start
 
 ### Prerequisites
-- Node.js 20.x or higher
+- Node.js 24.x LTS
 - pnpm (`npm install -g pnpm`)
 - PostgreSQL 16 & Redis 7 (or running via Docker Compose)
 

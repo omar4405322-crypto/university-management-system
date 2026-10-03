@@ -128,6 +128,8 @@ export class TaskQueriesService {
               }
             : { id: -1 },
         ];
+      } else {
+        where.id = -1;
       }
     }
 

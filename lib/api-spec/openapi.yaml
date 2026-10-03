@@ -39,6 +39,8 @@ tags:
     description: Institutional metrics and performance indicators
   - name: notifications
     description: User alert broadcasts and read receipts
+  - name: ai
+    description: University AI assistant foundation
 
 paths:
   /healthz:
@@ -781,6 +783,62 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessMessageResponse"
 
+  /ai/chat:
+    post:
+      operationId: chatWithAiAssistant
+      tags: [ai]
+      summary: Ask the assistant a question with role-scoped read-only university tools
+      description: The server selects the model, instructions, and available read-only tools from the authenticated user. Each request sends only the current message; conversation history is not persisted.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiChatRequest"
+      responses:
+        "200":
+          description: Assistant text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiChatResponse"
+        "400":
+          description: Malformed JSON body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "415":
+          description: Only application/json request bodies are accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "429":
+          description: AI request limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "503":
+          description: AI assistant disabled, unconfigured, or temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -908,6 +966,32 @@ components:
         message:
           type: string
           example: Operation completed successfully
+
+    AiChatRequest:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 4000
+
+    AiChatResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: object
+          additionalProperties: false
+          required: [reply]
+          properties:
+            reply:
+              type: string
 
     RegisterRequest:
       type: object

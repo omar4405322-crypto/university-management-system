@@ -100,7 +100,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     return () => clearInterval(interval);
   }, [fetchNotifications, fetchPendingRequestsCount]);
 
-  const markAsRead = async (id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
     try {
       const response = await api.put(`/notifications/${id}/read`);
       if (response.data.success) {
@@ -110,9 +110,9 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     } catch (error: unknown) {
       logger.error('Mark as read error:', error);
     }
-  };
+  }, []);
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       const response = await api.put('/notifications/read-all');
       if (response.data.success) {
@@ -122,37 +122,49 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     } catch (error: unknown) {
       logger.error('Mark all as read error:', error);
     }
-  };
+  }, []);
 
-  const deleteNotification = async (id: string) => {
+  const deleteNotification = useCallback(async (id: string) => {
     try {
       const response = await api.delete(`/notifications/${id}`);
       if (response.data.success) {
-        const deleted = notifications.find((n) => n.id === id);
-        setNotifications((prev) => prev.filter((n) => n.id !== id));
-        if (deleted && !deleted.isRead) {
-          setUnreadCount((prev) => Math.max(0, prev - 1));
-        }
+        setNotifications((prev) => {
+          const deleted = prev.find((n) => n.id === id);
+          if (deleted && !deleted.isRead) {
+            setUnreadCount((count) => Math.max(0, count - 1));
+          }
+          return prev.filter((n) => n.id !== id);
+        });
       }
     } catch (error: unknown) {
       logger.error('Delete notification error:', error);
     }
-  };
+  }, []);
+
+  const value = React.useMemo<NotificationContextType>(() => ({
+    notifications,
+    unreadCount,
+    pendingRequestsCount,
+    loading,
+    fetchNotifications,
+    fetchPendingRequestsCount,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+  }), [
+    notifications,
+    unreadCount,
+    pendingRequestsCount,
+    loading,
+    fetchNotifications,
+    fetchPendingRequestsCount,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+  ]);
 
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        pendingRequestsCount,
-        loading,
-        fetchNotifications,
-        fetchPendingRequestsCount,
-        markAsRead,
-        markAllAsRead,
-        deleteNotification,
-      }}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );

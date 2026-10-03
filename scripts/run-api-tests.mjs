@@ -12,6 +12,10 @@ const INTEGRATION_TEST_NAMES = new Set([
   "deferred_schema_fixes.test.ts",
   "attendance_pending_review_regression.test.ts",
   "p5_01_real_postgres_closure.test.ts",
+  "ai_knowledge_rag.test.ts",
+  "knowledge_production_hardening.test.ts",
+  "ai_cancellation_and_privacy.test.ts",
+  "ai_cross_domain_analytics.test.ts",
 ]);
 
 /**
@@ -95,7 +99,7 @@ if (isUnitOnly) {
 
 const child = spawn(
   process.execPath,
-  ["--import", "tsx", "--test", ...selectedFiles.map((file) => path.join("tests", file))],
+  ["--import", "tsx", "--test", "--test-concurrency=1", ...selectedFiles.map((file) => path.join("tests", file))],
   {
     cwd: apiDirectory,
     env: process.env,

@@ -103,8 +103,13 @@ const materialUpload = {
   single(fieldName: string): RequestHandler {
     const uploadSingle = uploader.single(fieldName);
     return (req, res, next) => {
-      uploadSingle(req, res, error => {
-        if (error) return next(error);
+      uploadSingle(req, res, async error => {
+        if (error) {
+          if (req.file?.path) {
+            await removeRejectedUpload(req.file.path);
+          }
+          return next(error);
+        }
         if (!req.file) return next();
 
         void verifyMaterialFileSignature(req.file.path, req.file.originalname)

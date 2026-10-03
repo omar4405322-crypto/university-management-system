@@ -40,6 +40,9 @@ export class AuthorizationError extends AppError {
   }
 }
 
+export const ForbiddenError = AuthorizationError;
+export type ForbiddenError = AuthorizationError;
+
 /**
  * Validation related errors (422)
  */

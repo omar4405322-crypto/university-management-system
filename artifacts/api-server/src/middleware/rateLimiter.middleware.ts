@@ -111,6 +111,20 @@ export const authLimiter = rateLimit({
   store: createRedisStore("auth"),
 });
 
+export const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.AI_RATE_LIMIT) || (process.env.NODE_ENV === 'test' ? 1000 : 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  passOnStoreError: rateLimiterPassOnStoreError,
+  store: createRedisStore('ai_chat'),
+  validate: { keyGeneratorIpFallback: false },
+  keyGenerator: (req) => req.user
+    ? `user:${req.user.id}`
+    : `ip:${ipKeyGenerator((req.ip || req.socket?.remoteAddress || 'unknown').trim())}`,
+  message: { success: false, message: 'Too many AI requests, please try again later' },
+});
+
 /**
  * 2a. loginIpLimiter: First layer of defense for POST /api/auth/login.
  * Window: 15 minutes, Max: 20 attempts per client IP across all accounts.

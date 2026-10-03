@@ -12,7 +12,7 @@ The University Management System is structured as a full-stack, multi-tenant aca
 graph TD
     Client["Browser / Mobile Client (React 18 + Vite)"]
     Proxy["Reverse Proxy (Nginx / Cloudflare)"]
-    API["API Server Cluster (Node.js 20+ / Express 5)"]
+    API["API Server Cluster (Node.js 24 LTS / Express 5)"]
     PG[("PostgreSQL 16 (Prisma ORM)")]
     Redis[("Redis 7 (Cache, Sessions, Locks, Socket Adapter)")]
     Storage["Media Storage (Local Disk / Cloudinary)"]
@@ -39,7 +39,7 @@ graph TD
 - **Routing:** React Router v6 with client-side capability and role guards.
 
 ### 2.2 Backend API Server (`artifacts/api-server`)
-- **Runtime:** Node.js 20+ running in native ECMAScript Modules (`"type": "module"`).
+- **Runtime:** Node.js 24 LTS running in native ECMAScript Modules (`"type": "module"`).
 - **Framework:** Express 5.
 - **Entrypoint:** Unified startup via `src/bootstrap.ts` (invoked by `src/index.ts`).
 - **Validation:** Dual-layer validation utilizing `express-validator` at the HTTP boundary and `@workspace/api-zod` for contract models.

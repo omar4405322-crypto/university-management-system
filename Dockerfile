@@ -1,5 +1,5 @@
 # Stage 1: Build stage
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -28,7 +28,7 @@ RUN pnpm --filter @workspace/api-server run prisma:generate
 RUN pnpm --filter @workspace/api-server run build
 
 # Stage 2: Runtime stage
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 
 WORKDIR /app
 

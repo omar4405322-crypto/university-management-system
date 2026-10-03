@@ -46,6 +46,7 @@ let _accessToken: string | null = null;
 export const setAccessToken = (t: string | null): void => {
   _accessToken = t;
 };
+export const getAccessToken = (): string | null => _accessToken;
 
 let isRefreshing = false;
 // Preserves test runner expectation: let failedQueue: any[] = [];

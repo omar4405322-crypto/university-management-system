@@ -72,8 +72,15 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLanguageState((prev) => (prev === 'ar' ? 'en' : 'ar'));
   }, []);
 
+  const value = React.useMemo<LanguageContextType>(() => ({
+    language,
+    setLanguage,
+    toggleLanguage,
+    isRTL,
+  }), [language, setLanguage, toggleLanguage, isRTL]);
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, toggleLanguage, isRTL }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

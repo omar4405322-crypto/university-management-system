@@ -1,0 +1,25 @@
+.shaheen-lab { max-width: 1280px; margin: auto; padding: 32px; color: #132231; background: #f4f6f7; min-height: 100vh; }
+.shaheen-lab h1 { font-size: 32px; font-weight: 700; }
+.shaheen-lab h2 { font-size: 20px; font-weight: 600; }
+.shaheen-lab header p, .shaheen-lab footer { color: #42515d; }
+.lab-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 32px; margin-block: 24px; }
+.lab-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 24px; background: white; padding: 24px; min-width: 0; }
+.lab-stage .orb3d { width: min(100%, 480px); }
+.lab-stage p { text-align: center; margin-top: 12px; }
+.lab-controls fieldset { border: 1px solid #cad2d8; padding: 12px; margin-bottom: 12px; border-radius: 12px; }
+.lab-controls legend { font-weight: 600; padding-inline: 6px; }
+.lab-controls label { display: flex; align-items: center; gap: 10px; margin: 8px 0; min-height: 28px; }
+.lab-controls input { accent-color: #70952f; }
+.lab-controls input[type=range] { width: 120px; margin-left: auto; }
+.lab-controls select { margin-left: auto; background: white; color: #132231; border: 1px solid #cad2d8; border-radius: 6px; padding: 6px; }
+.lab-controls button { border: 1px solid #cad2d8; border-radius: 8px; padding: 8px 12px; background: white; color: #132231; touch-action: manipulation; }
+.lab-controls button:hover { background: #eef3e4; }
+.lab-controls button[aria-pressed=true] { background: #8bb83c; border-color: #70952f; }
+.lab-states { display: flex; flex-wrap: wrap; gap: 8px; }
+.shaheen-lab :focus-visible { outline: 2px solid #70952f; outline-offset: 4px; }
+.lab-telemetry dl { display: flex; flex-wrap: wrap; gap: 24px; margin-block: 16px; font-variant-numeric: tabular-nums; }
+.lab-telemetry dt { font-size: 12px; color: #42515d; }
+.lab-telemetry dd { font-weight: 600; }
+.lab-skip { position: absolute; top: -100px; }
+.lab-skip:focus { top: 8px; background: white; padding: 8px; z-index: 10; }
+@media (max-width: 700px) { .shaheen-lab { padding: 16px; } .lab-layout { grid-template-columns: 1fr; } .lab-stage { padding: 16px; } }

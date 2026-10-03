@@ -75,34 +75,34 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [density]);
 
-  const toggleTheme = () => {
+  const toggleTheme = React.useCallback(() => {
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
-  };
+  }, []);
 
-  const toggleSidebar = () => {
+  const toggleSidebar = React.useCallback(() => {
     setIsSidebarCollapsed((prev) => !prev);
-  };
+  }, []);
   
-  const toggleDensity = () => {
+  const toggleDensity = React.useCallback(() => {
     setDensity((prev) => (prev === 'comfortable' ? 'compact' : 'comfortable'));
-  };
+  }, []);
 
   const isDark = theme === 'dark';
   const isCompact = density === 'compact';
 
+  const value = React.useMemo<ThemeContextType>(() => ({
+    theme,
+    toggleTheme,
+    isDark,
+    isSidebarCollapsed,
+    toggleSidebar,
+    density,
+    toggleDensity,
+    isCompact,
+  }), [theme, toggleTheme, isDark, isSidebarCollapsed, toggleSidebar, density, toggleDensity, isCompact]);
+
   return (
-    <ThemeContext.Provider
-      value={{
-        theme,
-        toggleTheme,
-        isDark,
-        isSidebarCollapsed,
-        toggleSidebar,
-        density,
-        toggleDensity,
-        isCompact,
-      }}
-    >
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

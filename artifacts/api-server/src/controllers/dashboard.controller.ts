@@ -5,6 +5,7 @@ import { getCache, setCache } from '../utils/redis.utils';
 import catchAsync from '../utils/catchAsync';
 import { AuthorizationError, NotFoundError } from '../utils/appError';
 import { getAdministrativeAnalyticsScopes } from '../utils/administrativeAnalyticsScope.utils';
+import { getScopedUniversityCounts } from '../services/administrativeSummary.service';
 
 import {
   getEffectiveActiveStudentWhere,
@@ -31,14 +32,11 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
     return res.json({ success: true, data: cachedData, fromCache: true });
   }
 
-  const totalColleges = await prisma.college.count({ where: scopes.college });
+  const summaryCountsPromise = getScopedUniversityCounts(req.user!);
   const superAdminVisibilityScope = req.user!.role === 'SUPER_ADMIN' ? {} : { id: -1 };
 
   const [
-    totalStudents,
-    totalDoctors,
-    totalCourses,
-    totalDepartments,
+    summaryCounts,
     totalPayments,
     totalAdmins,
     totalSuperAdmins,
@@ -51,10 +49,7 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
     enrollmentByYear,
     collegesWithStudents,
   ] = await Promise.all([
-    prisma.student.count({ where: scopes.student }),
-    prisma.doctor.count({ where: scopes.doctor }),
-    prisma.course.count({ where: scopes.course }),
-    prisma.department.count({ where: scopes.department }),
+    summaryCountsPromise,
     prisma.payment.count({ where: scopes.payment }),
     prisma.user.count({
       where: {
@@ -124,6 +119,8 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response, next
       },
     }),
   ]);
+
+  const { totalColleges, totalDepartments, totalStudents, totalDoctors, totalCourses } = summaryCounts;
 
   // Process enrollment by year
   const enrollmentTrends = enrollmentByYear.reduce<Record<number, number>>((acc, curr) => {

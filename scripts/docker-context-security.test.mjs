@@ -230,7 +230,7 @@ assert.doesNotMatch(
   'Container builds must not permit lockfile drift'
 );
 
-const runnerStage = dockerfile.slice(dockerfile.indexOf('FROM node:20-alpine AS runner'));
+const runnerStage = dockerfile.slice(dockerfile.indexOf('FROM node:24-alpine AS runner'));
 assert.match(runnerStage, /^ENV PORT=5000$/mu, 'The standalone container must have a safe default port');
 assert.match(runnerStage, /^RUN mkdir -p \/app\/uploads && chown node:node \/app\/uploads$/mu);
 assert.match(runnerStage, /^USER node$/mu, 'The runtime image must drop root privileges');

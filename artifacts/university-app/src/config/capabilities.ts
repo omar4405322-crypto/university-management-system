@@ -46,6 +46,8 @@ export type Capability =
   | 'teaching_assistants.manage'
   | 'admins.view'
   | 'admins.manage'
+  | 'knowledge_base.view'
+  | 'knowledge_base.manage'
   | 'groups.view'
   | 'groups.manage'
   | 'registration_requests.view'
@@ -101,6 +103,8 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'teaching_assistants.manage',
     'admins.view',
     'admins.manage',
+    'knowledge_base.view',
+    'knowledge_base.manage',
     'groups.view',
     'groups.manage',
     'registration_requests.view',
@@ -145,6 +149,8 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'teaching_assistants.manage',
     'admins.view',
     'admins.manage',
+    'knowledge_base.view',
+    'knowledge_base.manage',
     'groups.view',
     'groups.manage',
     'registration_requests.view',
@@ -201,6 +207,8 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'tasks.grade',
     'attendance.view',
     'attendance.manage',
+    'knowledge_base.view',
+    'knowledge_base.manage',
     'warnings.view',
     'records.view',
     'notifications.view',
@@ -229,6 +237,8 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'tasks.grade',
     'attendance.view',
     'attendance.manage',
+    'knowledge_base.view',
+    'knowledge_base.manage',
     'warnings.view',
     'records.view',
     'notifications.view',
@@ -337,6 +347,7 @@ export const ROUTE_CAPABILITY_MAP: Record<string, Capability> = {
   '/doctors': 'doctors.view',
   '/teaching-assistants': 'teaching_assistants.view',
   '/admins': 'admins.view',
+  '/knowledge-base': 'knowledge_base.view',
   '/groups': 'groups.view',
   '/registration-requests': 'registration_requests.view',
   '/schedules/doctor': 'schedules.doctor',
