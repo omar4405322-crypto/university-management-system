@@ -452,14 +452,14 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
             <thead>
               <tr className="bg-surface-subtle border-b border-brand-border">
                 <th
-                  className={`w-32 p-4 font-black uppercase text-xs tracking-widest text-brand-text-muted border-r border-brand-border ${isRTL ? 'text-right' : 'text-left'}`}
+                  className={`w-32 p-4 font-black uppercase text-xs tracking-widest text-brand-text-muted border-e border-brand-border text-start`}
                 >
                   {t('timetables.startTime', 'Time')}
                 </th>
                 {DAYS.map((day) => (
                   <th
                     key={day}
-                    className="p-4 text-center font-black uppercase text-xs tracking-widest text-brand-text-muted border-r border-brand-border last:border-r-0"
+                    className="p-4 text-center font-black uppercase text-xs tracking-widest text-brand-text-muted border-e border-brand-border last:border-e-0"
                   >
                     {t(`days.${day.toLowerCase()}`)}
                   </th>
@@ -469,7 +469,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
             <tbody className="divide-y divide-brand-border">
               {timeSlots.map((slot) => (
                 <tr key={slot} className="hover:bg-brand-bg-card/50 transition-colors">
-                  <td className="p-3 font-bold text-xs text-brand-text-muted border-r border-brand-border align-middle bg-surface-subtle/30 text-center">
+                  <td className="p-3 font-bold text-xs text-brand-text-muted border-e border-brand-border align-middle bg-surface-subtle/30 text-center">
                     {(() => {
                       const [start, end] = slot.split('-');
                       return start && end ? <TimeRange start={start} end={end} /> : slot;
@@ -479,7 +479,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
                     const key = `${day}_${slot}`;
                     const entry = slots[key];
                     return (
-                      <td key={key} className="p-2 border-r border-brand-border last:border-r-0 align-top">
+                      <td key={key} className="p-2 border-e border-brand-border last:border-e-0 align-top">
                         <TimeSlotCell
                           day={day}
                           slot={slot}
@@ -589,10 +589,11 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
             <div className="flex items-center justify-between border-b border-brand-border pb-3">
               <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold">
                 <AlertCircle size={20} />
-                <h3 className="text-base">تقرير فحص التعارضات في الجدول</h3>
+                <h3 className="text-base">{isRTL ? 'تقرير فحص التعارضات في الجدول' : 'Timetable Conflict Audit Report'}</h3>
               </div>
               <button
                 onClick={() => setAuditReport(null)}
+                aria-label={t('common.close', 'Close')}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg font-bold"
               >
                 ✕
@@ -600,7 +601,11 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
             </div>
 
             <p className="text-xs text-brand-text-muted">
-              تم اكتشاف <strong className="text-rose-600 dark:text-rose-400 font-black">{auditReport.length}</strong> تعارض دراسي يحتاج إلى مراجعة قبل الاعتماد:
+              {isRTL ? (
+                <>تم اكتشاف <strong className="text-rose-600 dark:text-rose-400 font-black">{auditReport.length}</strong> تعارض دراسي يحتاج إلى مراجعة قبل الاعتماد:</>
+              ) : (
+                <>Detected <strong className="text-rose-600 dark:text-rose-400 font-black">{auditReport.length}</strong> scheduling conflict(s) requiring review:</>
+              )}
             </p>
 
             <div className="max-h-64 overflow-y-auto space-y-2.5 pe-1">
@@ -622,7 +627,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
                 onClick={() => setAuditReport(null)}
                 className="px-5 py-2 bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
               >
-                فهمت، سأقوم بالتعديل
+                {t('common.close', isRTL ? 'إغلاق' : 'Close')}
               </button>
             </div>
           </div>

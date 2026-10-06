@@ -130,7 +130,9 @@ const SidebarGroup: React.FC<SidebarGroupProps> = React.memo(({ group, isCollaps
   const GroupIcon = groupIcons[group.title];
 
   useEffect(() => {
-    const hasActiveChild = group.items.some((item: SidebarItemType) => location.pathname === item.path);
+    const hasActiveChild = group.items.some(
+      (item: SidebarItemType) => location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+    );
     if (hasActiveChild) setIsOpen(true);
   }, [location.pathname, group.items]);
 
@@ -449,7 +451,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         fixed top-0 z-50 h-full border-white/10 bg-brand-sidebar dark:bg-slate-900 transition-all duration-300 shadow-elevated outline-none
         start-0 border-e
         ${isCollapsed ? 'w-20' : 'w-72'}
-        ${isOpen ? 'translate-x-0' : isRTL ? 'translate-x-full' : '-translate-x-full'}
+        ${isOpen ? 'translate-x-0 visible' : `invisible lg:visible ${isRTL ? 'translate-x-full' : '-translate-x-full'}`}
         lg:translate-x-0
       `}
       >

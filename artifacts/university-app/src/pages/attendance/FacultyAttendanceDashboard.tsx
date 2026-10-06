@@ -922,19 +922,20 @@ export function FacultyAttendanceDashboard() {
                       </div>
 
                       <Badge
-                        className={
+                        variant={
                           s.existingStatus === 'PRESENT'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 text-[10px]'
+                            ? 'success'
                             : s.existingStatus === 'LATE'
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[10px]'
-                            : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 text-[10px]'
+                            ? 'warning'
+                            : 'danger'
                         }
+                        className="text-[10px]"
                       >
                         {s.existingStatus === 'PRESENT'
-                          ? 'حاضر'
+                          ? t('attendance.present', 'حاضر')
                           : s.existingStatus === 'LATE'
-                          ? 'متأخر'
-                          : 'غائب'}
+                          ? t('attendance.late', 'متأخر')
+                          : t('attendance.absent', 'غائب')}
                       </Badge>
                     </div>
                   );

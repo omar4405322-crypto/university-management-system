@@ -8,7 +8,6 @@ import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
 import {
-  X,
   User,
   Phone,
   Briefcase,
@@ -21,6 +20,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import Modal from '../../components/ui/Modal';
 
 const SectionHeading = ({ icon, label }: { icon: React.ReactNode; label: string }) => (
   <div className="flex items-center gap-2 py-2">
@@ -56,6 +56,7 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ isOpen, onClose, onSu
   const [loadingColleges, setLoadingColleges] = useState(false);
   const [loadingDepts, setLoadingDepts] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Load college & department lists
   useEffect(() => {
@@ -98,8 +99,23 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ isOpen, onClose, onSu
     [departments, selectedCollegeId]
   );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const fieldProps = (name: string) => ({
+    'aria-invalid': !!fieldErrors[name],
+    'aria-describedby': fieldErrors[name] ? `edit-doc-${name}-err` : undefined,
+  });
+
+  const fieldError = (name: string) =>
+    fieldErrors[name] ? (
+      <p id={`edit-doc-${name}-err`} role="alert" className="text-rose-500 text-xs mt-1">
+        {fieldErrors[name]}
+      </p>
+    ) : null;
 
   const handleCollegeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedCollegeId(e.target.value);
@@ -108,8 +124,15 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ isOpen, onClose, onSu
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.firstName || !formData.lastName) {
-      toast.error(t('doctors.fillRequired'));
+    if (loading) return;
+
+    const required = t('doctors.fillRequired');
+    const errs: Record<string, string> = {};
+    if (!formData.firstName.trim()) errs.firstName = required;
+    if (!formData.lastName.trim()) errs.lastName = required;
+    setFieldErrors(errs);
+    if (errs.firstName || errs.lastName) {
+      document.getElementById(errs.firstName ? 'edit-doc-first-name' : 'edit-doc-last-name')?.focus();
       return;
     }
     try {
@@ -137,79 +160,109 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ isOpen, onClose, onSu
   const selectClass = "w-full px-4 py-2.5 rounded-xl border border-brand-border bg-brand-bg-page/30 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm appearance-none disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-brand-navy-500/40 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Modal */}
-      <div className="relative bg-brand-bg-card dark:bg-brand-bg-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-200">
-        
-        {/* Header */}
-        <div className="sticky top-0 z-10 px-6 py-4 border-b border-brand-border flex justify-between items-start bg-brand-bg-card dark:bg-brand-bg-elevated">
-          <div>
-            <h2 className="text-xl font-bold text-brand-text-primary dark:text-brand-text-main">
-              {t('doctors.editTitle')}: <span className="text-brand-primary-500">{doctor?.firstName} {doctor?.lastName}</span>
-            </h2>
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              {doctor?.doctorId && (
-                <span className="flex items-center gap-1 text-xs text-brand-text-muted">
-                  <Hash size={11} /> {doctor.doctorId}
-                </span>
-              )}
-              {doctor?.department?.name && (
-                <span className="flex items-center gap-1 text-xs text-brand-text-muted">
-                  <Building2 size={11} /> {doctor.department.name}
-                </span>
-              )}
-              {doctor?.department?.college?.name && (
-                <span className="flex items-center gap-1 text-xs text-brand-primary-500 font-semibold">
-                  <GraduationCap size={11} /> {doctor.department.college.name}
-                </span>
-              )}
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 text-brand-text-muted hover:text-brand-text-secondary rounded-xl transition-colors shrink-0 mt-1">
-            <X size={20} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <>
+          {t('doctors.editTitle')}: <span className="text-brand-primary-500">{doctor?.firstName} {doctor?.lastName}</span>
+        </>
+      }
+      subtitle={
+        <span className="flex items-center gap-3 flex-wrap">
+          {doctor?.doctorId && (
+            <span className="flex items-center gap-1 text-xs text-brand-text-muted">
+              <Hash size={11} aria-hidden="true" /> {doctor.doctorId}
+            </span>
+          )}
+          {doctor?.department?.name && (
+            <span className="flex items-center gap-1 text-xs text-brand-text-muted">
+              <Building2 size={11} aria-hidden="true" /> {doctor.department.name}
+            </span>
+          )}
+          {doctor?.department?.college?.name && (
+            <span className="flex items-center gap-1 text-xs text-brand-primary-500 font-semibold">
+              <GraduationCap size={11} aria-hidden="true" /> {doctor.department.college.name}
+            </span>
+          )}
+        </span>
+      }
+    >
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
 
           {/* ── Personal Info ── */}
           <SectionHeading icon={<User size={13} />} label={t('doctors.sectionIdentity', 'Personal Info')} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
+              <label htmlFor="edit-doc-first-name" className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
                 <User size={13} className="text-brand-text-muted" /> {t('doctors.firstName')} <span className="text-rose-500">*</span>
               </label>
-              <Input name="firstName" value={formData.firstName} onChange={handleChange} placeholder="e.g. Sarah" required />
+              <Input
+                id="edit-doc-first-name"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                autoComplete="given-name"
+                placeholder="e.g. Sarah"
+                required
+                aria-required="true"
+                {...fieldProps('firstName')}
+              />
+              {fieldError('firstName')}
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
+              <label htmlFor="edit-doc-last-name" className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
                 <User size={13} className="text-brand-text-muted" /> {t('doctors.lastName')} <span className="text-rose-500">*</span>
               </label>
-              <Input name="lastName" value={formData.lastName} onChange={handleChange} placeholder="e.g. Wilson" required />
+              <Input
+                id="edit-doc-last-name"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                autoComplete="family-name"
+                placeholder="e.g. Wilson"
+                required
+                aria-required="true"
+                {...fieldProps('lastName')}
+              />
+              {fieldError('lastName')}
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
+              <label htmlFor="edit-doc-specialty" className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
                 <Briefcase size={13} className="text-brand-text-muted" /> {t('doctors.specialty')}
               </label>
-              <Input name="specialty" value={formData.specialty} onChange={handleChange} placeholder={t('doctors.specialtyPlaceholder')} />
+              <Input
+                id="edit-doc-specialty"
+                name="specialty"
+                value={formData.specialty}
+                onChange={handleChange}
+                placeholder={t('doctors.specialtyPlaceholder')}
+              />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
+              <label htmlFor="edit-doc-phone" className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
                 <Phone size={13} className="text-brand-text-muted" /> {t('profile.phone')}
               </label>
-              <Input name="phone" value={formData.phone} onChange={handleChange} placeholder={t('doctors.phonePlaceholder')} />
+              <Input
+                id="edit-doc-phone"
+                type="tel" dir="ltr"
+                inputMode="tel"
+                autoComplete="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder={t('doctors.phonePlaceholder')}
+              />
             </div>
           </div>
 
           {/* Bio */}
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
+            <label htmlFor="edit-doc-bio" className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
               <FileText size={13} className="text-brand-text-muted" /> {t('doctors.bio', 'Bio / About')}
             </label>
             <textarea
+              id="edit-doc-bio"
               name="bio"
               value={formData.bio}
               onChange={handleChange}
@@ -223,25 +276,32 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ isOpen, onClose, onSu
           <SectionHeading icon={<GraduationCap size={13} />} label={t('doctors.sectionAcademic', 'Academic Affiliation')} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
+              <label htmlFor="edit-doc-college" className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
                 <Building2 size={13} className="text-brand-text-muted" /> {t('colleges.college', 'College / Faculty')}
               </label>
               <div className="relative">
-                <select value={selectedCollegeId} onChange={handleCollegeChange} className={selectClass} disabled={loadingColleges}>
+                <select
+                  id="edit-doc-college"
+                  value={selectedCollegeId}
+                  onChange={handleCollegeChange}
+                  className={selectClass}
+                  disabled={loadingColleges}
+                >
                   <option value="">{loadingColleges ? t('common.loading') : t('timetables.selectCollege', 'Select College')}</option>
                   {colleges.map((c: any) => (
                     <option key={c.id} value={c.id.toString()}>{isRTL ? c.nameAr || c.name : c.name}</option>
                   ))}
                 </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <ChevronDown size={14} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
+              <label htmlFor="edit-doc-department" className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
                 <GraduationCap size={13} className="text-brand-text-muted" /> {t('departments.department', 'Department')}
               </label>
               <div className="relative">
                 <select
+                  id="edit-doc-department"
                   name="departmentId"
                   value={formData.departmentId}
                   onChange={handleChange}
@@ -253,7 +313,7 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ isOpen, onClose, onSu
                     <option key={d.id} value={d.id.toString()}>{isRTL ? d.nameAr || d.name : d.name}</option>
                   ))}
                 </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <ChevronDown size={14} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
             </div>
           </div>
@@ -291,8 +351,7 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ isOpen, onClose, onSu
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

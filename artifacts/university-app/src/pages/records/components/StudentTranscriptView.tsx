@@ -55,7 +55,7 @@ export const StudentTranscriptView: React.FC<StudentTranscriptViewProps> = ({
           <div className="flex items-center gap-4">
             <div className="text-center px-4 py-2 bg-white/10 rounded-xl backdrop-blur-sm">
               <p className="text-[10px] uppercase font-bold text-slate-300">GPA</p>
-              <p className="text-xl font-black text-brand-primary-300">
+              <p className="text-xl font-black text-brand-primary-300 tabular-nums">
                 {data?.gpa || "N/A"}
               </p>
             </div>
@@ -63,7 +63,7 @@ export const StudentTranscriptView: React.FC<StudentTranscriptViewProps> = ({
               <p className="text-[10px] uppercase font-bold text-slate-300">
                 {t("transcript.credits", "Credits")}
               </p>
-              <p className="text-xl font-black text-white">
+              <p className="text-xl font-black text-white tabular-nums">
                 {data?.totalCreditHours || 0}
               </p>
             </div>

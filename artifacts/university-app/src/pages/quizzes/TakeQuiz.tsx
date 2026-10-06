@@ -9,6 +9,7 @@ const TakeQuiz: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
   const [quiz, setQuiz] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -68,16 +69,15 @@ const TakeQuiz: React.FC = () => {
         }
         if (res.data.hasSubmitted) {
           setSubmitted(true);
-          // If already submitted, we might want to fetch results or just show message
         }
       }
     } catch (_error) {
-      alert('Error loading quiz');
+      alert(isRTL ? 'حدث خطأ أثناء تحميل الاختبار' : 'Error loading quiz');
       navigate('/quizzes');
     } finally {
       setLoading(false);
     }
-  }, [id, navigate]);
+  }, [id, navigate, isRTL]);
 
   useEffect(() => {
     fetchQuiz();
@@ -99,11 +99,11 @@ const TakeQuiz: React.FC = () => {
         localStorage.removeItem(`quiz_timer_${id}`);
       }
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Error submitting quiz');
+      alert(error.response?.data?.message || (isRTL ? 'حدث خطأ أثناء تسليم الاختبار' : 'Error submitting quiz'));
     } finally {
       setSubmitting(false);
     }
-  }, [id, answers, submitting, submitted]);
+  }, [id, answers, submitting, submitted, isRTL]);
 
   useEffect(() => {
     if (timeLeft <= 0 || submitted) return;
@@ -146,38 +146,44 @@ const TakeQuiz: React.FC = () => {
         <div className="bg-success/10 text-success w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle size={48} />
         </div>
-        <h1 className="text-3xl font-bold text-brand-text-primary mb-2">Quiz Submitted!</h1>
+        <h1 className="text-3xl font-bold text-brand-text-primary mb-2">
+          {t('quizzes.quizSubmitted', isRTL ? 'تم تسليم الاختبار!' : 'Quiz Submitted!')}
+        </h1>
         <p className="text-brand-text-secondary mb-8">
-          Your results are being processed or are shown below.
+          {t('quizzes.resultsProcessing', isRTL ? 'جاري معالجة نتائجك أو عرضها أدناه.' : 'Your results are being processed or are shown below.')}
         </p>
 
         <div className="bg-brand-bg-page rounded-xl p-6 mb-8 grid grid-cols-2 gap-4">
           <div>
-            <p className="text-xs text-brand-text-muted uppercase font-bold">Your Score</p>
-            <p className="text-3xl font-bold text-info">
-              {result.score} / {result.totalPoints}
+            <p className="text-xs text-brand-text-muted uppercase font-bold">
+              {t('quizzes.yourScore', isRTL ? 'درجتك' : 'Your Score')}
+            </p>
+            <p className="text-3xl font-bold text-info" dir="ltr">
+              <bdi>{result.score} / {result.totalPoints}</bdi>
             </p>
           </div>
           <div>
-            <p className="text-xs text-brand-text-muted uppercase font-bold">{t('quiz.percentage')}</p>
-            <p className="text-3xl font-bold text-info">
-              {Math.round((result.score / result.totalPoints) * 100)}%
+            <p className="text-xs text-brand-text-muted uppercase font-bold">{t('quiz.percentage', isRTL ? 'النسبة المئوية' : 'Percentage')}</p>
+            <p className="text-3xl font-bold text-info" dir="ltr">
+              <bdi>{Math.round((result.score / result.totalPoints) * 100)}%</bdi>
             </p>
           </div>
         </div>
 
         <button
           onClick={() => navigate('/quizzes')}
-          className="px-8 py-3 bg-brand-primary-600 text-white rounded-xl font-bold hover:bg-brand-primary-600 transition-colors"
+          className="px-8 py-3 bg-brand-primary-600 text-white rounded-xl font-bold hover:bg-brand-primary-600 transition-colors cursor-pointer"
         >
-          Back to Quizzes
+          {t('quizzes.backToQuizzes', isRTL ? 'العودة إلى الاختبارات القصيرة' : 'Back to Quizzes')}
         </button>
       </div>
     );
   }
 
-  const currentQuestion = quiz.questions[currentQuestionIndex];
-  const isLastQuestion = currentQuestionIndex === quiz.questions.length - 1;
+  const currentQuestion = quiz?.questions?.[currentQuestionIndex];
+  const isLastQuestion = currentQuestionIndex === (quiz?.questions?.length || 0) - 1;
+
+  if (!currentQuestion) return null;
 
   return (
     <div className="min-h-screen bg-brand-bg-page pb-12">
@@ -189,8 +195,8 @@ const TakeQuiz: React.FC = () => {
           <div
             className={`flex items-center px-4 py-2 rounded-lg font-mono font-bold transition-colors ${isTimeCritical ? 'bg-error-strong text-white animate-pulse' : 'bg-info/10 text-info'}`}
           >
-            <Clock size={18} className="mr-2" />
-            {formatTime(timeLeft)}
+            <Clock size={18} className="me-2" />
+            <span dir="ltr"><bdi>{formatTime(timeLeft)}</bdi></span>
           </div>
         </div>
       </div>
@@ -200,16 +206,20 @@ const TakeQuiz: React.FC = () => {
           <div className="mb-4 p-4 rounded-xl bg-error/10 border border-error/20 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
             <AlertCircle size={20} className="text-error" />
             <p className="text-sm font-black text-error-text uppercase tracking-widest">
-              {t('quizzes.fiveMinutesLeft', i18n.language === 'ar' ? 'متبقي 5 دقائق فقط!' : 'Only 5 minutes left!')}
+              {t('quizzes.fiveMinutesLeft', isRTL ? 'متبقي 5 دقائق فقط!' : 'Only 5 minutes left!')}
             </p>
           </div>
         )}
 
         <div className="mb-6 flex justify-between items-center text-sm text-brand-text-secondary">
           <span>
-            Question {currentQuestionIndex + 1} of {quiz.questions.length}
+            {t('quizzes.questionProgress', {
+              current: currentQuestionIndex + 1,
+              total: quiz.questions.length,
+              defaultValue: isRTL ? `السؤال ${currentQuestionIndex + 1} من ${quiz.questions.length}` : `Question ${currentQuestionIndex + 1} of ${quiz.questions.length}`
+            })}
           </span>
-          <div className="flex space-x-1">
+          <div className="flex gap-1">
             {quiz.questions.map((_: any, i: number) => (
               <div
                 key={i}
@@ -226,7 +236,7 @@ const TakeQuiz: React.FC = () => {
         </div>
 
         <div className="bg-brand-bg-card rounded-2xl shadow-sm border border-brand-border p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <h2 className="text-xl font-bold text-brand-text-primary mb-8">{currentQuestion.text}</h2>
+          <h2 className="text-xl font-bold text-brand-text-primary mb-8 text-start">{currentQuestion.text}</h2>
 
           <div className="space-y-4">
             {['A', 'B', 'C', 'D'].map((opt) => {
@@ -236,14 +246,14 @@ const TakeQuiz: React.FC = () => {
                 <button
                   key={opt}
                   onClick={() => handleAnswerSelect(currentQuestion.id, opt)}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center ${
+                  className={`w-full text-start p-4 rounded-xl border-2 transition-all flex items-center gap-4 cursor-pointer ${
                     isSelected
                       ? 'border-info bg-info/10 text-info shadow-sm'
                       : 'border-brand-border hover:border-brand-border text-brand-text-secondary'
                   }`}
                 >
                   <span
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold mr-4 ${
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold shrink-0 ${
                       isSelected
                         ? 'bg-brand-primary-600 text-white'
                         : 'bg-brand-bg-page text-brand-text-muted'
@@ -262,23 +272,24 @@ const TakeQuiz: React.FC = () => {
           <button
             onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
             disabled={currentQuestionIndex === 0}
-            className="flex items-center px-6 py-2 rounded-xl font-bold text-brand-text-secondary hover:bg-brand-border disabled:opacity-30 transition-colors"
+            className="flex items-center gap-1 px-6 py-2 rounded-xl font-bold text-brand-text-secondary hover:bg-brand-border disabled:opacity-30 transition-colors cursor-pointer"
           >
-            <ChevronLeft size={20} className="rtl:-scale-x-100 mr-1" /> Previous
+            <ChevronLeft size={20} className="rtl:rotate-180" /> {t('common.previous', isRTL ? 'السابق' : 'Previous')}
           </button>
 
           {isLastQuestion ? (
             <button
               onClick={() => setShowSubmitModal(true)}
               disabled={submitting}
-              className="flex items-center px-8 py-3 bg-success text-white rounded-xl font-bold hover:brightness-90 shadow-lg shadow-success/20 disabled:opacity-50 transition-all"
+              className="flex items-center gap-2 px-8 py-3 bg-success text-white rounded-xl font-bold hover:brightness-90 shadow-lg shadow-success/20 disabled:opacity-50 transition-all cursor-pointer"
             >
               {submitting ? (
-                'Submitting...'
+                t('quizzes.submitting', isRTL ? 'جاري التسليم...' : 'Submitting...')
               ) : (
-                <span className="flex items-center">
-                  Submit Quiz <Send size={18} className="rtl:-scale-x-100 ml-2" />
-                </span>
+                <>
+                  {t('quizzes.submitQuiz', isRTL ? 'تسليم الاختبار' : 'Submit Quiz')}
+                  <Send size={18} className="rtl:rotate-180" />
+                </>
               )}
             </button>
           ) : (
@@ -286,9 +297,9 @@ const TakeQuiz: React.FC = () => {
               onClick={() =>
                 setCurrentQuestionIndex((prev) => Math.min(quiz.questions.length - 1, prev + 1))
               }
-              className="flex items-center px-8 py-3 bg-brand-primary-600 text-white rounded-xl font-bold hover:bg-brand-primary-600 shadow-lg shadow-brand-primary-600/20 transition-all"
+              className="flex items-center gap-1 px-8 py-3 bg-brand-primary-600 text-white rounded-xl font-bold hover:bg-brand-primary-600 shadow-lg shadow-brand-primary-600/20 transition-all cursor-pointer"
             >
-              Next <ChevronRight size={20} className="rtl:-scale-x-100 ml-1" />
+              {t('common.next', isRTL ? 'التالي' : 'Next')} <ChevronRight size={20} className="rtl:rotate-180" />
             </button>
           )}
         </div>
@@ -302,12 +313,12 @@ const TakeQuiz: React.FC = () => {
           setShowSubmitModal(false);
           handleSubmit();
         }}
-        title={t('quiz.submitConfirmTitle', 'Submit Quiz')}
-        message={t('quiz.submitConfirmMessage', 'Are you sure you want to submit your quiz? You will not be able to change your answers.')}
-        confirmLabel={t('quiz.submitButton', 'Submit')}
-        cancelLabel={t('common.cancel', 'Cancel')}
+        title={t('quizzes.submitConfirmTitle', isRTL ? 'تأكيد تسليم الاختبار' : 'Submit Quiz')}
+        message={t('quizzes.submitConfirmMessage', isRTL ? 'هل أنت متأكد من تسليم الاختبار؟ لن تتمكن من تعديل إجاباتك بعد ذلك.' : 'Are you sure you want to submit your quiz? You will not be able to change your answers.')}
+        confirmLabel={t('quizzes.submitButton', isRTL ? 'تسليم' : 'Submit')}
+        cancelLabel={t('common.cancel', isRTL ? 'إلغاء' : 'Cancel')}
         variant="warning"
-        icon={<Send className="text-brand-yellow shrink-0 mt-0.5" size={24} />}
+        icon={<Send className="text-brand-yellow shrink-0 mt-0.5 rtl:rotate-180" size={24} />}
       />
 
       {/* Navigation Protection Modal */}
@@ -315,10 +326,10 @@ const TakeQuiz: React.FC = () => {
         isOpen={blocker.state === 'blocked'}
         onClose={() => blocker.reset && blocker.reset()}
         onConfirm={() => blocker.proceed && blocker.proceed()}
-        title={t('quiz.leaveWarningTitle')}
-        message={t('quiz.leaveWarningMessage')}
-        confirmLabel={t('quiz.leaveButton')}
-        cancelLabel={t('quiz.stayButton')}
+        title={t('quiz.leaveWarningTitle', isRTL ? 'مغادرة الاختبار' : 'Leave Quiz')}
+        message={t('quiz.leaveWarningMessage', isRTL ? 'هل أنت متأكد من رغبتك في المغادرة؟ سيتم فقدان إجاباتك غير المحفوظة.' : 'Are you sure you want to leave? Your unsaved answers will be lost.')}
+        confirmLabel={t('quiz.leaveButton', isRTL ? 'مغادرة' : 'Leave')}
+        cancelLabel={t('quiz.stayButton', isRTL ? 'البقاء' : 'Stay')}
         variant="warning"
       />
     </div>

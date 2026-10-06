@@ -31,6 +31,7 @@ import {
 import Card from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/badge';
+import Breadcrumbs from '../../components/ui/Breadcrumbs';
 import LoadingState from '../../components/ui/LoadingState';
 import api from '../../services/api';
 import EditDoctorModal from './EditDoctorModal';
@@ -38,6 +39,7 @@ import AssignCourseModal from './AssignCourseModal';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { useToast } from '../../context/ToastContext';
+import { useTabListKeyboard } from '../../hooks/useTabListKeyboard';
 
 export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?: boolean }) {
   const { id } = useParams();
@@ -45,6 +47,7 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { showToast } = useToast();
+  const tabKeyboard = useTabListKeyboard({ isRTL });
 
   const [doctor, setDoctor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -156,18 +159,26 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
   const taughtCourses = doctor.taughtCourses || [];
   const scheduleSlots = doctor.scheduleSlots || [];
 
+  const doctorDisplayName = doctor ? `${doctor.firstName} ${doctor.lastName}` : (id || '');
+  const breadcrumbItems = [
+    { label: isRTL ? 'الكادر التدريسي' : 'Doctors', link: '/doctors' },
+    { label: doctorDisplayName },
+  ];
+
   return (
     <div className={isDrawerMode ? 'p-2 space-y-6' : 'page-padding content-container section-gap space-y-6'}>
       {/* Top Header Navigation & Actions Bar */}
       {!isDrawerMode && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-          <button
-            onClick={() => navigate('/doctors')}
-            className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-brand-primary-600 dark:hover:text-brand-primary-400 transition-colors font-bold text-sm"
-          >
-            <ArrowLeft size={18} className="rtl:-scale-x-100" />
-            <span>{isRTL ? 'العودة إلى قائمة الدكاترة' : 'Back to Doctors List'}</span>
-          </button>
+        <div className="space-y-3 pb-2">
+          <Breadcrumbs items={breadcrumbItems} />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <button
+              onClick={() => navigate('/doctors')}
+              className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-brand-primary-600 dark:hover:text-brand-primary-400 transition-colors font-bold text-sm"
+            >
+              <ArrowLeft size={18} className="rtl:-scale-x-100" />
+              <span>{isRTL ? 'العودة إلى قائمة الدكاترة' : 'Back to Doctors List'}</span>
+            </button>
 
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -209,7 +220,8 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
             </Button>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* Hero Profile Banner Card */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-brand-primary-950 to-slate-900 p-6 md:p-8 text-white shadow-xl border border-slate-800">
@@ -355,8 +367,18 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
 
       {/* Navigation Tabs Bar */}
       <div className="border-b border-slate-200 dark:border-slate-700">
-        <div className="flex items-center gap-2">
+        <div
+          role="tablist"
+          aria-label={isRTL ? 'أقسام ملف الدكتور' : 'Doctor Profile Sections'}
+          onKeyDown={tabKeyboard.handleKeyDown}
+          className="flex items-center gap-2 overflow-x-auto"
+        >
           <button
+            role="tab"
+            aria-selected={activeTab === 'overview'}
+            aria-controls="doctor-tab-panel-overview"
+            id="doctor-tab-overview"
+            tabIndex={activeTab === 'overview' ? 0 : -1}
             onClick={() => setActiveTab('overview')}
             className={`flex items-center gap-2 px-5 py-3 font-bold text-sm border-b-2 transition-all ${
               activeTab === 'overview'
@@ -369,6 +391,11 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
           </button>
 
           <button
+            role="tab"
+            aria-selected={activeTab === 'courses'}
+            aria-controls="doctor-tab-panel-courses"
+            id="doctor-tab-courses"
+            tabIndex={activeTab === 'courses' ? 0 : -1}
             onClick={() => setActiveTab('courses')}
             className={`flex items-center gap-2 px-5 py-3 font-bold text-sm border-b-2 transition-all ${
               activeTab === 'courses'
@@ -387,7 +414,12 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
 
       {/* Tab 1: Personal & Academic Overview */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div
+          role="tabpanel"
+          id="doctor-tab-panel-overview"
+          aria-labelledby="doctor-tab-overview"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+        >
           {/* Card A: Personal & Contact Info */}
           <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
@@ -504,7 +536,12 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
 
       {/* Tab 2: Assigned Courses & Lecture Schedule */}
       {activeTab === 'courses' && (
-        <div className="space-y-8">
+        <div
+          role="tabpanel"
+          id="doctor-tab-panel-courses"
+          aria-labelledby="doctor-tab-courses"
+          className="space-y-8"
+        >
           {/* Section 1: Assigned Courses (Professor is Responsible / Course Lead) */}
           <Card className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-700 gap-4">

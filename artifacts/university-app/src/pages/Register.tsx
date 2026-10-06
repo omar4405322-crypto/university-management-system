@@ -1,6 +1,6 @@
 // FIXED: Student-only registration, i18n, optional phone - Phase 4 / Phase 6
 // CONVERTED: useState form fields → React Hook Form + Zod
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -80,6 +80,7 @@ const Register = () => {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<RegisterFormData>({
@@ -98,6 +99,14 @@ const Register = () => {
   });
 
   const selectedCollegeId = watch('collegeId');
+  const prevCollegeIdRef = useRef<string | undefined>(selectedCollegeId);
+
+  useEffect(() => {
+    if (prevCollegeIdRef.current !== undefined && prevCollegeIdRef.current !== '' && prevCollegeIdRef.current !== selectedCollegeId) {
+      setValue('departmentId', '');
+    }
+    prevCollegeIdRef.current = selectedCollegeId;
+  }, [selectedCollegeId, setValue]);
 
   // ── Data Fetching ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -277,6 +286,7 @@ const Register = () => {
                     {...register('firstName')}
                     id="reg-first-name"
                     type="text"
+                    autoComplete="given-name"
                     aria-required="true"
                     aria-invalid={!!errors.firstName}
                     aria-describedby={errors.firstName ? 'reg-first-name-err' : undefined}
@@ -296,6 +306,7 @@ const Register = () => {
                     {...register('lastName')}
                     id="reg-last-name"
                     type="text"
+                    autoComplete="family-name"
                     aria-required="true"
                     aria-invalid={!!errors.lastName}
                     aria-describedby={errors.lastName ? 'reg-last-name-err' : undefined}
@@ -317,7 +328,7 @@ const Register = () => {
                   {...register('email')}
                   id="reg-email"
                   type="email"
-                  autoComplete="off"
+                  autoComplete="email"
                   aria-required="true"
                   aria-invalid={!!errors.email}
                   aria-describedby={errors.email ? 'reg-email-err' : undefined}
@@ -338,6 +349,9 @@ const Register = () => {
                   {...register('phone')}
                   id="reg-phone"
                   type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  dir="ltr"
                   aria-invalid={!!errors.phone}
                   aria-describedby={errors.phone ? 'reg-phone-err' : undefined}
                   placeholder={t('students.phonePlaceholder')}
@@ -357,6 +371,7 @@ const Register = () => {
                   {...register('password')}
                   id="reg-password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   aria-required="true"
                   aria-invalid={!!errors.password}
                   aria-describedby={errors.password ? 'reg-password-err' : undefined}

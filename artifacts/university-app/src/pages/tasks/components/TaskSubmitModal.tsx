@@ -61,33 +61,38 @@ export const TaskSubmitModal: React.FC<TaskSubmitModalProps> = ({
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-1">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label htmlFor="submit-file-url" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
             {t(
               "tasks.fileUrlLabel",
               "Deliverable Link (Google Drive / GitHub / OneDrive)",
-            )}
+            )} <span className="text-rose-500">*</span>
           </label>
           <input
+            id="submit-file-url"
+            aria-required="true"
+            aria-invalid={!!errors.fileUrl}
+            aria-describedby={errors.fileUrl ? "submit-file-url-error" : undefined}
             type="url"
             className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-mono"
             placeholder="https://drive.google.com/..."
             {...register("fileUrl")}
           />
           {errors.fileUrl && (
-            <p className="text-rose-500 text-[11px] mt-0.5">
+            <p id="submit-file-url-error" className="text-rose-500 text-[11px] mt-0.5" role="alert">
               {errors.fileUrl.message}
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label htmlFor="submit-notes" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
             {t(
               "tasks.submissionNotes",
               "Additional Notes for Instructor (Optional)",
             )}
           </label>
           <textarea
+            id="submit-notes"
             rows={3}
             className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
             placeholder={t(

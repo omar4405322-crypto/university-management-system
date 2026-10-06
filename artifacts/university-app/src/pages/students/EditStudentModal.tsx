@@ -254,71 +254,95 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2">
+              <label htmlFor="edit-student-first-name" className="text-sm font-bold text-brand-text-main flex items-center gap-2">
                 <User size={14} className="text-brand-text-muted" /> {t('students.firstName')}{' '}
                 <span className="text-rose-500">*</span>
               </label>
               <Input
                 {...register('firstName')}
+                id="edit-student-first-name"
+                autoComplete="given-name"
+                aria-required="true"
+                aria-invalid={!!errors.firstName}
+                aria-describedby={errors.firstName ? 'edit-student-first-name-err' : undefined}
                 placeholder={t('students.firstNamePlaceholder')}
                 className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
               />
               {errors.firstName && (
-                <p className="text-rose-500 text-xs mt-1">{errors.firstName.message}</p>
+                <p id="edit-student-first-name-err" className="text-rose-500 text-xs mt-1">{errors.firstName.message}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2">
+              <label htmlFor="edit-student-last-name" className="text-sm font-bold text-brand-text-main flex items-center gap-2">
                 <User size={14} className="text-brand-text-muted" /> {t('students.lastName')}{' '}
                 <span className="text-rose-500">*</span>
               </label>
               <Input
                 {...register('lastName')}
+                id="edit-student-last-name"
+                autoComplete="family-name"
+                aria-required="true"
+                aria-invalid={!!errors.lastName}
+                aria-describedby={errors.lastName ? 'edit-student-last-name-err' : undefined}
                 placeholder={t('students.lastNamePlaceholder')}
                 className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
               />
               {errors.lastName && (
-                <p className="text-rose-500 text-xs mt-1">{errors.lastName.message}</p>
+                <p id="edit-student-last-name-err" className="text-rose-500 text-xs mt-1">{errors.lastName.message}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2">
+              <label htmlFor="edit-student-email" className="text-sm font-bold text-brand-text-main flex items-center gap-2">
                 <Mail size={14} className="text-brand-text-muted" /> {t('students.emailAddress')}{' '}
                 <span className="text-rose-500">*</span>
               </label>
               <Input
                 type="email"
                 {...register('email')}
+                id="edit-student-email"
+                autoComplete="email"
+                aria-required="true"
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? 'edit-student-email-err' : undefined}
                 placeholder={t('students.emailPlaceholder')}
                 className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
               />
               {errors.email && (
-                <p className="text-rose-500 text-xs mt-1">{errors.email.message}</p>
+                <p id="edit-student-email-err" className="text-rose-500 text-xs mt-1">{errors.email.message}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2">
+              <label htmlFor="edit-student-phone" className="text-sm font-bold text-brand-text-main flex items-center gap-2">
                 <Phone size={14} className="text-brand-text-muted" /> {t('students.phoneNumber')}
               </label>
               <Input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 {...register('phone')}
+                id="edit-student-phone"
+                aria-invalid={!!errors.phone}
+                aria-describedby={errors.phone ? 'edit-student-phone-err' : undefined}
                 placeholder={t('students.phonePlaceholder')}
                 className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
               />
               {errors.phone && (
-                <p className="text-rose-500 text-xs mt-1">{errors.phone.message}</p>
+                <p id="edit-student-phone-err" className="text-rose-500 text-xs mt-1">{errors.phone.message}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2">
+              <label htmlFor="edit-student-gender" className="text-sm font-bold text-brand-text-main flex items-center gap-2">
                 <User size={14} className="text-brand-text-muted" /> {t('profile.gender', 'Gender')}
               </label>
               <select
                 {...register('gender')}
+                id="edit-student-gender"
+                aria-invalid={!!errors.gender}
+                aria-describedby={errors.gender ? 'edit-student-gender-err' : undefined}
                 className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
@@ -332,20 +356,25 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 <option value="Female">{isRTL ? 'أنثى' : 'Female'}</option>
                 <option value="Other">{isRTL ? 'أخرى' : 'Other'}</option>
               </select>
+              {errors.gender && <p id="edit-student-gender-err" role="alert" className="text-rose-500 text-xs mt-1">{errors.gender.message}</p>}
             </div>
 
             <div className="md:col-span-2 space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2">
+              <label htmlFor="edit-student-address" className="text-sm font-bold text-brand-text-main flex items-center gap-2">
                 <MapPin size={14} className="text-brand-text-muted" /> {t('students.homeAddress')}
               </label>
               <textarea
                 {...register('address')}
+                id="edit-student-address"
+                autoComplete="street-address"
                 rows={2}
+                aria-invalid={!!errors.address}
+                aria-describedby={errors.address ? 'edit-student-address-err' : undefined}
                 className="w-full px-4 py-2 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all resize-none placeholder:text-brand-text-muted"
                 placeholder={t('students.addressPlaceholder')}
               />
               {errors.address && (
-                <p className="text-rose-500 text-xs mt-1">{errors.address.message}</p>
+                <p id="edit-student-address-err" className="text-rose-500 text-xs mt-1">{errors.address.message}</p>
               )}
             </div>
           </div>
@@ -362,27 +391,36 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2">
+              <label htmlFor="edit-student-id" className="text-sm font-bold text-brand-text-main flex items-center gap-2">
                 <Hash size={14} className="text-brand-text-muted" /> {t('profile.studentId')}{' '}
                 <span className="text-rose-500">*</span>
               </label>
               <Input
                 {...register('studentId')}
+                id="edit-student-id"
+                autoComplete="off"
+                aria-required="true"
+                aria-invalid={!!errors.studentId}
+                aria-describedby={errors.studentId ? 'edit-student-id-err' : undefined}
                 placeholder={t('auth.studentIdPlaceholder')}
                 className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
               />
               {errors.studentId && (
-                <p className="text-rose-500 text-xs mt-1">{errors.studentId.message}</p>
+                <p id="edit-student-id-err" className="text-rose-500 text-xs mt-1">{errors.studentId.message}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2">
+              <label htmlFor="edit-student-year" className="text-sm font-bold text-brand-text-main flex items-center gap-2">
                 <Calendar size={14} className="text-brand-text-muted" /> {t('profile.year')}{' '}
                 <span className="text-rose-500">*</span>
               </label>
               <select
                 {...register('year')}
+                id="edit-student-year"
+                aria-required="true"
+                aria-invalid={!!errors.year}
+                aria-describedby={errors.year ? 'edit-student-year-err' : undefined}
                 className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
@@ -397,12 +435,12 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 <option value="4">{t('auth.year4', isRTL ? 'الفرقة الرابعة' : 'Fourth Division')}</option>
               </select>
               {errors.year && (
-                <p className="text-rose-500 text-xs mt-1">{errors.year.message}</p>
+                <p id="edit-student-year-err" className="text-rose-500 text-xs mt-1">{errors.year.message}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2">
+              <label htmlFor="edit-student-college" className="text-sm font-bold text-brand-text-main flex items-center gap-2">
                 <School size={14} className="text-brand-text-muted" /> {t('profile.college')}{' '}
                 <span className="text-rose-500">*</span>
               </label>
@@ -410,7 +448,6 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 {...register('collegeId', {
                   onChange: (e) => {
                     const newCollegeId = Number(e.target.value);
-                    // If current department doesn't belong to the newly selected college, clear departmentId
                     const currentDeptId = watch('departmentId');
                     if (currentDeptId) {
                       const dept = departments.find((d) => d.id === Number(currentDeptId));
@@ -420,7 +457,11 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                     }
                   },
                 })}
+                id="edit-student-college"
                 disabled={loadingMetadata}
+                aria-required="true"
+                aria-invalid={!!errors.collegeId}
+                aria-describedby={errors.collegeId ? 'edit-student-college-err' : undefined}
                 className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
@@ -437,18 +478,22 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 ))}
               </select>
               {errors.collegeId && (
-                <p className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>
+                <p id="edit-student-college-err" className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2">
+              <label htmlFor="edit-student-department" className="text-sm font-bold text-brand-text-main flex items-center gap-2">
                 <GraduationCap size={14} className="text-brand-text-muted" /> {t('profile.department')}{' '}
                 <span className="text-rose-500">*</span>
               </label>
               <select
                 {...register('departmentId')}
+                id="edit-student-department"
                 disabled={!watchCollegeId || loadingMetadata}
+                aria-required="true"
+                aria-invalid={!!errors.departmentId}
+                aria-describedby={errors.departmentId ? 'edit-student-department-err' : undefined}
                 className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
@@ -465,7 +510,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 ))}
               </select>
               {errors.departmentId && (
-                <p className="text-rose-500 text-xs mt-1">{errors.departmentId.message}</p>
+                <p id="edit-student-department-err" className="text-rose-500 text-xs mt-1">{errors.departmentId.message}</p>
               )}
             </div>
           </div>

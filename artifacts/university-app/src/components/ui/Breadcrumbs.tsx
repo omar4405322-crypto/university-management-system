@@ -35,12 +35,15 @@ const Breadcrumbs = ({ items = [] }: BreadcrumbsProps) => {
               {item.link && !isLast ? (
                 <Link
                   to={item.link}
-                  className="text-brand-primary-600 hover:text-brand-primary-600 transition-colors"
+                  className="text-brand-primary-600 hover:text-brand-primary-700 dark:hover:text-brand-primary-400 hover:underline transition-colors"
                 >
                   {item.label}
                 </Link>
               ) : (
-                <span className={isLast ? "text-brand-text-primary" : ""}>
+                <span
+                  aria-current={isLast ? "page" : undefined}
+                  className={isLast ? "text-brand-text-primary dark:text-white font-bold" : ""}
+                >
                   {item.label}
                 </span>
               )}
@@ -53,3 +56,4 @@ const Breadcrumbs = ({ items = [] }: BreadcrumbsProps) => {
 };
 
 export default Breadcrumbs;
+

@@ -34,6 +34,7 @@ import Badge from "../../components/ui/badge";
 import api from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import { FEATURE_FLAGS } from "../../constants/featureFlags";
+import { useTabListKeyboard } from "../../hooks/useTabListKeyboard";
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -41,6 +42,7 @@ export function SettingsPage() {
   const { isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const { showToast } = useToast();
+  const tabKeyboard = useTabListKeyboard({ isRTL });
 
   const [activeTab, setActiveTab] = useState<
     "account" | "security" | "appearance" | "system"
@@ -248,15 +250,26 @@ export function SettingsPage() {
       </div>
 
       {/* Modern Segmented Navigation Tabs */}
-      <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-fit">
+      <div
+        role="tablist"
+        aria-label={isRTL ? "أقسام الإعدادات" : "Settings Sections"}
+        onKeyDown={tabKeyboard.handleKeyDown}
+        className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-fit overflow-x-auto"
+      >
         {tabs.map((tab) => {
           const Icon = tab.icon;
+          const isSelected = activeTab === tab.id;
           return (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={isSelected}
+              aria-controls={`settings-tab-panel-${tab.id}`}
+              id={`settings-tab-${tab.id}`}
+              tabIndex={isSelected ? 0 : -1}
               onClick={() => setActiveTab(tab.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === tab.id
+                isSelected
                   ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs"
                   : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
               }`}
@@ -270,7 +283,12 @@ export function SettingsPage() {
 
       {/* ── Tab 1: Account Information ── */}
       {activeTab === "account" && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs">
+        <div
+          role="tabpanel"
+          id="settings-tab-panel-account"
+          aria-labelledby="settings-tab-account"
+          className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs"
+        >
           <form onSubmit={handleAccountUpdate} className="space-y-4">
             <div className="border-b border-slate-100 dark:border-slate-700/60 pb-3">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -397,7 +415,12 @@ export function SettingsPage() {
 
       {/* ── Tab 2: Security & Password ── */}
       {activeTab === "security" && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs">
+        <div
+          role="tabpanel"
+          id="settings-tab-panel-security"
+          aria-labelledby="settings-tab-security"
+          className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs"
+        >
           <form onSubmit={handlePasswordChange} className="space-y-4">
             <div className="border-b border-slate-100 dark:border-slate-700/60 pb-3">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -494,7 +517,12 @@ export function SettingsPage() {
 
       {/* ── Tab 3: Appearance & Language ── */}
       {activeTab === "appearance" && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs space-y-4">
+        <div
+          role="tabpanel"
+          id="settings-tab-panel-appearance"
+          aria-labelledby="settings-tab-appearance"
+          className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs space-y-4"
+        >
           <div className="border-b border-slate-100 dark:border-slate-700/60 pb-3">
             <h2 className="text-sm font-bold text-slate-900 dark:text-white">
               {t("settings.appearanceTitle", "Appearance & Localization")}
@@ -597,7 +625,12 @@ export function SettingsPage() {
 
       {/* ── Tab 4: System & Timetable Config (Admin Only) ── */}
       {activeTab === "system" && isAdmin && (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs space-y-4">
+        <div
+          role="tabpanel"
+          id="settings-tab-panel-system"
+          aria-labelledby="settings-tab-system"
+          className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs space-y-4"
+        >
           <div className="border-b border-slate-100 dark:border-slate-700/60 pb-3 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">

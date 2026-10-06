@@ -669,8 +669,8 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({
                             </span>
                           </TableCell>
                           <TableCell className="py-3.5 px-6 text-center">
-                            <span className="text-xs font-mono font-bold text-brand-text-main bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                              {course.credits}{" "}
+                            <span className="text-xs font-bold text-brand-text-main bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                              <span className="font-mono tabular-nums">{course.credits}</span>{" "}
                               {t("courses.credits_unit", "Credit Hours")}
                             </span>
                           </TableCell>

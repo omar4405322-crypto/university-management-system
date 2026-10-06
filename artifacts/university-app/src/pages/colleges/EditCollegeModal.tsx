@@ -101,45 +101,55 @@ const EditCollegeModal: React.FC<EditCollegeModalProps> = ({ isOpen, onClose, co
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <label htmlFor="edit-college-name-en" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
                 <School size={14} className="text-brand-text-muted" /> {t('colleges.nameEn')} <span className="text-rose-500">*</span>
               </label>
               <Input
+                id="edit-college-name-en"
+                aria-required="true"
+                aria-invalid={!!errors.name}
+                aria-describedby={errors.name ? "edit-college-name-en-error" : undefined}
                 {...register('name')}
                 placeholder="e.g. College of Engineering"
                 disabled={loading}
                 className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed h-11 rounded-xl"
               />
-              {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
+              {errors.name && <p id="edit-college-name-en-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.name.message}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <label htmlFor="edit-college-name-ar" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
                 <School size={14} className="text-brand-text-muted" /> {t('colleges.nameAr')}
               </label>
               <Input
+                id="edit-college-name-ar"
+                aria-invalid={!!errors.nameAr}
+                aria-describedby={errors.nameAr ? "edit-college-name-ar-error" : undefined}
                 {...register('nameAr')}
                 placeholder={t('colleges.nameArPlaceholder', 'e.g. Faculty of Engineering')}
                 disabled={loading}
-                className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed font-arabic h-11 rounded-xl"
+                className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed font-arabic h-11 rounded-xl text-start"
                 dir="rtl"
               />
-              {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
+              {errors.nameAr && <p id="edit-college-name-ar-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.nameAr.message}</p>}
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="edit-college-description" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <Info size={14} className="text-brand-text-muted" /> {t('colleges.description')}
             </label>
             <textarea
+              id="edit-college-description"
+              aria-invalid={!!errors.description}
+              aria-describedby={errors.description ? "edit-college-description-error" : undefined}
               {...register('description')}
               rows={4}
               disabled={loading}
               className="w-full px-4 py-3 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all resize-none placeholder:text-brand-text-muted disabled:opacity-50 disabled:cursor-not-allowed"
-              placeholder="Brief description of the college..."
+              placeholder={t('colleges.descPlaceholder', 'Brief description of the college...')}
             />
-            {errors.description && <p className="text-rose-500 text-xs mt-1">{errors.description.message}</p>}
+            {errors.description && <p id="edit-college-description-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.description.message}</p>}
           </div>
         </div>
 

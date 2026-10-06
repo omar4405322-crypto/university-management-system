@@ -35,7 +35,7 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("font-semibold leading-none tracking-tight", className)}
+    className={cn("font-bold text-base md:text-lg leading-snug tracking-heading text-brand-text-primary", className)}
     {...props}
   />
 ))
@@ -303,7 +303,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             )}
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="m-0 text-xl sm:text-2xl font-black text-brand-text-primary font-mono tracking-tight transition-colors duration-200 block">
+            <span className="m-0 text-xl sm:text-2xl font-black text-brand-text-primary font-mono tabular-nums tracking-tight transition-colors duration-200 block">
               {value}
             </span>
             {subtitle && (

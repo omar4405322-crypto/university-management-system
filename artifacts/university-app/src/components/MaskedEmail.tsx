@@ -1,4 +1,4 @@
-﻿// FIXED: Masked email with click-to-reveal for admin viewers - Phase 3
+// FIXED: Masked email with click-to-reveal for admin viewers - Phase 3
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye } from 'lucide-react';
@@ -30,14 +30,14 @@ const MaskedEmail = ({ email, className = '' }: { email: string; className?: str
         type="button"
         onClick={handleReveal}
         title={revealed ? email : t('admins.clickToReveal', 'Click to view full email')}
-        className={`text-left font-bold text-xs transition-colors ${
+        className={`text-start font-bold text-xs transition-colors ${
           revealed
             ? 'text-brand-text-secondary cursor-default'
             : 'text-brand-text-secondary hover:text-brand-green cursor-pointer'
         } ${className}`}
       >
-        <span className="inline-flex items-center gap-1.5">
-          {revealed ? email : maskEmail(email)}
+        <span className="inline-flex items-center gap-1.5" dir="ltr">
+          <bdi>{revealed ? email : maskEmail(email)}</bdi>
           {!revealed && <Eye size={12} className="opacity-60" />}
         </span>
       </button>

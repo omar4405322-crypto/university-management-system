@@ -58,6 +58,7 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
+import { getChartTheme } from '../../constants/chartPalette';
 
 export type PaymentStatus = 'PAID' | 'PENDING' | 'OVERDUE' | 'CANCELLED';
 export type PaymentType = 'TUITION' | 'REGISTRATION' | 'LIBRARY' | 'OTHER';
@@ -194,10 +195,11 @@ export function FinanceDashboard() {
   }, [fetchData]);
 
   const { isDark } = useTheme();
+  const chartTheme = getChartTheme(isDark);
   const chartColors = {
-    grid: isDark ? '#334155' : '#E2E8F0',
-    tick: isDark ? '#94A3B8' : '#64748B',
-    pie: ['#8BB83C', '#132231', '#D6BA34', '#2F6B87'],
+    grid: chartTheme.grid,
+    tick: chartTheme.tick,
+    pie: chartTheme.palette,
   };
 
   const handleMarkAsPaid = async () => {

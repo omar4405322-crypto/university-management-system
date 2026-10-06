@@ -14,6 +14,7 @@ import dashboardService from '../../services/dashboard.service';
 import timetableService from '../../services/timetable.service';
 import { CAMPUS_HERO_1 } from '../../constants/universityAssets';
 import { logger } from '../../lib/logger';
+import { getChartTheme } from '../../constants/chartPalette';
 
 export default function StudentDashboard() {
   const { t } = useTranslation();
@@ -21,7 +22,8 @@ export default function StudentDashboard() {
   const { isDark } = useTheme();
   const { user } = useAuth();
 
-  const CHART_GREEN = '#8BB83C';
+  const chartTheme = getChartTheme(isDark);
+  const CHART_GREEN = chartTheme.primary;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -148,7 +150,7 @@ export default function StudentDashboard() {
       <div className="relative overflow-hidden rounded-[2rem] shadow-elevated" style={{ minHeight: '180px' }}>
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${CAMPUS_HERO_1}), linear-gradient(135deg, var(--color-brand-navy-500) 0%, var(--color-brand-teal) 100%)` }}
+          style={{ backgroundImage: `url(${CAMPUS_HERO_1}), linear-gradient(135deg, var(--color-brand-navy-500) 0%, var(--color-brand-primary-500) 100%)` }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/25 rtl:bg-gradient-to-l" />
         <div className="relative z-10 flex flex-col gap-6 p-4 sm:p-6 md:flex-row md:items-end md:justify-between md:p-8">
@@ -228,9 +230,9 @@ export default function StudentDashboard() {
                         <stop offset="95%" stopColor={CHART_GREEN} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94A3B8' : '#64748B', fontSize: 12, fontWeight: 600 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94A3B8' : '#64748B', fontSize: 12, fontWeight: 600 }} dx={-10} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.grid} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: chartTheme.tick, fontSize: 12, fontWeight: 600 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: chartTheme.tick, fontSize: 12, fontWeight: 600 }} dx={-10} />
                     <Tooltip content={<ChartTooltip active={false} payload={[]} label={''} />} />
                     <Area type="monotone" dataKey="value" stroke={CHART_GREEN} strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                   </AreaChart>

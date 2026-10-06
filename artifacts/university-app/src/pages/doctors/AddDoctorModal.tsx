@@ -96,9 +96,26 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose, onSucc
     [departments, selectedCollegeId]
   );
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
+
+  const fieldProps = (name: string) => ({
+    'aria-invalid': !!fieldErrors[name],
+    'aria-describedby': fieldErrors[name] ? `add-doc-${name}-err` : undefined,
+  });
+
+  const fieldError = (name: string) =>
+    fieldErrors[name] ? (
+      <p id={`add-doc-${name}-err`} role="alert" className="text-rose-500 text-xs mt-1">
+        {fieldErrors[name]}
+      </p>
+    ) : null;
+
 
   const handleCollegeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedCollegeId(e.target.value);
@@ -107,12 +124,33 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose, onSucc
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.firstName || !formData.lastName || !formData.doctorId || !formData.email || !formData.password) {
-      toast.error(t('doctors.fillRequired'));
-      return;
+    if (loading) return;
+
+    const required = t('doctors.fillRequired');
+    const isStrongPassword = (pwd: string) =>
+      pwd.length >= 8 && /[A-Z]/.test(pwd) && /[a-z]/.test(pwd) && /\d/.test(pwd);
+
+    const errs: Record<string, string> = {};
+    if (!formData.firstName.trim()) errs.firstName = required;
+    if (!formData.lastName.trim()) errs.lastName = required;
+    if (!formData.doctorId.trim()) errs.doctorId = required;
+    if (!formData.email.trim()) errs.email = required;
+    if (!formData.password) {
+      errs.password = required;
+    } else if (!isStrongPassword(formData.password)) {
+      errs.password = t('auth.passwordPolicyError', 'Password must be at least 8 characters with uppercase, lowercase, and a number');
     }
-    if (formData.password.length < 6) {
-      toast.error(t('doctors.passwordLength'));
+    setFieldErrors(errs);
+    const firstInvalid = ['firstName', 'lastName', 'doctorId', 'email', 'password'].find((k) => errs[k]);
+    if (firstInvalid) {
+      const ids: Record<string, string> = {
+        firstName: 'add-doc-first-name',
+        lastName: 'add-doc-last-name',
+        doctorId: 'add-doc-id',
+        email: 'add-doc-email',
+        password: 'add-doc-password',
+      };
+      document.getElementById(ids[firstInvalid])?.focus();
       return;
     }
 
@@ -138,51 +176,87 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose, onSucc
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t('doctors.addNew')} subtitle={t('doctors.addDesc')}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
 
         {/* ── Identity ── */}
         <SectionHeading icon={<User size={13} />} label={t('doctors.sectionIdentity', 'Personal Info')} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="add-doc-first-name" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <User size={13} className="text-brand-text-muted" /> {t('doctors.firstName')} <span className="text-rose-500">*</span>
             </label>
-            <Input name="firstName" value={formData.firstName} onChange={handleChange}
-              placeholder={t('doctors.firstNamePlaceholder')} required
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all" />
+            <Input
+              id="add-doc-first-name"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              autoComplete="given-name"
+              placeholder={t('doctors.firstNamePlaceholder')}
+              required
+              aria-required="true"
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
+              {...fieldProps('firstName')}
+            />
+            {fieldError('firstName')}
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="add-doc-last-name" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <User size={13} className="text-brand-text-muted" /> {t('doctors.lastName')} <span className="text-rose-500">*</span>
             </label>
-            <Input name="lastName" value={formData.lastName} onChange={handleChange}
-              placeholder={t('doctors.lastNamePlaceholder')} required
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all" />
+            <Input
+              id="add-doc-last-name"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              autoComplete="family-name"
+              placeholder={t('doctors.lastNamePlaceholder')}
+              required
+              aria-required="true"
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
+              {...fieldProps('lastName')}
+            />
+            {fieldError('lastName')}
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="add-doc-id" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <Hash size={13} className="text-brand-text-muted" /> {t('doctors.doctorId')} <span className="text-rose-500">*</span>
             </label>
-            <Input name="doctorId" value={formData.doctorId} onChange={handleChange}
-              placeholder={t('doctors.doctorIdPlaceholder')} required
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all" />
+            <Input
+              id="add-doc-id"
+              name="doctorId"
+              value={formData.doctorId}
+              onChange={handleChange}
+              autoComplete="off"
+              placeholder={t('doctors.doctorIdPlaceholder')}
+              required
+              aria-required="true"
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
+              {...fieldProps('doctorId')}
+            />
+            {fieldError('doctorId')}
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="add-doc-specialty" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <Briefcase size={13} className="text-brand-text-muted" /> {t('doctors.specialty')}
             </label>
-            <Input name="specialty" value={formData.specialty} onChange={handleChange}
+            <Input
+              id="add-doc-specialty"
+              name="specialty"
+              value={formData.specialty}
+              onChange={handleChange}
               placeholder={t('doctors.specialtyPlaceholder')}
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all" />
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
+            />
           </div>
         </div>
 
         {/* Bio */}
         <div className="space-y-1.5">
-          <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+          <label htmlFor="add-doc-bio" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
             <FileText size={13} className="text-brand-text-muted" /> {t('doctors.bio', 'Bio / About')}
           </label>
           <textarea
+            id="add-doc-bio"
             name="bio"
             value={formData.bio}
             onChange={handleChange}
@@ -196,25 +270,32 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose, onSucc
         <SectionHeading icon={<GraduationCap size={13} />} label={t('doctors.sectionAcademic', 'Academic Affiliation')} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="add-doc-college" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <Building2 size={13} className="text-brand-text-muted" /> {t('colleges.college', 'College / Faculty')}
             </label>
             <div className="relative">
-              <select value={selectedCollegeId} onChange={handleCollegeChange} className={selectClass} disabled={loadingColleges}>
+              <select
+                id="add-doc-college"
+                value={selectedCollegeId}
+                onChange={handleCollegeChange}
+                className={selectClass}
+                disabled={loadingColleges}
+              >
                 <option value="">{loadingColleges ? t('common.loading', 'Loading...') : t('timetables.selectCollege', 'Select College')}</option>
                 {colleges.map((c: any) => (
                   <option key={c.id} value={c.id.toString()}>{isRTL ? c.nameAr || c.name : c.name}</option>
                 ))}
               </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <ChevronDown size={14} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="add-doc-department" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <GraduationCap size={13} className="text-brand-text-muted" /> {t('departments.department', 'Department')}
             </label>
             <div className="relative">
               <select
+                id="add-doc-department"
                 name="departmentId"
                 value={formData.departmentId}
                 onChange={handleChange}
@@ -226,7 +307,7 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose, onSucc
                   <option key={d.id} value={d.id.toString()}>{isRTL ? d.nameAr || d.name : d.name}</option>
                 ))}
               </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <ChevronDown size={14} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
           </div>
         </div>
@@ -243,28 +324,58 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose, onSucc
         <SectionHeading icon={<Mail size={13} />} label={t('doctors.sectionCredentials', 'Account Credentials')} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="add-doc-email" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <Mail size={13} className="text-brand-text-muted" /> {t('profile.email')} <span className="text-rose-500">*</span>
             </label>
-            <Input type="email" name="email" value={formData.email} onChange={handleChange}
-              placeholder={t('doctors.emailPlaceholder')} required
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all" />
+            <Input
+              id="add-doc-email"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              autoComplete="email"
+              placeholder={t('doctors.emailPlaceholder')}
+              required
+              aria-required="true"
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
+              {...fieldProps('email')}
+            />
+            {fieldError('email')}
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="add-doc-password" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <Lock size={13} className="text-brand-text-muted" /> {t('profile.password')} <span className="text-rose-500">*</span>
             </label>
-            <Input type="password" name="password" value={formData.password} onChange={handleChange}
-              placeholder={t('doctors.passwordPlaceholder')} required
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all" />
+            <Input
+              id="add-doc-password"
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              autoComplete="new-password"
+              placeholder={t('doctors.passwordPlaceholder')}
+              required
+              aria-required="true"
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
+              {...fieldProps('password')}
+            />
+            {fieldError('password')}
           </div>
           <div className="md:col-span-2 space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="add-doc-phone" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <Phone size={13} className="text-brand-text-muted" /> {t('profile.phone')}
             </label>
-            <Input name="phone" value={formData.phone} onChange={handleChange}
+            <Input
+              id="add-doc-phone"
+              type="tel" dir="ltr"
+              inputMode="tel"
+              autoComplete="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
               placeholder={t('doctors.phonePlaceholder')}
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all" />
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
+            />
           </div>
         </div>
 

@@ -1,10 +1,11 @@
 import React from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import Button from './button';
 
 const ErrorState = ({
-  title = 'Something went wrong',
-  message = 'We encountered an error while loading this content.',
+  title,
+  message,
   onRetry,
   className = '',
 }: {
@@ -13,6 +14,11 @@ const ErrorState = ({
   onRetry?: () => void;
   className?: string;
 }) => {
+  const { t } = useTranslation();
+
+  const displayTitle = title || t('common.somethingWentWrong', 'Something went wrong');
+  const displayMessage = message || t('common.errorOccurred', 'We encountered an error while loading this content.');
+
   return (
     <div
       className={`flex flex-col items-center justify-center p-12 text-center gap-6 rounded-3xl bg-error/5 border-2 border-dashed border-error/20 ${className}`}
@@ -22,14 +28,14 @@ const ErrorState = ({
       </div>
 
       <div className="space-y-2 max-w-md">
-        <h3 className="text-xl font-black text-brand-text-primary tracking-tight">{title}</h3>
-        <p className="text-brand-text-secondary font-medium leading-relaxed">{message}</p>
+        <h3 className="text-xl font-black text-brand-text-primary tracking-tight">{displayTitle}</h3>
+        <p className="text-brand-text-secondary font-medium leading-relaxed">{displayMessage}</p>
       </div>
 
       {onRetry && (
         <Button onClick={onRetry} variant="outline" className="flex items-center gap-2">
           <RefreshCw size={18} />
-          Try Again
+          {t('common.tryAgain', 'Try Again')}
         </Button>
       )}
     </div>

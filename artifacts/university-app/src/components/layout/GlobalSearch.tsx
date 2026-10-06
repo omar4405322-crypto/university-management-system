@@ -238,9 +238,9 @@ const GlobalSearch = () => {
               <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 mb-4">
                 <kbd className="px-2 py-1 bg-surface-subtle border border-brand-border rounded-lg font-mono text-xs font-bold text-slate-700 dark:text-slate-200">↑</kbd>
                 <kbd className="px-2 py-1 bg-surface-subtle border border-brand-border rounded-lg font-mono text-xs font-bold text-slate-700 dark:text-slate-200">↓</kbd>
-                <span className="text-xs font-medium px-2">to navigate</span>
+                <span className="text-xs font-medium px-2">{t('search.toNavigate', 'to navigate')}</span>
                 <kbd className="px-2 py-1 bg-surface-subtle border border-brand-border rounded-lg font-mono text-xs font-bold text-slate-700 dark:text-slate-200">↵</kbd>
-                <span className="text-xs font-medium px-2">to select</span>
+                <span className="text-xs font-medium px-2">{t('search.toSelect', 'to select')}</span>
               </div>
             </div>
           )}

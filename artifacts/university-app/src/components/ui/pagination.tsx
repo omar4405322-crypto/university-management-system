@@ -100,7 +100,7 @@ const Pagination: React.FC<PaginationProps> = ({
   ...rest
 }) => {
   const { t, i18n } = useTranslation();
-  const isRTL = i18n.language === 'ar';
+  const isRTL = i18n.language?.startsWith('ar');
 
   const activePage = page ?? propCurrentPage ?? 1;
   const activePageSize = pageSize ?? limit ?? 10;
@@ -181,6 +181,7 @@ const Pagination: React.FC<PaginationProps> = ({
             onClick={() => handlePageChange(1)}
             disabled={activePage <= 1}
             title={isRTL ? 'الصفحة الأولى' : 'First page'}
+            aria-label={isRTL ? 'الصفحة الأولى' : 'First page'}
             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
             <ChevronsLeft className={cn('w-3.5 h-3.5', isRTL && 'rotate-180')} />
@@ -192,10 +193,11 @@ const Pagination: React.FC<PaginationProps> = ({
           type="button"
           onClick={() => handlePageChange(activePage - 1)}
           disabled={activePage <= 1}
+          aria-label={t('common.previousPage', isRTL ? 'الصفحة السابقة' : 'Previous page')}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors font-bold text-xs cursor-pointer"
         >
           <ChevronLeft className={cn('w-3.5 h-3.5', isRTL && 'rotate-180')} />
-          <span>{isRTL ? 'السابق' : 'Previous'}</span>
+          <span>{t('common.previous', isRTL ? 'السابق' : 'Previous')}</span>
         </button>
 
         {/* Page Number Buttons */}
@@ -239,9 +241,10 @@ const Pagination: React.FC<PaginationProps> = ({
           type="button"
           onClick={() => handlePageChange(activePage + 1)}
           disabled={activePage >= effectiveTotalPages}
+          aria-label={t('common.nextPage', isRTL ? 'الصفحة التالية' : 'Next page')}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors font-bold text-xs cursor-pointer"
         >
-          <span>{isRTL ? 'التالي' : 'Next'}</span>
+          <span>{t('common.next', isRTL ? 'التالي' : 'Next')}</span>
           <ChevronRight className={cn('w-3.5 h-3.5', isRTL && 'rotate-180')} />
         </button>
 
@@ -252,6 +255,7 @@ const Pagination: React.FC<PaginationProps> = ({
             onClick={() => handlePageChange(effectiveTotalPages)}
             disabled={activePage >= effectiveTotalPages}
             title={isRTL ? 'الصفحة الأخيرة' : 'Last page'}
+            aria-label={isRTL ? 'الصفحة الأخيرة' : 'Last page'}
             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
             <ChevronsRight className={cn('w-3.5 h-3.5', isRTL && 'rotate-180')} />
@@ -313,48 +317,60 @@ PaginationLink.displayName = 'PaginationLink';
 const PaginationPrevious = ({
   className,
   ...props
-}: React.ComponentProps<typeof PaginationLink>) => (
-  <PaginationLink
-    aria-label="Go to previous page"
-    size="default"
-    className={cn('gap-1 pl-2.5', className)}
-    {...props}
-  >
-    <ChevronLeft className="h-4 w-4" />
-    <span>Previous</span>
-  </PaginationLink>
-);
+}: React.ComponentProps<typeof PaginationLink>) => {
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
+  return (
+    <PaginationLink
+      aria-label={t('common.previousPage', isRTL ? 'الصفحة السابقة' : 'Go to previous page')}
+      size="default"
+      className={cn('gap-1 ps-2.5', className)}
+      {...props}
+    >
+      <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
+      <span>{t('common.previous', isRTL ? 'السابق' : 'Previous')}</span>
+    </PaginationLink>
+  );
+};
 PaginationPrevious.displayName = 'PaginationPrevious';
 
 const PaginationNext = ({
   className,
   ...props
-}: React.ComponentProps<typeof PaginationLink>) => (
-  <PaginationLink
-    aria-label="Go to next page"
-    size="default"
-    className={cn('gap-1 pr-2.5', className)}
-    {...props}
-  >
-    <span>Next</span>
-    <ChevronRight className="h-4 w-4" />
-  </PaginationLink>
-);
+}: React.ComponentProps<typeof PaginationLink>) => {
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
+  return (
+    <PaginationLink
+      aria-label={t('common.nextPage', isRTL ? 'الصفحة التالية' : 'Go to next page')}
+      size="default"
+      className={cn('gap-1 pe-2.5', className)}
+      {...props}
+    >
+      <span>{t('common.next', isRTL ? 'التالي' : 'Next')}</span>
+      <ChevronRight className="h-4 w-4 rtl:rotate-180" />
+    </PaginationLink>
+  );
+};
 PaginationNext.displayName = 'PaginationNext';
 
 const PaginationEllipsis = ({
   className,
   ...props
-}: React.ComponentProps<'span'>) => (
-  <span
-    aria-hidden
-    className={cn('flex h-9 w-9 items-center justify-center', className)}
-    {...props}
-  >
-    <MoreHorizontal className="h-4 w-4" />
-    <span className="sr-only">More pages</span>
-  </span>
-);
+}: React.ComponentProps<'span'>) => {
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language?.startsWith('ar');
+  return (
+    <span
+      aria-hidden
+      className={cn('flex h-9 w-9 items-center justify-center', className)}
+      {...props}
+    >
+      <MoreHorizontal className="h-4 w-4" />
+      <span className="sr-only">{t('common.morePages', isRTL ? 'صفحات إضافية' : 'More pages')}</span>
+    </span>
+  );
+};
 PaginationEllipsis.displayName = 'PaginationEllipsis';
 
 export {

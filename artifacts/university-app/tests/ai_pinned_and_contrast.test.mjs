@@ -115,8 +115,10 @@ describe('AI Assistant Dark Mode Contrast & Pinned Conversations', () => {
   it('Grouping Logic: Pinned section rendered at top, ordered by pinnedAt DESC, no duplicates in date groups', () => {
     // Replicate groupConversationsByDate pure logic test
     const now = new Date();
-    const todayIso = new Date(now.getTime() - 1000 * 60 * 30).toISOString();
-    const yesterdayIso = new Date(now.getTime() - 1000 * 60 * 60 * 25).toISOString();
+    // Anchor fixtures to local day boundaries so the test is independent of time-of-day.
+    const localTodayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayIso = new Date(localTodayStart + 1000 * 60).toISOString();
+    const yesterdayIso = new Date(localTodayStart - 1000 * 60 * 60).toISOString();
 
     const t = (key, fallback) => fallback || key;
 

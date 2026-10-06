@@ -44,6 +44,7 @@ import ChartTooltip from "../../components/ui/ChartTooltip";
 import { SkeletonKPIGrid } from "../../components/ui/skeleton";
 import { logger } from "../../lib/logger";
 import { downloadCsv } from "../../utils/exportCsv";
+import { getChartTheme } from "../../constants/chartPalette";
 
 export function AnalyticsDashboard() {
   const { t } = useTranslation();
@@ -57,10 +58,11 @@ export function AnalyticsDashboard() {
     "ACADEMIC" | "ATTENDANCE" | "DEPARTMENTS"
   >("ACADEMIC");
 
+  const chartTheme = getChartTheme(isDark);
   const chartColors = {
-    grid: isDark ? "#334155" : "#F1F5F9",
-    tick: isDark ? "#94A3B8" : "#64748B",
-    pie: ["#8BB83C", "#132231", "#D6BA34", "#2F6B87", "#A1C04F", "#8BB8C9"],
+    grid: chartTheme.grid,
+    tick: chartTheme.tick,
+    pie: chartTheme.palette,
   };
 
   const fetchAnalytics = async (isRefresh = false) => {

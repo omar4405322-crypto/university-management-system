@@ -76,10 +76,14 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ isOpen, onClo
 
         <div className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="edit-dept-college" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <School size={14} className="text-brand-text-muted" /> {t('colleges.parentCollege')} <span className="text-rose-500">*</span>
             </label>
             <select
+              id="edit-dept-college"
+              aria-required="true"
+              aria-invalid={!!errors.collegeId}
+              aria-describedby={errors.collegeId ? "edit-dept-college-error" : undefined}
               {...register('collegeId')}
               className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer select-custom-arrow"
             >
@@ -88,32 +92,39 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ isOpen, onClo
                 <option key={college.id} value={college.id}>{college.name}</option>
               ))}
             </select>
-            {errors.collegeId && <p className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>}
+            {errors.collegeId && <p id="edit-dept-college-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.collegeId.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="edit-dept-name-en" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <GraduationCap size={14} className="text-brand-text-muted" /> {t('departments.nameEn')} <span className="text-rose-500">*</span>
             </label>
             <Input
+              id="edit-dept-name-en"
+              aria-required="true"
+              aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? "edit-dept-name-en-error" : undefined}
               {...register('name')}
               placeholder="e.g. Computer Science"
               className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
             />
-            {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
+            {errors.name && <p id="edit-dept-name-en-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="edit-dept-name-ar" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <GraduationCap size={14} className="text-brand-text-muted" /> {t('departments.nameAr')}
             </label>
             <Input
+              id="edit-dept-name-ar"
+              aria-invalid={!!errors.nameAr}
+              aria-describedby={errors.nameAr ? "edit-dept-name-ar-error" : undefined}
               {...register('nameAr')}
               placeholder="e.g. قسم علوم الحاسب"
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic text-right"
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic text-start"
               dir="rtl"
             />
-            {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
+            {errors.nameAr && <p id="edit-dept-name-ar-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.nameAr.message}</p>}
           </div>
         </div>
 

@@ -33,7 +33,7 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
             />
             <p className="font-bold text-[var(--brand-text-main)]">
               <span className="text-[var(--brand-text-sub)] font-medium">{entry.name}:</span>{' '}
-              {entry.value?.toLocaleString()}
+              <span className="tabular-nums">{entry.value?.toLocaleString()}</span>
             </p>
           </div>
         ))}

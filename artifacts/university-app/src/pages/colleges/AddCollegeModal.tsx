@@ -222,45 +222,55 @@ const AddCollegeModal: React.FC<AddCollegeModalProps> = ({ isOpen, onClose, onSu
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-1.5">
-                <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+                <label htmlFor="add-college-name-en" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
                   <School size={14} className="text-brand-text-muted" /> {t('colleges.nameEn')} <span className="text-rose-500">*</span>
                 </label>
                 <Input
+                  id="add-college-name-en"
+                  aria-required="true"
+                  aria-invalid={!!errors.name}
+                  aria-describedby={errors.name ? "add-college-name-en-error" : undefined}
                   {...register('name')}
                   placeholder="e.g. College of Engineering"
                   disabled={loading}
                   className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed h-11 rounded-xl"
                 />
-                {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
+                {errors.name && <p id="add-college-name-en-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.name.message}</p>}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+                <label htmlFor="add-college-name-ar" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
                   <School size={14} className="text-brand-text-muted" /> {t('colleges.nameAr')}
                 </label>
                 <Input
+                  id="add-college-name-ar"
+                  aria-invalid={!!errors.nameAr}
+                  aria-describedby={errors.nameAr ? "add-college-name-ar-error" : undefined}
                   {...register('nameAr')}
                   placeholder={t('colleges.nameArPlaceholder', 'e.g. Faculty of Engineering')}
                   disabled={loading}
-                  className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed font-arabic h-11 rounded-xl"
+                  className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all disabled:opacity-50 disabled:cursor-not-allowed font-arabic h-11 rounded-xl text-start"
                   dir="rtl"
                 />
-                {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
+                {errors.nameAr && <p id="add-college-name-ar-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.nameAr.message}</p>}
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <label htmlFor="add-college-description" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
                 <Info size={14} className="text-brand-text-muted" /> {t('colleges.description')}
               </label>
               <textarea
+                id="add-college-description"
+                aria-invalid={!!errors.description}
+                aria-describedby={errors.description ? "add-college-description-error" : undefined}
                 {...register('description')}
                 rows={4}
                 placeholder={t('colleges.descPlaceholder')}
                 disabled={loading}
                 className="w-full px-4 py-3 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all resize-none placeholder:text-brand-text-muted disabled:opacity-50 disabled:cursor-not-allowed"
               ></textarea>
-              {errors.description && <p className="text-rose-500 text-xs mt-1">{errors.description.message}</p>}
+              {errors.description && <p id="add-college-description-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.description.message}</p>}
             </div>
           </div>
 
@@ -367,9 +377,12 @@ const AddCollegeModal: React.FC<AddCollegeModalProps> = ({ isOpen, onClose, onSu
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.firstName') || 'First Name'} <span className="text-rose-500">*</span></label>
+                      <label htmlFor="add-college-admin-fname" className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.firstName') || 'First Name'} <span className="text-rose-500">*</span></label>
                       <Input
+                        id="add-college-admin-fname"
                         name="firstName"
+                        autoComplete="given-name"
+                        aria-required="true"
                         value={adminFormData.firstName}
                         onChange={handleAdminChange}
                         placeholder="Ahmed"
@@ -379,9 +392,12 @@ const AddCollegeModal: React.FC<AddCollegeModalProps> = ({ isOpen, onClose, onSu
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.lastName') || 'Last Name'} <span className="text-rose-500">*</span></label>
+                      <label htmlFor="add-college-admin-lname" className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.lastName') || 'Last Name'} <span className="text-rose-500">*</span></label>
                       <Input
+                        id="add-college-admin-lname"
                         name="lastName"
+                        autoComplete="family-name"
+                        aria-required="true"
                         value={adminFormData.lastName}
                         onChange={handleAdminChange}
                         placeholder="Mohamed"
@@ -393,10 +409,13 @@ const AddCollegeModal: React.FC<AddCollegeModalProps> = ({ isOpen, onClose, onSu
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.email') || 'Email'} <span className="text-rose-500">*</span></label>
+                    <label htmlFor="add-college-admin-email" className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.email') || 'Email'} <span className="text-rose-500">*</span></label>
                     <Input
+                      id="add-college-admin-email"
                       type="email"
                       name="email"
+                      autoComplete="email"
+                      aria-required="true"
                       value={adminFormData.email}
                       onChange={handleAdminChange}
                       placeholder="admin@college.edu"
@@ -407,10 +426,13 @@ const AddCollegeModal: React.FC<AddCollegeModalProps> = ({ isOpen, onClose, onSu
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.password') || 'Password'} <span className="text-rose-500">*</span></label>
+                    <label htmlFor="add-college-admin-pwd" className="text-xs font-black uppercase tracking-wider text-brand-text-secondary ml-1">{t('admins.password') || 'Password'} <span className="text-rose-500">*</span></label>
                     <Input
+                      id="add-college-admin-pwd"
                       type="password"
                       name="password"
+                      autoComplete="new-password"
+                      aria-required="true"
                       value={adminFormData.password}
                       onChange={handleAdminChange}
                       placeholder="••••••••"

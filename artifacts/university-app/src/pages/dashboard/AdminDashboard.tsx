@@ -20,6 +20,7 @@ import ChartTooltip from '../../components/ui/ChartTooltip';
 import dashboardService from '../../services/dashboard.service';
 import { CAMPUS_HERO_1 } from '../../constants/universityAssets';
 import { logger } from '../../lib/logger';
+import { getChartTheme, getChartPalette } from '../../constants/chartPalette';
 
 export default function AdminDashboard() {
   const { t, i18n } = useTranslation();
@@ -27,8 +28,9 @@ export default function AdminDashboard() {
   const { isDark } = useTheme();
   const { user } = useAuth();
 
-  const CHART_GREEN = '#8BB83C';
-  const CHART_COLORS = ['#8BB83C', '#132231', '#D6BA34', '#2F6B87', '#A1C04F', '#8BB8C9'];
+  const chartTheme = getChartTheme(isDark);
+  const CHART_GREEN = chartTheme.primary;
+  const CHART_COLORS = chartTheme.palette;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -321,9 +323,9 @@ export default function AdminDashboard() {
                         <stop offset="95%" stopColor={CHART_GREEN} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 600 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 600 }} dx={-10} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.grid} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: chartTheme.tick, fontSize: 11, fontWeight: 600 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: chartTheme.tick, fontSize: 11, fontWeight: 600 }} dx={-10} />
                     <Tooltip content={<ChartTooltip />} />
                     <Area type="monotone" dataKey="value" stroke={CHART_GREEN} strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                   </AreaChart>
@@ -351,10 +353,10 @@ export default function AdminDashboard() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={collegeDistributionData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#E2E8F0'} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: isDark ? '#94A3B8' : '#64748B' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: isDark ? '#94A3B8' : '#64748B' }} />
-                  <Tooltip content={<ChartTooltip />} cursor={{ fill: isDark ? '#1E293B' : '#F8FAFC' }} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.grid} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: chartTheme.tick }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: chartTheme.tick }} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: chartTheme.cursor }} />
                   <Bar dataKey="students" radius={[4, 4, 0, 0]} barSize={32}>
                     {collegeDistributionData.map((entry: any, index: number) => (
                       <Cell key={`college-${entry.name}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />

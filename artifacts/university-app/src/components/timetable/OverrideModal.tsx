@@ -84,7 +84,8 @@ export function OverrideModal({ isOpen, onClose, entry, onSuccess }: OverrideMod
       <div className="w-full max-w-md p-6 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl relative animate-in slide-in-from-bottom-4 duration-300">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 rtl:left-4 rtl:right-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+          aria-label={t('common.close', 'Close')}
+          className="absolute top-4 end-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
         >
           <X size={20} />
         </button>
@@ -167,7 +168,7 @@ export function OverrideModal({ isOpen, onClose, entry, onSuccess }: OverrideMod
             </label>
             <textarea
               rows={2}
-              placeholder="e.g. Room renovation, Doctor unavailable..."
+              placeholder={t('schedule.reasonPlaceholder', 'e.g. Room renovation, Doctor unavailable...')}
               value={formData.reason}
               onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
               className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 dark:text-slate-100 placeholder:text-slate-400 resize-none"

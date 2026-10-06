@@ -108,27 +108,35 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-1">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            {t("tasks.taskTitle", "Assignment Title")}
+          <label htmlFor="task-title" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            {t("tasks.taskTitle", "Assignment Title")} <span className="text-rose-500">*</span>
           </label>
           <input
+            id="task-title"
+            aria-required="true"
+            aria-invalid={!!errors.title}
+            aria-describedby={errors.title ? "task-title-error" : undefined}
             type="text"
             className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
             placeholder={t("tasks.taskTitle", "Assignment Title")}
             {...register("title")}
           />
           {errors.title && (
-            <p className="text-rose-500 text-[11px] mt-0.5">
+            <p id="task-title-error" className="text-rose-500 text-[11px] mt-0.5" role="alert">
               {errors.title.message}
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            {t("tasks.taskDescription", "Assignment Instructions & Description")}
+          <label htmlFor="task-description" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            {t("tasks.taskDescription", "Assignment Instructions & Description")} <span className="text-rose-500">*</span>
           </label>
           <textarea
+            id="task-description"
+            aria-required="true"
+            aria-invalid={!!errors.description}
+            aria-describedby={errors.description ? "task-description-error" : undefined}
             rows={3}
             className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
             placeholder={t(
@@ -138,7 +146,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             {...register("description")}
           />
           {errors.description && (
-            <p className="text-rose-500 text-[11px] mt-0.5">
+            <p id="task-description-error" className="text-rose-500 text-[11px] mt-0.5" role="alert">
               {errors.description.message}
             </p>
           )}
@@ -146,10 +154,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {t("nav.courses", "Courses")}
+            <label htmlFor="task-course" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              {t("nav.courses", "Courses")} <span className="text-rose-500">*</span>
             </label>
             <select
+              id="task-course"
+              aria-required="true"
+              aria-invalid={!!errors.courseId}
+              aria-describedby={errors.courseId ? "task-course-error" : undefined}
               className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer"
               disabled={Boolean(editingTask)}
               {...register("courseId")}
@@ -164,23 +176,27 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               ))}
             </select>
             {errors.courseId && (
-              <p className="text-rose-500 text-[11px] mt-0.5">
+              <p id="task-course-error" className="text-rose-500 text-[11px] mt-0.5" role="alert">
                 {errors.courseId.message}
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {t("tasks.maxPoints", "Total Points")}
+            <label htmlFor="task-max-points" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              {t("tasks.maxPoints", "Total Points")} <span className="text-rose-500">*</span>
             </label>
             <input
+              id="task-max-points"
+              aria-required="true"
+              aria-invalid={!!errors.maxScore}
+              aria-describedby={errors.maxScore ? "task-max-points-error" : undefined}
               type="number"
               className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
               {...register("maxScore")}
             />
             {errors.maxScore && (
-              <p className="text-rose-500 text-[11px] mt-0.5">
+              <p id="task-max-points-error" className="text-rose-500 text-[11px] mt-0.5" role="alert">
                 {errors.maxScore.message}
               </p>
             )}
@@ -188,16 +204,20 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            {t("tasks.due", "Submission Deadline")}
+          <label htmlFor="task-due-date" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            {t("tasks.due", "Submission Deadline")} <span className="text-rose-500">*</span>
           </label>
           <input
+            id="task-due-date"
+            aria-required="true"
+            aria-invalid={!!errors.dueDate}
+            aria-describedby={errors.dueDate ? "task-due-date-error" : undefined}
             type="datetime-local"
             className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
             {...register("dueDate")}
           />
           {errors.dueDate && (
-            <p className="text-rose-500 text-[11px] mt-0.5">
+            <p id="task-due-date-error" className="text-rose-500 text-[11px] mt-0.5" role="alert">
               {errors.dueDate.message}
             </p>
           )}

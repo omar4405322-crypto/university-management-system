@@ -235,7 +235,7 @@ const Header = ({ onMenuClick, isSidebarOpen = false }: HeaderProps) => {
               <span className="text-sm font-black text-brand-text-primary dark:text-brand-text-main truncate max-w-[120px]">
                 {user?.firstName} {user?.lastName}
               </span>
-              <span className={`text-[10px] font-black uppercase tracking-tighter transition-colors ${isProfileOpen ? 'text-brand-green' : 'text-brand-brand-green-dark'
+              <span className={`text-[10px] font-black uppercase tracking-normal ltr:tracking-wider transition-colors ${isProfileOpen ? 'text-brand-green' : 'text-brand-brand-green-dark'
                 }`}>
                 {user?.role ? t(`roles.${user.role}`, user.role.replace('_', ' ')) : ''}
               </span>

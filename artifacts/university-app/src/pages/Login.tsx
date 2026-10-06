@@ -138,7 +138,7 @@ const Login = () => {
 
   return (
     <div 
-      className="min-h-screen w-full relative overflow-x-hidden overflow-y-auto font-arabic select-none flex flex-col items-center justify-center p-4" 
+      className="min-h-screen w-full relative overflow-x-hidden overflow-y-auto font-sans select-none flex flex-col items-center justify-center p-4" 
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <style>{`
@@ -167,18 +167,18 @@ const Login = () => {
           opacity: 0.5 !important;
         }
         .login-input:focus, .login-input:focus-visible {
-          outline: 2px solid #84cc16 !important;
+          outline: 2px solid var(--color-brand-primary-500, #8BB83C) !important;
           outline-offset: 2px !important;
-          border-color: #84cc16 !important;
-          box-shadow: 0 0 0 3px rgba(132,204,22,0.25) !important;
+          border-color: var(--color-brand-primary-500, #8BB83C) !important;
+          box-shadow: 0 0 0 3px rgba(139, 184, 60, 0.25) !important;
         }
         .login-btn {
-          background: linear-gradient(135deg, #65a30d, #84cc16) !important;
+          background: linear-gradient(135deg, #70952f, #8BB83C) !important;
           transition: all 0.2s ease !important;
         }
         .login-btn:hover:not(:disabled) {
           transform: scale(1.01);
-          background: linear-gradient(135deg, #4d7c0f, #65a30d) !important;
+          background: linear-gradient(135deg, #587526, #70952f) !important;
         }
         .login-btn:active:not(:disabled) {
           transform: scale(0.99);
@@ -188,7 +188,7 @@ const Login = () => {
       <div 
         className="absolute inset-0 z-0"
         style={{
-          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f2027 100%)",
+          background: "linear-gradient(135deg, #091119 0%, #132231 50%, #060c12 100%)",
         }}
       />
       
@@ -312,6 +312,8 @@ const Login = () => {
                         type="email"
                         placeholder={t('auth.emailPlaceholder')}
                         autoComplete="email"
+                        aria-invalid={!!errors.email}
+                        aria-describedby={errors.email ? 'login-email-error' : undefined}
                         className={`login-input w-full h-[48px] ps-11 pe-4 rounded-xl border bg-slate-50/60 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none transition-all duration-200 ${
                           errors.email
                             ? 'border-rose-500'
@@ -320,7 +322,7 @@ const Login = () => {
                       />
                     </div>
                     {errors.email && (
-                      <p className="text-rose-500 text-xs mt-1 ms-1">{errors.email.message}</p>
+                      <p id="login-email-error" className="text-rose-500 text-xs mt-1 ms-1">{errors.email.message}</p>
                     )}
                   </div>
 
@@ -349,6 +351,8 @@ const Login = () => {
                         type={showPassword ? 'text' : 'password'}
                         placeholder={t('auth.passwordPlaceholder')}
                         autoComplete="current-password"
+                        aria-invalid={!!errors.password}
+                        aria-describedby={errors.password ? 'login-password-error' : undefined}
                         className={`login-input w-full h-[48px] ps-11 pe-11 rounded-xl border bg-slate-50/60 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none transition-all duration-200 ${
                           errors.password
                             ? 'border-rose-500'
@@ -365,7 +369,7 @@ const Login = () => {
                       </button>
                     </div>
                     {errors.password && (
-                      <p className="text-rose-500 text-xs mt-1 ms-1">{errors.password.message}</p>
+                      <p id="login-password-error" className="text-rose-500 text-xs mt-1 ms-1">{errors.password.message}</p>
                     )}
                   </div>
                 </>
@@ -504,8 +508,9 @@ const Login = () => {
                   {isRTL ? 'أدخل بريدك الإلكتروني' : 'Enter your registered email'}
                 </p>
                 <div className="space-y-2 text-start">
-                  <label className="text-xs font-bold text-gray-400 uppercase ms-1">Email</label>
+                  <label htmlFor="forgot-email" className="text-xs font-bold text-gray-400 uppercase ms-1">Email</label>
                   <Input
+                    id="forgot-email"
                     type="email"
                     required
                     placeholder="example@university.edu"

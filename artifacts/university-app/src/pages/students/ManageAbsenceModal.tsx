@@ -293,10 +293,15 @@ const ManageAbsenceModal: React.FC<ManageAbsenceModalProps> = ({
               <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 {t('students.currentThresholdLabel', 'Effective Threshold')}
               </div>
-              <div className="text-sm font-bold font-mono text-slate-900 dark:text-white mt-0.5">
-                {activeThreshold !== null
-                  ? `${activeThreshold}% (${t('students.customOverride', 'Custom Override')})`
-                  : t('students.defaultPolicyBadge', 'System Policy (25%)')}
+              <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                {activeThreshold !== null ? (
+                  <>
+                    <span className="font-mono tabular-nums">{activeThreshold}%</span>{' '}
+                    <span>({t('students.customOverride', 'Custom Override')})</span>
+                  </>
+                ) : (
+                  <span>{t('students.defaultPolicyBadge', 'System Policy (25%)')}</span>
+                )}
               </div>
             </div>
           </div>

@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
   BarChart3, CheckCircle2, Clock, XCircle, AlertCircle, BookOpen, 
-  Award, GraduationCap, FolderKanban, ShieldCheck, User, ArrowRight
+  Award, GraduationCap, FolderKanban, ShieldCheck, User, ArrowRight, ArrowLeft
 } from 'lucide-react';
 import studentsService from '../../services/students.service';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { useTheme } from '../../context/ThemeContext';
+import { getChartTheme } from '../../constants/chartPalette';
 
 interface StudentStatisticsPageProps {
   customStudentId?: string;
@@ -16,9 +18,12 @@ interface StudentStatisticsPageProps {
 }
 
 export default function StudentStatisticsPage({ customStudentId, isAdvisorView }: StudentStatisticsPageProps) {
+  const navigate = useNavigate();
   const { studentId: routeStudentId } = useParams<{ studentId?: string }>();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const { isDark } = useTheme();
+  const chartTheme = getChartTheme(isDark);
 
   const targetId = customStudentId || routeStudentId || 'me';
 
@@ -133,7 +138,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
       return {
         label: isRTL ? 'جيد جداً' : 'Very Good',
         badgeClass: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-sky-300',
-        stroke: '#2F6B87',
+        stroke: chartTheme.blue,
         textClass: 'text-sky-600 dark:text-sky-400',
       };
     }
@@ -141,7 +146,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
       return {
         label: isRTL ? 'جيد' : 'Good',
         badgeClass: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300',
-        stroke: '#132231',
+        stroke: chartTheme.navy,
         textClass: 'text-indigo-600 dark:text-indigo-400',
       };
     }
@@ -149,14 +154,14 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
       return {
         label: isRTL ? 'مقبول' : 'Fair / Pass',
         badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300',
-        stroke: '#D6BA34',
+        stroke: chartTheme.gold,
         textClass: 'text-amber-600 dark:text-amber-400',
       };
     }
     return {
       label: isRTL ? 'إنذار أكاديمي / تعثر' : 'Academic Warning / At Risk',
       badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300',
-      stroke: '#EF4444',
+      stroke: chartTheme.danger,
       textClass: 'text-rose-600 dark:text-rose-400',
     };
   };
@@ -187,7 +192,16 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
-      
+      {(isAdvisorView || routeStudentId) && (
+        <button
+          onClick={() => navigate(student?.id ? `/students/${student.id}` : '/students')}
+          className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-brand-primary-600 dark:hover:text-brand-primary-400 transition-colors font-bold text-sm"
+        >
+          <ArrowLeft size={18} className="rtl:-scale-x-100" />
+          <span>{isRTL ? 'العودة لملف الطالب' : 'Back to Student Profile'}</span>
+        </button>
+      )}
+
       {/* Page Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-brand-primary-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />

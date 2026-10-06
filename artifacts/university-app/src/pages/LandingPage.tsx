@@ -460,7 +460,7 @@ const LandingPage: React.FC = () => {
                   <div className="w-3.5 h-3.5 rounded-full bg-brand-green flex items-center justify-center">
                     <ShieldCheck size={11} className="text-white" />
                   </div>
-                  <span className="text-[10px] md:text-xs font-black tracking-tight font-mono">
+                  <span className="text-[10px] md:text-xs font-bold leading-none">
                     {t('landing.attendance.verifiedBadge')}
                   </span>
                 </div>

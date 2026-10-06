@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import degreeAuditService from '../../services/degreeAudit.service';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/card';
@@ -14,11 +14,13 @@ import {
   BookOpen,
   Calculator,
   Calendar,
+  ArrowLeft,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const DegreeAudit: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { studentId } = useParams<{ studentId: string }>();
   const [audit, setAudit] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -48,8 +50,25 @@ const DegreeAudit: React.FC = () => {
   if (error) return <ErrorState message={error} />;
   if (!audit) return <ErrorState message="No audit data found" />;
 
+  const handleBack = () => {
+    if (window.history.state && typeof window.history.state.idx === 'number' && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/record');
+    }
+  };
+
   return (
     <div className="space-y-6">
+      <button
+        data-testid="degree-audit-back"
+        onClick={handleBack}
+        className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-brand-primary-600 dark:hover:text-brand-primary-400 transition-colors font-bold text-sm mb-1"
+      >
+        <ArrowLeft size={18} className="rtl:-scale-x-100" />
+        <span>{t('common.back', 'Back')}</span>
+      </button>
+
       <PageHeader
         title={t('degreeAudit.title', 'Degree Audit')}
         subtitle={`${audit.programName} - ${t('degreeAudit.studentId', 'ID')}: ${audit.studentId}`}

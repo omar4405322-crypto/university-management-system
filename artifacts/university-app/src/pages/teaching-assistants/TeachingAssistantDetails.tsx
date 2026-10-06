@@ -30,6 +30,7 @@ import {
 import Card from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/badge';
+import Breadcrumbs from '../../components/ui/Breadcrumbs';
 import LoadingState from '../../components/ui/LoadingState';
 import api from '../../services/api';
 import EditTAModal from './EditTAModal';
@@ -37,6 +38,7 @@ import AssignTACourseModal from './AssignTACourseModal';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { useToast } from '../../context/ToastContext';
+import { useTabListKeyboard } from '../../hooks/useTabListKeyboard';
 import type { TeachingAssistantRow, CourseRow } from '../../types/domain';
 
 export default function TeachingAssistantDetails({ isDrawerMode = false }: { isDrawerMode?: boolean }) {
@@ -45,6 +47,7 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { showToast } = useToast();
+  const tabKeyboard = useTabListKeyboard({ isRTL });
 
   const [ta, setTa] = useState<TeachingAssistantRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -169,18 +172,26 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
   const taughtCourses = ta.taughtCourses || [];
   const scheduleSlots = ta.scheduleSlots || [];
 
+  const taDisplayName = ta ? `${ta.firstName} ${ta.lastName}` : (id || '');
+  const breadcrumbItems = [
+    { label: isRTL ? 'الهيئة المعاونة' : 'Teaching Assistants', link: '/teaching-assistants' },
+    { label: taDisplayName },
+  ];
+
   return (
     <div className={isDrawerMode ? 'p-2 space-y-6' : 'page-padding content-container section-gap space-y-6'}>
       {/* Top Header Navigation & Actions Bar */}
       {!isDrawerMode && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-          <button
-            onClick={() => navigate('/teaching-assistants')}
-            className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-bold text-sm"
-          >
-            <ArrowLeft size={18} className="rtl:-scale-x-100" />
-            <span>{isRTL ? 'العودة لقائمة المعيدين' : 'Back to Teaching Assistants'}</span>
-          </button>
+        <div className="space-y-3 pb-2">
+          <Breadcrumbs items={breadcrumbItems} />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <button
+              onClick={() => navigate('/teaching-assistants')}
+              className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-bold text-sm"
+            >
+              <ArrowLeft size={18} className="rtl:-scale-x-100" />
+              <span>{isRTL ? 'العودة لقائمة المعيدين' : 'Back to Teaching Assistants'}</span>
+            </button>
 
           <div className="flex flex-wrap items-center gap-2.5">
             <Button
@@ -223,7 +234,8 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
             </Button>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* Main Profile Header Banner */}
       <Card className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 md:p-8 shadow-sm relative overflow-hidden">
@@ -309,8 +321,18 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
       </Card>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+      <div
+        role="tablist"
+        aria-label={isRTL ? 'أقسام ملف المعيد' : 'Teaching Assistant Profile Sections'}
+        onKeyDown={tabKeyboard.handleKeyDown}
+        className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2 overflow-x-auto"
+      >
         <button
+          role="tab"
+          aria-selected={activeTab === 'overview'}
+          aria-controls="ta-tab-panel-overview"
+          id="ta-tab-overview"
+          tabIndex={activeTab === 'overview' ? 0 : -1}
           onClick={() => setActiveTab('overview')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs transition-all ${
             activeTab === 'overview'
@@ -323,6 +345,11 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
         </button>
 
         <button
+          role="tab"
+          aria-selected={activeTab === 'courses'}
+          aria-controls="ta-tab-panel-courses"
+          id="ta-tab-courses"
+          tabIndex={activeTab === 'courses' ? 0 : -1}
           onClick={() => setActiveTab('courses')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs transition-all ${
             activeTab === 'courses'
@@ -344,7 +371,12 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
 
       {/* TAB CONTENT: OVERVIEW */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div
+          role="tabpanel"
+          id="ta-tab-panel-overview"
+          aria-labelledby="ta-tab-overview"
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+        >
           {/* Main Info Cards */}
           <div className="lg:col-span-2 space-y-6">
             <Card className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
@@ -492,7 +524,12 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
 
       {/* TAB CONTENT: ASSIGNED COURSES */}
       {activeTab === 'courses' && (
-        <div className="space-y-6">
+        <div
+          role="tabpanel"
+          id="ta-tab-panel-courses"
+          aria-labelledby="ta-tab-courses"
+          className="space-y-6"
+        >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-black text-slate-900 dark:text-white">

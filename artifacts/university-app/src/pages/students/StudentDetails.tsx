@@ -36,6 +36,7 @@ import {
 import Card from '../../components/ui/card';
 import Badge from '../../components/ui/badge';
 import Button from '../../components/ui/button';
+import Breadcrumbs from '../../components/ui/Breadcrumbs';
 import LoadingState from '../../components/ui/LoadingState';
 import Modal from '../../components/ui/Modal';
 import EditStudentModal from './EditStudentModal';
@@ -43,6 +44,7 @@ import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
 import EnrollCourseModal from './EnrollCourseModal';
 import ManageAbsenceModal from './ManageAbsenceModal';
 import { useToast } from '../../context/ToastContext';
+import { useTabListKeyboard } from '../../hooks/useTabListKeyboard';
 import type { StudentProfile, EnrollmentRow, PaymentRow } from '../../types/domain';
 
 interface StudentDetailsProps {
@@ -57,6 +59,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { showToast } = useToast();
+  const tabKeyboard = useTabListKeyboard({ isRTL });
   const { user } = useAuth();
   const canViewStatistics = Boolean(
     user && ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role)
@@ -225,18 +228,26 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
     return group.name;
   };
 
+  const studentDisplayName = student ? `${student.firstName} ${student.lastName}` : (actualId || '');
+  const breadcrumbItems = [
+    { label: isRTL ? 'الطلاب' : 'Students', link: '/students' },
+    { label: studentDisplayName },
+  ];
+
   return (
     <div className={isDrawerMode ? 'p-2 space-y-6' : 'page-padding content-container section-gap space-y-6'}>
       {/* Top Header Navigation & Actions Bar */}
       {!isDrawerMode && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-          <button
-            onClick={() => navigate('/students')}
-            className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-brand-primary-600 dark:hover:text-brand-primary-400 transition-colors font-bold text-sm"
-          >
-            <ArrowLeft size={18} className="rtl:-scale-x-100" />
-            <span>{isRTL ? 'العودة إلى قائمة الطلاب' : 'Back to Students List'}</span>
-          </button>
+        <div className="space-y-3 pb-2">
+          <Breadcrumbs items={breadcrumbItems} />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <button
+              onClick={() => navigate('/students')}
+              className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-brand-primary-600 dark:hover:text-brand-primary-400 transition-colors font-bold text-sm"
+            >
+              <ArrowLeft size={18} className="rtl:-scale-x-100" />
+              <span>{isRTL ? 'العودة إلى قائمة الطلاب' : 'Back to Students List'}</span>
+            </button>
 
           <div className="flex flex-wrap items-center gap-2">
             {canViewStatistics && (
@@ -277,7 +288,8 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
             </Button>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* Hero Profile Banner Card */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-brand-primary-950 to-slate-900 p-6 md:p-8 text-white shadow-xl border border-slate-800">
@@ -446,8 +458,18 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
 
       {/* Navigation Tabs Bar */}
       <div className="border-b border-slate-200 dark:border-slate-700">
-        <div className="flex items-center gap-2">
+        <div
+          role="tablist"
+          aria-label={isRTL ? 'أقسام ملف الطالب' : 'Student Profile Sections'}
+          onKeyDown={tabKeyboard.handleKeyDown}
+          className="flex items-center gap-2 overflow-x-auto"
+        >
           <button
+            role="tab"
+            aria-selected={activeTab === 'overview'}
+            aria-controls="student-tab-panel-overview"
+            id="student-tab-overview"
+            tabIndex={activeTab === 'overview' ? 0 : -1}
             onClick={() => setActiveTab('overview')}
             className={`flex items-center gap-2 px-5 py-3 font-bold text-sm border-b-2 transition-all ${
               activeTab === 'overview'
@@ -460,6 +482,11 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
           </button>
 
           <button
+            role="tab"
+            aria-selected={activeTab === 'courses'}
+            aria-controls="student-tab-panel-courses"
+            id="student-tab-courses"
+            tabIndex={activeTab === 'courses' ? 0 : -1}
             onClick={() => setActiveTab('courses')}
             className={`flex items-center gap-2 px-5 py-3 font-bold text-sm border-b-2 transition-all ${
               activeTab === 'courses'
@@ -475,6 +502,11 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
           </button>
 
           <button
+            role="tab"
+            aria-selected={activeTab === 'payments'}
+            aria-controls="student-tab-panel-payments"
+            id="student-tab-payments"
+            tabIndex={activeTab === 'payments' ? 0 : -1}
             onClick={() => setActiveTab('payments')}
             className={`flex items-center gap-2 px-5 py-3 font-bold text-sm border-b-2 transition-all ${
               activeTab === 'payments'
@@ -495,7 +527,12 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
 
       {/* Tab 1: Personal & Academic Overview */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div
+          role="tabpanel"
+          id="student-tab-panel-overview"
+          aria-labelledby="student-tab-overview"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+        >
           {/* Card A: Personal & Contact Info */}
           <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 space-y-6">
             <div className="flex items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
@@ -622,7 +659,12 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
 
       {/* Tab 2: Enrolled Courses */}
       {activeTab === 'courses' && (
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+        <div
+          role="tabpanel"
+          id="student-tab-panel-courses"
+          aria-labelledby="student-tab-courses"
+        >
+          <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-700 mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
@@ -743,11 +785,17 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
             </div>
           )}
         </Card>
+        </div>
       )}
 
       {/* Tab 3: Payments & Fees */}
       {activeTab === 'payments' && (
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+        <div
+          role="tabpanel"
+          id="student-tab-panel-payments"
+          aria-labelledby="student-tab-payments"
+        >
+          <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
           <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-700 mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl">
@@ -811,6 +859,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
             </div>
           )}
         </Card>
+        </div>
       )}
 
       {/* Modals */}

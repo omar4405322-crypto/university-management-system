@@ -67,44 +67,56 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({ isOpen, onClose
 
         <div className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <GraduationCap size={14} className="text-brand-text-muted" /> اسم القسم (عربي) <span className="text-rose-500">*</span>
+            <label htmlFor="add-dept-name-ar" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <GraduationCap size={14} className="text-brand-text-muted" /> {t('departments.nameAr', 'اسم القسم (عربي)')} <span className="text-rose-500">*</span>
             </label>
             <Input
+              id="add-dept-name-ar"
+              aria-required="true"
+              aria-invalid={!!errors.nameAr}
+              aria-describedby={errors.nameAr ? "add-dept-name-ar-error" : undefined}
               {...register('nameAr')}
-              placeholder="أدخل اسم القسم بالعربية"
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic"
+              placeholder={t('departments.nameArPlaceholder', 'أدخل اسم القسم بالعربية')}
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-arabic text-start"
               dir="rtl"
             />
-            {errors.nameAr && <p className="text-rose-500 text-xs mt-1">{errors.nameAr.message}</p>}
+            {errors.nameAr && <p id="add-dept-name-ar-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.nameAr.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <GraduationCap size={14} className="text-brand-text-muted" /> Department Name (English) <span className="text-rose-500">*</span>
+            <label htmlFor="add-dept-name-en" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <GraduationCap size={14} className="text-brand-text-muted" /> {t('departments.nameEn', 'Department Name (English)')} <span className="text-rose-500">*</span>
             </label>
             <Input
+              id="add-dept-name-en"
+              aria-required="true"
+              aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? "add-dept-name-en-error" : undefined}
               {...register('name')}
-              placeholder="Enter department name in English"
-              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
+              placeholder={t('departments.nameEnPlaceholder', 'Enter department name in English')}
+              className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all text-start"
             />
-            {errors.name && <p className="text-rose-500 text-xs mt-1">{errors.name.message}</p>}
+            {errors.name && <p id="add-dept-name-en-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
-              <School size={14} className="text-brand-text-muted" /> الكلية التابعة <span className="text-rose-500">*</span>
+            <label htmlFor="add-dept-college" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <School size={14} className="text-brand-text-muted" /> {t('departments.college', 'الكلية التابعة')} <span className="text-rose-500">*</span>
             </label>
             <select
+              id="add-dept-college"
+              aria-required="true"
+              aria-invalid={!!errors.collegeId}
+              aria-describedby={errors.collegeId ? "add-dept-college-error" : undefined}
               {...register('collegeId')}
               className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer select-custom-arrow"
             >
-              <option value="">اختر الكلية...</option>
+              <option value="">{t('departments.selectCollege', 'اختر الكلية...')}</option>
               {colleges.map((college: any) => (
                 <option key={college.id} value={college.id}>{college.name}</option>
               ))}
             </select>
-            {errors.collegeId && <p className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>}
+            {errors.collegeId && <p id="add-dept-college-error" className="text-rose-500 text-xs mt-1" role="alert">{errors.collegeId.message}</p>}
           </div>
         </div>
 
@@ -116,14 +128,14 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({ isOpen, onClose
             disabled={loading}
             className="bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 font-bold px-6 min-h-10 rounded-xl"
           >
-            إلغاء
+            {t('common.cancel', 'إلغاء')}
           </Button>
           <Button
             type="submit"
             disabled={isSubmitting || loading}
             className="min-w-[140px] bg-brand-primary-600 hover:bg-brand-primary-700 text-white font-bold rounded-xl border-none shadow-sm shadow-brand-primary-600/20 px-6 min-h-10 transition-all duration-200"
           >
-            {loading ? <Loader2 className="animate-spin" size={20} /> : 'إضافة'}
+            {loading ? <Loader2 className="animate-spin" size={20} /> : t('common.add', 'إضافة')}
           </Button>
         </div>
       </form>

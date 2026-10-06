@@ -144,9 +144,9 @@ const CreateExam = () => {
       <div className="flex items-center justify-between gap-4 mb-6">
         <button
           onClick={() => navigate('/exams')}
-          className="flex items-center gap-2 text-brand-text-muted hover:text-brand-text-main font-bold text-xs uppercase tracking-widest transition-colors"
+          className="flex items-center gap-2 text-brand-text-muted hover:text-brand-text-main font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={16} className="rtl:rotate-180" />
           {t('common.backToExams', 'Back to Exams')}
         </button>
 
@@ -161,7 +161,7 @@ const CreateExam = () => {
       )}
 
       {error && (
-        <div className="p-4 rounded-2xl bg-rose-500 text-white flex items-center gap-3">
+        <div role="alert" className="p-4 rounded-2xl bg-rose-500 text-white flex items-center gap-3">
           <AlertCircle size={24} />
           <p className="font-bold">{error}</p>
         </div>
@@ -173,11 +173,15 @@ const CreateExam = () => {
             <h3 className="text-lg font-black text-brand-text-main mb-2">{t('exams.basicInfo', 'Basic Information')}</h3>
             <div className="space-y-6 pt-2">
               <div className="space-y-2">
-                <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
+                <label htmlFor="exam-course" className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
                   {t('exams.selectCourse', 'Course')} *
                 </label>
                 <select
+                  id="exam-course"
                   disabled={coursesLoading}
+                  aria-required="true"
+                  aria-invalid={!!errors.courseId}
+                  aria-describedby={errors.courseId ? 'exam-course-err' : undefined}
                   className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer disabled:opacity-50"
                   {...register('courseId')}
                 >
@@ -186,14 +190,15 @@ const CreateExam = () => {
                     <option key={c.id} value={c.id}>{c.courseCode} - {c.name}</option>
                   ))}
                 </select>
-                {errors.courseId && <p className="text-rose-500 text-xs mt-1">{errors.courseId.message}</p>}
+                {errors.courseId && <p id="exam-course-err" className="text-rose-500 text-xs mt-1">{errors.courseId.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
+                <label htmlFor="exam-title" className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
                   {t('exams.customTypeLabel', 'Custom Exam Type')}
                 </label>
                 <input
+                  id="exam-title"
                   type="text"
                   placeholder={t('exams.customTypePlaceholder', 'e.g. Practical Lab Exam')}
                   className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all placeholder:font-medium placeholder:text-slate-400"
@@ -202,10 +207,14 @@ const CreateExam = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
+                <label htmlFor="exam-type" className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
                   {t('exams.examTypeCategory', 'Exam Category')} *
                 </label>
                 <select
+                  id="exam-type"
+                  aria-required="true"
+                  aria-invalid={!!errors.type}
+                  aria-describedby={errors.type ? 'exam-type-err' : undefined}
                   className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer"
                   {...register('type')}
                 >
@@ -213,7 +222,7 @@ const CreateExam = () => {
                   <option value="FINAL">{t('exams.typeFinal', 'Final')}</option>
                   <option value="QUIZ">{t('exams.typeQuiz', 'Quiz')}</option>
                 </select>
-                {errors.type && <p className="text-rose-500 text-xs mt-1">{errors.type.message}</p>}
+                {errors.type && <p id="exam-type-err" className="text-rose-500 text-xs mt-1">{errors.type.message}</p>}
               </div>
             </div>
           </Card>
@@ -224,67 +233,84 @@ const CreateExam = () => {
             <h3 className="text-lg font-black text-brand-text-main mb-2">{t('exams.timingLocation', 'Timing & Location')}</h3>
             <div className="space-y-6 pt-2">
               <div className="space-y-2">
-                <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
+                <label htmlFor="exam-date" className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
                   {t('exams.examDate', 'Date')} *
                 </label>
                 <input
+                  id="exam-date"
                   type="date"
+                  aria-required="true"
+                  aria-invalid={!!errors.date}
+                  aria-describedby={errors.date ? 'exam-date-err' : undefined}
                   className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20"
                   {...register('date')}
                 />
-                {errors.date && <p className="text-rose-500 text-xs mt-1">{errors.date.message}</p>}
+                {errors.date && <p id="exam-date-err" className="text-rose-500 text-xs mt-1">{errors.date.message}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
+                  <label htmlFor="exam-start-time" className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
                     {t('exams.startTime', 'Start Time')} *
                   </label>
                   <input
+                    id="exam-start-time"
                     type="time"
+                    aria-required="true"
+                    aria-invalid={!!errors.startTime}
+                    aria-describedby={errors.startTime ? 'exam-start-time-err' : undefined}
                     className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20"
                     {...register('startTime')}
                   />
-                  {errors.startTime && <p className="text-rose-500 text-xs mt-1">{errors.startTime.message}</p>}
+                  {errors.startTime && <p id="exam-start-time-err" className="text-rose-500 text-xs mt-1">{errors.startTime.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
+                  <label htmlFor="exam-end-time" className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
                     {t('exams.endTime', 'End Time')} *
                   </label>
                   <input
+                    id="exam-end-time"
                     type="time"
+                    aria-required="true"
+                    aria-invalid={!!errors.endTime}
+                    aria-describedby={errors.endTime ? 'exam-end-time-err' : undefined}
                     className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20"
                     {...register('endTime')}
                   />
-                  {errors.endTime && <p className="text-rose-500 text-xs mt-1">{errors.endTime.message}</p>}
+                  {errors.endTime && <p id="exam-end-time-err" className="text-rose-500 text-xs mt-1">{errors.endTime.message}</p>}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
+                <label htmlFor="exam-duration" className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
                   {t('exams.durationMinutes', 'Duration (minutes)')} *
                 </label>
                 <input
+                  id="exam-duration"
                   type="number"
                   min={1}
+                  aria-required="true"
+                  aria-invalid={!!errors.durationMinutes}
+                  aria-describedby={errors.durationMinutes ? 'exam-duration-err' : undefined}
                   className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20"
                   {...register('durationMinutes')}
                 />
                 {errors.durationMinutes && (
-                  <p className="text-rose-500 text-xs mt-1">{errors.durationMinutes.message}</p>
+                  <p id="exam-duration-err" className="text-rose-500 text-xs mt-1">{errors.durationMinutes.message}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
+                <label htmlFor="exam-room" className="text-sm font-black text-brand-text-main uppercase tracking-widest ml-1">
                   {t('exams.room', 'Location / Room')}
                 </label>
                 <input
+                  id="exam-room"
                   placeholder={t('exams.roomPlaceholder', 'e.g. Hall 4, Room 302')}
                   className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20"
                   {...register('room')}
                 />
-                {errors.room && <p className="text-rose-500 text-xs mt-1">{errors.room.message}</p>}
+                {errors.room && <p id="exam-room-err" className="text-rose-500 text-xs mt-1">{errors.room.message}</p>}
               </div>
             </div>
           </Card>

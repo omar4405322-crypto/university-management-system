@@ -4,7 +4,8 @@ import teachingAssistantsService from '../../services/teachingAssistants.service
 import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
-import { X, User, Phone, Briefcase } from 'lucide-react';
+import { User, Phone, Briefcase, Loader2 } from 'lucide-react';
+import Modal from '../../components/ui/Modal';
 
 import type { TeachingAssistantRow } from '../../types/domain';
 
@@ -23,6 +24,7 @@ const EditTAModal: React.FC<EditTAModalProps> = ({ isOpen, onClose, onSuccess, t
     phone: '',
     specialization: '',
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -33,17 +35,41 @@ const EditTAModal: React.FC<EditTAModalProps> = ({ isOpen, onClose, onSuccess, t
         phone: ta.phone || '',
         specialization: ta.specialization || '',
       });
+      setFieldErrors({});
     }
   }, [ta]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
+
+  const fieldProps = (name: string) => ({
+    'aria-invalid': !!fieldErrors[name],
+    'aria-describedby': fieldErrors[name] ? `edit-ta-${name}-err` : undefined,
+  });
+
+  const fieldError = (name: string) =>
+    fieldErrors[name] ? (
+      <p id={`edit-ta-${name}-err`} role="alert" className="text-rose-500 text-xs mt-1">
+        {fieldErrors[name]}
+      </p>
+    ) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.firstName || !formData.lastName) {
-      toast.error(t('teachingAssistants.fillRequired'));
+    if (loading) return;
+
+    const required = t('teachingAssistants.fillRequired');
+    const errs: Record<string, string> = {};
+    if (!formData.firstName.trim()) errs.firstName = required;
+    if (!formData.lastName.trim()) errs.lastName = required;
+    setFieldErrors(errs);
+    const firstInvalid = Object.keys(errs)[0];
+    if (firstInvalid) {
+      const ids: Record<string, string> = { firstName: 'edit-ta-first-name', lastName: 'edit-ta-last-name' };
+      document.getElementById(ids[firstInvalid])?.focus();
       return;
     }
 
@@ -62,104 +88,91 @@ const EditTAModal: React.FC<EditTAModalProps> = ({ isOpen, onClose, onSuccess, t
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-brand-navy-500/40 backdrop-blur-sm"
-        onClick={onClose}
-      ></div>
-
-      {/* Modal Content */}
-      <div className="relative bg-brand-bg-card dark:bg-brand-bg-elevated rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b border-brand-border dark:border-brand-border flex justify-between items-center bg-brand-bg-page/50 dark:bg-brand-bg-elevated/50">
-          <div>
-            <h2 className="text-xl font-bold text-brand-text-primary dark:text-brand-text-main">
-              {t('teachingAssistants.editTitle')}: {ta?.employeeId}
-            </h2>
-            <p className="text-sm text-brand-text-secondary dark:text-brand-text-muted mt-0.5">
-              {t('teachingAssistants.editDesc')}
-            </p>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`${t('teachingAssistants.editTitle')}: ${ta?.employeeId ?? ''}`}
+      subtitle={t('teachingAssistants.editDesc')}
+    >
+      <form onSubmit={handleSubmit} noValidate className="form-section">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="space-y-1.5">
+            <label htmlFor="edit-ta-first-name" className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
+              <User size={14} className="text-brand-text-muted" aria-hidden="true" /> {t('students.firstName')}{' '}
+              <span className="text-error" aria-hidden="true">*</span>
+            </label>
+            <Input
+              id="edit-ta-first-name"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              autoComplete="given-name"
+              placeholder={t('students.firstNamePlaceholder')}
+              required
+              aria-required="true"
+              {...fieldProps('firstName')}
+            />
+            {fieldError('firstName')}
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-brand-text-muted hover:text-brand-text-secondary dark:hover:text-brand-text-secondary hover:bg-brand-bg-page dark:hover:bg-brand-bg-elevated rounded-xl transition-colors"
-          >
-            <X size={20} />
-          </button>
+          <div className="space-y-1.5">
+            <label htmlFor="edit-ta-last-name" className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
+              <User size={14} className="text-brand-text-muted" aria-hidden="true" /> {t('students.lastName')}{' '}
+              <span className="text-error" aria-hidden="true">*</span>
+            </label>
+            <Input
+              id="edit-ta-last-name"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              autoComplete="family-name"
+              placeholder={t('students.lastNamePlaceholder')}
+              required
+              aria-required="true"
+              {...fieldProps('lastName')}
+            />
+            {fieldError('lastName')}
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="edit-ta-specialization" className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
+              <Briefcase size={14} className="text-brand-text-muted" aria-hidden="true" /> {t('teachingAssistants.specialization')}
+            </label>
+            <Input
+              id="edit-ta-specialization"
+              name="specialization"
+              value={formData.specialization}
+              onChange={handleChange}
+              placeholder={t('teachingAssistants.specializationPlaceholder')}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="edit-ta-phone" className="text-sm font-semibold text-brand-text-primary flex items-center gap-2 ml-1">
+              <Phone size={14} className="text-brand-text-muted" aria-hidden="true" /> {t('profile.phone')}
+            </label>
+            <Input
+              id="edit-ta-phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              dir="ltr"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder={t('students.phonePlaceholder')}
+            />
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
-                <User size={14} className="text-brand-text-muted dark:text-brand-text-secondary" />{' '}
-                {t('students.firstName')} <span className="text-error">*</span>
-              </label>
-              <Input
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                placeholder={t('students.firstNamePlaceholder')}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
-                <User size={14} className="text-brand-text-muted dark:text-brand-text-secondary" />{' '}
-                {t('students.lastName')} <span className="text-error">*</span>
-              </label>
-              <Input
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                placeholder={t('students.lastNamePlaceholder')}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
-                <Briefcase
-                  size={14}
-                  className="text-brand-text-muted dark:text-brand-text-secondary"
-                />{' '}
-                {t('teachingAssistants.specialization')}
-              </label>
-              <Input
-                name="specialization"
-                value={formData.specialization}
-                onChange={handleChange}
-                placeholder={t('teachingAssistants.specializationPlaceholder')}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ml-1">
-                <Phone size={14} className="text-brand-text-muted dark:text-brand-text-secondary" />{' '}
-                {t('profile.phone')}
-              </label>
-              <Input
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder={t('students.phonePlaceholder')}
-              />
-            </div>
-          </div>
-
-          <div className="mt-8 flex justify-end gap-3 border-t border-brand-border dark:border-brand-border pt-6">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={loading} className="min-w-[120px]">
-              {loading ? <span className="animate-spin mr-2">...</span> : t('common.saveChanges')}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="mt-8 flex justify-end gap-3 border-t border-brand-border pt-6">
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" disabled={loading} aria-busy={loading} className="min-w-[120px]">
+            {loading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : t('common.saveChanges')}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 };
 

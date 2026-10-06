@@ -188,7 +188,7 @@ export default function AssignDoctorModal({
             <div className="relative">
               <Search
                 size={16}
-                className={`absolute top-3.5 ${isRTL ? 'right-3.5' : 'left-3.5'} text-slate-400`}
+                className="absolute top-3.5 start-3.5 text-slate-400"
               />
               <input
                 type="text"
@@ -199,9 +199,7 @@ export default function AssignDoctorModal({
                     ? 'ابحث بالاسم، الرقم الوظيفي، التخصص، أو القسم...'
                     : 'Search by name, ID, specialty, or department...'
                 }
-                className={`w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 ${
-                  isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'
-                } text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-brand-primary-500 focus:border-brand-primary-500 transition-all`}
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 ps-10 pe-4 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-brand-primary-500 focus:border-brand-primary-500 transition-all"
               />
             </div>
           </div>
