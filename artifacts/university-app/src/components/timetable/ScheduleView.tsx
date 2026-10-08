@@ -644,8 +644,8 @@ export function ScheduleView({
             })}
           </div>
 
-          {/* Grid Container (Desktop & Tablet) */}
-          <div className="hidden md:block">
+          {/* Grid Container (Accessible Matrix with overflow-x-auto) */}
+          <div className="block">
             <Card className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0">
               {/* Tablet specific headers with arrows */}
               <div className="flex items-center justify-between p-4 lg:hidden border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
@@ -675,9 +675,12 @@ export function ScheduleView({
               <div className="overflow-x-auto custom-scrollbar">
                 <div className="min-w-full">
                   <table className="w-full border-collapse table-fixed">
+                    <caption className="sr-only">
+                      {t('tables.caption.scheduleView', 'Personal weekly class and lecture schedule view')}
+                    </caption>
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
-                        <th className="p-3.5 w-24 text-center text-xs font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+                        <th scope="col" className="p-3.5 w-24 text-center text-xs font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
                           <Clock size={13} className="inline me-1" />
                           {t('common.time', 'Time')}
                         </th>
@@ -686,6 +689,7 @@ export function ScheduleView({
                           return (
                             <th
                               key={day}
+                              scope="col"
                               className={`p-3.5 text-xs font-extrabold uppercase tracking-wider text-center ${
                                 visibleDays.includes(day) ? 'table-cell lg:table-cell' : 'hidden lg:table-cell'
                               } ${
@@ -714,9 +718,9 @@ export function ScheduleView({
                             key={time}
                             className="group hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition-colors"
                           >
-                            <td className="p-3 text-[11px] font-black text-slate-500 dark:text-slate-400 text-center bg-slate-50/50 dark:bg-slate-900/30 whitespace-nowrap border-e border-slate-200/60 dark:border-slate-700/60">
+                            <th scope="row" className="p-3 text-[11px] font-black text-slate-500 dark:text-slate-400 text-center bg-slate-50/50 dark:bg-slate-900/30 whitespace-nowrap border-e border-slate-200/60 dark:border-slate-700/60">
                               {formatTime(time)}
-                            </td>
+                            </th>
                             {days.map((day) => {
                               const entries = getEntriesForTimeSlot(day, time);
                               const isToday = day.toLowerCase() === todayDayName.toLowerCase();

@@ -39,6 +39,7 @@ import Table, {
   TableRow,
   TableHead,
   TableCell,
+  TableCaption,
 } from '../../components/ui/table';
 import { ElapsedSessionTimer } from '../../components/attendance/ElapsedSessionTimer';
 import { useAuth } from '../../context/AuthContext';
@@ -1014,7 +1015,7 @@ export function FacultyAttendanceDashboard() {
               }`}
             >
               <QrCode size={14} />
-              <span>QR Code</span>
+              <span>{t('attendance.qrCode', 'QR Code')}</span>
             </button>
             <button
               onClick={() => setActiveTab('GPS')}
@@ -1279,16 +1280,19 @@ export function FacultyAttendanceDashboard() {
             <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs">
               <div className="overflow-x-auto">
                 <Table className="w-full text-xs">
+                  <TableCaption className="sr-only">
+                    {t('tables.caption.facultyAttendance', 'Faculty attendance courses and sections directory')}
+                  </TableCaption>
                   <TableHeader className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
                     <TableRow>
-                      <TableHead className="w-24 p-2.5 font-bold text-slate-500">كود</TableHead>
-                      <TableHead className="p-2.5 font-bold text-slate-500">اسم المقرر</TableHead>
-                      <TableHead className="p-2.5 font-bold text-slate-500 text-center">الفرقة</TableHead>
-                      <TableHead className="p-2.5 font-bold text-slate-500">القسم / الكلية</TableHead>
-                      <TableHead className="p-2.5 font-bold text-slate-500">السكاشن</TableHead>
-                      <TableHead className="p-2.5 font-bold text-slate-500 text-center">الطلاب</TableHead>
-                      <TableHead className="p-2.5 font-bold text-slate-500 text-center">السماح</TableHead>
-                      <TableHead className="p-2.5 font-bold text-slate-500 text-end pe-4">الإجراء</TableHead>
+                      <TableHead className="w-24 p-2.5 font-bold text-slate-500">{t('facultyAttendance.thCode', 'كود')}</TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500">{t('facultyAttendance.thCourseName', 'اسم المقرر')}</TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500 text-center">{t('facultyAttendance.thYear', 'الفرقة')}</TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500">{t('facultyAttendance.thDeptCollege', 'القسم / الكلية')}</TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500">{t('facultyAttendance.thSections', 'السكاشن')}</TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500 text-center">{t('facultyAttendance.thStudents', 'الطلاب')}</TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500 text-center">{t('facultyAttendance.thGracePeriod', 'السماح')}</TableHead>
+                      <TableHead className="p-2.5 font-bold text-slate-500 text-end pe-4">{t('facultyAttendance.thAction', 'الإجراء')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

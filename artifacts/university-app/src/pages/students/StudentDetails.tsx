@@ -827,12 +827,15 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-start text-sm">
+                <caption className="sr-only">
+                  {t('tables.caption.studentTuition', 'Student tuition payment history')}
+                </caption>
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    <th className="p-3 text-start">{isRTL ? 'المبلغ' : 'Amount'}</th>
-                    <th className="p-3 text-start">{isRTL ? 'طريقة الدفع' : 'Payment Method'}</th>
-                    <th className="p-3 text-center">{isRTL ? 'الحالة' : 'Status'}</th>
-                    <th className="p-3 text-end">{isRTL ? 'التاريخ' : 'Date'}</th>
+                    <th scope="col" className="p-3 text-start">{t('finance.amount', 'Amount')}</th>
+                    <th scope="col" className="p-3 text-start">{t('finance.paymentMethod', 'Payment Method')}</th>
+                    <th scope="col" className="p-3 text-center">{t('common.status', 'Status')}</th>
+                    <th scope="col" className="p-3 text-end">{t('common.date', 'Date')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -925,13 +928,12 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
             <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 rounded-2xl flex items-start gap-3 text-start">
               <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
               <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
-                {t(
-                  'students.withdrawConfirmDesc',
-                  isRTL
+                {t('students.withdrawConfirmDesc', {
+                  courseName: withdrawingEnrollment.course?.name || '',
+                  defaultValue: isRTL
                     ? `هل أنت متأكد من إلغاء تسجيل الطالب في مقرر "${withdrawingEnrollment.course?.name || ''}"؟ سيتم تحويل حالة التسجيل إلى (منسحب).`
-                    : `Are you sure you want to withdraw the student from "${withdrawingEnrollment.course?.name || ''}"? The enrollment status will be marked as Withdrawn.`,
-                  { courseName: withdrawingEnrollment.course?.name || '' }
-                )}
+                    : `Are you sure you want to withdraw the student from "${withdrawingEnrollment.course?.name || ''}"? The enrollment status will be marked as Withdrawn.`
+                })}
               </p>
             </div>
 

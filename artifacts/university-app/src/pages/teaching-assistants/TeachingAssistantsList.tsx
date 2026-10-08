@@ -14,6 +14,7 @@ import Table, {
   TableHead,
   TableBody,
   ActionMenu,
+  TableCaption,
 } from "../../components/ui/table";
 import Pagination from "../../components/ui/pagination";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
@@ -477,6 +478,9 @@ const TeachingAssistantsList = () => {
           <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0">
             <div className="overflow-x-auto">
               <Table className="w-full">
+                <TableCaption className="sr-only">
+                  {t("tables.caption.teachingAssistantsList", "Teaching assistants roster")}
+                </TableCaption>
                 <TableHeader className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
                   <TableRow>
                     <TableHead className="w-12 text-center p-4">
@@ -642,6 +646,7 @@ const TeachingAssistantsList = () => {
                                 label: isRTL
                                   ? "عرض الملف والتفاصيل"
                                   : "View Profile",
+                                ariaLabel: t("teachingAssistants.viewProfileName", { name: `${ta.firstName} ${ta.lastName}`, defaultValue: `View profile for ${ta.firstName} ${ta.lastName}` }),
                                 icon: Eye,
                                 variant: "view",
                                 onClick: () =>
@@ -651,6 +656,7 @@ const TeachingAssistantsList = () => {
                                 label: isRTL
                                   ? "إسناد مقرر / معمل"
                                   : "Assign Course / Lab",
+                                ariaLabel: t("teachingAssistants.assignCourseName", { name: `${ta.firstName} ${ta.lastName}`, defaultValue: `Assign course for ${ta.firstName} ${ta.lastName}` }),
                                 icon: BookOpen,
                                 variant: "view",
                                 onClick: () => {
@@ -660,6 +666,7 @@ const TeachingAssistantsList = () => {
                               },
                               {
                                 label: isRTL ? "عرض الجدول" : "View Schedule",
+                                ariaLabel: t("teachingAssistants.viewScheduleName", { name: `${ta.firstName} ${ta.lastName}`, defaultValue: `View schedule for ${ta.firstName} ${ta.lastName}` }),
                                 icon: Calendar,
                                 variant: "view",
                                 onClick: () =>
@@ -667,12 +674,14 @@ const TeachingAssistantsList = () => {
                               },
                               {
                                 label: t("teachingAssistants.assignDoctor"),
+                                ariaLabel: t("teachingAssistants.assignDoctorName", { name: `${ta.firstName} ${ta.lastName}`, defaultValue: `Assign doctor to ${ta.firstName} ${ta.lastName}` }),
                                 icon: Link,
                                 variant: "view",
                                 onClick: () => handleAssign(ta),
                               },
                               {
                                 label: t("common.edit"),
+                                ariaLabel: t("teachingAssistants.editTaName", { name: `${ta.firstName} ${ta.lastName}` }),
                                 icon: Edit2,
                                 variant: "edit",
                                 onClick: () => handleEdit(ta),
@@ -681,6 +690,7 @@ const TeachingAssistantsList = () => {
                                 label: isRTL
                                   ? "إعادة تعيين كلمة المرور"
                                   : "Reset Password",
+                                ariaLabel: t("teachingAssistants.resetPasswordName", { name: `${ta.firstName} ${ta.lastName}`, defaultValue: `Reset password for ${ta.firstName} ${ta.lastName}` }),
                                 icon: KeyRound,
                                 variant: "edit",
                                 onClick: () => setResetPasswordTA(ta),
@@ -689,6 +699,7 @@ const TeachingAssistantsList = () => {
                                 ? [
                                     {
                                       label: t("common.delete"),
+                                      ariaLabel: t("teachingAssistants.deleteTaName", { name: `${ta.firstName} ${ta.lastName}` }),
                                       icon: Trash2,
                                       variant: "delete",
                                       onClick: () =>

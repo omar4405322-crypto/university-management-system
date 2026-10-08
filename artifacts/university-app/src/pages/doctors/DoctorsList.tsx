@@ -14,6 +14,7 @@ import Table, {
   TableHead,
   TableBody,
   ActionMenu,
+  TableCaption,
 } from "../../components/ui/table";
 import Badge from "../../components/ui/badge";
 import FilterBar from "../../components/ui/FilterBar";
@@ -588,6 +589,9 @@ const DoctorsList = () => {
           <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0">
             <div className="overflow-x-auto">
               <Table className="w-full">
+                <TableCaption className="sr-only">
+                  {t("tables.caption.doctorsList", "Faculty doctors roster")}
+                </TableCaption>
                 <TableHeader className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
                   <TableRow>
                     <TableHead className="w-12 text-center p-4">
@@ -725,6 +729,7 @@ const DoctorsList = () => {
                             actions={[
                               {
                                 label: t("common.view", "View"),
+                                ariaLabel: t("doctors.viewDoctorName", { name: `${doctor.firstName} ${doctor.lastName}`, defaultValue: `View doctor ${doctor.firstName} ${doctor.lastName}` }),
                                 icon: Eye,
                                 variant: "view",
                                 onClick: () =>
@@ -732,6 +737,7 @@ const DoctorsList = () => {
                               },
                               {
                                 label: isRTL ? "عرض الجدول" : "View Schedule",
+                                ariaLabel: t("doctors.viewScheduleDoctorName", { name: `${doctor.firstName} ${doctor.lastName}`, defaultValue: `View schedule for ${doctor.firstName} ${doctor.lastName}` }),
                                 icon: Calendar,
                                 variant: "view",
                                 onClick: () =>
@@ -741,6 +747,7 @@ const DoctorsList = () => {
                               },
                               {
                                 label: t("common.edit"),
+                                ariaLabel: t("doctors.editDoctorName", { name: `${doctor.firstName} ${doctor.lastName}` }),
                                 icon: Edit2,
                                 variant: "edit",
                                 onClick: () => handleEdit(doctor),
@@ -749,6 +756,7 @@ const DoctorsList = () => {
                                 label: isRTL
                                   ? "إعادة تعيين كلمة المرور"
                                   : "Reset Password",
+                                ariaLabel: t("doctors.resetPasswordDoctorName", { name: `${doctor.firstName} ${doctor.lastName}`, defaultValue: `Reset password for ${doctor.firstName} ${doctor.lastName}` }),
                                 icon: KeyRound,
                                 variant: "edit",
                                 onClick: () => setResetPasswordDoctor(doctor),
@@ -757,6 +765,7 @@ const DoctorsList = () => {
                                 ? [
                                     {
                                       label: t("common.delete"),
+                                      ariaLabel: t("doctors.deleteDoctorName", { name: `${doctor.firstName} ${doctor.lastName}` }),
                                       icon: Trash2,
                                       variant: "delete",
                                       onClick: () =>

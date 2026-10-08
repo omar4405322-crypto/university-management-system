@@ -9,6 +9,7 @@ import collegeService from "../../../services/college.service";
 import departmentService from "../../../services/department.service";
 import Card, { StatCard } from "../../../components/ui/card";
 import Badge from "../../../components/ui/badge";
+import Pagination from "../../../components/ui/pagination";
 import BulkActionToolbar from "../../../components/ui/BulkActionToolbar";
 import { useToast } from "../../../context/ToastContext";
 import { useLanguage } from "../../../context/LanguageContext";
@@ -61,6 +62,10 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [submissionFilter, setSubmissionFilter] = useState("ALL");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
 
   // Multi-Selection State for Admins
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
@@ -149,6 +154,14 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
     submissionFilter,
     sortOrder,
   ]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedCollege, selectedDept, selectedYear, typeFilter, submissionFilter, sortOrder]);
+
+  const paginatedCompletedExams = useMemo(() => {
+    return filteredCompletedExams.slice((page - 1) * pageSize, page * pageSize);
+  }, [filteredCompletedExams, page, pageSize]);
 
   // Multi-Selection Logic
   const allFilteredIds = useMemo(
@@ -441,7 +454,7 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
         /* MODE A: RESPONSIVE CARDS GRID */
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {filteredCompletedExams.map((exam) => {
+            {paginatedCompletedExams.map((exam) => {
               const isSelected = selectedIds.has(exam.id);
 
               return (
@@ -461,6 +474,7 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
                           type="button"
                           onClick={() => handleToggleSelect(exam.id)}
                           className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
+                          aria-label={isSelected ? t("common.deselect", "Deselect") : `${t("common.select", "Select")} ${exam.courseName}`}
                         >
                           {isSelected ? (
                             <CheckSquare
@@ -551,6 +565,7 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
                       type="button"
                       onClick={() => navigate(`/exams/${exam.id}`)}
                       className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-brand-primary-50 dark:bg-brand-primary-950/40 hover:bg-brand-primary-100 dark:hover:bg-brand-primary-900/40 text-brand-primary-700 dark:text-brand-primary-300 text-xs font-bold transition-colors"
+                      aria-label={t("transcript.viewExamSubmissionsFor", { course: exam.courseName, defaultValue: `View submissions for ${exam.courseName}` })}
                     >
                       <Eye size={13} />
                       <span>
@@ -565,19 +580,43 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
               );
             })}
           </div>
+
+          {/* Grid Mode Pagination */}
+          <Pagination
+            page={page}
+            totalPages={Math.max(1, Math.ceil(filteredCompletedExams.length / pageSize))}
+            total={filteredCompletedExams.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[6, 12, 24, 48]}
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs"
+          />
         </div>
       ) : (
         /* MODE B: TABLE LIST */
         <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden p-0">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full border-collapse text-start">
+              <caption className="sr-only">
+                {t("tables.caption.adminExamRecord", "Archived exams permanent record")}
+              </caption>
               <thead>
                 <tr className="bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  <th className="p-3.5 text-center w-12">
+                  <th scope="col" className="p-3.5 text-center w-12">
                     <button
                       type="button"
                       onClick={handleToggleSelectAll}
                       className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
+                      aria-label={isAllSelected ? t("schedules.deselectAll", "Deselect All") : t("schedules.selectAll", "Select All")}
+                      title={
+                        isAllSelected
+                          ? t("schedules.deselectAll", "Deselect All")
+                          : t("schedules.selectAll", "Select All")
+                      }
                     >
                       {isAllSelected ? (
                         <CheckSquare
@@ -594,25 +633,25 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
                       )}
                     </button>
                   </th>
-                  <th className="p-3.5 text-start min-w-[220px]">
+                  <th scope="col" className="p-3.5 text-start min-w-[220px]">
                     {t("exams.examColumn", "Exam & Course")}
                   </th>
-                  <th className="p-3.5 text-center w-28">
+                  <th scope="col" className="p-3.5 text-center w-28">
                     {t("exams.typeColumn", "Type")}
                   </th>
-                  <th className="p-3.5 text-start min-w-[150px]">
+                  <th scope="col" className="p-3.5 text-start min-w-[150px]">
                     {t("exams.dateTimeColumn", "Date & Time")}
                   </th>
-                  <th className="p-3.5 text-center min-w-[110px]">
+                  <th scope="col" className="p-3.5 text-center min-w-[110px]">
                     {t("transcript.submissions", "Submissions")}
                   </th>
-                  <th className="p-3.5 text-center w-28">
+                  <th scope="col" className="p-3.5 text-center w-28">
                     {t("exams.actionsColumn", "Actions")}
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-xs">
-                {filteredCompletedExams.map((exam) => {
+                {paginatedCompletedExams.map((exam) => {
                   const isSelected = selectedIds.has(exam.id);
 
                   return (
@@ -629,6 +668,7 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
                           type="button"
                           onClick={() => handleToggleSelect(exam.id)}
                           className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
+                          aria-label={isSelected ? t("common.deselect", "Deselect") : `${t("common.select", "Select")} ${exam.courseName}`}
                         >
                           {isSelected ? (
                             <CheckSquare
@@ -698,6 +738,7 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
                             "transcript.examSubmissions",
                             "Submissions & Results",
                           )}
+                          aria-label={t("transcript.viewExamSubmissionsFor", { course: exam.courseName, defaultValue: `View submissions for ${exam.courseName}` })}
                         >
                           <Eye size={14} />
                         </button>
@@ -708,6 +749,20 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
               </tbody>
             </table>
           </div>
+
+          {/* Table Mode Pagination */}
+          <Pagination
+            page={page}
+            totalPages={Math.max(1, Math.ceil(filteredCompletedExams.length / pageSize))}
+            total={filteredCompletedExams.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[6, 12, 24, 48]}
+          />
         </Card>
       )}
 

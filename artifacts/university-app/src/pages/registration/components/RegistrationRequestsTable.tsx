@@ -9,6 +9,7 @@ import Table, {
   TableRow,
   TableHead,
   TableCell,
+  TableCaption,
 } from "../../../components/ui/table";
 import type { RegistrationRequestItem } from "../types";
 
@@ -52,6 +53,9 @@ export const RegistrationRequestsTable: React.FC<RegistrationRequestsTableProps>
     <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-xs overflow-hidden p-0">
       <div className="overflow-x-auto">
         <Table className="w-full">
+          <TableCaption className="sr-only">
+            {t("tables.caption.registrationRequests", "Student course registration requests")}
+          </TableCaption>
           <TableHeader className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-700/80">
             <TableRow>
               <TableHead className="w-12 text-center p-3.5">
@@ -231,6 +235,10 @@ export const RegistrationRequestsTable: React.FC<RegistrationRequestsTableProps>
                       <button
                         onClick={() => handleView(req)}
                         title={t("common.view", "View")}
+                        aria-label={t("registration.viewRequestFor", {
+                          name: `${req.firstName} ${req.lastName}`,
+                          defaultValue: `View registration request for ${req.firstName} ${req.lastName}`,
+                        })}
                         className="p-1.5 rounded-lg text-slate-500 hover:text-brand-primary-600 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/30 transition-colors cursor-pointer"
                       >
                         <Eye size={16} />
@@ -242,6 +250,10 @@ export const RegistrationRequestsTable: React.FC<RegistrationRequestsTableProps>
                             onClick={() => handleOpenRejectModal(req)}
                             disabled={isActioning}
                             title={t("common.reject", "Reject")}
+                            aria-label={t("registration.rejectRequestFor", {
+                              name: `${req.firstName} ${req.lastName}`,
+                              defaultValue: `Reject registration request for ${req.firstName} ${req.lastName}`,
+                            })}
                             className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer disabled:opacity-50"
                           >
                             <X size={16} />
@@ -250,6 +262,10 @@ export const RegistrationRequestsTable: React.FC<RegistrationRequestsTableProps>
                             onClick={() => handleApprove(req.id)}
                             disabled={isActioning}
                             title={t("common.approve", "Approve")}
+                            aria-label={t("registration.approveRequestFor", {
+                              name: `${req.firstName} ${req.lastName}`,
+                              defaultValue: `Approve registration request for ${req.firstName} ${req.lastName}`,
+                            })}
                             className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer disabled:opacity-50"
                           >
                             {isActioning ? (
@@ -267,6 +283,10 @@ export const RegistrationRequestsTable: React.FC<RegistrationRequestsTableProps>
                           "registration.deleteRequest",
                           "Delete Request",
                         )}
+                        aria-label={t("registration.deleteRequestFor", {
+                          name: `${req.firstName} ${req.lastName}`,
+                          defaultValue: `Delete registration request for ${req.firstName} ${req.lastName}`,
+                        })}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
                       >
                         <Trash2 size={16} />

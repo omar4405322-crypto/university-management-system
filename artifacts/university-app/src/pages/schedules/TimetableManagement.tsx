@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
+import Pagination from '../../components/ui/pagination';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { downloadCsv } from '../../utils/exportCsv';
@@ -100,6 +101,10 @@ const TimetableManagement = () => {
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
 
   // Multi-Selection State
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
@@ -257,6 +262,14 @@ const TimetableManagement = () => {
       return true;
     });
   }, [timetables, selectedCollege, selectedDept, selectedYear, selectedSemester, statusFilter, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedCollege, selectedDept, selectedYear, selectedSemester, statusFilter]);
+
+  const paginatedTimetables = useMemo(() => {
+    return filteredTimetables.slice((page - 1) * pageSize, page * pageSize);
+  }, [filteredTimetables, page, pageSize]);
 
   // Multi-Selection Logic
   const allFilteredIds = useMemo(() => filteredTimetables.map((t) => t.id), [filteredTimetables]);
@@ -703,7 +716,7 @@ const TimetableManagement = () => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {filteredTimetables.map((item) => {
+            {paginatedTimetables.map((item) => {
               const isPublished = item.status === 'PUBLISHED';
               const isSelected = selectedIds.has(item.id);
 
@@ -725,7 +738,7 @@ const TimetableManagement = () => {
                             type="button"
                             onClick={() => handleToggleSelect(item.id)}
                             className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
-                            aria-label={isSelected ? t('timetables.deselectItem', 'Deselect') : `${t('timetables.selectItem', 'Select')} ${item.title}`}
+                            aria-label={isSelected ? t('timetables.deselectItem', { title: item.title, defaultValue: `Deselect timetable ${item.title}` }) : t('timetables.selectItem', { title: item.title, defaultValue: `Select timetable ${item.title}` })}
                           >
                             {isSelected ? (
                               <CheckSquare size={16} className="text-brand-primary-600" />
@@ -803,6 +816,7 @@ const TimetableManagement = () => {
                         )
                       }
                       className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-primary-50 dark:bg-brand-primary-950/40 hover:bg-brand-primary-100 dark:hover:bg-brand-primary-900/40 text-brand-primary-700 dark:text-brand-primary-300 text-xs font-bold transition-colors"
+                      aria-label={t('timetables.viewTimetableItem', { title: item.title, defaultValue: `View schedule for ${item.title}` })}
                     >
                       <Eye size={13} />
                       <span>{t('timetables.viewTimetableSchedule', 'View Schedule')}</span>
@@ -821,6 +835,7 @@ const TimetableManagement = () => {
                               : 'text-slate-500 bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-200'
                           }`}
                           title={isPublished ? t('timetables.unpublishAction', 'Unpublish') : t('timetables.publishAction', 'Publish')}
+                          aria-label={isPublished ? t('timetables.unpublishTimetableItem', { title: item.title, defaultValue: `Unpublish timetable ${item.title}` }) : t('timetables.publishTimetableItem', { title: item.title, defaultValue: `Publish timetable ${item.title}` })}
                         >
                           <Globe size={13} />
                         </button>
@@ -834,6 +849,7 @@ const TimetableManagement = () => {
                           }}
                           className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-600"
                           title={t('common.edit', 'Edit')}
+                          aria-label={t('timetables.editTimetableItem', { title: item.title, defaultValue: `Edit timetable ${item.title}` })}
                         >
                           <Edit2 size={13} />
                         </button>
@@ -844,6 +860,7 @@ const TimetableManagement = () => {
                           onClick={() => setDeleteTarget(item)}
                           className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 transition-colors border border-rose-200 dark:border-rose-800 cursor-pointer"
                           title={t('common.delete', 'Delete')}
+                          aria-label={t('timetables.deleteTimetableItem', { title: item.title, defaultValue: `Delete timetable ${item.title}` })}
                         >
                           <Trash2 size={13} />
                         </button>
@@ -855,23 +872,33 @@ const TimetableManagement = () => {
             })}
           </div>
 
-          {/* Footer Count */}
-          <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 font-bold">
-            <span>
-              {t('common.showing', 'Showing')} {filteredTimetables.length} {t('common.of', 'of')} {timetables.length}{' '}
-              {t('timetables.totalTimetablesKpi', 'Timetables')}
-            </span>
-          </div>
+          {/* Grid Mode Pagination */}
+          <Pagination
+            page={page}
+            totalPages={Math.max(1, Math.ceil(filteredTimetables.length / pageSize))}
+            total={filteredTimetables.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[6, 12, 24, 48]}
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs"
+          />
         </div>
       ) : (
         /* MODE B: TABLE LIST VIEW */
         <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden p-0">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full border-collapse text-start">
+              <caption className="sr-only">
+                {t('tables.caption.timetableManagement', 'Timetable schedules management table')}
+              </caption>
               <thead>
                 <tr className="bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   {canManage && (
-                    <th className="p-3.5 text-center w-12">
+                    <th scope="col" className="p-3.5 text-center w-12">
                       <button
                         type="button"
                         onClick={handleToggleSelectAll}
@@ -889,15 +916,15 @@ const TimetableManagement = () => {
                       </button>
                     </th>
                   )}
-                  <th className="p-3.5 text-start min-w-[240px]">{t('timetables.colTitleDept', 'Timetable & Department')}</th>
-                  <th className="p-3.5 text-start min-w-[160px]">{t('timetables.colYearSem', 'Division & Semester')}</th>
-                  <th className="p-3.5 text-start min-w-[130px]">{t('timetables.colStatus', 'Status')}</th>
-                  <th className="p-3.5 text-start min-w-[140px]">{t('timetables.colUpdatedAt', 'Last Updated')}</th>
-                  <th className="p-3.5 text-center w-32">{t('timetables.colActions', 'Actions')}</th>
+                  <th scope="col" className="p-3.5 text-start min-w-[240px]">{t('timetables.colTitleDept', 'Timetable & Department')}</th>
+                  <th scope="col" className="p-3.5 text-start min-w-[160px]">{t('timetables.colYearSem', 'Division & Semester')}</th>
+                  <th scope="col" className="p-3.5 text-start min-w-[130px]">{t('timetables.colStatus', 'Status')}</th>
+                  <th scope="col" className="p-3.5 text-start min-w-[140px]">{t('timetables.colUpdatedAt', 'Last Updated')}</th>
+                  <th scope="col" className="p-3.5 text-center w-32">{t('timetables.colActions', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-xs">
-                {filteredTimetables.map((item) => {
+                {paginatedTimetables.map((item) => {
                   const isPublished = item.status === 'PUBLISHED';
                   const isSelected = selectedIds.has(item.id);
 
@@ -915,7 +942,7 @@ const TimetableManagement = () => {
                             type="button"
                             onClick={() => handleToggleSelect(item.id)}
                             className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
-                            aria-label={isSelected ? t('timetables.deselectItem', 'Deselect') : `${t('timetables.selectItem', 'Select')} ${item.title}`}
+                            aria-label={isSelected ? t('timetables.deselectItem', { title: item.title, defaultValue: `Deselect timetable ${item.title}` }) : t('timetables.selectItem', { title: item.title, defaultValue: `Select timetable ${item.title}` })}
                           >
                             {isSelected ? (
                               <CheckSquare size={16} className="text-brand-primary-600" />
@@ -1001,6 +1028,7 @@ const TimetableManagement = () => {
                             }
                             className="p-1.5 rounded-lg text-brand-primary-600 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/40 transition-colors"
                             title={t('timetables.viewTimetableSchedule', 'View Schedule')}
+                            aria-label={t('timetables.viewTimetableItem', { title: item.title, defaultValue: `View schedule for ${item.title}` })}
                           >
                             <Eye size={14} />
                           </button>
@@ -1017,6 +1045,7 @@ const TimetableManagement = () => {
                                     : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'
                                 }`}
                                 title={isPublished ? t('timetables.unpublishAction', 'Unpublish') : t('timetables.publishAction', 'Publish')}
+                                aria-label={isPublished ? t('timetables.unpublishTimetableItem', { title: item.title, defaultValue: `Unpublish timetable ${item.title}` }) : t('timetables.publishTimetableItem', { title: item.title, defaultValue: `Publish timetable ${item.title}` })}
                               >
                                 <Globe size={14} />
                               </button>
@@ -1030,6 +1059,7 @@ const TimetableManagement = () => {
                                 }}
                                 className="p-1.5 rounded-lg text-slate-500 hover:text-brand-primary-600 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/40 transition-colors"
                                 title={t('common.edit', 'Edit')}
+                                aria-label={t('timetables.editTimetableItem', { title: item.title, defaultValue: `Edit timetable ${item.title}` })}
                               >
                                 <Edit2 size={14} />
                               </button>
@@ -1040,6 +1070,7 @@ const TimetableManagement = () => {
                                 onClick={() => setDeleteTarget(item)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                                 title={t('common.delete', 'Delete')}
+                                aria-label={t('timetables.deleteTimetableItem', { title: item.title, defaultValue: `Delete timetable ${item.title}` })}
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -1053,13 +1084,19 @@ const TimetableManagement = () => {
               </tbody>
             </table>
 
-            {/* Table Footer */}
-            <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 font-bold">
-              <span>
-                {t('common.showing', 'Showing')} {filteredTimetables.length} {t('common.of', 'of')} {timetables.length}{' '}
-                {t('timetables.totalTimetablesKpi', 'Timetables')}
-              </span>
-            </div>
+            {/* Table Mode Pagination */}
+            <Pagination
+              page={page}
+              totalPages={Math.max(1, Math.ceil(filteredTimetables.length / pageSize))}
+              total={filteredTimetables.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+              pageSizeOptions={[6, 12, 24, 48]}
+            />
           </div>
         </Card>
       )}

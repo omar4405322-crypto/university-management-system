@@ -24,6 +24,7 @@ import {
   UploadCloud,
   X,
 } from 'lucide-react';
+import Pagination from '../../components/ui/pagination';
 import { useLanguage } from '../../context/LanguageContext';
 import {
   activateDocumentVersion,
@@ -47,6 +48,8 @@ export default function KnowledgeBaseAdminPage() {
   const [scopeFilter, setScopeFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modals
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -76,6 +79,8 @@ export default function KnowledgeBaseAdminPage() {
         scope: scopeFilter || undefined,
         documentType: typeFilter || undefined,
         status: statusFilter || undefined,
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
       });
       setDocuments(res.documents);
       setTotal(res.total);
@@ -84,6 +89,10 @@ export default function KnowledgeBaseAdminPage() {
     } finally {
       setIsLoading(false);
     }
+  }, [search, scopeFilter, typeFilter, statusFilter, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
   }, [search, scopeFilter, typeFilter, statusFilter]);
 
   useEffect(() => {
@@ -364,14 +373,17 @@ export default function KnowledgeBaseAdminPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-start text-sm">
+              <caption className="sr-only">
+                {t('tables.caption.knowledgeBase', 'Knowledge base documents and materials index')}
+              </caption>
               <thead className="border-b border-brand-border bg-brand-bg-main text-xs font-semibold text-brand-text-sub uppercase tracking-wider">
                 <tr>
-                  <th className="px-5 py-3 text-start">{isRTL ? 'المستند / اللائحة' : 'Document Title'}</th>
-                  <th className="px-4 py-3 text-start">{isRTL ? 'النوع والنطاق' : 'Type & Scope'}</th>
-                  <th className="px-4 py-3 text-start">{isRTL ? 'الإصدار النشط' : 'Active Version'}</th>
-                  <th className="px-4 py-3 text-start">{isRTL ? 'حالة المعالجة' : 'Processing Status'}</th>
-                  <th className="px-4 py-3 text-start">{isRTL ? 'القطع المفهرسة' : 'Indexed Chunks'}</th>
-                  <th className="px-5 py-3 text-end">{isRTL ? 'الإجراءات' : 'Actions'}</th>
+                  <th scope="col" className="px-5 py-3 text-start">{t('knowledgeBase.thDocumentTitle', 'Document Title')}</th>
+                  <th scope="col" className="px-4 py-3 text-start">{t('knowledgeBase.thTypeScope', 'Type & Scope')}</th>
+                  <th scope="col" className="px-4 py-3 text-start">{t('knowledgeBase.thActiveVersion', 'Active Version')}</th>
+                  <th scope="col" className="px-4 py-3 text-start">{t('knowledgeBase.thProcessingStatus', 'Processing Status')}</th>
+                  <th scope="col" className="px-4 py-3 text-start">{t('knowledgeBase.thIndexedChunks', 'Indexed Chunks')}</th>
+                  <th scope="col" className="px-5 py-3 text-end">{t('knowledgeBase.thActions', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border">
@@ -431,6 +443,7 @@ export default function KnowledgeBaseAdminPage() {
                             onClick={() => openDocumentDetail(doc)}
                             className="rounded-lg p-1.5 text-brand-text-sub hover:bg-brand-bg-main hover:text-brand-text-main"
                             title={isRTL ? 'عرض التفاصيل وسجل الإصدارات' : 'View Details & Version History'}
+                            aria-label={t('knowledgeBase.viewDetailsTitle', { title: displayTitle, defaultValue: `View Details & Version History: ${displayTitle}` })}
                           >
                             <History size={16} />
                           </button>
@@ -440,6 +453,7 @@ export default function KnowledgeBaseAdminPage() {
                               onClick={() => handleArchive(doc.id)}
                               className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-500/10"
                               title={isRTL ? 'أرشفة اللائحة' : 'Archive document'}
+                              aria-label={t('knowledgeBase.archiveDocumentTitle', { title: displayTitle, defaultValue: `Archive document: ${displayTitle}` })}
                             >
                               <Archive size={16} />
                             </button>
@@ -453,6 +467,18 @@ export default function KnowledgeBaseAdminPage() {
             </table>
           </div>
         )}
+        <Pagination
+          page={page}
+          totalPages={Math.max(1, Math.ceil(total / pageSize))}
+          total={total}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          pageSizeOptions={[10, 25, 50]}
+        />
       </div>
 
       {/* Upload Document Modal */}
@@ -489,7 +515,7 @@ export default function KnowledgeBaseAdminPage() {
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Academic Examination Regulations 2026"
+                  placeholder={t('knowledgeBase.titlePlaceholder', 'e.g. Academic Examination Regulations 2026')}
                   className="w-full rounded-xl border border-brand-border bg-brand-bg-main px-3 py-2 text-sm text-brand-text-main focus:outline-none focus:ring-1 focus:ring-brand-primary-500"
                 />
               </div>
@@ -756,7 +782,7 @@ export default function KnowledgeBaseAdminPage() {
                   type="text"
                   value={versionTag}
                   onChange={(e) => setVersionTag(e.target.value)}
-                  placeholder="e.g. 2027 or v2.0"
+                  placeholder={t('knowledgeBase.versionTagPlaceholder', 'e.g. 2027 or v2.0')}
                   className="w-full rounded-xl border border-brand-border bg-brand-bg-main px-3 py-2 text-sm text-brand-text-main focus:outline-none focus:ring-1 focus:ring-brand-primary-500"
                 />
               </div>

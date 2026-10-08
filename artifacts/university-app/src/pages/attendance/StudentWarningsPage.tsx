@@ -39,9 +39,11 @@ import Table, {
   TableRow,
   TableHead,
   TableCell,
+  TableCaption,
 } from '../../components/ui/table';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import Pagination from '../../components/ui/pagination';
 import api from '../../services/api';
 
 export function StudentWarningsPage() {
@@ -73,7 +75,7 @@ export function StudentWarningsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
-  const pageSize = 50;
+  const [pageSize, setPageSize] = useState(50);
   const deferredSearch = useDeferredValue(search.trim());
   const [exporting, setExporting] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
@@ -120,6 +122,7 @@ export function StudentWarningsPage() {
     }
   }, [
     page,
+    pageSize,
     selectedLevel,
     selectedYear,
     selectedCourseId,
@@ -127,6 +130,10 @@ export function StudentWarningsPage() {
     startDate,
     endDate,
   ]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedLevel, selectedYear, selectedCourseId, deferredSearch, startDate, endDate]);
 
   useEffect(() => {
     fetchWarningsData();
@@ -539,6 +546,9 @@ export function StudentWarningsPage() {
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xs">
               <div className="overflow-x-auto">
                 <Table className="w-full text-xs">
+                  <TableCaption className="sr-only">
+                    {t("tables.caption.studentWarnings", "Student academic and attendance warnings record")}
+                  </TableCaption>
                   <TableHeader className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
                     <TableRow>
                       <TableHead className="p-2.5 font-bold text-slate-500">
@@ -727,36 +737,19 @@ export function StudentWarningsPage() {
                   </TableBody>
                 </Table>
               </div>
-              {staffData.pagination?.totalPages > 1 && (
-                <div className="flex items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-700 px-3 py-2">
-                  <span className="text-[11px] text-slate-500">
-                    {isRTL
-                      ? `صفحة ${staffData.pagination.page} من ${staffData.pagination.totalPages}`
-                      : `Page ${staffData.pagination.page} of ${staffData.pagination.totalPages}`}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page <= 1}
-                      onClick={() => setPage((current) => Math.max(1, current - 1))}
-                      className="h-7 px-2 text-[11px]"
-                    >
-                      <ChevronLeft size={12} />
-                      {isRTL ? 'السابق' : 'Previous'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page >= staffData.pagination.totalPages}
-                      onClick={() => setPage((current) => current + 1)}
-                      className="h-7 px-2 text-[11px]"
-                    >
-                      {isRTL ? 'التالي' : 'Next'}
-                      <ChevronRight size={12} />
-                    </Button>
-                  </div>
-                </div>
+              {staffData.pagination && (
+                <Pagination
+                  page={page}
+                  totalPages={staffData.pagination.totalPages || 1}
+                  total={staffData.pagination.total || 0}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setPage(1);
+                  }}
+                  className="rounded-b-2xl border-t border-slate-200 dark:border-slate-700"
+                />
               )}
             </div>
           )}

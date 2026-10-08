@@ -385,8 +385,10 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
     }
   }, [filters, slots, departments, collegeId, timetableId, showToast, t, isRTL]);
 
-  const selectedDeptObj = departments.find((d) => String(d.id) === String(filters.departmentId));
-  const selectedCollegeObj = colleges.find((c) => String(c.id) === String(filters.collegeId || selectedDeptObj?.collegeId));
+  const safeDepts = Array.isArray(departments) ? departments : [];
+  const safeColleges = Array.isArray(colleges) ? colleges : [];
+  const selectedDeptObj = safeDepts.find((d) => String(d.id) === String(filters.departmentId));
+  const selectedCollegeObj = safeColleges.find((c) => String(c.id) === String(filters.collegeId || selectedDeptObj?.collegeId));
 
   const pageTitle = selectedDeptObj
     ? (isRTL ? `جدول ${selectedDeptObj.nameAr || selectedDeptObj.name}` : `${selectedDeptObj.name} Timetable`)
@@ -440,8 +442,8 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
         onAuditConflicts={handleAuditConflicts}
       />
 
-      {/* Desktop view */}
-      <div className="hidden md:block bg-brand-bg-card border border-brand-border rounded-2xl shadow-soft overflow-hidden relative">
+      {/* Master Timetable Grid */}
+      <div className="bg-brand-bg-card border border-brand-border rounded-2xl shadow-soft overflow-hidden relative">
         {loadingSlots && (
           <div className="absolute inset-0 bg-brand-bg-card/70 backdrop-blur-sm z-10 flex items-center justify-center">
             <Loader2 size={40} className="animate-spin text-brand-primary-500" />
@@ -449,9 +451,13 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
         )}
         <div className="overflow-x-auto">
           <table className="w-full table-fixed border-collapse border-0">
+            <caption className="sr-only">
+              {t('tables.caption.timetableGrid', 'Weekly academic timetable schedule grid')}
+            </caption>
             <thead>
               <tr className="bg-surface-subtle border-b border-brand-border">
                 <th
+                  scope="col"
                   className={`w-32 p-4 font-black uppercase text-xs tracking-widest text-brand-text-muted border-e border-brand-border text-start`}
                 >
                   {t('timetables.startTime', 'Time')}
@@ -459,6 +465,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
                 {DAYS.map((day) => (
                   <th
                     key={day}
+                    scope="col"
                     className="p-4 text-center font-black uppercase text-xs tracking-widest text-brand-text-muted border-e border-brand-border last:border-e-0"
                   >
                     {t(`days.${day.toLowerCase()}`)}
@@ -469,12 +476,12 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
             <tbody className="divide-y divide-brand-border">
               {timeSlots.map((slot) => (
                 <tr key={slot} className="hover:bg-brand-bg-card/50 transition-colors">
-                  <td className="p-3 font-bold text-xs text-brand-text-muted border-e border-brand-border align-middle bg-surface-subtle/30 text-center">
+                  <th scope="row" className="p-3 font-bold text-xs text-brand-text-muted border-e border-brand-border align-middle bg-surface-subtle/30 text-center">
                     {(() => {
                       const [start, end] = slot.split('-');
                       return start && end ? <TimeRange start={start} end={end} /> : slot;
                     })()}
-                  </td>
+                  </th>
                   {DAYS.map((day) => {
                     const key = `${day}_${slot}`;
                     const entry = slots[key];

@@ -161,7 +161,10 @@ export function TasksList() {
 
         const result = await taskService.getTasks(params);
         if (result.success) {
-          setTasks((result.data?.rows || result.data || []) as TaskItem[]);
+          const rawList = Array.isArray(result.data)
+            ? result.data
+            : (result.data?.tasks || result.data?.rows || []);
+          setTasks(rawList as TaskItem[]);
           setPagination(
             result.data?.pagination || {
               page: pageParam,
@@ -380,14 +383,14 @@ export function TasksList() {
     let overdue = 0;
     let totalSubs = 0;
 
-    tasks.forEach((t) => {
+    (Array.isArray(tasks) ? tasks : []).forEach((t) => {
       if (isOverdue(t.dueDate)) overdue++;
       else active++;
       totalSubs += t._count?.submissions || 0;
     });
 
     return {
-      total: tasks.length,
+      total: Array.isArray(tasks) ? tasks.length : 0,
       active,
       overdue,
       totalSubs,

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { hasCapability } from '../../config/capabilities';
@@ -670,6 +671,7 @@ export function StudentResultCard({ student }: { student: StudentRecord }) {
 }
 
 function AiMessageContentBase({ content }: AiMessageContentProps) {
+  const { t } = useTranslation();
   const blocks = useMemo(() => parseBlocks(content), [content]);
 
   return (
@@ -735,11 +737,14 @@ function AiMessageContentBase({ content }: AiMessageContentProps) {
             return (
               <div key={idx} className="my-3 overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-xs">
                 <table dir="auto" className="w-full text-xs text-start border-collapse table-auto">
+                  <caption className="sr-only">
+                    {t('tables.caption.aiMarkdown', 'AI assistant response data table')}
+                  </caption>
                   {block.headers.length > 0 && (
                     <thead>
                       <tr className="border-b border-slate-200/90 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 font-semibold text-slate-700 dark:text-slate-300">
                         {block.headers.map((header, hIdx) => (
-                          <th key={hIdx} className="px-3.5 py-2.5 text-start font-bold whitespace-nowrap">
+                          <th key={hIdx} scope="col" className="px-3.5 py-2.5 text-start font-bold whitespace-nowrap">
                             {formatInline(header)}
                           </th>
                         ))}

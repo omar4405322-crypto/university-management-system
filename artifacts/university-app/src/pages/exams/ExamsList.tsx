@@ -804,6 +804,7 @@ const ExamsList = () => {
                           <button
                             type="button"
                             onClick={() => handleToggleSelect(exam.id)}
+                            aria-label={isSelected ? t('exams.deselectExam', { title: getExamLabel(exam, t), defaultValue: `Deselect ${getExamLabel(exam, t)}` }) : t('exams.selectExam', { title: getExamLabel(exam, t), defaultValue: `Select ${getExamLabel(exam, t)}` })}
                             className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
                           >
                             {isSelected ? (
@@ -892,6 +893,7 @@ const ExamsList = () => {
                     <button
                       type="button"
                       onClick={() => navigate(`/exams/${exam.id}`)}
+                      aria-label={t("exams.viewExamDetails", { title: getExamLabel(exam, t), defaultValue: `View details for ${getExamLabel(exam, t)}` })}
                       className="flex-1 py-1.5 px-3 rounded-xl bg-brand-primary-500/10 hover:bg-brand-primary-500 text-brand-primary-700 dark:text-brand-primary-300 hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5"
                     >
                       <Eye size={13} />
@@ -909,6 +911,7 @@ const ExamsList = () => {
                         }
                         className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-slate-400 hover:text-rose-600 transition-colors"
                         title={t("common.delete", "Delete")}
+                        aria-label={t("exams.deleteExamTitle", { title: getExamLabel(exam, t) })}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -941,10 +944,13 @@ const ExamsList = () => {
         <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden p-0">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full border-collapse text-start">
+              <caption className="sr-only">
+                {t("tables.caption.examsList", "Exams directory schedule and management")}
+              </caption>
               <thead>
                 <tr className="bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   {isAdmin && (
-                    <th className="p-3.5 text-center w-12">
+                    <th scope="col" className="p-3.5 text-center w-12">
                       <button
                         type="button"
                         onClick={handleToggleSelectAll}
@@ -954,6 +960,7 @@ const ExamsList = () => {
                             ? t("schedules.deselectAll", "Deselect All")
                             : t("schedules.selectAll", "Select All")
                         }
+                        aria-label={isAllSelected ? t("schedules.deselectAll", "Deselect All") : t("schedules.selectAll", "Select All")}
                       >
                         {isAllSelected ? (
                           <CheckSquare
@@ -971,22 +978,22 @@ const ExamsList = () => {
                       </button>
                     </th>
                   )}
-                  <th className="p-3.5 text-start min-w-[220px]">
+                  <th scope="col" className="p-3.5 text-start min-w-[220px]">
                     {t("exams.examColumn", "Exam & Course")}
                   </th>
-                  <th className="p-3.5 text-center w-28">
+                  <th scope="col" className="p-3.5 text-center w-28">
                     {t("exams.typeColumn", "Type")}
                   </th>
-                  <th className="p-3.5 text-start min-w-[150px]">
+                  <th scope="col" className="p-3.5 text-start min-w-[150px]">
                     {t("exams.dateTimeColumn", "Date & Time")}
                   </th>
-                  <th className="p-3.5 text-center min-w-[120px]">
+                  <th scope="col" className="p-3.5 text-center min-w-[120px]">
                     {t("exams.roomColumn", "Hall")}
                   </th>
-                  <th className="p-3.5 text-center min-w-[130px]">
+                  <th scope="col" className="p-3.5 text-center min-w-[130px]">
                     {t("exams.statusColumn", "Status")}
                   </th>
-                  <th className="p-3.5 text-center w-28">
+                  <th scope="col" className="p-3.5 text-center w-28">
                     {t("exams.actionsColumn", "Actions")}
                   </th>
                 </tr>
@@ -1010,6 +1017,7 @@ const ExamsList = () => {
                           <button
                             type="button"
                             onClick={() => handleToggleSelect(exam.id)}
+                            aria-label={isSelected ? t('exams.deselectExam', { title: getExamLabel(exam, t), defaultValue: `Deselect ${getExamLabel(exam, t)}` }) : t('exams.selectExam', { title: getExamLabel(exam, t), defaultValue: `Select ${getExamLabel(exam, t)}` })}
                             className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
                           >
                             {isSelected ? (
@@ -1115,7 +1123,8 @@ const ExamsList = () => {
                             type="button"
                             onClick={() => navigate(`/exams/${exam.id}`)}
                             className="p-1.5 rounded-lg text-brand-primary-600 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/40 transition-colors"
-                            title={t("exams.examDetails", "Details & Results")}
+                            title={t("exams.viewExamDetails", { title: getExamLabel(exam, t), defaultValue: `View details for ${getExamLabel(exam, t)}` })}
+                            aria-label={t("exams.viewExamDetails", { title: getExamLabel(exam, t), defaultValue: `View details for ${getExamLabel(exam, t)}` })}
                           >
                             <Eye size={14} />
                           </button>
@@ -1130,6 +1139,7 @@ const ExamsList = () => {
                               }
                               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
                               title={t("common.delete", "Delete")}
+                              aria-label={t("exams.deleteExamTitle", { title: getExamLabel(exam, t) })}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -1185,7 +1195,7 @@ const ExamsList = () => {
           isOpen={!!deleteTarget}
           onClose={() => setDeleteTarget(null)}
           onConfirm={confirmDelete}
-          title={t("exams.deleteExamTitle", "Delete Exam")}
+          title={t("exams.deleteExamTitle", { title: deleteTarget?.name || "", defaultValue: "Delete Exam" })}
           message={t(
             "exams.deleteConfirmMessage",
             `Are you sure you want to delete "${deleteTarget?.name}"?`,

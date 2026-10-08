@@ -26,6 +26,7 @@ import Table, {
   TableHeader,
   TableBody,
   TableHead,
+  TableCaption,
 } from "../../components/ui/table";
 import collegeService from "../../services/college.service";
 import departmentService from "../../services/department.service";
@@ -345,7 +346,7 @@ const CollegeDetails = () => {
           {t("nav.departments")}
         </h3>
         <div>
-          {college.departments?.length === 0 ? (
+          {!college?.departments || college.departments.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-96 text-center p-8">
               <div className="h-20 w-20 rounded-full bg-brand-navy-500/5 flex items-center justify-center mb-4 border border-brand-border">
                 <Layers size={40} className="text-brand-text-muted" />
@@ -367,6 +368,9 @@ const CollegeDetails = () => {
             </div>
           ) : (
             <Table className="w-full">
+              <TableCaption className="sr-only">
+                {t("tables.caption.collegeDepartments", "College academic departments list")}
+              </TableCaption>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="text-start text-xs uppercase tracking-widest text-brand-text-muted font-black border-b border-brand-border pb-3">
@@ -384,59 +388,66 @@ const CollegeDetails = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {college.departments.map((dept: any, _idx: number) => (
-                  <TableRow
-                    key={dept.id}
-                    className="cursor-pointer hover:bg-brand-bg-page transition-colors border-b border-brand-border/40"
-                    onClick={() => navigate(`/departments/${dept.id}`)}
-                  >
-                    <TableCell className="text-start py-3">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-brand-text-main text-sm">
-                          {isRTL ? dept.nameAr || dept.name : dept.name}
-                        </span>
-                        {dept.nameAr && (
-                          <span className="text-xs text-brand-text-muted mt-0.5">
-                            {isRTL ? dept.name : dept.nameAr}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center align-middle text-sm font-bold text-brand-text-primary py-3">
-                      <div className="w-full flex justify-center text-center">
-                        {dept._count?.courses || 0}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center align-middle text-sm font-bold text-brand-text-primary py-3">
-                      <div className="w-full flex justify-center text-center">
-                        {dept._count?.students || 0}
-                      </div>
-                    </TableCell>
-                    <TableCell
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-end py-3"
+                {(college.departments || []).map((dept: any, _idx: number) => {
+                  const deptName = isRTL ? dept.nameAr || dept.name : dept.name;
+                  return (
+                    <TableRow
+                      key={dept.id}
+                      className="cursor-pointer hover:bg-brand-bg-page transition-colors border-b border-brand-border/40"
+                      onClick={() => navigate(`/departments/${dept.id}`)}
                     >
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => navigate(`/departments/${dept.id}`)}
-                          className="p-1.5 hover:bg-brand-navy-500/5 text-brand-text-sub hover:text-brand-green rounded-lg transition-all"
-                          title={isRTL ? "عرض القسم" : "View Department"}
-                        >
-                          <ExternalLink size={16} />
-                        </button>
-                        {canManage && (
+                      <TableCell className="text-start py-3">
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-brand-text-main text-sm">
+                            {deptName}
+                          </span>
+                          {dept.nameAr && (
+                            <span className="text-xs text-brand-text-muted mt-0.5">
+                              {isRTL ? dept.name : dept.nameAr}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center align-middle text-sm font-bold text-brand-text-primary py-3">
+                        <div className="w-full flex justify-center text-center">
+                          {dept._count?.courses || 0}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center align-middle text-sm font-bold text-brand-text-primary py-3">
+                        <div className="w-full flex justify-center text-center">
+                          {dept._count?.students || 0}
+                        </div>
+                      </TableCell>
+                      <TableCell
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-end py-3"
+                      >
+                        <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => handleDeleteDept(dept.id)}
-                            className="p-1.5 hover:bg-error/10 text-brand-text-sub hover:text-error rounded-lg transition-all"
-                            title={isRTL ? "حذف" : "Delete"}
+                            type="button"
+                            onClick={() => navigate(`/departments/${dept.id}`)}
+                            className="p-1.5 hover:bg-brand-navy-500/5 text-brand-text-sub hover:text-brand-green rounded-lg transition-all"
+                            title={t("colleges.viewDepartment", "View Department")}
+                            aria-label={t("colleges.viewDepartmentName", { name: deptName, defaultValue: `View Department: ${dept.name}` })}
                           >
-                            <Trash2 size={16} />
+                            <ExternalLink size={16} />
                           </button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {canManage && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDept(dept.id)}
+                              className="p-1.5 hover:bg-error/10 text-brand-text-sub hover:text-error rounded-lg transition-all"
+                              title={t("common.delete", "Delete")}
+                              aria-label={t("colleges.deleteDepartmentName", { name: deptName, defaultValue: `Delete Department: ${dept.name}` })}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

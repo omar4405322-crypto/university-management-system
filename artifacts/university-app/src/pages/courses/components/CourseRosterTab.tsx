@@ -33,7 +33,7 @@ export const CourseRosterTab: React.FC<CourseRosterTabProps> = ({
             {t("courses.roster", "Enrolled Students")}
           </h3>
           <p className="text-xs text-brand-text-sub">
-            {t("common.total", "common.total")}: {enrolledStudents.length}{" "}
+            {t("common.total", "Total")}: {enrolledStudents.length}{" "}
             {t("courses.students", "Students")}
           </p>
         </div>
@@ -68,20 +68,23 @@ export const CourseRosterTab: React.FC<CourseRosterTabProps> = ({
       {filteredRoster.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-start text-sm">
+            <caption className="sr-only">
+              {t("tables.caption.courseRoster", "Course enrolled students roster")}
+            </caption>
             <thead className="bg-brand-bg-page text-brand-text-muted text-xs font-bold uppercase border-b border-brand-border">
               <tr>
-                <th className="py-3 px-4 text-start">#</th>
-                <th className="py-3 px-4 text-start">
-                  {t("auth.fullName", "auth.fullName")}
+                <th scope="col" className="py-3 px-4 text-start">#</th>
+                <th scope="col" className="py-3 px-4 text-start">
+                  {t("auth.fullName", "Full Name")}
                 </th>
-                <th className="py-3 px-4 text-start">
-                  {t("students.studentCode", "students.studentCode")}
+                <th scope="col" className="py-3 px-4 text-start">
+                  {t("students.studentCode", "Student Code")}
                 </th>
-                <th className="py-3 px-4 text-start">
+                <th scope="col" className="py-3 px-4 text-start">
                   {t("auth.email", "Email address")}
                 </th>
                 {canManageRoster && (
-                  <th className="py-3 px-4 text-end">
+                  <th scope="col" className="py-3 px-4 text-end">
                     {t("common.actions", "Actions")}
                   </th>
                 )}
@@ -124,6 +127,7 @@ export const CourseRosterTab: React.FC<CourseRosterTabProps> = ({
                             "courses.withdrawStudent",
                             "Withdraw Student",
                           )}
+                          aria-label={t("courses.withdrawStudentName", { name: studentName, defaultValue: `Withdraw student: ${studentName}` })}
                         >
                           <Trash2 size={15} />
                           <span className="hidden sm:inline">

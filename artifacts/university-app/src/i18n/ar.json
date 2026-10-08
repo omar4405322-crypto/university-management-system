@@ -212,7 +212,13 @@
     "hallRoom": "القاعة / المدرج",
     "coursesCount": "المقررات التي تم تقييمها",
     "credits": "ساعات",
-    "semesterTitle": "الفصل الدراسي"
+    "semesterTitle": "الفصل الدراسي",
+    "hasSubmissions": "يتضمن تسليمات",
+    "noSubmissions": "بدون تسليمات",
+    "sortOrder": "تبديل ترتيب التاريخ",
+    "noFilteredExams": "لم يتم العثور على امتحانات مطابقة",
+    "noCompletedExams": "لا توجد امتحانات مكتملة بعد",
+    "viewExamSubmissionsFor": "عرض نتائج واختبارات مقرر {{course}}"
   },
   "statistics": {
     "title": "الإحصائيات الأكاديمية",
@@ -663,7 +669,11 @@
     "selectAdmin": "اختر المسؤول",
     "college": "الكلية",
     "nameEnPlaceholder": "مثال: College of Engineering",
-    "descriptionPlaceholder": "نبذة تعريفية موجزة عن الكلية..."
+    "descriptionPlaceholder": "نبذة تعريفية موجزة عن الكلية...",
+    "viewDepartmentName": "عرض القسم: {{name}}",
+    "viewDepartment": "عرض القسم",
+    "deleteDepartmentName": "حذف القسم: {{name}}",
+    "deleteDeptName": "حذف القسم {{name}}"
   },
   "common": {
     "searchPlaceholder": "بحث...",
@@ -813,7 +823,15 @@
     "underConstruction": "قيد التطوير",
     "notificationsLabel": "الإشعارات",
     "dismissNotification": "إغلاق الإشعار",
-    "featureCarouselPagination": "التنقل بين المميزات"
+    "featureCarouselPagination": "التنقل بين المميزات",
+    "date": "التاريخ",
+    "sortBy": "ترتيب حسب",
+    "year1": "الفرقة الأولى",
+    "year2": "الفرقة الثانية",
+    "year3": "الفرقة الثالثة",
+    "year4": "الفرقة الرابعة",
+    "allTypes": "كل الأنواع",
+    "deselect": "إلغاء التحديد"
   },
   "courses": {
     "course": "المقرر",
@@ -945,7 +963,11 @@
     "updating": "جاري التحديث...",
     "namePlaceholder": "مثال: مقدمة في علوم الحاسب",
     "codePlaceholder": "مثال: CS101",
-    "errorUpdating": "حدث خطأ أثناء تحديث المقرر"
+    "errorUpdating": "حدث خطأ أثناء تحديث المقرر",
+    "withdrawStudentName": "سحب قيد الطالب: {{name}}",
+    "viewCourseName": "عرض المقرر {{name}}",
+    "editCourseName": "تعديل المقرر {{name}}",
+    "deleteCourseName": "حذف المقرر {{name}}"
   },
   "dashboard": {
     "academicOverview": "نظرة أكاديمية عامة",
@@ -1133,7 +1155,16 @@
     "nameArPlaceholder": "أدخل اسم القسم بالعربية",
     "nameEnPlaceholder": "أدخل اسم القسم بالإنجليزية",
     "parentCollege": "الكلية التابعة",
-    "selectCollege": "اختر الكلية..."
+    "selectCollege": "اختر الكلية...",
+    "deleteConfirmTitle": "حذف القسم",
+    "departmentDetails": "تفاصيل القسم",
+    "editDeptName": "تعديل القسم {{name}}",
+    "deleteDeptName": "حذف القسم {{name}}",
+    "viewDeptDetails": "عرض تفاصيل القسم {{name}}",
+    "manageCurriculumDept": "إدارة المناهج للقسم {{name}}",
+    "schedulesDept": "عرض الجداول للقسم {{name}}",
+    "selectDeptItem": "تحديد قسم {{name}}",
+    "deselectDept": "إلغاء تحديد قسم {{name}}"
   },
   "groups": {
     "title": "إدارة المجموعات",
@@ -1583,14 +1614,23 @@
     "latitude": "خط العرض",
     "longitude": "خط الطول",
     "allowedRadius": "نطاق السماح (بالمتر)",
-    "deleteExamTitle": "حذف الامتحان",
+    "deleteExamTitle": "حذف امتحان {{title}}",
     "deleteConfirmMessage": "هل أنت متأكد من حذف هذا الامتحان؟ لا يمكن التراجع عن هذا الإجراء.",
     "submitError": "حدث خطأ أثناء تسليم الامتحان",
     "geofenceLocationDeniedErr": "يلزم السماح بالوصول للموقع الجغرافي لأداء هذا الامتحان.",
     "outsideGeofenceErr": "أنت متواجد خارج نطاق الحرم الجامعي المسموح به لأداء الامتحان.",
     "startError": "خطأ في بدء جلسة الامتحان",
     "refreshLocation": "التحقق من الموقع",
-    "questions": "الأسئلة"
+    "questions": "الأسئلة",
+    "bulkDeleteTitle": "تأكيد الحذف الجماعي",
+    "types": {
+      "midterm": "نصفي",
+      "final": "نهائي",
+      "practical": "عملي"
+    },
+    "viewExamDetails": "عرض تفاصيل امتحان {{title}}",
+    "selectExam": "تحديد امتحان {{title}}",
+    "deselectExam": "إلغاء تحديد امتحان {{title}}"
   },
   "doctors": {
     "activeProfessors": "الأساتذة النشطون",
@@ -1665,7 +1705,13 @@
     "statusInactive": "غير نشط",
     "coursesTaught": "المقررات التي يدرسها",
     "noCoursesYet": "لم يتم إسناد مقررات بعد",
-    "roomPlaceholder": "مثال: مدرج 1، معمل 3"
+    "roomPlaceholder": "مثال: مدرج 1، معمل 3",
+    "bulkDeleteTitle": "تأكيد الحذف الجماعي",
+    "editDoctorName": "تعديل بيانات الدكتور {{name}}",
+    "deleteDoctorName": "حذف الدكتور {{name}}",
+    "viewDoctorName": "عرض الملف الشخصي للدكتور {{name}}",
+    "viewScheduleDoctorName": "عرض جدول المواعيد للدكتور {{name}}",
+    "resetPasswordDoctorName": "إعادة تعيين كلمة المرور للدكتور {{name}}"
   },
   "search": {
     "placeholder": "ابحث عن طلاب، دكاترة، مقررات…",
@@ -1750,7 +1796,14 @@
     "deleteError": "خطأ في حذف الدفعة",
     "noMonthlyData": "لا توجد إيرادات مسجلة لهذا الشهر بعد",
     "downloadReceipt": "تحميل الإيصال",
-    "deleteConfirm": "حذف سجل الدفعة"
+    "deleteConfirm": "حذف سجل الدفعة",
+    "totalRecords": "إجمالي: {{count}} معاملة",
+    "markPaidAria": "تحصيل معاملة {{id}}",
+    "downloadReceiptAria": "تحميل إيصال معاملة {{id}}",
+    "editPaymentAria": "تعديل معاملة {{id}}",
+    "deletePaymentAria": "حذف معاملة {{id}}",
+    "payNowAria": "سداد دفعة معاملة {{id}}",
+    "paymentMethod": "طريقة الدفع"
   },
   "footer": {
     "universityName": "جامعة 6 أكتوبر التكنولوجية",
@@ -2035,7 +2088,12 @@
     "subtitle": "مراجعة وإدارة طلبات التحاق وتسجيل الطلاب بالجامعة والبت فيها فوراً.",
     "tableView": "عرض الجدول",
     "title": "طلبات التسجيل",
-    "totalRegistrations": "إجمالي الطلبات"
+    "totalRegistrations": "إجمالي الطلبات",
+    "viewRequestStudent": "عرض طلب تسجيل {{name}}",
+    "viewRequestFor": "عرض طلب تسجيل {{name}}",
+    "rejectRequestFor": "رفض طلب تسجيل {{name}}",
+    "approveRequestFor": "الموافقة على طلب تسجيل {{name}}",
+    "deleteRequestFor": "حذف طلب تسجيل {{name}}"
   },
   "requests": {
     "title": "طلبات التسجيل",
@@ -2150,7 +2208,8 @@
     "currentRoom": "القاعة الحالية",
     "reason": "السبب",
     "removeOverride": "إلغاء الاستثناء",
-    "noGroupsFound": "لم يتم العثور على مجموعات"
+    "noGroupsFound": "لم يتم العثور على مجموعات",
+    "sem": "فصل"
   },
   "students": {
     "accountDetails": "تفاصيل الحساب",
@@ -2333,7 +2392,14 @@
     "academicDepts": "الأقسام الأكاديمية",
     "studentCode": "كود الطالب",
     "name": "اسم الطالب",
-    "viewProfile": "عرض الملف الأكاديمي"
+    "viewProfile": "عرض الملف الأكاديمي",
+    "bulkDeleteTitle": "تأكيد الحذف الجماعي",
+    "viewStudentName": "عرض بيانات الطالب {{name}}",
+    "editStudentName": "تعديل بيانات الطالب {{name}}",
+    "deleteStudentName": "حذف الطالب {{name}}",
+    "resetPasswordName": "إعادة تعيين كلمة المرور للطالب {{name}}",
+    "activateStudentName": "تفعيل الطالب {{name}}",
+    "deactivateStudentName": "إلغاء تفعيل الطالب {{name}}"
   },
   "tasks": {
     "createTask": "إنشاء تكليف",
@@ -2437,7 +2503,11 @@
     "maxScoreMin": "الدرجة الكلية يجب أن تكون 1 على الأقل",
     "invalidUrl": "يرجى إدخال رابط صالح",
     "fileUrlRequired": "رابط ملف الإجابة مطلوب",
-    "searchPlaceholder": "ابحث بعنوان التكليف، المقرر، أو الوصف..."
+    "searchPlaceholder": "ابحث بعنوان التكليف، المقرر، أو الوصف...",
+    "selectAllTasks": "تحديد كل المهام",
+    "deselectAllTasks": "إلغاء تحديد كل المهام",
+    "selectTaskTitle": "تحديد مهمة {{title}}",
+    "deselectTaskTitle": "إلغاء تحديد مهمة {{title}}"
   },
   "timetables": {
     "noSlots": "لم تتم إضافة حصص بعد.",
@@ -2466,7 +2536,38 @@
     "syncConfirmPrompt": "هل تريد مزامنة هذا الجدول تلقائياً مع الجدول الرئيسي للمقررات؟",
     "syncSuccess": "تمت مزامنة الجدول بنجاح مع جدول المحاضرات الرئيسي",
     "saveSuccess": "تم حفظ ومزامنة الجدول بنجاح ✅",
-    "selectRequired": "يرجى تحديد القسم، الفرقة، والفصل الدراسي"
+    "selectRequired": "يرجى تحديد القسم، الفرقة، والفصل الدراسي",
+    "colTitleDept": "الجدول والقسم",
+    "colYearSem": "الفرقة والفصل الدراسي",
+    "colStatus": "الحالة",
+    "colUpdatedAt": "آخر تحديث",
+    "colActions": "الإجراءات",
+    "startTime": "الوقت",
+    "selectCollege": "كل الكليات",
+    "selectDept": "اختر القسم",
+    "academicYear": "الفرقة الدراسية",
+    "day": "يوم الأسبوع",
+    "endTime": "وقت النهاية",
+    "roomPlaceholder": "مثال: مدرج 302، معمل 105",
+    "emptyGridAudit": "لا توجد حصص لفحصها في الجدول الحالي.",
+    "noConflictsFound": "اكتمل الفحص: لم يتم العثور على أي تعارضات في الجدول.",
+    "managementTitle": "سجلات الجداول الدراسية العامة",
+    "managementSubtitle": "إدارة ونشر الجداول الدراسية الرئيسية",
+    "viewCardView": "بطاقات",
+    "viewListView": "قائمة",
+    "createTimetable": "جدول جديد",
+    "totalTimetables": "إجمالي الجداول",
+    "departmentsCoveredKpi": "الأقسام المشمولة",
+    "unpublished": "تم إلغاء نشر الجدول",
+    "selectItem": "تحديد جدول {{title}}",
+    "deselectItem": "إلغاء تحديد جدول {{title}}",
+    "editTimetableTitle": "تعديل جدول {{title}}",
+    "deleteTimetableTitle": "حذف جدول {{title}}",
+    "viewTimetableItem": "عرض جدول {{title}}",
+    "publishTimetableItem": "نشر جدول {{title}}",
+    "unpublishTimetableItem": "إلغاء نشر جدول {{title}}",
+    "editTimetableItem": "تعديل جدول {{title}}",
+    "deleteTimetableItem": "حذف جدول {{title}}"
   },
   "timetable": {
     "addSlot": "إضافة حصة",
@@ -2592,7 +2693,14 @@
     "unassignError": "خطأ في إلغاء التعيين",
     "currentlyAssigned": "الدكاترة المعينين حالياً",
     "noDoctorsAssigned": "لم يتم تعيين أي دكاترة بعد",
-    "roomPlaceholder": "مثال: معمل 2، معمل حاسب أ"
+    "roomPlaceholder": "مثال: معمل 2، معمل حاسب أ",
+    "editTaName": "تعديل بيانات المعيد {{name}}",
+    "deleteTaName": "حذف المعيد {{name}}",
+    "assignCourseName": "تعيين مقرر للمساعد {{name}}",
+    "assignDoctorName": "تعيين دكتور للمساعد {{name}}",
+    "resetPasswordName": "إعادة تعيين كلمة المرور للمساعد {{name}}",
+    "viewProfileName": "عرض الملف الشخصي للمساعد {{name}}",
+    "viewScheduleName": "عرض جدول المواعيد للمساعد {{name}}"
   },
   "landing": {
     "showcase": {
@@ -2858,7 +2966,14 @@
     "totalSessions": "إجمالي المحاضرات والسكاشن",
     "conflicts": "تعارضات الجداول",
     "selectTA": "اختر المعيد",
-    "noTAAvailable": "لا يوجد معيد متاح"
+    "noTAAvailable": "لا يوجد معيد متاح",
+    "archiveStatus": "حالة الجدول",
+    "activeSlots": "الحصص النشطة",
+    "archivedSlots": "الحصص المؤرشفة",
+    "selectItem": "تحديد حصة {{title}}",
+    "deselectItem": "إلغاء تحديد حصة {{title}}",
+    "editSessionTitle": "تعديل الحصة {{title}}",
+    "deleteSessionTitle": "حذف الحصة {{title}}"
   },
   "degreeAudit": {
     "title": "مراجعة متطلبات التخرج",
@@ -2870,5 +2985,58 @@
     "credits": "الساعات المكتسبة",
     "estimatedGraduation": "تاريخ التخرج المتوقع",
     "noCourses": "لم يتم تسجيل مقررات مكتملة بعد"
+  },
+  "tables": {
+    "caption": {
+      "financeDashboard": "سجل المعاملات والمدفوعات المالية",
+      "studentsList": "دليل وسجل بيانات الطلاب",
+      "facultyAttendance": "دليل مقررات وسكاشن حضور أعضاء هيئة التدريس",
+      "timetableGrid": "جدول الحصص والمحاضرات الأكاديمية الأسبوعي",
+      "scheduleView": "الجدول الدراسي الأسبوعي للمحاضرات",
+      "courseRoster": "قائمة الطلاب المسجلين بالمقرر",
+      "examsList": "سجل وإدارة جدول الامتحانات",
+      "adminExamRecord": "السجل الدائم لأرشيف الامتحانات",
+      "knowledgeBase": "فهرس وثائق ومستندات قاعدة المعرفة",
+      "timetableManagement": "جدول إدارة الجداول الدراسية",
+      "schedulesList": "قائمة الجداول الأكاديمية",
+      "tasksTable": "قائمة مهام وواجبات المقررات",
+      "quizSubmissions": "تسليمات ودرجات الطلاب في الاختبار القصير",
+      "studentTuition": "سجل مدفوعات المصروفات الدراسية للطالب",
+      "doctorsList": "دليل أعضاء هيئة التدريس",
+      "teachingAssistantsList": "دليل الهيئة المعاونة والمعيدين",
+      "registrationRequests": "طلبات تسجيل المقررات الدراسية للطلاب",
+      "adminsList": "قائمة مسؤولي النظام",
+      "collegeDepartments": "قائمة الأقسام الأكاديمية بالكلية",
+      "coursesList": "دليل المقررات الدراسية الأكاديمية",
+      "studentWarnings": "سجل الإنذارات الأكاديمية والغياب للطلاب",
+      "departmentsList": "دليل الأقسام الأكاديمية",
+      "departmentStudyPlanYear": "مقررات الخطة الدراسية للقسم - {{year}}",
+      "departmentDoctors": "أعضاء هيئة التدريس بالقسم",
+      "departmentStudents": "الطلاب المقيدون بالقسم",
+      "degreeAuditCategory": "متطلبات ودرجات خطة التخرج الأكاديمية - {{category}}",
+      "aiMarkdown": "جدول بيانات رد المساعد الذكي"
+    }
+  },
+  "facultyAttendance": {
+    "thCode": "كود",
+    "thCourseName": "اسم المقرر",
+    "thYear": "الفرقة",
+    "thDeptCollege": "القسم / الكلية",
+    "thSections": "السكاشن",
+    "thStudents": "الطلاب",
+    "thGracePeriod": "السماح",
+    "thAction": "الإجراء"
+  },
+  "knowledgeBase": {
+    "thDocumentTitle": "المستند / اللائحة",
+    "thTypeScope": "النوع والنطاق",
+    "thActiveVersion": "الإصدار النشط",
+    "thProcessingStatus": "حالة المعالجة",
+    "thIndexedChunks": "القطع المفهرسة",
+    "thActions": "الإجراءات",
+    "viewDetailsTitle": "عرض التفاصيل وسجل الإصدارات: {{title}}",
+    "archiveDocumentTitle": "أرشفة اللائحة: {{title}}",
+    "titlePlaceholder": "مثال: اللائحة الأكاديمية للامتحانات 2026",
+    "versionTagPlaceholder": "مثال: 2027 أو الإصدار 2.0"
   }
 }

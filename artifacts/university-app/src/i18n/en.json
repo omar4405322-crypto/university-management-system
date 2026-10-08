@@ -212,7 +212,13 @@
     "hallRoom": "Hall / Room",
     "coursesCount": "Evaluated Courses",
     "credits": "Credits",
-    "semesterTitle": "Semester"
+    "semesterTitle": "Semester",
+    "hasSubmissions": "With Submissions",
+    "noSubmissions": "No Submissions",
+    "sortOrder": "Toggle Date Sort",
+    "noFilteredExams": "No Matching Exams Found",
+    "noCompletedExams": "No Archived Exams Yet",
+    "viewExamSubmissionsFor": "View submissions for {{course}}"
   },
   "statistics": {
     "title": "Academic Statistics",
@@ -456,8 +462,8 @@
     "searchPlaceholder": "Search by student name or code...",
     "allStages": "All Warning Stages",
     "allCourses": "All Courses",
-    "locationPermissionAlert": "attendance.locationPermissionAlert",
-    "activeSession": "attendance.activeSession",
+    "locationPermissionAlert": "Please allow location access in your browser and ensure GPS is active.",
+    "activeSession": "Active Session",
     "qrCode": "QR Code",
     "gpsLocation": "GPS Location",
     "codeRefreshesEvery": "Code refreshes automatically every {{seconds}} seconds"
@@ -529,7 +535,7 @@
     "lastNamePlaceholder": "Doe",
     "universityName": "6th of October University of Technology",
     "registerTagline": "Create your account to start managing your academic life",
-    "fullName": "auth.fullName",
+    "fullName": "Full Name",
     "collegesLoadError": "Error loading colleges",
     "departmentsLoadError": "Error loading departments",
     "loadingColleges": "Loading colleges...",
@@ -657,7 +663,11 @@
     "selectAdmin": "Select Administrator",
     "college": "College / Faculty",
     "nameEnPlaceholder": "e.g. College of Engineering",
-    "descriptionPlaceholder": "Brief description of the college..."
+    "descriptionPlaceholder": "Brief description of the college...",
+    "viewDepartmentName": "View Department: {{name}}",
+    "viewDepartment": "View Department",
+    "deleteDepartmentName": "Delete Department: {{name}}",
+    "deleteDeptName": "Delete department {{name}}"
   },
   "common": {
     "searchPlaceholder": "Search...",
@@ -759,13 +769,13 @@
     "defaultView": "Default View",
     "name": "Name",
     "clear": "Clear",
-    "searchCoursePlaceholder": "common.searchCoursePlaceholder",
-    "total": "common.total",
-    "noResults": "common.noResults",
+    "searchCoursePlaceholder": "Search by course code or name...",
+    "total": "Total",
+    "noResults": "No matching results found",
     "uploading": "Uploading...",
     "noSearchResults": "No results found",
-    "searchCollege": "common.searchCollege",
-    "searchDept": "common.searchDept",
+    "searchCollege": "Search by college name...",
+    "searchDept": "Search by department name...",
     "changeStatus": "Change Status",
     "resetView": "Reset View",
     "creating": "Creating...",
@@ -807,7 +817,15 @@
     "underConstruction": "Under Construction",
     "notificationsLabel": "Notifications",
     "dismissNotification": "Dismiss notification",
-    "featureCarouselPagination": "Carousel pagination"
+    "featureCarouselPagination": "Carousel pagination",
+    "date": "Date",
+    "sortBy": "Sort By",
+    "year1": "Year 1",
+    "year2": "Year 2",
+    "year3": "Year 3",
+    "year4": "Year 4",
+    "allTypes": "All Types",
+    "deselect": "Deselect"
   },
   "courses": {
     "course": "Course",
@@ -939,7 +957,11 @@
     "updating": "Updating...",
     "namePlaceholder": "e.g. Intro to CS",
     "codePlaceholder": "e.g. CS101",
-    "errorUpdating": "Error updating course"
+    "errorUpdating": "Error updating course",
+    "withdrawStudentName": "Withdraw student: {{name}}",
+    "viewCourseName": "View course {{name}}",
+    "editCourseName": "Edit course {{name}}",
+    "deleteCourseName": "Delete course {{name}}"
   },
   "dashboard": {
     "academicOverview": "Academic Overview",
@@ -1127,7 +1149,16 @@
     "nameArPlaceholder": "Enter department name in Arabic",
     "nameEnPlaceholder": "Enter department name in English",
     "parentCollege": "Parent College",
-    "selectCollege": "Select College..."
+    "selectCollege": "Select College...",
+    "deleteConfirmTitle": "Delete Department",
+    "departmentDetails": "Department details",
+    "editDeptName": "Edit department {{name}}",
+    "deleteDeptName": "Delete department {{name}}",
+    "viewDeptDetails": "View details for {{name}}",
+    "manageCurriculumDept": "Manage curriculum for {{name}}",
+    "schedulesDept": "View schedules for {{name}}",
+    "selectDeptItem": "Select department {{name}}",
+    "deselectDept": "Deselect department {{name}}"
   },
   "groups": {
     "title": "Group Management",
@@ -1577,14 +1608,23 @@
     "latitude": "Latitude",
     "longitude": "Longitude",
     "allowedRadius": "Allowed Radius (meters)",
-    "deleteExamTitle": "Delete Exam",
+    "deleteExamTitle": "Delete exam {{title}}",
     "deleteConfirmMessage": "Are you sure you want to delete this exam? This action cannot be undone.",
     "submitError": "Error submitting exam",
     "geofenceLocationDeniedErr": "Location access is required to take this exam.",
     "outsideGeofenceErr": "You are outside the permitted exam campus boundaries.",
     "startError": "Error starting exam session",
     "refreshLocation": "Verify Location",
-    "questions": "Questions"
+    "questions": "Questions",
+    "bulkDeleteTitle": "Confirm Bulk Deletion",
+    "types": {
+      "midterm": "Midterm",
+      "final": "Final",
+      "practical": "Practical"
+    },
+    "viewExamDetails": "View details for {{title}}",
+    "selectExam": "Select exam {{title}}",
+    "deselectExam": "Deselect exam {{title}}"
   },
   "doctors": {
     "activeProfessors": "Active Professors",
@@ -1659,7 +1699,13 @@
     "statusInactive": "Inactive",
     "coursesTaught": "Courses Taught",
     "noCoursesYet": "No courses assigned yet",
-    "roomPlaceholder": "e.g. Hall 1, Lab 3"
+    "roomPlaceholder": "e.g. Hall 1, Lab 3",
+    "bulkDeleteTitle": "Confirm Bulk Deletion",
+    "editDoctorName": "Edit doctor {{name}}",
+    "deleteDoctorName": "Delete doctor {{name}}",
+    "viewDoctorName": "View profile for {{name}}",
+    "viewScheduleDoctorName": "View schedule for {{name}}",
+    "resetPasswordDoctorName": "Reset password for {{name}}"
   },
   "search": {
     "placeholder": "Search students, faculty, courses…",
@@ -1740,11 +1786,18 @@
     "inPersonPaymentNotice": "Online payment is not currently available. Please visit the university's Finance Office in person to settle your fees and receive an official receipt.",
     "receiptDownloadSuccess": "Receipt downloaded successfully",
     "receiptDownloadError": "Failed to download receipt",
-    "deleteSuccess": "finance.deleteSuccess",
-    "deleteError": "finance.deleteError",
-    "noMonthlyData": "finance.noMonthlyData",
-    "downloadReceipt": "finance.downloadReceipt",
-    "deleteConfirm": "finance.deleteConfirm"
+    "deleteSuccess": "Payment record deleted successfully",
+    "deleteError": "Failed to delete payment record",
+    "noMonthlyData": "No revenue recorded for this month yet",
+    "downloadReceipt": "Download Receipt",
+    "deleteConfirm": "Delete payment record",
+    "totalRecords": "Total: {{count}} records",
+    "markPaidAria": "Mark payment {{id}} as paid",
+    "downloadReceiptAria": "Download receipt for payment {{id}}",
+    "editPaymentAria": "Edit payment {{id}}",
+    "deletePaymentAria": "Delete payment {{id}}",
+    "payNowAria": "Pay now for payment {{id}}",
+    "paymentMethod": "Payment Method"
   },
   "footer": {
     "universityName": "6th of October University of Technology",
@@ -2029,7 +2082,12 @@
     "subtitle": "Review and manage student registration and enrollment applications.",
     "tableView": "Table View",
     "title": "Registration Requests",
-    "totalRegistrations": "Total Registrations"
+    "totalRegistrations": "Total Registrations",
+    "viewRequestStudent": "View registration request for {{name}}",
+    "viewRequestFor": "View registration request for {{name}}",
+    "rejectRequestFor": "Reject registration request for {{name}}",
+    "approveRequestFor": "Approve registration request for {{name}}",
+    "deleteRequestFor": "Delete registration request for {{name}}"
   },
   "roles": {
     "ADMIN": "System Administrator",
@@ -2105,14 +2163,14 @@
     "noDoctorScheduleDesc": "Try selecting a different faculty member or resetting search filters.",
     "temporaryChange": "Temporary Change",
     "noSlotsForDay": "No sessions scheduled for this day",
-    "groupOptional": "schedule.groupOptional",
-    "allStudents": "schedule.allStudents",
+    "groupOptional": "Optional — empty = all students",
+    "allStudents": "All Students (General Cohort)",
     "groupA": "schedule.groupA",
     "groupB": "schedule.groupB",
     "sec1": "schedule.sec1",
     "sec2": "schedule.sec2",
     "sec3": "schedule.sec3",
-    "semester": "schedule.semester",
+    "semester": "Semester",
     "editOverride": "Edit Schedule Override",
     "createOverride": "Create Schedule Override",
     "startDate": "Start Date",
@@ -2121,7 +2179,8 @@
     "currentRoom": "Current Room",
     "reason": "Reason",
     "removeOverride": "Remove Override",
-    "noGroupsFound": "No groups found"
+    "noGroupsFound": "No groups found",
+    "sem": "Sem"
   },
   "students": {
     "defaultView": "Default View",
@@ -2302,9 +2361,16 @@
     "bulkDeleteSuccess": "Selected students deleted successfully",
     "department": "Department",
     "academicDepts": "Academic Depts",
-    "studentCode": "students.studentCode",
+    "studentCode": "Student Code",
     "name": "Student Name",
-    "viewProfile": "View Profile"
+    "viewProfile": "View Profile",
+    "bulkDeleteTitle": "Confirm Bulk Deletion",
+    "viewStudentName": "View student {{name}}",
+    "editStudentName": "Edit student {{name}}",
+    "deleteStudentName": "Delete student {{name}}",
+    "resetPasswordName": "Reset password for student {{name}}",
+    "activateStudentName": "Activate student {{name}}",
+    "deactivateStudentName": "Deactivate student {{name}}"
   },
   "tasks": {
     "createTask": "Create Assignment",
@@ -2408,7 +2474,11 @@
     "maxScoreMin": "Total points must be at least 1",
     "invalidUrl": "Please enter a valid submission link",
     "fileUrlRequired": "Submission file URL is required",
-    "searchPlaceholder": "Search assignment title, course, or description..."
+    "searchPlaceholder": "Search assignment title, course, or description...",
+    "selectAllTasks": "Select all tasks",
+    "deselectAllTasks": "Deselect all tasks",
+    "selectTaskTitle": "Select task {{title}}",
+    "deselectTaskTitle": "Deselect task {{title}}"
   },
   "timetables": {
     "noSlots": "No class slots have been added yet.",
@@ -2437,7 +2507,38 @@
     "syncConfirmPrompt": "Do you want to automatically sync this timetable with the Master Schedule?",
     "syncSuccess": "Timetable synced successfully with Master Schedule",
     "saveSuccess": "Timetable saved and synced successfully ✅",
-    "selectRequired": "Please select department, academic year, and semester"
+    "selectRequired": "Please select department, academic year, and semester",
+    "colTitleDept": "Timetable & Department",
+    "colYearSem": "Division & Semester",
+    "colStatus": "Status",
+    "colUpdatedAt": "Last Updated",
+    "colActions": "Actions",
+    "startTime": "Time",
+    "selectCollege": "All Colleges",
+    "selectDept": "Select Department",
+    "academicYear": "Academic Year",
+    "day": "Day of Week",
+    "endTime": "End Time",
+    "roomPlaceholder": "e.g. Hall 302, Lab 105",
+    "emptyGridAudit": "No slots to audit in the current grid.",
+    "noConflictsFound": "Audit passed: No timetable conflicts detected.",
+    "managementTitle": "General Timetable Records",
+    "managementSubtitle": "Manage and publish master class timetables",
+    "viewCardView": "Cards",
+    "viewListView": "List",
+    "createTimetable": "New Timetable",
+    "totalTimetables": "Total Timetables",
+    "departmentsCoveredKpi": "Departments Covered",
+    "unpublished": "Timetable unpublished",
+    "selectItem": "Select timetable {{title}}",
+    "deselectItem": "Deselect timetable {{title}}",
+    "editTimetableTitle": "Edit timetable {{title}}",
+    "deleteTimetableTitle": "Delete timetable {{title}}",
+    "viewTimetableItem": "View schedule for {{title}}",
+    "publishTimetableItem": "Publish timetable {{title}}",
+    "unpublishTimetableItem": "Unpublish timetable {{title}}",
+    "editTimetableItem": "Edit timetable {{title}}",
+    "deleteTimetableItem": "Delete timetable {{title}}"
   },
   "timetable": {
     "addSlot": "Add Class Slot",
@@ -2445,7 +2546,7 @@
     "noDoctors": "No professors registered",
     "otherCollege": "Other college",
     "conflictWarning": "timetable.conflictWarning",
-    "auditConflicts": "timetable.auditConflicts",
+    "auditConflicts": "Audit Conflicts",
     "tier1": "Tier 1",
     "tier2": "Tier 2",
     "tier3": "Tier 3",
@@ -2767,7 +2868,14 @@
     "totalSessions": "Total Sessions",
     "conflicts": "Schedule Conflicts",
     "selectTA": "Select Teaching Assistant",
-    "noTAAvailable": "No TA Available"
+    "noTAAvailable": "No TA Available",
+    "archiveStatus": "Schedule status",
+    "activeSlots": "Active slots",
+    "archivedSlots": "Archived slots",
+    "selectItem": "Select session {{title}}",
+    "deselectItem": "Deselect session {{title}}",
+    "editSessionTitle": "Edit session {{title}}",
+    "deleteSessionTitle": "Delete session {{title}}"
   },
   "validation": {
     "emailRequired": "Email is required",
@@ -2858,7 +2966,14 @@
     "unassignError": "Error during unassignment",
     "currentlyAssigned": "Currently Assigned Doctors",
     "noDoctorsAssigned": "No faculty members assigned yet",
-    "roomPlaceholder": "e.g. Lab 2, Computer Lab A"
+    "roomPlaceholder": "e.g. Lab 2, Computer Lab A",
+    "editTaName": "Edit teaching assistant {{name}}",
+    "deleteTaName": "Delete teaching assistant {{name}}",
+    "assignCourseName": "Assign course to {{name}}",
+    "assignDoctorName": "Assign doctor to {{name}}",
+    "resetPasswordName": "Reset password for {{name}}",
+    "viewProfileName": "View profile for {{name}}",
+    "viewScheduleName": "View schedule for {{name}}"
   },
   "degreeAudit": {
     "title": "Academic Degree Audit",
@@ -2870,5 +2985,58 @@
     "credits": "Earned Credits",
     "estimatedGraduation": "Est. Graduation",
     "noCourses": "No courses completed yet"
+  },
+  "tables": {
+    "caption": {
+      "financeDashboard": "Finance and payments transactions ledger",
+      "studentsList": "Students directory roster",
+      "facultyAttendance": "Faculty attendance courses and sections directory",
+      "timetableGrid": "Weekly academic timetable schedule grid",
+      "scheduleView": "Personal weekly class and lecture schedule view",
+      "courseRoster": "Course enrolled students roster",
+      "examsList": "Exams directory schedule and management",
+      "adminExamRecord": "Archived exams permanent record",
+      "knowledgeBase": "Knowledge base documents and materials index",
+      "timetableManagement": "Timetable schedules management table",
+      "schedulesList": "Academic schedules list",
+      "tasksTable": "Course tasks and assignments list",
+      "quizSubmissions": "Quiz student submissions and grades",
+      "studentTuition": "Student tuition payment history",
+      "doctorsList": "Faculty doctors roster",
+      "teachingAssistantsList": "Teaching assistants roster",
+      "registrationRequests": "Student course registration requests",
+      "adminsList": "System administrators list",
+      "collegeDepartments": "College academic departments list",
+      "coursesList": "Academic courses directory",
+      "studentWarnings": "Student academic and attendance warnings record",
+      "departmentsList": "Academic departments directory",
+      "departmentStudyPlanYear": "Department academic study plan courses — {{year}}",
+      "departmentDoctors": "Department faculty professors roster",
+      "departmentStudents": "Department enrolled students roster",
+      "degreeAuditCategory": "Academic degree audit course requirements and grades — {{category}}",
+      "aiMarkdown": "AI assistant response data table"
+    }
+  },
+  "facultyAttendance": {
+    "thCode": "Code",
+    "thCourseName": "Course Name",
+    "thYear": "Year / Level",
+    "thDeptCollege": "Department / College",
+    "thSections": "Sections",
+    "thStudents": "Students",
+    "thGracePeriod": "Grace Period",
+    "thAction": "Action"
+  },
+  "knowledgeBase": {
+    "thDocumentTitle": "Document Title",
+    "thTypeScope": "Type & Scope",
+    "thActiveVersion": "Active Version",
+    "thProcessingStatus": "Processing Status",
+    "thIndexedChunks": "Indexed Chunks",
+    "thActions": "Actions",
+    "viewDetailsTitle": "View Details & Version History: {{title}}",
+    "archiveDocumentTitle": "Archive document: {{title}}",
+    "titlePlaceholder": "e.g. Academic Examination Regulations 2026",
+    "versionTagPlaceholder": "e.g. 2027 or v2.0"
   }
 }

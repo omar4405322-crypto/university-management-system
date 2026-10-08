@@ -6,6 +6,7 @@ import Table, {
   TableHeader,
   TableHead,
   TableBody,
+  TableCaption,
 } from "../../components/ui/table";
 import Badge from "../../components/ui/badge";
 import LoadingState from "../../components/ui/LoadingState";
@@ -629,8 +630,14 @@ export function CoursesList() {
           </div>
         ) : (
           <>
-            <Table className="w-full">
-              <TableHeader>
+            <Table
+              className="w-full"
+              containerClassName="max-h-[calc(100vh-280px)] min-h-[340px] overflow-auto custom-scrollbar"
+            >
+              <TableCaption className="sr-only">
+                {t("tables.caption.coursesList", "Academic courses directory")}
+              </TableCaption>
+              <TableHeader sticky className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                 <TableRow className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-slate-500 font-bold text-[11px]">
                   {canManage && (
                     <TableHead className="w-12 ps-4 text-start">
@@ -834,9 +841,11 @@ export function CoursesList() {
                       <TableCell className="pe-4 text-end">
                         <div className="inline-flex items-center gap-1 justify-end">
                           <button
+                            type="button"
                             onClick={() => navigate(`/courses/${course.id}`)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-brand-primary-600 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/40 transition-all cursor-pointer"
-                            title={t("common.view", "View")}
+                            title={t("courses.viewCourseName", { name: course.name })}
+                            aria-label={t("courses.viewCourseName", { name: course.name })}
                           >
                             <Eye size={14} />
                           </button>
@@ -844,17 +853,20 @@ export function CoursesList() {
                           {canManage && (
                             <>
                               <button
+                                type="button"
                                 onClick={() => {
                                   setSelectedCourse(course);
                                   setIsModalOpen(true);
                                 }}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-all cursor-pointer"
-                                title={t("common.edit", "Edit")}
+                                title={t("courses.editCourseName", { name: course.name })}
+                                aria-label={t("courses.editCourseName", { name: course.name })}
                               >
                                 <Edit2 size={14} />
                               </button>
 
                               <button
+                                type="button"
                                 onClick={() =>
                                   setDeleteTarget({
                                     id: course.id,
@@ -862,7 +874,8 @@ export function CoursesList() {
                                   })
                                 }
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all cursor-pointer"
-                                title={t("common.delete", "Delete")}
+                                title={t("courses.deleteCourseName", { name: course.name })}
+                                aria-label={t("courses.deleteCourseName", { name: course.name })}
                               >
                                 <Trash2 size={14} />
                               </button>

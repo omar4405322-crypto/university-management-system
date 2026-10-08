@@ -19,6 +19,7 @@ import Table, {
   TableRow,
   TableHead,
   TableCell,
+  TableCaption,
 } from "../../components/ui/table";
 import departmentService from "../../services/department.service";
 import collegeService from "../../services/college.service";
@@ -625,6 +626,9 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({
 
                   {/* Courses Table */}
                   <Table className="w-full">
+                    <TableCaption className="sr-only">
+                      {t("tables.caption.departmentStudyPlanYear", { year: getYearLabel(yr), defaultValue: `Department academic study plan courses — ${getYearLabel(yr)}` })}
+                    </TableCaption>
                     <TableHeader>
                       <TableRow className="hover:bg-transparent border-b border-brand-border/40">
                         <TableHead className="text-start text-xs font-bold text-brand-text-muted py-3 px-6 w-36">
@@ -739,6 +743,9 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({
             </div>
           ) : (
             <Table className="w-full">
+              <TableCaption className="sr-only">
+                {t("tables.caption.departmentDoctors", "Department faculty professors roster")}
+              </TableCaption>
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-b border-brand-border/40">
                   <TableHead className="text-start text-xs font-bold text-brand-text-muted py-3 px-6 w-36">
@@ -835,6 +842,9 @@ const DepartmentDetails: React.FC<DepartmentDetailsProps> = ({
             </div>
           ) : (
             <Table className="w-full">
+              <TableCaption className="sr-only">
+                {t("tables.caption.departmentStudents", "Department enrolled students roster")}
+              </TableCaption>
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-b border-brand-border/40">
                   <TableHead className="text-start text-xs font-bold text-brand-text-muted py-3 px-6 w-44">

@@ -81,18 +81,21 @@ const QuizSubmissionsModal = ({
         <div className="space-y-4">
           <div className="overflow-x-auto rounded-2xl border border-brand-border">
             <table className="w-full text-sm">
+              <caption className="sr-only">
+                {t("tables.caption.quizSubmissions", "Quiz student submissions and grades")}
+              </caption>
               <thead>
                 <tr className="bg-surface-subtle border-b border-brand-border">
-                  <th className="px-4 py-3 text-start font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
+                  <th scope="col" className="px-4 py-3 text-start font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
                     {t("students.fullName")}
                   </th>
-                  <th className="px-4 py-3 text-start font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
+                  <th scope="col" className="px-4 py-3 text-start font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
                     {t("quizzes.score")}
                   </th>
-                  <th className="px-4 py-3 text-start font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
+                  <th scope="col" className="px-4 py-3 text-start font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
                     {t("quizzes.submittedAt")}
                   </th>
-                  <th className="px-4 py-3 text-end font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
+                  <th scope="col" className="px-4 py-3 text-end font-black uppercase tracking-widest text-[10px] text-brand-text-muted">
                     {t("common.actions")}
                   </th>
                 </tr>

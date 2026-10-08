@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useDebounce } from '../../hooks/useDebounce';
 import {
   PieChart,
@@ -27,7 +27,9 @@ import Table, {
   TableHeader,
   TableHead,
   TableBody,
+  TableCaption,
 } from '../../components/ui/table';
+import { Pagination } from '../../components/ui/pagination';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/badge';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -149,12 +151,42 @@ export function FinanceDashboard() {
   const [payNoticeModalOpen, setPayNoticeModalOpen] = useState(false);
   const [selectedPaymentForPay, setSelectedPaymentForPay] = useState<PaymentItem | null>(null);
 
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [allStudentPayments, setAllStudentPayments] = useState<PaymentItem[]>([]);
+
   const [filters, setFilters] = useState<PaymentFilters>({
     status: 'ALL',
     type: 'ALL',
     search: '',
   });
-  const debouncedSearch = useDebounce(filters.search, 300);
+  const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
+
+  // Batch search debounce and page reset
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (debouncedSearch !== filters.search) {
+        setDebouncedSearch(filters.search);
+        setPage(1);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters.search, debouncedSearch]);
+
+  const hasFetchedStudent = useRef(false);
+
+  const fetchStats = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const statsRes = await paymentsService.getStats();
+      if (statsRes.success) {
+        setStats(statsRes.data);
+      }
+    } catch (err: any) {
+      logger.error(err);
+    }
+  }, [isAdmin]);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     try {
@@ -162,12 +194,14 @@ export function FinanceDashboard() {
       else setLoading(true);
 
       if (isAdmin) {
-        const statsRes = await paymentsService.getStats();
-        if (statsRes.success) {
-          setStats(statsRes.data);
+        if (isRefresh || !hasFetchedStudent.current) {
+          fetchStats();
+          hasFetchedStudent.current = true;
         }
 
         const params: Record<string, unknown> = {};
+        params.page = page;
+        params.limit = limit;
         if (filters.status !== 'ALL') params.status = filters.status;
         if (filters.type !== 'ALL') params.type = filters.type;
         if (debouncedSearch) params.search = debouncedSearch;
@@ -175,11 +209,23 @@ export function FinanceDashboard() {
         const paymentsRes = await paymentsService.getPayments(params);
         if (paymentsRes.success) {
           setPayments(paymentsRes.data || []);
+          if (paymentsRes.pagination) {
+            setTotalRecords(paymentsRes.pagination.total);
+          } else {
+            setTotalRecords(paymentsRes.data?.length || 0);
+          }
         }
       } else {
+        if (!isRefresh && hasFetchedStudent.current) {
+          return;
+        }
         const myPaymentsRes = await paymentsService.getMyPayments();
         if (myPaymentsRes.success) {
-          setPayments(myPaymentsRes.data || []);
+          const allPersonal = myPaymentsRes.data || [];
+          setAllStudentPayments(allPersonal);
+          setPayments(allPersonal);
+          setTotalRecords(allPersonal.length);
+          hasFetchedStudent.current = true;
         }
       }
     } catch (err: any) {
@@ -188,7 +234,7 @@ export function FinanceDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [debouncedSearch, filters.status, filters.type, isAdmin]);
+  }, [debouncedSearch, filters.status, filters.type, isAdmin, page, limit, fetchStats]);
 
   useEffect(() => {
     fetchData();
@@ -289,23 +335,52 @@ export function FinanceDashboard() {
 
   const studentStats: StudentPaymentStats | null = !isAdmin
     ? {
-        totalPaid: payments
+        totalPaid: allStudentPayments
           .filter((p) => p.status === 'PAID')
           .reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
-        totalPending: payments
+        totalPending: allStudentPayments
           .filter((p) => p.status === 'PENDING')
           .reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
-        totalOverdue: payments
+        totalOverdue: allStudentPayments
           .filter((p) => p.status === 'OVERDUE')
           .reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
       }
     : null;
+
+  const filteredStudentPayments = useMemo(() => {
+    if (isAdmin) return [];
+    if (!debouncedSearch.trim()) return allStudentPayments;
+    const q = debouncedSearch.trim().toLowerCase();
+    return allStudentPayments.filter(
+      (p) =>
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        String(p.type).toLowerCase().includes(q) ||
+        String(p.status).toLowerCase().includes(q)
+    );
+  }, [isAdmin, allStudentPayments, debouncedSearch]);
+
+  const activeTotalCount = isAdmin ? totalRecords : filteredStudentPayments.length;
+
+  const totalPages = Math.max(1, Math.ceil(activeTotalCount / limit));
+
+  // Clamp page if it exceeds totalPages
+  useEffect(() => {
+    if (page > totalPages && totalPages > 0) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const displayedPayments = useMemo(() => {
+    if (isAdmin) return payments;
+    return filteredStudentPayments.slice((page - 1) * limit, page * limit);
+  }, [isAdmin, payments, filteredStudentPayments, page, limit]);
 
   const hasActiveFilters =
     filters.status !== 'ALL' || filters.type !== 'ALL' || filters.search.trim() !== '';
 
   const clearFilters = () => {
     setFilters({ status: 'ALL', type: 'ALL', search: '' });
+    setPage(1);
   };
 
   return (
@@ -442,7 +517,7 @@ export function FinanceDashboard() {
             <StatCard
               compact
               title={isRTL ? 'إجمالي المعاملات' : 'Transactions'}
-              value={payments.length}
+              value={allStudentPayments.length}
               icon={Receipt}
               color="blue"
             />
@@ -477,7 +552,7 @@ export function FinanceDashboard() {
             <History size={14} />
             <span>{t('finance.allPayments', 'All Payments')}</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono font-bold">
-              {payments.length}
+              {activeTotalCount}
             </span>
           </button>
         </div>
@@ -596,7 +671,9 @@ export function FinanceDashboard() {
               <input
                 type="text"
                 value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                onChange={(e) => {
+                  setFilters({ ...filters, search: e.target.value });
+                }}
                 placeholder={
                   isAdmin
                     ? t('finance.searchStudentPlaceholder', 'Search by name or ID...')
@@ -606,7 +683,10 @@ export function FinanceDashboard() {
               />
               {filters.search && (
                 <button
-                  onClick={() => setFilters({ ...filters, search: '' })}
+                  onClick={() => {
+                    setFilters({ ...filters, search: '' });
+                    setPage(1);
+                  }}
                   className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                 >
                   <X size={13} />
@@ -619,7 +699,10 @@ export function FinanceDashboard() {
                 {/* Status Dropdown */}
                 <select
                   value={filters.status}
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  onChange={(e) => {
+                    setFilters({ ...filters, status: e.target.value });
+                    setPage(1);
+                  }}
                   aria-label={t('finance.allStatuses', 'All Statuses')}
                   className="h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
                 >
@@ -632,7 +715,10 @@ export function FinanceDashboard() {
                 {/* Type Dropdown */}
                 <select
                   value={filters.type}
-                  onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                  onChange={(e) => {
+                    setFilters({ ...filters, type: e.target.value });
+                    setPage(1);
+                  }}
                   aria-label={t('finance.allTypes', 'All Types')}
                   className="h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
                 >
@@ -657,7 +743,7 @@ export function FinanceDashboard() {
             )}
 
             <div className="ms-auto text-xs text-slate-400 font-semibold pe-1">
-              {isRTL ? `إجمالي: ${payments.length} معاملة` : `Total: ${payments.length} records`}
+              {t('finance.totalRecords', { count: activeTotalCount, defaultValue: `Total: ${activeTotalCount} records` })}
             </div>
           </div>
 
@@ -668,13 +754,15 @@ export function FinanceDashboard() {
                 <RotateCw className="animate-spin mx-auto text-brand-primary-500 mb-2" size={28} />
                 <span className="text-xs font-medium">{t('common.loading', 'Loading...')}</span>
               </div>
-            ) : payments.length === 0 ? (
+            ) : (isAdmin ? payments.length === 0 : filteredStudentPayments.length === 0) ? (
               <div className="p-8 text-center">
                 <EmptyState
                   icon={<Receipt size={36} className="text-slate-400" />}
                   title={t('finance.noPayments', 'No payments found')}
                   subtitle={
-                    isAdmin
+                    hasActiveFilters
+                      ? t('finance.noPaymentsDesc', 'No payment records match your current filters.')
+                      : isAdmin
                       ? t('finance.noPaymentsDesc', 'No payment records match your current filters.')
                       : t('finance.noPaymentsYet', 'No payments yet')
                   }
@@ -697,9 +785,14 @@ export function FinanceDashboard() {
                 />
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table className="w-full text-xs">
-                  <TableHeader className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
+              <Table
+                className="w-full text-xs"
+                containerClassName="max-h-[calc(100vh-280px)] min-h-[340px] overflow-auto custom-scrollbar"
+              >
+                <TableCaption className="sr-only">
+                  {t('tables.caption.financeDashboard', 'Finance and payments transactions ledger')}
+                </TableCaption>
+                <TableHeader sticky className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                     <TableRow>
                       {isAdmin && (
                         <TableHead className="p-2.5 font-bold text-slate-500">
@@ -729,7 +822,7 @@ export function FinanceDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {payments.map((payment) => (
+                    {displayedPayments.map((payment) => (
                       <TableRow
                         key={payment.id}
                         className="hover:bg-slate-50 dark:hover:bg-slate-700/20 border-b border-slate-100 dark:border-slate-700/50"
@@ -800,7 +893,8 @@ export function FinanceDashboard() {
                                 size="sm"
                                 onClick={() => setConfirmPaymentId(payment.id)}
                                 className="h-7 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold gap-1 cursor-pointer"
-                                title={t('finance.markPaid', 'Mark as Paid')}
+                                title={t('finance.markPaidAria', { id: payment.id, defaultValue: `Mark payment ${payment.id} as paid` })}
+                                aria-label={t('finance.markPaidAria', { id: payment.id, defaultValue: `Mark payment ${payment.id} as paid` })}
                               >
                                 <CheckCircle size={12} />
                                 <span>{isRTL ? 'تحصيل' : 'Pay'}</span>
@@ -811,7 +905,8 @@ export function FinanceDashboard() {
                               <button
                                 onClick={() => handleDownloadReceipt(payment.id)}
                                 className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
-                                title={t('finance.downloadReceipt', 'finance.downloadReceipt')}
+                                title={t('finance.downloadReceiptAria', { id: payment.id, defaultValue: `Download receipt for payment ${payment.id}` })}
+                                aria-label={t('finance.downloadReceiptAria', { id: payment.id, defaultValue: `Download receipt for payment ${payment.id}` })}
                               >
                                 <Download size={12} />
                               </button>
@@ -825,7 +920,8 @@ export function FinanceDashboard() {
                                     setIsModalOpen(true);
                                   }}
                                   className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
-                                  title={t('common.edit', 'Edit')}
+                                  title={t('finance.editPaymentAria', { id: payment.id, defaultValue: `Edit payment ${payment.id}` })}
+                                  aria-label={t('finance.editPaymentAria', { id: payment.id, defaultValue: `Edit payment ${payment.id}` })}
                                 >
                                   <Pencil size={12} />
                                 </button>
@@ -833,7 +929,8 @@ export function FinanceDashboard() {
                                 <button
                                   onClick={() => setPaymentToDelete(payment.id)}
                                   className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
-                                  title={t('common.delete', 'Delete')}
+                                  title={t('finance.deletePaymentAria', { id: payment.id, defaultValue: `Delete payment ${payment.id}` })}
+                                  aria-label={t('finance.deletePaymentAria', { id: payment.id, defaultValue: `Delete payment ${payment.id}` })}
                                 >
                                   <Trash2 size={12} />
                                 </button>
@@ -848,6 +945,7 @@ export function FinanceDashboard() {
                                   setPayNoticeModalOpen(true);
                                 }}
                                 className="h-7 px-2.5 bg-brand-primary-600 hover:bg-brand-primary-700 text-white rounded-lg text-xs font-bold gap-1 cursor-pointer"
+                                aria-label={t('finance.payNowAria', { id: payment.id, defaultValue: `Pay now for payment ${payment.id}` })}
                               >
                                 <CreditCard size={12} />
                                 <span>{t('finance.payNow', 'Pay Now')}</span>
@@ -859,6 +957,21 @@ export function FinanceDashboard() {
                     ))}
                   </TableBody>
                 </Table>
+            )}
+
+            {activeTotalCount > 10 && (
+              <div className="p-3 border-t border-slate-200 dark:border-slate-700">
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  total={activeTotalCount}
+                  pageSize={limit}
+                  onPageSizeChange={(newSize) => {
+                    setLimit(newSize);
+                    setPage(1);
+                  }}
+                />
               </div>
             )}
           </div>

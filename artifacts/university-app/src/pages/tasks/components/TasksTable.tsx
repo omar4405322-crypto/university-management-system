@@ -16,6 +16,7 @@ import Table, {
   TableRow,
   TableHead,
   TableCell,
+  TableCaption,
 } from "../../../components/ui/table";
 import type { TaskItem } from "../types";
 
@@ -58,12 +59,20 @@ export const TasksTable: React.FC<TasksTableProps> = ({
     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700/80 overflow-hidden shadow-2xs">
       <div className="overflow-x-auto">
         <Table className="w-full text-xs">
+          <TableCaption className="sr-only">
+            {t("tables.caption.tasksTable", "Course tasks and assignments list")}
+          </TableCaption>
           <TableHeader className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700">
             <TableRow>
               <TableHead className="w-10 p-2.5 text-center">
                 <button
                   type="button"
                   onClick={onSelectAll}
+                  aria-label={
+                    allSelected
+                      ? t("tasks.deselectAllTasks", "Deselect all tasks")
+                      : t("tasks.selectAllTasks", "Select all tasks")
+                  }
                   className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
                 >
                   {allSelected ? (
@@ -126,6 +135,11 @@ export const TasksTable: React.FC<TasksTableProps> = ({
                     <button
                       type="button"
                       onClick={() => onToggleSelect(task.id)}
+                      aria-label={
+                        isSelected
+                          ? t("tasks.deselectTaskTitle", { title: task.title, defaultValue: `Deselect task ${task.title}` })
+                          : t("tasks.selectTaskTitle", { title: task.title, defaultValue: `Select task ${task.title}` })
+                      }
                       className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
                     >
                       {isSelected ? (

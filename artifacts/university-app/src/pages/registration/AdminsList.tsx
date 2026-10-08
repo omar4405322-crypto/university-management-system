@@ -24,6 +24,7 @@ import Table, {
   TableHead,
   TableBody,
   ActionMenu,
+  TableCaption,
 } from "../../components/ui/table";
 import Pagination from "../../components/ui/pagination";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -767,6 +768,9 @@ const AdminsList = () => {
           <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0">
             <div className="overflow-x-auto">
               <Table className="w-full">
+                <TableCaption className="sr-only">
+                  {t("tables.caption.adminsList", "System administrators list")}
+                </TableCaption>
                 <TableHeader className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
                   <TableRow>
                     <TableHead className="w-12 text-center p-4">
@@ -842,6 +846,9 @@ const AdminsList = () => {
                           label: isRTL
                             ? "إعادة تفعيل الحساب"
                             : "Reactivate Admin",
+                          ariaLabel: isRTL
+                            ? `إعادة تفعيل الحساب لـ ${admin.email || "admin"}`
+                            : `Reactivate admin ${admin.email || "admin"}`,
                           icon: UserCheck,
                           variant: "edit",
                           onClick: () => setReactivateTarget(admin),
@@ -851,6 +858,9 @@ const AdminsList = () => {
                             label: isRTL
                               ? "حذف الحساب نهائياً"
                               : "Permanent Delete",
+                            ariaLabel: isRTL
+                              ? `حذف الحساب نهائياً لـ ${admin.email || "admin"}`
+                              : `Permanently delete admin ${admin.email || "admin"}`,
                             icon: Trash2,
                             variant: "delete",
                             onClick: () => {
@@ -863,6 +873,9 @@ const AdminsList = () => {
                     } else {
                       actions.push({
                         label: isRTL ? "تعديل البيانات" : "Edit Admin",
+                        ariaLabel: isRTL
+                          ? `تعديل بيانات ${admin.email || "admin"}`
+                          : `Edit admin ${admin.email || "admin"}`,
                         icon: Edit2,
                         onClick: () => setEditingAdmin(admin),
                       });
@@ -870,6 +883,9 @@ const AdminsList = () => {
                         label: isRTL
                           ? "إعادة تعيين كلمة المرور"
                           : "Reset Password",
+                        ariaLabel: isRTL
+                          ? `إعادة تعيين كلمة المرور لـ ${admin.email || "admin"}`
+                          : `Reset password for admin ${admin.email || "admin"}`,
                         icon: KeyRound,
                         onClick: () => setResetPasswordAdmin(admin),
                       });
@@ -877,6 +893,9 @@ const AdminsList = () => {
                       if (isSuperAdmin && !isSelf) {
                         actions.push({
                           label: isRTL ? "تعطيل الحساب" : "Deactivate Admin",
+                          ariaLabel: isRTL
+                            ? `تعطيل حساب ${admin.email || "admin"}`
+                            : `Deactivate admin ${admin.email || "admin"}`,
                           icon: UserX,
                           variant: "delete",
                           onClick: () => setDeleteTarget(admin),
@@ -885,6 +904,9 @@ const AdminsList = () => {
                           label: isRTL
                             ? "حذف الحساب نهائياً"
                             : "Permanent Delete",
+                          ariaLabel: isRTL
+                            ? `حذف الحساب نهائياً لـ ${admin.email || "admin"}`
+                            : `Permanently delete admin ${admin.email || "admin"}`,
                           icon: Trash2,
                           variant: "delete",
                           onClick: () => {

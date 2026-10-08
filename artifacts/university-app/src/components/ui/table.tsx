@@ -2,11 +2,15 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+export interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  containerClassName?: string;
+}
+
 const Table = React.forwardRef<
   HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+  TableProps
+>(({ className, containerClassName, ...props }, ref) => (
+  <div className={cn("relative w-full overflow-auto", containerClassName)}>
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm text-brand-text-primary", className)}
@@ -16,11 +20,23 @@ const Table = React.forwardRef<
 ))
 Table.displayName = "Table"
 
+export interface TableHeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
+  sticky?: boolean;
+}
+
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
-  React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("bg-surface-subtle/70 [&_tr]:border-b [&_tr]:border-brand-border", className)} {...props} />
+  TableHeaderProps
+>(({ className, sticky, ...props }, ref) => (
+  <thead
+    ref={ref}
+    className={cn(
+      "bg-surface-subtle/70 [&_tr]:border-b [&_tr]:border-brand-border",
+      sticky && "sticky top-0 z-10 bg-white dark:bg-slate-900 shadow-2xs border-b border-brand-border [&_th]:bg-white dark:[&_th]:bg-slate-900",
+      className
+    )}
+    {...props}
+  />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -68,13 +84,15 @@ TableRow.displayName = "TableRow"
 
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement> & { hideOnMobile?: boolean }
->(({ className, hideOnMobile, ...props }, ref) => (
+  React.ThHTMLAttributes<HTMLTableCellElement> & { hideOnMobile?: boolean; sticky?: boolean }
+>(({ className, hideOnMobile, sticky, scope, ...props }, ref) => (
   <th
     ref={ref}
+    scope={scope ?? "col"}
     className={cn(
       "h-11 px-3 text-start align-middle text-[11px] font-black uppercase tracking-wider text-brand-text-secondary [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]",
       hideOnMobile && "hidden md:table-cell",
+      sticky && "sticky top-0 z-10 bg-white dark:bg-slate-900",
       className
     )}
     {...props}
@@ -114,6 +132,7 @@ interface ActionMenuProps {
   children?: React.ReactNode
   actions?: Array<{
     label: string
+    ariaLabel?: string
     icon: React.ComponentType<{ size?: number; className?: string }>
     variant?: string
     onClick: () => void
@@ -143,8 +162,9 @@ const ActionMenu = React.forwardRef<HTMLDivElement, ActionMenuProps>(
               type="button"
               onClick={act.onClick}
               className={buttonClass}
-              title={act.label}
-              aria-label={act.label}
+              title={act.ariaLabel ?? act.label}
+              aria-label={act.ariaLabel ?? act.label}
+              /* aria-label={act.label} */
             >
               <Icon size={18} aria-hidden="true" />
             </button>

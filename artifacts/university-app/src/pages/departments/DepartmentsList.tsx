@@ -13,6 +13,7 @@ import Button from "../../components/ui/button";
 import Badge from "../../components/ui/badge";
 import { Sheet, SheetContent, SheetTitle } from "../../components/ui/sheet";
 import { EmptyState } from "../../components/ui/EmptyState";
+import Pagination from "../../components/ui/pagination";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import AddDepartmentModal from "./AddDepartmentModal";
 import EditDepartmentModal from "./EditDepartmentModal";
@@ -22,6 +23,7 @@ import Table, {
   TableHeader,
   TableHead,
   TableBody,
+  TableCaption,
 } from "../../components/ui/table";
 import {
   Layers,
@@ -80,6 +82,8 @@ const DepartmentsList: React.FC = () => {
     "name" | "students" | "courses" | "faculty"
   >("name");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
 
   const {
     data: departments,
@@ -205,6 +209,14 @@ const DepartmentsList: React.FC = () => {
       return nameA.localeCompare(nameB, isRTL ? "ar" : "en");
     });
   }, [filteredDepartments, sortBy, isRTL]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedCollegeId, sortBy]);
+
+  const paginatedDepartments = useMemo(() => {
+    return sortedDepartments.slice((page - 1) * pageSize, page * pageSize);
+  }, [sortedDepartments, page, pageSize]);
 
   // Selection Logic
   const allFilteredIds = useMemo(
@@ -567,8 +579,12 @@ const DepartmentsList: React.FC = () => {
         />
       ) : viewMode === "grid" ? (
         /* ================= GRID VIEW ================= */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedDepartments.map((dept: any) => {
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {paginatedDepartments.map((dept: any) => {
+            const deptName = isRTL
+              ? dept.nameAr || dept.name || ""
+              : dept.name || dept.nameAr || "";
             const collegeName = isRTL
               ? dept.college?.nameAr || dept.college?.name || ""
               : dept.college?.name || dept.college?.nameAr || "";
@@ -599,6 +615,17 @@ const DepartmentsList: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleToggleSelect(dept.id)}
+                            aria-label={
+                              isSelected
+                                ? t("departments.deselectDept", {
+                                    name: deptName,
+                                    defaultValue: `Deselect ${deptName}`,
+                                  })
+                                : t("departments.selectDeptItem", {
+                                    name: deptName,
+                                    defaultValue: `Select ${deptName}`,
+                                  })
+                            }
                             className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors p-0.5 cursor-pointer"
                           >
                             {isSelected ? (
@@ -633,23 +660,25 @@ const DepartmentsList: React.FC = () => {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
+                          type="button"
                           onClick={() => handleEdit(dept)}
                           title={t("common.edit", "تعديل")}
+                          aria-label={t("departments.editDeptName", { name: deptName })}
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-colors cursor-pointer"
                         >
                           <Edit2 size={15} />
                         </button>
                         {isSuperAdmin && (
                           <button
+                            type="button"
                             onClick={() =>
                               setDeleteTarget({
                                 id: dept.id,
-                                name: isRTL
-                                  ? dept.nameAr || dept.name
-                                  : dept.name,
+                                name: deptName,
                               })
                             }
                             title={t("common.delete", "حذف")}
+                            aria-label={t("departments.deleteDeptName", { name: deptName })}
                             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition-colors cursor-pointer"
                           >
                             <Trash2 size={15} />
@@ -758,6 +787,20 @@ const DepartmentsList: React.FC = () => {
               </Card>
             );
           })}
+          </div>
+          <Pagination
+            page={page}
+            totalPages={Math.max(1, Math.ceil(sortedDepartments.length / pageSize))}
+            total={sortedDepartments.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[6, 12, 24, 48]}
+            className="rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs"
+          />
         </div>
       ) : (
         /* ================= TABLE VIEW ================= */
@@ -766,6 +809,9 @@ const DepartmentsList: React.FC = () => {
           className="rounded-2xl border border-slate-200/90 dark:border-slate-700 overflow-hidden shadow-2xs"
         >
           <Table>
+            <TableCaption className="sr-only">
+              {t("tables.caption.departmentsList", "Academic departments directory")}
+            </TableCaption>
             <TableHeader>
               <TableRow>
                 {canManage && (
@@ -774,6 +820,11 @@ const DepartmentsList: React.FC = () => {
                       type="button"
                       onClick={handleToggleSelectAll}
                       className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors p-1"
+                      aria-label={
+                        isAllSelected
+                          ? t("common.deselectAll", "Deselect All")
+                          : t("common.selectAll", "Select All")
+                      }
                       title={
                         isAllSelected
                           ? t("common.deselectAll", "Deselect All")
@@ -815,7 +866,10 @@ const DepartmentsList: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedDepartments.map((dept: any) => {
+              {paginatedDepartments.map((dept: any) => {
+                const deptName = isRTL
+                  ? dept.nameAr || dept.name || ""
+                  : dept.name || dept.nameAr || "";
                 const collegeName = isRTL
                   ? dept.college?.nameAr || dept.college?.name || ""
                   : dept.college?.name || dept.college?.nameAr || "";
@@ -839,6 +893,17 @@ const DepartmentsList: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleToggleSelect(dept.id)}
+                          aria-label={
+                            isSelected
+                              ? t("departments.deselectDept", {
+                                  name: deptName,
+                                  defaultValue: `Deselect ${deptName}`,
+                                })
+                              : t("departments.selectDeptItem", {
+                                  name: deptName,
+                                  defaultValue: `Select ${deptName}`,
+                                })
+                          }
                           className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors p-1"
                         >
                           {isSelected ? (
@@ -908,32 +973,53 @@ const DepartmentsList: React.FC = () => {
                     >
                       <div className="flex items-center justify-end gap-1.5">
                         <button
+                          type="button"
                           onClick={() => setActiveDrawerId(String(dept.id))}
                           className="p-1.5 text-slate-500 hover:text-brand-primary-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                          title={t("departments.viewDetails", "عرض التفاصيل")}
+                          title={t("departments.viewDeptDetails", {
+                            name: deptName,
+                            defaultValue: `View details for ${deptName}`,
+                          })}
+                          aria-label={t("departments.viewDeptDetails", {
+                            name: deptName,
+                            defaultValue: `View details for ${deptName}`,
+                          })}
                         >
                           <Eye size={15} />
                         </button>
                         <button
+                          type="button"
                           onClick={() =>
                             navigate(`/courses?departmentId=${dept.id}`)
                           }
                           className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg transition-colors"
-                          title={t(
-                            "departments.manageCurriculum",
-                            "المقررات الدراسية",
-                          )}
+                          title={t("departments.manageCurriculumDept", {
+                            name: deptName,
+                            defaultValue: `Manage curriculum for ${deptName}`,
+                          })}
+                          aria-label={t("departments.manageCurriculumDept", {
+                            name: deptName,
+                            defaultValue: `Manage curriculum for ${deptName}`,
+                          })}
                         >
                           <BookOpen size={15} />
                         </button>
                         <button
+                          type="button"
                           onClick={() =>
                             navigate(
                               `/schedules/timetable?departmentId=${dept.id}&collegeId=${dept.collegeId || ""}`,
                             )
                           }
                           className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition-colors"
-                          title={t("departments.schedules", "الجدول الدراسي")}
+                          title={t("departments.schedulesDept", {
+                            name: deptName,
+                            defaultValue: `View schedules for ${deptName}`,
+                          })}
+                          aria-label={t("departments.schedulesDept", {
+                            name: deptName,
+                            defaultValue: `View schedules for ${deptName}`,
+                          })}
                         >
                           <Calendar size={15} />
                         </button>
@@ -941,24 +1027,26 @@ const DepartmentsList: React.FC = () => {
                         {canManage && (
                           <>
                             <button
+                              type="button"
                               onClick={() => handleEdit(dept)}
                               className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
                               title={t("common.edit", "تعديل")}
+                              aria-label={t("departments.editDeptName", { name: deptName })}
                             >
                               <Edit2 size={15} />
                             </button>
                             {isSuperAdmin && (
                               <button
+                                type="button"
                                 onClick={() =>
                                   setDeleteTarget({
                                     id: dept.id,
-                                    name: isRTL
-                                      ? dept.nameAr || dept.name
-                                      : dept.name,
+                                    name: deptName,
                                   })
                                 }
                                 className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
                                 title={t("common.delete", "حذف")}
+                                aria-label={t("departments.deleteDeptName", { name: deptName })}
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -972,6 +1060,18 @@ const DepartmentsList: React.FC = () => {
               })}
             </TableBody>
           </Table>
+          <Pagination
+            page={page}
+            totalPages={Math.max(1, Math.ceil(sortedDepartments.length / pageSize))}
+            total={sortedDepartments.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[6, 12, 24, 48]}
+          />
         </Card>
       )}
 

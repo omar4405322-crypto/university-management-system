@@ -183,14 +183,17 @@ const DegreeAudit: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
+              <table className="w-full text-start">
+                <caption className="sr-only">
+                  {t('tables.caption.degreeAuditCategory', { category: category.categoryName, defaultValue: `Academic degree audit course requirements and grades — ${category.categoryName}` })}
+                </caption>
                 <thead>
                   <tr className="bg-brand-bg-page/30 text-xs font-bold text-brand-text-muted uppercase tracking-wider">
-                    <th className="px-6 py-3">{t('common.code', 'Code')}</th>
-                    <th className="px-6 py-3">{t('common.course', 'Course')}</th>
-                    <th className="px-6 py-3">{t('common.credits', 'Credits')}</th>
-                    <th className="px-6 py-3">{t('common.grade', 'Grade')}</th>
-                    <th className="px-6 py-3">{t('common.status', 'Status')}</th>
+                    <th scope="col" className="px-6 py-3">{t('common.code', 'Code')}</th>
+                    <th scope="col" className="px-6 py-3">{t('common.course', 'Course')}</th>
+                    <th scope="col" className="px-6 py-3">{t('common.credits', 'Credits')}</th>
+                    <th scope="col" className="px-6 py-3">{t('common.grade', 'Grade')}</th>
+                    <th scope="col" className="px-6 py-3">{t('common.status', 'Status')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-brand-border">

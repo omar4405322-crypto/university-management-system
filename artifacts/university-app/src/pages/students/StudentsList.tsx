@@ -14,6 +14,7 @@ import Table, {
   TableHeader,
   TableHead,
   TableBody,
+  TableCaption,
   ActionMenu,
 } from "../../components/ui/table";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -674,9 +675,14 @@ const StudentsList = () => {
           </div>
         ) : (
           <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0">
-            <div className="overflow-x-auto">
-              <Table className="w-full">
-                <TableHeader className="bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
+            <Table
+              className="w-full"
+              containerClassName="max-h-[calc(100vh-280px)] min-h-[340px] overflow-auto custom-scrollbar"
+            >
+              <TableCaption className="sr-only">
+                {t("tables.caption.studentsList", "Students directory roster")}
+              </TableCaption>
+              <TableHeader sticky className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                   <TableRow>
                     <TableHead className="w-12 text-center p-4">
                       <input
@@ -691,33 +697,41 @@ const StudentsList = () => {
 
                     {/* Student Name Column with Alphabetical Sorting Indicator */}
                     <TableHead
-                      onClick={() => handleHeaderSort("firstName")}
-                      className="text-start p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer select-none hover:text-brand-primary-600 transition-colors"
+                      aria-sort={sortBy === "firstName" ? (sortOrder === "asc" ? "ascending" : "descending") : undefined}
+                      className="text-start p-0 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
                     >
-                      <div className="inline-flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleHeaderSort("firstName")}
+                        className="w-full h-full p-4 text-start font-bold text-xs uppercase tracking-wider text-inherit hover:text-brand-primary-600 transition-colors inline-flex items-center gap-1.5 cursor-pointer bg-transparent border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-500 rounded-md"
+                      >
                         <span>{t("students.colStudent")}</span>
                         {sortBy === "firstName" && (
-                          <span className="text-brand-primary-600">
+                          <span className="text-brand-primary-600" aria-hidden="true">
                             {sortOrder === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </button>
                     </TableHead>
 
                     {/* Academic Division Column with Sorting */}
                     <TableHead
                       hideOnMobile
-                      onClick={() => handleHeaderSort("year")}
-                      className="text-center p-4 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer select-none hover:text-brand-primary-600 transition-colors"
+                      aria-sort={sortBy === "year" ? (sortOrder === "asc" ? "ascending" : "descending") : undefined}
+                      className="text-center p-0 font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400"
                     >
-                      <div className="inline-flex items-center justify-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleHeaderSort("year")}
+                        className="w-full h-full p-4 text-center font-bold text-xs uppercase tracking-wider text-inherit hover:text-brand-primary-600 transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer bg-transparent border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary-500 rounded-md"
+                      >
                         <span>{t("students.colYear")}</span>
                         {sortBy === "year" && (
-                          <span className="text-brand-primary-600">
+                          <span className="text-brand-primary-600" aria-hidden="true">
                             {sortOrder === "asc" ? "↑" : "↓"}
                           </span>
                         )}
-                      </div>
+                      </button>
                     </TableHead>
 
                     {/* Department Column */}
@@ -868,6 +882,7 @@ const StudentsList = () => {
                             actions={[
                               {
                                 label: t("common.view"),
+                                ariaLabel: t("students.viewStudentName", { name: `${student.firstName} ${student.lastName}` }),
                                 icon: Eye,
                                 variant: "view",
                                 onClick: () =>
@@ -875,6 +890,7 @@ const StudentsList = () => {
                               },
                               {
                                 label: t("common.edit"),
+                                ariaLabel: t("students.editStudentName", { name: `${student.firstName} ${student.lastName}` }),
                                 icon: Edit2,
                                 variant: "edit",
                                 onClick: () => setEditingStudent(student),
@@ -883,6 +899,7 @@ const StudentsList = () => {
                                 label: isRTL
                                   ? "إعادة تعيين كلمة المرور"
                                   : "Reset Password",
+                                ariaLabel: t("students.resetPasswordName", { name: `${student.firstName} ${student.lastName}` }),
                                 icon: KeyRound,
                                 variant: "edit",
                                 onClick: () => setResetPasswordStudent(student),
@@ -891,6 +908,9 @@ const StudentsList = () => {
                                 label: student.isActive
                                   ? t("students.deactivate")
                                   : t("students.activate"),
+                                ariaLabel: student.isActive
+                                  ? t("students.deactivateStudentName", { name: `${student.firstName} ${student.lastName}`, defaultValue: `Deactivate ${student.firstName} ${student.lastName}` })
+                                  : t("students.activateStudentName", { name: `${student.firstName} ${student.lastName}`, defaultValue: `Activate ${student.firstName} ${student.lastName}` }),
                                 icon: student.isActive ? UserX : UserCheck,
                                 variant: student.isActive ? "delete" : "edit",
                                 onClick: () => handleToggleStatus(student),
@@ -899,6 +919,7 @@ const StudentsList = () => {
                                 ? [
                                     {
                                       label: t("common.delete"),
+                                      ariaLabel: t("students.deleteStudentName", { name: `${student.firstName} ${student.lastName}` }),
                                       icon: Trash2,
                                       variant: "delete",
                                       onClick: () =>
@@ -917,7 +938,6 @@ const StudentsList = () => {
                   })}
                 </TableBody>
               </Table>
-            </div>
 
             <Pagination
               page={page}

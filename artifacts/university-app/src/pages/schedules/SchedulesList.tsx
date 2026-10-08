@@ -30,6 +30,7 @@ import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
+import { Pagination } from '../../components/ui/pagination';
 import { downloadCsv } from '../../utils/exportCsv';
 import schedulesService from '../../services/schedules.service';
 import collegeService from '../../services/college.service';
@@ -108,6 +109,10 @@ const SchedulesList = () => {
   const [filterMissingDoctor, setFilterMissingDoctor] = useState(false);
   const [filterConflictsOnly, setFilterConflictsOnly] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Multi-Selection State
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
@@ -378,6 +383,26 @@ const SchedulesList = () => {
     search,
     conflictSlotIds,
   ]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    search,
+    selectedCollege,
+    selectedDept,
+    selectedYear,
+    selectedSemester,
+    selectedSlotType,
+    filterMissingRoom,
+    filterMissingDoctor,
+    filterConflictsOnly,
+  ]);
+
+  const totalPages = Math.ceil(filteredSchedules.length / pageSize) || 1;
+  const paginatedSchedules = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredSchedules.slice(start, start + pageSize);
+  }, [filteredSchedules, page, pageSize]);
 
   // Multi-Selection Logic
   const allFilteredIds = useMemo(() => filteredSchedules.map((s) => s.id).filter((id): id is number | string => id !== undefined), [filteredSchedules]);
@@ -909,7 +934,7 @@ const SchedulesList = () => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {filteredSchedules.map((slot, index) => {
+            {paginatedSchedules.map((slot, index) => {
               const course = slot.course || {};
               const slotId = slot.id;
               const hasConflict = slotId !== undefined && conflictSlotIds.has(slotId);
@@ -943,7 +968,7 @@ const SchedulesList = () => {
                           <button
                             type="button"
                             onClick={() => handleToggleSelect(slotId)}
-                            aria-label={isSelected ? t('schedules.deselectItem', 'Deselect session') : `${t('schedules.selectItem', 'Select session')} ${course.name || ''}`}
+                            aria-label={isSelected ? t('schedules.deselectItem', { title: course.name || slot.room || '', defaultValue: `Deselect session ${course.name || slot.room || ''}` }) : t('schedules.selectItem', { title: course.name || slot.room || '', defaultValue: `Select session ${course.name || slot.room || ''}` })}
                             className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
                           >
                             {isSelected ? (
@@ -978,6 +1003,7 @@ const SchedulesList = () => {
                             }}
                             className="p-1 rounded-lg text-slate-500 hover:text-brand-primary-600 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/40 transition-colors"
                             title={t('schedules.editSession', 'Edit')}
+                            aria-label={t('schedules.editSessionTitle', { title: course?.name || slot.room, defaultValue: `Edit session ${course?.name || slot.room}` })}
                           >
                             <Edit2 size={13} />
                           </button>
@@ -987,6 +1013,7 @@ const SchedulesList = () => {
                               onClick={() => setDeleteTarget(slot)}
                               className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                               title={t('schedules.deleteSession', 'Delete')}
+                              aria-label={t('schedules.deleteSessionTitle', { title: course?.name || slot.room, defaultValue: `Delete session ${course?.name || slot.room}` })}
                             >
                               <Trash2 size={13} />
                             </button>
@@ -1080,23 +1107,37 @@ const SchedulesList = () => {
             })}
           </div>
 
-          {/* Footer stats */}
-          <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 font-bold">
+          {/* Footer stats & Pagination */}
+          <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-bold">
             <span>
-              {t('common.showing', 'Showing')} {filteredSchedules.length} {t('common.of', 'of')} {schedules.length}{' '}
+              {t('common.showing', 'Showing')} {paginatedSchedules.length} {t('common.of', 'of')} {filteredSchedules.length}{' '}
               {t('schedule.totalSlots', 'Sessions')}
             </span>
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalRecords={filteredSchedules.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+            />
           </div>
         </div>
       ) : (
         /* MODE C: TABLE LIST VIEW */
         <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden p-0">
-          <div className="overflow-x-auto custom-scrollbar">
+          <div className="overflow-auto max-h-[calc(100vh-280px)] min-h-[340px] custom-scrollbar">
             <table className="w-full border-collapse text-start">
-              <thead>
+              <caption className="sr-only">
+                {t('tables.caption.schedulesList', 'Academic schedules list')}
+              </caption>
+              <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 shadow-2xs border-b border-slate-200 dark:border-slate-700">
                 <tr className="bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   {canManage && (
-                    <th className="p-3.5 text-center w-12">
+                    <th scope="col" className="p-3.5 text-center w-12">
                       <button
                         type="button"
                         onClick={handleToggleSelectAll}
@@ -1114,16 +1155,16 @@ const SchedulesList = () => {
                       </button>
                     </th>
                   )}
-                  <th className="p-3.5 text-start min-w-[220px]">{t('schedules.colCourseDept', 'Course & Department')}</th>
-                  <th className="p-3.5 text-start min-w-[150px]">{t('schedules.colDayTime', 'Day & Time')}</th>
-                  <th className="p-3.5 text-start min-w-[130px]">{t('schedules.colRoom', 'Hall / Lab')}</th>
-                  <th className="p-3.5 text-start min-w-[180px]">{t('schedules.colTypeInstructor', 'Type & Instructor')}</th>
-                  <th className="p-3.5 text-start min-w-[120px]">{t('schedules.colGroup', 'Group')}</th>
-                  <th className="p-3.5 text-center w-24">{t('schedules.colActions', 'Actions')}</th>
+                  <th scope="col" className="p-3.5 text-start min-w-[220px]">{t('schedules.colCourseDept', 'Course & Department')}</th>
+                  <th scope="col" className="p-3.5 text-start min-w-[150px]">{t('schedules.colDayTime', 'Day & Time')}</th>
+                  <th scope="col" className="p-3.5 text-start min-w-[130px]">{t('schedules.colRoom', 'Hall / Lab')}</th>
+                  <th scope="col" className="p-3.5 text-start min-w-[180px]">{t('schedules.colTypeInstructor', 'Type & Instructor')}</th>
+                  <th scope="col" className="p-3.5 text-start min-w-[120px]">{t('schedules.colGroup', 'Group')}</th>
+                  <th scope="col" className="p-3.5 text-center w-24">{t('schedules.colActions', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-xs">
-                {filteredSchedules.map((slot, index) => {
+                {paginatedSchedules.map((slot, index) => {
                   const course = slot.course || {};
                   const slotId = slot.id;
                   const hasConflict = slotId !== undefined && conflictSlotIds.has(slotId);
@@ -1156,7 +1197,7 @@ const SchedulesList = () => {
                             <button
                               type="button"
                               onClick={() => handleToggleSelect(slotId)}
-                              aria-label={isSelected ? t('schedules.deselectItem', 'Deselect session') : `${t('schedules.selectItem', 'Select session')} ${course.name || ''}`}
+                              aria-label={isSelected ? t('schedules.deselectItem', { title: course.name || slot.room || '', defaultValue: `Deselect session ${course.name || slot.room || ''}` }) : t('schedules.selectItem', { title: course.name || slot.room || '', defaultValue: `Select session ${course.name || slot.room || ''}` })}
                               className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
                             >
                               {isSelected ? (
@@ -1285,6 +1326,7 @@ const SchedulesList = () => {
                               }}
                               className="p-1 rounded-lg text-slate-500 hover:text-brand-primary-600 hover:bg-brand-primary-50 dark:hover:bg-brand-primary-950/40 transition-colors"
                               title={t('schedules.editSession', 'Edit Session')}
+                              aria-label={t('schedules.editSessionTitle', { title: course?.name || slot.room, defaultValue: `Edit session ${course?.name || slot.room}` })}
                             >
                               <Edit2 size={14} />
                             </button>
@@ -1294,6 +1336,7 @@ const SchedulesList = () => {
                                   onClick={() => setDeleteTarget(slot)}
                                   className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                                   title={t('schedules.deleteSession', 'Delete Session')}
+                                  aria-label={t('schedules.deleteSessionTitle', { title: course?.name || slot.room, defaultValue: `Delete session ${course?.name || slot.room}` })}
                                 >
                                   <Trash2 size={14} />
                                 </button>
@@ -1307,12 +1350,23 @@ const SchedulesList = () => {
                 </tbody>
               </table>
 
-            {/* Table Footer */}
-            <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 font-bold">
+            {/* Table Footer & Pagination */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-bold">
               <span>
-                {t('common.showing', 'Showing')} {filteredSchedules.length} {t('common.of', 'of')} {schedules.length}{' '}
+                {t('common.showing', 'Showing')} {paginatedSchedules.length} {t('common.of', 'of')} {filteredSchedules.length}{' '}
                 {t('schedule.totalSlots', 'Sessions')}
               </span>
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                totalRecords={filteredSchedules.length}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setPage(1);
+                }}
+              />
             </div>
           </div>
         </Card>
