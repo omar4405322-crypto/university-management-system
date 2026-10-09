@@ -259,14 +259,14 @@
     "coursesCount": "{{count}} Courses",
     "studentsLabel": "Students",
     "viewAllDepartments": "View All Departments",
-    "academicTab": "analytics.academicTab",
-    "attendanceExamsTab": "analytics.attendanceExamsTab",
-    "departmentsTab": "analytics.departmentsTab",
+    "academicTab": "Academic & Enrollment",
+    "attendanceExamsTab": "Attendance & Exams",
+    "departmentsTab": "Colleges & Departments",
     "noDataAvailable": "No data available",
-    "yearDistribution": "analytics.yearDistribution",
-    "yearDistributionDesc": "analytics.yearDistributionDesc",
-    "attendanceSummary": "analytics.attendanceSummary",
-    "examTypesSummary": "analytics.examTypesSummary"
+    "yearDistribution": "Year Distribution",
+    "yearDistributionDesc": "Distribution of students by academic year",
+    "attendanceSummary": "Attendance Summary",
+    "examTypesSummary": "Exam Types Summary"
   },
   "sections": {
     "title": "Sections Management",
@@ -825,7 +825,8 @@
     "year3": "Year 3",
     "year4": "Year 4",
     "allTypes": "All Types",
-    "deselect": "Deselect"
+    "deselect": "Deselect",
+    "notifications": "Notifications"
   },
   "courses": {
     "course": "Course",
@@ -1833,6 +1834,16 @@
     "densityComfortable": "Comfortable View",
     "densityCompact": "Compact View"
   },
+  "notifications": {
+    "subtitle": "Stay updated with important announcements and academic alerts",
+    "empty": "No notifications yet",
+    "emptyDesc": "Your notification box is empty.",
+    "caughtUp": "You're all caught up!",
+    "noUnreadDesc": "There are no unread notifications.",
+    "all": "All",
+    "unread": "Unread",
+    "viewAll": "View all notifications"
+  },
   "nav": {
     "aiAssistant": "AI Assistant",
     "academic": "Academic",
@@ -2165,11 +2176,11 @@
     "noSlotsForDay": "No sessions scheduled for this day",
     "groupOptional": "Optional — empty = all students",
     "allStudents": "All Students (General Cohort)",
-    "groupA": "schedule.groupA",
-    "groupB": "schedule.groupB",
-    "sec1": "schedule.sec1",
-    "sec2": "schedule.sec2",
-    "sec3": "schedule.sec3",
+    "groupA": "Group A",
+    "groupB": "Group B",
+    "sec1": "Section 1",
+    "sec2": "Section 2",
+    "sec3": "Section 3",
     "semester": "Semester",
     "editOverride": "Edit Schedule Override",
     "createOverride": "Create Schedule Override",
@@ -2180,7 +2191,9 @@
     "reason": "Reason",
     "removeOverride": "Remove Override",
     "noGroupsFound": "No groups found",
-    "sem": "Sem"
+    "sem": "Sem",
+    "removeOverrideConfirm": "Remove Schedule Override",
+    "removeOverrideDesc": "Are you sure you want to remove this temporary override and revert to the recurring schedule?"
   },
   "students": {
     "defaultView": "Default View",
@@ -2545,7 +2558,7 @@
     "deleteSlot": "Delete slot",
     "noDoctors": "No professors registered",
     "otherCollege": "Other college",
-    "conflictWarning": "timetable.conflictWarning",
+    "conflictWarning": "Warning: Timetable conflict detected!",
     "auditConflicts": "Audit Conflicts",
     "tier1": "Tier 1",
     "tier2": "Tier 2",
@@ -3038,5 +3051,26 @@
     "archiveDocumentTitle": "Archive document: {{title}}",
     "titlePlaceholder": "e.g. Academic Examination Regulations 2026",
     "versionTagPlaceholder": "e.g. 2027 or v2.0"
+  },
+  "errors": {
+    "networkError": "Unable to connect to the server. Please check your internet connection.",
+    "timeout": "The request timed out. Please try again.",
+    "unauthorized": "Your session has expired. Please log in again.",
+    "forbidden": "You do not have permission to perform this action.",
+    "notFound": "The requested resource was not found.",
+    "conflict": "A data conflict occurred. The record may already exist or has been modified.",
+    "rateLimited": "Too many requests. Please wait a moment before trying again.",
+    "rateLimitedWithRetry": "Too many requests. Please wait {{seconds}} seconds before trying again.",
+    "validation": "Validation failed. Please correct the highlighted fields.",
+    "serverError": "A server error occurred. Please try again later.",
+    "unexpected": "An unexpected error occurred. Please try again.",
+    "somethingWentWrong": "Something went wrong",
+    "unexpectedErrorDesc": "This page could not be displayed. Try refreshing or go back.",
+    "offlineTitle": "You are currently offline",
+    "offlineMessage": "Changes may not be saved until connection is restored.",
+    "onlineTitle": "Connection restored",
+    "onlineMessage": "You are back online.",
+    "revertOverride": "Failed to remove schedule override",
+    "revertOverrideSuccess": "Schedule override removed successfully"
   }
 }

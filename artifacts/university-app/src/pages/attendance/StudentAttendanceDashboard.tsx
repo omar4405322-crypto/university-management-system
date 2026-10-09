@@ -328,7 +328,16 @@ export function StudentAttendanceDashboard() {
       </div>
 
       {/* Main Dashboard Content */}
-      <div className="space-y-5 md:space-y-6">
+      {myCourses.length === 0 ? (
+        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-10">
+          <EmptyState
+            icon={<BookOpen size={40} className="text-brand-primary-500" />}
+            title={txt('attendance.noEnrolledCourses', isRTL ? 'لا توجد مقررات مسجلة' : 'No Enrolled Courses')}
+            subtitle={txt('attendance.noEnrolledCoursesDesc', isRTL ? 'لم يتم تسجيلك في أي مقررات دراسية حتى الآن. يرجى مراجعة إدارة التسجيل أو التسجيل في المقررات المتاحة.' : 'You are not currently enrolled in any courses. Please check your course registrations.')}
+          />
+        </Card>
+      ) : (
+        <div className="space-y-5 md:space-y-6">
         
         {/* Active Session Live Alert Banner */}
         {activeSession?.expiresAt && (
@@ -621,7 +630,8 @@ export function StudentAttendanceDashboard() {
           </CardContent>
         </Card>
 
-      </div>
+        </div>
+      )}
     </div>
   );
 }

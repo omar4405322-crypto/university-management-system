@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { X, Clock, MapPin, BookOpen, Calendar, AlertCircle, Users, User, Building2, GraduationCap } from 'lucide-react';
+import { X, Clock, MapPin, BookOpen, Calendar, AlertCircle, Users, User, Building2, GraduationCap, Loader2 } from 'lucide-react';
 import Button from '../../components/ui/button';
 import schedulesService from '../../services/schedules.service';
 import studentGroupsService from '../../services/studentGroups.service';
@@ -409,7 +409,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
                 value={selectedCollegeId}
                 onChange={handleCollegeChange}
                 placeholder={loadingColleges ? t('common.loading', 'Loading...') : t('timetables.selectCollege', 'All Colleges')}
-                searchPlaceholder={t('common.searchCollege', 'common.searchCollege')}
+                searchPlaceholder={t('common.searchCollege', 'Search college...')}
                 disabled={!!schedule || loadingColleges}
                 isRTL={isRTL}
                 icon={<Building2 size={16} />}
@@ -425,7 +425,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
                 value={selectedDepartmentId}
                 onChange={handleDepartmentChange}
                 placeholder={loadingDepts ? t('common.loading', 'Loading...') : t('timetables.selectDept', 'Select Department')}
-                searchPlaceholder={t('common.searchDept', 'common.searchDept')}
+                searchPlaceholder={t('common.searchDept', 'Search department...')}
                 disabled={!selectedCollegeId || loadingDepts || !!schedule}
                 isRTL={isRTL}
                 icon={<GraduationCap size={16} />}
@@ -490,28 +490,29 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
                 setValue('doctorId', '');
               }}
               placeholder={loadingCourses ? t('common.loading', 'Loading...') : t('courses.selectCourse', 'Select a course')}
-              searchPlaceholder={t('common.searchCoursePlaceholder', 'common.searchCoursePlaceholder')}
+              searchPlaceholder={t('common.searchCoursePlaceholder', 'Search courses...')}
               emptyText={t('courses.noCoursesFound', 'No matching courses found')}
               disabled={!selectedDepartmentId || loadingCourses || !!schedule}
               isRTL={isRTL}
               icon={<BookOpen size={16} />}
             />
-            {errors.courseId && <p className="text-rose-500 text-xs mt-1">{errors.courseId.message}</p>}
+            {errors.courseId && <p id="schedule-course-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.courseId.message}</p>}
           </div>
 
           {/* ── Group Selector ── */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+            <label htmlFor="schedule-group-select" className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
               <Users size={14} className="text-slate-400" /> {t('common.group', 'Group')}
               <span className="text-[10px] font-normal text-slate-400 ms-1">({t('schedule.groupOptional', 'optional — empty = all students')})</span>
             </label>
             <select
+              id="schedule-group-select"
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm disabled:opacity-50"
               {...register('groupId')}
               disabled={!selectedCourseId || loadingGroups}
             >
               <option value="">
-                {loadingGroups ? t('common.loading', 'Loading...') : t('schedule.allStudents', '📢 All Students (No Group)')}
+                {loadingGroups ? t('common.loading', 'Loading...') : t('schedule.allStudents', 'All Students (No Group)')}
               </option>
               {groups.map((g: any) => (
                 <option key={g.id} value={g.id.toString()}>
@@ -529,10 +530,13 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+              <label htmlFor="schedule-slot-type-select" className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
                 <BookOpen size={14} className="text-slate-400" /> {t('schedules.slotType', 'Slot Type')}
               </label>
               <select
+                id="schedule-slot-type-select"
+                aria-invalid={Boolean(errors.slotType)}
+                aria-describedby={errors.slotType ? 'schedule-slot-type-error' : undefined}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm"
                 {...register('slotType')}
               >
@@ -540,14 +544,17 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
                   <option key={st} value={st}>{st}</option>
                 ))}
               </select>
-              {errors.slotType && <p className="text-rose-500 text-xs mt-1">{errors.slotType.message}</p>}
+              {errors.slotType && <p id="schedule-slot-type-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.slotType.message}</p>}
             </div>
             
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+              <label htmlFor="schedule-day-select" className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
                 <Calendar size={14} className="text-slate-400" /> {t('timetables.day', 'Day of Week')}
               </label>
               <select
+                id="schedule-day-select"
+                aria-invalid={Boolean(errors.dayOfWeek)}
+                aria-describedby={errors.dayOfWeek ? 'schedule-day-error' : undefined}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm"
                 {...register('dayOfWeek')}
               >
@@ -555,46 +562,55 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
                   <option key={day} value={day}>{t(`days.${day.toLowerCase()}`, day)}</option>
                 ))}
               </select>
-              {errors.dayOfWeek && <p className="text-rose-500 text-xs mt-1">{errors.dayOfWeek.message}</p>}
+              {errors.dayOfWeek && <p id="schedule-day-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.dayOfWeek.message}</p>}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+              <label htmlFor="schedule-start-time-input" className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
                 <Clock size={14} className="text-slate-400" /> {t('timetables.startTime', 'Start Time')}
               </label>
               <input
+                id="schedule-start-time-input"
                 type="time"
+                aria-invalid={Boolean(errors.startTime)}
+                aria-describedby={errors.startTime ? 'schedule-start-time-error' : undefined}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all text-sm"
                 {...register('startTime')}
               />
-              {errors.startTime && <p className="text-rose-500 text-xs mt-1">{errors.startTime.message}</p>}
+              {errors.startTime && <p id="schedule-start-time-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.startTime.message}</p>}
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+              <label htmlFor="schedule-end-time-input" className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
                 <Clock size={14} className="text-slate-400" /> {t('timetables.endTime', 'End Time')}
               </label>
               <input
+                id="schedule-end-time-input"
                 type="time"
+                aria-invalid={Boolean(errors.endTime)}
+                aria-describedby={errors.endTime ? 'schedule-end-time-error' : undefined}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all text-sm"
                 {...register('endTime')}
               />
-              {errors.endTime && <p className="text-rose-500 text-xs mt-1">{errors.endTime.message}</p>}
+              {errors.endTime && <p id="schedule-end-time-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.endTime.message}</p>}
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
+            <label htmlFor="schedule-room-input" className="text-xs font-bold text-brand-text-primary dark:text-brand-text-main flex items-center gap-2">
               <MapPin size={14} className="text-slate-400" /> {t('schedules.room', 'Room / Location')}
             </label>
             <input
+              id="schedule-room-input"
               type="text"
               placeholder={t('timetables.roomPlaceholder', 'e.g. Hall 302, Lab 105')}
+              aria-invalid={Boolean(errors.room)}
+              aria-describedby={errors.room ? 'schedule-room-error' : undefined}
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all text-sm"
               {...register('room')}
             />
-            {errors.room && <p className="text-rose-500 text-xs mt-1">{errors.room.message}</p>}
+            {errors.room && <p id="schedule-room-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.room.message}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -632,9 +648,10 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
             <Button 
               type="submit" 
               disabled={isSubmitting}
-              className="flex-1 bg-brand-primary-500 hover:bg-brand-primary-600 active:scale-95 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+              className="flex-1 bg-brand-primary-500 hover:bg-brand-primary-600 active:scale-95 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" 
             >
-              {isSubmitting ? t('common.saving', 'Saving...') : schedule ? t('common.update', 'Update Schedule') : t('schedules.CREATE', 'Create Schedule')}
+              {isSubmitting && <Loader2 size={14} className="animate-spin shrink-0" />}
+              <span>{isSubmitting ? t('common.saving', 'Saving...') : schedule ? t('common.update', 'Update Schedule') : t('schedules.CREATE', 'Create Schedule')}</span>
             </Button>
           </div>
         </form>

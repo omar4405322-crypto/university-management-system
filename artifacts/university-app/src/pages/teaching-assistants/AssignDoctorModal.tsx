@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import toast from 'react-hot-toast';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
 import doctorsService from '../../services/doctors.service';
 import Button from '../../components/ui/button';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../../context/ToastContext';
 import { X, Search, Loader2, Link, Trash2 } from 'lucide-react';
 
 import type { TeachingAssistantRow, DoctorRow } from '../../types/domain';
@@ -17,6 +17,7 @@ interface AssignDoctorModalProps {
 
 const AssignDoctorModal: React.FC<AssignDoctorModalProps> = ({ isOpen, onClose, onSuccess, ta }) => {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
   const [search, setSearch] = useState('');
@@ -49,13 +50,13 @@ const AssignDoctorModal: React.FC<AssignDoctorModalProps> = ({ isOpen, onClose, 
       setAssigningDoctorId(doctorId);
       const res = await teachingAssistantsService.assignToDoctor(String(ta.id), Number(doctorId));
       if (res.success) {
-        toast.success(t('teachingAssistants.assignSuccess'));
+        showToast(t('teachingAssistants.assignSuccess'), 'success');
         onSuccess();
       } else {
-        toast.error(res.message || t('teachingAssistants.assignError'));
+        showToast(res.message || t('teachingAssistants.assignError'), 'error');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || t('teachingAssistants.assignError'));
+      showToast(error.response?.data?.message || t('teachingAssistants.assignError'), 'error');
     } finally {
       setAssigningDoctorId(null);
     }
@@ -66,13 +67,13 @@ const AssignDoctorModal: React.FC<AssignDoctorModalProps> = ({ isOpen, onClose, 
       setUnassigningDoctorId(doctorId);
       const res = await teachingAssistantsService.unassignFromDoctor(String(ta.id), Number(doctorId));
       if (res.success) {
-        toast.success(t('teachingAssistants.unassignSuccess'));
+        showToast(t('teachingAssistants.unassignSuccess'), 'success');
         onSuccess();
       } else {
-        toast.error(res.message || t('teachingAssistants.unassignError'));
+        showToast(res.message || t('teachingAssistants.unassignError'), 'error');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || t('teachingAssistants.unassignError'));
+      showToast(error.response?.data?.message || t('teachingAssistants.unassignError'), 'error');
     } finally {
       setUnassigningDoctorId(null);
     }

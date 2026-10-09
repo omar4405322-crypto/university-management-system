@@ -28,6 +28,7 @@ import Button from '../../components/ui/button';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 import { downloadCsv } from '../../utils/exportCsv';
 import { EmptyState } from '../../components/ui/EmptyState';
+import ErrorState from '../../components/ui/ErrorState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import QuizSubmissionsModal from './QuizSubmissionsModal';
 import { useToast } from '../../context/ToastContext';
@@ -42,6 +43,7 @@ const QuizzesList = () => {
 
   const [quizzes, setQuizzes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('latest');
   const { showToast } = useToast();
@@ -51,16 +53,21 @@ const QuizzesList = () => {
   const fetchQuizzes = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const result = await quizService.getQuizzes({});
       if (result.success) {
         setQuizzes(result.data || []);
+      } else {
+        throw new Error(result.message || t('errors.unexpected', isRTL ? 'خطأ في تحميل الاختبارات' : 'Error fetching quizzes'));
       }
-    } catch (_error) {
-      showToast('Error fetching quizzes', 'error');
+    } catch (err: any) {
+      const msg = err.message || t('errors.unexpected', isRTL ? 'خطأ في تحميل الاختبارات' : 'Error fetching quizzes');
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [isRTL, showToast, t]);
 
   useEffect(() => {
     fetchQuizzes();
@@ -288,19 +295,42 @@ const QuizzesList = () => {
             <Loader2 className="animate-spin text-brand-primary-600" size={48} />
             <p className="label-stat">{isRTL ? 'جاري تحميل الاختبارات...' : 'Syncing assessments...'}</p>
           </div>
+        ) : error ? (
+          <div className="col-span-full">
+            <ErrorState
+              message={error}
+              onRetry={fetchQuizzes}
+            />
+          </div>
         ) : filteredQuizzes.length === 0 ? (
           <div className="col-span-full">
             <EmptyState
               icon={<BookOpen size={48} />}
-              title={t('quizzes.noQuizzes')}
-              subtitle={isDoctor ? t('quizzes.subtitleDoctor') : t('quizzes.subtitleStudent')}
+              title={
+                (search || sortBy !== 'latest')
+                  ? (isRTL ? 'لم يتم العثور على اختبارات مطابقة' : 'No matching quizzes found')
+                  : t('quizzes.noQuizzes')
+              }
+              subtitle={
+                (search || sortBy !== 'latest')
+                  ? (isRTL ? 'جرب البحث بعنوان آخر أو مسح الفلاتر.' : 'Try adjusting your search query or clearing filters.')
+                  : (isDoctor ? t('quizzes.subtitleDoctor') : t('quizzes.subtitleStudent'))
+              }
               action={
-                isDoctor
+                (search || sortBy !== 'latest')
                   ? {
-                      label: t('quizzes.createQuiz'),
-                      onClick: () => navigate('/quizzes/create'),
+                      label: isRTL ? 'إعادة ضبط الفلاتر' : 'Reset Filters',
+                      onClick: () => {
+                        setSearch('');
+                        setSortBy('latest');
+                      },
                     }
-                  : undefined
+                  : isDoctor
+                    ? {
+                        label: t('quizzes.createQuiz'),
+                        onClick: () => navigate('/quizzes/create'),
+                      }
+                    : undefined
               }
             />
           </div>

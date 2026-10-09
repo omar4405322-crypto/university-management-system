@@ -42,7 +42,7 @@ import {
   User,
   X,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import {
@@ -271,6 +271,7 @@ function formatConvTime(dateStr?: string, isRTL?: boolean): string {
 
 export default function AiAssistantPage() {
   const { t } = useTranslation();
+  const toast = useToast();
   const { isRTL } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -620,7 +621,7 @@ export default function AiAssistantPage() {
       document.removeEventListener('fullscreenerror', handleFullscreenError);
       document.removeEventListener('webkitfullscreenerror', handleFullscreenError);
     };
-  }, [t]);
+  }, [t, toast]);
 
   // Focus restoration to fullscreen toggle button when exiting fullscreen
   useEffect(() => {
@@ -656,7 +657,7 @@ export default function AiAssistantPage() {
       console.error('Failed to toggle fullscreen:', err);
       toast.error(t('aiAssistant.fullscreenError', 'تعذر تفعيل وضع ملء الشاشة'));
     }
-  }, [t]);
+  }, [t, toast]);
 
   // Search debounce (300ms)
   useEffect(() => {

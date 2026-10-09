@@ -8,6 +8,7 @@ import Badge from "../../components/ui/badge";
 import { useToast } from "../../context/ToastContext";
 import { StudentTranscriptView } from "./components/StudentTranscriptView";
 import { AdminExamRecordView } from "./components/AdminExamRecordView";
+import ErrorState from "../../components/ui/ErrorState";
 import {
   Archive,
   RotateCw,
@@ -36,6 +37,7 @@ const StudentRecord: React.FC = () => {
 
   // Loading & Data States
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<TranscriptData | null>(null);
 
   // Filter States for Students
@@ -52,15 +54,20 @@ const StudentRecord: React.FC = () => {
   // Fetch Transcript Data
   const fetchTranscript = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await transcriptService.getStudentTranscript(undefined);
       if (res.success && res.data) {
         setData(res.data);
       } else {
-        showToast(t("transcript.fetchError", "Error fetching record"), "error");
+        const msg = res.message || t("transcript.fetchError", "Error fetching record");
+        setError(msg);
+        showToast(msg, "error");
       }
-    } catch (_err) {
-      showToast(t("transcript.fetchError", "Error fetching record"), "error");
+    } catch (err: any) {
+      const msg = err.message || t("transcript.fetchError", "Error fetching record");
+      setError(msg);
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -219,7 +226,19 @@ const StudentRecord: React.FC = () => {
       </div>
 
       {/* 2. Admin / Staff View vs Student Transcript View */}
-      {showAdminView ? (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center p-16 gap-3">
+          <RotateCw className="animate-spin text-brand-primary-500" size={32} />
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {t("common.loading", "Loading...")}
+          </p>
+        </div>
+      ) : error ? (
+        <ErrorState
+          message={error}
+          onRetry={fetchTranscript}
+        />
+      ) : showAdminView ? (
         <AdminExamRecordView
           data={data}
           loading={loading}

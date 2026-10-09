@@ -72,7 +72,20 @@ export const StudentTranscriptView: React.FC<StudentTranscriptViewProps> = ({
       </Card>
 
       {/* Student Semesters Breakdown */}
-      {filteredSemesters.map((sem, sIdx) => (
+      {filteredSemesters.length === 0 ? (
+        <Card className="p-12 text-center flex flex-col items-center justify-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-3">
+            <GraduationCap size={26} />
+          </div>
+          <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm mb-1">
+            {t("transcript.noCompletedExams", "No Archived Exams Yet")}
+          </h3>
+          <p className="text-xs text-slate-400 font-medium max-w-sm">
+            {t("transcript.noCompletedExamsDesc", "Completed exams with grades are automatically moved here for permanent archival.")}
+          </p>
+        </Card>
+      ) : (
+        filteredSemesters.map((sem, sIdx) => (
         <Card
           key={sIdx}
           className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-2xs"
@@ -156,7 +169,7 @@ export const StudentTranscriptView: React.FC<StudentTranscriptViewProps> = ({
             })}
           </div>
         </Card>
-      ))}
+      )))}
     </div>
   );
 };

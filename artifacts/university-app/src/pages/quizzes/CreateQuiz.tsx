@@ -7,7 +7,7 @@ import * as z from 'zod';
 import quizService from '../../services/quiz.service';
 import coursesService from '../../services/courses.service';
 import { Plus, Trash2, Save, ChevronLeft, AlertCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useToast } from '../../context/ToastContext';
 
 const questionSchema = z.object({
   text: z.string().min(1, 'Question text is required'),
@@ -31,6 +31,7 @@ type QuizFormData = z.infer<typeof schema>;
 
 const CreateQuiz: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const toast = useToast();
   const isRTL = i18n.language?.startsWith('ar');
   const navigate = useNavigate();
   const [courses, setCourses] = useState<any[]>([]);
@@ -70,10 +71,11 @@ const CreateQuiz: React.FC = () => {
         }
       } catch (error) {
         console.error('Error fetching courses:', error);
+        setApiError(t('errors.unexpected', isRTL ? 'تعذر تحميل المقررات' : 'Failed to load courses'));
       }
     };
     fetchCourses();
-  }, []);
+  }, [isRTL, t]);
 
   const [apiError, setApiError] = useState('');
 

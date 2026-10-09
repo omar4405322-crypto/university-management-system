@@ -13,6 +13,7 @@ import Button from "../../components/ui/button";
 import Badge from "../../components/ui/badge";
 import { Sheet, SheetContent, SheetTitle } from "../../components/ui/sheet";
 import { EmptyState } from "../../components/ui/EmptyState";
+import ErrorState from "../../components/ui/ErrorState";
 import Pagination from "../../components/ui/pagination";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import AddDepartmentModal from "./AddDepartmentModal";
@@ -88,6 +89,7 @@ const DepartmentsList: React.FC = () => {
   const {
     data: departments,
     loading,
+    error,
     search,
     setSearch,
     refetch: fetchDepartments,
@@ -557,24 +559,40 @@ const DepartmentsList: React.FC = () => {
             {t("common.loading", "جاري التحميل...")}
           </p>
         </div>
+      ) : error ? (
+        <ErrorState
+          message={error}
+          onRetry={fetchDepartments}
+        />
       ) : sortedDepartments.length === 0 ? (
         <EmptyState
           icon={<Layers size={44} className="text-slate-400" />}
-          title={t(
-            "departments.noDepts",
-            "لم يتم العثور على أقسام تطابق معاييرك.",
-          )}
-          subtitle={t(
-            "departments.noDeptsDesc",
-            "حاول ضبط البحث أو الفلاتر للعثور على ما تبحث عنه.",
-          )}
+          title={
+            (search || selectedCollegeId)
+              ? (isRTL ? "لم يتم العثور على أقسام مطابقة للبحث" : "No matching departments found")
+              : (isRTL ? "لا توجد أقسام أكاديمية بعد" : "No departments yet")
+          }
+          subtitle={
+            (search || selectedCollegeId)
+              ? (isRTL ? "حاول ضبط البحث أو الفلاتر للعثور على ما تبحث عنه." : "Try adjusting your search query or filters to find what you are looking for.")
+              : (isRTL ? "ابدأ بإضافة أول قسم أكاديمي للكلية." : "Get started by adding your first academic department.")
+          }
           action={
-            canManage
+            (search || selectedCollegeId)
               ? {
-                  label: t("departments.addDept", "إضافة قسم"),
-                  onClick: () => setIsAddModalOpen(true),
+                  label: isRTL ? "إعادة ضبط الفلاتر" : "Reset Filters",
+                  onClick: () => {
+                    setSearch("");
+                    setSelectedCollegeId("");
+                    setSearchParams({});
+                  },
                 }
-              : undefined
+              : canManage
+                ? {
+                    label: t("departments.addDept", "إضافة قسم"),
+                    onClick: () => setIsAddModalOpen(true),
+                  }
+                : undefined
           }
         />
       ) : viewMode === "grid" ? (

@@ -15,6 +15,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { EmptyState } from "../../components/ui/EmptyState";
+import ErrorState from "../../components/ui/ErrorState";
 import Button from "../../components/ui/button";
 import Badge from "../../components/ui/badge";
 import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
@@ -113,6 +114,7 @@ export function TasksList() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: string } | null>(
     null,
@@ -145,6 +147,7 @@ export function TasksList() {
       try {
         if (isRefresh) setRefreshing(true);
         else setLoading(true);
+        setError(null);
 
         const params: GetTasksParams = {};
         if (courseIdParam) params.courseId = Number(courseIdParam);
@@ -173,9 +176,13 @@ export function TasksList() {
               totalPages: 1,
             },
           );
+        } else {
+          throw new Error(result.message || t("errors.serverError", "Failed to load tasks"));
         }
-      } catch (error) {
-        showToast(t("tasks.fetchError", "Error loading tasks"), "error");
+      } catch (err: any) {
+        const msg = err.message || t("tasks.fetchError", "Error loading tasks");
+        setError(msg);
+        showToast(msg, "error");
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -549,32 +556,37 @@ export function TasksList() {
             {t("common.loading", "Loading...")}
           </span>
         </div>
+      ) : error ? (
+        <ErrorState
+          message={error}
+          onRetry={() => fetchTasks(false)}
+        />
       ) : tasks.length === 0 ? (
         <div className="p-8 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
           <EmptyState
             icon={<ClipboardList size={36} className="text-slate-400" />}
-            title={t("tasks.noTasks", "No assignments match your criteria")}
+            title={
+              hasActiveFilters
+                ? (isRTL ? "لم يتم العثور على تكليفات مطابقة" : "No assignments match your criteria")
+                : t("tasks.noTasks", isRTL ? "لا توجد تكليفات بعد" : "No assignments yet")
+            }
             subtitle={
-              isDoctor
-                ? t(
-                    "tasks.subtitleDoctor",
-                    "Manage student assignments, grading, and submissions.",
-                  )
-                : t(
-                    "tasks.subtitleStudent",
-                    "View course assignments and submit your deliverables.",
-                  )
+              hasActiveFilters
+                ? (isRTL ? "جرب تعديل خيارات البحث أو إعادة ضبط الفلاتر." : "Try adjusting your search terms or resetting filters.")
+                : isDoctor
+                  ? t("tasks.subtitleDoctor", "Manage student assignments, grading, and submissions.")
+                  : t("tasks.subtitleStudent", "View course assignments and submit your deliverables.")
             }
             action={
-              isDoctor
+              hasActiveFilters
                 ? {
-                    label: t("tasks.createTask", "Create Assignment"),
-                    onClick: () => setShowCreateModal(true),
+                    label: isRTL ? "إعادة ضبط الفلاتر" : "Reset Filters",
+                    onClick: clearAllFilters,
                   }
-                : hasActiveFilters
+                : isDoctor
                   ? {
-                      label: isRTL ? "إعادة ضبط الفلاتر" : "Reset Filters",
-                      onClick: clearAllFilters,
+                      label: t("tasks.createTask", "Create Assignment"),
+                      onClick: () => setShowCreateModal(true),
                     }
                   : undefined
             }

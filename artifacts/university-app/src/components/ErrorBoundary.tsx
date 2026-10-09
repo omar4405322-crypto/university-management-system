@@ -44,16 +44,20 @@ class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       const isRTL = i18n.language?.startsWith('ar');
       return (
-        <div className="min-h-[50vh] flex items-center justify-center p-8">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="min-h-[50vh] flex items-center justify-center p-8"
+        >
           <div className="text-center max-w-md">
             <div className="w-20 h-20 rounded-3xl bg-rose-500/10 flex items-center justify-center mx-auto mb-6">
               <AlertCircle size={40} className="text-rose-500" />
             </div>
             <h2 className="text-2xl font-black text-brand-text-main tracking-tight mb-2">
-              {this.props.title || (isRTL ? 'حدث خطأ غير متوقع' : 'Something went wrong')}
+              {this.props.title || i18n.t('errors.somethingWentWrong', isRTL ? 'حدث خطأ غير متوقع' : 'Something went wrong')}
             </h2>
             <p className="text-brand-text-sub font-bold text-sm mb-6">
-              {this.props.message || (isRTL ? 'تعذر عرض هذه الصفحة. يرجى المحاولة مرة أخرى أو العودة للخلف.' : 'This page could not be displayed. Try refreshing or go back.')}
+              {this.props.message || i18n.t('errors.unexpectedErrorDesc', isRTL ? 'تعذر عرض هذه الصفحة. يرجى المحاولة مرة أخرى أو العودة للخلف.' : 'This page could not be displayed. Try refreshing or go back.')}
             </p>
             {(import.meta.env?.DEV) &&
               this.state.error?.message && (
@@ -63,10 +67,10 @@ class ErrorBoundary extends Component<Props, State> {
               )}
             <div className="flex flex-wrap gap-3 justify-center">
               <Button onClick={this.handleRetry} className="flex items-center gap-2">
-                <RefreshCw size={18} /> {isRTL ? 'إعادة المحاولة' : 'Try again'}
+                <RefreshCw size={18} /> {i18n.t('common.tryAgain', isRTL ? 'إعادة المحاولة' : 'Try again')}
               </Button>
               <Button variant="outline" onClick={() => window.history.back()}>
-                {isRTL ? 'الرجوع للخلف' : 'Go back'}
+                {i18n.t('common.goBack', isRTL ? 'الرجوع للخلف' : 'Go back')}
               </Button>
             </div>
           </div>

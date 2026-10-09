@@ -94,14 +94,26 @@ const Unauthorized = () => {
         <p className="text-brand-text-secondary font-medium mb-8">
           {t('common.unauthorizedMessage')}
         </p>
-        <Button
-          onClick={() => window.history.back()}
-          variant="default"
-          size="lg"
-          className="rounded-2xl"
-        >
-          {t('common.goBack')}
-        </Button>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button
+            onClick={() => window.history.back()}
+            variant="outline"
+            size="lg"
+            className="rounded-2xl"
+          >
+            {t('common.goBack', 'Go Back')}
+          </Button>
+          <Button
+            onClick={() => {
+              window.location.href = '/dashboard';
+            }}
+            variant="default"
+            size="lg"
+            className="rounded-2xl"
+          >
+            {t('common.backToDashboard', 'Back to dashboard')}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -128,6 +140,7 @@ const ScheduleRedirect = () => {
 };
 
 import DebugOverflowPanel from './components/ui/DebugOverflowPanel';
+import OfflineBanner from './components/common/OfflineBanner';
 
 const AppContent = () => {
   const { isRTL } = useLanguage();
@@ -140,6 +153,7 @@ const AppContent = () => {
       className="min-h-screen bg-brand-bg-page text-brand-text-main transition-colors duration-300 relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
+      <OfflineBanner />
       {isDebugMode && <DebugOverflowPanel />}
       {/* PERF: Single top-level Suspense catches all newly lazy-loaded pages */}
       <Suspense fallback={<RouteFallback />}>

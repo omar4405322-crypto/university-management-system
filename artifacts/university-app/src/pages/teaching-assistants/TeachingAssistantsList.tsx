@@ -19,6 +19,7 @@ import Table, {
 import Pagination from "../../components/ui/pagination";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import Button from "../../components/ui/button";
+import ErrorState from "../../components/ui/ErrorState";
 import { downloadCsv } from "../../utils/exportCsv";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../context/AuthContext";
@@ -39,6 +40,7 @@ import {
   Calendar,
   X,
   BookOpen,
+  RotateCcw,
 } from "lucide-react";
 import ResetPasswordModal from "../../components/ui/ResetPasswordModal";
 import { useNavigate } from "react-router-dom";
@@ -455,24 +457,45 @@ const TeachingAssistantsList = () => {
       <div className="min-h-0">
         {error ? (
           <div className="p-8">
-            <div className="text-center text-red-500 font-medium mb-4">
-              {error}
-            </div>
-            <div className="flex justify-center">
-              <Button onClick={() => fetchTAs()}>{t("common.retry")}</Button>
-            </div>
+            <ErrorState message={error} onRetry={fetchTAs} />
           </div>
         ) : filteredTAs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
             <div className="rounded-full bg-brand-primary-500/10 p-5 mb-4">
               <GraduationCap className="w-10 h-10 text-brand-primary-500" />
             </div>
             <h3 className="text-lg font-bold text-brand-text-primary dark:text-white mb-1">
-              {t("teachingAssistants.noTAs")}
+              {(search || statusFilter !== "all")
+                ? (isRTL ? "لم يتم العثور على معيدين مطابقين للبحث" : "No matching teaching assistants found")
+                : t("teachingAssistants.noTAs")}
             </h3>
-            <p className="text-sm text-brand-text-secondary dark:text-slate-400 mb-6">
-              {t("teachingAssistants.noTAsDesc")}
+            <p className="text-sm text-brand-text-secondary dark:text-slate-400 mb-6 max-w-md">
+              {(search || statusFilter !== "all")
+                ? (isRTL ? "جرب تعديل كلمات البحث أو مسح الفلاتر للعثور على الهيئة المعاونة." : "Try adjusting your search query or clearing filters.")
+                : t("teachingAssistants.noTAsDesc")}
             </p>
+            {(search || statusFilter !== "all") ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setPage(1);
+                }}
+                className="rounded-xl flex items-center gap-2 text-xs font-bold"
+              >
+                <RotateCcw size={14} />
+                <span>{isRTL ? "إعادة ضبط الفلاتر" : "Reset Filters"}</span>
+              </Button>
+            ) : isSuperAdmin ? (
+              <Button
+                onClick={() => setIsAddModalOpen(true)}
+                className="rounded-xl flex items-center gap-2 text-xs font-bold"
+              >
+                <Plus size={14} />
+                <span>{t("teachingAssistants.addTA", "Add TA")}</span>
+              </Button>
+            ) : null}
           </div>
         ) : (
           <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0">

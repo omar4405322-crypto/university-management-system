@@ -40,6 +40,7 @@ import Button from "../../components/ui/button";
 import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import Pagination from "../../components/ui/pagination";
+import ErrorState from "../../components/ui/ErrorState";
 import { useToast } from "../../context/ToastContext";
 import AddExamModal from "./AddExamModal";
 import {
@@ -75,6 +76,7 @@ const ExamsList = () => {
   const [colleges, setColleges] = useState<any[]>([]);
   const [departments, setDepartments] = useState<DepartmentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Filter States
   const [search, setSearch] = useState("");
@@ -146,6 +148,7 @@ const ExamsList = () => {
   const fetchExams = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const params: Record<string, any> = { ...scopeParams };
       const result = await examsService.getExams(params);
       if (result.success || result.data) {
@@ -153,9 +156,13 @@ const ExamsList = () => {
           ? result.data
           : result.data?.exams || result.data?.data || [];
         setExams(arr);
+      } else {
+        throw new Error(result.message || t("exams.loadError", "Failed to load exams"));
       }
-    } catch (_err) {
-      showToast(t("exams.loadError", "Failed to load exams"), "error");
+    } catch (err: any) {
+      const msg = err.message || t("exams.loadError", "Failed to load exams");
+      setError(msg);
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -737,6 +744,11 @@ const ExamsList = () => {
             {t("exams.fetching", "Loading exams...")}
           </p>
         </Card>
+      ) : error ? (
+        <ErrorState
+          message={error}
+          onRetry={fetchExams}
+        />
       ) : filteredExams.length === 0 ? (
         <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
           <div className="w-14 h-14 rounded-full bg-brand-primary-500/10 text-brand-primary-500 flex items-center justify-center text-2xl mb-3">

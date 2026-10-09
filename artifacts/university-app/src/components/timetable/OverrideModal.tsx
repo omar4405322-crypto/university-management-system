@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Calendar, Clock, MapPin, FileText, Trash2 } from 'lucide-react';
 import api from '../../services/api';
-import { useToast } from '../../hooks/use-toast';
+import { useToast } from '../../context/ToastContext';
+import ConfirmDeleteModal from '../ui/ConfirmDeleteModal';
 import type { SlotEntry } from '../../types/timetable.types';
 
 interface OverrideModalProps {
@@ -14,9 +15,10 @@ interface OverrideModalProps {
 
 export function OverrideModal({ isOpen, onClose, entry, onSuccess }: OverrideModalProps) {
   const { t } = useTranslation();
-  const { toast } = useToast();
+  const { showToast } = useToast();
 
   const [loading, setLoading] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0],
@@ -39,7 +41,7 @@ export function OverrideModal({ isOpen, onClose, entry, onSuccess }: OverrideMod
           room: formData.room || undefined,
           reason: formData.reason || undefined,
         });
-        toast({ title: t('common.success', 'Success'), description: 'Override updated.' });
+        showToast(t('common.saveSuccess', 'Override updated successfully.'), 'success');
       } else {
         await api.post(`/schedules/${entry.id}/overrides`, {
           startDate: formData.startDate,
@@ -47,15 +49,14 @@ export function OverrideModal({ isOpen, onClose, entry, onSuccess }: OverrideMod
           room: formData.room || undefined,
           reason: formData.reason || undefined,
         });
-        toast({ title: t('common.success', 'Success'), description: 'Override created.' });
+        showToast(t('common.saveSuccess', 'Override created successfully.'), 'success');
       }
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message
-        ?? (err as { message?: string })?.message
-        ?? 'An error occurred';
-      toast({ title: t('common.error', 'Error'), description: msg, variant: 'destructive' });
+      const msg = (err as { message?: string })?.message
+        || t('common.errorOccurred', 'An error occurred');
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -66,14 +67,14 @@ export function OverrideModal({ isOpen, onClose, entry, onSuccess }: OverrideMod
     setLoading(true);
     try {
       await api.delete(`/schedules/${entry.id}/overrides/${entry.overrides[0].id}`);
-      toast({ title: t('common.success', 'Success'), description: 'Override removed. Slot reverted to original.' });
+      showToast(t('errors.revertOverrideSuccess', 'Override removed. Slot reverted to original.'), 'success');
+      setIsDeleteModalOpen(false);
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message
-        ?? (err as { message?: string })?.message
-        ?? 'An error occurred';
-      toast({ title: t('common.error', 'Error'), description: msg, variant: 'destructive' });
+      const msg = (err as { message?: string })?.message
+        || t('errors.revertOverride', 'Failed to remove schedule override');
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -187,7 +188,7 @@ export function OverrideModal({ isOpen, onClose, entry, onSuccess }: OverrideMod
             {entry.isTemporarilyModified && (
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => setIsDeleteModalOpen(true)}
                 disabled={loading}
                 className="px-4 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 font-semibold rounded-xl transition-colors flex items-center gap-1.5 text-sm"
               >
@@ -198,6 +199,19 @@ export function OverrideModal({ isOpen, onClose, entry, onSuccess }: OverrideMod
           </div>
         </form>
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        loading={loading}
+        title={t('schedule.removeOverrideConfirm', 'Remove Schedule Override')}
+        message={t(
+          'schedule.removeOverrideDesc',
+          'Are you sure you want to remove this temporary override and revert to the recurring schedule?'
+        )}
+        variant="danger"
+      />
     </div>
   );
 }

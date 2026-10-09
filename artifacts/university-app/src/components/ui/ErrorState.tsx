@@ -16,11 +16,13 @@ const ErrorState = ({
 }) => {
   const { t } = useTranslation();
 
-  const displayTitle = title || t('common.somethingWentWrong', 'Something went wrong');
-  const displayMessage = message || t('common.errorOccurred', 'We encountered an error while loading this content.');
+  const displayTitle = title || t('errors.somethingWentWrong', t('common.somethingWentWrong', 'Something went wrong'));
+  const displayMessage = message || t('errors.unexpectedErrorDesc', t('common.errorOccurred', 'We encountered an error while loading this content.'));
 
   return (
     <div
+      role="alert"
+      aria-live="polite"
       className={`flex flex-col items-center justify-center p-12 text-center gap-6 rounded-3xl bg-error/5 border-2 border-dashed border-error/20 ${className}`}
     >
       <div className="p-4 bg-error/10 text-error rounded-full">

@@ -51,4 +51,6 @@ export interface ApiResponse<T> {
   data: T;
   message?: string;
   pagination?: PaginationMeta;
+  status?: number;
+  error?: unknown;
 }

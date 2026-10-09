@@ -33,6 +33,7 @@ import Card from '../../components/ui/card';
 import Badge from '../../components/ui/badge';
 import Button from '../../components/ui/button';
 import { EmptyState } from '../../components/ui/EmptyState';
+import ErrorState from '../../components/ui/ErrorState';
 import Table, {
   TableHeader,
   TableBody,
@@ -1143,6 +1144,10 @@ export function FacultyAttendanceDashboard() {
             <div className="flex flex-col items-center justify-center h-48 gap-2 bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
               <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-primary-500/20 border-t-brand-primary-600"></div>
               <span className="text-xs text-slate-400 font-medium">جاري التحميل...</span>
+            </div>
+          ) : error && courses.length === 0 ? (
+            <div className="p-8 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
+              <ErrorState message={error} onRetry={() => fetchInitialData()} />
             </div>
           ) : filteredCourses.length === 0 ? (
             <div className="p-8 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">

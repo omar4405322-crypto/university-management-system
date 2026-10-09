@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import toast from 'react-hot-toast';
+import { useToast } from '../../context/ToastContext';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
 import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
@@ -23,6 +23,7 @@ interface AddTAModalProps {
 
 const AddTAModal: React.FC<AddTAModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -90,12 +91,13 @@ const AddTAModal: React.FC<AddTAModalProps> = ({ isOpen, onClose, onSuccess }) =
       setLoading(true);
       const result = await teachingAssistantsService.createTeachingAssistant(formData);
       if (result.success) {
+        showToast(t('teachingAssistants.addSuccess', 'Teaching assistant created successfully'), 'success');
         onSuccess();
       } else {
-        toast.error(result.message || t('teachingAssistants.createError'));
+        showToast(result.message || t('teachingAssistants.createError'), 'error');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || t('teachingAssistants.createError'));
+      showToast(error.response?.data?.message || t('teachingAssistants.createError'), 'error');
     } finally {
       setLoading(false);
     }

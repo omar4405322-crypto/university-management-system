@@ -192,46 +192,58 @@ const CourseModal = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="md:col-span-2 space-y-1.5 text-start">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
+              <label htmlFor="course-name-input" className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
                 <BookOpen size={14} className="text-brand-text-muted" /> {t('courses.addModal.courseName')} <span className="text-error">*</span>
               </label>
               <Input
+                id="course-name-input"
                 {...register('name')}
                 placeholder={t('courses.addModal.courseNamePlaceholder')}
+                aria-invalid={Boolean(errors.name)}
+                aria-describedby={errors.name ? 'course-name-error' : undefined}
               />
-              {errors.name && <p className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.nameRequired')}</p>}
+              {errors.name && <p id="course-name-error" role="alert" className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.nameRequired')}</p>}
             </div>
 
             <div className="space-y-1.5 text-start">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
+              <label htmlFor="course-code-input" className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
                 <Hash size={14} className="text-brand-text-muted" /> {t('courses.addModal.courseCode')} <span className="text-error">*</span>
               </label>
               <Input
+                id="course-code-input"
                 {...register('courseCode')}
                 placeholder={t('courses.addModal.courseCodePlaceholder')}
+                aria-invalid={Boolean(errors.courseCode)}
+                aria-describedby={errors.courseCode ? 'course-code-error' : undefined}
               />
-              {errors.courseCode && <p className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.codeRequired')}</p>}
+              {errors.courseCode && <p id="course-code-error" role="alert" className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.codeRequired')}</p>}
             </div>
 
             <div className="space-y-1.5 text-start">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
+              <label htmlFor="course-credits-input" className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
                 <GraduationCap size={14} className="text-brand-text-muted" /> {t('courses.addModal.credits')} <span className="text-error">*</span>
               </label>
               <Input
+                id="course-credits-input"
                 type="number"
                 {...register('credits')}
                 min="1"
                 max="10"
+                aria-invalid={Boolean(errors.credits)}
+                aria-describedby={errors.credits ? 'course-credits-error' : undefined}
               />
-              {errors.credits && <p className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.creditsRange')}</p>}
+              {errors.credits && <p id="course-credits-error" role="alert" className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.creditsRange')}</p>}
             </div>
 
             <div className="space-y-1.5 text-start">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
+              <label htmlFor="course-college-select" className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
                 <School size={14} className="text-brand-text-muted" /> {t('courses.addModal.college')} <span className="text-error">*</span>
               </label>
               <select
+                id="course-college-select"
                 {...register('collegeId')}
+                aria-invalid={Boolean(errors.collegeId)}
+                aria-describedby={errors.collegeId ? 'course-college-error' : undefined}
                 className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main"
               >
                 <option value="">{t('courses.addModal.selectCollege')}</option>
@@ -239,16 +251,19 @@ const CourseModal = ({
                   <option key={c.id} value={c.id}>{isRTL ? c.nameAr || c.name : c.name}</option>
                 ))}
               </select>
-              {errors.collegeId && <p className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.collegeRequired')}</p>}
+              {errors.collegeId && <p id="course-college-error" role="alert" className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.collegeRequired')}</p>}
             </div>
 
             <div className="space-y-1.5 text-start">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
+              <label htmlFor="course-dept-select" className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
                 <GraduationCap size={14} className="text-brand-text-muted" /> {t('courses.addModal.department')} <span className="text-error">*</span>
               </label>
               <select
+                id="course-dept-select"
                 {...register('departmentId')}
                 disabled={!watchCollegeId}
+                aria-invalid={Boolean(errors.departmentId)}
+                aria-describedby={errors.departmentId ? 'course-dept-error' : undefined}
                 className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main disabled:opacity-50"
               >
                 <option value="">{t('courses.addModal.selectDepartment')}</option>
@@ -256,64 +271,74 @@ const CourseModal = ({
                   <option key={d.id} value={d.id}>{isRTL ? d.nameAr || d.name : d.name}</option>
                 ))}
               </select>
-              {errors.departmentId && <p className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.departmentRequired')}</p>}
+              {errors.departmentId && <p id="course-dept-error" role="alert" className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.departmentRequired')}</p>}
             </div>
 
-
-
             <div className="space-y-1.5 text-start">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
+              <label htmlFor="course-max-students-input" className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
                 <User size={14} className="text-brand-text-muted" /> {t('courses.addModal.maxStudents')}
               </label>
               <Input
+                id="course-max-students-input"
                 type="number"
                 {...register('maxStudents')}
                 min="1"
+                aria-invalid={Boolean(errors.maxStudents)}
+                aria-describedby={errors.maxStudents ? 'course-max-students-error' : undefined}
               />
-              {errors.maxStudents && <p className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.maxStudentsRequired')}</p>}
+              {errors.maxStudents && <p id="course-max-students-error" role="alert" className="text-rose-500 text-xs mt-1">{t('courses.addModal.errors.maxStudentsRequired')}</p>}
             </div>
 
             <div className="space-y-1.5 text-start">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
+              <label htmlFor="course-year-select" className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
                 {t('courses.addModal.year')}
               </label>
               <select
+                id="course-year-select"
                 {...register('year')}
+                aria-invalid={Boolean(errors.year)}
+                aria-describedby={errors.year ? 'course-year-error' : undefined}
                 className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main"
               >
                 {[1, 2, 3, 4].map(y => (
                   <option key={y} value={y}>{t(`courses.addModal.year${y}`)}</option>
                 ))}
               </select>
-              {errors.year && <p className="text-rose-500 text-xs mt-1">{errors.year.message}</p>}
+              {errors.year && <p id="course-year-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.year.message}</p>}
             </div>
 
             <div className="space-y-1.5 text-start">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
+              <label htmlFor="course-semester-select" className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
                 {t('courses.addModal.semester')}
               </label>
               <select
+                id="course-semester-select"
                 {...register('semester')}
+                aria-invalid={Boolean(errors.semester)}
+                aria-describedby={errors.semester ? 'course-semester-error' : undefined}
                 className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main"
               >
                 <option value={1}>{t('courses.addModal.firstSemester')}</option>
                 <option value={2}>{t('courses.addModal.secondSemester')}</option>
                 <option value={3}>{t('courses.addModal.summerSemester')}</option>
               </select>
-              {errors.semester && <p className="text-rose-500 text-xs mt-1">{errors.semester.message}</p>}
+              {errors.semester && <p id="course-semester-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.semester.message}</p>}
             </div>
 
             <div className="md:col-span-2 space-y-1.5 text-start">
-              <label className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
+              <label htmlFor="course-desc-textarea" className="text-sm font-semibold text-brand-text-primary dark:text-brand-text-secondary flex items-center gap-2 ms-1">
                 <FileText size={14} className="text-brand-text-muted" /> {t('courses.addModal.description')}
               </label>
               <textarea
+                id="course-desc-textarea"
                 {...register('description')}
                 rows={3}
+                aria-invalid={Boolean(errors.description)}
+                aria-describedby={errors.description ? 'course-desc-error' : undefined}
                 className="w-full px-4 py-2 bg-brand-bg-card dark:bg-brand-bg-elevated border border-brand-border dark:border-brand-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 dark:text-brand-text-main resize-none"
                 placeholder={t('courses.addModal.descriptionPlaceholder')}
               ></textarea>
-              {errors.description && <p className="text-rose-500 text-xs mt-1">{errors.description.message}</p>}
+              {errors.description && <p id="course-desc-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.description.message}</p>}
             </div>
           </div>
 

@@ -13,7 +13,7 @@ export function EmptyState({
   action?: { label: string; onClick: () => void };
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 text-center animate-in fade-in zoom-in duration-500 bg-brand-bg-card/30 rounded-[2rem] border-2 border-dashed border-brand-border">
+    <div data-testid="empty-state" className="flex flex-col items-center justify-center py-16 px-4 text-center animate-in fade-in zoom-in duration-500 bg-brand-bg-card/30 rounded-[2rem] border-2 border-dashed border-brand-border">
       <div className="w-20 h-20 bg-brand-primary-50 text-brand-primary-600 rounded-3xl flex items-center justify-center mb-6 shadow-inner">
         {icon}
       </div>

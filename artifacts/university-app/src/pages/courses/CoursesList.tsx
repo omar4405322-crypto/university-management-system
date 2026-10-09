@@ -593,28 +593,35 @@ export function CoursesList() {
             <EmptyState
               icon={<BookOpen size={40} className="text-slate-400" />}
               title={
-                search
+                (search || selectedCollege || selectedDept || selectedYear || selectedSemester)
                   ? isRTL
-                    ? "لا توجد نتائج مطابقة"
-                    : "No results found"
+                    ? "لم يتم العثور على مقررات مطابقة للبحث"
+                    : "No matching courses found"
                   : isRTL
-                    ? "لا توجد مقررات دراسية"
-                    : "No courses found"
+                    ? "لا توجد مقررات دراسية بعد"
+                    : "No courses yet"
               }
               subtitle={
-                search
+                (search || selectedCollege || selectedDept || selectedYear || selectedSemester)
                   ? isRTL
-                    ? "جرب البحث بكود أو كلمة أخرى"
-                    : "Try searching with another code or title"
+                    ? "جرب تعديل خيارات البحث أو إعادة ضبط الفلاتر."
+                    : "Try adjusting your search terms or resetting filters."
                   : isRTL
-                    ? "لم يتم إضافة مقررات دراسية حتى الآن"
-                    : "No academic courses have been created yet"
+                    ? "لم يتم إضافة مقررات دراسية حتى الآن."
+                    : "No academic courses have been created yet."
               }
               action={
-                search
+                (search || selectedCollege || selectedDept || selectedYear || selectedSemester)
                   ? {
-                      label: isRTL ? "مسح البحث" : "Clear search",
-                      onClick: () => setSearch(""),
+                      label: isRTL ? "إعادة ضبط الفلاتر" : "Reset Filters",
+                      onClick: () => {
+                        setSearch("");
+                        setSelectedCollege("");
+                        setSelectedDept("");
+                        setSelectedYear("");
+                        setSelectedSemester("");
+                        setPage(1);
+                      },
                     }
                   : canManage
                     ? {

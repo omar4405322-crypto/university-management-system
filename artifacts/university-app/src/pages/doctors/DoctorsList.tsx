@@ -44,6 +44,7 @@ import {
   Search,
   Calendar,
   X,
+  RotateCcw,
 } from "lucide-react";
 import ResetPasswordModal from "../../components/ui/ResetPasswordModal";
 import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
@@ -574,16 +575,43 @@ const DoctorsList = () => {
             <ErrorState message={error} onRetry={fetchDoctors} />
           </div>
         ) : filteredDoctors.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
             <div className="rounded-full bg-brand-primary-500/10 p-5 mb-4">
               <Users className="w-10 h-10 text-brand-primary-500" />
             </div>
             <h3 className="text-lg font-bold text-brand-text-primary dark:text-white mb-1">
-              {t("doctors.noDoctors")}
+              {(search || selectedCollege || selectedDept)
+                ? (isRTL ? "لم يتم العثور على أطباء مطابقين للبحث" : "No matching faculty found")
+                : t("doctors.noDoctors")}
             </h3>
-            <p className="text-sm text-brand-text-secondary dark:text-slate-400 mb-6">
-              {t("doctors.noDoctorsDesc")}
+            <p className="text-sm text-brand-text-secondary dark:text-slate-400 mb-6 max-w-md">
+              {(search || selectedCollege || selectedDept)
+                ? (isRTL ? "جرب تعديل كلمات البحث أو مسح الفلاتر للعثور على أعضاء هيئة التدريس." : "Try adjusting your search query or clearing filters.")
+                : t("doctors.noDoctorsDesc")}
             </p>
+            {(search || selectedCollege || selectedDept) ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearch("");
+                  setSelectedCollege("");
+                  setSelectedDept("");
+                  setPage(1);
+                }}
+                className="rounded-xl flex items-center gap-2 text-xs font-bold"
+              >
+                <RotateCcw size={14} />
+                <span>{isRTL ? "إعادة ضبط الفلاتر" : "Reset Filters"}</span>
+              </Button>
+            ) : isSuperAdmin ? (
+              <Button
+                onClick={() => setIsAddModalOpen(true)}
+                className="rounded-xl flex items-center gap-2 text-xs font-bold"
+              >
+                <Plus size={14} />
+                <span>{t("doctors.addDoctor", "Add Doctor")}</span>
+              </Button>
+            ) : null}
           </div>
         ) : (
           <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0">

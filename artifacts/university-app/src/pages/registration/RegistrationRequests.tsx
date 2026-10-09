@@ -16,6 +16,7 @@ import Card from "../../components/ui/card";
 import Button from "../../components/ui/button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState } from "../../components/ui/EmptyState";
+import ErrorState from "../../components/ui/ErrorState";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import Pagination from "../../components/ui/pagination";
 import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
@@ -55,6 +56,7 @@ const RegistrationRequests: React.FC = () => {
   const [requests, setRequests] = useState<RegistrationRequestItem[]>([]);
   const [colleges, setColleges] = useState<CollegeOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   // Filter & Search states - DEFAULT TO 'PENDING' FOR INBOX ZERO WORKFLOW
@@ -112,6 +114,7 @@ const RegistrationRequests: React.FC = () => {
       try {
         if (isRefresh) setRefreshing(true);
         else setLoading(true);
+        setError(null);
 
         const [resRequests, resColleges] = await Promise.all([
           registrationService.getRequests(),
@@ -123,15 +126,17 @@ const RegistrationRequests: React.FC = () => {
         if (resRequests.success && Array.isArray(resRequests.data)) {
           setRequests(resRequests.data as RegistrationRequestItem[]);
         } else {
-          setRequests([]);
+          throw new Error(resRequests.message || t("common.errorFetching", "Error fetching data"));
         }
 
         if (resColleges.success && Array.isArray(resColleges.data)) {
           setColleges(resColleges.data as CollegeOption[]);
         }
-      } catch (error: unknown) {
-        logger.error("Error fetching registration requests:", error);
-        showToast(t("common.errorFetching", "Error fetching data"), "error");
+      } catch (err: any) {
+        logger.error("Error fetching registration requests:", err);
+        const msg = err.message || t("common.errorFetching", "Error fetching data");
+        setError(msg);
+        showToast(msg, "error");
         setRequests([]);
       } finally {
         setLoading(false);
@@ -692,6 +697,11 @@ const RegistrationRequests: React.FC = () => {
               {t("common.loading", "Loading...")}
             </p>
           </div>
+        ) : error ? (
+          <ErrorState
+            message={error}
+            onRetry={() => fetchRequests(false)}
+          />
         ) : filteredRequests.length === 0 ? (
           <EmptyState
             icon={<Users size={32} />}
@@ -713,7 +723,7 @@ const RegistrationRequests: React.FC = () => {
                   )
             }
             action={
-              statusFilter !== "ALL" || search
+              statusFilter !== "ALL" || search || selectedCollege !== "ALL" || selectedRole !== "ALL"
                 ? {
                     label: isRTL ? "عرض كافة الطلبات" : "View All Requests",
                     onClick: handleClearFilters,

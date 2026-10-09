@@ -7,7 +7,7 @@ export async function apiRequest<T>(
     const res = await fn();
     return res.data;
   } catch (error: unknown) {
-    const normalized = error as { message?: string; response?: { data?: { message?: string; error?: string } } };
+    const normalized = error as { message?: string; status?: number; response?: { data?: { message?: string; error?: string } } };
     const message =
       normalized?.message ||
       normalized?.response?.data?.message ||
@@ -18,6 +18,8 @@ export async function apiRequest<T>(
       success: false,
       data: null as unknown as T,
       message,
+      status: normalized?.status,
+      error: normalized,
     };
   }
 }

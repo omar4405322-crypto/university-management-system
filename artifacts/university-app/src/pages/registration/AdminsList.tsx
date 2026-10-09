@@ -28,6 +28,7 @@ import Table, {
 } from "../../components/ui/table";
 import Pagination from "../../components/ui/pagination";
 import { EmptyState } from "../../components/ui/EmptyState";
+import ErrorState from "../../components/ui/ErrorState";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import ResetPasswordModal from "../../components/ui/ResetPasswordModal";
 import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
@@ -70,6 +71,7 @@ const AdminsList = () => {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [colleges, setColleges] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<
@@ -122,6 +124,7 @@ const AdminsList = () => {
   const fetchAdmins = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const roles =
         roleFilter === "super"
           ? ["SUPER_ADMIN", "ADMIN"]
@@ -142,13 +145,14 @@ const AdminsList = () => {
         setAdmins(list);
         setPagination(res.pagination || { total: list.length, totalPages: 1 });
         if (res.summary) setSummary(res.summary);
+      } else {
+        throw new Error(res.message || (isRTL ? "فشل تحميل قائمة المسؤولين" : "Failed to load admins list"));
       }
-    } catch (error: any) {
-      console.error("Error fetching admins:", error);
-      showToast(
-        isRTL ? "فشل تحميل قائمة المسؤولين" : "Failed to load admins list",
-        "error",
-      );
+    } catch (err: any) {
+      console.error("Error fetching admins:", err);
+      const msg = err.message || (isRTL ? "فشل تحميل قائمة المسؤولين" : "Failed to load admins list");
+      setError(msg);
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -728,6 +732,11 @@ const AdminsList = () => {
               {isRTL ? "جاري تحميل المسؤولين..." : "Loading admins..."}
             </p>
           </div>
+        ) : error ? (
+          <ErrorState
+            message={error}
+            onRetry={fetchAdmins}
+          />
         ) : filteredAdmins.length === 0 ? (
           <EmptyState
             icon={

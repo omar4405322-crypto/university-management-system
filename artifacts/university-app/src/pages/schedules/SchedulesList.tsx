@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
+import ErrorState from '../../components/ui/ErrorState';
 import BulkActionToolbar from '../../components/ui/BulkActionToolbar';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { Pagination } from '../../components/ui/pagination';
@@ -831,17 +832,7 @@ const SchedulesList = () => {
           </p>
         </Card>
       ) : error ? (
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
-          <AlertCircle size={36} className="text-rose-500 mb-2" />
-          <h2 className="text-base font-bold text-slate-800 dark:text-white mb-2">{error}</h2>
-          <button
-            type="button"
-            onClick={fetchSchedules}
-            className="px-4 py-1.5 rounded-xl bg-brand-primary-500 text-white font-bold text-xs shadow-xs"
-          >
-            {t('common.retry', 'Retry')}
-          </button>
-        </Card>
+        <ErrorState message={error} onRetry={fetchSchedules} />
       ) : filteredSchedules.length === 0 ? (
         <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 flex flex-col items-center justify-center text-center">
           <div className="w-14 h-14 rounded-full bg-brand-primary-500/10 text-brand-primary-500 flex items-center justify-center text-2xl mb-3">

@@ -1,6 +1,5 @@
-// ENHANCED: Added College, Department, Bio fields - Phase 5
 import React, { useState, useEffect, useMemo } from 'react';
-import toast from 'react-hot-toast';
+import { useToast } from '../../context/ToastContext';
 import doctorsService from '../../services/doctors.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
@@ -39,6 +38,7 @@ interface AddDoctorModalProps {
 
 const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const { isRTL } = useLanguage();
 
   const [formData, setFormData] = useState({
@@ -160,13 +160,13 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({ isOpen, onClose, onSucc
       if (!payload.departmentId) delete payload.departmentId;
       const result = await doctorsService.createDoctor(payload);
       if (result.success) {
-        toast.success(t('doctors.createSuccess', 'Doctor created successfully'));
+        showToast(t('doctors.createSuccess', 'Doctor created successfully'), 'success');
         onSuccess();
       } else {
-        toast.error(result.message || t('doctors.createError'));
+        showToast(result.message || t('doctors.createError'), 'error');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || t('doctors.createError'));
+      showToast(error.response?.data?.message || t('doctors.createError'), 'error');
     } finally {
       setLoading(false);
     }

@@ -203,6 +203,9 @@ const TimetableModal: React.FC<TimetableModalProps> = ({ isOpen, onClose, timeta
                   </div>
                 ) : (
                   <select
+                    id="timetable-college-select"
+                    aria-invalid={Boolean(errors.collegeId)}
+                    aria-describedby={errors.collegeId ? 'timetable-college-error' : undefined}
                     className={SELECT_CLASS}
                     {...register('collegeId', {
                       onChange: (e) => {
@@ -215,12 +218,15 @@ const TimetableModal: React.FC<TimetableModalProps> = ({ isOpen, onClose, timeta
                     {colleges.map(c => <option key={c.id} value={c.id}>{isRTL ? c.nameAr || c.name : c.name}</option>)}
                   </select>
                 )}
-                {errors.collegeId && <p className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>}
+                {errors.collegeId && <p id="timetable-college-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.collegeId.message}</p>}
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.selectDept')} *</label>
+                <label htmlFor="timetable-dept-select" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.selectDept')} *</label>
                 <select
+                  id="timetable-dept-select"
+                  aria-invalid={Boolean(errors.departmentId)}
+                  aria-describedby={errors.departmentId ? 'timetable-dept-error' : undefined}
                   className={SELECT_CLASS}
                   {...register('departmentId')}
                   disabled={!watchCollegeId}
@@ -228,23 +234,29 @@ const TimetableModal: React.FC<TimetableModalProps> = ({ isOpen, onClose, timeta
                   <option value="">{t('timetables.selectDept')}</option>
                   {departments.map(d => <option key={d.id} value={d.id}>{isRTL ? d.nameAr || d.name : d.name}</option>)}
                 </select>
-                {errors.departmentId && <p className="text-rose-500 text-xs mt-1">{errors.departmentId.message}</p>}
+                {errors.departmentId && <p id="timetable-dept-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.departmentId.message}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.academicYear')} *</label>
+                  <label htmlFor="timetable-year-select" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.academicYear')} *</label>
                   <select
+                    id="timetable-year-select"
+                    aria-invalid={Boolean(errors.academicYear)}
+                    aria-describedby={errors.academicYear ? 'timetable-year-error' : undefined}
                     className={SELECT_CLASS}
                     {...register('academicYear')}
                   >
                     {[1, 2, 3, 4].map(y => <option key={y} value={y}>{t('auth.year')} {y}</option>)}
                   </select>
-                  {errors.academicYear && <p className="text-rose-500 text-xs mt-1">{errors.academicYear.message}</p>}
+                  {errors.academicYear && <p id="timetable-year-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.academicYear.message}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.semester')} *</label>
+                  <label htmlFor="timetable-semester-select" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('timetables.semester')} *</label>
                   <select
+                    id="timetable-semester-select"
+                    aria-invalid={Boolean(errors.semester)}
+                    aria-describedby={errors.semester ? 'timetable-semester-error' : undefined}
                     className={SELECT_CLASS}
                     {...register('semester')}
                   >
@@ -252,7 +264,7 @@ const TimetableModal: React.FC<TimetableModalProps> = ({ isOpen, onClose, timeta
                     <option value="2">{t('schedule.semester2', 'Semester 2')}</option>
                     <option value="3">{t('schedule.semester3', 'Summer Semester')}</option>
                   </select>
-                  {errors.semester && <p className="text-rose-500 text-xs mt-1">{errors.semester.message}</p>}
+                  {errors.semester && <p id="timetable-semester-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.semester.message}</p>}
                 </div>
               </div>
             </div>
@@ -264,32 +276,41 @@ const TimetableModal: React.FC<TimetableModalProps> = ({ isOpen, onClose, timeta
             </h3>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('common.title')} *</label>
+                <label htmlFor="timetable-title-input" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('common.title')} *</label>
                 <Input
+                  id="timetable-title-input"
                   placeholder={t('timetables.titlePlaceholder', 'e.g. CS Year 2 - Fall 2026')}
+                  aria-invalid={Boolean(errors.title)}
+                  aria-describedby={errors.title ? 'timetable-title-error' : undefined}
                   {...register('title')}
                 />
-                {errors.title && <p className="text-rose-500 text-xs mt-1">{errors.title.message}</p>}
+                {errors.title && <p id="timetable-title-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.title.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('common.description')}</label>
+                <label htmlFor="timetable-description-textarea" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('common.description')}</label>
                 <textarea
+                  id="timetable-description-textarea"
                   className="w-full p-4 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all min-h-[80px]"
                   placeholder={t('timetables.notesPlaceholder', 'Notes...')}
+                  aria-invalid={Boolean(errors.description)}
+                  aria-describedby={errors.description ? 'timetable-description-error' : undefined}
                   {...register('description')}
                 />
-                {errors.description && <p className="text-rose-500 text-xs mt-1">{errors.description.message}</p>}
+                {errors.description && <p id="timetable-description-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.description.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('finance.status')}</label>
+                <label htmlFor="timetable-status-select" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t('finance.status')}</label>
                 <select
+                  id="timetable-status-select"
+                  aria-invalid={Boolean(errors.status)}
+                  aria-describedby={errors.status ? 'timetable-status-error' : undefined}
                   className={SELECT_CLASS}
                   {...register('status')}
                 >
                   <option value="DRAFT">{t('timetables.draft')}</option>
                   <option value="PUBLISHED">{t('timetables.published')}</option>
                 </select>
-                {errors.status && <p className="text-rose-500 text-xs mt-1">{errors.status.message}</p>}
+                {errors.status && <p id="timetable-status-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.status.message}</p>}
               </div>
             </div>
           </div>

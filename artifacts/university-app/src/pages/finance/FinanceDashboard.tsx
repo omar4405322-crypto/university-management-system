@@ -33,6 +33,7 @@ import { Pagination } from '../../components/ui/pagination';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/badge';
 import { EmptyState } from '../../components/ui/EmptyState';
+import ErrorState from '../../components/ui/ErrorState';
 import { downloadCsv } from '../../utils/exportCsv';
 import {
   Clock,
@@ -142,6 +143,7 @@ export function FinanceDashboard() {
   const [stats, setStats] = useState<FinanceStats | null>(null);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { showToast } = useToast();
@@ -192,6 +194,7 @@ export function FinanceDashboard() {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
+      setError(null);
 
       if (isAdmin) {
         if (isRefresh || !hasFetchedStudent.current) {
@@ -214,6 +217,8 @@ export function FinanceDashboard() {
           } else {
             setTotalRecords(paymentsRes.data?.length || 0);
           }
+        } else {
+          throw new Error(paymentsRes.message || t('common.errorFetching', 'Error fetching data'));
         }
       } else {
         if (!isRefresh && hasFetchedStudent.current) {
@@ -226,15 +231,20 @@ export function FinanceDashboard() {
           setPayments(allPersonal);
           setTotalRecords(allPersonal.length);
           hasFetchedStudent.current = true;
+        } else {
+          throw new Error(myPaymentsRes.message || t('common.errorFetching', 'Error fetching data'));
         }
       }
     } catch (err: any) {
       logger.error(err);
+      const msg = err.message || t('common.errorFetching', 'Error fetching data');
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [debouncedSearch, filters.status, filters.type, isAdmin, page, limit, fetchStats]);
+  }, [debouncedSearch, filters.status, filters.type, isAdmin, page, limit, fetchStats, showToast, t]);
 
   useEffect(() => {
     fetchData();
@@ -267,12 +277,12 @@ export function FinanceDashboard() {
     try {
       const result = await paymentsService.deletePayment(String(paymentToDelete));
       if (result.success) {
-        showToast(t('finance.deleteSuccess', 'finance.deleteSuccess'), 'success');
+        showToast(t('finance.deleteSuccess', 'Payment record deleted successfully'), 'success');
         setPaymentToDelete(null);
         fetchData(true);
       }
     } catch (_err: any) {
-      showToast(t('finance.deleteError', 'finance.deleteError'), 'error');
+      showToast(t('finance.deleteError', 'Failed to delete payment record'), 'error');
     }
   };
 
@@ -579,7 +589,7 @@ export function FinanceDashboard() {
                 <div className="text-center p-6 text-slate-400">
                   <Wallet size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
                   <p className="text-xs font-semibold">
-                    {t('finance.noMonthlyData', 'finance.noMonthlyData')}
+                    {t('finance.noMonthlyData', 'No revenue recorded for this month yet')}
                   </p>
                 </div>
               ) : (
@@ -754,6 +764,13 @@ export function FinanceDashboard() {
                 <RotateCw className="animate-spin mx-auto text-brand-primary-500 mb-2" size={28} />
                 <span className="text-xs font-medium">{t('common.loading', 'Loading...')}</span>
               </div>
+            ) : error ? (
+              <div className="p-8">
+                <ErrorState
+                  message={error}
+                  onRetry={() => fetchData(true)}
+                />
+              </div>
             ) : (isAdmin ? payments.length === 0 : filteredStudentPayments.length === 0) ? (
               <div className="p-8 text-center">
                 <EmptyState
@@ -767,18 +784,18 @@ export function FinanceDashboard() {
                       : t('finance.noPaymentsYet', 'No payments yet')
                   }
                   action={
-                    isAdmin
+                    hasActiveFilters
+                      ? {
+                          label: isRTL ? 'إعادة ضبط الفلاتر' : 'Reset Filters',
+                          onClick: clearFilters,
+                        }
+                      : isAdmin
                       ? {
                           label: t('finance.addPayment', 'Add Payment'),
                           onClick: () => {
                             setEditPayment(null);
                             setIsModalOpen(true);
                           },
-                        }
-                      : hasActiveFilters
-                      ? {
-                          label: isRTL ? 'إعادة ضبط الفلاتر' : 'Reset Filters',
-                          onClick: clearFilters,
                         }
                       : undefined
                   }
@@ -1017,7 +1034,7 @@ export function FinanceDashboard() {
         isOpen={!!paymentToDelete}
         onClose={() => setPaymentToDelete(null)}
         onConfirm={handleDeletePayment}
-        title={t('finance.deleteConfirm', 'finance.deleteConfirm')}
+        title={t('finance.deleteConfirm', 'Delete payment record')}
         confirmLabel={t('common.delete', 'Delete')}
       />
 

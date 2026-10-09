@@ -22,6 +22,7 @@ import AddCollegeModal from "./AddCollegeModal";
 import EditCollegeModal from "./EditCollegeModal";
 import CollegeCardImage from "../../components/CollegeCardImage";
 import { EmptyState } from "../../components/ui/EmptyState";
+import ErrorState from "../../components/ui/ErrorState";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import { logger } from "../../lib/logger";
 import { useToast } from "../../context/ToastContext";
@@ -34,6 +35,7 @@ const CollegesList = () => {
   const { isRTL } = useLanguage();
   const [colleges, setColleges] = useState<CollegeRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState<CollegeRow | null>(null);
@@ -47,13 +49,18 @@ const CollegesList = () => {
   const fetchColleges = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const result = await collegeService.getManagedColleges();
       if (result.success) {
         setColleges(result.data?.colleges || result.data || []);
+      } else {
+        throw new Error(result.message || t("common.errorFetching"));
       }
-    } catch (error: any) {
-      logger.error("Error fetching colleges:", error);
-      showToast(t("common.errorFetching"), "error");
+    } catch (err: any) {
+      logger.error("Error fetching colleges:", err);
+      const msg = err.message || t("common.errorFetching");
+      setError(msg);
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -135,6 +142,11 @@ const CollegesList = () => {
           <Loader2 className="animate-spin text-brand-primary-600" size={48} />
           <p className="text-caption">{t("common.loading")}</p>
         </div>
+      ) : error ? (
+        <ErrorState
+          message={error}
+          onRetry={fetchColleges}
+        />
       ) : !Array.isArray(displayColleges) || displayColleges.length === 0 ? (
         <EmptyState
           icon={<Building2 size={40} />}

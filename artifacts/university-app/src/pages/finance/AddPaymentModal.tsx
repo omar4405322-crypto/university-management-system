@@ -115,6 +115,9 @@ const AddPaymentModal = ({ isOpen, onClose, onSuccess }: any) => {
               />
             </div>
             <select
+              id="payment-student-select"
+              aria-invalid={Boolean(errors.studentId)}
+              aria-describedby={errors.studentId ? 'payment-student-error' : undefined}
               className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer select-custom-arrow"
               {...register('studentId')}
             >
@@ -125,15 +128,18 @@ const AddPaymentModal = ({ isOpen, onClose, onSuccess }: any) => {
                 </option>
               ))}
             </select>
-            {errors.studentId && <p className="text-rose-500 text-xs mt-1">{errors.studentId.message}</p>}
+            {errors.studentId && <p id="payment-student-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.studentId.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <label htmlFor="payment-type-select" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
                 <FileText size={14} className="text-brand-text-muted" /> {t('finance.paymentType')} <span className="text-rose-500">*</span>
               </label>
               <select
+                id="payment-type-select"
+                aria-invalid={Boolean(errors.type)}
+                aria-describedby={errors.type ? 'payment-type-error' : undefined}
                 className="w-full h-10 px-4 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer select-custom-arrow"
                 {...register('type')}
               >
@@ -142,48 +148,57 @@ const AddPaymentModal = ({ isOpen, onClose, onSuccess }: any) => {
                 <option value="LIBRARY">{t('finance.library')}</option>
                 <option value="OTHER">{t('finance.other')}</option>
               </select>
-              {errors.type && <p className="text-rose-500 text-xs mt-1">{errors.type.message}</p>}
+              {errors.type && <p id="payment-type-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.type.message}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <label htmlFor="payment-amount-input" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
                 <DollarSign size={14} className="text-brand-text-muted" /> {t('finance.amount')} <span className="text-rose-500">*</span>
               </label>
               <Input
+                id="payment-amount-input"
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0.00"
+                aria-invalid={Boolean(errors.amount)}
+                aria-describedby={errors.amount ? 'payment-amount-error' : undefined}
                 className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all font-bold"
                 {...register('amount')}
               />
-              {errors.amount && <p className="text-rose-500 text-xs mt-1">{errors.amount.message}</p>}
+              {errors.amount && <p id="payment-amount-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.amount.message}</p>}
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="payment-due-date-input" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <Calendar size={14} className="text-brand-text-muted" /> {t('finance.dueDate')}
             </label>
             <Input
+              id="payment-due-date-input"
               type="date"
+              aria-invalid={Boolean(errors.dueDate)}
+              aria-describedby={errors.dueDate ? 'payment-due-date-error' : undefined}
               className="bg-brand-bg-page/30 border-brand-border focus:bg-brand-bg-card transition-all"
               {...register('dueDate')}
             />
-            {errors.dueDate && <p className="text-rose-500 text-xs mt-1">{errors.dueDate.message}</p>}
+            {errors.dueDate && <p id="payment-due-date-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.dueDate.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+            <label htmlFor="payment-description-input" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <FileText size={14} className="text-brand-text-muted" /> {t('finance.description')}
             </label>
             <textarea
+              id="payment-description-input"
               rows={3}
               placeholder={t('finance.descriptionPlaceholder')}
+              aria-invalid={Boolean(errors.description)}
+              aria-describedby={errors.description ? 'payment-description-error' : undefined}
               className="w-full px-4 py-2 bg-brand-bg-page/30 border border-brand-border rounded-xl text-sm text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all resize-none placeholder:text-brand-text-muted"
               {...register('description')}
             ></textarea>
-            {errors.description && <p className="text-rose-500 text-xs mt-1">{errors.description.message}</p>}
+            {errors.description && <p id="payment-description-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.description.message}</p>}
           </div>
         </div>
 

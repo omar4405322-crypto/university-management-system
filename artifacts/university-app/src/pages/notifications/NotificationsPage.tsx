@@ -26,11 +26,10 @@ const NotificationsPage = () => {
     deleteNotification,
   } = useNotifications();
 
-  const [filter, _setFilter] = useState("all"); // all, unread, read
+  const [filter, setFilter] = useState<"all" | "unread">("all");
 
   const filteredNotifications = notifications.filter((n) => {
     if (filter === "unread") return !n.isRead;
-    if (filter === "read") return n.isRead;
     return true;
   });
 
@@ -81,6 +80,36 @@ const NotificationsPage = () => {
         }}
       />
 
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          type="button"
+          onClick={() => setFilter("all")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            filter === "all"
+              ? "bg-brand-primary-600 text-white shadow-sm"
+              : "bg-brand-bg-card text-brand-text-sub hover:text-brand-text-main border border-brand-border"
+          }`}
+        >
+          {t("notifications.all", "All")} ({notifications.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter("unread")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            filter === "unread"
+              ? "bg-brand-primary-600 text-white shadow-sm"
+              : "bg-brand-bg-card text-brand-text-sub hover:text-brand-text-main border border-brand-border"
+          }`}
+        >
+          <span>{t("notifications.unread", "Unread")}</span>
+          {unreadCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+      </div>
+
       <Card className="border-l-0" noPadding>
         {loading ? (
           <div className="flex flex-col items-center justify-center h-[400px] gap-4">
@@ -95,13 +124,23 @@ const NotificationsPage = () => {
               <Inbox size={40} className="text-brand-text-muted" />
             </div>
             <h3 className="text-lg font-black text-brand-text-main">
-              {t("notifications.empty")}
+              {filter === "unread" ? t("notifications.caughtUp") : t("notifications.empty")}
             </h3>
-            <p className="text-sm text-brand-text-sub max-w-xs mx-auto mt-1 font-bold">
+            <p className="text-sm text-brand-text-sub max-w-xs mx-auto mt-1 mb-4 font-medium">
               {filter === "unread"
-                ? "You've caught up with everything!"
-                : "Your notification box is empty."}
+                ? t("notifications.noUnreadDesc")
+                : t("notifications.emptyDesc")}
             </p>
+            {filter === "unread" && notifications.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFilter("all")}
+                className="font-bold text-xs"
+              >
+                {t("notifications.viewAll", "View all notifications")}
+              </Button>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-brand-border">
