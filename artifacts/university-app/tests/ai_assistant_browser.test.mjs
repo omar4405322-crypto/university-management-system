@@ -443,13 +443,14 @@ test('AI Persistent Conversations, Drawer, Search, Rename, Archive, Delete & Tra
       const searchInput = page.getByPlaceholder('Search conversations...');
       await searchInput.fill('Physics');
       // Wait for debounce and filtered list
-      await page.waitForTimeout(600);
+      await drawer.getByText('Physics 101 Discussion').waitFor({ state: 'visible', timeout: 5000 });
+      await drawer.getByText('Attendance Inquiries').waitFor({ state: 'detached', timeout: 5000 });
       assert.equal(await drawer.getByText('Physics 101 Discussion').count(), 1);
       assert.equal(await drawer.getByText('Attendance Inquiries').count(), 0);
 
       // Clear search
       await searchInput.fill('');
-      await page.waitForTimeout(600);
+      await drawer.getByText('Attendance Inquiries').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
       assert.equal(await drawer.getByText('Attendance Inquiries').count(), 1);
 
       // Select conversation 'conv-1'

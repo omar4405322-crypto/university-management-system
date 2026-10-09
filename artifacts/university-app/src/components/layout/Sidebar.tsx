@@ -450,7 +450,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         className={`
         fixed top-0 z-50 h-full border-white/10 bg-brand-sidebar dark:bg-slate-900 transition-all duration-300 shadow-elevated outline-none
         start-0 border-e
-        ${isCollapsed ? 'w-20' : 'w-64'}
+        ${isCollapsed ? 'w-20' : 'w-72'}
         ${isOpen ? 'translate-x-0 visible' : `invisible lg:visible ${isRTL ? 'translate-x-full' : '-translate-x-full'}`}
         lg:translate-x-0
       `}
