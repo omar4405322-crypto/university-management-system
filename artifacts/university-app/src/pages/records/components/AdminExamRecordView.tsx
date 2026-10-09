@@ -250,7 +250,7 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
             data?.totalCompletedExams || (data?.completedExams?.length ?? 0)
           }
           icon={Archive}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -258,7 +258,7 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
           title={t("transcript.submissions", "Student Submissions")}
           value={data?.totalSubmissions || 0}
           icon={Users}
-          color="emerald"
+          color="navy"
         />
 
         <StatCard
@@ -266,7 +266,7 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
           title={t("transcript.avgScore", "Average Grade")}
           value={`${data?.averageScore || 0}%`}
           icon={BarChart3}
-          color="blue"
+          color="cyan"
         />
 
         <StatCard
@@ -281,7 +281,7 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
             ).size
           }
           icon={BookOpenCheck}
-          color="amber"
+          color="gold"
         />
       </div>
 

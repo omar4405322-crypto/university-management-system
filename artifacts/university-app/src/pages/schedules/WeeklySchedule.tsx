@@ -1,61 +1,73 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Card from '../../components/ui/card';
-import Badge from '../../components/ui/badge';
-import {
-  Clock,
-  MapPin,
-  User,
-  ChevronLeft,
-  ChevronRight,
-  Calendar,
-  AlertCircle,
-  FileText,
-  Building2,
-  GraduationCap,
-  Printer,
-} from 'lucide-react';
-import schedulesService from '../../services/schedules.service';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
-import { PageHeader } from '../../components/ui/PageHeader';
-import { SkeletonTable } from '../../components/ui/skeleton';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { logger } from '../../lib/logger';
-import FilterBar from '../../components/ui/FilterBar';
-import { ScheduleView } from '../../components/timetable/ScheduleView';
+import { useLanguage } from '../../context/LanguageContext';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import {
+  Calendar,
+  Loader2,
+  BookOpen,
+  MapPin,
+  Printer,
+  RotateCw,
+  Building,
+  AlertTriangle,
+  Search,
+  X,
+  RotateCcw,
+  GraduationCap,
+  Layers,
+  LayoutGrid,
+  ListOrdered,
+} from 'lucide-react';
+import schedulesService, { ScheduleSlotData } from '../../services/schedules.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import useScope from '../../hooks/useScope';
+import { StatCard } from '../../components/ui/card';
+import Button from '../../components/ui/button';
+import Badge from '../../components/ui/badge';
+import { ScheduleView } from '../../components/timetable/ScheduleView';
+import { generateHourlyTimes } from '../../utils/scheduleConfig';
+import { logger } from '../../lib/logger';
 import type { College, Department } from '../../types/timetable.types';
-import type { ScheduleSlotData } from '../../services/schedules.service';
 import type { TimetableDayRecord, ScheduleSlot } from './DoctorSchedule';
 
-const getSessionBadgeColor = (type: string) => {
-  switch (type) {
-    case 'LECTURE': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
-    case 'LAB': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
-    case 'SECTION': return 'bg-brand-primary-100 text-brand-primary-800 dark:bg-brand-primary-950/40 dark:text-brand-primary-300 border border-brand-primary-200 dark:border-brand-primary-800';
-    default: return 'bg-slate-100 text-slate-700 dark:bg-slate-800/40 dark:text-slate-300';
-  }
-};
+export interface WeeklyScheduleProps {
+  isStudentView?: boolean;
+}
 
-const WeeklySchedule = () => {
+export function WeeklySchedule({ isStudentView }: WeeklyScheduleProps = {}) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [timetable, setTimetable] = useState<TimetableDayRecord | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { isRTL } = useLanguage();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
 
+  const isStudent = isStudentView || user?.role === 'STUDENT' || location.pathname.includes('/student');
+  const canManage = user?.role ? ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) : false;
   const { scopeParams, isCollegeAdmin } = useScope();
+
+  // Metadata Lists (Colleges & Departments for Admins/Staff)
   const [colleges, setColleges] = useState<College[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+
+  // Filter States
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCollege, setSelectedCollege] = useState('');
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
-  const canManage = user?.role ? ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) : false;
+  const [selectedSlotType, setSelectedSlotType] = useState('all');
+  const [scheduleViewMode, setScheduleViewMode] = useState<'grid' | 'agenda'>('grid');
 
-  const isRTL = i18n.language === 'ar';
+  // Timetable Data
+  const [rawSlots, setRawSlots] = useState<ScheduleSlot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Days & Time configuration
   const days = useMemo(
     () =>
       isRTL
@@ -72,29 +84,38 @@ const WeeklySchedule = () => {
 
   const [selectedDay, setSelectedDay] = useState(() => getTodayDayName(days));
 
-  // Maintain selected day or recalculate today on language change
   useEffect(() => {
     setSelectedDay((prev) => (days.includes(prev) ? prev : getTodayDayName(days)));
   }, [i18n.language, days, getTodayDayName]);
 
-  const times = [
-    '08:00',
-    '09:00',
-    '10:00',
-    '11:00',
-    '12:00',
-    '13:00',
-    '14:00',
-    '15:00',
-    '16:00',
-    '17:00',
-  ];
+  const [times, setTimes] = useState<string[]>(generateHourlyTimes());
 
   useEffect(() => {
+    const handleConfigChange = () => {
+      setTimes(generateHourlyTimes());
+    };
+    window.addEventListener('scheduleConfigChanged', handleConfigChange);
+    return () => window.removeEventListener('scheduleConfigChanged', handleConfigChange);
+  }, []);
+
+  const formatTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? (isRTL ? 'مساءً' : 'PM') : (isRTL ? 'صباحاً' : 'AM');
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  // Fetch Colleges for Admins
+  useEffect(() => {
     if (canManage) {
-      collegeService.getColleges().then(res => {
-        if (res.success) setColleges(Array.isArray(res.data) ? res.data : res.data?.data || []);
-      }).catch(() => { });
+      collegeService
+        .getColleges()
+        .then((res) => {
+          if (res.success) setColleges(Array.isArray(res.data) ? res.data : res.data?.data || []);
+        })
+        .catch(() => {});
     }
   }, [canManage]);
 
@@ -102,43 +123,44 @@ const WeeklySchedule = () => {
     setSelectedCollege(val);
     setSelectedDept('');
     if (val) {
-      departmentService.getDepartments({ collegeId: val }).then(res => {
-        if (res.success) setDepartments(Array.isArray(res.data) ? res.data : res.data?.data || []);
-      }).catch(() => { });
+      departmentService
+        .getDepartments({ collegeId: val })
+        .then((res) => {
+          if (res.success) setDepartments(Array.isArray(res.data) ? res.data : res.data?.data || []);
+        })
+        .catch(() => {});
     } else {
       setDepartments([]);
     }
   };
 
-  const fetchTargetedTimetable = useCallback(async (isPolling = false) => {
-    try {
-      if (!isPolling) setLoading(true);
-      if (!isPolling) setError(null);
+  // Fetch Schedule Data
+  const fetchTargetedTimetable = useCallback(
+    async (isPolling = false) => {
+      try {
+        if (!isPolling) setLoading(true);
+        if (!isPolling) setError(null);
 
-      const params: Record<string, unknown> = { ...scopeParams };
-      if (!isCollegeAdmin) {
-        if (selectedCollege) params.collegeId = selectedCollege;
-        if (selectedDept) params.departmentId = selectedDept;
-      }
-      if (selectedYear) params.year = selectedYear;
-      if (selectedSemester) params.semester = selectedSemester;
+        const params: Record<string, unknown> = { ...scopeParams };
+        if (!isCollegeAdmin) {
+          if (selectedCollege) params.collegeId = selectedCollege;
+          if (selectedDept) params.departmentId = selectedDept;
+        }
+        if (selectedYear) params.year = selectedYear;
+        if (selectedSemester) params.semester = selectedSemester;
 
-      const result = await schedulesService.getAllWeeklyTimetable(params);
-      if (result.success && result.data && Array.isArray(result.data)) {
-        const grouped = result.data.reduce((acc: TimetableDayRecord, slot: ScheduleSlotData) => {
-          if (!slot.dayOfWeek) return acc;
-          const dayName = slot.dayOfWeek.charAt(0).toUpperCase() + slot.dayOfWeek.slice(1).toLowerCase();
-          if (!acc[dayName]) acc[dayName] = [];
-          const slotItem: ScheduleSlot = {
+        const result = await schedulesService.getAllWeeklyTimetable(params);
+        if (result.success && result.data && Array.isArray(result.data)) {
+          const slots: ScheduleSlot[] = result.data.map((slot: ScheduleSlotData) => ({
             id: slot.id,
             isArchived: slot.isArchived,
-            dayOfWeek: slot.dayOfWeek,
+            dayOfWeek: slot.dayOfWeek || slot.day || '',
             startTime: slot.startTime || '',
             endTime: slot.endTime,
             room: slot.room,
             slotType: slot.slotType,
-            year: slot.year,
-            semester: slot.semester,
+            year: slot.year ?? (slot.course as any)?.year,
+            semester: slot.semester ?? (slot.course as any)?.semester,
             doctorId: slot.doctorId,
             doctor: slot.doctor,
             teachingAssistantId: slot.teachingAssistantId,
@@ -149,251 +171,488 @@ const WeeklySchedule = () => {
                   id: slot.course.id,
                   name: slot.course.name,
                   courseCode: slot.course.code,
+                  departmentId: slot.departmentId,
+                  department: slot.department as any,
                 }
               : null,
             groupId: slot.groupId,
             group: slot.group,
-          };
-          acc[dayName].push(slotItem);
-          return acc;
-        }, {} as TimetableDayRecord);
-        setTimetable(grouped);
-      } else {
-        setTimetable(null);
+          }));
+          setRawSlots(slots);
+        } else {
+          setRawSlots([]);
+        }
+      } catch (err: unknown) {
+        logger.error('Error fetching timetable:', err);
+        setError(t('common.errorFetching', 'Failed to load schedule'));
+      } finally {
+        if (!isPolling) setLoading(false);
       }
-    } catch (err: unknown) {
-      logger.error('Error fetching timetable:', err);
-      setError(t('common.errorFetching'));
-    } finally {
-      setLoading(false);
-    }
-  }, [isCollegeAdmin, scopeParams, selectedCollege, selectedDept, selectedSemester, selectedYear, t]);
+    },
+    [isCollegeAdmin, scopeParams, selectedCollege, selectedDept, selectedSemester, selectedYear, t]
+  );
 
   useEffect(() => {
     fetchTargetedTimetable();
-    
-    // Poll for schedule changes every 10 seconds to ensure immediate updates
+
+    // Gentle polling interval (15s) for real-time synchronization without UI flashing
     const interval = setInterval(() => {
-      fetchTargetedTimetable(true); // Pass a flag to avoid setting loading=true
-    }, 10000);
-    
+      fetchTargetedTimetable(true);
+    }, 15000);
+
     return () => clearInterval(interval);
   }, [fetchTargetedTimetable]);
 
-  useEffect(() => {
-    const mainEl = document.querySelector('main');
-    if (!mainEl) return;
-    mainEl.classList.add('bg-slate-50', 'dark:bg-slate-900');
-    return () => {
-      mainEl.classList.remove('bg-slate-50', 'dark:bg-slate-900');
-    };
-  }, []);
+  // Multi-dimensional client-side filtering
+  const filteredSlots = useMemo(() => {
+    return rawSlots.filter((slot) => {
+      // Slot Type Filter
+      if (selectedSlotType !== 'all' && slot.slotType !== selectedSlotType) {
+        return false;
+      }
 
-  const formatTime = (timeStr: string) => {
-    if (!timeStr) return '';
-    const [hours, minutes] = timeStr.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? t('common.pm') || 'PM' : t('common.am') || 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
+      // Academic Year Filter
+      if (selectedYear) {
+        const yr = parseInt(selectedYear, 10);
+        if (slot.course?.year !== yr && slot.year !== yr) return false;
+      }
 
-  const getEntriesForTimeSlot = (day: string, time: string): ScheduleSlot[] => {
-    if (!timetable || !timetable[day]) return [];
+      // Semester Filter
+      if (selectedSemester) {
+        const sem = parseInt(selectedSemester, 10);
+        if (slot.course?.semester !== sem && slot.semester !== sem) return false;
+      }
 
-    return timetable[day].filter((s: ScheduleSlot) => {
-      const startHour = parseInt(s.startTime.split(':')[0]);
-      const currentHour = parseInt(time.split(':')[0]);
-      return startHour === currentHour;
+      // Department Filter (in case broader scope returned multiple)
+      if (selectedDept) {
+        const deptId = slot.course?.departmentId || slot.course?.department?.id;
+        if (deptId && String(deptId) !== String(selectedDept)) return false;
+      }
+
+      // College Filter
+      if (selectedCollege) {
+        const colId = slot.course?.department?.collegeId || slot.course?.department?.college?.id;
+        if (colId && String(colId) !== String(selectedCollege)) return false;
+      }
+
+      // Search Query Filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const courseName = (slot.course?.name || '').toLowerCase();
+        const courseCode = (slot.course?.courseCode || '').toLowerCase();
+        const docFull = `${slot.doctor?.firstName || ''} ${slot.doctor?.lastName || ''}`.toLowerCase();
+        const taFull = `${slot.teachingAssistant?.firstName || ''} ${slot.teachingAssistant?.lastName || ''}`.toLowerCase();
+        const roomName = (slot.room || '').toLowerCase();
+        const groupName = (slot.group?.name || '').toLowerCase();
+        const deptName = (slot.course?.department?.name || slot.course?.department?.nameAr || '').toLowerCase();
+
+        const matches =
+          courseName.includes(q) ||
+          courseCode.includes(q) ||
+          docFull.includes(q) ||
+          taFull.includes(q) ||
+          roomName.includes(q) ||
+          groupName.includes(q) ||
+          deptName.includes(q);
+
+        if (!matches) return false;
+      }
+
+      return true;
     });
+  }, [rawSlots, selectedSlotType, selectedYear, selectedSemester, selectedDept, selectedCollege, searchQuery]);
+
+  // Group filtered slots into Days Record for ScheduleView
+  const timetableRecord = useMemo<TimetableDayRecord>(() => {
+    return filteredSlots.reduce((acc: TimetableDayRecord, slot: ScheduleSlot) => {
+      if (!slot.dayOfWeek) return acc;
+      const dayName = slot.dayOfWeek.charAt(0).toUpperCase() + slot.dayOfWeek.slice(1).toLowerCase();
+      if (!acc[dayName]) acc[dayName] = [];
+      acc[dayName].push(slot);
+      return acc;
+    }, {});
+  }, [filteredSlots]);
+
+  // Statistics calculation for Top KPI Cards
+  const totalSlots = filteredSlots.length;
+  const distinctCourses = useMemo(
+    () => new Set(filteredSlots.map((s) => s.courseId || s.course?.id || s.course?.name).filter(Boolean)).size,
+    [filteredSlots]
+  );
+  const distinctRooms = useMemo(
+    () => new Set(filteredSlots.map((s) => s.room).filter(Boolean)).size,
+    [filteredSlots]
+  );
+  const distinctInstructors = useMemo(() => {
+    const instructors = new Set<string>();
+    filteredSlots.forEach((s) => {
+      if (s.doctorId || s.doctor?.id) {
+        instructors.add(`doc_${s.doctorId || s.doctor?.id}`);
+      } else if (s.doctor?.firstName) {
+        instructors.add(`doc_${s.doctor.firstName}_${s.doctor.lastName}`);
+      }
+      if (s.teachingAssistantId || s.teachingAssistant?.id) {
+        instructors.add(`ta_${s.teachingAssistantId || s.teachingAssistant?.id}`);
+      } else if (s.teachingAssistant?.firstName) {
+        instructors.add(`ta_${s.teachingAssistant.firstName}_${s.teachingAssistant.lastName}`);
+      }
+    });
+    return instructors.size;
+  }, [filteredSlots]);
+
+  // First available slot for contextual subtitle info
+  const firstSlot = rawSlots[0];
+  const detectedDeptName = firstSlot?.course?.department?.name;
+  const detectedCollegeName = firstSlot?.course?.department?.college?.name;
+  const detectedYear = user?.student?.year || firstSlot?.year || firstSlot?.course?.year;
+
+  // Title & Subtitle construction
+  const displayName = isStudent
+    ? `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || (isRTL ? 'الجدول الدراسي للطالب' : 'Student Weekly Timetable')
+    : isRTL
+    ? 'الجدول الدراسي الأسبوعي'
+    : 'Weekly Academic Timetable';
+
+  const deptNameDisplay =
+    user?.department?.name ||
+    detectedDeptName ||
+    (isRTL ? 'جامعة 6 أكتوبر التكنولوجية • الجدول المعتمد' : '6th of October Technological University • Official Timetable');
+
+  const fullSubtitle = detectedCollegeName && !deptNameDisplay.includes(detectedCollegeName)
+    ? `${deptNameDisplay} • ${detectedCollegeName}`
+    : deptNameDisplay;
+
+  const resetFilters = () => {
+    setSelectedCollege('');
+    setSelectedDept('');
+    setSelectedYear('');
+    setSelectedSemester('');
+    setSelectedSlotType('all');
+    setSearchQuery('');
   };
-
-  if (loading) {
-    return <SkeletonTable rows={7} />;
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6 animate-in fade-in duration-700 pb-10">
-        <PageHeader
-          title={!canManage ? t('schedule.mySchedule', t('nav.schedule')) : t('timetables.title')}
-          subtitle={t('timetables.subtitle')}
-          action={{
-            label: t('common.print', 'Print'),
-            icon: Printer,
-            onClick: () => window.print(),
-          }}
-        />
-        <Card className="flex flex-col items-center justify-center py-20 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="h-20 w-20 rounded-full bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center mb-6 border border-rose-200 dark:border-rose-700">
-            <AlertCircle size={40} className="text-rose-500" />
-          </div>
-          <h2 className="text-2xl font-black text-brand-text-main">{error}</h2>
-          <button
-            onClick={() => fetchTargetedTimetable()}
-            className="mt-4 px-6 py-2.5 rounded-xl bg-brand-primary-500 text-white font-semibold text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
-          >
-            {t('common.retry', 'Retry')}
-          </button>
-        </Card>
-      </div>
-    );
-  }
-
-  // Extract metadata from first available schedule entry
-  const allSlots = timetable ? Object.values(timetable).flat() : [];
-  const firstEntry = allSlots.find((s): s is ScheduleSlot => Boolean(s)) || null;
-  const departmentName = firstEntry?.course?.department?.name;
-  const academicYear = firstEntry?.course?.year;
-  const semester = firstEntry?.course?.semester;
-  const collegeName = firstEntry?.course?.department?.college?.name;
 
   return (
-    <div className="section-gap animate-in fade-in duration-700">
-      <PageHeader
-        title={!canManage ? t('schedule.mySchedule', t('nav.schedule')) : t('timetables.title')}
-        subtitle={t('timetables.subtitle')}
-        action={{
-          label: t('common.print', 'Print'),
-          icon: Printer,
-          onClick: () => window.print(),
-        }}
-      />
+    <div className="space-y-4 animate-in fade-in duration-200">
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE IDENTITY HERO CARD                                           */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-primary-500 to-brand-primary-700 text-white font-bold text-lg flex items-center justify-center shadow-xs shrink-0">
+              {user?.firstName ? user.firstName[0] : <Calendar size={22} />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                  {displayName}
+                </h1>
+                <Badge variant="info" className="text-[10px] font-bold">
+                  {isStudent
+                    ? isRTL
+                      ? 'طالب منتظم'
+                      : 'Enrolled Student'
+                    : isRTL
+                    ? 'الجدول المعتمد'
+                    : 'Official Timetable'}
+                </Badge>
+                {detectedYear ? (
+                  <Badge variant="neutral" className="text-[10px] font-bold">
+                    {isRTL ? `الفرقة ${detectedYear}` : `Year ${detectedYear}`}
+                  </Badge>
+                ) : null}
+              </div>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5">
+                <Building size={13} className="text-brand-primary-500" />
+                <span>{fullSubtitle}</span>
+              </p>
+            </div>
+          </div>
 
-      {canManage && (
-        <Card className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden p-0 mb-6">
-          <FilterBar
-            search=""
-            onSearchChange={() => { }}
-            searchPlaceholder=""
-            hideSearch={true}
-          >
-            {!isCollegeAdmin && (
-              <>
-                <select
-                  value={selectedCollege}
-                  onChange={(e) => handleCollegeChange(e.target.value)}
-                  className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
-                >
-                  <option value="">{t('common.allColleges', 'All Colleges')}</option>
-                  {colleges.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {isRTL ? c.nameAr || c.name : c.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedDept}
-                  onChange={(e) => setSelectedDept(e.target.value)}
-                  disabled={!selectedCollege}
-                  className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0 disabled:opacity-50"
-                >
-                  <option value="">{t('common.allDepartments', 'All Departments')}</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {isRTL ? d.nameAr || d.name : d.name}
-                    </option>
-                  ))}
-                </select>
-              </>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {canManage && (
+              <Button
+                size="sm"
+                onClick={() => navigate('/timetables-management')}
+                className="h-8.5 px-3.5 rounded-xl text-xs font-bold bg-brand-primary-600 hover:bg-brand-primary-700 text-white border-0 gap-1.5 cursor-pointer shadow-xs hover:shadow-sm transition-all"
+              >
+                <Layers size={14} className="text-white" />
+                <span>{isRTL ? 'إدارة وتسكين الجداول' : 'Manage Timetables'}</span>
+              </Button>
             )}
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
+
+            <Button
+              size="sm"
+              onClick={() => window.print()}
+              className="h-8.5 px-3.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white border-0 gap-1.5 cursor-pointer shadow-xs hover:shadow-sm transition-all"
             >
-              <option value="">{t('common.allYears', 'All Years')}</option>
-              {[1, 2, 3, 4].map((y) => (
-                <option key={y} value={y.toString()}>
-                  {t('common.year', 'Year')} {y}
-                </option>
-              ))}
-            </select>
-            <select
-              value={selectedSemester}
-              onChange={(e) => setSelectedSemester(e.target.value)}
-              className="h-10 px-4 bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 transition-all cursor-pointer flex-shrink-0"
+              <Printer size={14} className="text-white" />
+              <span>{isRTL ? 'طباعة' : 'Print'}</span>
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => fetchTargetedTimetable()}
+              className="h-8.5 w-8.5 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer shadow-2xs transition-all"
+              title={isRTL ? 'تحديث' : 'Refresh'}
+              aria-label={isRTL ? 'تحديث الجدول' : 'Refresh schedule'}
             >
-              <option value="">{t('schedule.allSemesters', 'All Semesters')}</option>
-              <option value="1">{t('schedule.semester1', 'Semester 1')}</option>
-              <option value="2">{t('schedule.semester2', 'Semester 2')}</option>
-              <option value="3">{t('schedule.semester3', 'Summer Semester')}</option>
-            </select>
-          </FilterBar>
-        </Card>
-      )}
-
-      {(!timetable || Object.keys(timetable).length === 0) ? (
-
-        <Card className="flex flex-col items-center justify-center py-20 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="h-20 w-20 rounded-full bg-brand-yellow/10 flex items-center justify-center mb-6 border border-brand-yellow/20">
-            <Calendar size={40} className="text-brand-yellow" />
+              <RotateCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
+            </button>
           </div>
-          <h2 className="text-2xl font-black text-brand-text-main">{t('common.noData')}</h2>
-          <p className="text-brand-text-sub font-semibold mt-2 max-w-md mx-auto">
-            {t('timetables.noSlots')}
-          </p>
-        </Card>
-      ) : (
-        <>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
-            <div className="flex flex-col gap-2">
-              {/* Use department name as the primary title if available */}
-              <h1 className="text-3xl font-black text-brand-text-main tracking-tight">
-                {departmentName ? `${departmentName} - ` : ''}
-                {!canManage ? t('schedule.mySchedule', t('nav.schedule')) : t('timetables.title')}
-              </h1>
-              <div className="flex flex-wrap items-center gap-3">
-                {academicYear && (
-                  <Badge variant="info" className="font-black uppercase tracking-widest">
-                    {t('auth.year')} {academicYear}
-                  </Badge>
-                )}
-                {semester && (
-                  <Badge variant="neutral" className="font-black uppercase tracking-widest">
-                    {t('timetables.semester')} {semester}
-                  </Badge>
-                )}
-                {collegeName && (
-                  <>
-                    <span className="text-brand-text-muted hidden md:inline">•</span>
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-brand-text-sub">
-                      <Building2 size={14} /> {collegeName}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+        </div>
+      </div>
 
-            <div className="flex items-center gap-4 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 border-s-4 border-s-brand-primary-500 shadow-sm transition-all hover:shadow-md hover:scale-[1.01]">
-              <div className="p-2.5 bg-brand-primary-500/10 dark:bg-brand-primary-500/20 text-brand-primary-600 dark:text-brand-primary-400 rounded-xl shrink-0">
-                <Calendar size={24} />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  {t('common.today')}
-                </p>
-                <p className="text-sm font-black text-brand-text-primary dark:text-brand-text-main mt-0.5">
-                  {new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-                </p>
-              </div>
-            </div>
-          </div>
+      {/* ========================================================================= */}
+      {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard
+          compact
+          title={isRTL ? 'إجمالي المحاضرات والسكاشن' : 'Total Sessions'}
+          value={loading ? '...' : totalSlots}
+          icon={Calendar}
+          color="green"
+        />
 
-          <ScheduleView 
-            timetable={timetable} 
-            role="STUDENT" 
-            selectedDay={selectedDay} 
-            setSelectedDay={setSelectedDay} 
-            days={days} 
-            times={times} 
-            formatTime={formatTime} 
-            canManage={canManage} 
+        <StatCard
+          compact
+          title={isRTL ? 'المقررات المسجلة' : 'Registered Courses'}
+          value={loading ? '...' : distinctCourses}
+          icon={BookOpen}
+          color="navy"
+        />
+
+        <StatCard
+          compact
+          title={isRTL ? 'المحاضرون والأساتذة' : 'Course Instructors'}
+          value={loading ? '...' : distinctInstructors}
+          icon={GraduationCap}
+          color="cyan"
+        />
+
+        <StatCard
+          compact
+          title={isRTL ? 'القاعات والمدرجات' : 'Lecture Halls & Labs'}
+          value={loading ? '...' : distinctRooms}
+          icon={MapPin}
+          color="gold"
+        />
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. UNIFIED 44px COMPACT FILTER TOOLBAR                                    */}
+      {/* ========================================================================= */}
+      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2">
+        {/* Search Input */}
+        <div className="relative flex-1 min-w-[170px]">
+          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={isRTL ? 'بحث باسم المقرر، الكود، المحاضر أو القاعة...' : 'Search course, code, instructor, room...'}
+            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
           />
-        </>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* College Filter (Admins / Staff) */}
+        {canManage && !isCollegeAdmin && (
+          <select
+            value={selectedCollege}
+            onChange={(e) => handleCollegeChange(e.target.value)}
+            aria-label={isRTL ? 'كل الكليات' : 'All Colleges'}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{isRTL ? 'كل الكليات' : 'All Colleges'}</option>
+            {colleges.map((c) => (
+              <option key={c.id} value={c.id}>
+                {isRTL ? c.nameAr || c.name : c.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Department Filter (Admins / Staff) */}
+        {canManage && (
+          <select
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value)}
+            disabled={!selectedCollege && departments.length === 0}
+            aria-label={isRTL ? 'كل الأقسام' : 'All Departments'}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer disabled:opacity-50"
+          >
+            <option value="">{isRTL ? 'كل الأقسام' : 'All Departments'}</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {isRTL ? d.nameAr || d.name : d.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Academic Year */}
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value)}
+          aria-label={isRTL ? 'تصفية حسب السنة' : 'Filter by year'}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="">{isRTL ? 'كل السنوات' : 'All Years'}</option>
+          {[1, 2, 3, 4].map((yr) => (
+            <option key={yr} value={yr.toString()}>
+              {isRTL ? `الفرقة ${yr}` : `Year ${yr}`}
+            </option>
+          ))}
+        </select>
+
+        {/* Semester */}
+        <select
+          value={selectedSemester}
+          onChange={(e) => setSelectedSemester(e.target.value)}
+          aria-label={isRTL ? 'تصفية حسب الفصل الدراسي' : 'Filter by semester'}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="">{isRTL ? 'كل الفصول' : 'All Semesters'}</option>
+          <option value="1">{isRTL ? 'الفصل 1' : 'Sem 1'}</option>
+          <option value="2">{isRTL ? 'الفصل 2' : 'Sem 2'}</option>
+          <option value="3">{isRTL ? 'الصيفي' : 'Summer'}</option>
+        </select>
+
+        {/* Session Type */}
+        <select
+          value={selectedSlotType}
+          onChange={(e) => setSelectedSlotType(e.target.value)}
+          aria-label={isRTL ? 'نوع الحصة' : 'Session type'}
+          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+        >
+          <option value="all">{isRTL ? 'كل الحصص' : 'All Sessions'}</option>
+          <option value="LECTURE">{isRTL ? 'محاضرات نظري' : 'Lectures'}</option>
+          <option value="SECTION">{isRTL ? 'سكاشن وتمارين' : 'Sections'}</option>
+          <option value="LAB">{isRTL ? 'معامل تطبيقية' : 'Labs'}</option>
+        </select>
+
+        {/* Clear Filters */}
+        {(selectedCollege ||
+          selectedDept ||
+          selectedYear ||
+          selectedSemester ||
+          selectedSlotType !== 'all' ||
+          searchQuery) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetFilters}
+            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
+          >
+            <X size={13} className="me-1" />
+            {isRTL ? 'مسح' : 'Clear'}
+          </Button>
+        )}
+
+        {/* View Switcher (Grid vs Agenda) inside Unified Toolbar */}
+        <div className="ms-auto flex items-center p-0.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setScheduleViewMode('grid')}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              scheduleViewMode === 'grid'
+                ? 'bg-white dark:bg-slate-800 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <LayoutGrid size={13} />
+            <span>{isRTL ? 'الجدول الأسبوعي' : 'Weekly Grid'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setScheduleViewMode('agenda')}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              scheduleViewMode === 'agenda'
+                ? 'bg-white dark:bg-slate-800 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <ListOrdered size={13} />
+            <span>{isRTL ? 'عرض الأجندة' : 'Agenda View'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 4. SCHEDULE TIMETABLE GRID                                                */}
+      {/* ========================================================================= */}
+      {loading ? (
+        <div className="p-12 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
+          <Loader2 size={32} className="animate-spin text-brand-primary-600 mx-auto mb-2" />
+          <p className="text-xs text-slate-400 font-semibold">
+            {isRTL ? 'جاري تحميل الجدول الدراسي...' : 'Fetching academic timetable...'}
+          </p>
+        </div>
+      ) : error ? (
+        <div className="p-8 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs text-center">
+          <AlertTriangle size={32} className="text-rose-500 mx-auto mb-2" />
+          <p className="text-xs font-bold text-rose-600 mb-3">{error}</p>
+          <Button size="sm" onClick={() => fetchTargetedTimetable()} className="text-xs font-bold">
+            {isRTL ? 'إعادة المحاولة' : 'Retry'}
+          </Button>
+        </div>
+      ) : totalSlots === 0 ? (
+        <div className="p-12 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
+          <div className="w-12 h-12 rounded-2xl bg-brand-primary-50 dark:bg-brand-primary-950/50 text-brand-primary-600 flex items-center justify-center mx-auto mb-3">
+            <Calendar size={24} />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+            {isRTL ? 'لا توجد محاضرات أو سكاشن مسجلة' : 'No Scheduled Sessions Found'}
+          </h3>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4">
+            {isRTL
+              ? 'لم يتم العثور على أي حصص أو محاضرات وفقاً لمعايير التصفية الحالية.'
+              : 'No scheduled sessions were found matching your current filter criteria.'}
+          </p>
+
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            {(selectedCollege || selectedDept || selectedYear || selectedSemester || selectedSlotType !== 'all' || searchQuery) ? (
+              <Button size="sm" variant="outline" onClick={resetFilters} className="text-xs font-bold gap-1.5">
+                <RotateCcw size={13} />
+                <span>{isRTL ? 'مسح الفلاتر وإعادة الضبط' : 'Reset Filters'}</span>
+              </Button>
+            ) : canManage ? (
+              <Button
+                size="sm"
+                onClick={() => navigate('/timetables-management')}
+                className="bg-brand-primary-600 hover:bg-brand-primary-700 text-white text-xs font-bold gap-1.5 shadow-xs"
+              >
+                <Layers size={14} />
+                <span>{isRTL ? 'إدارة وتسكين الجداول' : 'Manage Timetables'}</span>
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <ScheduleView
+          timetable={timetableRecord}
+          role="STUDENT"
+          selectedDay={selectedDay}
+          setSelectedDay={setSelectedDay}
+          days={days}
+          times={times}
+          formatTime={formatTime}
+          canManage={false}
+          viewMode={scheduleViewMode}
+          onViewModeChange={setScheduleViewMode}
+        />
       )}
     </div>
   );
-};
+}
 
 export default WeeklySchedule;

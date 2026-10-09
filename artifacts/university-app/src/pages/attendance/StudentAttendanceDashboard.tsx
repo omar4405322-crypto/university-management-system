@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import attendanceService from '../../services/attendance.service';
 import studentsService from '../../services/students.service';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, StatCard } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { StudentAttendanceScanner } from '../../components/attendance/StudentAttendanceScanner';
@@ -436,67 +436,37 @@ export function StudentAttendanceDashboard() {
 
             {/* Compact Inline Counter Grid (4 Stat Blocks) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full flex-1">
-              
-              {/* Stat 1: Total Sessions */}
-              <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-100 dark:border-slate-700/60 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-slate-200/80 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-[11px] text-slate-500 font-bold block leading-tight">
-                    {txt('attendance.heldSessions', 'Held Sessions')}
-                  </span>
-                  <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
-                    {stats.total}
-                  </span>
-                </div>
-              </div>
+              <StatCard
+                compact
+                title={txt('attendance.heldSessions', 'Held Sessions')}
+                value={stats.total}
+                icon={BookOpen}
+                color="green"
+              />
 
-              {/* Stat 2: Present */}
-              <div className="bg-brand-primary-50/50 dark:bg-brand-primary-950/20 p-3.5 rounded-xl border border-brand-primary-200/50 dark:border-brand-primary-900/40 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-brand-primary-100 dark:bg-brand-primary-950 text-brand-primary-700 dark:text-brand-primary-300 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-[11px] text-brand-primary-800 dark:text-brand-primary-300 font-bold block leading-tight">
-                    {txt('attendance.present', 'Present')}
-                  </span>
-                  <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
-                    {stats.present}
-                  </span>
-                </div>
-              </div>
+              <StatCard
+                compact
+                title={txt('attendance.present', 'Present')}
+                value={stats.present}
+                icon={CheckCircle2}
+                color="navy"
+              />
 
-              {/* Stat 3: Late */}
-              <div className="bg-amber-50/50 dark:bg-amber-950/20 p-3.5 rounded-xl border border-amber-200/50 dark:border-amber-900/40 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-[11px] text-amber-800 dark:text-amber-300 font-bold block leading-tight">
-                    {txt('attendance.late', 'Late')}
-                  </span>
-                  <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
-                    {stats.late}
-                  </span>
-                </div>
-              </div>
+              <StatCard
+                compact
+                title={txt('attendance.late', 'Late')}
+                value={stats.late}
+                icon={Clock}
+                color="cyan"
+              />
 
-              {/* Stat 4: Absent */}
-              <div className="bg-rose-50/50 dark:bg-rose-950/20 p-3.5 rounded-xl border border-rose-200/50 dark:border-rose-900/40 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center justify-center shrink-0">
-                  <XCircle className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-[11px] text-rose-800 dark:text-rose-300 font-bold block leading-tight">
-                    {txt('attendance.absent', 'Absent')}
-                  </span>
-                  <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">
-                    {stats.absent}
-                  </span>
-                </div>
-              </div>
-
+              <StatCard
+                compact
+                title={txt('attendance.absent', 'Absent')}
+                value={stats.absent}
+                icon={XCircle}
+                color="gold"
+              />
             </div>
 
           </div>

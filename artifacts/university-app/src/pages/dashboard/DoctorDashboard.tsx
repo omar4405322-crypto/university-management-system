@@ -138,7 +138,7 @@ export default function DoctorDashboard() {
           title={isRTL ? 'المقررات الدراسية' : 'My Courses'}
           value={stats?.counts?.myCourses || 0}
           icon={BookOpen}
-          color="primary"
+          color="green"
           onClick={() => navigate('/courses')}
           hasLink
         />
@@ -148,7 +148,7 @@ export default function DoctorDashboard() {
           title={isRTL ? 'إجمالي الطلاب' : 'Total Students'}
           value={stats?.counts?.totalStudents || 0}
           icon={Users}
-          color="emerald"
+          color="navy"
           onClick={() => navigate('/record')}
           hasLink
         />
@@ -158,7 +158,7 @@ export default function DoctorDashboard() {
           title={isRTL ? 'الاختبارات المنجزة' : 'Total Quizzes'}
           value={stats?.counts?.totalQuizzes || 0}
           icon={ClipboardList}
-          color="blue"
+          color="cyan"
           onClick={() => navigate('/quizzes')}
           hasLink
         />
@@ -168,7 +168,7 @@ export default function DoctorDashboard() {
           title={isRTL ? 'الواجبات المعلقة' : 'Pending Tasks'}
           value={stats?.counts?.pendingTasks || 0}
           icon={FileText}
-          color="amber"
+          color="gold"
           onClick={() => navigate('/tasks')}
           hasLink
         />

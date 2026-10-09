@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import Card from "../../components/ui/card";
+import Card, { StatCard } from "../../components/ui/card";
 import Button from "../../components/ui/button";
 import Badge from "../../components/ui/badge";
 import {
@@ -11,6 +11,8 @@ import {
   Loader2,
   Plus,
   Layers,
+  Users,
+  GraduationCap,
 } from "lucide-react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import collegeService from "../../services/college.service";
@@ -136,6 +138,43 @@ const CollegesList = () => {
             : undefined
         }
       />
+
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE 4-METRIC RIBBON                                              */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <StatCard
+          compact
+          title={t("colleges.totalColleges", "إجمالي الكليات")}
+          value={displayColleges.length}
+          icon={Building2}
+          color="green"
+        />
+
+        <StatCard
+          compact
+          title={t("colleges.departmentsCount", "الأقسام العلمية")}
+          value={displayColleges.reduce((acc, c: any) => acc + (c.departments?.length || c._count?.departments || 0), 0)}
+          icon={Layers}
+          color="navy"
+        />
+
+        <StatCard
+          compact
+          title={t("colleges.enrolledStudents", "الطلاب المقيدون")}
+          value={displayColleges.reduce((acc, c: any) => acc + (c._count?.students || 0), 0)}
+          icon={Users}
+          color="cyan"
+        />
+
+        <StatCard
+          compact
+          title={t("colleges.facultyMembers", "أعضاء هيئة التدريس")}
+          value={displayColleges.reduce((acc, c: any) => acc + (c._count?.doctors || 0), 0)}
+          icon={GraduationCap}
+          color="gold"
+        />
+      </div>
 
       {loading ? (
         <div className="flex flex-col justify-center items-center h-96 gap-4">

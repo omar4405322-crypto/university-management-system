@@ -450,29 +450,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         className={`
         fixed top-0 z-50 h-full border-white/10 bg-brand-sidebar dark:bg-slate-900 transition-all duration-300 shadow-elevated outline-none
         start-0 border-e
-        ${isCollapsed ? 'w-20' : 'w-72'}
+        ${isCollapsed ? 'w-20' : 'w-64'}
         ${isOpen ? 'translate-x-0 visible' : `invisible lg:visible ${isRTL ? 'translate-x-full' : '-translate-x-full'}`}
         lg:translate-x-0
       `}
       >
         {/* ── Sidebar Header ── */}
-        <div className="flex h-20 items-center justify-between border-b border-white/10 px-4"
+        <div className="flex h-20 items-center justify-between border-b border-white/10 px-3.5"
           style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.25) 0%, rgba(255,255,255,0.03) 100%)' }}
         >
           {/* Expanded state: logo + bilingual name */}
           <Link
             to="/dashboard"
             onClick={() => navigate('/dashboard')}
-            className={`flex min-w-0 flex-1 items-center gap-3 hover:opacity-90 transition-opacity duration-200 ${isCollapsed ? 'hidden' : 'flex'}`}
+            className={`flex min-w-0 flex-1 items-center gap-2.5 hover:opacity-90 transition-opacity duration-200 ${isCollapsed ? 'hidden' : 'flex'}`}
           >
             {/* Logo badge */}
             <div className="relative shrink-0">
               <div className="absolute inset-0 rounded-2xl bg-brand-primary-500/20 blur-md" />
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20 shadow-lg backdrop-blur-sm">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20 shadow-lg backdrop-blur-sm">
                 <img
                   src={UNIVERSITY_LOGO_WHITE}
                   alt={isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October University of Technology'}
-                  className="h-7 w-7 object-contain"
+                  className="h-6 w-6 object-contain"
                   onError={(e) => {
                     e.currentTarget.onerror = null;
                     e.currentTarget.src = UNIVERSITY_LOGO;
@@ -530,14 +530,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <div className="flex flex-col h-[calc(100%-5rem)]">
           <nav aria-label={t('nav.mainNav', 'Main Navigation')} className="flex flex-col flex-1 min-h-0">
             {/* ALWAYS VISIBLE HOME BUTTON (Right below logo area) */}
-            <div className="px-4 py-2 border-b border-white/5 shrink-0">
+            <div className="px-3.5 py-2 border-b border-white/5 shrink-0">
               <NavLink
                 to="/dashboard"
                 onClick={onClose}
                 title={t('nav.dashboard', 'Dashboard')}
                 aria-label={t('nav.dashboard', 'Dashboard')}
                 className={({ isActive }) => `
-                  group flex items-center gap-3 rounded-xl transition-all duration-150 w-full px-3.5 py-2.5 text-sm
+                  group flex items-center gap-3 rounded-xl transition-all duration-150 w-full px-3 py-2 text-sm
                   ${isActive
                     ? 'bg-brand-primary-500/15 text-white font-semibold shadow-xs border-s-[3px] border-brand-primary-400'
                     : 'text-slate-300 hover:bg-white/5 hover:text-white dark:text-slate-400 dark:hover:text-white'
@@ -554,7 +554,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </NavLink>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar space-y-8">
+            <div className="flex-1 overflow-y-auto py-5 px-3.5 custom-scrollbar space-y-6">
               {filteredNav.map((group, idx) => {
                 if (group.flat) {
                   return (
@@ -570,20 +570,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             </div>
           </nav>
 
-          <div className="p-6 border-t border-white/5 bg-black/10 backdrop-blur-md">
-            <div className={`flex items-center gap-4 ${isCollapsed ? 'justify-center' : 'px-2'}`}>
+          <div className="p-4 border-t border-white/5 bg-black/10 backdrop-blur-md">
+            <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : 'px-1'}`}>
               <UserAvatar
                 user={user}
                 size="md"
                 shape="square"
-                className="ring-2 ring-white/10 shadow-lg shadow-brand-primary-600/30"
+                className="ring-2 ring-white/10 shadow-lg shadow-brand-primary-600/30 shrink-0"
               />
               {!isCollapsed && (
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black text-white truncate uppercase tracking-wider">
                     {fullName}
                   </p>
-                  <p className="label-stat text-brand-primary-400 mt-1 opacity-80">
+                  <p className="label-stat text-brand-primary-400 mt-0.5 opacity-80 truncate">
                     {user?.role.replace('_', ' ')}
                   </p>
                 </div>
@@ -591,7 +591,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               {!isCollapsed && (
                 <button
                   onClick={logout}
-                  className="p-2.5 rounded-xl bg-white/5 text-white/40 hover:text-rose-500 hover:bg-rose-500/10 transition-all duration-300"
+                  className="p-2 rounded-xl bg-white/5 text-white/40 hover:text-rose-500 hover:bg-rose-500/10 transition-all duration-300 shrink-0"
                   title={t('nav.logout')}
                   aria-label={t('nav.logout')}
                 >

@@ -390,7 +390,7 @@ const DoctorsList = () => {
           title={t("doctors.totalDoctors", "Total Doctors")}
           value={stats[0]?.value || filteredDoctors.length}
           icon={Users}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -403,7 +403,7 @@ const DoctorsList = () => {
             ).length
           }
           icon={UserCheck}
-          color="emerald"
+          color="navy"
         />
 
         <StatCard
@@ -411,7 +411,7 @@ const DoctorsList = () => {
           title={t("doctors.totalCourses", "Assigned Courses")}
           value={stats[2]?.value || "0"}
           icon={BookOpen}
-          color="blue"
+          color="cyan"
         />
 
         <StatCard
@@ -419,7 +419,7 @@ const DoctorsList = () => {
           title={t("doctors.researchProjects", "Research & Depts")}
           value={stats[3]?.value || "0"}
           icon={Briefcase}
-          color="amber"
+          color="gold"
         />
       </div>
 

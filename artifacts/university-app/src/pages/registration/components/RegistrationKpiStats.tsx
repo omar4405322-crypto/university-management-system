@@ -23,10 +23,32 @@ export const RegistrationKpiStats: React.FC<RegistrationKpiStatsProps> = ({
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
       <StatCard
         compact
+        title={t("registration.totalRegistrations", "Total Registrations")}
+        value={counts.total}
+        icon={Users}
+        color="green"
+        isActive={statusFilter === "ALL"}
+        onClick={() => setStatusFilter("ALL")}
+      />
+
+      <StatCard
+        compact
+        title={t("registration.approvedTotal", "Approved Requests")}
+        value={counts.approved}
+        icon={CheckCircle2}
+        color="navy"
+        isActive={statusFilter === "APPROVED"}
+        onClick={() =>
+          setStatusFilter(statusFilter === "APPROVED" ? "ALL" : "APPROVED")
+        }
+      />
+
+      <StatCard
+        compact
         title={t("registration.pendingReview", "Pending Review")}
         value={counts.pending}
         icon={Clock}
-        color="amber"
+        color="cyan"
         alert={counts.pending > 0}
         alertLabel={isRTL ? "معلق" : "Pending"}
         isActive={statusFilter === "PENDING"}
@@ -37,36 +59,14 @@ export const RegistrationKpiStats: React.FC<RegistrationKpiStatsProps> = ({
 
       <StatCard
         compact
-        title={t("registration.approvedTotal", "Approved Requests")}
-        value={counts.approved}
-        icon={CheckCircle2}
-        color="emerald"
-        isActive={statusFilter === "APPROVED"}
-        onClick={() =>
-          setStatusFilter(statusFilter === "APPROVED" ? "ALL" : "APPROVED")
-        }
-      />
-
-      <StatCard
-        compact
         title={t("registration.rejectedTotal", "Rejected Requests")}
         value={counts.rejected}
         icon={XCircle}
-        color="rose"
+        color="gold"
         isActive={statusFilter === "REJECTED"}
         onClick={() =>
           setStatusFilter(statusFilter === "REJECTED" ? "ALL" : "REJECTED")
         }
-      />
-
-      <StatCard
-        compact
-        title={t("registration.totalRegistrations", "Total Registrations")}
-        value={counts.total}
-        icon={Users}
-        color="primary"
-        isActive={statusFilter === "ALL"}
-        onClick={() => setStatusFilter("ALL")}
       />
     </div>
   );

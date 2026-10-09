@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-30T07:46:06.074Z",
+  "timestamp": "2026-10-03T11:26:10.272Z",
   "testResults": [
     {
       "role": "ANONYMOUS",
@@ -17,7 +17,7 @@
       "locale": "en",
       "action": "Super Admin Login & Redirect",
       "result": "PASS",
-      "notes": "Landed on http://localhost:5173/dashboard"
+      "notes": "Landed on http://localhost:5173/login"
     },
     {
       "role": "SUPER_ADMIN",
@@ -26,16 +26,7 @@
       "locale": "en",
       "action": "Students List Load",
       "result": "PASS",
-      "notes": "6 students rendered"
-    },
-    {
-      "role": "SUPER_ADMIN",
-      "route": "http://localhost:5173/students/2502",
-      "viewport": "1440x900",
-      "locale": "en",
-      "action": "Direct Student Detail Navigation",
-      "result": "PASS",
-      "notes": "Navigated to http://localhost:5173/students/2502"
+      "notes": "9 students rendered"
     },
     {
       "role": "SUPER_ADMIN",
@@ -44,16 +35,7 @@
       "locale": "en",
       "action": "Doctors List Load",
       "result": "PASS",
-      "notes": "4 doctors rendered"
-    },
-    {
-      "role": "SUPER_ADMIN",
-      "route": "http://localhost:5173/doctors/255",
-      "viewport": "1440x900",
-      "locale": "en",
-      "action": "Direct Doctor Detail Navigation",
-      "result": "PASS",
-      "notes": "Navigated to http://localhost:5173/doctors/255"
+      "notes": "7 doctors rendered"
     },
     {
       "role": "SUPER_ADMIN",
@@ -71,7 +53,7 @@
       "locale": "en",
       "action": "Colleges List Load",
       "result": "PASS",
-      "notes": "10 colleges displayed"
+      "notes": "19 colleges displayed"
     },
     {
       "role": "SUPER_ADMIN",
@@ -386,7 +368,7 @@
       "locale": "en",
       "action": "Doctor Login & Redirect",
       "result": "PASS",
-      "notes": "Landed on http://localhost:5173/dashboard"
+      "notes": "Landed on http://localhost:5173/login"
     },
     {
       "role": "DOCTOR",
@@ -421,8 +403,8 @@
       "viewport": "1440x900",
       "locale": "en",
       "action": "Doctor Weekly Schedule Redirect",
-      "result": "PASS",
-      "notes": "Landed on http://localhost:5173/schedules/doctor"
+      "result": "FAIL",
+      "notes": "Landed on http://localhost:5173/login?expired=true"
     },
     {
       "role": "DOCTOR",
@@ -458,7 +440,7 @@
       "locale": "en",
       "action": "Student Login & Redirect",
       "result": "PASS",
-      "notes": "Landed on http://localhost:5173/dashboard"
+      "notes": "Landed on http://localhost:5173/login"
     },
     {
       "role": "STUDENT",
@@ -475,8 +457,8 @@
       "viewport": "1440x900",
       "locale": "en",
       "action": "Student Schedule Role Redirect",
-      "result": "PASS",
-      "notes": "Landed on http://localhost:5173/schedules/student"
+      "result": "FAIL",
+      "notes": "Landed on http://localhost:5173/login?expired=true"
     },
     {
       "role": "STUDENT",
@@ -485,7 +467,7 @@
       "locale": "en",
       "action": "Student Courses Catalog",
       "result": "PASS",
-      "notes": "Heading: \"كتالوج المقررات\""
+      "notes": "Heading: \"جامعة 6 أكتوبر التكنولوجية\""
     },
     {
       "role": "STUDENT",
@@ -494,7 +476,7 @@
       "locale": "en",
       "action": "Student Tasks List",
       "result": "PASS",
-      "notes": "Heading: \"التكاليف والواجبات\""
+      "notes": "Heading: \"جامعة 6 أكتوبر التكنولوجية\""
     },
     {
       "role": "STUDENT",
@@ -503,7 +485,7 @@
       "locale": "en",
       "action": "Student Quizzes List",
       "result": "PASS",
-      "notes": "Heading: \"الاختبارات\""
+      "notes": "Heading: \"جامعة 6 أكتوبر التكنولوجية\""
     },
     {
       "role": "STUDENT",
@@ -512,7 +494,7 @@
       "locale": "en",
       "action": "Student Exams View",
       "result": "PASS",
-      "notes": "Heading: \"إدارة وجداول الامتحانات\""
+      "notes": "Heading: \"جامعة 6 أكتوبر التكنولوجية\""
     },
     {
       "role": "STUDENT",
@@ -521,7 +503,7 @@
       "locale": "en",
       "action": "Student Academic Record",
       "result": "PASS",
-      "notes": "Heading: \"سجل وأرشيف الامتحانات\""
+      "notes": "Heading: \"جامعة 6 أكتوبر التكنولوجية\""
     },
     {
       "role": "STUDENT",
@@ -530,7 +512,7 @@
       "locale": "en",
       "action": "Student Attendance Portal",
       "result": "PASS",
-      "notes": "Heading: \"بوابة الحضور والانصراف\""
+      "notes": "Heading: \"جامعة 6 أكتوبر التكنولوجية\""
     },
     {
       "role": "STUDENT",
@@ -539,7 +521,7 @@
       "locale": "en",
       "action": "Student Notifications",
       "result": "PASS",
-      "notes": "Heading: \"الإشعارات\""
+      "notes": "Heading: \"جامعة 6 أكتوبر التكنولوجية\""
     },
     {
       "role": "STUDENT",
@@ -548,7 +530,7 @@
       "locale": "en",
       "action": "Student Profile",
       "result": "PASS",
-      "notes": "Heading: \"Test Student\""
+      "notes": "Heading: \"جامعة 6 أكتوبر التكنولوجية\""
     },
     {
       "role": "STUDENT",

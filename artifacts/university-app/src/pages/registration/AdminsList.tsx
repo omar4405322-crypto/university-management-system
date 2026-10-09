@@ -573,7 +573,7 @@ const AdminsList = () => {
           title={isRTL ? "إجمالي المسؤولين" : "Total Admins"}
           value={totalAdminsCount}
           icon={ShieldCheck}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -581,7 +581,7 @@ const AdminsList = () => {
           title={isRTL ? "الحسابات النشطة" : "Active Admins"}
           value={activeAdminsCount}
           icon={UserCheck}
-          color="emerald"
+          color="navy"
         />
 
         <StatCard
@@ -589,7 +589,7 @@ const AdminsList = () => {
           title={isRTL ? "مسؤولو الجامعة" : "University Admins"}
           value={universityAdminsCount}
           icon={Shield}
-          color="blue"
+          color="cyan"
         />
 
         <StatCard
@@ -597,7 +597,7 @@ const AdminsList = () => {
           title={isRTL ? "مسؤولو الكليات والأقسام" : "Faculty & Dept Admins"}
           value={collegeAndDeptAdminsCount}
           icon={Building2}
-          color="amber"
+          color="gold"
         />
       </div>
 

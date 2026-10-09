@@ -361,7 +361,7 @@ const DepartmentsList: React.FC = () => {
           title={t("departments.totalDepartments", "إجمالي الأقسام")}
           value={totalDepts}
           icon={Layers}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -369,7 +369,7 @@ const DepartmentsList: React.FC = () => {
           title={t("departments.affiliatedColleges", "الكليات التابعة")}
           value={colleges.length}
           icon={Building2}
-          color="emerald"
+          color="navy"
         />
 
         <StatCard
@@ -377,7 +377,7 @@ const DepartmentsList: React.FC = () => {
           title={t("departments.enrolledStudents", "الطلاب المقيدون")}
           value={totalStudents}
           icon={Users}
-          color="blue"
+          color="cyan"
         />
 
         <StatCard
@@ -385,7 +385,7 @@ const DepartmentsList: React.FC = () => {
           title={t("departments.totalCourses", "المقررات الدراسية")}
           value={totalCourses}
           icon={BookOpen}
-          color="amber"
+          color="gold"
         />
       </div>
 

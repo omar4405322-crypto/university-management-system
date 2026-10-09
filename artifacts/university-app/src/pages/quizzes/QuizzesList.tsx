@@ -176,7 +176,7 @@ const QuizzesList = () => {
           title={isRTL ? 'إجمالي الاختبارات' : 'Total Quizzes'}
           value={quizzes.length}
           icon={FileText}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -184,7 +184,7 @@ const QuizzesList = () => {
           title={isRTL ? 'المقررات النشطة' : 'Active Courses'}
           value={activeCoursesCount}
           icon={BookOpen}
-          color="emerald"
+          color="navy"
         />
 
         <StatCard
@@ -192,7 +192,7 @@ const QuizzesList = () => {
           title={isRTL ? 'بنك الأسئلة المتاحة' : 'Total Questions'}
           value={totalQuestions}
           icon={HelpCircle}
-          color="blue"
+          color="cyan"
         />
 
         <StatCard
@@ -200,7 +200,7 @@ const QuizzesList = () => {
           title={isRTL ? 'متوسط المدة' : 'Avg Duration'}
           value={`${avgDuration} ${isRTL ? 'د' : 'min'}`}
           icon={Clock}
-          color="amber"
+          color="gold"
         />
       </div>
 

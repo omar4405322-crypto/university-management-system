@@ -620,7 +620,7 @@ const SchedulesList = () => {
           title={t('schedules.totalSessions', 'Total Sessions')}
           value={totalCount}
           icon={Calendar}
-          color="primary"
+          color="green"
           isActive={!filterMissingRoom && !filterMissingDoctor && !filterConflictsOnly}
           onClick={() => {
             setFilterMissingRoom(false);
@@ -634,7 +634,7 @@ const SchedulesList = () => {
           title={t('schedules.conflicts', 'Schedule Conflicts')}
           value={conflictsCount}
           icon={AlertTriangle}
-          color="rose"
+          color="navy"
           isActive={filterConflictsOnly}
           onClick={() => {
             setFilterConflictsOnly(!filterConflictsOnly);
@@ -648,7 +648,7 @@ const SchedulesList = () => {
           title={t('schedules.missingRoom', 'Unassigned Halls')}
           value={missingRoomCount}
           icon={MapPin}
-          color="amber"
+          color="cyan"
           isActive={filterMissingRoom}
           onClick={() => {
             setFilterMissingRoom(!filterMissingRoom);
@@ -662,7 +662,7 @@ const SchedulesList = () => {
           title={t('schedules.missingDoctor', 'Unassigned Instructors')}
           value={missingDoctorCount}
           icon={User}
-          color="blue"
+          color="gold"
           isActive={filterMissingDoctor}
           onClick={() => {
             setFilterMissingDoctor(!filterMissingDoctor);

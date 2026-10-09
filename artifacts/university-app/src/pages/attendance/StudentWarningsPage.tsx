@@ -335,26 +335,13 @@ export function StudentWarningsPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <StatCard
               compact
-              title={isRTL ? 'حرمان أكاديمي (≥25%)' : 'Academic Block (≥25%)'}
-              value={staffData.summary?.blockedCount || 0}
-              icon={XCircle}
-              color="rose"
-              isActive={selectedLevel === 'BLOCKED'}
+              title={isRTL ? 'إجمالي الطلاب المتابعين' : 'Total Monitored'}
+              value={staffData.summary?.totalMonitored || 0}
+              icon={Users}
+              color="green"
+              isActive={selectedLevel === 'ALL'}
               onClick={() => {
-                setSelectedLevel(selectedLevel === 'BLOCKED' ? 'ALL' : 'BLOCKED');
-                setPage(1);
-              }}
-            />
-
-            <StatCard
-              compact
-              title={isRTL ? 'إنذار نهائي (20%)' : 'Final Warning (20%)'}
-              value={staffData.summary?.finalWarningCount || 0}
-              icon={AlertTriangle}
-              color="amber"
-              isActive={selectedLevel === 'FINAL_WARNING'}
-              onClick={() => {
-                setSelectedLevel(selectedLevel === 'FINAL_WARNING' ? 'ALL' : 'FINAL_WARNING');
+                setSelectedLevel('ALL');
                 setPage(1);
               }}
             />
@@ -364,7 +351,7 @@ export function StudentWarningsPage() {
               title={isRTL ? 'إنذار أول (10%)' : 'Early Warning (10%)'}
               value={staffData.summary?.firstWarningCount || 0}
               icon={AlertCircle}
-              color="blue"
+              color="navy"
               isActive={selectedLevel === 'FIRST_WARNING'}
               onClick={() => {
                 setSelectedLevel(selectedLevel === 'FIRST_WARNING' ? 'ALL' : 'FIRST_WARNING');
@@ -374,13 +361,26 @@ export function StudentWarningsPage() {
 
             <StatCard
               compact
-              title={isRTL ? 'إجمالي الطلاب المتابعين' : 'Total Monitored'}
-              value={staffData.summary?.totalMonitored || 0}
-              icon={Users}
-              color="primary"
-              isActive={selectedLevel === 'ALL'}
+              title={isRTL ? 'إنذار نهائي (20%)' : 'Final Warning (20%)'}
+              value={staffData.summary?.finalWarningCount || 0}
+              icon={AlertTriangle}
+              color="cyan"
+              isActive={selectedLevel === 'FINAL_WARNING'}
               onClick={() => {
-                setSelectedLevel('ALL');
+                setSelectedLevel(selectedLevel === 'FINAL_WARNING' ? 'ALL' : 'FINAL_WARNING');
+                setPage(1);
+              }}
+            />
+
+            <StatCard
+              compact
+              title={isRTL ? 'حرمان أكاديمي (≥25%)' : 'Academic Block (≥25%)'}
+              value={staffData.summary?.blockedCount || 0}
+              icon={XCircle}
+              color="gold"
+              isActive={selectedLevel === 'BLOCKED'}
+              onClick={() => {
+                setSelectedLevel(selectedLevel === 'BLOCKED' ? 'ALL' : 'BLOCKED');
                 setPage(1);
               }}
             />

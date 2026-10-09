@@ -301,7 +301,7 @@ export function AnalyticsDashboard() {
           title={t("analytics.totalEnrollment", "Total Students")}
           value={totalStudents.toLocaleString()}
           icon={Users}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -309,7 +309,7 @@ export function AnalyticsDashboard() {
           title={t("analytics.revenueMtd", "Revenue (MTD)")}
           value={`${isRTL ? "ج.م " : "EGP "}${Number(totalRevenue).toLocaleString()}`}
           icon={DollarSign}
-          color="emerald"
+          color="navy"
         />
 
         <StatCard
@@ -317,7 +317,7 @@ export function AnalyticsDashboard() {
           title={t("analytics.scheduledExams", "Scheduled Exams")}
           value={totalExams}
           icon={BookOpen}
-          color="blue"
+          color="cyan"
         />
 
         <StatCard
@@ -325,7 +325,7 @@ export function AnalyticsDashboard() {
           title={t("analytics.avgAttendance", "Avg Attendance")}
           value={`${avgAttendance}%`}
           icon={TrendingUp}
-          color="amber"
+          color="gold"
         />
       </div>
 

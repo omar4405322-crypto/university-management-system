@@ -229,12 +229,6 @@ export default function AdminDashboard() {
         {kpiStats.map((kpi, idx) => {
           const Icon = kpi.icon;
 
-          let cardColor: StatCardColor = 'primary';
-          if (kpi.id === 'totalStudents') cardColor = 'primary';
-          else if (kpi.id === 'totalDoctors') cardColor = 'emerald';
-          else if (kpi.id === 'totalColleges') cardColor = 'blue';
-          else if (kpi.id === 'totalPayments') cardColor = 'amber';
-
           return (
             <StatCard
               key={kpi.id || idx}
@@ -242,7 +236,7 @@ export default function AdminDashboard() {
               title={kpi.title}
               value={kpi.value}
               icon={Icon}
-              color={cardColor}
+              colorIndex={idx}
               onClick={() => kpi.link && navigate(kpi.link)}
               alert={kpi.alert}
               alertLabel={kpi.alertLabel}

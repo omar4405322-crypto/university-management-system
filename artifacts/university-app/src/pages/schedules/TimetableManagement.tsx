@@ -448,7 +448,7 @@ const TimetableManagement = () => {
           title={t('timetables.totalTimetables', 'Total Timetables')}
           value={totalCount}
           icon={Calendar}
-          color="primary"
+          color="green"
           isActive={statusFilter === 'ALL'}
           onClick={() => setStatusFilter('ALL')}
         />
@@ -458,7 +458,7 @@ const TimetableManagement = () => {
           title={t('timetables.publishedStatus', 'Published')}
           value={publishedCount}
           icon={CheckCircle2}
-          color="emerald"
+          color="navy"
           isActive={statusFilter === 'PUBLISHED'}
           onClick={() => setStatusFilter(statusFilter === 'PUBLISHED' ? 'ALL' : 'PUBLISHED')}
         />
@@ -468,7 +468,7 @@ const TimetableManagement = () => {
           title={t('timetables.draftStatus', 'Draft')}
           value={draftCount}
           icon={Clock}
-          color="amber"
+          color="cyan"
           isActive={statusFilter === 'DRAFT'}
           onClick={() => setStatusFilter(statusFilter === 'DRAFT' ? 'ALL' : 'DRAFT')}
         />
@@ -478,7 +478,7 @@ const TimetableManagement = () => {
           title={t('timetables.departmentsCoveredKpi', 'Departments Covered')}
           value={coveredDeptsCount}
           icon={Layers}
-          color="blue"
+          color="gold"
         />
       </div>
 

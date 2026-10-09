@@ -548,7 +548,7 @@ const ExamsList = () => {
           title={t("exams.totalExams", "Total Exams")}
           value={totalCount}
           icon={Calendar}
-          color="primary"
+          color="green"
           isActive={statusFilter === "ALL"}
           onClick={() =>
             setStatusFilter(statusFilter === "ALL" ? "ALL" : "ALL")
@@ -561,7 +561,7 @@ const ExamsList = () => {
           title={t("exams.statusUpcoming", "Upcoming")}
           value={upcomingCount}
           icon={Clock}
-          color="blue"
+          color="navy"
           isActive={statusFilter === "UPCOMING"}
           onClick={() =>
             setStatusFilter(statusFilter === "UPCOMING" ? "ALL" : "UPCOMING")
@@ -574,7 +574,7 @@ const ExamsList = () => {
           title={t("exams.statusToday", "Today")}
           value={todayCount}
           icon={CalendarCheck}
-          color="amber"
+          color="cyan"
           isActive={statusFilter === "TODAY"}
           onClick={() =>
             setStatusFilter(statusFilter === "TODAY" ? "ALL" : "TODAY")
@@ -587,7 +587,7 @@ const ExamsList = () => {
           title={t("exams.statusCompleted", "Submitted")}
           value={completedCount}
           icon={CheckCircle2}
-          color="emerald"
+          color="gold"
           isActive={statusFilter === "COMPLETED"}
           onClick={() =>
             setStatusFilter(statusFilter === "COMPLETED" ? "ALL" : "COMPLETED")

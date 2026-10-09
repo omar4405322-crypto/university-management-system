@@ -462,7 +462,7 @@ export function FinanceDashboard() {
               title={t('finance.totalCollected', 'Total Collected')}
               value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(stats?.totalCollected || 0).toLocaleString()}`}
               icon={TrendingUp}
-              color="emerald"
+              color="green"
             />
 
             <StatCard
@@ -470,7 +470,7 @@ export function FinanceDashboard() {
               title={t('finance.totalPending', 'Total Pending')}
               value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(stats?.totalPending || 0).toLocaleString()}`}
               icon={Clock}
-              color="amber"
+              color="navy"
               alert={Number(stats?.totalPending || 0) > 0}
               alertLabel={isRTL ? 'معلق' : 'Pending'}
             />
@@ -480,7 +480,7 @@ export function FinanceDashboard() {
               title={t('finance.totalOverdue', 'Total Overdue')}
               value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(stats?.totalOverdue || 0).toLocaleString()}`}
               icon={AlertCircle}
-              color="rose"
+              color="cyan"
               alert={Number(stats?.totalOverdue || 0) > 0}
               alertLabel={isRTL ? 'متأخر' : 'Overdue'}
             />
@@ -490,7 +490,7 @@ export function FinanceDashboard() {
               title={t('finance.activePlans', 'Active Payment Plans')}
               value={stats?.activePlans ?? stats?.totalPayments ?? payments.length}
               icon={CreditCard}
-              color="blue"
+              color="gold"
             />
           </>
         ) : (
@@ -501,7 +501,7 @@ export function FinanceDashboard() {
               title={t('finance.totalPaid', 'Total Paid')}
               value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(studentStats?.totalPaid || 0).toLocaleString()}`}
               icon={CheckCircle}
-              color="emerald"
+              color="green"
             />
 
             <StatCard
@@ -509,7 +509,7 @@ export function FinanceDashboard() {
               title={t('finance.totalPending', 'Total Pending')}
               value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(studentStats?.totalPending || 0).toLocaleString()}`}
               icon={Clock}
-              color="amber"
+              color="navy"
               alert={Number(studentStats?.totalPending || 0) > 0}
               alertLabel={isRTL ? 'معلق' : 'Pending'}
             />
@@ -519,7 +519,7 @@ export function FinanceDashboard() {
               title={t('finance.totalOverdue', 'Total Overdue')}
               value={`${isRTL ? 'ج.م ' : 'EGP '}${Number(studentStats?.totalOverdue || 0).toLocaleString()}`}
               icon={AlertCircle}
-              color="rose"
+              color="cyan"
               alert={Number(studentStats?.totalOverdue || 0) > 0}
               alertLabel={isRTL ? 'متأخر' : 'Overdue'}
             />
@@ -529,7 +529,7 @@ export function FinanceDashboard() {
               title={isRTL ? 'إجمالي المعاملات' : 'Transactions'}
               value={allStudentPayments.length}
               icon={Receipt}
-              color="blue"
+              color="gold"
             />
           </>
         )}

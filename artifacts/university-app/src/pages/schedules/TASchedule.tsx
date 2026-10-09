@@ -425,7 +425,7 @@ export function TASchedule() {
           title={isRTL ? 'إجمالي السكاشن والمعامل' : 'Total Sessions'}
           value={loading ? '...' : totalSlots}
           icon={Calendar}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -433,7 +433,7 @@ export function TASchedule() {
           title={isRTL ? 'المقررات المسندة' : 'Assigned Courses'}
           value={loading ? '...' : distinctCourses}
           icon={BookOpen}
-          color="emerald"
+          color="navy"
         />
 
         <StatCard
@@ -441,7 +441,7 @@ export function TASchedule() {
           title={isRTL ? 'المعامل والقاعات' : 'Assigned Labs'}
           value={loading ? '...' : distinctRooms}
           icon={MapPin}
-          color="amber"
+          color="cyan"
         />
 
         <StatCard
@@ -449,7 +449,7 @@ export function TASchedule() {
           title={isRTL ? 'المجموعات والسكاشن' : 'Student Groups'}
           value={loading ? '...' : distinctGroups > 0 ? distinctGroups : isRTL ? 'الكل' : 'All'}
           icon={Users}
-          color="blue"
+          color="gold"
         />
       </div>
 

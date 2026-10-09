@@ -395,7 +395,7 @@ export function CoursesList() {
           title={t("dashboard.totalCourses", "Total Courses")}
           value={total}
           icon={BookOpen}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -403,7 +403,7 @@ export function CoursesList() {
           title={isRTL ? "المقررات المنشورة" : "Active Published"}
           value={publishedCount}
           icon={CheckCircle2}
-          color="emerald"
+          color="navy"
         />
 
         <StatCard
@@ -411,7 +411,7 @@ export function CoursesList() {
           title={t("courses.unassignedCourses", "Unassigned Courses")}
           value={unassignedCount}
           icon={AlertCircle}
-          color="amber"
+          color="cyan"
           alert={unassignedCount > 0}
           alertLabel={isRTL ? "تنبيه" : "Alert"}
         />
@@ -421,7 +421,7 @@ export function CoursesList() {
           title={t("dashboard.totalStudents", "Total Students")}
           value={totalEnrollments}
           icon={Users}
-          color="blue"
+          color="gold"
         />
       </div>
 

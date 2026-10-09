@@ -544,7 +544,7 @@ export function DoctorSchedule() {
           title={isRTL ? 'إجمالي المحاضرات' : 'Total Lectures'}
           value={loading ? '...' : totalSlots}
           icon={Calendar}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -552,7 +552,7 @@ export function DoctorSchedule() {
           title={isRTL ? 'المقررات المجدولة' : 'Assigned Courses'}
           value={loading ? '...' : distinctCourses}
           icon={BookOpen}
-          color="primary"
+          color="navy"
         />
 
         <StatCard
@@ -560,7 +560,7 @@ export function DoctorSchedule() {
           title={isRTL ? 'أعضاء هيئة التدريس' : 'Faculty Members'}
           value={loading ? '...' : distinctDoctors}
           icon={GraduationCap}
-          color="blue"
+          color="cyan"
         />
 
         <StatCard
@@ -568,7 +568,7 @@ export function DoctorSchedule() {
           title={isRTL ? 'المدرجات والقاعات' : 'Lecture Halls'}
           value={loading ? '...' : distinctRooms}
           icon={MapPin}
-          color="amber"
+          color="gold"
         />
       </div>
 

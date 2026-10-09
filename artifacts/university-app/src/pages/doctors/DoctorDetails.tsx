@@ -28,7 +28,7 @@ import {
   ExternalLink,
   GraduationCap
 } from 'lucide-react';
-import Card from '../../components/ui/card';
+import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/badge';
 import Breadcrumbs from '../../components/ui/Breadcrumbs';
@@ -308,61 +308,37 @@ export default function DoctorDetails({ isDrawerMode = false }: { isDrawerMode?:
 
       {/* Quick Stats Metrics Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-            <Building2 size={24} />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              {isRTL ? 'القسم' : 'Department'}
-            </span>
-            <span className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight" title={deptName}>
-              {deptName || '—'}
-            </span>
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'القسم' : 'Department'}
+          value={deptName || '—'}
+          icon={Building2}
+          color="green"
+        />
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-brand-primary-500/10 text-brand-primary-600 dark:text-brand-primary-400 flex items-center justify-center shrink-0">
-            <Award size={24} />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              {isRTL ? 'المقررات المسندة' : 'Assigned Courses'}
-            </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white truncate">
-              {taughtCourses.length} {isRTL ? 'مقررات' : 'Courses'}
-            </span>
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'المقررات المسندة' : 'Assigned Courses'}
+          value={`${taughtCourses.length} ${isRTL ? 'مقررات' : 'Courses'}`}
+          icon={Award}
+          color="navy"
+        />
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <BookOpen size={24} />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              {isRTL ? 'المحاضرات المجدولة' : 'Lectures'}
-            </span>
-            <span className="text-lg font-black text-slate-900 dark:text-white truncate">
-              {scheduleSlots.length} {isRTL ? 'مواعيد' : 'Slots'}
-            </span>
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'المحاضرات المجدولة' : 'Lectures'}
+          value={`${scheduleSlots.length} ${isRTL ? 'مواعيد' : 'Slots'}`}
+          icon={BookOpen}
+          color="cyan"
+        />
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-            <ShieldCheck size={24} />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              {isRTL ? 'الحالة' : 'Status'}
-            </span>
-            <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
-              {isActive ? (isRTL ? 'نشط' : 'Active') : (isRTL ? 'غير نشط' : 'Inactive')}
-            </span>
-          </div>
-        </div>
+        <StatCard
+          compact
+          title={isRTL ? 'الحالة' : 'Status'}
+          value={isActive ? (isRTL ? 'نشط' : 'Active') : (isRTL ? 'غير نشط' : 'Inactive')}
+          icon={ShieldCheck}
+          color="gold"
+        />
       </div>
 
       {/* Navigation Tabs Bar */}

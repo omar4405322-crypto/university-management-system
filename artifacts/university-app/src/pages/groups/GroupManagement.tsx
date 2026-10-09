@@ -622,7 +622,7 @@ export default function GroupManagement() {
           title={t('groups.totalGroups', 'Total Main Groups')}
           value={metrics.totalRootGroups}
           icon={FolderTree}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -630,7 +630,7 @@ export default function GroupManagement() {
           title={t('groups.totalSubgroups', 'Subgroups & Sections')}
           value={metrics.totalSubgroups}
           icon={SplitSquareHorizontal}
-          color="emerald"
+          color="navy"
         />
 
         <StatCard
@@ -638,7 +638,7 @@ export default function GroupManagement() {
           title={t('groups.assignedStudents', 'Distributed Students')}
           value={metrics.totalStudents}
           icon={Users}
-          color="blue"
+          color="cyan"
         />
 
         <StatCard
@@ -646,7 +646,7 @@ export default function GroupManagement() {
           title={t('groups.activeDepartments', 'Active Departments')}
           value={metrics.activeDepartmentsCount}
           icon={Building2}
-          color="amber"
+          color="gold"
         />
       </div>
 

@@ -198,7 +198,7 @@ export default function StudentDashboard() {
             value={kpi.value}
             subtitle={kpi.change}
             icon={kpi.icon}
-            color={kpi.color}
+            colorIndex={idx}
             onClick={() => kpi.link && navigate(kpi.link)}
             hasLink={Boolean(kpi.link)}
           />

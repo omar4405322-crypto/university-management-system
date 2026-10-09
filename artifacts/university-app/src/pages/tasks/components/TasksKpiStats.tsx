@@ -29,7 +29,7 @@ export const TasksKpiStats: React.FC<TasksKpiStatsProps> = ({
         title={t("tasks.totalTasks", "Total Assignments")}
         value={total}
         icon={ClipboardList}
-        color="primary"
+        color="green"
       />
 
       <StatCard
@@ -37,7 +37,7 @@ export const TasksKpiStats: React.FC<TasksKpiStatsProps> = ({
         title={t("tasks.activeTasks", "Active Assignments")}
         value={active}
         icon={Clock}
-        color="emerald"
+        color="navy"
       />
 
       <StatCard
@@ -49,7 +49,7 @@ export const TasksKpiStats: React.FC<TasksKpiStatsProps> = ({
         }
         value={submissionsCount}
         icon={Users}
-        color="blue"
+        color="cyan"
       />
 
       <StatCard
@@ -57,7 +57,7 @@ export const TasksKpiStats: React.FC<TasksKpiStatsProps> = ({
         title={t("tasks.overdueTasks", "Overdue Assignments")}
         value={overdue}
         icon={AlertTriangle}
-        color="rose"
+        color="gold"
         alert={overdue > 0}
         alertLabel={isRTL ? "متأخر" : "Overdue"}
       />

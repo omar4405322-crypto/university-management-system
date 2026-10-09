@@ -20,7 +20,7 @@ const AppShell = ({ children }: { children: React.ReactNode }) => {
       className="min-h-screen bg-brand-bg-page transition-all duration-300 lg:grid overflow-x-hidden w-full max-w-full"
       style={{
         gridTemplateColumns: `var(--sidebar-width, 0px) 1fr`,
-        '--sidebar-width': isSidebarCollapsed ? '80px' : '288px'
+        '--sidebar-width': isSidebarCollapsed ? '80px' : '256px'
       } as React.CSSProperties}
       dir={isRTL ? 'rtl' : 'ltr'}
     >

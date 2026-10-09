@@ -325,7 +325,7 @@ const TeachingAssistantsList = () => {
           title={t("teachingAssistants.totalTAs", "Total TAs")}
           value={stats[0]?.value || (tas || []).length}
           icon={Users}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -338,7 +338,7 @@ const TeachingAssistantsList = () => {
             ).length
           }
           icon={UserCheck}
-          color="emerald"
+          color="navy"
         />
 
         <StatCard
@@ -349,7 +349,7 @@ const TeachingAssistantsList = () => {
             (tas || []).filter((ta: TeachingAssistantRow) => ta.status === "ON_LEAVE").length
           }
           icon={Briefcase}
-          color="amber"
+          color="cyan"
         />
 
         <StatCard
@@ -359,7 +359,7 @@ const TeachingAssistantsList = () => {
             (tas || []).filter((ta: TeachingAssistantRow) => ta.status === "INACTIVE").length
           }
           icon={GraduationCap}
-          color="rose"
+          color="gold"
         />
       </div>
 

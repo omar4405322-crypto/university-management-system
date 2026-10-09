@@ -426,7 +426,7 @@ const StudentsList = () => {
           title={t("dashboard.totalStudents", "Total Students")}
           value={total}
           icon={Users}
-          color="primary"
+          color="green"
         />
 
         <StatCard
@@ -438,7 +438,7 @@ const StudentsList = () => {
               : 0
           }
           icon={UserCheck}
-          color="emerald"
+          color="navy"
         />
 
         <StatCard
@@ -450,7 +450,7 @@ const StudentsList = () => {
               : 0
           }
           icon={UserX}
-          color="amber"
+          color="cyan"
         />
 
         <StatCard
@@ -458,7 +458,7 @@ const StudentsList = () => {
           title={isRTL ? "الأقسام الأكاديمية" : "Academic Depts"}
           value={departments.length}
           icon={GraduationCap}
-          color="blue"
+          color="gold"
         />
       </div>
 
