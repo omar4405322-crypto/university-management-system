@@ -184,7 +184,11 @@ export const createSchedule = catchAsync(
 export const updateSchedule = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { dayOfWeek, startTime, endTime, room, teachingAssistantId, courseId, doctorId, groupId, slotType } = req.body;
-    const slotId = parseInt(req.params.id as string);
+    const slotId = parseInt(req.params.id as string, 10);
+
+    if (!Number.isSafeInteger(slotId) || slotId <= 0) {
+      return next(new ValidationError('Invalid schedule slot ID'));
+    }
 
     const existing = await prisma.scheduleSlot.findUnique({
       where: { id: slotId },
@@ -322,7 +326,12 @@ export const updateSchedule = catchAsync(
 
 export const deleteSchedule = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const slotId = parseInt(req.params.id as string);
+    const slotId = parseInt(req.params.id as string, 10);
+
+    if (!Number.isSafeInteger(slotId) || slotId <= 0) {
+      return next(new ValidationError('Invalid schedule slot ID'));
+    }
+
     const existing = await prisma.scheduleSlot.findUnique({
       where: { id: slotId },
       include: { course: { include: { department: true } } },
@@ -359,6 +368,11 @@ export const deleteSchedule = catchAsync(
 export const archiveSchedule = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const slotId = parseInt(req.params.id as string, 10);
+
+    if (!Number.isSafeInteger(slotId) || slotId <= 0) {
+      return next(new ValidationError('Invalid schedule slot ID'));
+    }
+
     const existing = await getScheduleSlotForMutation(slotId);
     if (!existing) return next(new NotFoundError('ScheduleSlot not found'));
     await assertScheduleSlotMutationAccess(req.user!, existing, 'archive');
@@ -375,6 +389,11 @@ export const archiveSchedule = catchAsync(
 export const restoreSchedule = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const slotId = parseInt(req.params.id as string, 10);
+
+    if (!Number.isSafeInteger(slotId) || slotId <= 0) {
+      return next(new ValidationError('Invalid schedule slot ID'));
+    }
+
     const existing = await getScheduleSlotForMutation(slotId);
     if (!existing) return next(new NotFoundError('ScheduleSlot not found'));
     await assertScheduleSlotMutationAccess(req.user!, existing, 'restore');

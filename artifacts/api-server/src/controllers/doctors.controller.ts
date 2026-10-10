@@ -98,11 +98,16 @@ export const getDoctorStats = catchAsync(
 export const getSuggestedDoctors = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { courseId } = req.query;
   if (!courseId) {
-    return next(new AppError('courseId is required', 400));
+    return next(new ValidationError('courseId is required'));
+  }
+
+  const parsedCourseId = Number(courseId);
+  if (!Number.isSafeInteger(parsedCourseId) || parsedCourseId <= 0) {
+    return next(new ValidationError('Invalid courseId'));
   }
 
   const course = await prisma.course.findUnique({
-    where: { id: parseInt(courseId as string) },
+    where: { id: parsedCourseId },
     include: { department: true },
   });
 

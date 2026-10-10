@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
-import { logger } from '../lib/logger';
+import logger from '../utils/logger';
+import catchAsync from '../utils/catchAsync';
 import { StudentGroupsService } from '../services/studentGroups.service';
 import { AuthorizationError, ValidationError } from '../utils/appError';
 import { getAdminMutationTargetWhere } from '../utils/adminMutationScope.utils';
@@ -24,14 +25,17 @@ function toBase26(num: number): string {
   return res;
 }
 
-export const autoDivideStudents = async (req: Request, res: Response, next: NextFunction) => {
+export const autoDivideStudents = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const departmentId = parseInt(req.params.departmentId as string);
+    const departmentId = Number(req.params.departmentId);
+    if (!Number.isSafeInteger(departmentId) || departmentId <= 0) return next(new ValidationError('Invalid department ID'));
     let { numberOfGroups, maxGroupSize, confirmed, year } = req.body || {};
     
-    const academicYear = year ? parseInt(year) : 1;
-
-    if (isNaN(departmentId)) return res.status(400).json({ success: false, message: 'Invalid department ID' });
+    let academicYear = 1;
+    if (year !== undefined && year !== null && year !== '') {
+      academicYear = Number(year);
+      if (!Number.isSafeInteger(academicYear) || academicYear <= 0) return next(new ValidationError('Invalid year'));
+    }
     const hasNumberOfGroups = numberOfGroups !== undefined && numberOfGroups !== null;
     const hasMaxGroupSize = maxGroupSize !== undefined && maxGroupSize !== null;
     if (hasNumberOfGroups === hasMaxGroupSize) {
@@ -125,16 +129,15 @@ export const autoDivideStudents = async (req: Request, res: Response, next: Next
     return res.json({ success: true, message: `Successfully divided ${students.length} students into ${numberOfGroups} groups.` });
   } catch (error) {
     logger.error('Error auto-dividing students: ' + (error as Error).message);
-    return res.status(500).json({ success: false, message: 'Failed to auto-divide students' });
+    return next(error);
   }
-};
+});
 
-export const splitGroup = async (req: Request, res: Response, next: NextFunction) => {
+export const splitGroup = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const groupId = parseInt(req.params.groupId as string);
+    const groupId = Number(req.params.groupId);
+    if (!Number.isSafeInteger(groupId) || groupId <= 0) return next(new ValidationError('Invalid group ID'));
     let { numberOfSubgroups, maxSubgroupSize, confirmed } = req.body || {};
-
-    if (isNaN(groupId)) return res.status(400).json({ success: false, message: 'Invalid group ID' });
     const hasNumberOfSubgroups = numberOfSubgroups !== undefined && numberOfSubgroups !== null;
     const hasMaxSubgroupSize = maxSubgroupSize !== undefined && maxSubgroupSize !== null;
     if (hasNumberOfSubgroups === hasMaxSubgroupSize) {
@@ -240,13 +243,14 @@ export const splitGroup = async (req: Request, res: Response, next: NextFunction
     return res.json({ success: true, message: `Successfully split group into ${numberOfSubgroups} subgroups.` });
   } catch (error) {
     logger.error('Error splitting group: ' + (error as Error).message);
-    return res.status(500).json({ success: false, message: 'Failed to split group' });
+    return next(error);
   }
-};
+});
 
-export const deleteGroup = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteGroup = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const groupId = parseInt(req.params.groupId as string);
+    const groupId = Number(req.params.groupId);
+    if (!Number.isSafeInteger(groupId) || groupId <= 0) return next(new ValidationError('Invalid group ID'));
     const { confirmed } = req.body || {};
 
     const groupScope = getAdminStudentGroupScopeWhere(req.user!);
@@ -299,16 +303,24 @@ export const deleteGroup = async (req: Request, res: Response, next: NextFunctio
     return res.json({ success: true, message: 'Group deleted successfully' });
   } catch (error) {
     logger.error('Error deleting group: ' + (error as Error).message);
-    return res.status(500).json({ success: false, message: 'Failed to delete group' });
+    return next(error);
   }
-};
+});
 
-export const getAllGroups = async (req: Request, res: Response) => {
+export const getAllGroups = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { departmentId, year } = req.query as { departmentId?: string; year?: string };
     const requestedWhere: Record<string, number> = {};
-    if (departmentId) requestedWhere.departmentId = parseInt(departmentId);
-    if (year) requestedWhere.year = parseInt(year);
+    if (departmentId !== undefined && departmentId !== '') {
+      const parsedDep = Number(departmentId);
+      if (!Number.isSafeInteger(parsedDep) || parsedDep <= 0) return next(new ValidationError('Invalid departmentId'));
+      requestedWhere.departmentId = parsedDep;
+    }
+    if (year !== undefined && year !== '') {
+      const parsedYear = Number(year);
+      if (!Number.isSafeInteger(parsedYear) || parsedYear <= 0) return next(new ValidationError('Invalid year'));
+      requestedWhere.year = parsedYear;
+    }
     const scopeWhere = await resolveStudentGroupReadScopeWhere(req.user!);
     const groups = await prisma.studentGroup.findMany({
       where: { AND: [requestedWhere, scopeWhere] },
@@ -329,17 +341,20 @@ export const getAllGroups = async (req: Request, res: Response) => {
     return res.json({ success: true, data: groups });
   } catch (error) {
     logger.error('Error fetching all groups: ' + (error as Error).message);
-    return res.status(500).json({ success: false, message: 'Failed to fetch student groups' });
+    return next(error);
   }
-};
+});
 
-export const getGroupsByDepartment = async (req: Request, res: Response) => {
+export const getGroupsByDepartment = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const departmentId = parseInt(req.params.departmentId as string);
-    // year is optional — if not provided, return groups for all years
-    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
-
-    if (isNaN(departmentId)) return res.status(400).json({ success: false, message: 'Invalid department ID' });
+    const departmentId = Number(req.params.departmentId);
+    if (!Number.isSafeInteger(departmentId) || departmentId <= 0) return next(new ValidationError('Invalid department ID'));
+    let year: number | undefined = undefined;
+    if (req.query.year !== undefined && req.query.year !== '') {
+      const parsedYear = Number(req.query.year);
+      if (!Number.isSafeInteger(parsedYear) || parsedYear <= 0) return next(new ValidationError('Invalid year'));
+      year = parsedYear;
+    }
 
     const scopeWhere = await resolveStudentGroupReadScopeWhere(req.user!);
     const tree = await StudentGroupsService.getDepartmentGroupTree(
@@ -350,11 +365,11 @@ export const getGroupsByDepartment = async (req: Request, res: Response) => {
     return res.json({ success: true, data: tree });
   } catch (error) {
     logger.error('Error fetching student groups: ' + (error as Error).message);
-    return res.status(500).json({ success: false, message: 'Failed to fetch student groups' });
+    return next(error);
   }
-};
+});
 
-export const manualOverrideGroup = async (req: Request, res: Response, next: NextFunction) => {
+export const manualOverrideGroup = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   try {
     const studentId = parseInt(req.params.studentId as string);
     const { groupId } = req.body || {};
@@ -420,6 +435,6 @@ export const manualOverrideGroup = async (req: Request, res: Response, next: Nex
       return next(error);
     }
     logger.error('Error manually updating student group: ' + (error as Error).message);
-    return res.status(500).json({ success: false, message: 'Failed to update student group' });
+    return next(error);
   }
-};
+});

@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
-import { AppError, NotFoundError } from '../utils/appError';
+import { AppError, NotFoundError, ValidationError } from '../utils/appError';
 import { invalidateCache } from '../utils/redis.utils';
 import { getScopeWhere } from '../utils/scope.utils';
 import { ReceiptService, ReceiptData } from '../services/receipt.service';
@@ -38,7 +38,13 @@ export const getAllPayments = catchAsync(
     const where: any = { ...scopeWhere };
     if (status) where.status = status;
     if (type) where.type = type;
-    if (studentId) where.studentId = parseInt(studentId as string);
+    if (studentId !== undefined && studentId !== '') {
+      const parsedStudentId = Number(studentId);
+      if (!Number.isSafeInteger(parsedStudentId) || parsedStudentId <= 0) {
+        return next(new ValidationError('Invalid studentId'));
+      }
+      where.studentId = parsedStudentId;
+    }
     if (search) {
       where.AND = [
         ...(where.AND || []),

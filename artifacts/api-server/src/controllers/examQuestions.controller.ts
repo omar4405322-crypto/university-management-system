@@ -5,6 +5,7 @@ import catchAsync from "../utils/catchAsync";
 import {
   NotFoundError,
   AuthorizationError,
+  ValidationError,
 } from "../utils/appError";
 import { getScopeWhere } from "../utils/scope.utils";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
@@ -282,6 +283,10 @@ export function calculateExamScore(
 export const getExamQuestions = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const examId = parseInt(req.params.id as string, 10);
+
+    if (!Number.isSafeInteger(examId) || examId <= 0) {
+      return next(new ValidationError("Invalid exam ID"));
+    }
 
     let exam: {
       id: number;

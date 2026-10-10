@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
-import { NotFoundError } from '../utils/appError';
+import { NotFoundError, ValidationError } from '../utils/appError';
 
 // @desc    Get all notifications for current user
 // @route   GET /api/notifications
@@ -26,7 +26,10 @@ export const getNotifications = catchAsync(async (req: Request, res: Response) =
 // @access  Private
 export const markAsRead = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user!.id;
-  const notificationId = parseInt(req.params.id as string);
+  const notificationId = Number(req.params.id);
+  if (!Number.isSafeInteger(notificationId) || notificationId <= 0) {
+    throw new ValidationError('Invalid notification ID');
+  }
 
   const notification = await prisma.notification.findFirst({
     where: {
@@ -75,7 +78,10 @@ export const markAllAsRead = catchAsync(async (req: Request, res: Response) => {
 // @access  Private
 export const deleteNotification = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user!.id;
-  const notificationId = parseInt(req.params.id as string);
+  const notificationId = Number(req.params.id);
+  if (!Number.isSafeInteger(notificationId) || notificationId <= 0) {
+    throw new ValidationError('Invalid notification ID');
+  }
 
   const notification = await prisma.notification.findFirst({
     where: {

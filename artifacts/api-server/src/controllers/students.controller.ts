@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
-import { AppError, NotFoundError, AuthorizationError } from '../utils/appError';
+import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
 import bcrypt from 'bcryptjs';
 import { invalidateCache } from '../utils/redis.utils';
 import {
@@ -82,25 +82,38 @@ export const getAllStudents = catchAsync(
     // 1. Role-based scoping
     const scopeWhere = getScopeWhere(req.user!, 'student');
 
-    const parsedCollegeId = collegeId && collegeId !== '' ? parseInt(collegeId as string, 10) : undefined;
-    const parsedDepartmentId = departmentId && departmentId !== '' ? parseInt(departmentId as string, 10) : undefined;
-
     const queryFilters: any[] = [];
-    if (parsedCollegeId) {
-      queryFilters.push({ department: { collegeId: parsedCollegeId } });
+    if (collegeId !== undefined && collegeId !== '') {
+      const parsed = Number(collegeId);
+      if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+        return next(new ValidationError('Invalid collegeId'));
+      }
+      queryFilters.push({ department: { collegeId: parsed } });
     }
-    if (parsedDepartmentId) {
-      queryFilters.push({ departmentId: parsedDepartmentId });
+    if (departmentId !== undefined && departmentId !== '') {
+      const parsed = Number(departmentId);
+      if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+        return next(new ValidationError('Invalid departmentId'));
+      }
+      queryFilters.push({ departmentId: parsed });
     }
     if (year !== undefined && year !== '') {
-      queryFilters.push({ year: parseInt(year as string, 10) });
+      const parsed = Number(year);
+      if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+        return next(new ValidationError('Invalid year'));
+      }
+      queryFilters.push({ year: parsed });
     }
     if (groupId !== undefined && groupId !== '') {
-      queryFilters.push(
-        groupId === 'unassigned'
-          ? { groupId: null }
-          : { groupId: parseInt(groupId as string, 10) }
-      );
+      if (groupId === 'unassigned') {
+        queryFilters.push({ groupId: null });
+      } else {
+        const parsed = Number(groupId);
+        if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+          return next(new ValidationError('Invalid groupId'));
+        }
+        queryFilters.push({ groupId: parsed });
+      }
     }
     if (status === 'active') {
       queryFilters.push(getEffectiveActiveStudentWhere());

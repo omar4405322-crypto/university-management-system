@@ -5,7 +5,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
-import { AppError, AuthorizationError, ConflictError, NotFoundError } from '../utils/appError';
+import { AppError, AuthorizationError, ConflictError, NotFoundError, ValidationError } from '../utils/appError';
 import type { AuthActor } from '../types/auth.types';
 import { getScopeWhere, getEffectiveActiveStudentWhere } from '../utils/scope.utils';
 import {
@@ -52,17 +52,33 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
   if (req.user?.role === 'STUDENT') {
     queryFilters.push({ isPublished: true });
   }
-  if (collegeId) {
-    queryFilters.push({ department: { collegeId: parseInt(collegeId as string, 10) } });
+  if (collegeId !== undefined && collegeId !== '') {
+    const parsedCollegeId = Number(collegeId);
+    if (!Number.isSafeInteger(parsedCollegeId) || parsedCollegeId <= 0) {
+      return next(new ValidationError('Invalid collegeId'));
+    }
+    queryFilters.push({ department: { collegeId: parsedCollegeId } });
   }
-  if (departmentId) {
-    queryFilters.push({ departmentId: parseInt(departmentId as string, 10) });
+  if (departmentId !== undefined && departmentId !== '') {
+    const parsedDepartmentId = Number(departmentId);
+    if (!Number.isSafeInteger(parsedDepartmentId) || parsedDepartmentId <= 0) {
+      return next(new ValidationError('Invalid departmentId'));
+    }
+    queryFilters.push({ departmentId: parsedDepartmentId });
   }
-  if (year) {
-    queryFilters.push({ year: parseInt(year as string, 10) });
+  if (year !== undefined && year !== '') {
+    const parsedYear = Number(year);
+    if (!Number.isSafeInteger(parsedYear) || parsedYear <= 0) {
+      return next(new ValidationError('Invalid year'));
+    }
+    queryFilters.push({ year: parsedYear });
   }
-  if (semester) {
-    queryFilters.push({ semester: parseInt(semester as string, 10) });
+  if (semester !== undefined && semester !== '') {
+    const parsedSemester = Number(semester);
+    if (!Number.isSafeInteger(parsedSemester) || parsedSemester <= 0) {
+      return next(new ValidationError('Invalid semester'));
+    }
+    queryFilters.push({ semester: parsedSemester });
   }
   if (search) {
     queryFilters.push({
@@ -789,6 +805,13 @@ export const deleteCourseMaterial = catchAsync(async (req: Request, res: Respons
   const courseId = parseInt(req.params.id as string, 10);
   const materialId = parseInt(req.params.materialId as string, 10);
 
+  if (!Number.isSafeInteger(courseId) || courseId <= 0) {
+    return next(new ValidationError('Invalid course ID'));
+  }
+  if (!Number.isSafeInteger(materialId) || materialId <= 0) {
+    return next(new ValidationError('Invalid material ID'));
+  }
+
   if (!req.user) {
     return next(new AuthorizationError('Authentication required'));
   }
@@ -839,6 +862,13 @@ export const toggleMaterialPublication = catchAsync(async (req: Request, res: Re
   const courseId = parseInt(req.params.id as string, 10);
   const materialId = parseInt(req.params.materialId as string, 10);
 
+  if (!Number.isSafeInteger(courseId) || courseId <= 0) {
+    return next(new ValidationError('Invalid course ID'));
+  }
+  if (!Number.isSafeInteger(materialId) || materialId <= 0) {
+    return next(new ValidationError('Invalid material ID'));
+  }
+
   const material = await prisma.courseMaterial.findUnique({ where: { id: materialId } });
   if (!material || material.courseId !== courseId) {
     return next(new NotFoundError('Course material not found'));
@@ -871,6 +901,11 @@ export const toggleMaterialPublication = catchAsync(async (req: Request, res: Re
  */
 export const toggleCoursePublication = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const courseId = parseInt(req.params.id as string, 10);
+
+  if (!Number.isSafeInteger(courseId) || courseId <= 0) {
+    return next(new ValidationError('Invalid course ID'));
+  }
+
   const course = await prisma.course.findUnique({ where: { id: courseId } });
 
   if (!course) {
@@ -910,6 +945,13 @@ export const downloadCourseMaterial = catchAsync(
 
     const courseId = parseInt(req.params.id as string, 10);
     const materialId = parseInt(req.params.materialId as string, 10);
+
+    if (!Number.isSafeInteger(courseId) || courseId <= 0) {
+      return next(new ValidationError('Invalid course ID'));
+    }
+    if (!Number.isSafeInteger(materialId) || materialId <= 0) {
+      return next(new ValidationError('Invalid material ID'));
+    }
 
     const material = await prisma.courseMaterial.findUnique({
       where: { id: materialId },
