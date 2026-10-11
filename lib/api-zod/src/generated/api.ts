@@ -69,18 +69,7 @@ export const RegisterUserBody = zod.object({
 
 export const RegisterUserResponse = zod.object({
   "success": zod.boolean(),
-  "token": zod.string().describe('Ephemeral in-memory JWT access token'),
-  "requires2FA": zod.boolean().optional(),
-  "user": zod.object({
-  "id": zod.number(),
-  "email": zod.string(),
-  "name": zod.string(),
-  "role": zod.enum(['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'DOCTOR', 'TEACHING_ASSISTANT', 'STUDENT']),
-  "departmentId": zod.number().nullish(),
-  "collegeId": zod.number().nullish(),
-  "twoFactorEnabled": zod.boolean().optional(),
-  "avatarUrl": zod.string().nullish()
-})
+  "message": zod.string()
 })
 
 
@@ -295,6 +284,118 @@ export const GetStudentByIdResponse = zod.object({
   "departmentName": zod.string().nullish(),
   "gpa": zod.number().nullish(),
   "academicYear": zod.number().nullish()
+})
+
+
+/**
+ * @summary Retrieve all student groups
+ */
+export const GetAllStudentGroupsQueryParams = zod.object({
+  "departmentId": zod.coerce.number().optional(),
+  "year": zod.coerce.number().optional()
+})
+
+export const GetAllStudentGroupsResponse = zod.object({
+  "success": zod.boolean(),
+  "data": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "departmentId": zod.number().nullish(),
+  "year": zod.number().nullish(),
+  "parentGroupId": zod.number().nullish()
+}))
+})
+
+
+/**
+ * @summary Get student groups for a specific department
+ */
+export const GetStudentGroupsByDepartmentParams = zod.object({
+  "departmentId": zod.coerce.number()
+})
+
+export const GetStudentGroupsByDepartmentResponse = zod.object({
+  "success": zod.boolean(),
+  "data": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "departmentId": zod.number().nullish(),
+  "year": zod.number().nullish(),
+  "parentGroupId": zod.number().nullish()
+}))
+})
+
+
+/**
+ * @summary Automatically divide department students into groups
+ */
+export const AutoDivideStudentGroupsParams = zod.object({
+  "departmentId": zod.coerce.number()
+})
+
+export const AutoDivideStudentGroupsBody = zod.object({
+  "numberOfGroups": zod.number().optional(),
+  "maxGroupSize": zod.number().optional(),
+  "confirmed": zod.boolean().optional(),
+  "year": zod.number().optional()
+})
+
+export const AutoDivideStudentGroupsResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Split student group into subgroups
+ */
+export const SplitStudentGroupParams = zod.object({
+  "groupId": zod.coerce.number()
+})
+
+export const SplitStudentGroupBody = zod.object({
+  "numberOfSubgroups": zod.number().optional(),
+  "maxSubgroupSize": zod.number().optional(),
+  "confirmed": zod.boolean().optional()
+})
+
+export const SplitStudentGroupResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Delete student group
+ */
+export const DeleteStudentGroupParams = zod.object({
+  "groupId": zod.coerce.number()
+})
+
+export const DeleteStudentGroupBody = zod.object({
+  "confirmed": zod.boolean().optional()
+})
+
+export const DeleteStudentGroupResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Override student group assignment
+ */
+export const ManualOverrideStudentGroupParams = zod.object({
+  "studentId": zod.coerce.number()
+})
+
+export const ManualOverrideStudentGroupBody = zod.object({
+  "groupId": zod.number().nullish()
+})
+
+export const ManualOverrideStudentGroupResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
 })
 
 
@@ -689,3 +790,25 @@ export const MarkAllNotificationsReadResponse = zod.object({
   "success": zod.boolean(),
   "message": zod.string()
 })
+
+
+/**
+ * The server selects the model, instructions, and available read-only tools from the authenticated user. Each request sends only the current message; conversation history is not persisted.
+ * @summary Ask the assistant a question with role-scoped read-only university tools
+ */
+export const chatWithAiAssistantBodyMessageMax = 4000;
+
+
+
+export const ChatWithAiAssistantBody = zod.object({
+  "message": zod.string().min(1).max(chatWithAiAssistantBodyMessageMax)
+})
+
+export const ChatWithAiAssistantResponse = zod.object({
+  "success": zod.literal(true),
+  "data": zod.object({
+  "reply": zod.string()
+})
+})
+
+

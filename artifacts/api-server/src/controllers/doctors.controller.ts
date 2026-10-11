@@ -174,8 +174,23 @@ export const getAllDoctors = catchAsync(async (req: Request, res: Response, next
 
   const scopeWhere = getScopeWhere(req.user!, 'doctor');
 
-  const parsedCollegeId = collegeId && collegeId !== '' ? parseInt(collegeId as string, 10) : undefined;
-  const parsedDepartmentId = departmentId && departmentId !== '' ? parseInt(departmentId as string, 10) : undefined;
+  let parsedCollegeId: number | undefined;
+  if (collegeId !== undefined && collegeId !== '') {
+    const parsed = Number(collegeId);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      return next(new ValidationError('Invalid collegeId parameter'));
+    }
+    parsedCollegeId = parsed;
+  }
+
+  let parsedDepartmentId: number | undefined;
+  if (departmentId !== undefined && departmentId !== '') {
+    const parsed = Number(departmentId);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      return next(new ValidationError('Invalid departmentId parameter'));
+    }
+    parsedDepartmentId = parsed;
+  }
 
   const queryFilters: any[] = [
     {

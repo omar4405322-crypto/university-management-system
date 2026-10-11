@@ -25,7 +25,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AiChatRequest,
+  AiChatResponse,
   AnalyticsGeneralResponse,
+  ApiErrorResponse,
   AttendanceScanResult,
   AttendanceSummaryResponse,
   AuthSuccessResponse,
@@ -40,6 +43,7 @@ import type {
   EnrollmentSubmitRequest,
   ExamItem,
   ForbiddenErrorResponse,
+  GetAllStudentGroupsParams,
   GetMyAttendanceParams,
   HealthStatus,
   ListCoursesParams,
@@ -63,6 +67,11 @@ import type {
   RegisterRequest,
   ScheduleGridResponse,
   StudentDetail,
+  StudentGroupAutoDivideRequest,
+  StudentGroupDeleteRequest,
+  StudentGroupListResponse,
+  StudentGroupOverrideRequest,
+  StudentGroupSplitRequest,
   StudentListResponse,
   SuccessMessageResponse,
   TaskListResponse,
@@ -519,7 +528,7 @@ export const getRegisterUserUrl = () => {
 /**
  * @summary Register a new student or faculty member
  */
-export const registerUser = async (registerRequest: RegisterRequest, options?: Parameters<typeof customFetch>[1]): Promise<AuthSuccessResponse> => {
+export const registerUser = async (registerRequest: RegisterRequest, options?: Parameters<typeof customFetch>[1]): Promise<SuccessMessageResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -535,7 +544,7 @@ export const registerUser = async (registerRequest: RegisterRequest, options?: P
     }
     return headers;
   };
-return customFetch<AuthSuccessResponse>(getRegisterUserUrl(),
+return customFetch<SuccessMessageResponse>(getRegisterUserUrl(),
   {
     ...options,
     method: 'POST',
@@ -1581,6 +1590,571 @@ export function useGetStudentById<TData = Awaited<ReturnType<typeof getStudentBy
 
 
 
+
+export const getGetAllStudentGroupsUrl = (params?: GetAllStudentGroupsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/student-groups?${stringifiedParams}` : `/api/student-groups`
+}
+
+/**
+ * @summary Retrieve all student groups
+ */
+export const getAllStudentGroups = async (params?: GetAllStudentGroupsParams, options?: Parameters<typeof customFetch>[1]): Promise<StudentGroupListResponse> => {
+
+  return customFetch<StudentGroupListResponse>(getGetAllStudentGroupsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAllStudentGroupsQueryKey = (params?: GetAllStudentGroupsParams,) => {
+    return [
+    `/api/student-groups`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAllStudentGroupsQueryOptions = <TData = Awaited<ReturnType<typeof getAllStudentGroups>>, TError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>>(params?: GetAllStudentGroupsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAllStudentGroups>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAllStudentGroupsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAllStudentGroups>>> = ({ signal }) => getAllStudentGroups(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAllStudentGroups>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAllStudentGroupsQueryResult = NonNullable<Awaited<ReturnType<typeof getAllStudentGroups>>>
+export type GetAllStudentGroupsQueryError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>
+
+
+export function useGetAllStudentGroups<TData = Awaited<ReturnType<typeof getAllStudentGroups>>, TError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>>(
+ params: undefined |  GetAllStudentGroupsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAllStudentGroups>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAllStudentGroups>>,
+          TError,
+          Awaited<ReturnType<typeof getAllStudentGroups>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAllStudentGroups<TData = Awaited<ReturnType<typeof getAllStudentGroups>>, TError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>>(
+ params?: GetAllStudentGroupsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAllStudentGroups>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAllStudentGroups>>,
+          TError,
+          Awaited<ReturnType<typeof getAllStudentGroups>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAllStudentGroups<TData = Awaited<ReturnType<typeof getAllStudentGroups>>, TError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>>(
+ params?: GetAllStudentGroupsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAllStudentGroups>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Retrieve all student groups
+ */
+
+export function useGetAllStudentGroups<TData = Awaited<ReturnType<typeof getAllStudentGroups>>, TError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>>(
+ params?: GetAllStudentGroupsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAllStudentGroups>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAllStudentGroupsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetStudentGroupsByDepartmentUrl = (departmentId: number,) => {
+
+
+
+
+  return `/api/student-groups/departments/${departmentId}/groups`
+}
+
+/**
+ * @summary Get student groups for a specific department
+ */
+export const getStudentGroupsByDepartment = async (departmentId: number, options?: Parameters<typeof customFetch>[1]): Promise<StudentGroupListResponse> => {
+
+  return customFetch<StudentGroupListResponse>(getGetStudentGroupsByDepartmentUrl(departmentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStudentGroupsByDepartmentQueryKey = (departmentId: number,) => {
+    return [
+    `/api/student-groups/departments/${departmentId}/groups`
+    ] as const;
+    }
+
+
+export const getGetStudentGroupsByDepartmentQueryOptions = <TData = Awaited<ReturnType<typeof getStudentGroupsByDepartment>>, TError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>>(departmentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudentGroupsByDepartment>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStudentGroupsByDepartmentQueryKey(departmentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudentGroupsByDepartment>>> = ({ signal }) => getStudentGroupsByDepartment(departmentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: departmentId !== null && departmentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudentGroupsByDepartment>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetStudentGroupsByDepartmentQueryResult = NonNullable<Awaited<ReturnType<typeof getStudentGroupsByDepartment>>>
+export type GetStudentGroupsByDepartmentQueryError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>
+
+
+export function useGetStudentGroupsByDepartment<TData = Awaited<ReturnType<typeof getStudentGroupsByDepartment>>, TError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>>(
+ departmentId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudentGroupsByDepartment>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStudentGroupsByDepartment>>,
+          TError,
+          Awaited<ReturnType<typeof getStudentGroupsByDepartment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStudentGroupsByDepartment<TData = Awaited<ReturnType<typeof getStudentGroupsByDepartment>>, TError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>>(
+ departmentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudentGroupsByDepartment>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStudentGroupsByDepartment>>,
+          TError,
+          Awaited<ReturnType<typeof getStudentGroupsByDepartment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStudentGroupsByDepartment<TData = Awaited<ReturnType<typeof getStudentGroupsByDepartment>>, TError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>>(
+ departmentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudentGroupsByDepartment>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get student groups for a specific department
+ */
+
+export function useGetStudentGroupsByDepartment<TData = Awaited<ReturnType<typeof getStudentGroupsByDepartment>>, TError = ErrorType<UnauthorizedErrorResponse | ValidationErrorResponse>>(
+ departmentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudentGroupsByDepartment>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetStudentGroupsByDepartmentQueryOptions(departmentId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAutoDivideStudentGroupsUrl = (departmentId: number,) => {
+
+
+
+
+  return `/api/student-groups/departments/${departmentId}/groups/auto-divide`
+}
+
+/**
+ * @summary Automatically divide department students into groups
+ */
+export const autoDivideStudentGroups = async (departmentId: number,
+    studentGroupAutoDivideRequest: StudentGroupAutoDivideRequest, options?: Parameters<typeof customFetch>[1]): Promise<SuccessMessageResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SuccessMessageResponse>(getAutoDivideStudentGroupsUrl(departmentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentGroupAutoDivideRequest)
+  }
+);}
+
+
+
+
+
+export const getAutoDivideStudentGroupsMutationKey = () => ['autoDivideStudentGroups'] as const;
+
+export const getAutoDivideStudentGroupsMutationOptions = <TError = ErrorType<ValidationErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof autoDivideStudentGroups>>, TError,AutoDivideStudentGroupsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof autoDivideStudentGroups>>, TError,AutoDivideStudentGroupsMutationVariables, TContext> => {
+
+const mutationKey = getAutoDivideStudentGroupsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof autoDivideStudentGroups>>, AutoDivideStudentGroupsMutationVariables> = (props) => {
+          const {departmentId,data} = props ?? {};
+
+          return  autoDivideStudentGroups(departmentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AutoDivideStudentGroupsMutationResult = NonNullable<Awaited<ReturnType<typeof autoDivideStudentGroups>>>
+    export type AutoDivideStudentGroupsMutationBody = BodyType<StudentGroupAutoDivideRequest>
+    export type AutoDivideStudentGroupsMutationError = ErrorType<ValidationErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse>
+    export type AutoDivideStudentGroupsMutationVariables = {departmentId: number;data: BodyType<StudentGroupAutoDivideRequest>}
+
+    /**
+ * @summary Automatically divide department students into groups
+ */
+export const useAutoDivideStudentGroups = <TError = ErrorType<ValidationErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof autoDivideStudentGroups>>, TError,AutoDivideStudentGroupsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof autoDivideStudentGroups>>,
+        TError,
+        AutoDivideStudentGroupsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAutoDivideStudentGroupsMutationOptions(options), queryClient);
+    }
+
+export const getSplitStudentGroupUrl = (groupId: number,) => {
+
+
+
+
+  return `/api/student-groups/groups/${groupId}/split`
+}
+
+/**
+ * @summary Split student group into subgroups
+ */
+export const splitStudentGroup = async (groupId: number,
+    studentGroupSplitRequest: StudentGroupSplitRequest, options?: Parameters<typeof customFetch>[1]): Promise<SuccessMessageResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SuccessMessageResponse>(getSplitStudentGroupUrl(groupId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentGroupSplitRequest)
+  }
+);}
+
+
+
+
+
+export const getSplitStudentGroupMutationKey = () => ['splitStudentGroup'] as const;
+
+export const getSplitStudentGroupMutationOptions = <TError = ErrorType<ValidationErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof splitStudentGroup>>, TError,SplitStudentGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof splitStudentGroup>>, TError,SplitStudentGroupMutationVariables, TContext> => {
+
+const mutationKey = getSplitStudentGroupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof splitStudentGroup>>, SplitStudentGroupMutationVariables> = (props) => {
+          const {groupId,data} = props ?? {};
+
+          return  splitStudentGroup(groupId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SplitStudentGroupMutationResult = NonNullable<Awaited<ReturnType<typeof splitStudentGroup>>>
+    export type SplitStudentGroupMutationBody = BodyType<StudentGroupSplitRequest>
+    export type SplitStudentGroupMutationError = ErrorType<ValidationErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse>
+    export type SplitStudentGroupMutationVariables = {groupId: number;data: BodyType<StudentGroupSplitRequest>}
+
+    /**
+ * @summary Split student group into subgroups
+ */
+export const useSplitStudentGroup = <TError = ErrorType<ValidationErrorResponse | UnauthorizedErrorResponse | ForbiddenErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof splitStudentGroup>>, TError,SplitStudentGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof splitStudentGroup>>,
+        TError,
+        SplitStudentGroupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSplitStudentGroupMutationOptions(options), queryClient);
+    }
+
+export const getDeleteStudentGroupUrl = (groupId: number,) => {
+
+
+
+
+  return `/api/student-groups/groups/${groupId}`
+}
+
+/**
+ * @summary Delete student group
+ */
+export const deleteStudentGroup = async (groupId: number,
+    studentGroupDeleteRequest?: StudentGroupDeleteRequest, options?: Parameters<typeof customFetch>[1]): Promise<SuccessMessageResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SuccessMessageResponse>(getDeleteStudentGroupUrl(groupId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentGroupDeleteRequest)
+  }
+);}
+
+
+
+
+
+export const getDeleteStudentGroupMutationKey = () => ['deleteStudentGroup'] as const;
+
+export const getDeleteStudentGroupMutationOptions = <TError = ErrorType<UnauthorizedErrorResponse | ForbiddenErrorResponse | ValidationErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteStudentGroup>>, TError,DeleteStudentGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteStudentGroup>>, TError,DeleteStudentGroupMutationVariables, TContext> => {
+
+const mutationKey = getDeleteStudentGroupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteStudentGroup>>, DeleteStudentGroupMutationVariables> = (props) => {
+          const {groupId,data} = props ?? {};
+
+          return  deleteStudentGroup(groupId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteStudentGroupMutationResult = NonNullable<Awaited<ReturnType<typeof deleteStudentGroup>>>
+    export type DeleteStudentGroupMutationBody = BodyType<StudentGroupDeleteRequest> | undefined
+    export type DeleteStudentGroupMutationError = ErrorType<UnauthorizedErrorResponse | ForbiddenErrorResponse | ValidationErrorResponse>
+    export type DeleteStudentGroupMutationVariables = {groupId: number;data?: BodyType<StudentGroupDeleteRequest>}
+
+    /**
+ * @summary Delete student group
+ */
+export const useDeleteStudentGroup = <TError = ErrorType<UnauthorizedErrorResponse | ForbiddenErrorResponse | ValidationErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteStudentGroup>>, TError,DeleteStudentGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteStudentGroup>>,
+        TError,
+        DeleteStudentGroupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteStudentGroupMutationOptions(options), queryClient);
+    }
+
+export const getManualOverrideStudentGroupUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/student-groups/students/${studentId}/group`
+}
+
+/**
+ * @summary Override student group assignment
+ */
+export const manualOverrideStudentGroup = async (studentId: number,
+    studentGroupOverrideRequest: StudentGroupOverrideRequest, options?: Parameters<typeof customFetch>[1]): Promise<SuccessMessageResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SuccessMessageResponse>(getManualOverrideStudentGroupUrl(studentId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentGroupOverrideRequest)
+  }
+);}
+
+
+
+
+
+export const getManualOverrideStudentGroupMutationKey = () => ['manualOverrideStudentGroup'] as const;
+
+export const getManualOverrideStudentGroupMutationOptions = <TError = ErrorType<UnauthorizedErrorResponse | ForbiddenErrorResponse | ValidationErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof manualOverrideStudentGroup>>, TError,ManualOverrideStudentGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof manualOverrideStudentGroup>>, TError,ManualOverrideStudentGroupMutationVariables, TContext> => {
+
+const mutationKey = getManualOverrideStudentGroupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof manualOverrideStudentGroup>>, ManualOverrideStudentGroupMutationVariables> = (props) => {
+          const {studentId,data} = props ?? {};
+
+          return  manualOverrideStudentGroup(studentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ManualOverrideStudentGroupMutationResult = NonNullable<Awaited<ReturnType<typeof manualOverrideStudentGroup>>>
+    export type ManualOverrideStudentGroupMutationBody = BodyType<StudentGroupOverrideRequest>
+    export type ManualOverrideStudentGroupMutationError = ErrorType<UnauthorizedErrorResponse | ForbiddenErrorResponse | ValidationErrorResponse>
+    export type ManualOverrideStudentGroupMutationVariables = {studentId: number;data: BodyType<StudentGroupOverrideRequest>}
+
+    /**
+ * @summary Override student group assignment
+ */
+export const useManualOverrideStudentGroup = <TError = ErrorType<UnauthorizedErrorResponse | ForbiddenErrorResponse | ValidationErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof manualOverrideStudentGroup>>, TError,ManualOverrideStudentGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof manualOverrideStudentGroup>>,
+        TError,
+        ManualOverrideStudentGroupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getManualOverrideStudentGroupMutationOptions(options), queryClient);
+    }
 
 export const getListCollegesUrl = () => {
 
@@ -3573,3 +4147,93 @@ export const useMarkAllNotificationsRead = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getMarkAllNotificationsReadMutationOptions(options), queryClient);
     }
+
+export const getChatWithAiAssistantUrl = () => {
+
+
+
+
+  return `/api/ai/chat`
+}
+
+/**
+ * The server selects the model, instructions, and available read-only tools from the authenticated user. Each request sends only the current message; conversation history is not persisted.
+ * @summary Ask the assistant a question with role-scoped read-only university tools
+ */
+export const chatWithAiAssistant = async (aiChatRequest: AiChatRequest, options?: Parameters<typeof customFetch>[1]): Promise<AiChatResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AiChatResponse>(getChatWithAiAssistantUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(aiChatRequest)
+  }
+);}
+
+
+
+
+
+export const getChatWithAiAssistantMutationKey = () => ['chatWithAiAssistant'] as const;
+
+export const getChatWithAiAssistantMutationOptions = <TError = ErrorType<ApiErrorResponse | UnauthorizedErrorResponse | ValidationErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatWithAiAssistant>>, TError,ChatWithAiAssistantMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof chatWithAiAssistant>>, TError,ChatWithAiAssistantMutationVariables, TContext> => {
+
+const mutationKey = getChatWithAiAssistantMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chatWithAiAssistant>>, ChatWithAiAssistantMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  chatWithAiAssistant(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChatWithAiAssistantMutationResult = NonNullable<Awaited<ReturnType<typeof chatWithAiAssistant>>>
+    export type ChatWithAiAssistantMutationBody = BodyType<AiChatRequest>
+    export type ChatWithAiAssistantMutationError = ErrorType<ApiErrorResponse | UnauthorizedErrorResponse | ValidationErrorResponse>
+    export type ChatWithAiAssistantMutationVariables = {data: BodyType<AiChatRequest>}
+
+    /**
+ * @summary Ask the assistant a question with role-scoped read-only university tools
+ */
+export const useChatWithAiAssistant = <TError = ErrorType<ApiErrorResponse | UnauthorizedErrorResponse | ValidationErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatWithAiAssistant>>, TError,ChatWithAiAssistantMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof chatWithAiAssistant>>,
+        TError,
+        ChatWithAiAssistantMutationVariables,
+        TContext
+      > => {
+      return useMutation(getChatWithAiAssistantMutationOptions(options), queryClient);
+    }
+

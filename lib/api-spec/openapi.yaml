@@ -122,13 +122,15 @@ paths:
             schema:
               $ref: "#/components/schemas/RegisterRequest"
       responses:
-        "201":
-          description: Account created successfully
+        "202":
+          description: Registration request submitted for administrative review
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthSuccessResponse"
+                $ref: "#/components/schemas/SuccessMessageResponse"
         "400":
+          $ref: "#/components/responses/ValidationError"
+        "422":
           $ref: "#/components/responses/ValidationError"
         "409":
           $ref: "#/components/responses/ConflictError"
@@ -366,6 +368,197 @@ paths:
                 $ref: "#/components/schemas/StudentDetail"
         "404":
           $ref: "#/components/responses/NotFoundError"
+
+  /student-groups:
+    get:
+      operationId: getAllStudentGroups
+      tags: [students]
+      summary: Retrieve all student groups
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: departmentId
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: number
+      responses:
+        "200":
+          description: List of student groups
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentGroupListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /student-groups/departments/{departmentId}/groups:
+    get:
+      operationId: getStudentGroupsByDepartment
+      tags: [students]
+      summary: Get student groups for a specific department
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: departmentId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: List of student groups in department
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentGroupListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /student-groups/departments/{departmentId}/groups/auto-divide:
+    post:
+      operationId: autoDivideStudentGroups
+      tags: [students]
+      summary: Automatically divide department students into groups
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: departmentId
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentGroupAutoDivideRequest"
+      responses:
+        "200":
+          description: Students divided successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessageResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /student-groups/groups/{groupId}/split:
+    post:
+      operationId: splitStudentGroup
+      tags: [students]
+      summary: Split student group into subgroups
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentGroupSplitRequest"
+      responses:
+        "200":
+          description: Group split successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessageResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /student-groups/groups/{groupId}:
+    delete:
+      operationId: deleteStudentGroup
+      tags: [students]
+      summary: Delete student group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentGroupDeleteRequest"
+      responses:
+        "200":
+          description: Group deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessageResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /student-groups/students/{studentId}/group:
+    put:
+      operationId: manualOverrideStudentGroup
+      tags: [students]
+      summary: Override student group assignment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentGroupOverrideRequest"
+      responses:
+        "200":
+          description: Student group updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessageResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
 
   /colleges:
     get:
@@ -946,13 +1139,87 @@ components:
         success:
           type: boolean
           example: false
+        status:
+          type: string
+          example: fail
         message:
           type: string
           example: Invalid input parameters
+        errorId:
+          type: string
+          example: err_1728591234_a1b2c3d4
         errors:
           type: array
           items:
             type: string
+
+    StudentGroupItem:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        departmentId:
+          type: number
+          nullable: true
+        year:
+          type: number
+          nullable: true
+        parentGroupId:
+          type: number
+          nullable: true
+
+    StudentGroupListResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentGroupItem"
+
+    StudentGroupAutoDivideRequest:
+      type: object
+      properties:
+        numberOfGroups:
+          type: number
+        maxGroupSize:
+          type: number
+        confirmed:
+          type: boolean
+        year:
+          type: number
+
+    StudentGroupSplitRequest:
+      type: object
+      properties:
+        numberOfSubgroups:
+          type: number
+        maxSubgroupSize:
+          type: number
+        confirmed:
+          type: boolean
+
+    StudentGroupDeleteRequest:
+      type: object
+      properties:
+        confirmed:
+          type: boolean
+
+    StudentGroupOverrideRequest:
+      type: object
+      properties:
+        groupId:
+          type: number
+          nullable: true
 
     SuccessMessageResponse:
       type: object

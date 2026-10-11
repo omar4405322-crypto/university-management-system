@@ -14,8 +14,12 @@ import { getAdminMutationTargetWhere } from '../utils/adminMutationScope.utils';
 export const getPublicDepartments = catchAsync(async (req: Request, res: Response) => {
   const { collegeId } = req.query;
   const where: { collegeId?: number } = {};
-  if (collegeId) {
-    where.collegeId = parseInt(collegeId as string, 10);
+  if (collegeId !== undefined && collegeId !== '') {
+    const parsed = Number(collegeId);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      throw new ValidationError('Invalid collegeId parameter');
+    }
+    where.collegeId = parsed;
   }
   const departments = await prisma.department.findMany({
     where,
@@ -33,9 +37,18 @@ export const getPublicDepartments = catchAsync(async (req: Request, res: Respons
 export const getAllDepartments = catchAsync(async (req: Request, res: Response) => {
   const { collegeId } = req.query;
 
+  let parsedCollegeId: number | undefined;
+  if (collegeId !== undefined && collegeId !== '') {
+    const parsed = Number(collegeId);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      throw new ValidationError('Invalid collegeId parameter');
+    }
+    parsedCollegeId = parsed;
+  }
+
   // For COLLEGE_ADMIN, explicitly check if they're trying to access another college
-  if (req.user && req.user.role === 'COLLEGE_ADMIN' && req.user.managedCollegeId && collegeId) {
-    if (parseInt(collegeId as string) !== req.user.managedCollegeId) {
+  if (req.user && req.user.role === 'COLLEGE_ADMIN' && req.user.managedCollegeId && parsedCollegeId !== undefined) {
+    if (parsedCollegeId !== req.user.managedCollegeId) {
       throw new AuthorizationError('Access denied: Cannot access departments of another college');
     }
   }
@@ -46,7 +59,7 @@ export const getAllDepartments = catchAsync(async (req: Request, res: Response) 
   const where: any = { ...scopeWhere };
   // For non-COLLEGE_ADMIN or when no collegeId provided, apply query filter
   if (!(req.user && req.user.role === 'COLLEGE_ADMIN' && req.user.managedCollegeId)) {
-    if (collegeId) where.collegeId = parseInt(collegeId as string);
+    if (parsedCollegeId !== undefined) where.collegeId = parsedCollegeId;
   }
 
   const departments = await prisma.department.findMany({

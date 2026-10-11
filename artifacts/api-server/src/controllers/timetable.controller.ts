@@ -5,7 +5,7 @@ import { auditLog } from '../utils/audit.utils';
 import { TimetableService } from '../services/timetable.service';
 import { getScopeWhere } from '../utils/scope.utils';
 import catchAsync from '../utils/catchAsync';
-import { NotFoundError, AuthorizationError, AppError } from '../utils/appError';
+import { NotFoundError, AuthorizationError, AppError, ValidationError } from '../utils/appError';
 import { invalidateCache } from '../utils/redis.utils';
 import { getAdminMutationScopeWhere } from '../utils/adminMutationScope.utils';
 
@@ -54,10 +54,34 @@ export const getTimetables = catchAsync(async (req: Request, res: Response, next
     };
   } else {
     // Admins/Doctors
-    if (collegeId) where.collegeId = parseInt(collegeId as string);
-    if (departmentId) where.departmentId = parseInt(departmentId as string);
-    if (academicYear) where.academicYear = parseInt(academicYear as string);
-    if (semester) where.semester = parseInt(semester as string);
+    if (collegeId !== undefined && collegeId !== '') {
+      const parsed = Number(collegeId);
+      if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+        throw new ValidationError('Invalid collegeId parameter');
+      }
+      where.collegeId = parsed;
+    }
+    if (departmentId !== undefined && departmentId !== '') {
+      const parsed = Number(departmentId);
+      if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+        throw new ValidationError('Invalid departmentId parameter');
+      }
+      where.departmentId = parsed;
+    }
+    if (academicYear !== undefined && academicYear !== '') {
+      const parsed = Number(academicYear);
+      if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+        throw new ValidationError('Invalid academicYear parameter');
+      }
+      where.academicYear = parsed;
+    }
+    if (semester !== undefined && semester !== '') {
+      const parsed = Number(semester);
+      if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+        throw new ValidationError('Invalid semester parameter');
+      }
+      where.semester = parsed;
+    }
     if (status) where.status = status;
 
     // Apply scope (COLLEGE_ADMIN/DEPARTMENT_ADMIN)

@@ -443,7 +443,7 @@ export const getAllUsers = catchAsync(async (req: Request, res: Response, next: 
           }]
         : []),
     ],
-    ...(req.query.role !== undefined && { role: { in: roles as any } }),
+    ...(req.query.role !== undefined && req.query.role !== '' && { role: { in: roles as any } }),
   };
   const where: Prisma.UserWhereInput = {
     ...baseWhere,

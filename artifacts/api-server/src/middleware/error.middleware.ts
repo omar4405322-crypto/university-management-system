@@ -25,11 +25,11 @@ const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFun
   }
 
   const errorId =
-    (req.headers['x-request-id'] as string) ||
-    (req.headers['x-correlation-id'] as string) ||
+    (req?.headers?.['x-request-id'] as string) ||
+    (req?.headers?.['x-correlation-id'] as string) ||
     crypto.randomUUID();
 
-  res.setHeader('X-Error-Id', errorId);
+  res.setHeader?.('X-Error-Id', errorId);
 
   if (err?.type === 'entity.too.large') {
     err = new AppError('Request body is too large', 413);
@@ -90,8 +90,8 @@ const sendErrorDev = (err: any, req: Request, res: Response, errorId: string) =>
   logger.error(`[DEV ERROR] ${err.message}`, {
     errorId,
     stack: err.stack,
-    path: req.originalUrl?.split('?')[0],
-    method: req.method,
+    path: req?.originalUrl?.split('?')[0] || req?.url || 'unknown',
+    method: req?.method || 'UNKNOWN',
   });
 
   res.status(err.statusCode).json({
@@ -109,8 +109,8 @@ const sendErrorProd = (err: any, req: Request, res: Response, errorId: string) =
   if (err.isOperational) {
     logger.warn(`[OP ERROR] ${err.message}`, {
       errorId,
-      path: req.originalUrl?.split('?')[0],
-      method: req.method,
+      path: req?.originalUrl?.split('?')[0] || req?.url || 'unknown',
+      method: req?.method || 'UNKNOWN',
       statusCode: err.statusCode,
       code: err.code || err.name,
     });
@@ -129,8 +129,8 @@ const sendErrorProd = (err: any, req: Request, res: Response, errorId: string) =
       errorId,
       type: err.name || 'InternalServerError',
       statusCode: 500,
-      path: req.originalUrl?.split('?')[0],
-      method: req.method,
+      path: req?.originalUrl?.split('?')[0] || req?.url || 'unknown',
+      method: req?.method || 'UNKNOWN',
       timestamp: new Date().toISOString(),
     });
 

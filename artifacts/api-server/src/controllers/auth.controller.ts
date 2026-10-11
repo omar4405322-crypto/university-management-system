@@ -98,12 +98,14 @@ export const register = catchAsync(async (req: Request, res: Response, next: Nex
     );
   }
 
-  const parsedDeptId =
-    departmentId !== undefined && departmentId !== ''
-      ? parseInt(departmentId as string, 10)
-      : null;
-  if (parsedDeptId !== null && isNaN(parsedDeptId)) {
-    return res.status(400).json({ message: 'Invalid departmentId: must be a number' });
+  let parsedDeptId: number | null = null;
+  if (departmentId !== undefined) {
+    const isIntegerNumber = typeof departmentId === 'number' && Number.isInteger(departmentId);
+    const isDigitString = typeof departmentId === 'string' && /^\d+$/.test(departmentId);
+    if (!isIntegerNumber && !isDigitString) {
+      throw new AppError('Invalid departmentId: must be a number', 400);
+    }
+    parsedDeptId = typeof departmentId === 'number' ? departmentId : parseInt(departmentId, 10);
   }
 
   const genericRegistrationResponse = () =>

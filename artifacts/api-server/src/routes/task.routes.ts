@@ -23,21 +23,21 @@ router.post('/', authorize('DOCTOR'), taskValidation, validate, createTask);
 router.get(
   '/',
   [
-    query('courseId').optional().isInt({ min: 1 }).withMessage('courseId must be a positive integer'),
+    query('courseId').optional({ checkFalsy: true }).isInt({ min: 1 }).withMessage('courseId must be a positive integer'),
     query('status')
-      .optional()
+      .optional({ checkFalsy: true })
       .isIn(['ACTIVE', 'OVERDUE'])
       .withMessage('status must be one of: ACTIVE, OVERDUE'),
     query('dueFrom')
-      .optional()
+      .optional({ checkFalsy: true })
       .isISO8601()
       .withMessage('dueFrom must be a valid ISO 8601 date'),
     query('dueTo')
-      .optional()
+      .optional({ checkFalsy: true })
       .isISO8601()
       .withMessage('dueTo must be a valid ISO 8601 date'),
     query('sortBy')
-      .optional()
+      .optional({ checkFalsy: true })
       .isIn([
         'DUE_DATE_ASC',
         'DUE_DATE_DESC',
@@ -49,7 +49,7 @@ router.get(
       .withMessage(
         'sortBy must be one of: DUE_DATE_ASC, DUE_DATE_DESC, CREATED_AT_ASC, CREATED_AT_DESC, SUBMISSIONS_COUNT_ASC, SUBMISSIONS_COUNT_DESC'
       ),
-    query('search').optional().trim(),
+    query('search').optional({ checkFalsy: true }).trim(),
   ],
   validate,
   getTasks

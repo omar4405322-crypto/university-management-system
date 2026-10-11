@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import catchAsync from '../utils/catchAsync';
 import { AttendanceService } from '../services/attendance.service';
 import prisma from '../utils/prismaClient';
-import { AppError, AuthorizationError } from '../utils/appError';
+import { AppError, AuthorizationError, ValidationError } from '../utils/appError';
 
 const getStaffWarningFilters = (query: Request['query']) => {
   const {
@@ -301,7 +301,11 @@ export const getStudentAttendance = catchAsync(
     const result = await AttendanceService.getStudentAttendance(
       req.user!,
       studentId,
-      courseId ? parseInt(courseId as string) : undefined,
+      courseId !== undefined && courseId !== '' ? (() => {
+        const parsed = Number(courseId);
+        if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new ValidationError('Invalid courseId parameter');
+        return parsed;
+      })() : undefined,
       parseInt(page as string),
       parseInt(limit as string)
     );
@@ -345,7 +349,11 @@ export const getMyAttendance = catchAsync(
     const result = await AttendanceService.getMyAttendance(
       req.user!.id,
       {
-        courseId: courseId ? parseInt(courseId as string) : undefined,
+        courseId: courseId !== undefined && courseId !== '' ? (() => {
+          const parsed = Number(courseId);
+          if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new ValidationError('Invalid courseId parameter');
+          return parsed;
+        })() : undefined,
         date: date as string | undefined,
         startDate: startDate as string | undefined,
         endDate: endDate as string | undefined,

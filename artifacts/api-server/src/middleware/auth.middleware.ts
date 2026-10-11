@@ -3,6 +3,8 @@ import { verifyToken } from '../utils/jwt.utils';
 import prisma from '../utils/prismaClient';
 import catchAsync from '../utils/catchAsync';
 import { AuthActor } from '../types/auth.types';
+import { AuthenticationError, AuthorizationError, AppError } from '../utils/appError';
+import globalErrorHandler from './error.middleware';
 
 declare global {
   namespace Express {
@@ -25,11 +27,7 @@ const protect = catchAsync(async (req: Request, res: Response, next: NextFunctio
   }
 
   if (!token) {
-    res.status(401).json({
-      success: false,
-      message: 'Access denied. No security token provided.',
-    });
-    return;
+    return globalErrorHandler(new AuthenticationError('Access denied. No security token provided.'), req, res, next);
   }
 
   // Verify token
@@ -67,27 +65,15 @@ const protect = catchAsync(async (req: Request, res: Response, next: NextFunctio
   });
 
   if (!user) {
-    res.status(401).json({
-      success: false,
-      message: 'The user belonging to this token no longer exists.',
-    });
-    return;
+    return globalErrorHandler(new AuthenticationError('The user belonging to this token no longer exists.'), req, res, next);
   }
 
   if (user.isActive === false) {
-    res.status(401).json({
-      success: false,
-      message: 'Your account has been deactivated. Please contact support.',
-    });
-    return;
+    return globalErrorHandler(new AuthenticationError('Your account has been deactivated. Please contact support.'), req, res, next);
   }
 
   if (decoded.tokenVersion !== user.tokenVersion) {
-    res.status(401).json({
-      success: false,
-      message: 'Session invalidated. Please login again.',
-    });
-    return;
+    return globalErrorHandler(new AuthenticationError('Session invalidated. Please login again.'), req, res, next);
   }
 
   // Attach user (including managedCollegeId) to request for downstream scope checks
@@ -101,10 +87,7 @@ const protect = catchAsync(async (req: Request, res: Response, next: NextFunctio
 const authorize = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(500).json({
-        success: false,
-        message: 'Authorization check failed. User not authenticated.',
-      });
+      return globalErrorHandler(new AppError('Authorization check failed. User not authenticated.', 500), req, res, next);
     }
 
     // Normalize role comparison to be case-insensitive and robust
@@ -117,10 +100,14 @@ const authorize = (...roles: string[]) => {
 
     const allowed = roles.map((r) => r.toString().toUpperCase());
     if (!allowed.includes(userRole)) {
-      return res.status(403).json({
-        success: false,
-        message: `Forbidden: Your role (${req.user.role}) does not have permission for this action.`,
-      });
+      return globalErrorHandler(
+        new AuthorizationError(
+          `Forbidden: Your role (${req.user.role}) does not have permission for this action.`
+        ),
+        req,
+        res,
+        next
+      );
     }
 
     next();

@@ -8,6 +8,8 @@
 
 export interface ApiErrorResponse {
   success: boolean;
+  status?: string;
   message: string;
+  errorId?: string;
   errors?: string[];
 }

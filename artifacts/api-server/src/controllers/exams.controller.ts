@@ -81,7 +81,7 @@ const CAIRO_TZ = "Africa/Cairo";
 
 export const getAllExams = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { type, upcoming } = req.query;
+    const { type, upcoming, courseId } = req.query;
 
     // Apply centralized scope
     const examScope = (getScopeWhere(req.user!, "exam") || {}) as Prisma.ExamWhereInput;
@@ -90,9 +90,16 @@ export const getAllExams = catchAsync(
       where = { ...where, ...examScope };
     }
 
-    if (type) where.type = type as ExamType;
+    if (type !== undefined && type !== '') where.type = type as ExamType;
     if (upcoming === "true") {
       where.date = { gte: new Date() };
+    }
+    if (courseId !== undefined && courseId !== '') {
+      const parsedCourseId = Number(courseId);
+      if (!Number.isSafeInteger(parsedCourseId) || parsedCourseId <= 0) {
+        throw new ValidationError("Invalid courseId parameter");
+      }
+      where.courseId = parsedCourseId;
     }
     if (req.user?.role === "STUDENT") {
       const studentId = req.user.student?.id;

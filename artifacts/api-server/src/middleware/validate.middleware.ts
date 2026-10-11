@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
+import { ValidationError } from '../utils/appError';
+import globalErrorHandler from './error.middleware';
 
 /**
  * Centralized validation middleware to handle express-validator results
@@ -15,11 +17,7 @@ const validate = (req: Request, res: Response, next: NextFunction) => {
 
   const firstMessage = errors.array()[0]?.msg || 'Validation failed';
 
-  return res.status(422).json({
-    success: false,
-    message: firstMessage,
-    errors: extractedErrors,
-  });
+  return globalErrorHandler(new ValidationError(firstMessage, extractedErrors), req, res, next);
 };
 
 export default validate;

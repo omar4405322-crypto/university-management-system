@@ -38,13 +38,66 @@ export interface DetailedReadiness {
 
 export interface ApiErrorResponse {
   success: boolean;
+  status?: string;
   message: string;
+  errorId?: string;
   errors?: string[];
+}
+
+export interface StudentGroupItem {
+  id: number;
+  name: string;
+  departmentId?: number | null;
+  year?: number | null;
+  parentGroupId?: number | null;
+}
+
+export interface StudentGroupListResponse {
+  success: boolean;
+  data: StudentGroupItem[];
+}
+
+export interface StudentGroupAutoDivideRequest {
+  numberOfGroups?: number;
+  maxGroupSize?: number;
+  confirmed?: boolean;
+  year?: number;
+}
+
+export interface StudentGroupSplitRequest {
+  numberOfSubgroups?: number;
+  maxSubgroupSize?: number;
+  confirmed?: boolean;
+}
+
+export interface StudentGroupDeleteRequest {
+  confirmed?: boolean;
+}
+
+export interface StudentGroupOverrideRequest {
+  groupId?: number | null;
 }
 
 export interface SuccessMessageResponse {
   success: boolean;
   message: string;
+}
+
+export interface AiChatRequest {
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  message: string;
+}
+
+export type AiChatResponseData = {
+  reply: string;
+};
+
+export interface AiChatResponse {
+  success: true;
+  data: AiChatResponseData;
 }
 
 export type RegisterRequestRole = typeof RegisterRequestRole[keyof typeof RegisterRequestRole];
@@ -431,6 +484,11 @@ academicYear?: number;
 search?: string;
 };
 
+export type GetAllStudentGroupsParams = {
+departmentId?: number;
+year?: number;
+};
+
 export type ListDepartmentsParams = {
 collegeId?: number;
 };
@@ -503,3 +561,4 @@ export const ListPaymentsStatus = {
   OVERDUE: 'OVERDUE',
   CANCELLED: 'CANCELLED',
 } as const;
+

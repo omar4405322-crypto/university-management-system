@@ -20,7 +20,6 @@ export const registerValidation = [
     .if(body('role').equals('STUDENT'))
     .isInt({ min: 1, max: 4 })
     .withMessage('Valid academic division is required (1-4)'),
-  body('departmentId').optional().isInt().withMessage('Department ID must be an integer'),
 ];
 
 export const loginValidation = [

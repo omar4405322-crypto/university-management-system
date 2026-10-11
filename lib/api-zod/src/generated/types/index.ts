@@ -6,6 +6,9 @@
  * OpenAPI spec version: 1.0.0
  */
 
+export * from './aiChatRequest';
+export * from './aiChatResponse';
+export * from './aiChatResponseData';
 export * from './analyticsGeneralResponse';
 export * from './apiErrorResponse';
 export * from './attendanceScanResult';
@@ -28,6 +31,7 @@ export * from './enrollmentSubmitRequest';
 export * from './examItem';
 export * from './examItemExamType';
 export * from './forbiddenErrorResponse';
+export * from './getAllStudentGroupsParams';
 export * from './getMyAttendanceParams';
 export * from './healthStatus';
 export * from './limitQueryParameter';
@@ -60,6 +64,12 @@ export * from './registerRequestRole';
 export * from './scheduleGridResponse';
 export * from './scheduleGridResponseSlotsItem';
 export * from './studentDetail';
+export * from './studentGroupAutoDivideRequest';
+export * from './studentGroupDeleteRequest';
+export * from './studentGroupItem';
+export * from './studentGroupListResponse';
+export * from './studentGroupOverrideRequest';
+export * from './studentGroupSplitRequest';
 export * from './studentListResponse';
 export * from './successMessageResponse';
 export * from './taskItem';

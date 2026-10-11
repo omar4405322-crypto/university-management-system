@@ -97,9 +97,27 @@ export const withdrawStudent = catchAsync(async (req: Request, res: Response) =>
 export const getEnrollments = catchAsync(async (req: Request, res: Response) => {
   const { studentId, courseId, semester } = req.query;
   const whereFilters: any = {};
-  if (studentId) whereFilters.studentId = parseInt(studentId as string);
-  if (courseId) whereFilters.courseId = parseInt(courseId as string);
-  if (semester) whereFilters.semester = parseInt(semester as string);
+  if (studentId !== undefined && studentId !== '') {
+    const parsed = Number(studentId);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      throw new ValidationError('Invalid studentId parameter');
+    }
+    whereFilters.studentId = parsed;
+  }
+  if (courseId !== undefined && courseId !== '') {
+    const parsed = Number(courseId);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      throw new ValidationError('Invalid courseId parameter');
+    }
+    whereFilters.courseId = parsed;
+  }
+  if (semester !== undefined && semester !== '') {
+    const parsed = Number(semester);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      throw new ValidationError('Invalid semester parameter');
+    }
+    whereFilters.semester = parsed;
+  }
 
   const scopeWhere = getScopeWhere(req.user, 'enrollment');
   const where: any = {

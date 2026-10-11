@@ -8,6 +8,7 @@ import {
   AuthorizationError,
   AppError,
   ConflictError,
+  ValidationError,
 } from "../utils/appError";
 import { getScopeWhere } from "../utils/scope.utils";
 import { toZonedTime } from "date-fns-tz";
@@ -303,10 +304,19 @@ export const createQuiz = catchAsync(
 export const getQuizzes = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { courseId } = req.query;
+    let parsedCourseId: number | undefined;
+    if (courseId !== undefined && courseId !== '') {
+      const parsed = Number(courseId);
+      if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+        throw new ValidationError("Invalid courseId parameter");
+      }
+      parsedCourseId = parsed;
+    }
+
     const courseScope = getQuizCourseScope(req.user);
     const where: Prisma.QuizWhereInput = {
       AND: [
-        ...(courseId ? [{ courseId: parseInt(courseId as string) }] : []),
+        ...(parsedCourseId !== undefined ? [{ courseId: parsedCourseId }] : []),
         hasScopeFilter(courseScope) ? { course: courseScope } : {},
       ],
     };

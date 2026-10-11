@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import catchAsync from '../utils/catchAsync';
 import { TaskService } from '../services/task.service';
-import { ConflictError } from '../utils/appError';
+import { ConflictError, ValidationError } from '../utils/appError';
 import { fromZonedTime } from 'date-fns-tz';
 
 export const createTask = catchAsync(
@@ -24,9 +24,27 @@ export const getTasks = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { courseId, status, dueFrom, dueTo, sortBy, search, year, page, limit } = req.query;
 
+    let parsedCourseId: number | undefined;
+    if (courseId !== undefined && courseId !== '') {
+      const parsed = Number(courseId);
+      if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+        throw new ValidationError('Invalid courseId parameter');
+      }
+      parsedCourseId = parsed;
+    }
+
+    let parsedYear: number | undefined;
+    if (year !== undefined && year !== '') {
+      const parsed = Number(year);
+      if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+        throw new ValidationError('Invalid year parameter');
+      }
+      parsedYear = parsed;
+    }
+
     const tasksResult = await TaskService.getTasks(
       req.user!,
-      courseId ? parseInt(courseId as string) : undefined,
+      parsedCourseId,
       {
         status: status as ('ACTIVE' | 'OVERDUE') | undefined,
         dueFrom: dueFrom ? new Date(dueFrom as string) : undefined,
@@ -40,7 +58,7 @@ export const getTasks = catchAsync(
           | 'SUBMISSIONS_COUNT_DESC'
         ) | undefined,
         search: search as string | undefined,
-        year: year ? parseInt(year as string) : undefined,
+        year: parsedYear,
         page: page ? parseInt(page as string) : undefined,
         limit: limit ? parseInt(limit as string) : undefined,
       }
