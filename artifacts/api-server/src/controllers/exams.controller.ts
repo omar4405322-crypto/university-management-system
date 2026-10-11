@@ -419,6 +419,16 @@ export const deleteExam = catchAsync(
     }
 
     await prisma.$transaction(async (tx) => {
+      const existingSubmission = await tx.examSubmission.findFirst({
+        where: { examId: id },
+        select: { id: true },
+      });
+      if (existingSubmission) {
+        throw new ConflictError(
+          "Cannot delete exam: student submissions exist. Retain or archive the exam instead."
+        );
+      }
+
       await tx.exam.delete({ where: { id } });
       await auditLog(
         "DELETE_EXAM",

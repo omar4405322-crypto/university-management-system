@@ -82,6 +82,31 @@ function runBehavioralSeedSafetyGuardTests() {
       !stdout.includes('Starting timetable backfill'),
       `${relScript} stdout must not contain "Starting timetable backfill"`
     );
+
+    const malformedResult = spawnSync(
+      process.execPath,
+      ['--import', 'tsx', scriptFullPath],
+      {
+        cwd: apiRoot,
+        env: {
+          ...process.env,
+          NODE_ENV: 'development',
+          DATABASE_URL: 'not-a-valid-url',
+        },
+        timeout: 30000,
+        encoding: 'utf8',
+      }
+    );
+
+    assert.equal(
+      malformedResult.status,
+      1,
+      `${relScript} must exit with code 1 when given a malformed/unparsable DATABASE_URL in development (status: ${malformedResult.status})`
+    );
+    assert.ok(
+      (malformedResult.stderr || '').includes('Refusing unparsable or non-local database host'),
+      `${relScript} stderr must contain "Refusing unparsable or non-local database host" (received: ${malformedResult.stderr})`
+    );
   }
 }
 

@@ -562,6 +562,22 @@ export const deleteCourse = catchAsync(async (req: Request, res: Response, next:
       throw new ConflictError('Cannot delete course with enrollment history. Unenroll students or archive course instead.');
     }
 
+    const hasQuizSubmissions = await tx.quizSubmission.findFirst({
+      where: { quiz: { courseId } },
+      select: { id: true },
+    });
+    const hasTaskSubmissions = await tx.taskSubmission.findFirst({
+      where: { task: { courseId } },
+      select: { id: true },
+    });
+    const hasExamSubmissions = await tx.examSubmission.findFirst({
+      where: { exam: { courseId } },
+      select: { id: true },
+    });
+    if (hasQuizSubmissions || hasTaskSubmissions || hasExamSubmissions) {
+      throw new ConflictError('Cannot delete course with existing student quiz, task, or exam submissions. Student academic history must be preserved.');
+    }
+
     // 1. Delete Attendance records linked directly or via schedule slots
     const slots = await tx.scheduleSlot.findMany({
       where: { courseId },

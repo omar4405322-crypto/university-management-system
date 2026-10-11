@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
-import { AppError, NotFoundError, ValidationError } from '../utils/appError';
+import { AppError, ConflictError, NotFoundError, ValidationError } from '../utils/appError';
 import { invalidateCache } from '../utils/redis.utils';
 import { getScopeWhere } from '../utils/scope.utils';
 import { ReceiptService, ReceiptData } from '../services/receipt.service';
@@ -331,6 +331,14 @@ export const deletePayment = catchAsync(async (req: Request, res: Response, next
 
   if (!existing) {
     return next(new NotFoundError('Payment not found'));
+  }
+
+  if (existing.status === 'PAID') {
+    return next(
+      new ConflictError(
+        'Cannot delete a payment that has already been marked as PAID. Historical accounting records must be preserved for audit compliance.'
+      )
+    );
   }
 
   await prisma.payment.delete({

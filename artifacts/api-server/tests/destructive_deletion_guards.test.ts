@@ -10,6 +10,8 @@ import { archiveSchedule, deleteSchedule, restoreSchedule } from '../src/control
 import { deleteDepartment } from '../src/controllers/department.controller';
 import { deleteTeachingAssistant } from '../src/controllers/teachingAssistants.controller';
 import { hardDeleteUser } from '../src/controllers/user.controller';
+import { deleteExam } from '../src/controllers/exams.controller';
+import { deletePayment } from '../src/controllers/payments.controller';
 import { AttendanceService } from '../src/services/attendance.service';
 import { calculateAttendanceAttempts } from '../src/attendance/attendance.calculation';
 
@@ -395,6 +397,97 @@ async function departmentAndTaRequireExplicitReassignment() {
   }
 }
 
+async function examSubmissionsBlockExamDeletion() {
+  const originalExamFindFirst = prisma.exam.findFirst;
+  const originalTransaction = prisma.$transaction;
+  let examDeleted = false;
+
+  try {
+    (prisma.exam.findFirst as any) = async () => ({
+      id: 12,
+      courseId: 4,
+    });
+    (prisma as any).$transaction = async (callback: (tx: any) => unknown) =>
+      callback({
+        examSubmission: { findFirst: async () => ({ id: 101 }) },
+        exam: {
+          delete: async () => {
+            examDeleted = true;
+          },
+        },
+        auditLog: { create: async () => ({ id: 1 }) },
+      });
+
+    const result = await invoke(deleteExam, {
+      params: { id: '12' },
+      user: { id: 1, role: 'SUPER_ADMIN' },
+    });
+    assert.equal(result.error?.statusCode, 409);
+    assert.equal(examDeleted, false);
+  } finally {
+    prisma.exam.findFirst = originalExamFindFirst;
+    prisma.$transaction = originalTransaction;
+  }
+}
+
+async function paidPaymentHistoryBlocksPaymentDeletion() {
+  const originalPaymentFindFirst = prisma.payment.findFirst;
+  const originalPaymentDelete = prisma.payment.delete;
+  let paymentDeleted = false;
+
+  try {
+    (prisma.payment.findFirst as any) = async () => ({
+      id: 34,
+      status: 'PAID',
+      studentId: 7,
+    });
+    (prisma.payment.delete as any) = async () => {
+      paymentDeleted = true;
+    };
+
+    const result = await invoke(deletePayment, {
+      params: { id: '34' },
+      user: { id: 1, role: 'SUPER_ADMIN' },
+    });
+    assert.equal(result.error?.statusCode, 409);
+    assert.equal(paymentDeleted, false);
+  } finally {
+    prisma.payment.findFirst = originalPaymentFindFirst;
+    prisma.payment.delete = originalPaymentDelete;
+  }
+}
+
+async function courseSubmissionHistoryBlocksDeletion() {
+  const originalCourseFindUnique = prisma.course.findUnique;
+  const originalTransaction = prisma.$transaction;
+  let courseDeleted = false;
+
+  try {
+    (prisma.course.findUnique as any) = async () => ({
+      id: 10,
+      department: { collegeId: 3 },
+    });
+    (prisma as any).$transaction = async (callback: (tx: any) => unknown) =>
+      callback({
+        enrollment: { findFirst: async () => null },
+        quizSubmission: { findFirst: async () => ({ id: 55 }) },
+        taskSubmission: { findFirst: async () => null },
+        examSubmission: { findFirst: async () => null },
+        course: { delete: async () => { courseDeleted = true; } },
+      });
+
+    const result = await invoke(deleteCourse, {
+      params: { id: '10' },
+      user: { id: 1, role: 'SUPER_ADMIN' },
+    });
+    assert.equal(result.error?.statusCode, 409);
+    assert.equal(courseDeleted, false);
+  } finally {
+    prisma.course.findUnique = originalCourseFindUnique;
+    prisma.$transaction = originalTransaction;
+  }
+}
+
 await studentDeletionRequiresExplicitElevatedPurge();
 await permanentUserDeletionIsConfirmedAndSuperAdminOnly();
 await courseEnrollmentHistoryBlocksDeletion();
@@ -402,4 +495,7 @@ await attendanceEvidenceBlocksTimetableAndSlotDeletion();
 await evidencedSlotCanBeArchivedAndRestored();
 await archivedSlotIsHiddenOperationallyButRetainedInAttendanceHistory();
 await departmentAndTaRequireExplicitReassignment();
+await examSubmissionsBlockExamDeletion();
+await paidPaymentHistoryBlocksPaymentDeletion();
+await courseSubmissionHistoryBlocksDeletion();
 console.log('Destructive deletion guard checks passed');

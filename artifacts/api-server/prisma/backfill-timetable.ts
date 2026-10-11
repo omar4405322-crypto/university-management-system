@@ -8,13 +8,14 @@ if (process.env.NODE_ENV?.trim().toLowerCase() === 'production') {
 const LOCAL_DATABASE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 const dbUrl = process.env.DATABASE_URL;
 if (dbUrl) {
+  let parsed: URL;
   try {
-    const parsed = new URL(dbUrl);
-    if (!LOCAL_DATABASE_HOSTS.has(parsed.hostname)) {
-      throw new Error(`Refusing non-local database host for timetable backfill: ${parsed.hostname}`);
-    }
-  } catch (err: any) {
-    if (err.message.includes('Refusing non-local')) throw err;
+    parsed = new URL(dbUrl);
+  } catch {
+    throw new Error('Refusing unparsable or non-local database host for timetable backfill');
+  }
+  if (!LOCAL_DATABASE_HOSTS.has(parsed.hostname)) {
+    throw new Error(`Refusing non-local database host for timetable backfill: ${parsed.hostname}`);
   }
 }
 
