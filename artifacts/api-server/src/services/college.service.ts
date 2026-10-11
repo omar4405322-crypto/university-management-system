@@ -30,26 +30,42 @@ export const getAllColleges = async (user: any) => {
     },
   });
 
-  const collegesWithAdmins = await Promise.all(
-    colleges.map(async (college) => {
-      const admin = await prisma.user.findFirst({
-        where: { managedCollegeId: college.id, isActive: true },
-        select: { id: true, email: true, doctor: { select: { firstName: true, lastName: true } } },
-      });
-      return {
-        ...college,
-        assignedAdmin: admin
-          ? {
+  const collegeIds = colleges.map((c) => c.id);
+  const admins = collegeIds.length > 0
+    ? await prisma.user.findMany({
+        where: { managedCollegeId: { in: collegeIds }, isActive: true },
+        orderBy: { id: 'asc' },
+        select: {
+          id: true,
+          email: true,
+          managedCollegeId: true,
+          doctor: { select: { firstName: true, lastName: true } },
+        },
+      })
+    : [];
+
+  const adminByCollegeId = new Map<number, (typeof admins)[number]>();
+  for (const admin of admins) {
+    if (admin.managedCollegeId && !adminByCollegeId.has(admin.managedCollegeId)) {
+      adminByCollegeId.set(admin.managedCollegeId, admin);
+    }
+  }
+
+  const collegesWithAdmins = colleges.map((college) => {
+    const admin = adminByCollegeId.get(college.id);
+    return {
+      ...college,
+      assignedAdmin: admin
+        ? {
             id: admin.id,
             email: admin.email,
             name: admin.doctor
               ? `${admin.doctor.firstName} ${admin.doctor.lastName}`.trim()
               : null,
           }
-          : null,
-      };
-    })
-  );
+        : null,
+    };
+  });
 
   return collegesWithAdmins;
 };

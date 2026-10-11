@@ -20,18 +20,40 @@ export const shouldInitializeRedis = (
   env: { REDIS_URL?: string; NODE_ENV?: string } = process.env,
 ): boolean => Boolean(env.REDIS_URL) && env.NODE_ENV?.trim() !== "test";
 
+let outageLogged = false;
+
+const logRedisError = (message: string) => {
+  if (!outageLogged) {
+    logger.error(message);
+    outageLogged = true;
+  }
+};
+
 const configuredRedisUrl = process.env.REDIS_URL;
 if (shouldInitializeRedis() && configuredRedisUrl) {
   redis = new Redis(configuredRedisUrl, {
-    maxRetriesPerRequest: 3,
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: 1,
+    connectTimeout: 2000,
+    commandTimeout: 1000,
     retryStrategy(times: number) {
       return Math.min(times * 50, 2000);
     },
   });
 
-  redis.on("connect", () => logger.info("[REDIS] Connected to instance"));
+  redis.on("connect", () => {
+    if (outageLogged) {
+      logger.info("[REDIS] Connected to instance (service restored)");
+    } else {
+      logger.info("[REDIS] Connected to instance");
+    }
+    outageLogged = false;
+  });
+  redis.on("ready", () => {
+    outageLogged = false;
+  });
   redis.on("error", (err: Error) =>
-    logger.error(`[REDIS] Error: ${err.message}`),
+    logRedisError(`[REDIS] Error: ${err.message}`),
   );
 } else if (process.env.NODE_ENV?.trim() !== "test") {
   logger.warn(
@@ -68,10 +90,13 @@ export const setCache = async (
   client: RedisCacheClient | null = redis,
 ): Promise<void> => {
   if (!client) return;
+  if ((client as any).status !== undefined && (client as any).status !== "ready") {
+    return;
+  }
   try {
     await client.set(key, JSON.stringify(value), "EX", ttlSeconds);
   } catch (err: any) {
-    logger.error(`[REDIS] Set error for ${key}: ${err.message}`);
+    logRedisError(`[REDIS] Set error for ${key}: ${err.message}`);
   }
 };
 
@@ -83,11 +108,14 @@ export const getCache = async (
   client: RedisCacheClient | null = redis,
 ): Promise<any | null> => {
   if (!client) return null;
+  if ((client as any).status !== undefined && (client as any).status !== "ready") {
+    return null;
+  }
   try {
     const data = await client.get(key);
     return data ? JSON.parse(data) : null;
   } catch (err: any) {
-    logger.error(`[REDIS] Get error for ${key}: ${err.message}`);
+    logRedisError(`[REDIS] Get error for ${key}: ${err.message}`);
     return null;
   }
 };
@@ -100,6 +128,9 @@ export const invalidateCache = async (
   client: RedisInvalidationClient | null = redis,
 ): Promise<void> => {
   if (!client) return;
+  if ((client as any).status !== undefined && (client as any).status !== "ready") {
+    return;
+  }
   try {
     let cursor = "0";
     let invalidatedCount = 0;
@@ -124,7 +155,7 @@ export const invalidateCache = async (
       );
     }
   } catch (err: any) {
-    logger.error(`[REDIS] Invalidation error for ${pattern}: ${err.message}`);
+    logRedisError(`[REDIS] Invalidation error for ${pattern}: ${err.message}`);
   }
 };
 
@@ -143,13 +174,16 @@ export const setIfNotExists = async (
   if (!client) {
     throw new RedisOperationError();
   }
+  if ((client as any).status !== undefined && (client as any).status !== "ready") {
+    throw new RedisOperationError();
+  }
   try {
     const stringVal = typeof value === "string" ? value : JSON.stringify(value);
     const result = await client.set(key, stringVal, "EX", ttlSeconds, "NX");
     return result === "OK";
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    logger.error(`[REDIS] setIfNotExists failed: ${msg}`);
+    logRedisError(`[REDIS] setIfNotExists failed: ${msg}`);
     throw new RedisOperationError();
   }
 };

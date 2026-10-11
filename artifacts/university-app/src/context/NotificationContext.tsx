@@ -58,7 +58,11 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       if (response.data.success) {
         const data = response.data.data as Notification[];
         setNotifications(data);
-        setUnreadCount(data.filter((n) => !n.isRead).length);
+        setUnreadCount(
+          typeof response.data.unreadCount === 'number'
+            ? response.data.unreadCount
+            : data.filter((n) => !n.isRead).length
+        );
       }
     } catch (error: unknown) {
       logger.error('Fetch notifications error:', error);

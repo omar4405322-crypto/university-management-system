@@ -54,6 +54,10 @@ model User {
 
   @@index([role])
   @@index([email])
+  @@index([collegeId])
+  @@index([departmentId])
+  @@index([managedCollegeId])
+  @@index([managedDepartmentId])
 }
 
 model RefreshToken {
@@ -159,6 +163,7 @@ model RegistrationRequest {
 
   @@index([status])
   @@index([email])
+  @@index([departmentId])
 }
 
 enum RequestStatus {
@@ -198,6 +203,7 @@ model Student {
   @@index([studentId])
   @@index([departmentId, year])
   @@index([firstName, lastName])
+  @@index([groupId])
 }
 
 model StudentSuccessMetric {
@@ -375,6 +381,7 @@ model Quiz {
 
   @@index([courseId])
   @@index([courseId, academicYear, semester])
+  @@index([doctorId])
 }
 
 model Question {
@@ -739,6 +746,7 @@ model ScheduleSlot {
   @@index([dayOfWeek, doctorId])
   @@index([dayOfWeek, teachingAssistantId])
   @@index([isArchived])
+  @@index([roomId])
 }
 
 model ScheduleOverride {
@@ -781,6 +789,9 @@ model AbsenceThresholdPolicy {
   maxAbsencePercent Float       @default(25.0) // E.g. 25% max absence
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+
+  @@index([courseId])
+  @@index([departmentId])
 }
 
 model AbsenceExemptionPeriod {
@@ -888,6 +899,7 @@ model AttendanceSession {
 
   @@index([scheduleSlotId])
   @@index([isActive, expiresAt])
+  @@index([doctorId])
 }
 
 model RfidDevice {

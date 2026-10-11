@@ -22,14 +22,16 @@ if (!redis && process.env.NODE_ENV?.trim() !== "test") {
   );
 }
 
+const PLACEHOLDER_SHA = "0000000000000000000000000000000000000000";
+
 /**
  * Helper to build a RedisStore connected to the existing shared ioredis client.
  * If Redis is not connected/configured, falls back cleanly to undefined (MemoryStore).
  * Development and tests fall back to a local in-memory map. Production throws
  * on shared-store failure so rate limits cannot be bypassed across replicas.
  */
-export const createRedisStore = (prefix: string) => {
-  if (!redis) return undefined;
+export const createRedisStore = (prefix: string, client = redis) => {
+  if (!client) return undefined;
 
   const fallbackStore = new Map<string, { hits: number; resetTime: number }>();
 
@@ -38,7 +40,7 @@ export const createRedisStore = (prefix: string) => {
     const upperCommand = command.toUpperCase();
 
     if (upperCommand === "SCRIPT" && args[0]?.toUpperCase() === "LOAD") {
-      return "fallback_sha";
+      return PLACEHOLDER_SHA;
     }
 
     if (upperCommand === "EVALSHA" || upperCommand === "EVAL") {
@@ -75,15 +77,24 @@ export const createRedisStore = (prefix: string) => {
 
   return new RedisStore({
     sendCommand: async (command: string, ...args: string[]) => {
-      if (!redis) {
+      const upperCommand = command.toUpperCase();
+      const isScriptLoad = upperCommand === "SCRIPT" && args[0]?.toUpperCase() === "LOAD";
+
+      if (!client || ((client as any).status !== undefined && (client as any).status !== "ready")) {
+        if (isScriptLoad) {
+          return PLACEHOLDER_SHA;
+        }
         if (shouldFailClosedRateLimiter()) {
           throw new Error("Shared rate-limit store is unavailable");
         }
         return handleFallback(command, ...args);
       }
       try {
-        return (await (redis as any).call(command, ...args)) as RedisReply;
+        return (await (client as any).call(command, ...args)) as RedisReply;
       } catch (err: any) {
+        if (isScriptLoad) {
+          return PLACEHOLDER_SHA;
+        }
         if (shouldFailClosedRateLimiter()) {
           throw err;
         }

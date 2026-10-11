@@ -10,14 +10,24 @@ import { NotFoundError, ValidationError } from '../utils/appError';
 export const getNotifications = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user!.id;
 
-  const notifications = await prisma.notification.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-  });
+  const limitParam = req.query.limit !== undefined ? Number(req.query.limit) : 100;
+  const take = Number.isSafeInteger(limitParam) && limitParam > 0 ? Math.min(limitParam, 500) : 100;
+
+  const [notifications, unreadCount] = await Promise.all([
+    prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take,
+    }),
+    prisma.notification.count({
+      where: { userId, isRead: false },
+    }),
+  ]);
 
   res.json({
     success: true,
     data: notifications,
+    unreadCount,
   });
 });
 
