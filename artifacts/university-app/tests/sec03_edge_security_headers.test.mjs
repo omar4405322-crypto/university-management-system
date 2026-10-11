@@ -26,6 +26,23 @@ describe('SEC-003: Edge and Web-Serving Security Headers', () => {
     );
   });
 
+  it('preserves edge security headers within /assets/ block to avoid nginx add_header inheritance drop', () => {
+    const nginxPath = path.join(rootDir, 'nginx.conf');
+    const nginxContent = fs.readFileSync(nginxPath, 'utf8');
+
+    // Extract location /assets/ block
+    const assetsMatch = nginxContent.match(/location\s+\/assets\/[\s\S]*?\{([\s\S]*?)\}/);
+    assert.ok(assetsMatch, 'nginx.conf must define location /assets/');
+    const assetsBlock = assetsMatch[1];
+
+    // If location defines add_header, server-level add_headers are dropped unless re-declared in this block
+    assert.ok(assetsBlock.includes('X-Content-Type-Options nosniff'), 'Missing X-Content-Type-Options in /assets/');
+    assert.ok(assetsBlock.includes('X-Frame-Options DENY'), 'Missing X-Frame-Options in /assets/');
+    assert.ok(assetsBlock.includes('Referrer-Policy strict-origin-when-cross-origin'), 'Missing Referrer-Policy in /assets/');
+    assert.ok(assetsBlock.includes('Content-Security-Policy'), 'Missing Content-Security-Policy in /assets/');
+    assert.ok(assetsBlock.includes('Permissions-Policy'), 'Missing Permissions-Policy in /assets/');
+  });
+
   it('configures hardened edge security headers in vercel.json for Vercel deployment', () => {
     const vercelPath = path.join(rootDir, 'artifacts/university-app/vercel.json');
     const vercelConfig = JSON.parse(fs.readFileSync(vercelPath, 'utf8'));

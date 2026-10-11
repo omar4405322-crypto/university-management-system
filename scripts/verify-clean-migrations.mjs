@@ -57,15 +57,20 @@ try {
   const migrations = await tempPrisma.$queryRawUnsafe(
     'SELECT migration_name, finished_at, rolled_back_at FROM _prisma_migrations ORDER BY started_at ASC'
   );
-  console.log(`3. Verified ${migrations.length} migrations applied in order to clean database.`);
-  if (migrations.length !== 30) {
-    throw new Error(`Expected exactly 30 migrations applied, found ${migrations.length}`);
+  const diskMigrations = fs.readdirSync(path.join(apiDir, 'prisma/migrations'))
+    .filter(d => fs.statSync(path.join(apiDir, 'prisma/migrations', d)).isDirectory())
+    .sort();
+
+  console.log(`3. Verified ${migrations.length} migrations applied in order to clean database (expected ${diskMigrations.length}).`);
+  if (migrations.length !== diskMigrations.length) {
+    throw new Error(`Expected exactly ${diskMigrations.length} migrations applied, found ${migrations.length}`);
   }
   const lastMigration = migrations[migrations.length - 1];
+  const expectedLast = diskMigrations[diskMigrations.length - 1];
   console.log(`   Initial Migration: ${migrations[0].migration_name}`);
   console.log(`   Latest Migration:  ${lastMigration.migration_name}`);
-  if (lastMigration.migration_name !== '20261002030000_add_ai_conversation_attachments') {
-    throw new Error(`Latest migration was expected to be 20261002030000_add_ai_conversation_attachments, but got ${lastMigration.migration_name}`);
+  if (lastMigration.migration_name !== expectedLast) {
+    throw new Error(`Latest migration was expected to be ${expectedLast}, but got ${lastMigration.migration_name}`);
   }
 
   // 4. Verify zero schema drift between schema.prisma and the cleanly migrated database

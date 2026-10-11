@@ -38,6 +38,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    user: "redis"
     command: ["redis-server", "--appendonly", "yes"]
     security_opt:
       - "no-new-privileges:true"
@@ -139,6 +140,9 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
     tmpfs:
       - /tmp
       - /var/run

@@ -35,9 +35,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=5000
 
-# Enable Corepack and prepare the pinned pnpm release for runtime migrations
-RUN corepack enable && corepack prepare pnpm@10.34.4 --activate
-
 # Copy only runtime manifests, dependencies, the compiled server, and active migrations
 COPY package.json pnpm-workspace.yaml ./
 COPY artifacts/api-server/package.json ./artifacts/api-server/
@@ -57,5 +54,8 @@ USER node
 
 EXPOSE 5000
 
-# Execute database migrations then start production server
-CMD ["sh", "-c", "pnpm --filter @workspace/api-server exec prisma migrate deploy && node --enable-source-maps ./artifacts/api-server/dist/index.mjs"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=5 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:5000/api/healthz || exit 1
+
+# Execute database migrations then start production server with exec for PID 1 signal forwarding
+CMD ["sh", "-c", "./artifacts/api-server/node_modules/.bin/prisma migrate deploy --schema=./artifacts/api-server/prisma/schema.prisma && exec node --enable-source-maps ./artifacts/api-server/dist/index.mjs"]
