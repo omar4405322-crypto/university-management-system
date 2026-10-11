@@ -1,4 +1,4 @@
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import prisma from '../src/utils/prismaClient';
 import {
@@ -18,20 +18,24 @@ import {
 import type { AuthActor } from '../src/types/auth.types';
 
 describe('AI Personalized Quick Actions Service', () => {
-  const testUserId1 = 9876541;
-  const testUserId2 = 9876542;
+  // Generate unique run IDs for this test run to avoid colliding with residue or concurrent runs
+  const runSuffix = (Date.now() % 80000) + Math.floor(Math.random() * 1000);
+  const testUserId1 = 9810000 + runSuffix;
+  const testUserId2 = 9810000 + runSuffix + 1;
+  const testEmail1 = `quickaction1_${runSuffix}@test.edu`;
+  const testEmail2 = `quickaction2_${runSuffix}@test.edu`;
 
   beforeEach(async () => {
     // Ensure test users exist in test database for FK constraint
     await prisma.user.upsert({
       where: { id: testUserId1 },
-      update: { email: 'quickaction1@test.edu', role: 'STUDENT', isActive: true },
-      create: { id: testUserId1, email: 'quickaction1@test.edu', password: 'hash', role: 'STUDENT', isActive: true },
+      update: { email: testEmail1, role: 'STUDENT', isActive: true },
+      create: { id: testUserId1, email: testEmail1, password: 'hash', role: 'STUDENT', isActive: true },
     });
     await prisma.user.upsert({
       where: { id: testUserId2 },
-      update: { email: 'quickaction2@test.edu', role: 'STUDENT', isActive: true },
-      create: { id: testUserId2, email: 'quickaction2@test.edu', password: 'hash', role: 'STUDENT', isActive: true },
+      update: { email: testEmail2, role: 'STUDENT', isActive: true },
+      create: { id: testUserId2, email: testEmail2, password: 'hash', role: 'STUDENT', isActive: true },
     });
 
     // Clean test usage records
@@ -39,6 +43,16 @@ describe('AI Personalized Quick Actions Service', () => {
       where: {
         userId: { in: [testUserId1, testUserId2] },
       },
+    });
+  });
+
+  after(async () => {
+    // Clean up ONLY rows created by this specific test run
+    await prisma.aIQuickActionUsage.deleteMany({
+      where: { userId: { in: [testUserId1, testUserId2] } },
+    });
+    await prisma.user.deleteMany({
+      where: { id: { in: [testUserId1, testUserId2] } },
     });
   });
 

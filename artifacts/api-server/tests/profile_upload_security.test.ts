@@ -1,3 +1,4 @@
+import test from 'node:test';
 import assert from 'assert';
 import http from 'http';
 import fs from 'fs';
@@ -73,7 +74,7 @@ async function runUploadSecurityTests() {
     appProd.use(globalErrorHandler);
 
     const prodServer = http.createServer(appProd);
-    await new Promise<void>((resolve) => prodServer.listen(0, resolve));
+    await new Promise<void>((resolve) => prodServer.listen(0, '127.0.0.1', resolve));
     const prodPort = (prodServer.address() as any).port;
     const profilesDir = path.join(process.cwd(), 'uploads/profiles');
     const profileFilesBefore = fs.existsSync(profilesDir)
@@ -89,7 +90,7 @@ async function runUploadSecurityTests() {
         'avatar.png'
       );
 
-      const resProd = await fetch(`http://localhost:${prodPort}/api/users/profile/picture`, {
+      const resProd = await fetch(`http://127.0.0.1:${prodPort}/api/users/profile/picture`, {
         method: 'PUT',
         body: formData,
       });
@@ -132,7 +133,7 @@ async function runUploadSecurityTests() {
           `partial-${configuredMask}.png`
         );
         const partialResponse = await fetch(
-          `http://localhost:${prodPort}/api/users/profile/picture`,
+          `http://127.0.0.1:${prodPort}/api/users/profile/picture`,
           { method: 'PUT', body: partialFormData }
         );
         assert.strictEqual(
@@ -154,7 +155,7 @@ async function runUploadSecurityTests() {
         'normalized-production.png'
       );
       const normalizedProductionResponse = await fetch(
-        `http://localhost:${prodPort}/api/users/profile/picture`,
+        `http://127.0.0.1:${prodPort}/api/users/profile/picture`,
         { method: 'PUT', body: normalizedProductionFormData }
       );
       assert.strictEqual(normalizedProductionResponse.status, 200);
@@ -205,7 +206,7 @@ async function runUploadSecurityTests() {
     appDev.use(globalErrorHandler);
 
     const devServer = http.createServer(appDev);
-    await new Promise<void>((resolve) => devServer.listen(0, resolve));
+    await new Promise<void>((resolve) => devServer.listen(0, '127.0.0.1', resolve));
     const devPort = (devServer.address() as any).port;
 
     try {
@@ -218,7 +219,7 @@ async function runUploadSecurityTests() {
         'malicious.png'
       );
 
-      const resSpoof = await fetch(`http://localhost:${devPort}/api/users/profile/picture`, {
+      const resSpoof = await fetch(`http://127.0.0.1:${devPort}/api/users/profile/picture`, {
         method: 'PUT',
         body: spoofFormData,
       });
@@ -244,7 +245,7 @@ async function runUploadSecurityTests() {
         'user-avatar.suspicious.html.png'
       );
 
-      const resPng = await fetch(`http://localhost:${devPort}/api/users/profile/picture`, {
+      const resPng = await fetch(`http://127.0.0.1:${devPort}/api/users/profile/picture`, {
         method: 'PUT',
         body: pngFormData,
       });
@@ -265,7 +266,7 @@ async function runUploadSecurityTests() {
         'photo.jpeg'
       );
 
-      const resJpeg = await fetch(`http://localhost:${devPort}/api/users/profile/picture`, {
+      const resJpeg = await fetch(`http://127.0.0.1:${devPort}/api/users/profile/picture`, {
         method: 'PUT',
         body: jpegFormData,
       });
@@ -284,7 +285,7 @@ async function runUploadSecurityTests() {
         'photo.webp'
       );
 
-      const resWebp = await fetch(`http://localhost:${devPort}/api/users/profile/picture`, {
+      const resWebp = await fetch(`http://127.0.0.1:${devPort}/api/users/profile/picture`, {
         method: 'PUT',
         body: webpFormData,
       });
@@ -327,15 +328,15 @@ async function runUploadSecurityTests() {
         }
       }
     }
-    process.env = originalEnv;
+    for (const key of Object.keys(process.env)) {
+      if (!(key in originalEnv)) {
+        delete process.env[key];
+      }
+    }
+    Object.assign(process.env, originalEnv);
   }
 }
 
-runUploadSecurityTests()
-  .then(() => {
-    process.exitCode = 0;
-  })
-  .catch((err) => {
-    console.error('❌ Test failed:', err);
-    process.exitCode = 1;
-  });
+test('profile_upload_security: layered profile upload validation', async () => {
+  await runUploadSecurityTests();
+});
