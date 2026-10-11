@@ -67,6 +67,8 @@ function runPasswordPolicySeedGuardSecurityTests() {
     'prisma/seed.cjs',
     'prisma/seed.ts',
     'prisma/seed-timetable.ts',
+    'prisma/seed-realistic-data.ts',
+    'prisma/backfill-timetable.ts',
   ]) {
     const source = readFileSync(path.join(apiRoot, relativePath), 'utf8');
     const guardIndex = source.indexOf("NODE_ENV?.trim().toLowerCase() === 'production'");

@@ -2,6 +2,23 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
+if (process.env.NODE_ENV?.trim().toLowerCase() === 'production') {
+  throw new Error('Refusing to run database seed while NODE_ENV=production');
+}
+
+const LOCAL_DATABASE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+const dbUrl = process.env.DATABASE_URL;
+if (dbUrl) {
+  try {
+    const parsed = new URL(dbUrl);
+    if (!LOCAL_DATABASE_HOSTS.has(parsed.hostname)) {
+      throw new Error(`Refusing non-local database host for destructive seed: ${parsed.hostname}`);
+    }
+  } catch (err: any) {
+    if (err.message.includes('Refusing non-local')) throw err;
+  }
+}
+
 const prisma = new PrismaClient();
 
 const realisticData: Record<string, any> = {
@@ -175,7 +192,7 @@ async function cleanOldData() {
 }
 
 async function main() {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV?.trim().toLowerCase() === 'production') {
     console.error('❌ FATAL: This seed script contains destructive operations and cannot be run in production.');
     process.exit(1);
   }

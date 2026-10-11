@@ -1,4 +1,23 @@
 import { PrismaClient } from '@prisma/client';
+import 'dotenv/config';
+
+if (process.env.NODE_ENV?.trim().toLowerCase() === 'production') {
+  throw new Error('Refusing to run timetable backfill while NODE_ENV=production');
+}
+
+const LOCAL_DATABASE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+const dbUrl = process.env.DATABASE_URL;
+if (dbUrl) {
+  try {
+    const parsed = new URL(dbUrl);
+    if (!LOCAL_DATABASE_HOSTS.has(parsed.hostname)) {
+      throw new Error(`Refusing non-local database host for timetable backfill: ${parsed.hostname}`);
+    }
+  } catch (err: any) {
+    if (err.message.includes('Refusing non-local')) throw err;
+  }
+}
+
 const prisma = new PrismaClient();
 
 async function main() {
