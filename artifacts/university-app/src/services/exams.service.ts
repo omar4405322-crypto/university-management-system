@@ -34,7 +34,8 @@ const examsService = {
   gradeSubmission: (submissionId: string | number, score: number): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/exams/submissions/${submissionId}/grade`, { score })),
 
   // ── Anti-Cheat Endpoints ──────────────────────────────────────────────────
-  reportDeviceInfo: (examId: string, deviceInfo: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/exams/${examId}/device-info`, deviceInfo)),
+  reportDeviceInfo: (_examId: string, _deviceInfo: Record<string, unknown>): Promise<ApiResponse<any>> =>
+    Promise.resolve({ success: true, data: null }),
 
   ingestViolation: (examId: string | number, submissionId: string | number, data: Record<string, unknown>): Promise<ApiResponse<any>> =>
     apiRequest(() => api.post(`/exams/${examId}/submissions/${submissionId}/violations`, data)),

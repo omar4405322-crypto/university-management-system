@@ -25,7 +25,7 @@ const departmentService = {
   deleteDepartment: (id: string): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/departments/${id}`)),
 
   autoDivideStudents: (departmentId: string, numberOfGroups: number): Promise<ApiResponse<any>> =>
-    apiRequest(() => api.post(`/student-groups/${departmentId}/auto-divide`, { numberOfGroups })),
+    apiRequest(() => api.post(`/student-groups/departments/${departmentId}/groups/auto-divide`, { numberOfGroups })),
 };
 
 export default departmentService;

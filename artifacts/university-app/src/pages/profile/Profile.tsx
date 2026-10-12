@@ -49,7 +49,6 @@ export function Profile() {
   const [activeTab, setActiveTab] = useState<
     "PERSONAL" | "ACADEMIC" | "SECURITY"
   >("PERSONAL");
-  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [copiedEmail, setCopiedEmail] = useState(false);
@@ -232,51 +231,6 @@ export function Profile() {
     }
   };
 
-  const handleEnableTwoFactor = async () => {
-    setTwoFactorLoading(true);
-    try {
-      const response = await api.patch("/users/profile/two-factor", {
-        enabled: !user?.twoFactorEnabled,
-      });
-      if (response.data.success) {
-        const isEnabled = !user?.twoFactorEnabled;
-        const updated = {
-          ...user,
-          ...response.data.data,
-          twoFactorEnabled: isEnabled,
-        };
-        setUser(updated);
-        try {
-          localStorage.removeItem("user");
-          localStorage.removeItem("profile");
-        } catch (_) {}
-        setMessage({
-          type: "success",
-          text: isEnabled
-            ? t(
-                "profile.twoFactorEnabled",
-                "Two-factor authentication enabled.",
-              )
-            : isRTL
-              ? "تم تعطيل المصادقة الثنائية."
-              : "Two-factor authentication disabled.",
-        });
-      }
-    } catch (error: any) {
-      setMessage({
-        type: "error",
-        text:
-          error.message ||
-          t(
-            "profile.twoFactorError",
-            "Could not enable two-factor authentication.",
-          ),
-      });
-    } finally {
-      setTwoFactorLoading(false);
-    }
-  };
-
   const handleUpdatePic = async () => {
     if (!selectedFile) return;
     setLoading(true);
@@ -340,7 +294,7 @@ export function Profile() {
 
     setPasswordLoading(true);
     try {
-      const res = await api.patch("/users/profile/password", {
+      const res = await api.put("/users/profile/password", {
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
       });
@@ -586,9 +540,7 @@ export function Profile() {
                 >
                   {user?.twoFactorEnabled
                     ? t("profile.enabled", "Enabled")
-                    : isRTL
-                      ? "غير مفعلة"
-                      : "Disabled"}
+                    : t("profile.disabled", "Disabled")}
                 </span>
               </div>
               <Shield
@@ -978,25 +930,16 @@ export function Profile() {
               </div>
             </div>
 
-            <Button
-              size="sm"
-              variant={user?.twoFactorEnabled ? "outline" : "default"}
-              onClick={handleEnableTwoFactor}
-              disabled={twoFactorLoading}
-              className={`h-8 px-3.5 rounded-lg text-xs font-bold cursor-pointer ${
-                user?.twoFactorEnabled
-                  ? "border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
-                  : "bg-amber-600 hover:bg-amber-700 text-white"
-              }`}
-            >
-              {twoFactorLoading ? (
-                <Loader2 className="animate-spin" size={14} />
-              ) : user?.twoFactorEnabled ? (
-                t("profile.enabled", "Enabled")
-              ) : (
-                t("profile.enable2fa", "Enable 2FA")
-              )}
-            </Button>
+            {user?.twoFactorEnabled ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <CheckCircle2 size={13} />
+                {t("profile.enabled", "Enabled")}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                {t("profile.disabled", "Disabled")}
+              </span>
+            )}
           </div>
 
           {/* Active Session Info */}

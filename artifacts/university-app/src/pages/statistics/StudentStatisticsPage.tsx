@@ -17,6 +17,14 @@ interface StudentStatisticsPageProps {
   isAdvisorView?: boolean;
 }
 
+// Official institutional 4-color palette for 4-card statistics row
+export const STAT_CARD_BRAND_COLORS = [
+  '#8BB83C', // Card 0: Institutional Olive/Green (Attendance)
+  '#132231', // Card 1: University Navy (Grades & GPA)
+  '#2F6B87', // Card 2: Deep Support Blue (Academic Distinction)
+  '#D6BA34', // Card 3: Academic Gold (Coursework & Progress)
+];
+
 export default function StudentStatisticsPage({ customStudentId, isAdvisorView }: StudentStatisticsPageProps) {
   const navigate = useNavigate();
   const { studentId: routeStudentId } = useParams<{ studentId?: string }>();
@@ -54,7 +62,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
   const getGaugeStyle = (rate: number) => {
     if (rate >= 85) {
       return {
-        stroke: '#8BB83C',
+        stroke: isDark ? '#8BB83C' : '#587526',
         bgBg: 'bg-emerald-50 dark:bg-emerald-950/40',
         textColor: 'text-emerald-600 dark:text-emerald-400',
         borderColor: 'border-emerald-200 dark:border-emerald-800',
@@ -64,7 +72,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
     }
     if (rate >= 75) {
       return {
-        stroke: '#D6BA34',
+        stroke: isDark ? '#D6BA34' : '#8D7821',
         bgBg: 'bg-amber-50 dark:bg-amber-950/40',
         textColor: 'text-amber-600 dark:text-amber-400',
         borderColor: 'border-amber-200 dark:border-amber-800',
@@ -130,7 +138,7 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
       return {
         label: isRTL ? 'ممتاز (مرتبة الشرف)' : 'Excellent (Honors)',
         badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300',
-        stroke: '#8BB83C',
+        stroke: isDark ? '#8BB83C' : '#587526',
         textClass: 'text-emerald-600 dark:text-emerald-400',
       };
     }
@@ -167,6 +175,57 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
   };
 
   const gpaStanding = getGpaStanding(academics.cumulativeGpa);
+
+  const getDistinctionInfo = (gpa: number) => {
+    if (gpa >= 3.6) {
+      return {
+        title: isRTL ? 'مرتبة الشرف الأولى' : 'First Class Honours',
+        badge: isRTL ? 'امتياز مع مرتبة الشرف' : 'Distinction with Honors',
+        badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300',
+        desc: isRTL
+          ? 'أداء أكاديمي استثنائي ومعدل تراكمي يفوق 3.6 مع استيفاء كامل لمعايير التفوق.'
+          : 'Exceptional academic excellence exceeding 3.6 cumulative GPA with honors standing.',
+        iconColor: 'text-amber-500',
+        circleBg: 'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800',
+      };
+    }
+    if (gpa >= 3.0) {
+      return {
+        title: isRTL ? 'مرتبة الشرف الثانية' : 'Second Class Honours',
+        badge: isRTL ? 'جيد جداً مع مرتبة الشرف' : 'High Standing',
+        badgeClass: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-sky-300',
+        desc: isRTL
+          ? 'معدل تراكمي متميز يفوق 3.0 ومؤهل للوائح التكريم والتقدير الأكاديمي.'
+          : 'Commendable academic standing exceeding 3.0 cumulative GPA.',
+        iconColor: 'text-sky-500',
+        circleBg: 'bg-sky-50 dark:bg-sky-950/60 border-sky-200 dark:border-sky-800',
+      };
+    }
+    if (gpa >= 2.0) {
+      return {
+        title: isRTL ? 'حالة أكاديمية منتظمة' : 'Good Academic Standing',
+        badge: isRTL ? 'وضع أكاديمي جيد' : 'Good Standing',
+        badgeClass: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300',
+        desc: isRTL
+          ? 'الطالب يسير بانتظام وفق الخطة الدراسية دون أي تعثر أو ملاحظات أكاديمية.'
+          : 'Student maintains satisfactory progression in adherence with degree curriculum.',
+        iconColor: 'text-indigo-500',
+        circleBg: 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800',
+      };
+    }
+    return {
+      title: isRTL ? 'تحذير أكاديمي' : 'Academic Warning',
+      badge: isRTL ? 'تحت الملاحظة' : 'Probation',
+      badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300',
+      desc: isRTL
+        ? 'المعدل التراكمي أقل من 2.0 ويحتاج إلى مراجعة المرشد الأكاديمي لرفع المعدل.'
+        : 'Cumulative GPA is below 2.0 threshold. Academic advising intervention recommended.',
+      iconColor: 'text-rose-500',
+      circleBg: 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800',
+    };
+  };
+
+  const distinctionInfo = getDistinctionInfo(academics.cumulativeGpa);
 
   const getLetterBadge = (letterGrade: string, gradePoints: number) => {
     switch (letterGrade) {
@@ -248,11 +307,16 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
         {/* Card 1: Attendance Performance */}
         <Card className="border-slate-200/80 dark:border-slate-800 shadow-md">
           <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800/80 flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-emerald-500" />
+            <CardTitle className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs"
+                style={{ backgroundColor: STAT_CARD_BRAND_COLORS[0 % 4] }}
+              >
+                <BarChart3 className="w-4 h-4 text-slate-900" />
+              </div>
               {isRTL ? 'نسبة وسجل الحضور' : 'Attendance Performance'}
             </CardTitle>
-            <span className="text-xs text-slate-400 font-medium">
+            <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
               {isRTL ? 'سجل المحاضرات' : 'Lecture Registry'}
             </span>
           </CardHeader>
@@ -335,8 +399,13 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
         {/* Card 2: Academic Grades & Cumulative GPA */}
         <Card className="border-slate-200/80 dark:border-slate-800 shadow-md">
           <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800/80 flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <GraduationCap className="w-5 h-5 text-sky-500" />
+            <CardTitle className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs border border-slate-700/60 dark:border-slate-600"
+                style={{ backgroundColor: STAT_CARD_BRAND_COLORS[1 % 4] }}
+              >
+                <GraduationCap className="w-4 h-4 text-white" />
+              </div>
               {t('statistics.gpaTitle') || (isRTL ? 'المعدل التراكمي والدرجات' : 'Academic Grade Average & GPA')}
             </CardTitle>
             {academics.coursesCount > 0 ? (
@@ -486,55 +555,129 @@ export default function StudentStatisticsPage({ customStudentId, isAdvisorView }
           </CardContent>
         </Card>
 
-        {/* Card 3: Academic Excellence Distinction (PLACEHOLDER FOR SLICE 3) */}
+        {/* Card 3: Academic Excellence Distinction */}
         <Card className="border-slate-200/80 dark:border-slate-800 shadow-md relative overflow-hidden">
           <CardHeader className="pb-2 border-b border-slate-100 dark:border-slate-800/80 flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <Award className="w-5 h-5 text-amber-500" />
-              {isRTL ? 'وسام التفوق الأكاديمي' : 'Academic Distinction Status'}
+            <CardTitle className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs"
+                style={{ backgroundColor: STAT_CARD_BRAND_COLORS[2 % 4] }}
+              >
+                <Award className="w-4 h-4 text-white" />
+              </div>
+              {isRTL ? 'وسام التفوق ومرتبة الشرف' : 'Academic Distinction Status'}
             </CardTitle>
-            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 text-xs">
-              {isRTL ? 'قريباً (Slice 3)' : 'Coming Soon'}
+            <Badge className={`${distinctionInfo.badgeClass} text-xs`}>
+              {distinctionInfo.badge}
             </Badge>
           </CardHeader>
           <CardContent className="pt-6 flex flex-col items-center justify-center text-center space-y-3 min-h-[220px]">
-            <div className="w-14 h-14 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-800">
-              <Award className="w-7 h-7" />
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center shadow-md border border-sky-600/30"
+              style={{
+                backgroundColor: STAT_CARD_BRAND_COLORS[2 % 4],
+              }}
+            >
+              <Award className="w-7 h-7 text-white" />
             </div>
-            <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">
-              {isRTL ? 'حالة التفوق ومرتبة الشرف' : 'Academic Excellence Status'}
-            </h3>
-            <p className="text-xs text-slate-400 max-w-sm">
-              {isRTL 
-                ? 'جاري اعتماد شرط ومعايير لوحة التفوق والأكاديميين المتميزين.' 
-                : 'Distinction threshold logic will be activated upon confirming the official excellence formula.'}
-            </p>
+            <div className="space-y-1">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">
+                {distinctionInfo.title}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
+                {distinctionInfo.desc}
+              </p>
+            </div>
+            <div className="pt-2 flex items-center gap-4 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <div className="flex flex-col items-center">
+                <span className="text-slate-400 text-[10px] uppercase font-bold">{isRTL ? 'المعدل التراكمي' : 'Cumulative GPA'}</span>
+                <span className="text-sm font-black text-slate-900 dark:text-white">{academics.cumulativeGpa.toFixed(2)} / 4.00</span>
+              </div>
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+              <div className="flex flex-col items-center">
+                <span className="text-slate-400 text-[10px] uppercase font-bold">{isRTL ? 'الساعات المنجزة' : 'Earned Credits'}</span>
+                <span className="text-sm font-black text-brand-primary-600 dark:text-brand-primary-400">{academics.totalCreditsEarned} {isRTL ? 'ساعة' : 'Hrs'}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Card 4: Projects Performance (PLACEHOLDER FOR SLICE 4) */}
+        {/* Card 4: Coursework & Degree Progression */}
         <Card className="border-slate-200/80 dark:border-slate-800 shadow-md relative overflow-hidden">
           <CardHeader className="pb-2 border-b border-slate-100 dark:border-slate-800/80 flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <FolderKanban className="w-5 h-5 text-indigo-500" />
-              {isRTL ? 'أداء المشاريع والتكليفات' : 'Project Performance'}
+            <CardTitle className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs"
+                style={{ backgroundColor: STAT_CARD_BRAND_COLORS[3 % 4] }}
+              >
+                <FolderKanban className="w-4 h-4 text-slate-900 dark:text-slate-950" />
+              </div>
+              {isRTL ? 'إنجاز الساعات والمقررات' : 'Coursework & Degree Progress'}
             </CardTitle>
-            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 text-xs">
-              {isRTL ? 'قريباً (Slice 4)' : 'Coming Soon'}
+            <Badge
+              className="text-xs font-bold text-slate-900 dark:text-slate-950 border-transparent shadow-xs"
+              style={{
+                backgroundColor: STAT_CARD_BRAND_COLORS[3 % 4],
+              }}
+            >
+              {isRTL ? 'مسجل ومنتظم' : 'Active & Enrolled'}
             </Badge>
           </CardHeader>
-          <CardContent className="pt-6 flex flex-col items-center justify-center text-center space-y-3 min-h-[220px]">
-            <div className="w-14 h-14 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
-              <FolderKanban className="w-7 h-7" />
+          <CardContent className="pt-6 flex flex-col justify-between space-y-4 min-h-[220px]">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center shadow-xs border border-amber-600/30 shrink-0"
+                style={{
+                  backgroundColor: STAT_CARD_BRAND_COLORS[3 % 4],
+                }}
+              >
+                <GraduationCap className="w-6 h-6 text-slate-900 dark:text-slate-950" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                  {isRTL ? 'التقدم في متطلبات التخرج' : 'Curriculum Completion'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {isRTL
+                    ? `إجمالي المقررات المسجلة: ${academics.coursesCount || academics.courses?.length || 0} مقرر`
+                    : `Registered Courses: ${academics.coursesCount || academics.courses?.length || 0} Courses`}
+                </p>
+              </div>
             </div>
-            <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">
-              {isRTL ? 'تقييم التكليفات ومشاريع التخرج' : 'Project & Assignment Evaluations'}
-            </h3>
-            <p className="text-xs text-slate-400 max-w-sm">
-              {isRTL 
-                ? 'سيتم تجميع أداء تكليفات المواد والمشاريع فور تجهيز النماذج الخاصة بها.' 
-                : 'Project performance aggregation will be available in Slice 4.'}
-            </p>
+
+            <div className="space-y-2 bg-slate-50 dark:bg-slate-900/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                <span>{isRTL ? 'نسبة إنجاز الساعات' : 'Credit Completion'}</span>
+                <span className="font-bold text-slate-900 dark:text-slate-100">
+                  {academics.totalCreditsAttempted > 0
+                    ? `${Math.min(100, Math.round((academics.totalCreditsEarned / academics.totalCreditsAttempted) * 100))}%`
+                    : '100%'}
+                </span>
+              </div>
+              <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    backgroundColor: isDark ? STAT_CARD_BRAND_COLORS[3 % 4] : '#8D7821',
+                    width: `${academics.totalCreditsAttempted > 0
+                      ? Math.min(100, Math.round((academics.totalCreditsEarned / academics.totalCreditsAttempted) * 100))
+                      : 100}%`
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+                <span>{isRTL ? 'ساعات منجزة:' : 'Earned:'} {academics.totalCreditsEarned}</span>
+                <span>{isRTL ? 'ساعات مسجلة:' : 'Attempted:'} {academics.totalCreditsAttempted}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
+              <span>{isRTL ? 'حالة القيد الأكاديمي' : 'Enrollment Status'}</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {isRTL ? 'منتظم ومستمر' : 'Active Standing'}
+              </span>
+            </div>
           </CardContent>
         </Card>
 

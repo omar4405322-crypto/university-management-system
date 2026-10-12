@@ -144,7 +144,7 @@ export function SettingsPage() {
 
     setLoading(true);
     try {
-      await api.patch("/users/profile/password", {
+      await api.put("/users/profile/password", {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
       });

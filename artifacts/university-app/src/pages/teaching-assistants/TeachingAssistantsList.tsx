@@ -3,7 +3,6 @@ import { useTeachingAssistants } from "../../hooks/useTeachingAssistants";
 import teachingAssistantsService from "../../services/teachingAssistants.service";
 import AddTAModal from "./AddTAModal";
 import EditTAModal from "./EditTAModal";
-import AssignDoctorModal from "./AssignDoctorModal";
 import AssignTACourseModal from "./AssignTACourseModal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import Card, { StatCard } from "../../components/ui/card";
@@ -36,7 +35,6 @@ import {
   Plus,
   Search,
   GraduationCap,
-  Link,
   Calendar,
   X,
   BookOpen,
@@ -77,7 +75,6 @@ const TeachingAssistantsList = () => {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isAssignCourseModalOpen, setIsAssignCourseModalOpen] = useState(false);
   const [assignCourseTA, setAssignCourseTA] = useState<TeachingAssistantRow | null>(null);
   const [selectedTA, setSelectedTA] = useState<TeachingAssistantRow | null>(null);
@@ -295,11 +292,6 @@ const TeachingAssistantsList = () => {
   const handleEdit = useCallback((ta: TeachingAssistantRow) => {
     setSelectedTA(ta);
     setIsEditModalOpen(true);
-  }, []);
-
-  const handleAssign = useCallback((ta: TeachingAssistantRow) => {
-    setSelectedTA(ta);
-    setIsAssignModalOpen(true);
   }, []);
 
   return (
@@ -696,13 +688,6 @@ const TeachingAssistantsList = () => {
                                   navigate(`/schedules/ta?taId=${ta.id}`),
                               },
                               {
-                                label: t("teachingAssistants.assignDoctor"),
-                                ariaLabel: t("teachingAssistants.assignDoctorName", { name: `${ta.firstName} ${ta.lastName}`, defaultValue: `Assign doctor to ${ta.firstName} ${ta.lastName}` }),
-                                icon: Link,
-                                variant: "view",
-                                onClick: () => handleAssign(ta),
-                              },
-                              {
                                 label: t("common.edit"),
                                 ariaLabel: t("teachingAssistants.editTaName", { name: `${ta.firstName} ${ta.lastName}` }),
                                 icon: Edit2,
@@ -808,20 +793,6 @@ const TeachingAssistantsList = () => {
             showToast(t("teachingAssistants.updateSuccess"), "success");
             fetchTAs();
             fetchStats();
-          }}
-        />
-      )}
-
-      {isAssignModalOpen && selectedTA && (
-        <AssignDoctorModal
-          isOpen={isAssignModalOpen}
-          onClose={() => {
-            setIsAssignModalOpen(false);
-            setSelectedTA(null);
-          }}
-          ta={selectedTA}
-          onSuccess={() => {
-            fetchTAs();
           }}
         />
       )}
