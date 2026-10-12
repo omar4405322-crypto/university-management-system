@@ -22,7 +22,7 @@ import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import timetableService from '../../services/timetable.service';
 import type { College, Department } from '../../types/timetable.types';
-import type { TimetableItem } from './TimetableManagement';
+import type { TimetableItem } from '../../types/models';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 

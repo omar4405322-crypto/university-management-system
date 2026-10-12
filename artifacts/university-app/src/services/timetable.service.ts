@@ -1,6 +1,5 @@
 import { apiRequest } from '../lib/apiClient';
-import type { ApiResponse } from '../types/models';
-import type { TimetableItem } from '../pages/schedules/TimetableManagement';
+import type { ApiResponse, TimetableItem } from '../types/models';
 import type { TimetableDocument } from '../types/timetable.types';
 import api from './api';
 

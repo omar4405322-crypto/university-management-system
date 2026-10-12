@@ -16,7 +16,7 @@ import {
   redisUsedMemoryBytesGauge,
   redisHitRatioGauge,
 } from "../src/utils/metrics";
-import { getRedisStatus, getRedisTelemetry, getRedisSlowlog } from "../src/utils/redis.utils";
+import { getRedisStatus, getRedisTelemetry } from "../src/utils/redis.utils";
 import app from "../src/app";
 
 test("OBS-001: Request ID middleware propagates incoming X-Request-Id and attaches req.log child logger", async () => {
@@ -287,24 +287,6 @@ test("OBS-007: Redis telemetry parser extracts metrics from INFO and handles unr
   assert.equal(telemetry.keyspaceHits, 900);
   assert.equal(telemetry.keyspaceMisses, 100);
   assert.equal(telemetry.hitRatio, 0.9);
-});
-
-test("OBS-008: Redis slowlog diagnostics query returns entries safely", async () => {
-  // 1. Null client returns empty array
-  assert.deepEqual(await getRedisSlowlog(10, null), []);
-
-  // 2. Ready client returns slowlog array
-  const mockRedis: any = {
-    status: "ready",
-    slowlog: async (cmd: string, count: number) => {
-      assert.equal(cmd, "GET");
-      assert.equal(count, 5);
-      return [{ id: 1, duration: 15000, command: ["KEYS", "*"] }];
-    },
-  };
-  const entries = await getRedisSlowlog(5, mockRedis);
-  assert.equal(entries.length, 1);
-  assert.equal(entries[0].duration, 15000);
 });
 
 test("OBS-009: Live HTTP server echos correlation IDs, handles liveness/readiness, and sanitizes auth failure", async () => {

@@ -280,19 +280,4 @@ export const getRedisTelemetry = async (
   }
 };
 
-export const getRedisSlowlog = async (
-  limit: number = 10,
-  client: Redis | null = redis,
-): Promise<any[]> => {
-  if (!client || client.status !== "ready") {
-    return [];
-  }
-  try {
-    return await (client as any).slowlog("GET", limit);
-  } catch (err: any) {
-    logRedisError(`[REDIS] Failed to get slowlog: ${err.message}`);
-    return [];
-  }
-};
-
 export { redis };

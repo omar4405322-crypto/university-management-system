@@ -13,6 +13,8 @@ const SENSITIVE_KEYS = new Set([
   'authorization',
   'cookie',
   'cookies',
+  'setcookie',
+  'setcookies',
   'nationalid',
   'creditcard',
   'cvv',
@@ -22,15 +24,15 @@ function normalizeKey(key: string): string {
   return key.replace(/[^a-z0-9]/gi, '').toLowerCase();
 }
 
-function redactObject(obj: any, depth = 0): any {
+function redactObject(obj: unknown, depth = 0): unknown {
   if (depth > 6 || !obj) return obj;
   if (Array.isArray(obj)) {
     return obj.map((item) => redactObject(item, depth + 1));
   }
   if (typeof obj !== 'object') return obj;
 
-  const result: Record<string, any> = {};
-  for (const [key, value] of Object.entries(obj)) {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
     if (SENSITIVE_KEYS.has(normalizeKey(key))) {
       result[key] = '[REDACTED]';
     } else if (typeof value === 'object' && value !== null) {
@@ -45,7 +47,7 @@ function redactObject(obj: any, depth = 0): any {
 }
 
 export const redactSensitiveFormat = winston.format((info) => {
-  const redacted = redactObject(info);
+  const redacted = redactObject(info) as Record<string, unknown>;
   for (const key of Object.keys(info)) {
     if (key in redacted) {
       info[key] = redacted[key];
@@ -76,7 +78,13 @@ const logger: winston.Logger = winston.createLogger({
               redactSensitiveFormat(),
               winston.format.colorize(),
               winston.format.simple(),
-              winston.format.printf(({ level, message, timestamp, stack }: any) => {
+              winston.format.printf((info) => {
+                const { level, message, timestamp, stack } = info as {
+                  level: string;
+                  message: string;
+                  timestamp?: string;
+                  stack?: string;
+                };
                 if (stack) return `${timestamp} ${level}: ${message} - ${stack}`;
                 return `${timestamp} ${level}: ${message}`;
               })

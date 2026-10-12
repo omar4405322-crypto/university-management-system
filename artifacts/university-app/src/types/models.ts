@@ -54,3 +54,34 @@ export interface ApiResponse<T> {
   status?: number;
   error?: unknown;
 }
+
+// ===== TIMETABLE ITEM =====
+export interface TimetableItem {
+  id: number;
+  title?: string;
+  description?: string;
+  departmentId: number;
+  collegeId: number;
+  academicYear: number;
+  semester: number;
+  status?: 'PUBLISHED' | 'DRAFT' | string;
+  college?: {
+    id: number;
+    name: string;
+    nameAr?: string;
+  };
+  department?: {
+    id: number;
+    name: string;
+    nameAr?: string;
+    collegeId?: number;
+    college?: { id: number; name: string };
+  };
+  slots?: any[];
+  _count?: {
+    slots?: number;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+

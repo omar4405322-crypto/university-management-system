@@ -35,7 +35,7 @@ import timetableService from '../../services/timetable.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import type { College, Department } from '../../types/timetable.types';
-import type { ApiResponse } from '../../types/models';
+import type { ApiResponse, TimetableItem } from '../../types/models';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
@@ -44,34 +44,7 @@ import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
 import { useLanguage } from '../../context/LanguageContext';
 
-export interface TimetableItem {
-  id: number;
-  title?: string;
-  description?: string;
-  departmentId: number;
-  collegeId: number;
-  academicYear: number;
-  semester: number;
-  status?: 'PUBLISHED' | 'DRAFT' | string;
-  college?: {
-    id: number;
-    name: string;
-    nameAr?: string;
-  };
-  department?: {
-    id: number;
-    name: string;
-    nameAr?: string;
-    collegeId?: number;
-    college?: { id: number; name: string };
-  };
-  slots?: any[];
-  _count?: {
-    slots?: number;
-  };
-  createdAt?: string;
-  updatedAt?: string;
-}
+export type { TimetableItem };
 
 const TimetableManagement = () => {
   const { t } = useTranslation();

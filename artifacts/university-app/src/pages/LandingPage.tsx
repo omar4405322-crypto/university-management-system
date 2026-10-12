@@ -688,7 +688,7 @@ const LandingPage: React.FC = () => {
               <p className="text-slate-400 text-sm leading-relaxed font-medium">
                 {t('landing.footer.desc')}
               </p>
-              {/* TODO: Re-add social media links once official university handles are provided */}
+              {/* Social media links deferred until official university external brand channels are provisioned */}
             </div>
 
             {/* Quick Links */}
