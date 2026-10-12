@@ -11,7 +11,8 @@ import {
 
 /**
  * Global Error Handler Middleware
- * SEC-001: Structured production error logging without raw stack traces or internal leaks.
+ * SEC-001 / OBS-001: Structured error logging with correlated IDs, stack traces for 5xx only,
+ * and zero internal leakage to production clients.
  */
 const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
   if (err?.type === 'entity.parse.failed') {
@@ -24,11 +25,17 @@ const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFun
     console.error('[DEV GLOBAL ERROR]', err?.message, err?.stack);
   }
 
+  // Preserve request correlation ID across access logs, Sentry context, and error response
   const errorId =
+    req?.id ||
+    res?.locals?.requestId ||
     (req?.headers?.['x-request-id'] as string) ||
     (req?.headers?.['x-correlation-id'] as string) ||
     crypto.randomUUID();
 
+  req.id = errorId;
+  if (res.locals) res.locals.requestId = errorId;
+  res.setHeader?.('X-Request-Id', errorId);
   res.setHeader?.('X-Error-Id', errorId);
 
   if (err?.type === 'entity.too.large') {
@@ -46,6 +53,7 @@ const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFun
     let error = { ...err };
     error.message = err.message;
     error.name = err.name;
+    error.stack = err.stack;
     error.statusCode = err.statusCode;
     error.status = err.status;
     error.isOperational = err.isOperational;
@@ -87,12 +95,22 @@ const handleJWTExpiredError = () =>
   new AuthenticationError('Your session has expired! Please login again.');
 
 const sendErrorDev = (err: any, req: Request, res: Response, errorId: string) => {
-  logger.error(`[DEV ERROR] ${err.message}`, {
-    errorId,
-    stack: err.stack,
-    path: req?.originalUrl?.split('?')[0] || req?.url || 'unknown',
-    method: req?.method || 'UNKNOWN',
-  });
+  if (err.isOperational && err.statusCode < 500) {
+    logger.warn(`[DEV OP ERROR] ${err.message}`, {
+      errorId,
+      path: req?.originalUrl?.split('?')[0] || req?.url || 'unknown',
+      method: req?.method || 'UNKNOWN',
+      statusCode: err.statusCode,
+      code: err.code || err.name,
+    });
+  } else {
+    logger.error(`[DEV ERROR] ${err.message}`, {
+      errorId,
+      stack: err.stack,
+      path: req?.originalUrl?.split('?')[0] || req?.url || 'unknown',
+      method: req?.method || 'UNKNOWN',
+    });
+  }
 
   res.status(err.statusCode).json({
     success: false,
@@ -107,7 +125,9 @@ const sendErrorDev = (err: any, req: Request, res: Response, errorId: string) =>
 const sendErrorProd = (err: any, req: Request, res: Response, errorId: string) => {
   // Operational, trusted error: send structured message to client
   if (err.isOperational) {
-    logger.warn(`[OP ERROR] ${err.message}`, {
+    const logFn = err.statusCode >= 500 ? logger.error : logger.warn;
+    const logPrefix = err.statusCode >= 500 ? '[OP 5XX ERROR]' : '[OP ERROR]';
+    logFn(`${logPrefix} ${err.message}`, {
       errorId,
       path: req?.originalUrl?.split('?')[0] || req?.url || 'unknown',
       method: req?.method || 'UNKNOWN',
@@ -123,9 +143,9 @@ const sendErrorProd = (err: any, req: Request, res: Response, errorId: string) =
       errors: err.errors || undefined,
     });
   }
-  // Programming or other unknown error: don't leak error details or raw stack traces in production
+  // Programming error or unknown 5xx server failure: log without raw stack in meta (SEC-001)
   else {
-    logger.error(`[CRITICAL ERROR] Reference ${errorId}`, {
+    logger.error(`[CRITICAL ERROR] ${err.message || 'Internal server error'} (Reference: ${errorId})`, {
       errorId,
       type: err.name || 'InternalServerError',
       statusCode: 500,

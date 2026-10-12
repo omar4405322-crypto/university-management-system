@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/node";
+import logger from "../utils/logger";
+import type winston from "winston";
 
 const SAFE_REQUEST_ID_REGEX = /^[a-zA-Z0-9_-]{1,128}$/;
 
@@ -8,6 +10,7 @@ declare global {
   namespace Express {
     interface Request {
       id?: string;
+      log?: winston.Logger;
     }
   }
 }
@@ -15,6 +18,7 @@ declare global {
 /**
  * Validates or generates a strict correlation ID for each incoming HTTP request.
  * Propagates valid incoming headers or generates a random UUID v4.
+ * Attaches a correlated child logger (req.log) to the request.
  */
 export const requestIdMiddleware = (
   req: Request,
@@ -33,6 +37,7 @@ export const requestIdMiddleware = (
   }
 
   req.id = validId;
+  req.log = logger.child({ requestId: validId });
   res.locals.requestId = validId;
   res.setHeader("X-Request-Id", validId);
 

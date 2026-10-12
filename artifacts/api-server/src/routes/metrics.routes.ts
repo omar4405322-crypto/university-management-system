@@ -1,5 +1,6 @@
 import { Router, Request, Response, type IRouter } from "express";
 import { register, updateInfrastructureMetrics } from "../utils/metrics";
+import logger from "../utils/logger";
 
 const router: IRouter = Router();
 
@@ -44,7 +45,11 @@ router.get("/metrics", metricsAuthMiddleware, async (_req: Request, res: Respons
     const metrics = await register.metrics();
     res.send(metrics);
   } catch (err: any) {
-    res.status(500).send(`Error collecting metrics: ${err.message}`);
+    logger.error("[METRICS] Error collecting metrics", { error: err?.message || err });
+    res.status(500).json({
+      status: "error",
+      message: "Error collecting metrics",
+    });
   }
 });
 

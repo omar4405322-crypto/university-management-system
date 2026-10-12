@@ -207,4 +207,92 @@ export const closeRedis = async (client: Redis | null = redis): Promise<void> =>
   }
 };
 
+export interface RedisTelemetry {
+  connected: boolean;
+  status: string;
+  usedMemoryBytes: number;
+  usedMemoryHuman: string;
+  connectedClients: number;
+  blockedClients: number;
+  instantaneousOpsPerSec: number;
+  keyspaceHits: number;
+  keyspaceMisses: number;
+  hitRatio: number;
+}
+
+export const getRedisTelemetry = async (
+  client: Redis | null = redis,
+): Promise<RedisTelemetry> => {
+  const fallback: RedisTelemetry = {
+    connected: false,
+    status: client ? client.status : "disabled",
+    usedMemoryBytes: 0,
+    usedMemoryHuman: "0B",
+    connectedClients: 0,
+    blockedClients: 0,
+    instantaneousOpsPerSec: 0,
+    keyspaceHits: 0,
+    keyspaceMisses: 0,
+    hitRatio: 0,
+  };
+
+  if (!client || client.status !== "ready") {
+    return fallback;
+  }
+
+  try {
+    const rawInfo = await client.info();
+    const infoMap: Record<string, string> = {};
+    for (const line of rawInfo.split("\r\n")) {
+      if (line && !line.startsWith("#")) {
+        const [k, v] = line.split(":");
+        if (k && v !== undefined) {
+          infoMap[k.trim()] = v.trim();
+        }
+      }
+    }
+
+    const usedMemoryBytes = Number(infoMap["used_memory"] || 0);
+    const usedMemoryHuman = infoMap["used_memory_human"] || "0B";
+    const connectedClients = Number(infoMap["connected_clients"] || 0);
+    const blockedClients = Number(infoMap["blocked_clients"] || 0);
+    const instantaneousOpsPerSec = Number(infoMap["instantaneous_ops_per_sec"] || 0);
+    const keyspaceHits = Number(infoMap["keyspace_hits"] || 0);
+    const keyspaceMisses = Number(infoMap["keyspace_misses"] || 0);
+    const totalHitsMisses = keyspaceHits + keyspaceMisses;
+    const hitRatio = totalHitsMisses > 0 ? keyspaceHits / totalHitsMisses : 1.0;
+
+    return {
+      connected: true,
+      status: client.status,
+      usedMemoryBytes,
+      usedMemoryHuman,
+      connectedClients,
+      blockedClients,
+      instantaneousOpsPerSec,
+      keyspaceHits,
+      keyspaceMisses,
+      hitRatio,
+    };
+  } catch (err: any) {
+    logRedisError(`[REDIS] Failed to collect telemetry: ${err.message}`);
+    return fallback;
+  }
+};
+
+export const getRedisSlowlog = async (
+  limit: number = 10,
+  client: Redis | null = redis,
+): Promise<any[]> => {
+  if (!client || client.status !== "ready") {
+    return [];
+  }
+  try {
+    return await (client as any).slowlog("GET", limit);
+  } catch (err: any) {
+    logRedisError(`[REDIS] Failed to get slowlog: ${err.message}`);
+    return [];
+  }
+};
+
 export { redis };

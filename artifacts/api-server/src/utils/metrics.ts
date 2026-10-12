@@ -1,7 +1,7 @@
 import client from "prom-client";
 import logger from "./logger";
 import prisma from "./prismaClient";
-import { getRedisStatus } from "./redis.utils";
+import { getRedisStatus, getRedisTelemetry } from "./redis.utils";
 import { getIO } from "./socket";
 
 // Create a dedicated Registry for the application metrics
@@ -80,6 +80,30 @@ export const redisUpGauge = new client.Gauge({
   registers: [register],
 });
 
+export const redisConnectedClientsGauge = new client.Gauge({
+  name: "ums_redis_connected_clients",
+  help: "Number of connected clients to Redis",
+  registers: [register],
+});
+
+export const redisUsedMemoryBytesGauge = new client.Gauge({
+  name: "ums_redis_used_memory_bytes",
+  help: "Current Redis memory usage in bytes",
+  registers: [register],
+});
+
+export const redisHitRatioGauge = new client.Gauge({
+  name: "ums_redis_hit_ratio",
+  help: "Redis cache hit ratio (0.0 to 1.0)",
+  registers: [register],
+});
+
+export const redisOpsPerSecGauge = new client.Gauge({
+  name: "ums_redis_instantaneous_ops_per_sec",
+  help: "Current Redis instantaneous operations per second",
+  registers: [register],
+});
+
 /**
  * Route normalizer to eliminate high-cardinality URL parameters.
  * Replaces UUIDs, integer IDs, and hashes with placeholders.
@@ -108,9 +132,17 @@ export const updateInfrastructureMetrics = async (): Promise<void> => {
   }
 
   try {
-    const redisStatus = getRedisStatus();
-    redisUpGauge.set(redisStatus.connected ? 1 : 0);
+    const telemetry = await getRedisTelemetry();
+    redisUpGauge.set(telemetry.connected ? 1 : 0);
+    redisConnectedClientsGauge.set(telemetry.connectedClients);
+    redisUsedMemoryBytesGauge.set(telemetry.usedMemoryBytes);
+    redisHitRatioGauge.set(telemetry.hitRatio);
+    redisOpsPerSecGauge.set(telemetry.instantaneousOpsPerSec);
   } catch {
     redisUpGauge.set(0);
+    redisConnectedClientsGauge.set(0);
+    redisUsedMemoryBytesGauge.set(0);
+    redisHitRatioGauge.set(0);
+    redisOpsPerSecGauge.set(0);
   }
 };

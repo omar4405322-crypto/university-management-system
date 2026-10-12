@@ -1,5 +1,6 @@
 import prisma from './prismaClient';
 import { Role, type Prisma } from '@prisma/client';
+import logger from './logger';
 
 export interface BaseNotificationParams {
   title: string;
@@ -30,7 +31,7 @@ export const createNotification = async ({
       },
     });
   } catch (error) {
-    console.error('Error creating notification:', error);
+    logger.error('Error creating notification', { error: (error as Error)?.message || error, userId });
     return null;
   }
 };
@@ -52,7 +53,7 @@ export const notifyRole = async ({ role, title, message, type = 'info' }: Notify
       )
     );
   } catch (error) {
-    console.error(`Error notifying role ${role}:`, error);
+    logger.error(`Error notifying role ${role}`, { error: (error as Error)?.message || error, role });
     return null;
   }
 };
@@ -101,7 +102,7 @@ export const notifyStudentsInCourse = async (
       data: notifications,
     });
   } catch (error) {
-    console.error('Error notifying students in course:', error);
+    logger.error('Error notifying students in course', { error: (error as Error)?.message || error });
     if (txClient) throw error;
     return null;
   }
@@ -180,7 +181,7 @@ export const notifyAdminsOfNewRequest = async ({
     }
     return null;
   } catch (error) {
-    console.error('Error notifying admins of new request:', error);
+    logger.error('Error notifying admins of new request', { error: (error as Error)?.message || error });
     return null;
   }
 };
