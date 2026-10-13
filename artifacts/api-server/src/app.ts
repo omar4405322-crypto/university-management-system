@@ -150,6 +150,8 @@ const livenessHandler = (_req: Request, res: Response): void => {
 };
 app.get('/api/healthz', healthLimiter, livenessHandler);
 app.get('/api/health', healthLimiter, livenessHandler);
+app.get('/healthz', healthLimiter, livenessHandler);
+app.get('/health', healthLimiter, livenessHandler);
 
 export const createPublicReadinessHandler = (
   redisStatusProvider: typeof getRedisStatus = getRedisStatus,
@@ -192,6 +194,7 @@ export const createPublicReadinessHandler = (
 
 const publicReadinessHandler = createPublicReadinessHandler();
 app.get('/api/ready', healthLimiter, publicReadinessHandler);
+app.get('/ready', healthLimiter, publicReadinessHandler);
 
 export const createReadinessHandler = (
   redisStatusProvider: typeof getRedisStatus = getRedisStatus,

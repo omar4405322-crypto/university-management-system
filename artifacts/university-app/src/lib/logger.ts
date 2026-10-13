@@ -5,7 +5,7 @@ export const logger = {
     if (isDev) console.log('[LOG]', ...args);
   },
   error: (...args: unknown[]): void => {
-    if (isDev) console.error('[ERR]', ...args);
+    console.error('[ERR]', ...args);
   },
   warn: (...args: unknown[]): void => {
     if (isDev) console.warn('[WARN]', ...args);

@@ -13,6 +13,10 @@ if (!rawPort) {
 }
 
 const PORT = Number(rawPort);
+if (!Number.isSafeInteger(PORT) || PORT <= 0 || PORT > 65535) {
+  console.error("PORT environment variable must be a valid integer between 1 and 65535");
+  process.exit(1);
+}
 const server: http.Server = http.createServer(app);
 
 // Authoritative single bootstrap initialization
