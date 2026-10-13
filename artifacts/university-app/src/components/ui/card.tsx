@@ -146,11 +146,11 @@ const colorStyles: Record<
     linkIconColor: 'text-brand-green',
   },
   navy: {
-    borderHover: 'hover:border-[#1B2E42] dark:hover:border-slate-400',
-    borderActive: 'border-[#1B2E42] dark:border-slate-400 ring-2 ring-[#1B2E42]/20',
-    shadowHover: 'hover:shadow-[0_10px_25px_-5px_rgba(27,46,66,0.35)]',
+    borderHover: 'hover:border-[#132231] dark:hover:border-slate-400',
+    borderActive: 'border-[#132231] dark:border-slate-400 ring-2 ring-[#132231]/20',
+    shadowHover: 'hover:shadow-[0_10px_25px_-5px_rgba(19,34,49,0.35)]',
     iconWrapper:
-      'bg-[#1B2E42] text-white shadow-md shadow-[#1B2E42]/35 group-hover:shadow-[0_6px_20px_rgba(27,46,66,0.45)]',
+      'bg-[#132231] text-white shadow-md shadow-[#132231]/35 group-hover:shadow-[0_6px_20px_rgba(19,34,49,0.45)]',
     valueText: 'text-brand-navy dark:text-slate-100',
     linkIconColor: 'text-brand-navy dark:text-slate-300',
   },
@@ -209,11 +209,11 @@ const colorStyles: Record<
     linkIconColor: 'text-brand-support-blue dark:text-brand-support-blue-light',
   },
   indigo: {
-    borderHover: 'hover:border-[#1B2E42] dark:hover:border-slate-400',
-    borderActive: 'border-[#1B2E42] dark:border-slate-400 ring-2 ring-[#1B2E42]/20',
-    shadowHover: 'hover:shadow-[0_10px_25px_-5px_rgba(27,46,66,0.35)]',
+    borderHover: 'hover:border-[#132231] dark:hover:border-slate-400',
+    borderActive: 'border-[#132231] dark:border-slate-400 ring-2 ring-[#132231]/20',
+    shadowHover: 'hover:shadow-[0_10px_25px_-5px_rgba(19,34,49,0.35)]',
     iconWrapper:
-      'bg-[#1B2E42] text-white shadow-md shadow-[#1B2E42]/35 group-hover:shadow-[0_6px_20px_rgba(27,46,66,0.45)]',
+      'bg-[#132231] text-white shadow-md shadow-[#132231]/35 group-hover:shadow-[0_6px_20px_rgba(19,34,49,0.45)]',
     valueText: 'text-brand-navy dark:text-slate-100',
     linkIconColor: 'text-brand-navy dark:text-slate-300',
   },

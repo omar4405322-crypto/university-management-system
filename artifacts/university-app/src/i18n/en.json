@@ -3072,5 +3072,16 @@
     "onlineMessage": "You are back online.",
     "revertOverride": "Failed to remove schedule override",
     "revertOverrideSuccess": "Schedule override removed successfully"
+  },
+  "auth": {
+    "fullName": "Full Name",
+    "email": "Email Address",
+    "department": "Department",
+    "year": "Academic Year",
+    "twoFactorChallengeTitle": "Two-Factor Authentication",
+    "twoFactorChallengePrompt": "Enter the 6-digit code",
+    "twoFactorCodeLabel": "Code",
+    "backToLogin": "← Back to login",
+    "sessionExpiredNotice": "Your session has expired, please log in again"
   }
 }

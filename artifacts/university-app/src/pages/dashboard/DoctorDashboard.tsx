@@ -133,45 +133,47 @@ export default function DoctorDashboard() {
 
       {/* 2. Standalone Elevated Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <StatCard
-          compact
-          title={isRTL ? 'المقررات الدراسية' : 'My Courses'}
-          value={stats?.counts?.myCourses || 0}
-          icon={BookOpen}
-          color="green"
-          onClick={() => navigate('/courses')}
-          hasLink
-        />
-
-        <StatCard
-          compact
-          title={isRTL ? 'إجمالي الطلاب' : 'Total Students'}
-          value={stats?.counts?.totalStudents || 0}
-          icon={Users}
-          color="navy"
-          onClick={() => navigate('/record')}
-          hasLink
-        />
-
-        <StatCard
-          compact
-          title={isRTL ? 'الاختبارات المنجزة' : 'Total Quizzes'}
-          value={stats?.counts?.totalQuizzes || 0}
-          icon={ClipboardList}
-          color="cyan"
-          onClick={() => navigate('/quizzes')}
-          hasLink
-        />
-
-        <StatCard
-          compact
-          title={isRTL ? 'الواجبات المعلقة' : 'Pending Tasks'}
-          value={stats?.counts?.pendingTasks || 0}
-          icon={FileText}
-          color="gold"
-          onClick={() => navigate('/tasks')}
-          hasLink
-        />
+        {[
+          {
+            id: 'courses',
+            title: t('dashboard.myCourses', 'My Courses'),
+            value: stats?.counts?.myCourses || 0,
+            icon: BookOpen,
+            link: '/courses',
+          },
+          {
+            id: 'students',
+            title: t('dashboard.totalStudents', 'Total Students'),
+            value: stats?.counts?.totalStudents || 0,
+            icon: Users,
+            link: '/record',
+          },
+          {
+            id: 'quizzes',
+            title: t('dashboard.totalQuizzes', 'Total Quizzes'),
+            value: stats?.counts?.totalQuizzes || 0,
+            icon: ClipboardList,
+            link: '/quizzes',
+          },
+          {
+            id: 'tasks',
+            title: t('dashboard.pendingTasks', 'Pending Tasks'),
+            value: stats?.counts?.pendingTasks || 0,
+            icon: FileText,
+            link: '/tasks',
+          },
+        ].map((card, idx) => (
+          <StatCard
+            key={card.id}
+            compact
+            title={card.title}
+            value={card.value}
+            icon={card.icon}
+            colorIndex={idx}
+            onClick={() => navigate(card.link)}
+            hasLink
+          />
+        ))}
       </div>
 
       {/* 3. Main Cohesive Container: Active Courses & Attendance Launcher */}

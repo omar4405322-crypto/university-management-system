@@ -3072,5 +3072,16 @@
     "onlineMessage": "أنت الآن متصل بالإنترنت.",
     "revertOverride": "فشل حذف التعديل المؤقت للجدول",
     "revertOverrideSuccess": "تم حذف التعديل المؤقت وإعادة الحصة إلى الجدول الأصلي بنجاح"
+  },
+  "auth": {
+    "fullName": "الاسم بالكامل",
+    "email": "البريد الإلكتروني",
+    "department": "القسم الأكاديمي",
+    "year": "السنة الدراسية",
+    "twoFactorChallengeTitle": "المصادقة الثنائية",
+    "twoFactorChallengePrompt": "أدخل الرمز المكون من 6 أرقام",
+    "twoFactorCodeLabel": "الرمز",
+    "backToLogin": "→ العودة لتسجيل الدخول",
+    "sessionExpiredNotice": "انتهت جلستك، يرجى تسجيل الدخول مرة أخرى"
   }
 }

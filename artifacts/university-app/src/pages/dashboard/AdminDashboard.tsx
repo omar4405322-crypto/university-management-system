@@ -10,7 +10,8 @@ import ErrorState from '../../components/ui/ErrorState';
 import {
   Users, Building2, GraduationCap, TrendingUp, Clock,
   ArrowUpRight, ArrowDownRight, CheckCircle2, AlertCircle,
-  Shield, UserCheck, ChevronRight, History, Zap, Bell, Calendar, Target
+  Shield, UserCheck, ChevronRight, History, Zap, Bell, Calendar, Target,
+  BookOpen, Layers
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -98,6 +99,26 @@ export default function AdminDashboard() {
       link: '/colleges',
     },
     {
+      id: 'totalDepartments',
+      title: t('dashboard.activeDepartments', 'Active Departments'),
+      value: stats?.counts?.totalDepartments?.toLocaleString() || '0',
+      change: null,
+      trend: 'neutral',
+      icon: Layers,
+      color: 'navy',
+      link: '/departments',
+    },
+    {
+      id: 'totalCourses',
+      title: t('dashboard.totalCourses', 'Courses'),
+      value: stats?.counts?.totalCourses?.toLocaleString() || '0',
+      change: null,
+      trend: 'up',
+      icon: BookOpen,
+      color: 'cyan',
+      link: '/courses',
+    },
+    {
       id: 'totalPayments',
       title: t('dashboard.totalPayments'),
       value: stats?.counts?.totalPayments?.toLocaleString() || '0',
@@ -174,12 +195,30 @@ export default function AdminDashboard() {
     ? Math.min(100, Math.round((totalStudentsCount / subscriptionLimit) * 100))
     : 0;
 
-  const kpiStats = [
-    kpis.find(k => k.id === 'totalStudents'),
-    kpis.find(k => k.id === 'totalDoctors'),
-    kpis.find(k => k.id === 'totalColleges'),
-    kpis.find(k => k.id === 'totalPayments')
-  ].filter((kpi): kpi is (typeof kpis)[number] => kpi !== undefined);
+  const kpiStats = (() => {
+    if (user?.role === 'DEPARTMENT_ADMIN') {
+      return [
+        kpis.find(k => k.id === 'totalStudents'),
+        kpis.find(k => k.id === 'totalDoctors'),
+        kpis.find(k => k.id === 'totalDepartments'),
+        kpis.find(k => k.id === 'totalCourses'),
+      ];
+    }
+    if (user?.role === 'COLLEGE_ADMIN') {
+      return [
+        kpis.find(k => k.id === 'totalStudents'),
+        kpis.find(k => k.id === 'totalDoctors'),
+        kpis.find(k => k.id === 'totalColleges'),
+        kpis.find(k => k.id === 'totalDepartments'),
+      ];
+    }
+    return [
+      kpis.find(k => k.id === 'totalStudents'),
+      kpis.find(k => k.id === 'totalDoctors'),
+      kpis.find(k => k.id === 'totalColleges'),
+      kpis.find(k => k.id === 'totalPayments'),
+    ];
+  })().filter((kpi): kpi is (typeof kpis)[number] => kpi !== undefined);
 
   return (
     <div className="flex flex-col gap-6 animate-page">

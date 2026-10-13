@@ -54,8 +54,8 @@ graph LR
 │   ├── api-server/         # Express 5 backend, Prisma schema, tests
 │   │   ├── prisma/         # schema.prisma & versioned migrations
 │   │   ├── src/            # Controllers, routes, services, middleware
-│   │   └── tests/          # Suite of 378+ unit, security, and integration tests
-│   └── university-app/     # React 18 + Vite frontend application (395+ web tests)
+│   │   └── tests/          # Suite of 387 unit, security, and integration tests
+│   └── university-app/     # React 18 + Vite frontend application (415+ web tests, 43 contract routes)
 ├── lib/                    # Shared workspace libraries
 │   ├── api-client-react/   # Generated React Query API client
 │   ├── api-spec/           # Generated OpenAPI specifications

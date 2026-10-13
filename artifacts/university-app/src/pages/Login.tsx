@@ -377,16 +377,16 @@ const Login = () => {
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
                   <div className="p-4 bg-brand-primary-50 dark:bg-brand-primary-950/30 rounded-xl border border-brand-primary-200 dark:border-brand-primary-900 text-center">
                     <p className="text-sm font-bold text-brand-primary-700 dark:text-brand-primary-400">
-                      Two-Factor Authentication
+                      {t('auth.twoFactorChallengeTitle', 'Two-Factor Authentication')}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      Enter the 6-digit code
+                      {t('auth.twoFactorChallengePrompt', 'Enter the 6-digit code')}
                     </p>
                   </div>
 
                   <div className="space-y-1.5 text-start">
                     <label htmlFor="login-totp" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 ms-1">
-                      Code
+                      {t('auth.twoFactorCodeLabel', 'Code')}
                     </label>
                     <div className="relative group">
                       <Lock
@@ -415,7 +415,7 @@ const Login = () => {
                     onClick={() => setShow2FA(false)}
                     className="text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    {isRTL ? '→ العودة لتسجيل الدخول' : '← Back to login'}
+                    {t('auth.backToLogin', isRTL ? '→ العودة لتسجيل الدخول' : '← Back to login')}
                   </button>
                 </div>
               )}
