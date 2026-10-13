@@ -8,6 +8,7 @@ import {
   NotFoundError,
 } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
+import { auditLog } from '../utils/audit.utils';
 import type { AuthActor } from '../types/auth.types';
 import attendanceEngine, { BulkManualRecord } from '../attendance/attendance.engine';
 import { DriverValidationContext } from '../attendance/drivers/IAttendanceDriver';
@@ -1048,7 +1049,7 @@ class AttendanceService {
     };
   }
 
-  static async unblockEnrollment(user: AuthActor, enrollmentId: number) {
+  static async unblockEnrollment(user: AuthActor, enrollmentId: number, req?: any) {
     const enrollment = await prisma.enrollment.findUnique({
       where: { id: enrollmentId },
       include: { course: true, student: true },
@@ -1078,6 +1079,20 @@ class AttendanceService {
       where: { id: enrollment.id },
       data: { status: 'ENROLLED' },
     });
+
+    const auditReq = req || { user };
+    await auditLog(
+      'ADMIN_UNBLOCK_ENROLLMENT',
+      'Enrollment',
+      enrollment.id,
+      auditReq,
+      {
+        studentId: enrollment.studentId,
+        courseId: enrollment.courseId,
+        previousStatus: 'BLOCKED',
+        newStatus: 'ENROLLED',
+      }
+    );
 
     return { message: 'Student unblocked successfully' };
   }

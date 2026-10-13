@@ -38,6 +38,24 @@ class EnrollmentService {
     try {
       return await prisma.$transaction(
         async (tx) => {
+          if (throwOnConflict) {
+            const studentClient = (tx as any)?.student ?? prisma.student;
+            if (studentClient?.findUnique) {
+              const student = await studentClient.findUnique({
+                where: { id: studentId },
+                include: { user: { select: { isActive: true } } },
+              });
+              if (!student) {
+                throw new NotFoundError("Student not found");
+              }
+              if (!student.isActive || student.user?.isActive === false) {
+                throw new ConflictError(
+                  "Cannot enroll an inactive or suspended student",
+                );
+              }
+            }
+          }
+
           const existing = await tx.enrollment.findUnique({
             where: {
               studentId_courseId_semester_academicYear: {

@@ -117,10 +117,8 @@ export const getAllStudents = catchAsync(
     }
     if (status === 'active') {
       queryFilters.push(getEffectiveActiveStudentWhere());
-    } else if (status === 'inactive') {
+    } else if (status === 'inactive' || status === 'suspended') {
       queryFilters.push({ NOT: getEffectiveActiveStudentWhere() });
-    } else if (status === 'suspended') {
-      queryFilters.push({ status: 'suspended' });
     }
     if (gender) {
       queryFilters.push({ gender });

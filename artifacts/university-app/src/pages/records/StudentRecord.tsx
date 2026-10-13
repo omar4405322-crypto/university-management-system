@@ -103,11 +103,10 @@ const StudentRecord: React.FC = () => {
         </Badge>
       );
     }
-    if (grade >= 90) return <Badge variant="success">A+ ({grade}%)</Badge>;
-    if (grade >= 85) return <Badge variant="success">A ({grade}%)</Badge>;
-    if (grade >= 75) return <Badge variant="info">B ({grade}%)</Badge>;
-    if (grade >= 65) return <Badge variant="warning">C ({grade}%)</Badge>;
-    if (grade >= 50) return <Badge variant="warning">D ({grade}%)</Badge>;
+    if (grade >= 90) return <Badge variant="success">A ({grade}%)</Badge>;
+    if (grade >= 80) return <Badge variant="info">B ({grade}%)</Badge>;
+    if (grade >= 70) return <Badge variant="warning">C ({grade}%)</Badge>;
+    if (grade >= 60) return <Badge variant="warning">D ({grade}%)</Badge>;
     return <Badge variant="danger">F ({grade}%)</Badge>;
   };
 

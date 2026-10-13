@@ -483,7 +483,8 @@ export const unblockEnrollment = catchAsync(
     const { enrollmentId } = req.params;
     const result = await AttendanceService.unblockEnrollment(
       req.user!,
-      parseInt(enrollmentId as string)
+      parseInt(enrollmentId as string),
+      req
     );
     return res.json({ success: true, message: result.message });
   }
