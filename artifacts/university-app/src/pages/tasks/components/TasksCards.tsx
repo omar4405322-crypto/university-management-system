@@ -17,6 +17,8 @@ export interface TasksCardsProps {
   selectedIds: Set<string | number>;
   onToggleSelect: (id: string | number) => void;
   isDoctor: boolean;
+  canManageTasks?: boolean;
+  canGrade?: boolean;
   isStudent: boolean;
   isRTL: boolean;
   locale: string;
@@ -33,6 +35,8 @@ export const TasksCards: React.FC<TasksCardsProps> = ({
   selectedIds,
   onToggleSelect,
   isDoctor,
+  canManageTasks = false,
+  canGrade = false,
   isStudent,
   isRTL,
   locale,
@@ -159,34 +163,7 @@ export const TasksCards: React.FC<TasksCardsProps> = ({
 
             {/* Footer Actions */}
             <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-2">
-              {isDoctor ? (
-                <>
-                  <Button
-                    size="sm"
-                    onClick={() => onGrade(task)}
-                    className="flex-1 h-8 bg-brand-primary-600 hover:bg-brand-primary-700 text-white rounded-lg text-xs font-bold gap-1.5 shadow-2xs cursor-pointer"
-                  >
-                    <Eye size={13} />
-                    <span>{t("tasks.viewSubmissionsAction", "View & Grade")}</span>
-                  </Button>
-
-                  <button
-                    onClick={() => onEdit(task)}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
-                    title={t("common.edit", "Edit")}
-                  >
-                    <Pencil size={13} />
-                  </button>
-
-                  <button
-                    onClick={() => onDelete(task)}
-                    className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
-                    title={t("common.delete", "Delete")}
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </>
-              ) : (
+              {isStudent ? (
                 /* Student Submit Action */
                 <Button
                   size="sm"
@@ -204,6 +181,39 @@ export const TasksCards: React.FC<TasksCardsProps> = ({
                       : t("tasks.submitTask", "Submit Assignment")}
                   </span>
                 </Button>
+              ) : (
+                <>
+                  {canGrade && (
+                    <Button
+                      size="sm"
+                      onClick={() => onGrade(task)}
+                      className="flex-1 h-8 bg-brand-primary-600 hover:bg-brand-primary-700 text-white rounded-lg text-xs font-bold gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Eye size={13} />
+                      <span>{t("tasks.viewSubmissionsAction", "View & Grade")}</span>
+                    </Button>
+                  )}
+
+                  {canManageTasks && (
+                    <>
+                      <button
+                        onClick={() => onEdit(task)}
+                        className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
+                        title={t("common.edit", "Edit")}
+                      >
+                        <Pencil size={13} />
+                      </button>
+
+                      <button
+                        onClick={() => onDelete(task)}
+                        className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                        title={t("common.delete", "Delete")}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </>
+                  )}
+                </>
               )}
             </div>
           </div>

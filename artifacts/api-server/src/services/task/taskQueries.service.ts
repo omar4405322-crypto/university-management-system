@@ -131,22 +131,47 @@ export class TaskQueriesService {
       } else {
         where.id = -1;
       }
+    } else if (user.role === "TEACHING_ASSISTANT") {
+      let taId: string | undefined = user.teachingAssistant?.id ? String(user.teachingAssistant.id) : undefined;
+      if (!taId) {
+        const ta = await prisma.teachingAssistant.findUnique({
+          where: { userId: user.id },
+          select: { id: true },
+        });
+        taId = ta?.id ? String(ta.id) : undefined;
+      }
+      if (taId) {
+        const slotCount = await prisma.scheduleSlot.count({
+          where: { teachingAssistantId: taId },
+        });
+        if (slotCount === 0) {
+          where.id = -1;
+        } else {
+          courseWhere.scheduleSlots = {
+            some: { teachingAssistantId: taId },
+          };
+        }
+      } else {
+        where.id = -1;
+      }
     }
 
-    const courseScope = getScopeWhere(user, "course") as {
-      id?: number;
-      department?: { collegeId?: number | null } | null;
-      departmentId?: number | null;
-    } | undefined;
-    if (courseScope && Object.keys(courseScope).length) {
-      if (courseScope.department?.collegeId != null) {
-        courseWhere.department = {
-          is: { collegeId: courseScope.department.collegeId },
-        };
-      } else if (courseScope.departmentId) {
-        courseWhere.departmentId = courseScope.departmentId;
-      } else if (courseScope.id === -1) {
-        courseWhere.id = -1;
+    if (user.role !== "TEACHING_ASSISTANT") {
+      const courseScope = getScopeWhere(user, "course") as {
+        id?: number;
+        department?: { collegeId?: number | null } | null;
+        departmentId?: number | null;
+      } | undefined;
+      if (courseScope && Object.keys(courseScope).length) {
+        if (courseScope.department?.collegeId != null) {
+          courseWhere.department = {
+            is: { collegeId: courseScope.department.collegeId },
+          };
+        } else if (courseScope.departmentId) {
+          courseWhere.departmentId = courseScope.departmentId;
+        } else if (courseScope.id === -1) {
+          courseWhere.id = -1;
+        }
       }
     }
 

@@ -149,7 +149,11 @@ test('UX-001: Matrix test across all roles and critical capability vectors', () 
         'STUDENT',
       ],
     },
-    { capability: 'statistics.view', expectedRoles: ['SUPER_ADMIN', 'STUDENT'] },
+    {
+      capability: 'statistics.view',
+      expectedRoles: ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'],
+    },
+    { capability: 'student_statistics.view', expectedRoles: ['SUPER_ADMIN', 'STUDENT'] },
   ];
 
   for (const { capability, expectedRoles } of capabilityVector) {

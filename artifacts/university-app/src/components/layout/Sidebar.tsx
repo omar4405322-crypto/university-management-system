@@ -341,6 +341,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             capability: 'statistics.view' as Capability,
           },
           {
+            title: 'nav.myStatistics',
+            path: '/my-statistics',
+            icon: BarChart3,
+            capability: 'student_statistics.view' as Capability,
+          },
+          {
             title: 'nav.tasks',
             path: '/tasks',
             icon: Activity,

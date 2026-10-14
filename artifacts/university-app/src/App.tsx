@@ -71,6 +71,7 @@ const StudentRecord = lazy(() => import('./pages/records/StudentRecord'));
 const DegreeAudit = lazy(() => import('./pages/degree-audit/DegreeAudit'));
 const GroupManagement = lazy(() => import('./pages/groups/GroupManagement'));
 const StudentStatisticsPage = lazy(() => import('./pages/statistics/StudentStatisticsPage'));
+const StatisticsOverviewPage = lazy(() => import('./pages/statistics/StatisticsOverviewPage'));
 const StudentWarningsPage = lazy(() => import('./pages/attendance/StudentWarningsPage'));
 const KnowledgeBaseAdminPage = lazy(() => import('./pages/knowledge/KnowledgeBaseAdminPage'));
 
@@ -650,6 +651,18 @@ const AppContent = () => {
                         path="statistics"
                         element={
                           <ProtectedRoute capability="statistics.view">
+                            <PageWrapper>
+                              <LazyRoute>
+                                <StatisticsOverviewPage />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="my-statistics"
+                        element={
+                          <ProtectedRoute capability="student_statistics.view">
                             <PageWrapper>
                               <LazyRoute>
                                 <StudentStatisticsPage />

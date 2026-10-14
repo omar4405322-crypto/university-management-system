@@ -72,6 +72,7 @@ export type Capability =
   | 'attendance.manage'
   | 'warnings.view'
   | 'statistics.view'
+  | 'student_statistics.view'
   | 'records.view'
   | 'degree_audit.view'
   | 'finance.view'
@@ -210,6 +211,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'knowledge_base.view',
     'knowledge_base.manage',
     'warnings.view',
+    'statistics.view',
     'records.view',
     'notifications.view',
     'profile.view',
@@ -240,6 +242,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'knowledge_base.view',
     'knowledge_base.manage',
     'warnings.view',
+    'statistics.view',
     'records.view',
     'notifications.view',
     'profile.view',
@@ -295,7 +298,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'tasks.submit',
     'attendance.view',
     'warnings.view',
-    'statistics.view',
+    'student_statistics.view',
     'records.view',
     'degree_audit.view',
     'notifications.view',
@@ -364,6 +367,7 @@ export const ROUTE_CAPABILITY_MAP: Record<string, Capability> = {
   '/attendance': 'attendance.view',
   '/warnings': 'warnings.view',
   '/statistics': 'statistics.view',
+  '/my-statistics': 'student_statistics.view',
   '/record': 'records.view',
   '/finance': 'finance.view',
   '/analytics': 'analytics.view',

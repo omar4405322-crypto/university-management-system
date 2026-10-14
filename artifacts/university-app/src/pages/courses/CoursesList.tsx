@@ -418,7 +418,7 @@ export function CoursesList() {
 
         <StatCard
           compact
-          title={t("dashboard.totalStudents", "Total Students")}
+          title={t("courses.totalEnrollments", isRTL ? "إجمالي التسجيلات" : "Total Enrollments")}
           value={totalEnrollments}
           icon={Users}
           color="gold"

@@ -31,18 +31,42 @@ export const getAllColleges = async (user: any) => {
   });
 
   const collegeIds = colleges.map((c) => c.id);
-  const admins = collegeIds.length > 0
-    ? await prisma.user.findMany({
-        where: { managedCollegeId: { in: collegeIds }, isActive: true },
-        orderBy: { id: 'asc' },
-        select: {
-          id: true,
-          email: true,
-          managedCollegeId: true,
-          doctor: { select: { firstName: true, lastName: true } },
-        },
-      })
-    : [];
+  const [admins, departmentStudentCounts] = await Promise.all([
+    collegeIds.length > 0
+      ? prisma.user.findMany({
+          where: { managedCollegeId: { in: collegeIds }, isActive: true },
+          orderBy: { id: 'asc' },
+          select: {
+            id: true,
+            email: true,
+            managedCollegeId: true,
+            doctor: { select: { firstName: true, lastName: true } },
+          },
+        })
+      : [],
+    collegeIds.length > 0
+      ? prisma.department.findMany({
+          where: { collegeId: { in: collegeIds } },
+          select: {
+            id: true,
+            collegeId: true,
+            _count: {
+              select: {
+                students: { where: getEffectiveActiveStudentWhere() },
+              },
+            },
+          },
+        })
+      : [],
+  ]);
+
+  const activeCountByCollege = new Map<number, number>();
+  for (const dept of departmentStudentCounts) {
+    activeCountByCollege.set(
+      dept.collegeId,
+      (activeCountByCollege.get(dept.collegeId) || 0) + (dept._count?.students || 0)
+    );
+  }
 
   const adminByCollegeId = new Map<number, (typeof admins)[number]>();
   for (const admin of admins) {
@@ -53,8 +77,14 @@ export const getAllColleges = async (user: any) => {
 
   const collegesWithAdmins = colleges.map((college) => {
     const admin = adminByCollegeId.get(college.id);
+    const activeStudentCount = activeCountByCollege.get(college.id) || 0;
     return {
       ...college,
+      _count: {
+        departments: college._count?.departments ?? 0,
+        students: activeStudentCount,
+      },
+      activeStudentCount,
       assignedAdmin: admin
         ? {
             id: admin.id,

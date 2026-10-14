@@ -42,12 +42,15 @@ export function TasksList() {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === "ar";
   const { user } = useAuth();
-  const isDoctor =
+  const canManageTasks =
     user?.role === "DOCTOR" ||
     user?.role === "SUPER_ADMIN" ||
     user?.role === "COLLEGE_ADMIN" ||
-    user?.role === "DEPARTMENT_ADMIN" ||
-    user?.role === "TEACHING_ASSISTANT";
+    user?.role === "DEPARTMENT_ADMIN";
+  const canGradeTasks = canManageTasks;
+  const isTA = user?.role === "TEACHING_ASSISTANT";
+  const isStaff = canManageTasks || isTA;
+  const isDoctor = canManageTasks;
   const isStudent = user?.role === "STUDENT";
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -220,8 +223,8 @@ export function TasksList() {
   }, [fetchTasks]);
 
   useEffect(() => {
-    if (isDoctor) fetchCourses();
-  }, [isDoctor]);
+    if (isStaff) fetchCourses();
+  }, [isStaff]);
 
   // Selection Logic
   const allFilteredIds = useMemo(
@@ -472,7 +475,7 @@ export function TasksList() {
             {t("tasks.title", "Tasks & Assignments")}
           </h1>
           <p className="page-subtitle">
-            {isDoctor
+            {isStaff
               ? t(
                   "tasks.subtitleDoctor",
                   "Manage student assignments, grading, and submissions.",
@@ -496,7 +499,7 @@ export function TasksList() {
             <span>{t("common.refresh", "Refresh")}</span>
           </Button>
 
-          {isDoctor && (
+          {canManageTasks && (
             <Button
               size="sm"
               onClick={() => {
@@ -517,12 +520,12 @@ export function TasksList() {
         total={kpis.total}
         active={kpis.active}
         submissionsCount={
-          isDoctor
+          isStaff
             ? kpis.totalSubs
             : tasks.filter((task) => task.mySubmission).length
         }
         overdue={kpis.overdue}
-        isDoctor={Boolean(isDoctor)}
+        isDoctor={Boolean(isStaff)}
         isRTL={isRTL}
       />
 
@@ -543,7 +546,7 @@ export function TasksList() {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         courses={courses}
-        isDoctor={Boolean(isDoctor)}
+        isDoctor={Boolean(isStaff)}
         totalShowing={tasks.length}
         isRTL={isRTL}
       />
@@ -573,7 +576,7 @@ export function TasksList() {
             subtitle={
               hasActiveFilters
                 ? (isRTL ? "جرب تعديل خيارات البحث أو إعادة ضبط الفلاتر." : "Try adjusting your search terms or resetting filters.")
-                : isDoctor
+                : isStaff
                   ? t("tasks.subtitleDoctor", "Manage student assignments, grading, and submissions.")
                   : t("tasks.subtitleStudent", "View course assignments and submit your deliverables.")
             }
@@ -583,7 +586,7 @@ export function TasksList() {
                     label: isRTL ? "إعادة ضبط الفلاتر" : "Reset Filters",
                     onClick: clearAllFilters,
                   }
-                : isDoctor
+                : canManageTasks
                   ? {
                       label: t("tasks.createTask", "Create Assignment"),
                       onClick: () => setShowCreateModal(true),
@@ -597,7 +600,9 @@ export function TasksList() {
           tasks={tasks}
           selectedIds={selectedIds}
           onToggleSelect={handleToggleSelect}
-          isDoctor={Boolean(isDoctor)}
+          isDoctor={Boolean(isStaff)}
+          canManageTasks={Boolean(canManageTasks)}
+          canGrade={Boolean(canGradeTasks)}
           isStudent={Boolean(isStudent)}
           isRTL={isRTL}
           locale={locale}
@@ -627,7 +632,10 @@ export function TasksList() {
           onToggleSelect={handleToggleSelect}
           onSelectAll={handleToggleSelectAll}
           allSelected={isAllSelected}
-          isDoctor={Boolean(isDoctor)}
+          isDoctor={Boolean(isStaff)}
+          canManageTasks={Boolean(canManageTasks)}
+          canGrade={Boolean(canGradeTasks)}
+          isStudent={Boolean(isStudent)}
           isRTL={isRTL}
           locale={locale}
           isOverdue={isOverdue}

@@ -27,6 +27,9 @@ export interface TasksTableProps {
   onSelectAll: () => void;
   allSelected: boolean;
   isDoctor: boolean;
+  canManageTasks?: boolean;
+  canGrade?: boolean;
+  isStudent?: boolean;
   isRTL: boolean;
   locale: string;
   isOverdue: (date: string) => boolean;
@@ -44,6 +47,9 @@ export const TasksTable: React.FC<TasksTableProps> = ({
   onSelectAll,
   allSelected,
   isDoctor,
+  canManageTasks = false,
+  canGrade = false,
+  isStudent = false,
   isRTL,
   locale,
   isOverdue,
@@ -196,16 +202,18 @@ export const TasksTable: React.FC<TasksTableProps> = ({
                   </TableCell>
                   <TableCell className="p-2.5 text-end pe-4">
                     <div className="inline-flex items-center gap-1.5">
-                      {isDoctor ? (
+                      {canGrade && (
+                        <Button
+                          size="sm"
+                          onClick={() => onGrade(task)}
+                          className="h-7 px-2.5 bg-brand-primary-600 hover:bg-brand-primary-700 text-white rounded-lg text-xs font-bold gap-1 cursor-pointer"
+                        >
+                          <Eye size={12} />
+                          <span>{isRTL ? "رصد" : "Grade"}</span>
+                        </Button>
+                      )}
+                      {canManageTasks && (
                         <>
-                          <Button
-                            size="sm"
-                            onClick={() => onGrade(task)}
-                            className="h-7 px-2.5 bg-brand-primary-600 hover:bg-brand-primary-700 text-white rounded-lg text-xs font-bold gap-1 cursor-pointer"
-                          >
-                            <Eye size={12} />
-                            <span>{isRTL ? "رصد" : "Grade"}</span>
-                          </Button>
                           <button
                             onClick={() => onEdit(task)}
                             className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 cursor-pointer"
@@ -219,7 +227,8 @@ export const TasksTable: React.FC<TasksTableProps> = ({
                             <Trash2 size={12} />
                           </button>
                         </>
-                      ) : (
+                      )}
+                      {isStudent && (
                         <Button
                           size="sm"
                           onClick={() => onSubmit(task)}
