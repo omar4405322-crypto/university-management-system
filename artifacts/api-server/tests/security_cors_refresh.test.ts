@@ -294,6 +294,7 @@ async function runSecurityTests() {
 
       console.log('✓ Suite 4 passed (Live CORS and refresh origin checks succeed as expected)');
     } finally {
+      server.closeAllConnections?.();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
 
@@ -338,10 +339,7 @@ async function runSecurityTests() {
 }
 
 runSecurityTests()
-  .then(() => {
-    process.exit(0);
-  })
   .catch((err) => {
     console.error('❌ Test suite failed:', err);
-    process.exit(1);
+    process.exitCode = 1;
   });

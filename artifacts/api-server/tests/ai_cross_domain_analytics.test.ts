@@ -83,21 +83,102 @@ assert.equal(resComp.status, 'UNAUTHORIZED_SCOPE');
 assert.equal(resComp.hasData, false);
 
 // ============================================================================
-// 3. STUDENT PRIORITY & DATA QUALITY CALCULATIONS
+// 3. STUDENT PRIORITY & DATA QUALITY CALCULATIONS (FIXTURES-ONLY)
 // ============================================================================
 console.log('3. Student Priority calculations');
 
-// Find or construct test student actor from test database
-const sampleStudent = await prisma.student.findFirst({
-  where: { enrollments: { some: {} } },
-  include: { user: true, department: true },
-});
+const runId = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
-if (sampleStudent) {
+let createdDeptId: number | null = null;
+let createdStudentUserId: number | null = null;
+let createdStudentCourseId: number | null = null;
+let createdStudentId: number | null = null;
+let createdEnrollmentId: number | null = null;
+let createdStudentSlotId: number | null = null;
+
+let createdDoctorUserId: number | null = null;
+let createdDoctorId: number | null = null;
+let createdDoctorCourseId: number | null = null;
+let createdDoctorSlotId: number | null = null;
+
+try {
+  const parentCollege = await prisma.college.findFirst();
+  if (!parentCollege) {
+    throw new Error('No College found in database to attach Department fixture');
+  }
+
+  const dept = await prisma.department.create({
+    data: {
+      name: `Analytics Dept ${runId}`,
+      nameAr: `Analytics Dept Ar ${runId}`,
+      collegeId: parentCollege.id,
+    },
+  });
+  createdDeptId = dept.id;
+
+  const testUser = await prisma.user.create({
+    data: {
+      email: `student_fixture_${runId}@university.test`,
+      password: 'TestPassword123!',
+      role: 'STUDENT',
+      isActive: true,
+    },
+  });
+  createdStudentUserId = testUser.id;
+
+  const testCourseCode = `ST_${runId}`;
+  const testCourse = await prisma.course.create({
+    data: {
+      courseCode: testCourseCode,
+      name: `Analytics Fixture Course ${runId}`,
+      credits: 3,
+      year: 1,
+      semester: 1,
+      isPublished: true,
+      departmentId: dept.id,
+    },
+  });
+  createdStudentCourseId = testCourse.id;
+
+  const createdStudent = await prisma.student.create({
+    data: {
+      userId: testUser.id,
+      departmentId: dept.id,
+      year: 1,
+      studentId: `ST-${runId}`,
+      firstName: 'Fixture',
+      lastName: 'Student',
+    },
+  });
+  createdStudentId = createdStudent.id;
+
+  const enrollment = await prisma.enrollment.create({
+    data: {
+      studentId: createdStudent.id,
+      courseId: testCourse.id,
+      status: 'ENROLLED',
+      semester: 1,
+      academicYear: 2026,
+    },
+  });
+  createdEnrollmentId = enrollment.id;
+
+  const slot = await prisma.scheduleSlot.create({
+    data: {
+      courseId: testCourse.id,
+      dayOfWeek: 'MONDAY',
+      startTime: '10:00',
+      endTime: '12:00',
+      slotType: 'LECTURE',
+      isArchived: false,
+    },
+  });
+  createdStudentSlotId = slot.id;
+
   const actor: AuthActor = {
-    id: sampleStudent.userId,
+    id: createdStudent.userId,
     role: 'STUDENT',
-    student: { id: sampleStudent.id },
+    student: { id: createdStudent.id },
   };
 
   const overview = await queryStudentPriorityOverview(actor);
@@ -108,6 +189,10 @@ if (sampleStudent) {
   assert.ok(overview.summaryAr.length > 0);
   assert.equal(overview.timeWindow.cairoTimezone, 'Africa/Cairo');
   assert.ok(typeof overview.overallStanding.gpa === 'number');
+
+  // Provenance assertion: overview courses must contain our fixture course
+  const foundFixtureCourse = overview.courses.find((c) => c.courseCode === testCourseCode);
+  assert.ok(foundFixtureCourse, 'Overview must include the student fixture course code');
 
   // Verify explainability: if any course is HIGH_ATTENTION or MEDIUM_ATTENTION, it MUST have factors
   for (const course of overview.courses) {
@@ -135,22 +220,68 @@ if (sampleStudent) {
   assert.ok(typeof weekly.summaryAr === 'string');
   assert.ok(Array.isArray(weekly.events));
   assert.ok(Array.isArray(weekly.directConflicts));
-}
 
-// ============================================================================
-// 4. DOCTOR TEACHING INSIGHTS
-// ============================================================================
-console.log('4. Doctor Teaching Insights');
+  // Provenance assertion: events must contain our fixture slot
+  const foundFixtureSlot = weekly.events.find((e) => e.courseCode === testCourseCode);
+  assert.ok(foundFixtureSlot, 'Weekly events must include the student fixture slot');
 
-const sampleDoctor = await prisma.doctor.findFirst({
-  include: { user: true },
-});
+  // ============================================================================
+  // 4. DOCTOR TEACHING INSIGHTS (FIXTURES-ONLY)
+  // ============================================================================
+  console.log('4. Doctor Teaching Insights');
 
-if (sampleDoctor) {
+  const docUser = await prisma.user.create({
+    data: {
+      email: `doctor_fixture_${runId}@university.test`,
+      password: 'DoctorPassword123!',
+      role: 'DOCTOR',
+      isActive: true,
+    },
+  });
+  createdDoctorUserId = docUser.id;
+
+  const createdDoctor = await prisma.doctor.create({
+    data: {
+      userId: docUser.id,
+      departmentId: dept.id,
+      doctorId: `DOC-${runId}`,
+      firstName: 'Fixture',
+      lastName: 'Doctor',
+    },
+  });
+  createdDoctorId = createdDoctor.id;
+
+  const docCourseCode = `DC_${runId}`;
+  const docCourse = await prisma.course.create({
+    data: {
+      courseCode: docCourseCode,
+      name: `Doctor Fixture Course ${runId}`,
+      credits: 3,
+      year: 1,
+      semester: 1,
+      isPublished: true,
+      departmentId: dept.id,
+    },
+  });
+  createdDoctorCourseId = docCourse.id;
+
+  const docSlot = await prisma.scheduleSlot.create({
+    data: {
+      courseId: docCourse.id,
+      doctorId: createdDoctor.id,
+      dayOfWeek: 'SUNDAY',
+      startTime: '09:00',
+      endTime: '11:00',
+      slotType: 'LECTURE',
+      isArchived: false,
+    },
+  });
+  createdDoctorSlotId = docSlot.id;
+
   const doctorActor: AuthActor = {
-    id: sampleDoctor.userId,
+    id: createdDoctor.userId,
     role: 'DOCTOR',
-    doctor: { id: sampleDoctor.id },
+    doctor: { id: createdDoctor.id },
   };
 
   const insights = await queryDoctorTeachingInsights(doctorActor);
@@ -159,6 +290,10 @@ if (sampleDoctor) {
   assert.ok(typeof insights.totalCoursesCount === 'number');
   assert.ok(Array.isArray(insights.courses));
   assert.equal(insights.timeWindow.cairoTimezone, 'Africa/Cairo');
+
+  // Provenance assertion: doctor courses must contain our fixture course
+  const foundDocCourse = insights.courses.find((c) => c.courseCode === docCourseCode);
+  assert.ok(foundDocCourse, 'Doctor insights courses must include fixture course');
 
   // Check course attention factors
   for (const crs of insights.coursesNeedingAttention) {
@@ -169,6 +304,87 @@ if (sampleDoctor) {
   // Workload summary checks
   assert.ok(typeof insights.totalWeeklyLecturesCount === 'number');
   assert.ok(typeof insights.totalPendingGradingCount === 'number');
+} finally {
+  const cleanupErrors: unknown[] = [];
+  if (createdDoctorSlotId) {
+    try {
+      await prisma.scheduleSlot.delete({ where: { id: createdDoctorSlotId } });
+    } catch (err) {
+      cleanupErrors.push(err);
+    }
+  }
+  if (createdStudentSlotId) {
+    try {
+      await prisma.scheduleSlot.delete({ where: { id: createdStudentSlotId } });
+    } catch (err) {
+      cleanupErrors.push(err);
+    }
+  }
+  if (createdEnrollmentId) {
+    try {
+      await prisma.enrollment.delete({ where: { id: createdEnrollmentId } });
+    } catch (err) {
+      cleanupErrors.push(err);
+    }
+  }
+  if (createdDoctorCourseId) {
+    try {
+      await prisma.course.delete({ where: { id: createdDoctorCourseId } });
+    } catch (err) {
+      cleanupErrors.push(err);
+    }
+  }
+  if (createdStudentCourseId) {
+    try {
+      await prisma.course.delete({ where: { id: createdStudentCourseId } });
+    } catch (err) {
+      cleanupErrors.push(err);
+    }
+  }
+  if (createdDoctorId) {
+    try {
+      await prisma.doctor.delete({ where: { id: createdDoctorId } });
+    } catch (err) {
+      cleanupErrors.push(err);
+    }
+  }
+  if (createdStudentId) {
+    try {
+      await prisma.student.delete({ where: { id: createdStudentId } });
+    } catch (err) {
+      cleanupErrors.push(err);
+    }
+  }
+  if (createdDoctorUserId) {
+    try {
+      await prisma.user.delete({ where: { id: createdDoctorUserId } });
+    } catch (err) {
+      cleanupErrors.push(err);
+    }
+  }
+  if (createdStudentUserId) {
+    try {
+      await prisma.user.delete({ where: { id: createdStudentUserId } });
+    } catch (err) {
+      cleanupErrors.push(err);
+    }
+  }
+  if (createdDeptId) {
+    try {
+      await prisma.department.delete({ where: { id: createdDeptId } });
+    } catch (err) {
+      cleanupErrors.push(err);
+    }
+  }
+
+  if (cleanupErrors.length > 0) {
+    console.error('Fixture cleanup encountered errors:', cleanupErrors);
+    throw new Error(
+      `Fixture cleanup failed with ${cleanupErrors.length} errors: ${cleanupErrors
+        .map((e) => (e instanceof Error ? e.message : String(e)))
+        .join('; ')}`
+    );
+  }
 }
 
 // ============================================================================
