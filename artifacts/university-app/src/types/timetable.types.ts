@@ -1,6 +1,6 @@
 export type Day = 'Saturday' | 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday';
 
-export type SlotType = 'LECTURE' | 'LAB' | 'SECTION';
+export type SlotType = 'LECTURE' | 'LAB';
 
 /** A single occupied slot in the flat slot map coming from the API. */
 export interface SlotEntry {
@@ -20,6 +20,8 @@ export interface SlotEntry {
   overrideReason?: string | null;
   /** The raw overrides array from the API (active overrides only) */
   overrides?: Array<{ id: number; room?: string | null; reason?: string | null }>;
+  startTime?: string;
+  endTime?: string;
 }
 
 /**

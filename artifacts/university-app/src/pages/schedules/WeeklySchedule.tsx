@@ -536,7 +536,6 @@ export function WeeklySchedule({ isStudentView }: WeeklyScheduleProps = {}) {
         >
           <option value="all">{isRTL ? 'كل الحصص' : 'All Sessions'}</option>
           <option value="LECTURE">{isRTL ? 'محاضرات نظري' : 'Lectures'}</option>
-          <option value="SECTION">{isRTL ? 'سكاشن وتمارين' : 'Sections'}</option>
           <option value="LAB">{isRTL ? 'معامل تطبيقية' : 'Labs'}</option>
         </select>
 

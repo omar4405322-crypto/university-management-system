@@ -13,6 +13,68 @@ import type {
   Doctor,
   College,
 } from '../types/timetable.types';
+import { generateTimeSlots } from '../utils/scheduleConfig';
+
+/**
+ * Maps any slot start/end time to the commencing or overlapping 2-hour grid bucket.
+ */
+function findMatchingGridBucket(startTime?: string, endTime?: string): string {
+  const buckets = generateTimeSlots();
+  if (!startTime || !endTime) return buckets[0] || '09:00-11:00';
+
+  const exact = buckets.find((b) => b === `${startTime}-${endTime}`);
+  if (exact) return exact;
+
+  const toMinutes = (timeStr: string) => {
+    const [h, m] = timeStr.split(':').map((v) => parseInt(v, 10) || 0);
+    return h * 60 + m;
+  };
+
+  const slotStartMin = toMinutes(startTime);
+  const slotEndMin = toMinutes(endTime);
+
+  let bestBucket = buckets[0];
+  let maxOverlap = -1;
+  let minStartDiff = Infinity;
+
+  for (const bucket of buckets) {
+    const [bStartStr, bEndStr] = bucket.split('-');
+    const bStartMin = toMinutes(bStartStr);
+    const bEndMin = toMinutes(bEndStr);
+
+    const overlapStart = Math.max(slotStartMin, bStartMin);
+    const overlapEnd = Math.min(slotEndMin, bEndMin);
+    const overlap = Math.max(0, overlapEnd - overlapStart);
+
+    if (overlap > maxOverlap) {
+      maxOverlap = overlap;
+      bestBucket = bucket;
+      minStartDiff = Math.abs(slotStartMin - bStartMin);
+    } else if (overlap === maxOverlap && overlap > 0) {
+      const startDiff = Math.abs(slotStartMin - bStartMin);
+      if (startDiff < minStartDiff) {
+        minStartDiff = startDiff;
+        bestBucket = bucket;
+      }
+    }
+  }
+
+  if (maxOverlap > 0) {
+    return bestBucket;
+  }
+
+  for (const bucket of buckets) {
+    const [bStartStr] = bucket.split('-');
+    const bStartMin = toMinutes(bStartStr);
+    const startDiff = Math.abs(slotStartMin - bStartMin);
+    if (startDiff < minStartDiff) {
+      minStartDiff = startDiff;
+      bestBucket = bucket;
+    }
+  }
+
+  return bestBucket;
+}
 
 // ── Raw API shapes for mapping ────────────────────────────────────────────────
 
@@ -197,24 +259,27 @@ export function useTimetableData(
             const dayFormatted = rawDay
               ? rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase()
               : '';
-            const key = `${dayFormatted}_${slot.startTime}-${slot.endTime}`;
+            const timeBucket = findMatchingGridBucket(slot.startTime, slot.endTime);
+            const key = `${dayFormatted}_${timeBucket}`;
+            const effectiveSlotType = String(slot.slotType || '').toUpperCase() === 'LAB' ? 'LAB' : 'LECTURE';
             mapped[key] = {
               courseName: slot.course?.name || `Course ${slot.courseId}`,
               doctorName:
-                (slot.slotType === 'LAB' || slot.slotType === 'SECTION') &&
-                slot.teachingAssistant?.firstName
+                effectiveSlotType === 'LAB' && slot.teachingAssistant?.firstName
                   ? `${slot.teachingAssistant.firstName} ${slot.teachingAssistant.lastName}`
                   : slot.doctor?.firstName
                   ? `${slot.doctor.firstName} ${slot.doctor.lastName}`
                   : '',
               room: slot.room || '',
-              slotType: (slot.slotType as 'LECTURE' | 'LAB' | 'SECTION') || 'LECTURE',
+              slotType: effectiveSlotType,
               timetableId: slot.timetableId ?? null,
               courseId: slot.courseId,
               doctorId: slot.doctorId,
               teachingAssistantId: slot.teachingAssistantId as string | undefined,
               groupId: slot.groupId,
               id: slot.id,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
             };
           });
           setSlots(mapped);
@@ -225,16 +290,20 @@ export function useTimetableData(
             const dayFormatted = rawDay
               ? rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase()
               : '';
-            const key = `${dayFormatted}_${slot.startTime}-${slot.endTime}`;
+            const timeBucket = findMatchingGridBucket(slot.startTime, slot.endTime);
+            const key = `${dayFormatted}_${timeBucket}`;
+            const effectiveSlotType = String(slot.slotType || '').toUpperCase() === 'LAB' ? 'LAB' : 'LECTURE';
             mapped[key] = {
               courseName: slot.courseName || '',
               doctorName: slot.instructor || slot.doctorName || '',
               room: slot.room || '',
-              slotType: (slot.slotType as 'LECTURE' | 'LAB' | 'SECTION') || 'LECTURE',
+              slotType: effectiveSlotType,
               timetableId: timetable.id ?? null,
               courseId: slot.courseId,
               doctorId: slot.doctorId,
               teachingAssistantId: slot.teachingAssistantId as string | undefined,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
             };
           });
           setSlots(mapped);

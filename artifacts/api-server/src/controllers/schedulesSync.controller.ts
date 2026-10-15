@@ -263,7 +263,7 @@ export const syncGridToMaster = catchAsync(
       let doctorId: number | null = null;
       let teachingAssistantId: string | null = null;
       const effectiveSlotType = String(slotType || 'LECTURE').toUpperCase();
-      const usesTeachingAssistant = effectiveSlotType === 'LAB' || effectiveSlotType === 'SECTION';
+      const usesTeachingAssistant = effectiveSlotType === 'LAB';
 
       if (usesTeachingAssistant) {
         if (suppliedTeachingAssistantId) {

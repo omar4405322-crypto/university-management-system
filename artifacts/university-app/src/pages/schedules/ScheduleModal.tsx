@@ -22,13 +22,21 @@ import type { ScheduleSlot } from './DoctorSchedule';
 const schema = z.object({
   courseId: z.string().min(1, 'Course is required'),
   groupId: z.string().optional(), // empty string means 'All Students' (department-wide)
-  doctorId: z.string().min(1, 'Doctor is required'),
-  slotType: z.string().min(1, 'Slot Type is required'),
+  doctorId: z.string().optional(),
+  slotType: z.enum(['LECTURE', 'LAB']),
   teachingAssistantId: z.string().optional(),
   dayOfWeek: z.string().min(1, 'Day of week is required'),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
   room: z.string().optional(),
+}).refine((data) => {
+  if (data.slotType === 'LECTURE') {
+    return Boolean(data.doctorId && data.doctorId.trim().length > 0);
+  }
+  return true;
+}, {
+  message: 'Doctor is required for lectures',
+  path: ['doctorId'],
 });
 
 type FormData = z.infer<typeof schema>;
@@ -99,7 +107,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
   const watchedSlotType = watch('slotType');
 
   const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-  const slotTypes = ['LECTURE', 'SECTION', 'LAB'];
+  const slotTypes: Array<'LECTURE' | 'LAB'> = ['LECTURE', 'LAB'];
 
   // Load Initial Data when modal opens
   useEffect(() => {
@@ -310,7 +318,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
         courseId: schedule.courseId?.toString() || '',
         groupId: schedule.groupId?.toString() || '',
         doctorId: schedule.doctorId?.toString() || '',
-        slotType: schedule.slotType || 'LECTURE',
+        slotType: schedule.slotType === 'LAB' ? 'LAB' : 'LECTURE',
         teachingAssistantId: schedule.teachingAssistantId?.toString() || '',
         dayOfWeek: schedule.dayOfWeek,
         startTime: schedule.startTime,
@@ -348,9 +356,9 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
       courseId: parseInt(data.courseId),
       // Empty groupId means 'All Students' — send null for a department-wide slot
       groupId: data.groupId ? parseInt(data.groupId) : null,
-      doctorId: parseInt(data.doctorId),
+      doctorId: data.doctorId ? parseInt(data.doctorId) : null,
       slotType: data.slotType,
-      teachingAssistantId: data.teachingAssistantId ? parseInt(data.teachingAssistantId) : null
+      teachingAssistantId: data.teachingAssistantId ? String(data.teachingAssistantId) : null
     };
 
     try {
@@ -540,8 +548,12 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm"
                 {...register('slotType')}
               >
-                {slotTypes.map(st => (
-                  <option key={st} value={st}>{st}</option>
+                {slotTypes.map((st) => (
+                  <option key={st} value={st}>
+                    {st === 'LECTURE'
+                      ? t('timetable.lecture', 'محاضرة / Lecture')
+                      : t('timetable.lab', 'معمل / Lab')}
+                  </option>
                 ))}
               </select>
               {errors.slotType && <p id="schedule-slot-type-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.slotType.message}</p>}
@@ -613,32 +625,47 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ isOpen, onClose, schedule
             {errors.room && <p id="schedule-room-error" role="alert" className="text-rose-500 text-xs mt-1">{errors.room.message}</p>}
           </div>
 
-          <div className="space-y-1.5">
-            <InstructorSelector
-              courseId={selectedCourseId}
-              slotType="LECTURE"
-              value={watch('doctorId') || ''}
-              onChange={(val) => setValue('doctorId', val)}
-              isRTL={isRTL}
-              useIdAsValue={true}
-              disabled={!selectedCourseId}
-            />
-            {errors.doctorId && <p className="text-rose-500 text-xs mt-1">{errors.doctorId.message}</p>}
-          </div>
-
-          {watchedSlotType !== 'LECTURE' && (
+          {watchedSlotType === 'LECTURE' && (
             <div className="space-y-1.5">
               <InstructorSelector
                 courseId={selectedCourseId}
-                slotType={watchedSlotType || 'LAB'}
-                value={watch('teachingAssistantId') || ''}
-                onChange={(val) => setValue('teachingAssistantId', val)}
+                slotType="LECTURE"
+                value={watch('doctorId') || ''}
+                onChange={(val) => setValue('doctorId', val)}
                 isRTL={isRTL}
                 useIdAsValue={true}
-                fallbackOptions={tas}
                 disabled={!selectedCourseId}
               />
+              {errors.doctorId && <p className="text-rose-500 text-xs mt-1">{errors.doctorId.message}</p>}
             </div>
+          )}
+
+          {watchedSlotType === 'LAB' && (
+            <>
+              <div className="space-y-1.5">
+                <InstructorSelector
+                  courseId={selectedCourseId}
+                  slotType="LAB"
+                  value={watch('teachingAssistantId') || ''}
+                  onChange={(val) => setValue('teachingAssistantId', val)}
+                  isRTL={isRTL}
+                  useIdAsValue={true}
+                  fallbackOptions={tas}
+                  disabled={!selectedCourseId}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <InstructorSelector
+                  courseId={selectedCourseId}
+                  slotType="LECTURE"
+                  value={watch('doctorId') || ''}
+                  onChange={(val) => setValue('doctorId', val)}
+                  isRTL={isRTL}
+                  useIdAsValue={true}
+                  disabled={!selectedCourseId}
+                />
+              </div>
+            </>
           )}
 
           <div className="flex items-center gap-3 pt-4">

@@ -100,6 +100,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
   const [dialog, setDialog] = useState<{ day: Day; slot: string } | null>(null);
   const [form, setForm] = useState<SlotFormValues>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   const [overrideEntry, setOverrideEntry] = useState<SlotEntry | null>(null);
@@ -192,11 +193,12 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
       delete next[`${day}_${slot}`];
       return next;
     });
+    setHasUnsavedChanges(true);
     setSlotToDelete(null);
     showToast(
       isRTL
-        ? `تم حذف الحصة (${slotData?.courseName || ''}) من جدول الشعبة بنجاح`
-        : `Class session (${slotData?.courseName || ''}) removed from section schedule`,
+        ? `تم حذف الحصة (${slotData?.courseName || ''}) من جدول الشعبة بنجاح (مسودة غير محفوظة)`
+        : `Class session (${slotData?.courseName || ''}) removed from section schedule (unsaved draft)`,
       'success'
     );
   }, [slotToDelete, isRTL, showToast, setSlots]);
@@ -256,8 +258,14 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
       ...prev,
       [key]: { ...form, timetableId: timetableId ?? null },
     }));
-
+    setHasUnsavedChanges(true);
     setDialog(null);
+    showToast(
+      isRTL
+        ? 'تمت إضافة الحصة للمسودة 📝 — انقر على "حفظ ومزامنة الجدول" لتثبيتها'
+        : 'Slot added to draft 📝 — click "Save & Sync Timetable" to persist to database',
+      'success'
+    );
   }, [form, dialog, slots, timetableId, showToast, setSlots, isRTL]);
 
   // ── Audit Conflicts across the entire grid ───────────────────────────────────
@@ -368,15 +376,31 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
         await timetableService.createTimetable(payload);
       }
 
-      await schedulesService.syncGrid({
+      const syncRes = (await schedulesService.syncGrid({
         collegeId: Number(effectiveCollegeId),
         departmentId: Number(filters.departmentId),
         academicYear: Number(filters.academicYear),
         semester: Number(filters.semester),
         slots: slotsArray,
-      });
+      })) as any;
       notifyScheduleChange();
-      showToast(isRTL ? 'تم حفظ ومزامنة الجدول بنجاح ✅' : 'Timetable saved & synced successfully ✅', 'success');
+      setHasUnsavedChanges(false);
+
+      const skippedCount = syncRes?.data?.skippedCount ?? 0;
+      if (skippedCount > 0) {
+        const skippedDetails = syncRes?.data?.skippedSlots
+          ?.map((s: any) => `${s.courseName}: ${s.reason}`)
+          .slice(0, 3)
+          .join('; ');
+        showToast(
+          isRTL
+            ? `تم الحفظ ولكن تم تخطي ${skippedCount} حصص: ${skippedDetails || 'بيانات غير مكتملة'} ⚠️`
+            : `Saved, but ${skippedCount} slot(s) skipped: ${skippedDetails || 'incomplete data'} ⚠️`,
+          'error'
+        );
+      } else {
+        showToast(isRTL ? 'تم حفظ ومزامنة الجدول بنجاح ✅' : 'Timetable saved & synced successfully ✅', 'success');
+      }
     } catch (err) {
       console.error('Save error', err);
       showToast(t('common.errorOccurred', 'Error saving timetable'), 'error');
@@ -421,6 +445,29 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
             {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
             <span className="font-medium">{toast.message}</span>
           </div>
+        </div>
+      )}
+
+      {/* Unsaved changes banner */}
+      {hasUnsavedChanges && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-2xl shadow-sm text-amber-700 dark:text-amber-300 text-xs font-semibold animate-in fade-in duration-300">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>
+              {isRTL
+                ? 'لديك تعديلات غير محفوظة على الجدول! انقر على "حفظ ومزامنة الجدول" لتثبيت التغييرات في النظام.'
+                : 'You have unsaved changes on the grid! Click "Save & Sync Timetable" to persist them to the database.'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveTimetable}
+            disabled={saving}
+            className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold transition-all shadow-sm flex items-center justify-center gap-2 shrink-0 cursor-pointer disabled:opacity-50"
+          >
+            {saving && <Loader2 size={14} className="animate-spin shrink-0" />}
+            <span>{saving ? (isRTL ? 'جارٍ الحفظ...' : 'Saving...') : (isRTL ? 'حفظ ومزامنة الآن' : 'Save & Sync Now')}</span>
+          </button>
         </div>
       )}
 

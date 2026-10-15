@@ -99,6 +99,15 @@ export const scheduleValidation = [
       return true;
     }),
 
+  body('slotType')
+    .optional()
+    .custom((val) => {
+      if (!val) return true;
+      const normalized = String(val).toUpperCase();
+      if (['LECTURE', 'LAB'].includes(normalized)) return true;
+      throw new Error('slotType must be strictly LECTURE or LAB');
+    }),
+
   body('room')
     .optional()
     .isString()

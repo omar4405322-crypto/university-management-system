@@ -20,7 +20,7 @@ import InstructorSelector from './InstructorSelector';
 import SearchableSelect from '../ui/SearchableSelect';
 import schedulesService from '../../services/schedules.service';
 
-type SlotType = 'LECTURE' | 'LAB' | 'SECTION';
+type SlotType = 'LECTURE' | 'LAB';
 
 export interface SlotFormValues {
   courseName: string;
@@ -51,7 +51,7 @@ interface SlotModalProps {
   onSubmit: () => void;
 }
 
-const SESSION_TYPES: SlotType[] = ['LECTURE', 'SECTION', 'LAB'];
+const SESSION_TYPES: SlotType[] = ['LECTURE', 'LAB'];
 const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
 
 const FIELD_CLASS =
@@ -218,13 +218,15 @@ export default function SlotModal({
                 {t('schedule.slotType', 'Session Type')}
               </label>
               <select
+                id="slot-type"
+                data-testid="slot-type-select"
                 className={FIELD_CLASS}
                 value={form.slotType}
                 onChange={(e) => onChange({ ...form, slotType: e.target.value as SlotType })}
               >
                 {SESSION_TYPES.map((st) => (
                   <option key={st} value={st}>
-                    {st === 'LECTURE' ? 'محاضرة (LECTURE)' : st === 'SECTION' ? 'سكشن (SECTION)' : 'معمل (LAB)'}
+                    {st === 'LECTURE' ? 'محاضرة (LECTURE)' : 'معمل (LAB)'}
                   </option>
                 ))}
               </select>

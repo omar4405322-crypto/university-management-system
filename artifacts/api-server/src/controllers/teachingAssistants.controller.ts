@@ -281,7 +281,7 @@ export const assignTACourse = catchAsync(async (req: Request, res: Response, nex
   const targetStart = startTime || existingSlot?.startTime || '12:00';
   const targetEnd = endTime || existingSlot?.endTime || '14:00';
   const targetRoom = room !== undefined ? (room ? String(room).trim() : null) : (existingSlot?.room || null);
-  const targetType = slotType || existingSlot?.slotType || 'TUTORIAL';
+  const targetType = slotType || existingSlot?.slotType || 'LAB';
 
   // Check conflicts across university
   await TimetableService.checkConflicts({

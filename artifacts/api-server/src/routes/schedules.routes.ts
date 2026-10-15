@@ -116,9 +116,12 @@ router.post(
       .withMessage('Schedule end time is too long'),
     body('slots.*.slotType')
       .optional()
-      .isString()
-      .isLength({ max: 32 })
-      .withMessage('Schedule slot type is too long'),
+      .custom((val) => {
+        if (!val) return true;
+        const normalized = String(val).toUpperCase();
+        if (['LECTURE', 'LAB'].includes(normalized)) return true;
+        throw new Error('Schedule slot type must be strictly LECTURE or LAB');
+      }),
   ],
   validate,
   schedulesController.syncGridToMaster

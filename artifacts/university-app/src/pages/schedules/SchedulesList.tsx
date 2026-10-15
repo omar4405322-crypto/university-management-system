@@ -776,7 +776,6 @@ const SchedulesList = () => {
           <option value="all">{t('common.all', 'All Types')}</option>
           <option value="LECTURE">{t('schedule.lecture', 'Lectures')}</option>
           <option value="LAB">{t('schedule.lab', 'Labs')}</option>
-          <option value="SECTION">{t('schedule.section', 'Sections')}</option>
         </select>
 
         {/* Select All Button */}

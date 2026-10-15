@@ -48,7 +48,7 @@ export default function AssignTACourseModal({
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('10:00');
   const [room, setRoom] = useState('Main Lab');
-  const [slotType, setSlotType] = useState<'TUTORIAL' | 'LAB'>('TUTORIAL');
+  const [slotType, setSlotType] = useState<'LAB'>('LAB');
   const [includeScheduleSlot, setIncludeScheduleSlot] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -223,28 +223,13 @@ export default function AssignTACourseModal({
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               {isRTL ? 'نوع الحصة المسندة' : 'Slot Type'}
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setSlotType('TUTORIAL')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
-                  slotType === 'TUTORIAL'
-                    ? 'bg-brand-primary-500 text-white border-brand-primary-500 shadow-sm'
-                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                }`}
-              >
-                {isRTL ? 'سكشن (تمارين)' : 'Tutorial (Section)'}
-              </button>
+            <div className="grid grid-cols-1 gap-3">
               <button
                 type="button"
                 onClick={() => setSlotType('LAB')}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
-                  slotType === 'LAB'
-                    ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                }`}
+                className="py-2 px-3 rounded-xl border text-xs font-bold transition-all bg-amber-500 text-white border-amber-500 shadow-sm"
               >
-                {isRTL ? 'معمل (عملي)' : 'Lab / Practical'}
+                {isRTL ? 'معمل (عملي) / Lab' : 'Lab / Practical (معمل)'}
               </button>
             </div>
           </div>
