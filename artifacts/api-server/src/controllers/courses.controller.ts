@@ -425,6 +425,12 @@ export const createCourse = catchAsync(async (req: Request, res: Response, next:
     data: courseCreateData,
   });
 
+  await auditLog('COURSE_CREATED', 'Course', String(newCourse.id), req, {
+    name: newCourse.name,
+    courseCode: newCourse.courseCode,
+    departmentId: newCourse.departmentId,
+  });
+
   try {
     await EnrollmentService.autoEnrollCourse(newCourse.id);
   } catch (enrollErr) {
@@ -512,6 +518,8 @@ export const updateCourse = catchAsync(async (req: Request, res: Response, next:
     where: { id: parseInt(id as string, 10) },
     data: courseUpdateData,
   });
+
+  await auditLog('COURSE_UPDATED', 'Course', String(updatedCourse.id), req, courseUpdateData);
 
   if (year !== undefined || departmentId !== undefined) {
     try {
@@ -669,7 +677,10 @@ export const deleteCourse = catchAsync(async (req: Request, res: Response, next:
     await tx.course.delete({ where: { id: courseId } });
   });
 
-  auditLog('DELETE_COURSE', 'Course', req.params.id as string, req);
+  await auditLog('COURSE_DELETED', 'Course', String(courseId), req, {
+    name: existingCourse.name,
+    courseCode: existingCourse.courseCode,
+  });
   res.json({
     success: true,
     message: 'Course deleted successfully',

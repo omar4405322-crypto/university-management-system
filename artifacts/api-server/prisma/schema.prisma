@@ -370,6 +370,8 @@ model Quiz {
   course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   academicYear Int
   semester     Int
+  termId       Int?
+  term         AcademicTerm?    @relation(fields: [termId], references: [id], onDelete: Restrict)
   doctorId     Int
   doctor       Doctor           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
   duration     Int // in minutes
@@ -382,6 +384,7 @@ model Quiz {
   @@index([courseId])
   @@index([courseId, academicYear, semester])
   @@index([doctorId])
+  @@index([termId])
 }
 
 model Question {
@@ -424,6 +427,8 @@ model Task {
   course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   academicYear Int
   semester     Int
+  termId       Int?
+  term         AcademicTerm?    @relation(fields: [termId], references: [id], onDelete: Restrict)
   doctorId     Int
   doctor       Doctor           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
   dueDate      DateTime
@@ -440,6 +445,7 @@ model Task {
   @@index([doctorId, isDeleted, dueDate])
   @@index([courseId, isDeleted, createdAt])
   @@index([courseId, isDeleted, dueDate])
+  @@index([termId])
 }
 
 model TaskSubmission {
@@ -494,6 +500,8 @@ model Exam {
   course          Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   academicYear    Int
   semester        Int
+  termId          Int?
+  term            AcademicTerm?    @relation(fields: [termId], references: [id], onDelete: Restrict)
   title           String?
   type            ExamType         @default(MIDTERM)
   date            DateTime
@@ -507,6 +515,7 @@ model Exam {
 
   @@index([courseId, date])
   @@index([courseId, academicYear, semester])
+  @@index([termId])
 }
 
 model ExamQuestion {
@@ -621,6 +630,8 @@ model Enrollment {
   course                 Course                   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   semester               Int
   academicYear           Int
+  termId                 Int?
+  term                   AcademicTerm?            @relation(fields: [termId], references: [id], onDelete: Restrict)
   finalGrade             Float?
   status                 EnrollmentStatus         @default(ENROLLED)
   customAbsenceThreshold Float?
@@ -633,6 +644,7 @@ model Enrollment {
   @@unique([studentId, courseId, semester, academicYear])
   @@index([studentId])
   @@index([courseId, status])
+  @@index([termId])
 }
 
 enum EnrollmentStatus {
@@ -1159,3 +1171,45 @@ model AIQuickActionUsage {
   @@index([userId, usageDate])
   @@index([userId, lastUsedAt])
 }
+
+model AcademicYear {
+  id        Int            @id @default(autoincrement())
+  name      String         @unique // e.g., "2026-2027"
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  terms     AcademicTerm[]
+
+  @@index([isCurrent])
+}
+
+model AcademicTerm {
+  id             Int          @id @default(autoincrement())
+  academicYearId Int
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  name           String       // e.g., "Fall 2026"
+  termType       TermType     @default(FALL)
+  semesterNumber Int          @default(1)
+  startDate      DateTime
+  endDate        DateTime
+  isCurrent      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  enrollments Enrollment[]
+  quizzes     Quiz[]
+  exams       Exam[]
+  tasks       Task[]
+
+  @@index([academicYearId])
+  @@index([isCurrent])
+}
+
+enum TermType {
+  FALL
+  SPRING
+  SUMMER
+}
+

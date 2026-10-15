@@ -58,6 +58,8 @@ import statisticsRoutes from './routes/statistics.routes';
 
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './utils/swagger';
+import academicYearsRoutes from './routes/academicYears.routes';
+import academicTermsRoutes from './routes/academicTerms.routes';
 
 const app: Application = express();
 app.set('trust proxy', 1);
@@ -301,6 +303,8 @@ app.use('/api/teaching-assistants', protect, teachingAssistantsRoutes);
 app.use('/api/student-groups', protect, studentGroupsRoutes);
 app.use('/api/requests', protect, requestsRoutes);
 app.use('/api/rooms', protect, roomRoutes);
+app.use('/api/academic-years', academicYearsRoutes);
+app.use('/api/academic-terms', academicTermsRoutes);
 if (process.env.NODE_ENV !== 'production') {
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }

@@ -34,6 +34,7 @@ class EnrollmentService {
     semester: number,
     academicYear: number,
     throwOnConflict: boolean,
+    termId?: number | null,
   ) {
     try {
       return await prisma.$transaction(
@@ -112,6 +113,7 @@ class EnrollmentService {
               courseId,
               semester,
               academicYear,
+              termId: termId ?? null,
               status: "ENROLLED",
             },
             include: throwOnConflict
@@ -148,6 +150,7 @@ class EnrollmentService {
     courseId: number,
     semester: number,
     academicYear: number,
+    termId?: number | null,
   ) {
     const currentYear = new Date().getFullYear();
     const minYear = currentYear - 1;
@@ -166,12 +169,21 @@ class EnrollmentService {
       );
     }
 
+    let resolvedTermId = termId;
+    if (!resolvedTermId) {
+      const activeTerm = await prisma.academicTerm.findFirst({
+        where: { isCurrent: true },
+      });
+      resolvedTermId = activeTerm?.id ?? null;
+    }
+
     return this.createEnrollmentWithinCapacity(
       studentId,
       courseId,
       semester,
       academicYear,
       true,
+      resolvedTermId,
     );
   }
 
@@ -709,12 +721,26 @@ class EnrollmentService {
       return { enrolledCount: 0 };
     }
 
-    const currentAcademicYear = new Date().getFullYear();
+    const currentTerm = await prisma.academicTerm.findFirst({
+      where: { isCurrent: true },
+      include: { academicYear: true },
+    });
+
+    if (!currentTerm) {
+      return { enrolledCount: 0, reason: 'NO_ACTIVE_TERM' };
+    }
+
+    const yearMatch = currentTerm.academicYear.name.match(/\d{4}/);
+    const calendarYearInt = yearMatch
+      ? parseInt(yearMatch[0], 10)
+      : currentTerm.startDate.getFullYear();
 
     const matchingCourses = await prisma.course.findMany({
       where: {
         departmentId: student.departmentId,
         year: student.year,
+        semester: currentTerm.semesterNumber,
+        isPublished: true,
       },
       select: { id: true, semester: true },
     });
@@ -728,7 +754,10 @@ class EnrollmentService {
       where: {
         studentId: student.id,
         courseId: { in: matchingCourses.map((c) => c.id) },
-        academicYear: currentAcademicYear,
+        academicYear: calendarYearInt,
+        semester: currentTerm.semesterNumber,
+
+
       },
       select: { courseId: true, semester: true },
     });
@@ -739,7 +768,7 @@ class EnrollmentService {
 
     let newlyEnrolledCount = 0;
     for (const course of matchingCourses) {
-      const semester = course.semester || 1;
+      const semester = course.semester || currentTerm.semesterNumber;
       const key = `${course.id}:${semester}`;
       if (existingEnrollmentKeys.has(key)) {
         continue;
@@ -749,8 +778,9 @@ class EnrollmentService {
         student.id,
         course.id,
         semester,
-        currentAcademicYear,
+        calendarYearInt,
         false,
+        currentTerm.id,
       );
       if (enrollment) {
         newlyEnrolledCount++;
@@ -766,15 +796,31 @@ class EnrollmentService {
   static async autoEnrollCourse(courseId: number) {
     const course = await prisma.course.findUnique({
       where: { id: courseId },
-      select: { id: true, departmentId: true, year: true, semester: true },
+      select: { id: true, departmentId: true, year: true, semester: true, isPublished: true },
     });
 
     if (!course || !course.departmentId || !course.year) {
       return { enrolledCount: 0 };
     }
 
-    const currentAcademicYear = new Date().getFullYear();
-    const semester = course.semester || 1;
+    const currentTerm = await prisma.academicTerm.findFirst({
+      where: { isCurrent: true },
+      include: { academicYear: true },
+    });
+
+    if (!currentTerm) {
+      return { enrolledCount: 0, reason: 'NO_ACTIVE_TERM' };
+    }
+
+    if (course.semester !== currentTerm.semesterNumber) {
+      return { enrolledCount: 0, reason: 'COURSE_NOT_IN_CURRENT_TERM' };
+    }
+
+    const yearMatch = currentTerm.academicYear.name.match(/\d{4}/);
+    const calendarYearInt = yearMatch
+      ? parseInt(yearMatch[0], 10)
+      : currentTerm.startDate.getFullYear();
+    const semester = course.semester;
 
     const matchingStudents = await prisma.student.findMany({
       where: getEffectiveActiveStudentWhere({
@@ -793,8 +839,10 @@ class EnrollmentService {
       where: {
         courseId: course.id,
         studentId: { in: matchingStudents.map((s) => s.id) },
+        academicYear: calendarYearInt,
         semester,
-        academicYear: currentAcademicYear,
+
+
       },
       select: { studentId: true },
     });
@@ -813,8 +861,9 @@ class EnrollmentService {
         student.id,
         course.id,
         semester,
-        currentAcademicYear,
+        calendarYearInt,
         false,
+        currentTerm.id,
       );
       if (enrollment) {
         newlyEnrolledCount++;
@@ -827,10 +876,41 @@ class EnrollmentService {
   /**
    * Sync all enrollments for all active students across all matching courses
    */
-  static async syncAllEnrollments() {
-    const currentAcademicYear = new Date().getFullYear();
+  /**
+   * Sync all enrollments for all active students across all matching courses
+   * Scoped strictly to the ACTIVE term only.
+   * Guarded by requireRole(['SUPER_ADMIN']) when an actor is provided.
+   * Writes an AuditLog entry upon completion.
+   */
+  static async syncAllEnrollments(options?: {
+    actor?: { id: number; email?: string; role?: string };
+  }) {
+    if (options?.actor && options.actor.role !== "SUPER_ADMIN") {
+      throw new AuthorizationError(
+        "Only Super Admin can execute global enrollment synchronization",
+      );
+    }
 
-    // 1. Initial read phase: retrieve candidate students, courses, and existing enrollments in bulk
+    const currentTerm = await prisma.academicTerm.findFirst({
+      where: { isCurrent: true },
+      include: { academicYear: true },
+    });
+
+    if (!currentTerm) {
+      return {
+        totalStudents: 0,
+        totalEnrolled: 0,
+        reason: "NO_ACTIVE_TERM",
+      };
+    }
+
+    const yearMatch = currentTerm.academicYear.name.match(/\d{4}/);
+    const calendarYearInt = yearMatch
+      ? parseInt(yearMatch[0], 10)
+      : currentTerm.startDate.getFullYear();
+    const activeSemester = currentTerm.semesterNumber;
+
+    // 1. Initial read phase: retrieve candidate students, courses for active term semester only, and existing enrollments in bulk
     const [activeStudents, allCourses, existingEnrollments] = await Promise.all([
       prisma.student.findMany({
         where: getEffectiveActiveStudentWhere({
@@ -841,12 +921,15 @@ class EnrollmentService {
       prisma.course.findMany({
         where: {
           departmentId: { not: null },
+          semester: activeSemester,
+          isPublished: true,
         },
         select: { id: true, departmentId: true, year: true, semester: true },
       }),
       prisma.enrollment.findMany({
         where: {
-          academicYear: currentAcademicYear,
+          academicYear: calendarYearInt,
+          termId: currentTerm.id,
         },
         select: { studentId: true, courseId: true, semester: true },
       }),
@@ -872,7 +955,7 @@ class EnrollmentService {
       );
 
       for (const course of matchingCourses) {
-        const semester = course.semester || 1;
+        const semester = course.semester || activeSemester;
         const key = `${student.id}:${course.id}:${semester}`;
         if (existingEnrollmentKeys.has(key)) {
           continue;
@@ -892,7 +975,7 @@ class EnrollmentService {
     // 3. Process candidate enrollments course-by-course inside bounded Serializable transactions
     for (const { course, studentIds } of courseCandidatesMap.values()) {
       if (studentIds.length === 0) continue;
-      const semester = course.semester || 1;
+      const semester = course.semester || activeSemester;
 
       const MAX_RETRIES = 3;
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -910,8 +993,7 @@ class EnrollmentService {
               const currentEnrolledCount = await tx.enrollment.count({
                 where: {
                   courseId: course.id,
-                  semester,
-                  academicYear: currentAcademicYear,
+                  termId: currentTerm.id,
                   status: "ENROLLED",
                 },
               });
@@ -928,8 +1010,7 @@ class EnrollmentService {
               const enrolledRecords = await tx.enrollment.findMany({
                 where: {
                   courseId: course.id,
-                  semester,
-                  academicYear: currentAcademicYear,
+                  termId: currentTerm.id,
                   studentId: { in: studentIds },
                 },
                 select: { studentId: true },
@@ -950,7 +1031,8 @@ class EnrollmentService {
                     studentId: sId,
                     courseId: course.id,
                     semester,
-                    academicYear: currentAcademicYear,
+                    academicYear: calendarYearInt,
+                    termId: currentTerm.id,
                     status: "ENROLLED",
                   },
                 });
@@ -981,8 +1063,9 @@ class EnrollmentService {
                 sId,
                 course.id,
                 semester,
-                currentAcademicYear,
+                calendarYearInt,
                 false,
+                currentTerm.id,
               );
               if (enrollment) {
                 newlyEnrolledCount++;
@@ -994,6 +1077,31 @@ class EnrollmentService {
         }
       }
     }
+
+    const auditPayload = {
+      termId: currentTerm.id,
+      termName: currentTerm.name,
+      semester: activeSemester,
+      totalStudents: activeStudents.length,
+      totalEnrolled: newlyEnrolledCount,
+    };
+
+    let validUserId: number | null = null;
+    if (options?.actor?.id) {
+      const u = await prisma.user.findUnique({ where: { id: options.actor.id }, select: { id: true } });
+      if (u) validUserId = u.id;
+    }
+    await prisma.auditLog.create({
+      data: {
+        action: "SYNC_ALL_ENROLLMENTS",
+        entity: "Enrollment",
+        entityId: String(currentTerm.id),
+        details: auditPayload,
+        userId: validUserId,
+        userRole: (options?.actor?.role as any) || "SUPER_ADMIN",
+        actorEmail: options?.actor?.email || "system:sync-all",
+      },
+    });
 
     return {
       totalStudents: activeStudents.length,

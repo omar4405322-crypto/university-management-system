@@ -74,6 +74,7 @@ const StudentStatisticsPage = lazy(() => import('./pages/statistics/StudentStati
 const StatisticsOverviewPage = lazy(() => import('./pages/statistics/StatisticsOverviewPage'));
 const StudentWarningsPage = lazy(() => import('./pages/attendance/StudentWarningsPage'));
 const KnowledgeBaseAdminPage = lazy(() => import('./pages/knowledge/KnowledgeBaseAdminPage'));
+const AcademicTermsList = lazy(() => import('./pages/admin/AcademicTermsList'));
 
 const LazyRoute = ({ children }: { children: React.ReactNode }) => (
   <ErrorBoundary>
@@ -532,6 +533,22 @@ const AppContent = () => {
                             </PageWrapper>
                           </ProtectedRoute>
                         }
+                      />
+                      <Route
+                        path="academic-terms"
+                        element={
+                          <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                            <PageWrapper>
+                              <LazyRoute>
+                                <AcademicTermsList />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="admin/academic-terms"
+                        element={<Navigate to="/academic-terms" replace />}
                       />
                       <Route
                         path="groups"

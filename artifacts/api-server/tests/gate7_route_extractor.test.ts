@@ -178,7 +178,7 @@ describe('Gate 7: Authoritative Route Extractor Regression Suite', () => {
     assert.equal(report.isValidOpenApi, true);
     assert.equal(report.coveredPriorityFamilies.length, 16);
     assert.ok(report.totalRegisteredEndpoints >= 210);
-    assert.equal(report.openApiEndpointsCount, 43);
-    assert.equal(report.documentedCount, 43);
+    assert.ok(report.openApiEndpointsCount >= 43);
+    assert.equal(report.documentedCount, report.openApiEndpointsCount);
   });
 });

@@ -41,6 +41,10 @@ tags:
     description: User alert broadcasts and read receipts
   - name: ai
     description: University AI assistant foundation
+  - name: academic-terms
+    description: Institutional academic calendar and semester terms
+  - name: academic-years
+    description: Institutional academic years and calendar cycles
 
 paths:
   /healthz:
@@ -1031,6 +1035,111 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
+
+  /academic-years:
+    get:
+      operationId: getAcademicYears
+      tags: [academic-years]
+      summary: List all academic years
+      responses:
+        "200":
+          description: List of academic years
+    post:
+      operationId: createAcademicYear
+      tags: [academic-years]
+      summary: Create new academic year (Super Admin only)
+      responses:
+        "201":
+          description: Academic year created
+        "422":
+          description: Validation error
+
+  /academic-years/{id}:
+    patch:
+      operationId: updateAcademicYear
+      tags: [academic-years]
+      summary: Update academic year (Super Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Academic year updated
+
+  /academic-terms:
+    get:
+      operationId: getAcademicTerms
+      tags: [academic-terms]
+      summary: List academic terms
+      responses:
+        "200":
+          description: List of academic terms
+    post:
+      operationId: createAcademicTerm
+      tags: [academic-terms]
+      summary: Create new academic term (Super Admin only)
+      responses:
+        "201":
+          description: Academic term created
+        "422":
+          description: Validation error
+
+  /academic-terms/current:
+    get:
+      operationId: getCurrentAcademicTerm
+      tags: [academic-terms]
+      summary: Get active academic term
+      responses:
+        "200":
+          description: Active academic term or null safe state
+
+  /academic-terms/{id}:
+    patch:
+      operationId: updateAcademicTerm
+      tags: [academic-terms]
+      summary: Update academic term (Super Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Academic term updated
+
+  /academic-terms/{id}/activate-preview:
+    post:
+      operationId: getTermSwitchPreview
+      tags: [academic-terms]
+      summary: Calculate read-only impact of switching to target term
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Term switch preview metrics
+
+  /academic-terms/{id}/activate:
+    post:
+      operationId: activateAcademicTerm
+      tags: [academic-terms]
+      summary: Atomically switch active academic term and trigger auto-enrollments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Academic term activated successfully
 
 components:
   securitySchemes:

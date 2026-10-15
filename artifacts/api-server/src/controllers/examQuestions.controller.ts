@@ -58,20 +58,35 @@ export async function requireStudentExamEnrollment(
     courseId: number;
     academicYear: number;
     semester: number;
+    termId?: number | null;
   },
   studentId: number,
 ): Promise<{ id: number; status: string }> {
-  const enrollment = await prisma.enrollment.findUnique({
-    where: {
-      studentId_courseId_semester_academicYear: {
+  let enrollment = null;
+  if (exam.termId) {
+    enrollment = await prisma.enrollment.findFirst({
+      where: {
         studentId,
         courseId: exam.courseId,
-        academicYear: exam.academicYear,
-        semester: exam.semester,
+        termId: exam.termId,
       },
-    },
-    select: { id: true, status: true },
-  });
+      select: { id: true, status: true },
+    });
+  }
+
+  if (!enrollment) {
+    enrollment = await prisma.enrollment.findUnique({
+      where: {
+        studentId_courseId_semester_academicYear: {
+          studentId,
+          courseId: exam.courseId,
+          academicYear: exam.academicYear,
+          semester: exam.semester,
+        },
+      },
+      select: { id: true, status: true },
+    });
+  }
 
   if (!enrollment || enrollment.status !== "ENROLLED") {
     if (enrollment?.status === "BLOCKED") {
@@ -92,6 +107,7 @@ export async function verifyStudentExamAccess(
     courseId: number;
     academicYear: number;
     semester: number;
+    termId?: number | null;
     date?: Date | null;
     startTime?: string | null;
     endTime?: string | null;

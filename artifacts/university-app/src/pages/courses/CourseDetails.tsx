@@ -21,7 +21,6 @@ import taskService from "../../services/task.service";
 import SubmissionsGradingModal from "../../components/tasks/SubmissionsGradingModal";
 import coursesService from "../../services/courses.service";
 import enrollmentService from "../../services/enrollment.service";
-import EnrollStudentModal from "./EnrollStudentModal";
 import AssignDoctorModal from "./AssignDoctorModal";
 import AssignTAModal from "./AssignTAModal";
 import api from "../../services/api";
@@ -1050,23 +1049,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
         onSubmit={handleSubmitTaskSubmit}
       />
 
-      {/* ENROLL STUDENT MODAL */}
-      {canManageRoster && (
-        <EnrollStudentModal
-          isOpen={showEnrollModal}
-          onClose={() => setShowEnrollModal(false)}
-          courseId={actualId!}
-          courseName={course.name || ""}
-          courseCode={course.courseCode}
-          semester={course.semester || 1}
-          academicYear={course.year || 1}
-          currentEnrolledStudentIds={enrolledStudents
-            .map((e) => e.studentId || e.student?.id)
-            .filter(Boolean)}
-          departmentId={course.departmentId ?? undefined}
-          onSuccess={fetchCourseDetails}
-        />
-      )}
+
 
       {/* ASSIGN DOCTOR MODAL */}
       {canManageRoster && (

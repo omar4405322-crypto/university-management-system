@@ -52,16 +52,6 @@ export const CourseRosterTab: React.FC<CourseRosterTabProps> = ({
               className="w-full ps-9 pe-4 py-2 rounded-xl bg-brand-bg-page border border-brand-border text-sm text-brand-text-main focus:outline-none focus:border-brand-primary-500 font-medium"
             />
           </div>
-
-          {canManageRoster && (
-            <Button
-              onClick={() => setShowEnrollModal(true)}
-              className="rounded-xl flex items-center justify-center gap-2 text-xs font-bold shrink-0 shadow-sm"
-            >
-              <Plus size={16} />
-              <span>{t("courses.addStudent", "Add Student")}</span>
-            </Button>
-          )}
         </div>
       </div>
 

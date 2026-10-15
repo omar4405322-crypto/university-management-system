@@ -27,11 +27,13 @@ type QuizOffering = {
   courseId: number;
   academicYear: number;
   semester: number;
+  termId?: number | null;
 };
 
 type EnrollmentQueryClient = {
   enrollment: {
     findUnique: typeof prisma.enrollment.findUnique;
+    findFirst: typeof prisma.enrollment.findFirst;
   };
 };
 
@@ -65,17 +67,31 @@ async function requireQuizEnrollment(
   quiz: QuizOffering,
   studentId: number,
 ) {
-  const enrollment = await client.enrollment.findUnique({
-    where: {
-      studentId_courseId_semester_academicYear: {
+  let enrollment = null;
+  if (quiz.termId) {
+    enrollment = await client.enrollment.findFirst({
+      where: {
         studentId,
         courseId: quiz.courseId,
-        academicYear: quiz.academicYear,
-        semester: quiz.semester,
+        termId: quiz.termId,
       },
-    },
-    select: { id: true, status: true },
-  });
+      select: { id: true, status: true },
+    });
+  }
+
+  if (!enrollment) {
+    enrollment = await client.enrollment.findUnique({
+      where: {
+        studentId_courseId_semester_academicYear: {
+          studentId,
+          courseId: quiz.courseId,
+          academicYear: quiz.academicYear,
+          semester: quiz.semester,
+        },
+      },
+      select: { id: true, status: true },
+    });
+  }
   if (!enrollment || enrollment.status !== "ENROLLED") {
     if (enrollment?.status === "BLOCKED") {
       throw new AuthorizationError(
@@ -260,13 +276,27 @@ export const createQuiz = catchAsync(
       ? new Date(endTime as string)
       : new Date(effectiveStartTime.getTime() + parsedDuration * 60_000);
 
+    const activeTerm = await prisma.academicTerm.findFirst({
+      where: { isCurrent: true },
+      include: { academicYear: true },
+    });
+    const targetTermId = req.body.termId ? parseInt(req.body.termId as string, 10) : activeTerm?.id ?? null;
+    const yearMatch = activeTerm?.academicYear?.name.match(/\d{4}/);
+    const resolvedAcademicYear = yearMatch
+      ? parseInt(yearMatch[0], 10)
+      : activeTerm?.startDate
+        ? activeTerm.startDate.getFullYear()
+        : toZonedTime(new Date(), CAIRO_TZ).getFullYear();
+    const resolvedSemester = activeTerm?.semesterNumber ?? course.semester ?? 1;
+
     const quiz = await prisma.quiz.create({
       data: {
         title,
         description,
         courseId: parsedCourseId,
-        academicYear: toZonedTime(new Date(), CAIRO_TZ).getFullYear(),
-        semester: course.semester || 1,
+        academicYear: resolvedAcademicYear,
+        semester: resolvedSemester,
+        termId: targetTermId,
         doctorId: doctor.id,
         duration: parsedDuration,
         startTime: effectiveStartTime,
@@ -475,7 +505,7 @@ export const submitQuiz = catchAsync(
     const quizId = parseInt(id as string);
     const preflightQuiz = await prisma.quiz.findFirst({
       where: getQuizWhere(quizId, req.user),
-      select: { id: true, courseId: true, academicYear: true, semester: true },
+      select: { id: true, courseId: true, academicYear: true, semester: true, termId: true },
     });
     if (!preflightQuiz) {
       return rejectMissingScopedQuiz(quizId);

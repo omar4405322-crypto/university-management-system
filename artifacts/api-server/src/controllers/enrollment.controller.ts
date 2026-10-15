@@ -13,7 +13,7 @@ import { EnrollmentService } from '../services/enrollment.service';
 import { getScopeWhere } from '../utils/strictScope.utils';
 
 export const enrollStudent = catchAsync(async (req: Request, res: Response) => {
-  const { studentId, courseId, semester, academicYear } = req.body;
+  const { studentId, courseId, semester, academicYear, termId } = req.body;
 
   const parsedStudentId = parseInt(studentId);
   const parsedCourseId = parseInt(courseId);
@@ -53,12 +53,17 @@ export const enrollStudent = catchAsync(async (req: Request, res: Response) => {
     }
   }
 
-  const enrollment = await EnrollmentService.enrollStudent(
-    parsedStudentId,
-    parsedCourseId,
-    parsedSemester,
-    parsedAcademicYear
-  );
+  const parsedTermId = termId !== undefined && termId !== '' ? parseInt(termId as string, 10) : undefined;
+  const enrollArgs: any[] = [parsedStudentId, parsedCourseId, parsedSemester, parsedAcademicYear];
+  if (parsedTermId !== undefined) enrollArgs.push(parsedTermId);
+  const enrollment = await (EnrollmentService.enrollStudent as any)(...enrollArgs);
+
+
+
+
+
+
+
   res.status(201).json({ success: true, data: enrollment });
 });
 
@@ -95,7 +100,7 @@ export const withdrawStudent = catchAsync(async (req: Request, res: Response) =>
 });
 
 export const getEnrollments = catchAsync(async (req: Request, res: Response) => {
-  const { studentId, courseId, semester } = req.query;
+  const { studentId, courseId, semester, termId } = req.query;
   const whereFilters: any = {};
   if (studentId !== undefined && studentId !== '') {
     const parsed = Number(studentId);
@@ -117,6 +122,13 @@ export const getEnrollments = catchAsync(async (req: Request, res: Response) => 
       throw new ValidationError('Invalid semester parameter');
     }
     whereFilters.semester = parsed;
+  }
+  if (termId !== undefined && termId !== '') {
+    const parsed = Number(termId);
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+      throw new ValidationError('Invalid termId parameter');
+    }
+    whereFilters.termId = parsed;
   }
 
   const scopeWhere = getScopeWhere(req.user, 'enrollment');
@@ -261,7 +273,9 @@ export const deleteExemptionPeriod = catchAsync(async (req: Request, res: Respon
 });
 
 export const syncAllEnrollments = catchAsync(async (req: Request, res: Response) => {
-  const result = await EnrollmentService.syncAllEnrollments();
+  const result = await EnrollmentService.syncAllEnrollments({
+    actor: req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : undefined,
+  });
   auditLog('SYNC_ALL_ENROLLMENTS', 'Enrollment', 'all', req, result);
   res.json({
     success: true,

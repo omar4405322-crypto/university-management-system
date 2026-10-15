@@ -2,6 +2,7 @@ import express from "express";
 import { param, body } from "express-validator";
 import validate from "../middleware/validate.middleware";
 import { protect, authorize } from "../middleware/auth.middleware";
+import auditLog from "../middleware/audit.middleware";
 import {
   enrollStudent,
   withdrawStudent,
@@ -52,9 +53,18 @@ router.post("/sync-all", protect, authorize("SUPER_ADMIN"), syncAllEnrollments);
 router.post(
   "/",
   protect,
-  adminRoles,
-  enrollStudentValidation,
+  authorize("SUPER_ADMIN"),
+  [
+    ...enrollStudentValidation,
+    body("reason")
+      .trim()
+      .notEmpty()
+      .withMessage("Reason is required for manual enrollment")
+      .isLength({ min: 5 })
+      .withMessage("Reason must be at least 5 characters"),
+  ],
   validate,
+  auditLog("MANUAL_ENROLLMENT_CREATED", "Enrollment"),
   enrollStudent,
 );
 
@@ -63,9 +73,18 @@ router.get("/", protect, getEnrollments);
 router.delete(
   "/:id",
   protect,
-  adminRoles,
-  enrollmentIdValidation,
+  authorize("SUPER_ADMIN"),
+  [
+    ...enrollmentIdValidation,
+    body("reason")
+      .trim()
+      .notEmpty()
+      .withMessage("Reason is required to withdraw/drop enrollment")
+      .isLength({ min: 5 })
+      .withMessage("Reason must be at least 5 characters"),
+  ],
   validate,
+  auditLog("MANUAL_ENROLLMENT_DROPPED", "Enrollment"),
   withdrawStudent,
 );
 

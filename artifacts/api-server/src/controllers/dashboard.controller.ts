@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import { getCache, setCache } from '../utils/redis.utils';
 import catchAsync from '../utils/catchAsync';
-import { AuthorizationError, NotFoundError } from '../utils/appError';
+import { AuthorizationError, NotFoundError, ValidationError } from '../utils/appError';
 import { getAdministrativeAnalyticsScopes } from '../utils/administrativeAnalyticsScope.utils';
 import { getScopedUniversityCounts } from '../services/administrativeSummary.service';
 
@@ -229,12 +229,38 @@ export const getStudentStats = catchAsync(
     const yearsDiff = now.getFullYear() - enrolledDate.getFullYear();
     const studentYear = student.year || Math.max(1, yearsDiff + 1);
 
-    // Semester detection
-    const month = now.getMonth() + 1; // 1-12
-    let semester = 1; // Default to Fall
-    if (month >= 2 && month <= 6)
-      semester = 2; // Spring
-    else if (month >= 7 && month <= 8) semester = 3; // Summer
+    // Active term and semester detection with optional ?termId= filter
+    const { termId } = (req.query || {}) as Record<string, string>;
+    let targetTermId: number | undefined;
+
+    if (termId !== undefined && termId !== '') {
+      const parsedTermId = Number(termId);
+      if (!Number.isSafeInteger(parsedTermId) || parsedTermId <= 0) {
+        return next(new ValidationError('Invalid termId parameter'));
+      }
+      targetTermId = parsedTermId;
+    }
+
+    const activeTerm = await prisma.academicTerm.findFirst({
+      where: { isCurrent: true },
+      include: { academicYear: true },
+    });
+
+    let targetTerm: typeof activeTerm | null = null;
+    if (targetTermId !== undefined) {
+      const foundTerm = await prisma.academicTerm.findUnique({
+        where: { id: targetTermId },
+        include: { academicYear: true },
+      });
+      if (!foundTerm) {
+        return next(new NotFoundError('Academic term not found'));
+      }
+      targetTerm = foundTerm;
+    } else {
+      targetTerm = activeTerm;
+    }
+
+    const semester = targetTerm ? targetTerm.semesterNumber : 1;
 
     const [
       paymentStats,
@@ -243,6 +269,7 @@ export const getStudentStats = catchAsync(
       curriculumCourses,
       upcomingQuizzes,
       pendingTasks,
+      currentEnrollments,
     ] = await Promise.all([
       prisma.payment.groupBy({
         where: { studentId: student.id },
@@ -324,6 +351,27 @@ export const getStudentStats = catchAsync(
         },
         include: { course: true },
       }),
+      targetTerm
+        ? prisma.enrollment.findMany({
+            where: {
+              studentId: student.id,
+              termId: targetTerm.id,
+            },
+            include: {
+              course: {
+                select: {
+                  id: true,
+                  courseCode: true,
+                  name: true,
+                  credits: true,
+                  year: true,
+                  semester: true,
+                  isPublished: true,
+                },
+              },
+            },
+          })
+        : Promise.resolve([]),
     ]);
 
     const myPayments = {
@@ -353,8 +401,18 @@ export const getStudentStats = catchAsync(
           college: student.department?.college ? student.department.college.name : 'N/A',
           year: studentYear,
           semester: semester,
+          currentTerm: targetTerm
+            ? {
+                id: targetTerm.id,
+                name: targetTerm.name,
+                semesterNumber: targetTerm.semesterNumber,
+                academicYear: targetTerm.academicYear?.name || '',
+              }
+            : null,
+          status: targetTerm ? 'ACTIVE' : 'NO_ACTIVE_TERM',
           successMetrics: student.successMetrics,
         },
+        currentEnrollments,
         curriculum: curriculumCourses,
         myPayments,
         upcomingExams: upcomingExams.map((e) => ({

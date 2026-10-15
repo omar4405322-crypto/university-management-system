@@ -41,7 +41,6 @@ import LoadingState from '../../components/ui/LoadingState';
 import Modal from '../../components/ui/Modal';
 import EditStudentModal from './EditStudentModal';
 import ResetPasswordModal from '../../components/ui/ResetPasswordModal';
-import EnrollCourseModal from './EnrollCourseModal';
 import ManageAbsenceModal from './ManageAbsenceModal';
 import { useToast } from '../../context/ToastContext';
 import { useTabListKeyboard } from '../../hooks/useTabListKeyboard';
@@ -679,16 +678,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
                 </p>
               </div>
             </div>
-
-            {canManageEnrollments && (
-              <Button
-                onClick={() => setIsEnrollModalOpen(true)}
-                className="bg-brand-primary-500 hover:bg-brand-primary-600 text-white rounded-xl px-3.5 py-2 text-xs font-bold flex items-center gap-2 shadow-sm transition-all"
-              >
-                <BookPlus size={15} />
-                <span>{t('students.enrollCourse', isRTL ? '+ تسجيل مقرر' : '+ Enroll Course')}</span>
-              </Button>
-            )}
           </div>
 
           {enrolledCourses.length === 0 ? (
@@ -699,18 +688,9 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
               <h4 className="text-base font-bold text-slate-800 dark:text-white mb-1">
                 {t('students.noCoursesEnrolled', isRTL ? 'لا توجد مقررات مسجلة' : 'No Courses Enrolled')}
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('students.noCoursesEnrolledDesc', isRTL ? 'لم يتم تسجيل هذا الطالب في أي مقررات دراسية حتى الآن.' : 'This student has not been registered in any courses yet.')}
               </p>
-              {canManageEnrollments && (
-                <Button
-                  onClick={() => setIsEnrollModalOpen(true)}
-                  className="bg-brand-primary-500 hover:bg-brand-primary-600 text-white rounded-xl px-4 py-2 text-xs font-bold inline-flex items-center gap-2 mx-auto"
-                >
-                  <BookPlus size={15} />
-                  <span>{t('students.enrollCourse', isRTL ? 'تسجيل مقرر الآن' : 'Enroll Course Now')}</span>
-                </Button>
-              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -886,20 +866,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ studentId, isDrawerMode
         type="student"
       />
 
-      {isEnrollModalOpen && (
-        <EnrollCourseModal
-          isOpen={isEnrollModalOpen}
-          onClose={() => setIsEnrollModalOpen(false)}
-          studentId={student.id}
-          studentName={`${student.firstName} ${student.lastName}`}
-          studentCode={student.studentId}
-          departmentId={student.departmentId}
-          alreadyEnrolledCourseIds={enrolledCourses.map((e: EnrollmentRow) => e.course?.id || e.courseId).filter((id): id is number => typeof id === 'number')}
-          onSuccess={() => {
-            fetchStudent();
-          }}
-        />
-      )}
+
 
       {absenceManagingEnrollment && (
         <ManageAbsenceModal

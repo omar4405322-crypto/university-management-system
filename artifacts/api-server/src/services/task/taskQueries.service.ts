@@ -109,7 +109,7 @@ export class TaskQueriesService {
         requestingStudentId = student.id;
         const offerings = await prisma.enrollment.findMany({
           where: { studentId: student.id, status: "ENROLLED" },
-          select: { courseId: true, academicYear: true, semester: true },
+          select: { courseId: true, academicYear: true, semester: true, termId: true },
         });
         const currentAnd = Array.isArray(where.AND)
           ? where.AND
@@ -122,8 +122,20 @@ export class TaskQueriesService {
             ? {
                 OR: offerings.map((offering) => ({
                   courseId: offering.courseId,
-                  academicYear: offering.academicYear,
-                  semester: offering.semester,
+                  ...(offering.termId
+                    ? {
+                        OR: [
+                          { termId: offering.termId },
+                          {
+                            academicYear: offering.academicYear,
+                            semester: offering.semester,
+                          },
+                        ],
+                      }
+                    : {
+                        academicYear: offering.academicYear,
+                        semester: offering.semester,
+                      }),
                 })),
               }
             : { id: -1 },

@@ -205,6 +205,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         title: 'nav.academic',
         items: [
           {
+            title: 'nav.academicCalendar',
+            path: '/academic-terms',
+            icon: Calendar,
+            roles: ['SUPER_ADMIN'],
+          },
+          {
             title: 'nav.colleges',
             path: '/colleges',
             icon: Building2,

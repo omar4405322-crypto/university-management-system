@@ -41,21 +41,21 @@ router.get('/:id/materials/:materialId/download', coursesController.downloadCour
 // Modification routes are restricted
 router.post(
   '/',
-  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
+  authorize('SUPER_ADMIN'),
   courseValidation,
   validate,
   coursesController.createCourse
 );
 router.put(
   '/:id',
-  authorize('SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'),
+  authorize('SUPER_ADMIN'),
   [...idParamValidation, ...courseUpdateValidation],
   validate,
   coursesController.updateCourse
 );
 router.delete(
   '/:id',
-  authorize('SUPER_ADMIN', 'ADMIN'),
+  authorize('SUPER_ADMIN'),
   idParamValidation,
   validate,
   coursesController.deleteCourse

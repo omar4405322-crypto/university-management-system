@@ -251,12 +251,26 @@ export const createExam = catchAsync(
       return next(new ValidationError("Start time must be before end time"));
     }
 
+    const activeTerm = await prisma.academicTerm.findFirst({
+      where: { isCurrent: true },
+      include: { academicYear: true },
+    });
+    const targetTermId = req.body.termId ? parseInt(req.body.termId as string, 10) : activeTerm?.id ?? null;
+    const yearMatch = activeTerm?.academicYear?.name.match(/\d{4}/);
+    const resolvedAcademicYear = yearMatch
+      ? parseInt(yearMatch[0], 10)
+      : activeTerm?.startDate
+        ? activeTerm.startDate.getFullYear()
+        : toZonedTime(new Date(), CAIRO_TZ).getFullYear();
+    const resolvedSemester = activeTerm?.semesterNumber ?? course.semester ?? 1;
+
     const exam = await prisma.$transaction(async (tx) => {
       const created = await tx.exam.create({
         data: {
           courseId: parseInt(courseId as string),
-          academicYear: toZonedTime(new Date(), CAIRO_TZ).getFullYear(),
-          semester: course.semester || 1,
+          academicYear: resolvedAcademicYear,
+          semester: resolvedSemester,
+          termId: targetTermId,
           type: type || "MIDTERM",
           title:
             title && String(title).trim() ? String(title).trim() : undefined,
@@ -585,16 +599,29 @@ export const submitExam = catchAsync(
     if (!exam) return next(new NotFoundError("Exam not found"));
 
     // Verify student enrollment eligibility
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        studentId_courseId_semester_academicYear: {
+    let enrollment = null;
+    if (exam.termId) {
+      enrollment = await prisma.enrollment.findFirst({
+        where: {
           studentId: student.id,
           courseId: exam.courseId,
-          academicYear: exam.academicYear,
-          semester: exam.semester,
+          termId: exam.termId,
         },
-      },
-    });
+      });
+    }
+
+    if (!enrollment) {
+      enrollment = await prisma.enrollment.findUnique({
+        where: {
+          studentId_courseId_semester_academicYear: {
+            studentId: student.id,
+            courseId: exam.courseId,
+            academicYear: exam.academicYear,
+            semester: exam.semester,
+          },
+        },
+      });
+    }
 
     if (!enrollment || enrollment.status !== "ENROLLED") {
       if (enrollment?.status === "BLOCKED") {

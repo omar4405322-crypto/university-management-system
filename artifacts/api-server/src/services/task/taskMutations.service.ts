@@ -19,6 +19,7 @@ export interface CreateTaskDTO {
   courseId: number;
   dueDate: Date;
   maxScore: number;
+  termId?: number | null;
 }
 
 export interface UpdateTaskDTO {
@@ -71,12 +72,26 @@ export class TaskMutationsService {
 
     await TaskScopeService.validateCourseScope(user, course);
 
+    const activeTerm = await db.academicTerm.findFirst({
+      where: { isCurrent: true },
+      include: { academicYear: true },
+    });
+    const targetTermId = data.termId !== undefined ? data.termId : activeTerm?.id ?? null;
+    const yearMatch = activeTerm?.academicYear?.name.match(/\d{4}/);
+    const resolvedAcademicYear = yearMatch
+      ? parseInt(yearMatch[0], 10)
+      : activeTerm?.startDate
+        ? activeTerm.startDate.getFullYear()
+        : toZonedTime(new Date(), CAIRO_TZ).getFullYear();
+    const resolvedSemester = activeTerm?.semesterNumber ?? course.semester ?? 1;
+
     const taskData = {
       title: data.title,
       description: data.description,
       courseId: data.courseId,
-      academicYear: toZonedTime(new Date(), CAIRO_TZ).getFullYear(),
-      semester: course.semester || 1,
+      academicYear: resolvedAcademicYear,
+      semester: resolvedSemester,
+      termId: targetTermId,
       doctorId: doctor.id,
       dueDate: data.dueDate,
       maxScore: data.maxScore,
@@ -91,16 +106,7 @@ export class TaskMutationsService {
           include: taskInclude,
         })
       : await prisma.task.create({
-          data: {
-            title: data.title,
-            description: data.description,
-            courseId: data.courseId,
-            academicYear: toZonedTime(new Date(), CAIRO_TZ).getFullYear(),
-            semester: course.semester || 1,
-            doctorId: doctor.id,
-            dueDate: data.dueDate,
-            maxScore: data.maxScore,
-          },
+          data: taskData,
           include: taskInclude,
         });
 

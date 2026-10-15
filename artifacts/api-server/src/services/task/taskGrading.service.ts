@@ -50,16 +50,29 @@ export class TaskGradingService {
       throw new NotFoundError("Task not found");
     }
 
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        studentId_courseId_semester_academicYear: {
+    let enrollment = null;
+    if (taskObj.termId) {
+      enrollment = await prisma.enrollment.findFirst({
+        where: {
           studentId: student.id,
           courseId: taskObj.courseId,
-          academicYear: taskObj.academicYear,
-          semester: taskObj.semester,
+          termId: taskObj.termId,
         },
-      },
-    });
+      });
+    }
+
+    if (!enrollment) {
+      enrollment = await prisma.enrollment.findUnique({
+        where: {
+          studentId_courseId_semester_academicYear: {
+            studentId: student.id,
+            courseId: taskObj.courseId,
+            academicYear: taskObj.academicYear,
+            semester: taskObj.semester,
+          },
+        },
+      });
+    }
     if (!enrollment || enrollment.status !== "ENROLLED") {
       throw new AuthorizationError(
         enrollment?.status === "BLOCKED"
@@ -290,16 +303,29 @@ export class TaskGradingService {
       throw new NotFoundError("Task not found");
     }
 
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        studentId_courseId_semester_academicYear: {
+    let enrollment = null;
+    if (taskObj.termId) {
+      enrollment = await prisma.enrollment.findFirst({
+        where: {
           studentId: student.id,
           courseId: taskObj.courseId,
-          academicYear: taskObj.academicYear,
-          semester: taskObj.semester,
+          termId: taskObj.termId,
         },
-      },
-    });
+      });
+    }
+
+    if (!enrollment) {
+      enrollment = await prisma.enrollment.findUnique({
+        where: {
+          studentId_courseId_semester_academicYear: {
+            studentId: student.id,
+            courseId: taskObj.courseId,
+            academicYear: taskObj.academicYear,
+            semester: taskObj.semester,
+          },
+        },
+      });
+    }
     if (!enrollment || enrollment.status !== "ENROLLED") {
       throw new AuthorizationError(
         "Access denied: You are not enrolled in this task offering",
