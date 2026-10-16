@@ -18,6 +18,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
 import { getScopeWhere } from '../utils/scope.utils';
 import catchAsync from '../utils/catchAsync';
+import { normalizeSlotType } from '../utils/slotType.utils';
 
 export {
   createSchedule,
@@ -260,10 +261,12 @@ export const getWeeklyTimetable = catchAsync(
     ]);
 
     const finalSlots = scheduleSlots.map((slot: any) => {
+      const normalizedSlotType = normalizeSlotType(slot.slotType);
       if (slot.overrides && slot.overrides.length > 0) {
         const override = slot.overrides[0];
         return {
           ...slot,
+          slotType: normalizedSlotType,
           isTemporarilyModified: true,
           overrideReason: override.reason,
           room: override.room || slot.room,
@@ -274,7 +277,10 @@ export const getWeeklyTimetable = catchAsync(
           teachingAssistant: override.teachingAssistant || slot.teachingAssistant
         };
       }
-      return slot;
+      return {
+        ...slot,
+        slotType: normalizedSlotType,
+      };
     });
 
     return res.json({

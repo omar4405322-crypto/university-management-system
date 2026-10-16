@@ -14,7 +14,7 @@ export interface PublicSampleSlot {
   dayOfWeek: string;
   startTime: string;
   endTime: string;
-  sessionType: 'LECTURE' | 'SECTION' | 'LAB';
+  sessionType: 'LECTURE' | 'LAB';
   room: string;
   course: string;
   instructor: string;

@@ -18,6 +18,7 @@ import {
 import { TimetableService } from '../services/timetable.service';
 import { replacePasswordAndRevokeAllUserSessions } from '../services/session.service';
 import { assertPasswordStrength } from '../utils/passwordPolicy';
+import { normalizeSlotType } from '../utils/slotType.utils';
 
 function assertDoctorScope(
   doctor: {
@@ -154,6 +155,10 @@ export const getSuggestedDoctors = catchAsync(async (req: Request, res: Response
 
     return {
       ...doc,
+      scheduleSlots: (doc.scheduleSlots || []).map((s: any) => ({
+        ...s,
+        slotType: normalizeSlotType(s.slotType),
+      })),
       tier,
       reason,
     };
@@ -309,8 +314,12 @@ export const getDoctorById = catchAsync(async (req: Request, res: Response, next
     }
   });
   const taughtCourses = Array.from(courseMap.values());
+  const normalizedSlots = (doctor.scheduleSlots || []).map((slot: any) => ({
+    ...slot,
+    slotType: normalizeSlotType(slot.slotType),
+  }));
 
-  res.json({ success: true, data: { ...doctor, taughtCourses } });
+  res.json({ success: true, data: { ...doctor, scheduleSlots: normalizedSlots, taughtCourses } });
 });
 
 export const assignDoctorCourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {

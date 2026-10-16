@@ -2,6 +2,7 @@ import React, { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BookOpen, User, MapPin, X, Beaker, Users, MonitorPlay } from 'lucide-react';
 import type { SlotEntry } from '../../types/timetable.types';
+import { formatSlotType } from '../../utils/slotType';
 
 interface TimeSlotCellProps {
   /** Populated slot data, or null when the cell is empty. */
@@ -118,10 +119,7 @@ const TimeSlotCell = memo(function TimeSlotCell({
         <div className="flex flex-col gap-1 items-start">
           <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-white/50 border border-brand-border/50 flex items-center gap-1">
             {icon}
-            {t(
-              `schedule.${(entry.slotType ?? 'LECTURE').toLowerCase()}`,
-              entry.slotType ?? 'LECTURE'
-            )}
+            {formatSlotType(entry.slotType, t)}
           </span>
           {entry.isTemporarilyModified && (
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">

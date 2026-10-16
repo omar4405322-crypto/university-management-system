@@ -7,7 +7,7 @@ import SearchableSelect, { SelectOption } from '../ui/SearchableSelect';
 
 interface InstructorSelectorProps {
   courseId: string | number | undefined;
-  slotType: 'LECTURE' | 'LAB' | 'SECTION' | string;
+  slotType: 'LECTURE' | 'LAB' | string;
   value: string;
   onChange: (value: string, label?: string) => void;
   isRTL?: boolean;

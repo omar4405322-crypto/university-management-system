@@ -16,6 +16,7 @@ import {
 import { TimetableService } from '../services/timetable.service';
 import { replacePasswordAndRevokeAllUserSessions } from '../services/session.service';
 import { assertPasswordStrength } from '../utils/passwordPolicy';
+import { normalizeSlotType } from '../utils/slotType.utils';
 
 function assertTAScope(
   ta: {
@@ -127,6 +128,10 @@ export const getSuggestedTeachingAssistants = catchAsync(async (req: Request, re
 
     return {
       ...ta,
+      scheduleSlots: (ta.scheduleSlots || []).map((s: any) => ({
+        ...s,
+        slotType: normalizeSlotType(s.slotType),
+      })),
       tier,
       reason,
     };
@@ -253,8 +258,19 @@ export const getTeachingAssistantById = catchAsync(async (req: Request, res: Res
     }
   });
   const taughtCourses = Array.from(courseMap.values());
+  const normalizedSlots = (ta.scheduleSlots || []).map((slot: any) => ({
+    ...slot,
+    slotType: normalizeSlotType(slot.slotType),
+  }));
 
-  res.json({ success: true, data: { ...ta, taughtCourses } });
+  res.json({
+    success: true,
+    data: {
+      ...ta,
+      scheduleSlots: normalizedSlots,
+      taughtCourses,
+    },
+  });
 });
 
 export const assignTACourse = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -286,11 +302,19 @@ export const assignTACourse = catchAsync(async (req: Request, res: Response, nex
     where: { teachingAssistantId: taId, courseId: course.id, isArchived: false }
   });
 
+  if (slotType !== undefined && slotType !== null) {
+    const norm = String(slotType).toUpperCase();
+    if (norm !== 'LECTURE' && norm !== 'LAB') {
+      return next(new ValidationError('slotType must be strictly LECTURE or LAB'));
+    }
+  }
+
   const targetDay = (dayOfWeek || existingSlot?.dayOfWeek || 'MONDAY').toUpperCase();
   const targetStart = startTime || existingSlot?.startTime || '12:00';
   const targetEnd = endTime || existingSlot?.endTime || '14:00';
   const targetRoom = room !== undefined ? (room ? String(room).trim() : null) : (existingSlot?.room || null);
-  const targetType = slotType || existingSlot?.slotType || 'LAB';
+  const rawType = slotType || existingSlot?.slotType || 'LAB';
+  const targetType = normalizeSlotType(rawType);
 
   // Check conflicts across university
   await TimetableService.checkConflicts({

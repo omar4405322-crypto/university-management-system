@@ -56,7 +56,7 @@ export interface CourseScheduleSlot {
   startTime: string;
   endTime: string;
   room?: string | null;
-  slotType: 'LECTURE' | 'TUTORIAL' | 'LAB' | string;
+  slotType: 'LECTURE' | 'LAB' | string;
   doctor?: {
     id: number;
     firstName: string;

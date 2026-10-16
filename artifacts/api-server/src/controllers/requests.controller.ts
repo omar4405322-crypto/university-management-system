@@ -56,6 +56,13 @@ export const createRequest = catchAsync(async (req: Request, res: Response, next
     return next(new ValidationError('scheduleSlotId is required for this request type'));
   }
 
+  if (proposedData && typeof proposedData === 'object' && (proposedData as any).slotType) {
+    const norm = String((proposedData as any).slotType).toUpperCase();
+    if (norm !== 'LECTURE' && norm !== 'LAB') {
+      return next(new ValidationError('slotType must be strictly LECTURE or LAB'));
+    }
+  }
+
   if (req.user!.role === 'DOCTOR') {
     const doctorId = req.user!.doctor?.id;
     if (!Number.isInteger(doctorId)) {
@@ -185,6 +192,13 @@ export const approveRequest = catchAsync(async (req: Request, res: Response, nex
       : null;
     if (changeReq.scheduleSlotId && !scopedSlot) {
       throw new AuthorizationError('Schedule slot is outside your managed scope');
+    }
+
+    if (data?.slotType) {
+      const norm = String(data.slotType).toUpperCase();
+      if (norm !== 'LECTURE' && norm !== 'LAB') {
+        throw new ValidationError('slotType must be strictly LECTURE or LAB');
+      }
     }
 
     if (changeReq.type === 'NEW_SLOT') {

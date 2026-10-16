@@ -7,6 +7,7 @@ import { getScopedUniversityCounts } from './administrativeSummary.service';
 import { getAdministrativeAnalyticsScopes } from '../utils/administrativeAnalyticsScope.utils';
 import { getScopeWhere } from '../utils/scope.utils';
 import { toCairoTime } from '../utils/timezone.utils';
+import { normalizeSlotType } from '../utils/slotType.utils';
 import {
   getAllowedAiTools as getRegistryAllowedAiTools,
   type FunctionTool,
@@ -282,7 +283,7 @@ async function queryStudentSchedule(actor: AuthActor, dayOfWeekFilter?: string) 
     startTime: s.startTime,
     endTime: s.endTime,
     room: s.room || 'TBA',
-    slotType: s.slotType,
+    slotType: normalizeSlotType(s.slotType),
     courseCode: s.course?.courseCode || '',
     courseName: s.course?.name || '',
     instructor: s.doctor
@@ -511,7 +512,7 @@ async function queryDoctorTeachingSchedule(doctorId: number, dayOfWeekFilter?: s
     startTime: s.startTime,
     endTime: s.endTime,
     room: s.room || 'TBA',
-    slotType: s.slotType,
+    slotType: normalizeSlotType(s.slotType),
     courseCode: s.course?.courseCode || '',
     courseName: s.course?.name || '',
   }));
@@ -761,7 +762,7 @@ async function queryTaSchedule(taId: string | number, dayOfWeekFilter?: string) 
     startTime: s.startTime,
     endTime: s.endTime,
     room: s.room || 'TBA',
-    slotType: s.slotType,
+    slotType: normalizeSlotType(s.slotType),
     courseCode: s.course?.courseCode || '',
     courseName: s.course?.name || '',
     groupName: s.group?.name || null,
@@ -968,6 +969,13 @@ async function queryAdminScheduleSummary(scopes: NonNullable<ReturnType<typeof g
     }),
   ]);
 
+  const normalizedByTypeMap = new Map<'LECTURE' | 'LAB', number>();
+  for (const t of byType) {
+    const norm = normalizeSlotType(t.slotType);
+    normalizedByTypeMap.set(norm, (normalizedByTypeMap.get(norm) || 0) + t._count._all);
+  }
+  const slotsByType = Array.from(normalizedByTypeMap.entries()).map(([slotType, count]) => ({ slotType, count }));
+
   return {
     status: 'SUCCESS',
     hasData: totalSlots > 0,
@@ -975,7 +983,7 @@ async function queryAdminScheduleSummary(scopes: NonNullable<ReturnType<typeof g
     messageAr: `إحصائيات الجداول: إجمالي ${totalSlots} حصة/محاضرة أسبوعية.`,
     totalSlots,
     slotsByDay: byDay.map((d) => ({ dayOfWeek: d.dayOfWeek, count: d._count._all })),
-    slotsByType: byType.map((t) => ({ slotType: t.slotType, count: t._count._all })),
+    slotsByType,
   };
 }
 
@@ -1430,7 +1438,7 @@ async function getScopedCourseDetails(actor: AuthActor, courseCode: string) {
       startTime: s.startTime,
       endTime: s.endTime,
       room: s.room || 'TBA',
-      slotType: s.slotType,
+      slotType: normalizeSlotType(s.slotType),
       instructor: s.doctor
         ? `Dr. ${s.doctor.firstName} ${s.doctor.lastName}`
         : s.teachingAssistant

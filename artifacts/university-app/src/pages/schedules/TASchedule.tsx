@@ -32,8 +32,9 @@ import { ScheduleView } from '../../components/timetable/ScheduleView';
 import { generateHourlyTimes, deriveHourlyTimesFromData } from '../../utils/scheduleConfig';
 import { logger } from '../../lib/logger';
 import Button from '../../components/ui/button';
-import { StatCard } from '../../components/ui/card';
 import Badge from '../../components/ui/badge';
+import ScheduleHeader from '../../components/timetable/ScheduleHeader';
+import ScheduleToolbar from '../../components/timetable/ScheduleToolbar';
 
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -230,11 +231,11 @@ export function TASchedule() {
         slots = Object.values(data).flat().filter(Boolean);
       }
 
-      // Filter to strictly Practical lessons, Sections, and Labs (exclude pure doctor lectures)
+      // Filter to strictly Practical lessons and Labs (exclude pure doctor lectures)
       const practicalSlots = slots.filter((slot: any) => {
-        const isLabOrSection = slot.slotType === 'LAB' || slot.slotType === 'SECTION';
+        const isLab = slot.slotType === 'LAB';
         const hasTA = Boolean(slot.teachingAssistantId || slot.teachingAssistant?.id);
-        return isLabOrSection || hasTA;
+        return isLab || hasTA;
       });
 
       setRawSlots(practicalSlots);
@@ -253,10 +254,10 @@ export function TASchedule() {
   // 3. Client-Side Filtering
   const filteredSlots = useMemo(() => {
     return rawSlots.filter((slot) => {
-      // Must be a practical session / section / lab or have a TA assigned
-      const isLabOrSection = slot.slotType === 'LAB' || slot.slotType === 'SECTION';
+      // Must be a lab session or have a TA assigned
+      const isLab = slot.slotType === 'LAB';
       const hasTA = Boolean(slot.teachingAssistantId || slot.teachingAssistant?.id);
-      if (!isLabOrSection && !hasTA) return false;
+      if (!isLab && !hasTA) return false;
 
       // If specific TA selected
       if (selectedTAId && selectedTAId !== 'all') {
@@ -360,124 +361,41 @@ export function TASchedule() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
-      {/* ========================================================================= */}
-      {/* 1. EXECUTIVE IDENTITY HERO CARD                                           */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-4 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-primary-500 to-brand-primary-700 text-white font-bold text-lg flex items-center justify-center shadow-xs shrink-0">
-              {activeTA ? activeTA.firstName?.[0] : <Calendar size={22} />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                  {taNameDisplay}
-                </h1>
-                <Badge variant="info" className="text-[10px] font-bold">
-                  {isRTL ? 'معيد / مساعد تدريس' : 'Teaching Assistant'}
-                </Badge>
-              </div>
-              <p className="text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5">
-                <Building size={13} className="text-brand-primary-500" />
-                <span>{deptNameDisplay || (isRTL ? 'جامعة 6 أكتوبر التكنولوجية' : '6th of October Technological University')}</span>
-              </p>
-            </div>
-          </div>
+      {/* 1. UNIFIED SCHEDULE HEADER */}
+      <ScheduleHeader
+        title={taNameDisplay}
+        subtitle={deptNameDisplay || t('schedules.universityFallback', '6th of October Technological University')}
+        icon={activeTA ? activeTA.firstName?.[0] : <Calendar size={22} />}
+        roleBadge={
+          activeTA
+            ? t('schedules.teachingAssistantBadge', 'Teaching Assistant')
+            : t('schedules.masterTASchedule', 'Master Teaching Assistants Schedule')
+        }
+        canManage={isAdmin}
+        onManage={() => navigate('/timetables-management')}
+        showPrint={true}
+        onPrint={() => window.print()}
+        onRefresh={fetchScheduleData}
+        isRefreshing={loading}
+      />
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            {isAdmin && (
-              <Button
-                size="sm"
-                onClick={() => navigate('/timetables-management')}
-                className="h-8.5 px-3.5 rounded-xl text-xs font-bold bg-brand-primary-600 hover:bg-brand-primary-700 text-white border-0 gap-1.5 cursor-pointer shadow-xs hover:shadow-sm transition-all"
-              >
-                <Layers size={14} className="text-white" />
-                <span>{isRTL ? 'إدارة وتسكين الجداول' : 'Manage Timetables'}</span>
-              </Button>
-            )}
-
-            <Button
-              size="sm"
-              onClick={() => window.print()}
-              className="h-8.5 px-3.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white border-0 gap-1.5 cursor-pointer shadow-xs hover:shadow-sm transition-all"
-            >
-              <Printer size={14} className="text-white" />
-              <span>{isRTL ? 'طباعة' : 'Print'}</span>
-            </Button>
-
-            <button
-              onClick={fetchScheduleData}
-              className="h-8.5 w-8.5 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer shadow-2xs transition-all"
-              title={isRTL ? 'تحديث' : 'Refresh'}
-            >
-              <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
-          compact
-          title={isRTL ? 'إجمالي السكاشن والمعامل' : 'Total Sessions'}
-          value={loading ? '...' : totalSlots}
-          icon={Calendar}
-          color="green"
-        />
-
-        <StatCard
-          compact
-          title={isRTL ? 'المقررات المسندة' : 'Assigned Courses'}
-          value={loading ? '...' : distinctCourses}
-          icon={BookOpen}
-          color="navy"
-        />
-
-        <StatCard
-          compact
-          title={isRTL ? 'المعامل والقاعات' : 'Assigned Labs'}
-          value={loading ? '...' : distinctRooms}
-          icon={MapPin}
-          color="cyan"
-        />
-
-        <StatCard
-          compact
-          title={isRTL ? 'المجموعات والسكاشن' : 'Student Groups'}
-          value={loading ? '...' : distinctGroups > 0 ? distinctGroups : isRTL ? 'الكل' : 'All'}
-          icon={Users}
-          color="gold"
-        />
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. UNIFIED 44px COMPACT FILTER TOOLBAR                                    */}
-      {/* ========================================================================= */}
-      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[180px]">
-          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={isRTL ? 'بحث بالمقرر، المعيد، القاعة أو السكشن...' : 'Search course, TA, room, or group...'}
-            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-            >
-              <X size={12} />
-            </button>
-          )}
-        </div>
-
+      {/* 2. UNIFIED COMPACT FILTER TOOLBAR */}
+      <ScheduleToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder={t('schedules.searchTASchedulePlaceholder')}
+        hasActiveFilters={Boolean(
+          selectedTAId !== 'all' ||
+          selectedCollegeId !== 'all' ||
+          selectedDeptId !== 'all' ||
+          selectedYear ||
+          selectedSemester ||
+          searchQuery
+        )}
+        onResetFilters={resetFilters}
+        viewMode={scheduleViewMode}
+        onViewModeChange={setScheduleViewMode}
+      >
         {/* Searchable TA Switcher (Admins & Staff) */}
         {(isAdmin || user?.role !== 'TEACHING_ASSISTANT') && (
           <div className="w-56">
@@ -542,48 +460,7 @@ export function TASchedule() {
           <option value="2">{isRTL ? 'الفصل 2' : 'Sem 2'}</option>
           <option value="3">{isRTL ? 'الصيفي' : 'Summer'}</option>
         </select>
-
-        {/* Clear Filters */}
-        {(selectedTAId !== 'all' || selectedCollegeId !== 'all' || selectedDeptId !== 'all' || selectedYear || selectedSemester || searchQuery) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={resetFilters}
-            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
-          >
-            <X size={13} className="me-1" />
-            {isRTL ? 'مسح' : 'Clear'}
-          </Button>
-        )}
-
-        {/* View Switcher (Grid vs Agenda) inside Unified Toolbar */}
-        <div className="ms-auto flex items-center p-0.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setScheduleViewMode('grid')}
-            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              scheduleViewMode === 'grid'
-                ? 'bg-white dark:bg-slate-800 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <LayoutGrid size={13} />
-            <span>{isRTL ? 'الجدول الأسبوعي' : 'Weekly Grid'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setScheduleViewMode('agenda')}
-            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              scheduleViewMode === 'agenda'
-                ? 'bg-white dark:bg-slate-800 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <ListOrdered size={13} />
-            <span>{isRTL ? 'عرض الأجندة' : 'Agenda View'}</span>
-          </button>
-        </div>
-      </div>
+      </ScheduleToolbar>
 
       {/* ========================================================================= */}
       {/* 4. SCHEDULE TIMETABLE GRID                                                */}

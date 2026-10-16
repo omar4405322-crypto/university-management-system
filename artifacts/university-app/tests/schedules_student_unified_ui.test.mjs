@@ -65,7 +65,7 @@ describe('Schedules Module: Student Schedule Unified Layout & Consistency', { ti
   });
 
   for (const lang of ['ar', 'en']) {
-    it(`Student Schedule (${lang}): matches executive hero, 4 KPI cards, search toolbar, and no duplicate headers`, async () => {
+    it(`Student Schedule (${lang}): matches executive hero, no KPI ribbon, search toolbar, and no duplicate headers`, async () => {
       const { context, page } = await mockSessionPage(browser, {
         role: 'STUDENT',
         language: lang,
@@ -110,14 +110,9 @@ describe('Schedules Module: Student Schedule Unified Layout & Consistency', { ti
       const refreshBtn = page.locator('button[aria-label*="تحديث"], button[aria-label*="Refresh"], button[title*="تحديث"], button[title*="Refresh"]');
       assert.ok(await refreshBtn.isVisible(), 'Refresh button must be visible in header');
 
-      // 3. Verify exactly 4 Top KPI Stat Cards
-      // The grid contains 4 stat cards
-      const statCardValues = page.locator('.grid.grid-cols-2.sm\\:grid-cols-4 [class*="text-"]');
-      assert.ok(await statCardValues.count() >= 4, '4 Top KPI Stat Cards must be rendered');
-
-      // Check the slot count value is 3 in the cards
-      const bodyText = await page.innerText('body');
-      assert.ok(bodyText.includes('3'), 'KPI stat card must display 3 total sessions');
+      // 3. Verify NO KPI ribbon (per Owner decision R4: KPI ribbons removed from personal schedule pages)
+      const kpiRibbon = page.locator('.grid.grid-cols-2.sm\\:grid-cols-4');
+      assert.equal(await kpiRibbon.count(), 0, 'KPI ribbon must not be rendered on personal schedule page');
 
       // 4. Verify Unified Compact Filter Toolbar
       const searchInput = page.locator('input[type="text"][placeholder*="بحث"], input[type="text"][placeholder*="Search"]');
@@ -186,9 +181,9 @@ describe('Schedules Module: Student Schedule Unified Layout & Consistency', { ti
     assert.equal(h1, 1, 'Mobile viewport must have 1 h1');
     assert.ok(await page.locator('input[type="text"]').isVisible(), 'Search input visible on mobile');
 
-    // 4 KPI cards adapt to 2 columns on mobile
-    const kpiGrid = page.locator('.grid.grid-cols-2');
-    assert.ok(await kpiGrid.first().isVisible(), 'KPI cards grid is visible on mobile');
+    // Verify NO KPI ribbon on mobile (per Owner decision R4: KPI ribbons removed from personal schedule pages)
+    const kpiRibbon = page.locator('.grid.grid-cols-2.sm\\:grid-cols-4');
+    assert.equal(await kpiRibbon.count(), 0, 'KPI ribbon must not be rendered on mobile viewport');
 
     await context.close();
   });

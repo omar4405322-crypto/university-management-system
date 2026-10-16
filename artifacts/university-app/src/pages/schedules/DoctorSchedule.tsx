@@ -34,9 +34,10 @@ import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import SearchableSelect, { SelectOption } from '../../components/ui/SearchableSelect';
 import Pagination from '../../components/ui/pagination';
-import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import Badge from '../../components/ui/badge';
+import ScheduleHeader from '../../components/timetable/ScheduleHeader';
+import ScheduleToolbar from '../../components/timetable/ScheduleToolbar';
 import { ScheduleView } from '../../components/timetable/ScheduleView';
 import { generateHourlyTimes } from '../../utils/scheduleConfig';
 import { logger } from '../../lib/logger';
@@ -209,9 +210,9 @@ export function DoctorSchedule() {
           ? res.data
           : res.data?.schedules || res.data?.data || [];
       }
-      // Exclude Lab / Section slots since they have their dedicated TA Schedule section
+      // Exclude Lab slots since they have their dedicated TA Schedule section
       const lectureSlots = slotsData.filter(
-        (slot: any) => slot.slotType !== 'LAB' && slot.slotType !== 'SECTION'
+        (slot: any) => slot.slotType !== 'LAB'
       );
       setRawSlots(lectureSlots);
       setPagination(res.pagination || { total: lectureSlots.length, totalPages: 1 });
@@ -234,8 +235,8 @@ export function DoctorSchedule() {
   // 3. Multi-Dimensional Master Filtering Logic
   const filteredSlots = useMemo(() => {
     return rawSlots.filter((slot) => {
-      // Exclude Lab / Section slots (they belong exclusively to TA Schedule)
-      if (slot.slotType === 'LAB' || slot.slotType === 'SECTION') return false;
+      // Exclude Lab slots (they belong exclusively to TA Schedule)
+      if (slot.slotType === 'LAB') return false;
 
       // Doctor Filter
       if (selectedDoctorId && selectedDoctorId !== 'all') {
@@ -476,126 +477,42 @@ export function DoctorSchedule() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
-      {/* ========================================================================= */}
-      {/* 1. EXECUTIVE IDENTITY HERO CARD                                           */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-4 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-primary-500 to-brand-primary-700 text-white font-bold text-lg flex items-center justify-center shadow-xs shrink-0">
-              {activeDoctor ? activeDoctor.firstName?.[0] : <Calendar size={22} />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                  {doctorNameDisplay}
-                </h1>
-                <Badge variant="info" className="text-[10px] font-bold">
-                  {activeDoctor ? isRTL ? 'أستاذ المادة' : 'Professor' : isRTL ? 'الجدول العام' : 'Master Schedule'}
-                </Badge>
-              </div>
-              <p className="text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5">
-                <Building size={13} className="text-brand-primary-500" />
-                <span>{deptNameDisplay}</span>
-              </p>
-            </div>
-          </div>
+      {/* 1. UNIFIED SCHEDULE HEADER */}
+      <ScheduleHeader
+        title={doctorNameDisplay}
+        subtitle={deptNameDisplay}
+        icon={activeDoctor ? activeDoctor.firstName?.[0] : <Calendar size={22} />}
+        roleBadge={
+          activeDoctor
+            ? t('schedules.professorBadge', 'Professor')
+            : t('schedules.masterScheduleBadge', 'Master Schedule')
+        }
+        canManage={isAdmin}
+        onManage={() => navigate('/timetables-management')}
+        showPrint={true}
+        onPrint={() => window.print()}
+        onRefresh={fetchSchedule}
+        isRefreshing={loading}
+      />
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            {isAdmin && (
-              <Button
-                size="sm"
-                onClick={() => navigate('/timetables-management')}
-                className="h-8.5 px-3.5 rounded-xl text-xs font-bold bg-brand-primary-600 hover:bg-brand-primary-700 text-white border-0 gap-1.5 cursor-pointer shadow-xs hover:shadow-sm transition-all"
-              >
-                <Layers size={14} className="text-white" />
-                <span>{isRTL ? 'إدارة وتسكين الجداول' : 'Manage Timetables'}</span>
-              </Button>
-            )}
-
-            <Button
-              size="sm"
-              onClick={() => window.print()}
-              className="h-8.5 px-3.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white border-0 gap-1.5 cursor-pointer shadow-xs hover:shadow-sm transition-all"
-            >
-              <Printer size={14} className="text-white" />
-              <span>{isRTL ? 'طباعة' : 'Print'}</span>
-            </Button>
-
-            <button
-              type="button"
-              onClick={fetchSchedule}
-              className="h-8.5 w-8.5 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer shadow-2xs transition-all"
-              title={isRTL ? 'تحديث' : 'Refresh'}
-              aria-label={isRTL ? 'تحديث الجدول' : 'Refresh schedule'}
-            >
-              <RotateCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 2. EXECUTIVE 4-METRIC RIBBON                                              */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
-          compact
-          title={isRTL ? 'إجمالي المحاضرات' : 'Total Lectures'}
-          value={loading ? '...' : totalSlots}
-          icon={Calendar}
-          color="green"
-        />
-
-        <StatCard
-          compact
-          title={isRTL ? 'المقررات المجدولة' : 'Assigned Courses'}
-          value={loading ? '...' : distinctCourses}
-          icon={BookOpen}
-          color="navy"
-        />
-
-        <StatCard
-          compact
-          title={isRTL ? 'أعضاء هيئة التدريس' : 'Faculty Members'}
-          value={loading ? '...' : distinctDoctors}
-          icon={GraduationCap}
-          color="cyan"
-        />
-
-        <StatCard
-          compact
-          title={isRTL ? 'المدرجات والقاعات' : 'Lecture Halls'}
-          value={loading ? '...' : distinctRooms}
-          icon={MapPin}
-          color="gold"
-        />
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. UNIFIED 44px COMPACT FILTER TOOLBAR                                    */}
-      {/* ========================================================================= */}
-      <div className="p-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs flex flex-wrap items-center gap-2">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[170px]">
-          <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={isRTL ? 'بحث باسم المقرر، الكود، الدكتور أو القاعة...' : 'Search course, code, doctor, room...'}
-            className="w-full h-8.5 ps-8 pe-8 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-            >
-              <X size={12} />
-            </button>
-          )}
-        </div>
-
+      {/* 2. UNIFIED COMPACT FILTER TOOLBAR */}
+      <ScheduleToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder={t('schedules.searchDoctorSchedulePlaceholder')}
+        hasActiveFilters={Boolean(
+          selectedDoctorId !== 'all' ||
+          selectedCollegeId !== 'all' ||
+          selectedDeptId !== 'all' ||
+          selectedYear ||
+          selectedSemester ||
+          searchQuery ||
+          showConflictsOnly
+        )}
+        onResetFilters={resetFilters}
+        viewMode={scheduleViewMode}
+        onViewModeChange={setScheduleViewMode}
+      >
         {/* Doctor Switcher (Admins & Staff) */}
         {(isAdmin || user?.role !== 'DOCTOR') && (
           <div className="w-56">
@@ -680,6 +597,7 @@ export function DoctorSchedule() {
         {/* Conflicts Toggle */}
         {conflictCount > 0 && (
           <button
+            type="button"
             onClick={() => setShowConflictsOnly(!showConflictsOnly)}
             className={`h-8.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               showConflictsOnly
@@ -693,54 +611,7 @@ export function DoctorSchedule() {
             </span>
           </button>
         )}
-
-        {/* Clear Filters */}
-        {(selectedDoctorId !== 'all' ||
-          selectedCollegeId !== 'all' ||
-          selectedDeptId !== 'all' ||
-          selectedYear ||
-          selectedSemester ||
-          searchQuery ||
-          showConflictsOnly) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={resetFilters}
-            className="h-8.5 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-bold cursor-pointer"
-          >
-            <X size={13} className="me-1" />
-            {isRTL ? 'مسح' : 'Clear'}
-          </Button>
-        )}
-
-        {/* View Switcher (Grid vs Agenda) inside Unified Toolbar */}
-        <div className="ms-auto flex items-center p-0.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setScheduleViewMode('grid')}
-            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              scheduleViewMode === 'grid'
-                ? 'bg-white dark:bg-slate-800 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <LayoutGrid size={13} />
-            <span>{isRTL ? 'الجدول الأسبوعي' : 'Weekly Grid'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setScheduleViewMode('agenda')}
-            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              scheduleViewMode === 'agenda'
-                ? 'bg-white dark:bg-slate-800 text-brand-primary-600 dark:text-brand-primary-400 shadow-xs'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <ListOrdered size={13} />
-            <span>{isRTL ? 'عرض الأجندة' : 'Agenda View'}</span>
-          </button>
-        </div>
-      </div>
+      </ScheduleToolbar>
 
       {/* ========================================================================= */}
       {/* 4. SCHEDULE TIMETABLE GRID                                                */}

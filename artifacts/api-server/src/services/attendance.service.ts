@@ -9,6 +9,7 @@ import {
 } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
 import { auditLog } from '../utils/audit.utils';
+import { normalizeSlotType } from '../utils/slotType.utils';
 import type { AuthActor } from '../types/auth.types';
 import attendanceEngine, { BulkManualRecord } from '../attendance/attendance.engine';
 import { DriverValidationContext } from '../attendance/drivers/IAttendanceDriver';
@@ -631,10 +632,11 @@ class AttendanceService {
     };
 
     const mapCourseSlots = (courseList: Array<Record<string, unknown>>) =>
-  courseList.map((c) => ({
+      courseList.map((c) => ({
         ...c,
         scheduleSlots: (c['scheduleSlots'] as Array<Record<string, unknown>> | undefined)?.map((slot) => ({
           ...slot,
+          slotType: normalizeSlotType(slot.slotType as string | undefined),
           studentGroupId: slot.groupId,
           studentGroup: slot.group,
         })),
@@ -768,11 +770,15 @@ class AttendanceService {
         courseScope && Object.keys(courseScope).length > 0
           ? { course: courseScope, isArchived: false }
           : { isArchived: false };
-      return prisma.scheduleSlot.findMany({
+      const slots = await prisma.scheduleSlot.findMany({
         where,
         include: selectFields,
         orderBy,
       });
+      return slots.map((s) => ({
+        ...s,
+        slotType: normalizeSlotType(s.slotType),
+      }));
     }
 
     return [];

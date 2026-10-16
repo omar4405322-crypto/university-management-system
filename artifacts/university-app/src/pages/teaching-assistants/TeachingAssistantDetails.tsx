@@ -40,6 +40,7 @@ import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { useToast } from '../../context/ToastContext';
 import { useTabListKeyboard } from '../../hooks/useTabListKeyboard';
 import type { TeachingAssistantRow, CourseRow } from '../../types/domain';
+import { formatSlotType } from '../../utils/slotType';
 
 export default function TeachingAssistantDetails({ isDrawerMode = false }: { isDrawerMode?: boolean }) {
   const { id } = useParams();
@@ -680,7 +681,7 @@ export default function TeachingAssistantDetails({ isDrawerMode = false }: { isD
                                     {slot.dayOfWeek}
                                   </span>
                                   <span className="text-[10px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded font-semibold">
-                                    {slot.slotType || 'TUTORIAL'}
+                                    {formatSlotType(slot.slotType, t)}
                                   </span>
                                 </div>
                                 <div className="text-slate-500 flex items-center gap-2 text-[11px]">

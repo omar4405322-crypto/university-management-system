@@ -14,6 +14,7 @@ import {
 } from '../utils/adminMutationScope.utils';
 import { EnrollmentService } from '../services/enrollment.service';
 import { invalidateCache } from '../utils/redis.utils';
+import { normalizeSlotType } from '../utils/slotType.utils';
 
 /**
  * @desc    Get all courses with advanced filtering, sorting and pagination
@@ -122,15 +123,22 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
     prisma.course.count({ where }),
   ]);
 
-  const courses = coursesList.map((c) => ({
-    ...c,
-    sections: c.scheduleSlots || [],
-    _count: {
-      ...c._count,
-      students: c._count?.enrollments || 0,
-      enrollments: c._count?.enrollments || 0,
-    },
-  }));
+  const courses = coursesList.map((c) => {
+    const normalizedSlots = (c.scheduleSlots || []).map((slot: any) => ({
+      ...slot,
+      slotType: normalizeSlotType(slot.slotType),
+    }));
+    return {
+      ...c,
+      scheduleSlots: normalizedSlots,
+      sections: normalizedSlots,
+      _count: {
+        ...c._count,
+        students: c._count?.enrollments || 0,
+        enrollments: c._count?.enrollments || 0,
+      },
+    };
+  });
 
   res.json({
     success: true,
@@ -244,9 +252,18 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
     return next(new NotFoundError('Course not found'));
   }
 
+  const normalizedSlots = (course.scheduleSlots || []).map((slot: any) => ({
+    ...slot,
+    slotType: normalizeSlotType(slot.slotType),
+  }));
+
   res.json({
     success: true,
-    data: course,
+    data: {
+      ...course,
+      scheduleSlots: normalizedSlots,
+      sections: normalizedSlots,
+    },
   });
 });
 

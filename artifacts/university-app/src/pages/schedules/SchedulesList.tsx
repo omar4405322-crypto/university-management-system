@@ -43,6 +43,7 @@ import type { ScheduleSlot, TimetableDayRecord } from './DoctorSchedule';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
+import { formatSlotType } from '../../utils/slotType';
 import { useSearchParams } from 'react-router-dom';
 import ScheduleModal from './ScheduleModal';
 import { ScheduleView } from '../../components/timetable/ScheduleView';
@@ -57,9 +58,6 @@ const getSessionBadgeStyle = (type: string) => {
       return 'bg-brand-primary-100 text-brand-primary-800 dark:bg-brand-primary-950/40 dark:text-brand-primary-300 border-brand-primary-200 dark:border-brand-primary-800';
     case 'LAB':
       return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800';
-    case 'SECTION':
-    case 'TUTORIAL':
-      return 'bg-brand-primary-100 text-brand-primary-800 dark:bg-brand-primary-950/40 dark:text-brand-primary-300 border-brand-primary-200 dark:border-brand-primary-800';
     default:
       return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
   }
@@ -973,7 +971,7 @@ const SchedulesList = () => {
                             slot.slotType || ''
                           )}`}
                         >
-                          {String(t(`schedule.${(slot.slotType || '').toLowerCase()}`, slot.slotType || ''))}
+                          {formatSlotType(slot.slotType, t)}
                         </span>
                         {hasConflict && (
                           <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black animate-pulse flex items-center gap-1">
@@ -1267,7 +1265,7 @@ const SchedulesList = () => {
                                 slot.slotType || ''
                               )}`}
                             >
-                              {String(t(`schedule.${(slot.slotType || '').toLowerCase()}`, slot.slotType || ''))}
+                              {formatSlotType(slot.slotType, t)}
                             </span>
                             {hasConflict && (
                               <span className="px-1.5 py-0.5 rounded-md bg-rose-500 text-white text-[9px] font-black animate-pulse">

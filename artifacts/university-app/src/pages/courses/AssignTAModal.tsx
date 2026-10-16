@@ -51,7 +51,7 @@ export default function AssignTAModal({
   const [startTime, setStartTime] = useState('12:00');
   const [endTime, setEndTime] = useState('14:00');
   const [room, setRoom] = useState('Lab 1');
-  const [slotType, setSlotType] = useState<'TUTORIAL' | 'LAB'>('TUTORIAL');
+  const [slotType, setSlotType] = useState<'LAB'>('LAB');
   const [includeScheduleSlot, setIncludeScheduleSlot] = useState(true);
 
   const fetchTAs = useCallback(async () => {
@@ -322,10 +322,9 @@ export default function AssignTAModal({
                   </label>
                   <select
                     value={slotType}
-                    onChange={(e) => setSlotType(e.target.value as 'TUTORIAL' | 'LAB')}
+                    onChange={(e) => setSlotType(e.target.value as 'LAB')}
                     className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs font-medium"
                   >
-                    <option value="TUTORIAL">{isRTL ? 'سكشن (تمارين)' : 'Tutorial (Section)'}</option>
                     <option value="LAB">{isRTL ? 'معمل (عملي)' : 'Lab / Practical'}</option>
                   </select>
                 </div>

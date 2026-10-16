@@ -20,6 +20,7 @@ import {
 import { TimetableService } from '../services/timetable.service';
 import { Prisma } from '@prisma/client';
 import { requireExistingCourseStaffAssignments } from '../utils/scheduleAssignment.utils';
+import { normalizeSlotType } from '../utils/slotType.utils';
 
 // ── Private helpers ───────────────────────────────────────────────────────────
 
@@ -64,6 +65,13 @@ async function getScheduleSlotForMutation(slotId: number) {
 export const createSchedule = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { courseId, doctorId, groupId, slotType, dayOfWeek, startTime, endTime, room, teachingAssistantId, timetableId } = req.body;
+
+    if (slotType !== undefined && slotType !== null) {
+      const norm = String(slotType).toUpperCase();
+      if (norm !== 'LECTURE' && norm !== 'LAB') {
+        return next(new ValidationError('slotType must be strictly LECTURE or LAB'));
+      }
+    }
 
     if (!courseId) return next(new ValidationError('courseId is required'));
 
@@ -177,7 +185,11 @@ export const createSchedule = catchAsync(
       throw err;
     }
 
-    res.status(201).json({ success: true, data: scheduleSlot });
+    const normalizedSlot = {
+      ...scheduleSlot,
+      slotType: normalizeSlotType(scheduleSlot.slotType),
+    };
+    res.status(201).json({ success: true, data: normalizedSlot });
   }
 );
 
@@ -185,6 +197,13 @@ export const updateSchedule = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { dayOfWeek, startTime, endTime, room, teachingAssistantId, courseId, doctorId, groupId, slotType } = req.body;
     const slotId = parseInt(req.params.id as string, 10);
+
+    if (slotType !== undefined && slotType !== null) {
+      const norm = String(slotType).toUpperCase();
+      if (norm !== 'LECTURE' && norm !== 'LAB') {
+        return next(new ValidationError('slotType must be strictly LECTURE or LAB'));
+      }
+    }
 
     if (!Number.isSafeInteger(slotId) || slotId <= 0) {
       return next(new ValidationError('Invalid schedule slot ID'));
@@ -320,7 +339,11 @@ export const updateSchedule = catchAsync(
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
 
-    res.json({ success: true, data: scheduleSlot });
+    const normalizedSlot = {
+      ...scheduleSlot,
+      slotType: normalizeSlotType(scheduleSlot.slotType),
+    };
+    res.json({ success: true, data: normalizedSlot });
   }
 );
 
@@ -382,7 +405,14 @@ export const archiveSchedule = catchAsync(
       data: { isArchived: true, archivedAt: new Date() },
     });
     auditLog('ARCHIVE_SCHEDULE', 'ScheduleSlot', req.params.id as string, req);
-    res.json({ success: true, data: archived, message: 'ScheduleSlot archived' });
+    res.json({
+      success: true,
+      data: {
+        ...archived,
+        slotType: normalizeSlotType(archived.slotType),
+      },
+      message: 'ScheduleSlot archived',
+    });
   }
 );
 
@@ -403,6 +433,13 @@ export const restoreSchedule = catchAsync(
       data: { isArchived: false, archivedAt: null },
     });
     auditLog('RESTORE_SCHEDULE', 'ScheduleSlot', req.params.id as string, req);
-    res.json({ success: true, data: restored, message: 'ScheduleSlot restored' });
+    res.json({
+      success: true,
+      data: {
+        ...restored,
+        slotType: normalizeSlotType(restored.slotType),
+      },
+      message: 'ScheduleSlot restored',
+    });
   }
 );

@@ -12,6 +12,7 @@ import {
   getEffectiveActiveDoctorWhere,
   getEffectiveActiveTeachingAssistantWhere,
 } from '../utils/scope.utils';
+import { normalizeSlotType } from '../utils/slotType.utils';
 
 const getTodayDayOfWeek = () => {
   const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'] as const;
@@ -593,7 +594,7 @@ export const getDoctorStats = catchAsync(
           startTime: s.startTime,
           endTime: s.endTime,
           room: s.room || 'N/A',
-          slotType: s.slotType,
+          slotType: normalizeSlotType(s.slotType),
         })),
         upcomingExams: upcomingExams.map((e) => ({
           id: e.id,

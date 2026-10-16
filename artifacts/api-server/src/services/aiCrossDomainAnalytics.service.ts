@@ -4,6 +4,7 @@ import { calculateStudentGpa } from '../utils/gpa.utils';
 import { getAdministrativeAnalyticsScopes } from '../utils/administrativeAnalyticsScope.utils';
 import { getScopeWhere } from '../utils/scope.utils';
 import { toCairoTime, fromCairoTime, formatCairoDateTime } from '../utils/timezone.utils';
+import { normalizeSlotType } from '../utils/slotType.utils';
 
 // ============================================================================
 // 1. DATA QUALITY & STANDING ENUMS
@@ -706,7 +707,8 @@ export async function queryStudentWeeklyOverview(actor: AuthActor): Promise<Stud
   for (const s of slots) {
     const day = s.dayOfWeek.toUpperCase();
     const date = dateForDayName.get(day) || weekStartStr;
-    const type = s.slotType === 'LAB' ? 'LAB' : s.slotType === 'SECTION' ? 'SECTION' : 'LECTURE';
+    const normalizedType = normalizeSlotType(s.slotType);
+    const type = normalizedType;
     const title = s.course?.name ? `${s.course.name} (${s.course.courseCode})` : 'Class Session';
     const instructor = s.doctor
       ? `Dr. ${s.doctor.firstName} ${s.doctor.lastName}`
@@ -718,7 +720,7 @@ export async function queryStudentWeeklyOverview(actor: AuthActor): Promise<Stud
       id: `slot-${s.id}`,
       eventType: type,
       title,
-      titleAr: `${s.course?.name || 'محاضرة'} - ${s.slotType}`,
+      titleAr: `${s.course?.name || 'محاضرة'} - ${normalizedType === 'LAB' ? 'معمل' : 'محاضرة'}`,
       courseCode: s.course?.courseCode,
       courseName: s.course?.name,
       dayOfWeek: day,

@@ -366,9 +366,7 @@ export const CourseOverviewTab: React.FC<CourseOverviewTabProps> = ({
                   >
                     {slot.slotType === "LECTURE"
                       ? "محاضرة"
-                      : slot.slotType === "SECTION"
-                        ? "سكشن"
-                        : "معمل"}
+                      : "معمل"}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-brand-text-muted font-medium">
