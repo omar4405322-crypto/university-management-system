@@ -83,7 +83,11 @@ export const teachingAssistantValidation = [
   body('employeeId').notEmpty().withMessage('Employee ID is required').trim(),
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('password').custom(passwordStrengthValidator),
-  body('departmentId').optional({ checkFalsy: true }).isInt().withMessage('Department ID must be an integer'),
+  body('departmentId')
+    .notEmpty()
+    .withMessage('Department ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Department ID must be a positive integer'),
   body('specialization').optional().trim(),
   body('status').optional().isIn(['ACTIVE', 'ON_LEAVE', 'INACTIVE']).withMessage('Invalid status'),
 ];

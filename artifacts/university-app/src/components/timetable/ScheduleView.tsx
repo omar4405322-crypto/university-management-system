@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { TimeRange } from '../ui/TimeRange';
 import { EmptyState } from '../ui/EmptyState';
+import { deriveHourlyTimesFromData, generateHourlyTimes } from '../../utils/scheduleConfig';
 
 const getSessionBadgeColor = (type: string) => {
   switch (type) {
@@ -283,6 +284,12 @@ export function ScheduleView({
   const [internalViewMode, setInternalViewMode] = useState<'grid' | 'agenda'>('grid');
   const currentViewMode = viewMode !== undefined ? viewMode : internalViewMode;
   const setScheduleViewMode = onViewModeChange || setInternalViewMode;
+
+  const effectiveTimes = useMemo(() => {
+    const derived = deriveHourlyTimesFromData(timetable);
+    if (derived && derived.length > 0) return derived;
+    return times && times.length > 0 ? times : generateHourlyTimes();
+  }, [timetable, times]);
 
   // Conflict / Multi-Session Modal State
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
@@ -713,7 +720,7 @@ export function ScheduleView({
                       </tr>
                     </thead>
                       <tbody className="divide-y divide-slate-200/80 dark:divide-slate-700/80">
-                        {times.map((time) => (
+                        {effectiveTimes.map((time) => (
                           <tr
                             key={time}
                             className="group hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition-colors"

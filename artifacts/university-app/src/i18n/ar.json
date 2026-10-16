@@ -1167,6 +1167,7 @@
     "nameEnPlaceholder": "أدخل اسم القسم بالإنجليزية",
     "parentCollege": "الكلية التابعة",
     "selectCollege": "اختر الكلية...",
+    "selectDepartment": "اختر القسم",
     "deleteConfirmTitle": "حذف القسم",
     "departmentDetails": "تفاصيل القسم",
     "editDeptName": "تعديل القسم {{name}}",

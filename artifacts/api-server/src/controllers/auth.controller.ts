@@ -198,6 +198,7 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
       include: {
         student: true,
         doctor: true,
+        teachingAssistant: { select: { id: true, departmentId: true } },
         managedCollege: { select: { id: true, name: true, nameAr: true } },
       },
     }),
@@ -275,6 +276,7 @@ export const login = catchAsync(async (req: Request, res: Response, next: NextFu
         role: user.role,
         twoFactorEnabled: user.twoFactorEnabled,
         profile: user.student || user.doctor || null,
+        teachingAssistant: user.teachingAssistant ? { id: user.teachingAssistant.id, departmentId: user.teachingAssistant.departmentId } : null,
         managedCollege: user.managedCollege || null,
         managedCollegeId: user.managedCollegeId || null,
         managedCollegeName: user.managedCollege?.name || user.managedCollege?.nameAr || null,
@@ -303,6 +305,7 @@ export const refresh = catchAsync(async (req: Request, res: Response, next: Next
             include: {
               student: true,
               doctor: true,
+              teachingAssistant: { select: { id: true, departmentId: true } },
               managedCollege: { select: { id: true, name: true, nameAr: true } },
             },
           },
@@ -450,6 +453,7 @@ export const getMe = catchAsync(async (req: Request, res: Response, next: NextFu
     include: {
       student: true,
       doctor: true,
+      teachingAssistant: { select: { id: true, departmentId: true } },
       managedCollege: { select: { id: true, name: true, nameAr: true } },
     },
   });

@@ -1161,6 +1161,7 @@
     "nameEnPlaceholder": "Enter department name in English",
     "parentCollege": "Parent College",
     "selectCollege": "Select College...",
+    "selectDepartment": "Select Department",
     "deleteConfirmTitle": "Delete Department",
     "departmentDetails": "Department details",
     "editDeptName": "Edit department {{name}}",

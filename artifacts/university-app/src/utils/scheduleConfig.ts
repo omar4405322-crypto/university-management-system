@@ -80,3 +80,42 @@ export function generateHourlyTimes(): string[] {
   }
   return times;
 }
+
+/**
+ * Derives dynamic hourly times based on the timetable data slots,
+ * with the default band (09:00 to 18:00) as the minimum span,
+ * expanding to include any earlier start time or later end time.
+ */
+export function deriveHourlyTimesFromData(slotsOrTimetable?: any[] | Record<string, any[]>): string[] {
+  let minHour = 9;
+  let maxHour = 18;
+
+  let allSlots: any[] = [];
+  if (Array.isArray(slotsOrTimetable)) {
+    allSlots = slotsOrTimetable;
+  } else if (slotsOrTimetable && typeof slotsOrTimetable === 'object') {
+    allSlots = Object.values(slotsOrTimetable).flat();
+  }
+
+  for (const s of allSlots) {
+    if (s?.startTime) {
+      const startH = parseInt(String(s.startTime).split(':')[0], 10);
+      if (!isNaN(startH) && startH >= 0 && startH <= 23) {
+        if (startH < minHour) minHour = startH;
+      }
+    }
+    if (s?.endTime) {
+      const endH = parseInt(String(s.endTime).split(':')[0], 10);
+      if (!isNaN(endH) && endH >= 0 && endH <= 23) {
+        if (endH > maxHour) maxHour = endH;
+      }
+    }
+  }
+
+  const times: string[] = [];
+  for (let h = minHour; h <= maxHour; h++) {
+    times.push(`${h.toString().padStart(2, '0')}:00`);
+  }
+  return times;
+}
+

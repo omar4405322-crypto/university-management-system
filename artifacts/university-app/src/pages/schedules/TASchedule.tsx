@@ -29,7 +29,7 @@ import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import SearchableSelect, { SelectOption } from '../../components/ui/SearchableSelect';
 import { ScheduleView } from '../../components/timetable/ScheduleView';
-import { generateHourlyTimes } from '../../utils/scheduleConfig';
+import { generateHourlyTimes, deriveHourlyTimesFromData } from '../../utils/scheduleConfig';
 import { logger } from '../../lib/logger';
 import Button from '../../components/ui/button';
 import { StatCard } from '../../components/ui/card';
@@ -92,7 +92,7 @@ export function TASchedule() {
 
   // Filter States
   const [selectedTAId, setSelectedTAId] = useState<string>(
-    searchParams.get('taId') || (user?.role === 'TEACHING_ASSISTANT' ? String(user.teachingAssistant?.id || user.id) : 'all')
+    searchParams.get('taId') || (user?.role === 'TEACHING_ASSISTANT' && user.teachingAssistant?.id ? String(user.teachingAssistant.id) : 'all')
   );
   const [selectedCollegeId, setSelectedCollegeId] = useState<string>('all');
   const [selectedDeptId, setSelectedDeptId] = useState<string>('all');
@@ -127,8 +127,15 @@ export function TASchedule() {
 
       // Auto-set TA if logged in as TEACHING_ASSISTANT
       if (user?.role === 'TEACHING_ASSISTANT') {
-        const myTA = tas.find((t: any) => t.userId === user.id || t.id === user.teachingAssistant?.id);
-        if (myTA) setSelectedTAId(String(myTA.id));
+        const myTA = tas.find((t: any) => 
+          (user.teachingAssistant?.id && String(t.id) === String(user.teachingAssistant.id)) ||
+          (user.id && String(t.userId) === String(user.id))
+        );
+        if (myTA) {
+          setSelectedTAId(String(myTA.id));
+        } else if (user.teachingAssistant?.id) {
+          setSelectedTAId(String(user.teachingAssistant.id));
+        }
       }
     });
   }, [user]);
@@ -187,15 +194,9 @@ export function TASchedule() {
     setSelectedDay((prev) => (days.includes(prev) ? prev : getTodayDayName(days)));
   }, [i18n.language, days, getTodayDayName]);
 
-  const [times, setTimes] = useState<string[]>(generateHourlyTimes());
-
-  useEffect(() => {
-    const handleConfigChange = () => {
-      setTimes(generateHourlyTimes());
-    };
-    window.addEventListener('scheduleConfigChanged', handleConfigChange);
-    return () => window.removeEventListener('scheduleConfigChanged', handleConfigChange);
-  }, []);
+  const times = useMemo(() => {
+    return deriveHourlyTimesFromData(rawSlots);
+  }, [rawSlots]);
 
   const formatTime = (timeStr: string) => {
     if (!timeStr) return '';

@@ -394,8 +394,8 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
           .join('; ');
         showToast(
           isRTL
-            ? `تم الحفظ ولكن تم تخطي ${skippedCount} حصص: ${skippedDetails || 'بيانات غير مكتملة'} ⚠️`
-            : `Saved, but ${skippedCount} slot(s) skipped: ${skippedDetails || 'incomplete data'} ⚠️`,
+            ? `تحذير: تم استبعاد ${skippedCount} حصة غير مطابقة للنطاق: ${skippedDetails || 'بيانات غير مكتملة'} ⚠️`
+            : `Warning: ${skippedCount} slot(s) skipped/dropped: ${skippedDetails || 'incomplete data'} ⚠️`,
           'error'
         );
       } else {

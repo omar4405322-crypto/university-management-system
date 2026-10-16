@@ -74,47 +74,35 @@ export default function InstructorSelector({
       : t('schedules.noTAAvailable', 'No TAs available');
 
   const options: SelectOption[] = useMemo(() => {
-    if (suggestedInstructors.length > 0) {
-      return suggestedInstructors.map((inst) => {
-        const name = `${inst.firstName ?? inst.user?.firstName ?? ''} ${
-          inst.lastName ?? inst.user?.lastName ?? ''
-        }`.trim();
-        const val = useIdAsValue ? String(inst.id) : name;
-        const groupKey = inst.reason || 'Other';
-        const groupLabel =
-          groupKey === 'Previously Taught'
-            ? `✨ ${t('timetable.tier1', groupKey)}`
-            : groupKey === 'Same Department'
-            ? `🏢 ${t('timetable.tier2', groupKey)}`
-            : groupKey === 'Same College'
-            ? `🏫 ${t('timetable.tier3', groupKey)}`
-            : `🌍 ${t('timetable.tier4', groupKey)}`;
+    // When courseId is present, the backend suggested endpoint is the authoritative scope check
+    if (courseId) {
+      if (suggestedInstructors.length > 0) {
+        return suggestedInstructors.map((inst) => {
+          const name = `${inst.firstName ?? inst.user?.firstName ?? ''} ${
+            inst.lastName ?? inst.user?.lastName ?? ''
+          }`.trim();
+          const val = useIdAsValue ? String(inst.id) : name;
+          const groupKey = inst.reason || 'Other';
+          const groupLabel =
+            groupKey === 'Previously Taught'
+              ? `✨ ${t('timetable.tier1', groupKey)}`
+              : `🏢 ${t('timetable.tier2', 'Same Department')}`;
 
-        return {
-          value: val,
-          label: name,
-          group: groupLabel,
-          sublabel: inst.specialization || inst.title || ''
-        };
-      });
+          return {
+            value: val,
+            label: name,
+            group: groupLabel,
+            sublabel: inst.specialization || inst.title || inst.department || ''
+          };
+        });
+      }
+      // If course is selected but no instructors are in scope, return empty (no out-of-scope fallback)
+      return [];
     }
 
-    return fallbackOptions.map((opt) => {
-      const isDifferentCollege =
-        opt.department?.collegeId != null &&
-        collegeId != null &&
-        String(opt.department.collegeId) !== String(collegeId);
-      const name = `${opt.firstName ?? opt.user?.firstName ?? ''} ${
-        opt.lastName ?? opt.user?.lastName ?? ''
-      }`.trim();
-      const val = useIdAsValue ? String(opt.id) : name;
-      return {
-        value: val,
-        label: name + (isDifferentCollege ? ` ⚠️ (${t('timetable.otherCollege', 'Other college')})` : ''),
-        sublabel: opt.specialization || opt.department?.name || ''
-      };
-    });
-  }, [suggestedInstructors, fallbackOptions, useIdAsValue, collegeId, t]);
+    // Fallback when no course is selected yet
+    return [];
+  }, [courseId, suggestedInstructors, useIdAsValue, t]);
 
   if (loadingInstructors) {
     return (

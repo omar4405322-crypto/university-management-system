@@ -34,7 +34,7 @@ export interface User {
   // Doctor profile (present when role === 'DOCTOR')
   doctor?: { id: number; firstName?: string; lastName?: string; departmentId?: number } | null;
   // Teaching assistant profile (present when role === 'TEACHING_ASSISTANT')
-  teachingAssistant?: { id: number; firstName?: string; lastName?: string; departmentId?: number } | null;
+  teachingAssistant?: { id: string | number; firstName?: string; lastName?: string; departmentId?: number | null } | null;
   // Student profile (present when role === 'STUDENT')
   student?: { id?: number; firstName?: string; lastName?: string; year?: number; [key: string]: unknown } | null;
   // Nested profile sub-object used by some endpoints

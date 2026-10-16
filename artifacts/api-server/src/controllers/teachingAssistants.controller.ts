@@ -83,6 +83,13 @@ export const getSuggestedTeachingAssistants = catchAsync(async (req: Request, re
 
   const scopeWhere: any = getScopeWhere(req.user!, 'teachingAssistant');
 
+  if (!course.departmentId) {
+    return res.json({
+      success: true,
+      data: [],
+    });
+  }
+
   const allTAs = await prisma.teachingAssistant.findMany({
     where: getEffectiveActiveTeachingAssistantWhere(scopeWhere),
     include: {
@@ -101,19 +108,21 @@ export const getSuggestedTeachingAssistants = catchAsync(async (req: Request, re
     },
   });
 
-  const suggested = allTAs.map((ta) => {
-    let tier = 4;
-    let reason = 'Other';
+  // A1: Do NOT weaken TA department scope (no null-department TAs, no college fallback)
+  const scopedTAs = allTAs.filter((ta) => {
+    if (!ta.departmentId || !course.departmentId) return false;
+    if (ta.departmentId === course.departmentId) return true;
+    if (ta.scheduleSlots.length > 0) return true;
+    return false;
+  });
+
+  const suggested = scopedTAs.map((ta) => {
+    let tier = 2;
+    let reason = 'Same Department';
 
     if (ta.scheduleSlots.length > 0) {
       tier = 1;
       reason = 'Previously Taught';
-    } else if (ta.departmentId === course.departmentId) {
-      tier = 2;
-      reason = 'Same Department';
-    } else if (ta.department?.collegeId && course.department?.collegeId && ta.department.collegeId === course.department.collegeId) {
-      tier = 3;
-      reason = 'Same College';
     }
 
     return {
@@ -386,31 +395,29 @@ export const createTeachingAssistant = catchAsync(async (req: Request, res: Resp
   let { email, password, employeeId, specialization, departmentId, status, firstName, lastName } = req.body;
   assertPasswordStrength(password);
 
-  // Enforce scope
-  if (req.user!.role === 'ADMIN') {
-    if (!req.user!.managedCollegeId) {
-      return next(new AuthorizationError('Access denied: Unscoped admin cannot create teaching assistants'));
-    }
-    if (departmentId) {
-      const dept = await prisma.department.findUnique({
-        where: { id: parseInt(departmentId as string) },
-      });
-      if (!dept || dept.collegeId !== req.user!.managedCollegeId) {
-        return next(new AuthorizationError('Invalid department for your college'));
-      }
-    }
-  } else if (req.user!.role === 'DEPARTMENT_ADMIN') {
-    departmentId = req.user!.managedDepartmentId;
-  } else if (req.user!.role === 'COLLEGE_ADMIN') {
-    if (departmentId) {
-      const dept = await prisma.department.findUnique({
-        where: { id: parseInt(departmentId as string) },
-      });
-      if (!dept || dept.collegeId !== req.user!.managedCollegeId) {
-        return next(new AuthorizationError('Invalid department for your college'));
-      }
-    }
+  const parsedDeptId = parseInt(departmentId as string, 10);
+  if (!Number.isInteger(parsedDeptId) || parsedDeptId <= 0) {
+    return next(new ValidationError('Valid department ID is required'));
   }
+
+  const existingDept = await prisma.department.findUnique({
+    where: { id: parsedDeptId },
+    select: { id: true, collegeId: true },
+  });
+  if (!existingDept) {
+    return next(new NotFoundError('Department not found'));
+  }
+
+  const destinationDepartment = await prisma.department.findFirst({
+    where: getAdminMutationTargetWhere(req.user, 'department', parsedDeptId),
+    select: { id: true, collegeId: true },
+  });
+  if (!destinationDepartment) {
+    return next(
+      new AuthorizationError('Department is outside your managed scope')
+    );
+  }
+  departmentId = destinationDepartment.id;
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
@@ -499,29 +506,28 @@ export const updateTeachingAssistant = catchAsync(async (req: Request, res: Resp
     return res.status(403).json({ message: 'Access denied' });
   }
 
-  if (departmentId) {
-    if (req.user!.role === 'ADMIN') {
-      if (!req.user!.managedCollegeId) {
-        return next(new AuthorizationError('Access denied: Unscoped admin cannot update teaching assistants'));
-      }
-      const newDept = await prisma.department.findUnique({
-        where: { id: parseInt(departmentId as string) },
-      });
-      if (!newDept || newDept.collegeId !== req.user!.managedCollegeId) {
-        return next(new AuthorizationError('Invalid department for your college'));
-      }
-    } else if (
-      req.user!.role === 'DEPARTMENT_ADMIN' &&
-      parseInt(departmentId as string) !== req.user!.managedDepartmentId
-    ) {
-      return next(new AuthorizationError('Cannot move TA to another department'));
-    } else if (req.user!.role === 'COLLEGE_ADMIN') {
-      const newDept = await prisma.department.findUnique({
-        where: { id: parseInt(departmentId as string) },
-      });
-      if (!newDept || newDept.collegeId !== req.user!.managedCollegeId) {
-        return next(new AuthorizationError('Invalid department for your college'));
-      }
+  if (departmentId !== undefined) {
+    const parsedDeptId = parseInt(departmentId as string, 10);
+    if (!Number.isInteger(parsedDeptId) || parsedDeptId <= 0) {
+      return next(new ValidationError('Valid department ID is required'));
+    }
+
+    const existingDept = await prisma.department.findUnique({
+      where: { id: parsedDeptId },
+      select: { id: true, collegeId: true },
+    });
+    if (!existingDept) {
+      return next(new NotFoundError('Department not found'));
+    }
+
+    const destinationDepartment = await prisma.department.findFirst({
+      where: getAdminMutationTargetWhere(req.user, 'department', parsedDeptId),
+      select: { id: true, collegeId: true },
+    });
+    if (!destinationDepartment) {
+      return next(
+        new AuthorizationError('Department is outside your managed scope')
+      );
     }
   }
 
@@ -534,8 +540,8 @@ export const updateTeachingAssistant = catchAsync(async (req: Request, res: Resp
         specialization,
         status,
         departmentId:
-          departmentId !== undefined && departmentId !== ''
-            ? parseInt(departmentId as string)
+          departmentId !== undefined
+            ? parseInt(departmentId as string, 10)
             : undefined,
       },
       include: {

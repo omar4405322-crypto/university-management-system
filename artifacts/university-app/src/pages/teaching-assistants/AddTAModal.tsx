@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
 import teachingAssistantsService from '../../services/teachingAssistants.service';
+import departmentService from '../../services/department.service';
+import useScope from '../../hooks/useScope';
 import Button from '../../components/ui/button';
 import Input from '../../components/ui/input';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +13,7 @@ import {
   Phone,
   Briefcase,
   Hash,
+  Building2,
   Loader2,
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
@@ -24,19 +27,75 @@ interface AddTAModalProps {
 const AddTAModal: React.FC<AddTAModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const { isCollegeAdmin, isDeptAdmin, effectiveCollegeId, effectiveDepartmentId } = useScope();
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     employeeId: '',
+    departmentId: '',
     email: '',
     password: '',
     phone: '',
     specialization: '',
   });
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+    const fetchDepartments = async () => {
+      setLoadingDepartments(true);
+      try {
+        const params: Record<string, unknown> = {};
+        if (isCollegeAdmin && effectiveCollegeId) {
+          params.collegeId = effectiveCollegeId;
+        }
+        const res = await departmentService.getDepartments(params);
+        if (isMounted && res.success) {
+          const list = Array.isArray(res.data) ? res.data : res.data?.data || [];
+          if (isDeptAdmin && effectiveDepartmentId) {
+            const filtered = list.filter((d: any) => String(d.id) === String(effectiveDepartmentId));
+            setDepartments(filtered);
+            setFormData((prev) => ({ ...prev, departmentId: String(effectiveDepartmentId) }));
+          } else {
+            setDepartments(list);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load departments', err);
+      } finally {
+        if (isMounted) setLoadingDepartments(false);
+      }
+    };
+
+    fetchDepartments();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, isCollegeAdmin, isDeptAdmin, effectiveCollegeId, effectiveDepartmentId]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        firstName: '',
+        lastName: '',
+        employeeId: '',
+        departmentId: isDeptAdmin && effectiveDepartmentId ? String(effectiveDepartmentId) : '',
+        email: '',
+        password: '',
+        phone: '',
+        specialization: '',
+      });
+      setFieldErrors({});
+    }
+  }, [isOpen, isDeptAdmin, effectiveDepartmentId]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: '' }));
@@ -66,6 +125,7 @@ const AddTAModal: React.FC<AddTAModalProps> = ({ isOpen, onClose, onSuccess }) =
     if (!formData.firstName.trim()) errs.firstName = required;
     if (!formData.lastName.trim()) errs.lastName = required;
     if (!formData.employeeId.trim()) errs.employeeId = required;
+    if (!formData.departmentId) errs.departmentId = required;
     if (!formData.email.trim()) errs.email = required;
     if (!formData.password) {
       errs.password = required;
@@ -73,13 +133,14 @@ const AddTAModal: React.FC<AddTAModalProps> = ({ isOpen, onClose, onSuccess }) =
       errs.password = t('auth.passwordPolicyError', 'Password must be at least 8 characters with uppercase, lowercase, and a number');
     }
     setFieldErrors(errs);
-    const order = ['firstName', 'lastName', 'employeeId', 'email', 'password'];
+    const order = ['firstName', 'lastName', 'employeeId', 'departmentId', 'email', 'password'];
     const firstInvalid = order.find((k) => errs[k]);
     if (firstInvalid) {
       const ids: Record<string, string> = {
         firstName: 'add-ta-first-name',
         lastName: 'add-ta-last-name',
         employeeId: 'add-ta-employee-id',
+        departmentId: 'add-ta-department-id',
         email: 'add-ta-email',
         password: 'add-ta-password',
       };
@@ -89,7 +150,17 @@ const AddTAModal: React.FC<AddTAModalProps> = ({ isOpen, onClose, onSuccess }) =
 
     try {
       setLoading(true);
-      const result = await teachingAssistantsService.createTeachingAssistant(formData);
+      const payload: Record<string, unknown> = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        employeeId: formData.employeeId.trim(),
+        departmentId: Number(formData.departmentId),
+        email: formData.email.trim(),
+        password: formData.password,
+        phone: formData.phone.trim() || undefined,
+        specialization: formData.specialization.trim() || undefined,
+      };
+      const result = await teachingAssistantsService.createTeachingAssistant(payload);
       if (result.success) {
         showToast(t('teachingAssistants.addSuccess', 'Teaching assistant created successfully'), 'success');
         onSuccess();
@@ -171,6 +242,31 @@ const AddTAModal: React.FC<AddTAModalProps> = ({ isOpen, onClose, onSuccess }) =
             {fieldError('employeeId')}
           </div>
           <div className="space-y-1.5">
+            <label htmlFor="add-ta-department-id" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
+              <Building2 size={14} className="text-brand-text-muted" /> {t('departments.department', 'Department')}{' '}
+              <span className="text-rose-500">*</span>
+            </label>
+            <select
+              id="add-ta-department-id"
+              name="departmentId"
+              value={formData.departmentId}
+              onChange={handleChange}
+              disabled={isDeptAdmin || loadingDepartments}
+              required
+              aria-required="true"
+              className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-brand-bg-page/30 text-brand-text-primary dark:text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-primary-500/20 focus:border-brand-primary-500 transition-all cursor-pointer text-sm appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+              {...fieldProps('departmentId')}
+            >
+              <option value="">{t('departments.selectDepartment', 'Select Department')}</option>
+              {departments.map((dept: any) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
+            {fieldError('departmentId')}
+          </div>
+          <div className="space-y-1.5">
             <label htmlFor="add-ta-specialization" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <Briefcase size={14} className="text-brand-text-muted" /> {t('teachingAssistants.specialization')}
             </label>
@@ -223,7 +319,7 @@ const AddTAModal: React.FC<AddTAModalProps> = ({ isOpen, onClose, onSuccess }) =
             />
             {fieldError('password')}
           </div>
-          <div className="md:col-span-2 space-y-1.5">
+          <div className="space-y-1.5">
             <label htmlFor="add-ta-phone" className="text-sm font-bold text-brand-text-main flex items-center gap-2 ml-1">
               <Phone size={14} className="text-brand-text-muted" /> {t('profile.phone')}
             </label>

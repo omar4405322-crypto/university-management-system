@@ -93,6 +93,9 @@ export const getWeeklyTimetable = catchAsync(
           doctor: { select: { id: true, firstName: true, lastName: true, user: { select: { email: true, role: true } } } },
           teachingAssistant: { select: { id: true, firstName: true, lastName: true, employeeId: true, user: { select: { email: true, role: true } } } }
         }
+      },
+      timetable: {
+        select: { id: true, status: true, title: true }
       }
     };
 
@@ -153,12 +156,7 @@ export const getWeeklyTimetable = catchAsync(
 
         whereClause = {
           AND: [
-            {
-              OR: [
-                { timetable: { status: 'PUBLISHED' } },
-                { timetableId: null },
-              ],
-            },
+            { timetable: { status: 'PUBLISHED' } },
             {
               OR: [
                 // Slots assigned to this student's group (or parent groups)
@@ -178,12 +176,7 @@ export const getWeeklyTimetable = catchAsync(
 
         whereClause = {
           AND: [
-            {
-              OR: [
-                { timetable: { status: 'PUBLISHED' } },
-                { timetableId: null },
-              ],
-            },
+            { timetable: { status: 'PUBLISHED' } },
             {
               OR: [
                 { course: { ...baseCourseFilter, isPublished: true } },
@@ -209,7 +202,7 @@ export const getWeeklyTimetable = catchAsync(
           },
         });
       }
-      whereClause = { doctorId: doctor.id };
+      whereClause = { doctorId: doctor.id, timetable: { status: 'PUBLISHED' } };
     } else if (user!.role === 'TEACHING_ASSISTANT') {
       const ta = await prisma.teachingAssistant.findUnique({ where: { userId: user!.id } });
       if (!ta) {
@@ -224,7 +217,7 @@ export const getWeeklyTimetable = catchAsync(
           },
         });
       }
-      whereClause = { teachingAssistantId: ta.id };
+      whereClause = { teachingAssistantId: ta.id, timetable: { status: 'PUBLISHED' } };
     } else {
       // Admin roles
       const scopeWhere: any = getScopeWhere(req.user!, 'course');
