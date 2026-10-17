@@ -19,6 +19,7 @@ import prisma from '../utils/prismaClient';
 import { getScopeWhere } from '../utils/scope.utils';
 import catchAsync from '../utils/catchAsync';
 import { normalizeSlotType } from '../utils/slotType.utils';
+import { AppError, AuthorizationError } from '../utils/appError';
 
 export {
   createSchedule,
@@ -30,20 +31,68 @@ export {
 export { syncGridToMaster } from './schedulesSync.controller';
 export { checkScheduleConflict } from './schedulesConflict.controller';
 
+const VALID_DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+
+function parsePositiveInt(val: unknown, name: string): number | undefined {
+  if (val === undefined || val === null || val === '') return undefined;
+  const num = Number(val);
+  if (!Number.isSafeInteger(num) || num <= 0) {
+    throw new AppError(`Invalid ${name}: must be a positive integer`, 400);
+  }
+  return num;
+}
+
+const getSlotTypePrismaCondition = (type: 'LECTURE' | 'LAB') => {
+  return type === 'LAB' ? { in: ['LAB', 'SECTION'] } : 'LECTURE';
+};
+
 export const getWeeklyTimetable = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const {
       departmentId,
       collegeId,
+      courseId,
+      doctorId,
+      teachingAssistantId,
       year,
       semester,
       timetableId,
-      doctorId,
-      teachingAssistantId,
+      slotType,
+      dayOfWeek,
       page: pageParam,
       limit: limitParam,
     } = req.query as Record<string, string>;
     const { user } = req;
+
+    let normalizedSlotType: 'LECTURE' | 'LAB' | undefined = undefined;
+    if (slotType !== undefined && slotType !== '') {
+      const upper = String(slotType).trim().toUpperCase();
+      if (upper !== 'LECTURE' && upper !== 'LAB') {
+        throw new AppError('Invalid slotType: must be LECTURE or LAB', 400);
+      }
+      normalizedSlotType = upper;
+    }
+
+    let normalizedDayOfWeek: string | undefined = undefined;
+    if (dayOfWeek !== undefined && dayOfWeek !== '') {
+      const upper = String(dayOfWeek).trim().toUpperCase();
+      if (!VALID_DAYS.includes(upper)) {
+        throw new AppError(
+          'Invalid dayOfWeek: must be one of SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY',
+          400
+        );
+      }
+      normalizedDayOfWeek = upper;
+    }
+
+    const parsedDeptId = parsePositiveInt(departmentId, 'departmentId');
+    const parsedCollegeId = parsePositiveInt(collegeId, 'collegeId');
+    const parsedCourseId = parsePositiveInt(courseId, 'courseId');
+    const parsedDoctorId = parsePositiveInt(doctorId, 'doctorId');
+    const parsedYear = parsePositiveInt(year, 'year');
+    const parsedSemester = parsePositiveInt(semester, 'semester');
+    const parsedTimetableId = parsePositiveInt(timetableId, 'timetableId');
+    const rawTAId = teachingAssistantId !== undefined && teachingAssistantId !== '' ? String(teachingAssistantId).trim() : undefined;
 
     const parsedPage = Number(pageParam);
     const parsedLimit = Number(limitParam);
@@ -53,9 +102,6 @@ export const getWeeklyTimetable = catchAsync(
       : 20;
     const skip = (page - 1) * limit;
     const take = limit;
-
-    const filterYear = year ? parseInt(year) : undefined;
-    const filterSemester = semester ? parseInt(semester) : undefined;
 
     let whereClause: any = {};
 
@@ -103,7 +149,13 @@ export const getWeeklyTimetable = catchAsync(
     if (user!.role === 'STUDENT') {
       const student = await prisma.student.findUnique({
         where: { userId: user!.id },
-        select: { id: true, groupId: true, departmentId: true, year: true },
+        select: {
+          id: true,
+          groupId: true,
+          departmentId: true,
+          year: true,
+          department: { select: { id: true, collegeId: true } },
+        },
       });
 
       if (!student) {
@@ -119,20 +171,62 @@ export const getWeeklyTimetable = catchAsync(
         });
       }
 
+      // OD-34 scope checks for STUDENT
+      if (parsedDeptId !== undefined && student.departmentId && parsedDeptId !== student.departmentId) {
+        throw new AuthorizationError('Cannot access schedules outside your department');
+      }
+      if (parsedCollegeId !== undefined && student.department?.collegeId && parsedCollegeId !== student.department.collegeId) {
+        throw new AuthorizationError('Cannot access schedules outside your college');
+      }
+
       const enrollments = await prisma.enrollment.findMany({
         where: { studentId: student.id, status: 'ENROLLED' },
-        select: { courseId: true }
+        select: { courseId: true },
       });
-      const enrolledCourseIds = enrollments.map(e => e.courseId);
+      const enrolledCourseIds = enrollments.map((e) => e.courseId);
+
+      if (parsedCourseId !== undefined && !enrolledCourseIds.includes(parsedCourseId)) {
+        throw new AuthorizationError('Cannot access schedules for non-enrolled courses');
+      }
+
+      if (parsedDoctorId !== undefined) {
+        const doctorTeaches = await prisma.scheduleSlot.findFirst({
+          where: {
+            doctorId: parsedDoctorId,
+            courseId: { in: enrolledCourseIds },
+            timetable: { status: 'PUBLISHED' },
+          },
+          select: { id: true },
+        });
+        if (!doctorTeaches) {
+          throw new AuthorizationError('Doctor does not teach any of your enrolled courses');
+        }
+      }
+
+      if (rawTAId !== undefined) {
+        const taTeaches = await prisma.scheduleSlot.findFirst({
+          where: {
+            teachingAssistantId: rawTAId,
+            courseId: { in: enrolledCourseIds },
+            timetable: { status: 'PUBLISHED' },
+          },
+          select: { id: true },
+        });
+        if (!taTeaches) {
+          throw new AuthorizationError('Teaching assistant does not teach any of your enrolled courses');
+        }
+      }
 
       // Build semester/year constraints scoped to the student's own profile
-      // (filterYear/filterSemester are admin/external overrides, not used for students)
       const studentYearFilter = student.year;
       const baseCourseFilter: any = { departmentId: student.departmentId, year: studentYearFilter };
-      if (filterSemester !== undefined) baseCourseFilter.semester = filterSemester;
+      if (parsedSemester !== undefined) baseCourseFilter.semester = parsedSemester;
 
+      const enrolledCourseFilter: any = { id: { in: enrolledCourseIds }, isPublished: true };
+      if (parsedSemester !== undefined) enrolledCourseFilter.semester = parsedSemester;
+
+      let groupCondition: any;
       if (student.groupId) {
-        // Fetch all department groups in a single batch read to avoid point reads per ancestry level
         const deptGroups = student.departmentId
           ? await prisma.studentGroup.findMany({
               where: { departmentId: student.departmentId },
@@ -151,46 +245,51 @@ export const getWeeklyTimetable = catchAsync(
           currentGroupId = groupParentMap.get(currentGroupId) ?? null;
         }
 
-        // Build enrolled course filter (with optional semester)
-        const enrolledCourseFilter: any = { id: { in: enrolledCourseIds }, isPublished: true };
-        if (filterSemester !== undefined) enrolledCourseFilter.semester = filterSemester;
-
-        whereClause = {
-          AND: [
-            { timetable: { status: 'PUBLISHED' } },
-            {
-              OR: [
-                // Slots assigned to this student's group (or parent groups)
-                { groupId: { in: groupIds }, course: { isPublished: true } },
-                // Department-wide slots (no group) matching student's year (+ semester if filtered)
-                { groupId: null, course: { ...baseCourseFilter, isPublished: true } },
-                // Slots for explicitly enrolled courses (no group) with optional semester
-                { groupId: null, course: enrolledCourseFilter },
-              ],
-            },
+        groupCondition = {
+          OR: [
+            { groupId: { in: groupIds }, course: { isPublished: true } },
+            { groupId: null, course: { ...baseCourseFilter, isPublished: true } },
+            { groupId: null, course: enrolledCourseFilter },
           ],
         };
       } else {
-        // Student has no group — show all slots for their department/year and enrolled courses
-        const enrolledCourseFilter: any = { id: { in: enrolledCourseIds }, isPublished: true };
-        if (filterSemester !== undefined) enrolledCourseFilter.semester = filterSemester;
-
-        whereClause = {
-          AND: [
-            { timetable: { status: 'PUBLISHED' } },
-            {
-              OR: [
-                { course: { ...baseCourseFilter, isPublished: true } },
-                { course: enrolledCourseFilter },
-              ],
-            },
+        groupCondition = {
+          OR: [
+            { course: { ...baseCourseFilter, isPublished: true } },
+            { course: enrolledCourseFilter },
           ],
         };
       }
-      // Prevent year/semester from being re-applied below for students (already baked in above)
+
+      whereClause = {
+        AND: [
+          { timetable: { status: 'PUBLISHED' } },
+          groupCondition,
+        ],
+      };
+
+      if (normalizedSlotType) {
+        whereClause.AND.push({ slotType: getSlotTypePrismaCondition(normalizedSlotType) });
+      }
+      if (normalizedDayOfWeek) {
+        whereClause.AND.push({ dayOfWeek: normalizedDayOfWeek });
+      }
+      if (parsedCourseId) {
+        whereClause.AND.push({ courseId: parsedCourseId });
+      }
+      if (parsedDoctorId) {
+        whereClause.AND.push({ doctorId: parsedDoctorId });
+      }
+      if (rawTAId) {
+        whereClause.AND.push({ teachingAssistantId: rawTAId });
+      }
+
       Object.defineProperty(whereClause, '__studentScopedFiltersApplied', { value: true, enumerable: false });
     } else if (user!.role === 'DOCTOR') {
-      const doctor = await prisma.doctor.findUnique({ where: { userId: user!.id } });
+      const doctor = await prisma.doctor.findUnique({
+        where: { userId: user!.id },
+        select: { id: true, departmentId: true, department: { select: { collegeId: true } } },
+      });
       if (!doctor) {
         return res.json({
           success: true,
@@ -203,9 +302,56 @@ export const getWeeklyTimetable = catchAsync(
           },
         });
       }
-      whereClause = { doctorId: doctor.id, timetable: { status: 'PUBLISHED' } };
+
+      // OD-34 scope checks for DOCTOR
+      if (parsedDoctorId !== undefined && parsedDoctorId !== doctor.id) {
+        throw new AuthorizationError('Cannot access schedules for another doctor');
+      }
+
+      const doctorSlots = await prisma.scheduleSlot.findMany({
+        where: { doctorId: doctor.id, timetable: { status: 'PUBLISHED' } },
+        select: { courseId: true, teachingAssistantId: true, course: { select: { year: true } } },
+      });
+      const doctorCourseIds = new Set(doctorSlots.map((s) => s.courseId));
+      const doctorCourseYears = new Set(
+        doctorSlots.map((s) => s.course?.year).filter((y): y is number => typeof y === 'number')
+      );
+      const doctorTAIds = new Set(doctorSlots.map((s) => s.teachingAssistantId).filter(Boolean));
+
+      if (parsedCourseId !== undefined && !doctorCourseIds.has(parsedCourseId)) {
+        throw new AuthorizationError('Cannot access schedules for a course you do not teach');
+      }
+      if (parsedYear !== undefined && !doctorCourseYears.has(parsedYear)) {
+        throw new AuthorizationError('Cannot access schedules for a year with no assigned courses');
+      }
+      if (rawTAId !== undefined && !doctorTAIds.has(rawTAId)) {
+        throw new AuthorizationError('Cannot access schedules for another teaching assistant');
+      }
+      if (parsedDeptId !== undefined && doctor.departmentId && parsedDeptId !== doctor.departmentId) {
+        throw new AuthorizationError('Cannot access schedules outside your department');
+      }
+      if (parsedCollegeId !== undefined && doctor.department?.collegeId && parsedCollegeId !== doctor.department.collegeId) {
+        throw new AuthorizationError('Cannot access schedules outside your college');
+      }
+
+      whereClause = {
+        doctorId: doctor.id,
+        timetable: { status: 'PUBLISHED' },
+      };
+
+      if (parsedCourseId) whereClause.courseId = parsedCourseId;
+      if (parsedYear) whereClause.course = { ...(whereClause.course || {}), year: parsedYear };
+      if (parsedSemester) whereClause.course = { ...(whereClause.course || {}), semester: parsedSemester };
+      if (normalizedSlotType) {
+        whereClause.slotType = getSlotTypePrismaCondition(normalizedSlotType);
+      }
+      if (normalizedDayOfWeek) whereClause.dayOfWeek = normalizedDayOfWeek;
+      if (rawTAId) whereClause.teachingAssistantId = rawTAId;
     } else if (user!.role === 'TEACHING_ASSISTANT') {
-      const ta = await prisma.teachingAssistant.findUnique({ where: { userId: user!.id } });
+      const ta = await prisma.teachingAssistant.findUnique({
+        where: { userId: user!.id },
+        select: { id: true, departmentId: true, department: { select: { collegeId: true } } },
+      });
       if (!ta) {
         return res.json({
           success: true,
@@ -218,36 +364,202 @@ export const getWeeklyTimetable = catchAsync(
           },
         });
       }
-      whereClause = { teachingAssistantId: ta.id, timetable: { status: 'PUBLISHED' } };
+
+      // OD-34 scope checks for TEACHING_ASSISTANT
+      if (rawTAId !== undefined && rawTAId !== String(ta.id)) {
+        throw new AuthorizationError('Cannot access schedules for another teaching assistant');
+      }
+
+      const assignedSlots = await prisma.scheduleSlot.findMany({
+        where: { teachingAssistantId: ta.id, timetable: { status: 'PUBLISHED' } },
+        select: { courseId: true, doctorId: true },
+      });
+      const assignedCourseIds = new Set(assignedSlots.map((s) => s.courseId));
+      const assignedDoctorIds = new Set(assignedSlots.map((s) => s.doctorId).filter(Boolean));
+
+      if (parsedCourseId !== undefined && !assignedCourseIds.has(parsedCourseId)) {
+        throw new AuthorizationError('Cannot access schedules for unassigned course');
+      }
+      if (parsedDoctorId !== undefined && !assignedDoctorIds.has(parsedDoctorId)) {
+        throw new AuthorizationError('Cannot access schedules for another doctor');
+      }
+      if (parsedDeptId !== undefined && ta.departmentId && parsedDeptId !== ta.departmentId) {
+        throw new AuthorizationError('Cannot access schedules outside your department');
+      }
+      if (parsedCollegeId !== undefined && ta.department?.collegeId && parsedCollegeId !== ta.department.collegeId) {
+        throw new AuthorizationError('Cannot access schedules outside your college');
+      }
+
+      whereClause = {
+        teachingAssistantId: ta.id,
+        timetable: { status: 'PUBLISHED' },
+      };
+
+      if (parsedCourseId) whereClause.courseId = parsedCourseId;
+      if (normalizedSlotType) {
+        whereClause.slotType = getSlotTypePrismaCondition(normalizedSlotType);
+      }
+      if (normalizedDayOfWeek) whereClause.dayOfWeek = normalizedDayOfWeek;
+      if (parsedDoctorId) whereClause.doctorId = parsedDoctorId;
+      if (parsedYear) whereClause.course = { ...(whereClause.course || {}), year: parsedYear };
+      if (parsedSemester) whereClause.course = { ...(whereClause.course || {}), semester: parsedSemester };
+    } else if (user!.role === 'DEPARTMENT_ADMIN') {
+      const managedDeptId = user!.managedDepartmentId || user!.departmentId;
+      if (!managedDeptId) {
+        throw new AuthorizationError('Department admin has no assigned department');
+      }
+
+      if (parsedDeptId !== undefined && parsedDeptId !== managedDeptId) {
+        throw new AuthorizationError('Cannot access schedules for another department');
+      }
+
+      if (parsedCollegeId !== undefined) {
+        const deptRecord = await prisma.department.findUnique({
+          where: { id: managedDeptId },
+          select: { collegeId: true },
+        });
+        if (deptRecord?.collegeId && parsedCollegeId !== deptRecord.collegeId) {
+          throw new AuthorizationError('Cannot access schedules outside your department college');
+        }
+      }
+
+      if (parsedDoctorId !== undefined) {
+        const docInDept = await prisma.doctor.findFirst({
+          where: { id: parsedDoctorId, departmentId: managedDeptId },
+          select: { id: true },
+        });
+        if (!docInDept) {
+          throw new AuthorizationError('Doctor does not belong to your department');
+        }
+      }
+
+      if (rawTAId !== undefined) {
+        const taInDept = await prisma.teachingAssistant.findFirst({
+          where: { id: rawTAId, departmentId: managedDeptId },
+          select: { id: true },
+        });
+        if (!taInDept) {
+          throw new AuthorizationError('Teaching assistant does not belong to your department');
+        }
+      }
+
+      if (parsedCourseId !== undefined) {
+        const courseInDept = await prisma.course.findFirst({
+          where: { id: parsedCourseId, departmentId: managedDeptId },
+          select: { id: true },
+        });
+        if (!courseInDept) {
+          throw new AuthorizationError('Course does not belong to your department');
+        }
+      }
+
+      whereClause = {
+        course: { departmentId: managedDeptId },
+      };
+
+      if (parsedDoctorId) whereClause.doctorId = parsedDoctorId;
+      if (rawTAId) whereClause.teachingAssistantId = rawTAId;
+      if (parsedCourseId) whereClause.courseId = parsedCourseId;
+      if (parsedYear) whereClause.course.year = parsedYear;
+      if (parsedSemester) whereClause.course.semester = parsedSemester;
+      if (normalizedSlotType) {
+        whereClause.slotType = getSlotTypePrismaCondition(normalizedSlotType);
+      }
+      if (normalizedDayOfWeek) whereClause.dayOfWeek = normalizedDayOfWeek;
+    } else if (user!.role === 'COLLEGE_ADMIN') {
+      const managedCollegeId = user!.managedCollegeId || user!.collegeId;
+      if (!managedCollegeId) {
+        throw new AuthorizationError('College admin has no assigned college');
+      }
+
+      if (parsedCollegeId !== undefined && parsedCollegeId !== managedCollegeId) {
+        throw new AuthorizationError('Cannot access schedules for another college');
+      }
+
+      if (parsedDeptId !== undefined) {
+        const deptInCol = await prisma.department.findFirst({
+          where: { id: parsedDeptId, collegeId: managedCollegeId },
+          select: { id: true },
+        });
+        if (!deptInCol) {
+          throw new AuthorizationError('Department does not belong to your college');
+        }
+      }
+
+      if (parsedDoctorId !== undefined) {
+        const docInCol = await prisma.doctor.findFirst({
+          where: { id: parsedDoctorId, department: { collegeId: managedCollegeId } },
+          select: { id: true },
+        });
+        if (!docInCol) {
+          throw new AuthorizationError('Doctor does not belong to your college');
+        }
+      }
+
+      if (rawTAId !== undefined) {
+        const taInCol = await prisma.teachingAssistant.findFirst({
+          where: { id: rawTAId, department: { collegeId: managedCollegeId } },
+          select: { id: true },
+        });
+        if (!taInCol) {
+          throw new AuthorizationError('Teaching assistant does not belong to your college');
+        }
+      }
+
+      if (parsedCourseId !== undefined) {
+        const courseInCol = await prisma.course.findFirst({
+          where: { id: parsedCourseId, department: { collegeId: managedCollegeId } },
+          select: { id: true },
+        });
+        if (!courseInCol) {
+          throw new AuthorizationError('Course does not belong to your college');
+        }
+      }
+
+      whereClause = {
+        course: {
+          department: { collegeId: managedCollegeId },
+          ...(parsedDeptId ? { departmentId: parsedDeptId } : {}),
+        },
+      };
+
+      if (parsedDoctorId) whereClause.doctorId = parsedDoctorId;
+      if (rawTAId) whereClause.teachingAssistantId = rawTAId;
+      if (parsedCourseId) whereClause.courseId = parsedCourseId;
+      if (parsedYear) whereClause.course.year = parsedYear;
+      if (parsedSemester) whereClause.course.semester = parsedSemester;
+      if (normalizedSlotType) {
+        whereClause.slotType = getSlotTypePrismaCondition(normalizedSlotType);
+      }
+      if (normalizedDayOfWeek) whereClause.dayOfWeek = normalizedDayOfWeek;
     } else {
-      // Admin roles
+      // SUPER_ADMIN (or legacy/unscoped)
       const scopeWhere: any = getScopeWhere(req.user!, 'course');
       whereClause = {};
-      if (doctorId) {
-        whereClause.doctorId = parseInt(doctorId);
-      } else if (teachingAssistantId) {
-        whereClause.teachingAssistantId = teachingAssistantId;
+      if (parsedDoctorId) {
+        whereClause.doctorId = parsedDoctorId;
+      } else if (rawTAId) {
+        whereClause.teachingAssistantId = rawTAId;
       }
-      if (departmentId) {
-        whereClause.course = { departmentId: parseInt(departmentId) };
-      } else if (collegeId) {
-        whereClause.course = { department: { collegeId: parseInt(collegeId) } };
+      if (parsedDeptId) {
+        whereClause.course = { departmentId: parsedDeptId };
+      } else if (parsedCollegeId) {
+        whereClause.course = { department: { collegeId: parsedCollegeId } };
       }
       if (scopeWhere && Object.keys(scopeWhere).length > 0) {
         whereClause.course = { ...whereClause.course, ...scopeWhere };
       }
+      if (parsedCourseId) whereClause.courseId = parsedCourseId;
+      if (parsedYear) whereClause.course = { ...(whereClause.course || {}), year: parsedYear };
+      if (parsedSemester) whereClause.course = { ...(whereClause.course || {}), semester: parsedSemester };
+      if (normalizedSlotType) {
+        whereClause.slotType = getSlotTypePrismaCondition(normalizedSlotType);
+      }
+      if (normalizedDayOfWeek) whereClause.dayOfWeek = normalizedDayOfWeek;
     }
 
-    // Apply year and semester filters for ADMIN roles only
-    // (Students already have year/semester baked into their OR clause above)
-    if (!whereClause.__studentScopedFiltersApplied && (filterYear !== undefined || filterSemester !== undefined)) {
-      whereClause.course = whereClause.course || {};
-      if (filterYear !== undefined) whereClause.course.year = filterYear;
-      if (filterSemester !== undefined) whereClause.course.semester = filterSemester;
-    }
-
-    if (timetableId) {
-      whereClause.timetableId = parseInt(timetableId);
+    if (parsedTimetableId) {
+      whereClause.timetableId = parsedTimetableId;
     }
 
     const [scheduleSlots, total] = await Promise.all([
@@ -295,5 +607,10 @@ export const getWeeklyTimetable = catchAsync(
     });
   }
 );
-
-export const getAllSchedules = getWeeklyTimetable; // Aliasing
+export const getAllSchedules = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    res.set('Deprecation', 'true');
+    res.set('Link', '</api/schedules/week>; rel="successor-version"');
+    return getWeeklyTimetable(req, res, next);
+  }
+);

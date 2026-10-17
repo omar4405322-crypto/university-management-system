@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import http from 'node:http';
 import test from 'node:test';
+import bcrypt from 'bcryptjs';
+import { TestCleanupRegistry } from './testCleanup.utils';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'wp3-batch1-f05-test-secret-2026';
@@ -17,38 +20,27 @@ const [
 
 test('F-05 & A3: draft-timetable slot + orphan slot are never returned to student, doctor, or TA personal schedules', async () => {
   const SUFFIX = 'f05_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+  const passwordHash = await bcrypt.hash(crypto.randomUUID() + '!Aa1', 4);
+  const cleanup = new TestCleanupRegistry();
+
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address === 'object');
   const baseUrl = `http://127.0.0.1:${address.port}/api`;
 
-  let college: any;
-  let dept: any;
-  let course: any;
-  let group: any;
-  let studentUser: any;
-  let student: any;
-  let doctorUser: any;
-  let doctor: any;
-  let taUser: any;
-  let ta: any;
-  let ttPublished: any;
-  let ttDraft: any;
-  let slotA: any;
-  let slotB: any;
-  let slotC: any;
-
   try {
-    college = await prisma.college.create({
+    const college = await prisma.college.create({
       data: { name: `Col_${SUFFIX}` }
     });
+    cleanup.trackCollege(college.id);
 
-    dept = await prisma.department.create({
+    const dept = await prisma.department.create({
       data: { name: `Dept_${SUFFIX}`, collegeId: college.id }
     });
+    cleanup.trackDepartment(dept.id);
 
-    course = await prisma.course.create({
+    const course = await prisma.course.create({
       data: {
         name: `Course_${SUFFIX}`,
         courseCode: `C_${SUFFIX}`,
@@ -58,25 +50,29 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
         isPublished: true,
       }
     });
+    cleanup.trackCourse(course.id);
 
-    group = await prisma.studentGroup.create({
+    const group = await prisma.studentGroup.create({
       data: {
         name: `Group_${SUFFIX}`,
         departmentId: dept.id,
         year: 1,
       }
     });
+    cleanup.trackGroup(group.id);
 
-    studentUser = await prisma.user.create({
+    const studentUser = await prisma.user.create({
       data: {
         email: `stu_${SUFFIX}@example.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'STUDENT',
         tokenVersion: 0,
         isActive: true,
       }
     });
-    student = await prisma.student.create({
+    cleanup.trackUser(studentUser.id);
+
+    const student = await prisma.student.create({
       data: {
         userId: studentUser.id,
         studentId: `STU_${SUFFIX}`,
@@ -87,17 +83,20 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
         year: 1,
       }
     });
+    cleanup.trackStudent(student.id);
 
-    doctorUser = await prisma.user.create({
+    const doctorUser = await prisma.user.create({
       data: {
         email: `doc_${SUFFIX}@example.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'DOCTOR',
         tokenVersion: 0,
         isActive: true,
       }
     });
-    doctor = await prisma.doctor.create({
+    cleanup.trackUser(doctorUser.id);
+
+    const doctor = await prisma.doctor.create({
       data: {
         userId: doctorUser.id,
         doctorId: `DOC_${SUFFIX}`,
@@ -106,17 +105,20 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
         departmentId: dept.id,
       }
     });
+    cleanup.trackDoctor(doctor.id);
 
-    taUser = await prisma.user.create({
+    const taUser = await prisma.user.create({
       data: {
         email: `ta_${SUFFIX}@example.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'TEACHING_ASSISTANT',
         tokenVersion: 0,
         isActive: true,
       }
     });
-    ta = await prisma.teachingAssistant.create({
+    cleanup.trackUser(taUser.id);
+
+    const ta = await prisma.teachingAssistant.create({
       data: {
         userId: taUser.id,
         employeeId: `TA_${SUFFIX}`,
@@ -125,8 +127,9 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
         departmentId: dept.id,
       }
     });
+    cleanup.trackTA(ta.id);
 
-    ttPublished = await prisma.timetable.create({
+    const ttPublished = await prisma.timetable.create({
       data: {
         title: `Published TT ${SUFFIX}`,
         collegeId: college.id,
@@ -136,8 +139,9 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
         status: 'PUBLISHED',
       }
     });
+    cleanup.trackTimetable(ttPublished.id);
 
-    ttDraft = await prisma.timetable.create({
+    const ttDraft = await prisma.timetable.create({
       data: {
         title: `Draft TT ${SUFFIX}`,
         collegeId: college.id,
@@ -147,9 +151,10 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
         status: 'DRAFT',
       }
     });
+    cleanup.trackTimetable(ttDraft.id);
 
     // Slot A: in Published Timetable
-    slotA = await prisma.scheduleSlot.create({
+    const slotA = await prisma.scheduleSlot.create({
       data: {
         timetableId: ttPublished.id,
         courseId: course.id,
@@ -159,12 +164,14 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
         dayOfWeek: 'MONDAY',
         startTime: '09:00',
         endTime: '11:00',
-        slotType: 'LECTURE',
+        room: 'Room Pub',
+        slotType: 'LAB',
       }
     });
+    cleanup.trackSlot(slotA.id);
 
     // Slot B: in Draft Timetable
-    slotB = await prisma.scheduleSlot.create({
+    const slotB = await prisma.scheduleSlot.create({
       data: {
         timetableId: ttDraft.id,
         courseId: course.id,
@@ -172,14 +179,16 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
         teachingAssistantId: ta.id,
         groupId: group.id,
         dayOfWeek: 'TUESDAY',
-        startTime: '09:00',
-        endTime: '11:00',
-        slotType: 'LECTURE',
+        startTime: '11:00',
+        endTime: '13:00',
+        room: 'Room Draft',
+        slotType: 'LAB',
       }
     });
+    cleanup.trackSlot(slotB.id);
 
-    // Slot C: Orphan Slot (timetableId is null)
-    slotC = await prisma.scheduleSlot.create({
+    // Slot C: Orphan (timetableId is null)
+    const slotC = await prisma.scheduleSlot.create({
       data: {
         timetableId: null,
         courseId: course.id,
@@ -187,19 +196,18 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
         teachingAssistantId: ta.id,
         groupId: group.id,
         dayOfWeek: 'WEDNESDAY',
-        startTime: '09:00',
-        endTime: '11:00',
+        startTime: '14:00',
+        endTime: '16:00',
+        room: 'Room Orphan',
         slotType: 'LAB',
       }
     });
+    cleanup.trackSlot(slotC.id);
 
-    const studentToken = generateAccessToken(studentUser.id, 0);
-    const doctorToken = generateAccessToken(doctorUser.id, 0);
-    const taToken = generateAccessToken(taUser.id, 0);
-
-    // 1. Verify Student view
+    // 1. Verify Student personal schedule: sees ONLY slotA (from published timetable)
+    const stuToken = generateAccessToken(studentUser.id, 0);
     const stuRes = await fetch(`${baseUrl}/schedules/week`, {
-      headers: { authorization: `Bearer ${studentToken}` }
+      headers: { authorization: `Bearer ${stuToken}` }
     });
     assert.equal(stuRes.status, 200);
     const stuBody = await stuRes.json();
@@ -209,9 +217,10 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
     assert.ok(!stuSlotIds.includes(slotB.id), 'Student must NOT receive draft slot');
     assert.ok(!stuSlotIds.includes(slotC.id), 'Student must NOT receive orphan slot');
 
-    // 2. Verify Doctor view
+    // 2. Verify Doctor personal schedule: sees ONLY slotA (from published timetable)
+    const docToken = generateAccessToken(doctorUser.id, 0);
     const docRes = await fetch(`${baseUrl}/schedules/week`, {
-      headers: { authorization: `Bearer ${doctorToken}` }
+      headers: { authorization: `Bearer ${docToken}` }
     });
     assert.equal(docRes.status, 200);
     const docBody = await docRes.json();
@@ -221,7 +230,8 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
     assert.ok(!docSlotIds.includes(slotB.id), 'Doctor must NOT receive draft slot');
     assert.ok(!docSlotIds.includes(slotC.id), 'Doctor must NOT receive orphan slot');
 
-    // 3. Verify TA view
+    // 3. Verify TA personal schedule: sees ONLY slotA (from published timetable)
+    const taToken = generateAccessToken(taUser.id, 0);
     const taRes = await fetch(`${baseUrl}/schedules/week`, {
       headers: { authorization: `Bearer ${taToken}` }
     });
@@ -237,53 +247,37 @@ test('F-05 & A3: draft-timetable slot + orphan slot are never returned to studen
     const adminUser = await prisma.user.create({
       data: {
         email: `adm_${SUFFIX}@example.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'SUPER_ADMIN',
         tokenVersion: 0,
         isActive: true,
       }
     });
-    try {
-      const adminToken = generateAccessToken(adminUser.id, 0);
-      const adminRes = await fetch(`${baseUrl}/schedules/week?departmentId=${dept.id}`, {
-        headers: { authorization: `Bearer ${adminToken}` }
-      });
-      assert.equal(adminRes.status, 200);
-      const adminBody = await adminRes.json();
-      assert.equal(adminBody.success, true);
-      const adminSlots = adminBody.data;
-      const foundSlotA = adminSlots.find((s: any) => s.id === slotA.id);
-      const foundSlotB = adminSlots.find((s: any) => s.id === slotB.id);
-      const foundSlotC = adminSlots.find((s: any) => s.id === slotC.id);
-      assert.ok(foundSlotA, 'Admin sees published slot');
-      assert.equal(foundSlotA.timetable?.status, 'PUBLISHED');
-      assert.ok(foundSlotB, 'Admin sees draft slot');
-      assert.equal(foundSlotB.timetable?.status, 'DRAFT');
-      assert.ok(foundSlotC, 'Admin sees orphan slot');
-      assert.equal(foundSlotC.timetable, null);
-    } finally {
-      await prisma.user.delete({ where: { id: adminUser.id } }).catch(() => {});
-    }
+    cleanup.trackUser(adminUser.id);
+
+    const adminToken = generateAccessToken(adminUser.id, 0);
+    const adminRes = await fetch(`${baseUrl}/schedules/week?departmentId=${dept.id}`, {
+      headers: { authorization: `Bearer ${adminToken}` }
+    });
+    assert.equal(adminRes.status, 200);
+    const adminBody = await adminRes.json();
+    assert.equal(adminBody.success, true);
+    const adminSlots = adminBody.data;
+    const foundSlotA = adminSlots.find((s: any) => s.id === slotA.id);
+    const foundSlotB = adminSlots.find((s: any) => s.id === slotB.id);
+    const foundSlotC = adminSlots.find((s: any) => s.id === slotC.id);
+    assert.ok(foundSlotA, 'Admin sees published slot');
+    assert.equal(foundSlotA.timetable?.status, 'PUBLISHED');
+    assert.ok(foundSlotB, 'Admin sees draft slot');
+    assert.equal(foundSlotB.timetable?.status, 'DRAFT');
+    assert.ok(foundSlotC, 'Admin sees orphan slot');
+    assert.equal(foundSlotC.timetable, null);
   } finally {
-    // Hermetic cleanup in reverse order
-    const slotIds = [slotA?.id, slotB?.id, slotC?.id].filter(Boolean);
-    if (slotIds.length > 0) {
-      await prisma.scheduleSlot.deleteMany({ where: { id: { in: slotIds } } });
+    try {
+      await cleanup.teardown(prisma);
+    } finally {
+      server.closeAllConnections?.();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
     }
-    const ttIds = [ttPublished?.id, ttDraft?.id].filter(Boolean);
-    if (ttIds.length > 0) {
-      await prisma.timetable.deleteMany({ where: { id: { in: ttIds } } });
-    }
-    if (student?.id) await prisma.student.delete({ where: { id: student.id } }).catch(() => {});
-    if (studentUser?.id) await prisma.user.delete({ where: { id: studentUser.id } }).catch(() => {});
-    if (doctor?.id) await prisma.doctor.delete({ where: { id: doctor.id } }).catch(() => {});
-    if (doctorUser?.id) await prisma.user.delete({ where: { id: doctorUser.id } }).catch(() => {});
-    if (ta?.id) await prisma.teachingAssistant.delete({ where: { id: ta.id } }).catch(() => {});
-    if (taUser?.id) await prisma.user.delete({ where: { id: taUser.id } }).catch(() => {});
-    if (group?.id) await prisma.studentGroup.delete({ where: { id: group.id } }).catch(() => {});
-    if (course?.id) await prisma.course.delete({ where: { id: course.id } }).catch(() => {});
-    if (dept?.id) await prisma.department.delete({ where: { id: dept.id } }).catch(() => {});
-    if (college?.id) await prisma.college.delete({ where: { id: college.id } }).catch(() => {});
-    server.close();
   }
 });

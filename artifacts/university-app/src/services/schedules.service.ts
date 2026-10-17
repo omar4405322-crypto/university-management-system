@@ -34,7 +34,7 @@ export type SchedulesData =
 
 const schedulesService = {
   getSchedules: (params?: Record<string, unknown>): Promise<ApiResponse<SchedulesData>> =>
-    apiRequest(() => api.get('/schedules', { params })),
+    apiRequest(() => api.get('/schedules/week', { params })),
 
   getWeeklyTimetable: (params: Record<string, unknown> = {}): Promise<ApiResponse<ScheduleSlotData[]>> =>
     apiRequest(() => api.get('/schedules/week', { params })),
@@ -88,7 +88,7 @@ const schedulesService = {
 
     do {
       const res = await apiRequest<ScheduleSlotData[]>(() =>
-        api.get('/schedules', {
+        api.get('/schedules/week', {
           params: { ...params, page: currentPage, limit },
         })
       );

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import http from 'node:http';
 import test from 'node:test';
+import bcrypt from 'bcryptjs';
+import { TestCleanupRegistry } from './testCleanup.utils';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'wp3-batch2-t3-test-secret-2026';
@@ -15,50 +18,56 @@ const [
   import('../src/utils/jwt.utils'),
 ]);
 
-test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB on READ, rejected with 422 on WRITE)', async () => {
-  const SUFFIX = 't3_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+async function createServer() {
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address === 'object');
   const baseUrl = `http://127.0.0.1:${address.port}/api`;
+  return { server, baseUrl };
+}
 
-  let college: any;
-  let department: any;
-  let course: any;
-  let doctorUser: any;
-  let doctor: any;
-  let taUser: any;
-  let ta: any;
-  let studentUser: any;
-  let student: any;
-  let enrollment: any;
-  let adminUser: any;
-  let timetable: any;
-  let sectionSlot: any;
-  let labSlot: any;
-  let lectureSlot: any;
-  let changeReq: any;
+async function closeServer(server: http.Server | null) {
+  if (server) {
+    server.closeAllConnections?.();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-test 1: Read Path Normalization
+// ─────────────────────────────────────────────────────────────────────────────
+test('WP-3 Batch 2 Task 3: Read Path Normalization (legacy SECTION/TUTORIAL mapped to LAB)', async () => {
+  const SUFFIX = 't3r_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+  const passwordHash = await bcrypt.hash(crypto.randomUUID() + '!Aa1', 4);
+  const cleanup = new TestCleanupRegistry();
+  let server: http.Server | null = null;
 
   try {
-    // 1. Create College & Department
-    college = await prisma.college.create({
+    const srv = await createServer();
+    server = srv.server;
+    const baseUrl = srv.baseUrl;
+
+    // 1. College & Department
+    const college = await prisma.college.create({
       data: {
         name: `College_${SUFFIX}`,
         nameAr: `كلية_${SUFFIX}`,
       },
     });
+    cleanup.trackCollege(college.id);
 
-    department = await prisma.department.create({
+    const department = await prisma.department.create({
       data: {
         name: `Dept_${SUFFIX}`,
         nameAr: `قسم_${SUFFIX}`,
         collegeId: college.id,
       },
     });
+    cleanup.trackDepartment(department.id);
 
-    // 2. Create Course
-    course = await prisma.course.create({
+    // 2. Course
+    const course = await prisma.course.create({
       data: {
         name: `Course_${SUFFIX}`,
         courseCode: `CS_${SUFFIX.slice(-4)}`,
@@ -69,29 +78,33 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         isPublished: true,
       },
     });
+    cleanup.trackCourse(course.id);
 
-    // 3. Create Users & Staff Profiles
-    adminUser = await prisma.user.create({
+    // 3. Users & Profiles
+    const adminUser = await prisma.user.create({
       data: {
         email: `admin_${SUFFIX}@unicore.test`,
-        password: '$2b$10$OpeBBdb/21NC.p5Zrli5vOWHt7XNakKQXMMjPI/PNi5BeQM2VNOea',
+        password: passwordHash,
         role: 'SUPER_ADMIN',
         tokenVersion: 0,
         isActive: true,
       },
     });
+    cleanup.trackUser(adminUser.id);
     const adminToken = generateAccessToken(adminUser.id, 0);
 
-    doctorUser = await prisma.user.create({
+    const doctorUser = await prisma.user.create({
       data: {
         email: `doc_${SUFFIX}@unicore.test`,
-        password: '$2b$10$OpeBBdb/21NC.p5Zrli5vOWHt7XNakKQXMMjPI/PNi5BeQM2VNOea',
+        password: passwordHash,
         role: 'DOCTOR',
         tokenVersion: 0,
         isActive: true,
       },
     });
-    doctor = await prisma.doctor.create({
+    cleanup.trackUser(doctorUser.id);
+
+    const doctor = await prisma.doctor.create({
       data: {
         userId: doctorUser.id,
         firstName: 'Doc',
@@ -100,18 +113,20 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         departmentId: department.id,
       },
     });
-    const doctorToken = generateAccessToken(doctorUser.id, 0);
+    cleanup.trackDoctor(doctor.id);
 
-    taUser = await prisma.user.create({
+    const taUser = await prisma.user.create({
       data: {
         email: `ta_${SUFFIX}@unicore.test`,
-        password: '$2b$10$OpeBBdb/21NC.p5Zrli5vOWHt7XNakKQXMMjPI/PNi5BeQM2VNOea',
+        password: passwordHash,
         role: 'TEACHING_ASSISTANT',
         tokenVersion: 0,
         isActive: true,
       },
     });
-    ta = await prisma.teachingAssistant.create({
+    cleanup.trackUser(taUser.id);
+
+    const ta = await prisma.teachingAssistant.create({
       data: {
         userId: taUser.id,
         firstName: 'TA',
@@ -120,18 +135,20 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         departmentId: department.id,
       },
     });
-    const taToken = generateAccessToken(taUser.id, 0);
+    cleanup.trackTA(ta.id);
 
-    studentUser = await prisma.user.create({
+    const studentUser = await prisma.user.create({
       data: {
         email: `stu_${SUFFIX}@unicore.test`,
-        password: '$2b$10$OpeBBdb/21NC.p5Zrli5vOWHt7XNakKQXMMjPI/PNi5BeQM2VNOea',
+        password: passwordHash,
         role: 'STUDENT',
         tokenVersion: 0,
         isActive: true,
       },
     });
-    student = await prisma.student.create({
+    cleanup.trackUser(studentUser.id);
+
+    const student = await prisma.student.create({
       data: {
         userId: studentUser.id,
         studentId: `STU_${SUFFIX.slice(-4)}`,
@@ -141,9 +158,9 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         departmentId: department.id,
       },
     });
-    const studentToken = generateAccessToken(studentUser.id, 0);
+    cleanup.trackStudent(student.id);
 
-    enrollment = await prisma.enrollment.create({
+    const enrollment = await prisma.enrollment.create({
       data: {
         studentId: student.id,
         courseId: course.id,
@@ -152,9 +169,10 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         status: 'ENROLLED',
       },
     });
+    cleanup.trackEnrollment(enrollment.id);
 
-    // 4. Create Published Timetable
-    timetable = await prisma.timetable.create({
+    // 4. Timetable
+    const timetable = await prisma.timetable.create({
       data: {
         title: `Timetable_${SUFFIX}`,
         collegeId: college.id,
@@ -164,9 +182,10 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         status: 'PUBLISHED',
       },
     });
+    cleanup.trackTimetable(timetable.id);
 
-    // 5. Direct DB Fixtures: Legacy SECTION slot alongside LAB and LECTURE
-    sectionSlot = await prisma.scheduleSlot.create({
+    // 5. Schedule Slots: legacy SECTION, LAB, LECTURE
+    const sectionSlot = await prisma.scheduleSlot.create({
       data: {
         courseId: course.id,
         doctorId: doctor.id,
@@ -179,8 +198,9 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         slotType: 'SECTION',
       },
     });
+    cleanup.trackSlot(sectionSlot.id);
 
-    labSlot = await prisma.scheduleSlot.create({
+    const labSlot = await prisma.scheduleSlot.create({
       data: {
         courseId: course.id,
         doctorId: doctor.id,
@@ -193,8 +213,9 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         slotType: 'LAB',
       },
     });
+    cleanup.trackSlot(labSlot.id);
 
-    lectureSlot = await prisma.scheduleSlot.create({
+    const lectureSlot = await prisma.scheduleSlot.create({
       data: {
         courseId: course.id,
         doctorId: doctor.id,
@@ -206,6 +227,7 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         slotType: 'LECTURE',
       },
     });
+    cleanup.trackSlot(lectureSlot.id);
 
     // ── READ ASSERTIONS (C3 READ PATHS) ──────────────────────────────────────────
 
@@ -347,8 +369,111 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
     assert.equal(adminAiSummary.status, 'SUCCESS');
     const slotsByType = (adminAiSummary as any).slotsByType || (adminAiSummary as any).schedules?.slotsByType || [];
     assert.ok(slotsByType.every((item: any) => item.slotType === 'LECTURE' || item.slotType === 'LAB'), 'Admin summary slotsByType must contain only LECTURE or LAB');
+  } finally {
+    try {
+      await cleanup.teardown(prisma);
+    } finally {
+      await closeServer(server);
+    }
+  }
+});
 
-    // ── WRITE ASSERTIONS (422 ON INVALID SLOTS) ──────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-test 2: Write Path Enforcement for Slots (POST, sync-grid, PUT)
+// ─────────────────────────────────────────────────────────────────────────────
+test('WP-3 Batch 2 Task 3: Write Path Enforcement for Slots (POST /schedules, sync-grid, PUT)', async () => {
+  const SUFFIX = 't3w1_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+  const passwordHash = await bcrypt.hash(crypto.randomUUID() + '!Aa1', 4);
+  const cleanup = new TestCleanupRegistry();
+  let server: http.Server | null = null;
+
+  try {
+    const srv = await createServer();
+    server = srv.server;
+    const baseUrl = srv.baseUrl;
+
+    const college = await prisma.college.create({
+      data: { name: `College_${SUFFIX}` },
+    });
+    cleanup.trackCollege(college.id);
+
+    const department = await prisma.department.create({
+      data: { name: `Dept_${SUFFIX}`, collegeId: college.id },
+    });
+    cleanup.trackDepartment(department.id);
+
+    const course = await prisma.course.create({
+      data: {
+        name: `Course_${SUFFIX}`,
+        courseCode: `CS_${SUFFIX.slice(-4)}`,
+        departmentId: department.id,
+        year: 1,
+        semester: 1,
+        credits: 3,
+        isPublished: true,
+      },
+    });
+    cleanup.trackCourse(course.id);
+
+    const adminUser = await prisma.user.create({
+      data: {
+        email: `admin_${SUFFIX}@unicore.test`,
+        password: passwordHash,
+        role: 'SUPER_ADMIN',
+        tokenVersion: 0,
+        isActive: true,
+      },
+    });
+    cleanup.trackUser(adminUser.id);
+    const adminToken = generateAccessToken(adminUser.id, 0);
+
+    const doctorUser = await prisma.user.create({
+      data: {
+        email: `doc_${SUFFIX}@unicore.test`,
+        password: passwordHash,
+        role: 'DOCTOR',
+        tokenVersion: 0,
+        isActive: true,
+      },
+    });
+    cleanup.trackUser(doctorUser.id);
+
+    const doctor = await prisma.doctor.create({
+      data: {
+        userId: doctorUser.id,
+        firstName: 'Doc',
+        lastName: `T3_${SUFFIX}`,
+        doctorId: `DOC_${SUFFIX.slice(-4)}`,
+        departmentId: department.id,
+      },
+    });
+    cleanup.trackDoctor(doctor.id);
+
+    const timetable = await prisma.timetable.create({
+      data: {
+        title: `Timetable_${SUFFIX}`,
+        collegeId: college.id,
+        departmentId: department.id,
+        academicYear: 1,
+        semester: 1,
+        status: 'PUBLISHED',
+      },
+    });
+    cleanup.trackTimetable(timetable.id);
+
+    const labSlot = await prisma.scheduleSlot.create({
+      data: {
+        courseId: course.id,
+        doctorId: doctor.id,
+        timetableId: timetable.id,
+        dayOfWeek: 'TUESDAY',
+        startTime: '12:00',
+        endTime: '14:00',
+        room: `Lab_${SUFFIX}`,
+        slotType: 'LAB',
+      },
+    });
+    cleanup.trackSlot(labSlot.id);
 
     // 1. POST /schedules with SECTION -> 422
     const postSecRes = await fetch(`${baseUrl}/schedules`, {
@@ -427,7 +552,7 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         dayOfWeek: 'TUESDAY',
         startTime: '12:00',
         endTime: '14:00',
-        room: 'Lab 201',
+        room: `Lab_${SUFFIX}`,
         slotType: 'SECTION',
       }),
     });
@@ -445,13 +570,115 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         dayOfWeek: 'TUESDAY',
         startTime: '12:00',
         endTime: '14:00',
-        room: 'Lab 201',
+        room: `Lab_${SUFFIX}`,
         slotType: 'LAB',
       }),
     });
     assert.equal(putLabRes.status, 200, 'PUT /schedules/:id with fully valid body + LAB control must return 200');
+  } finally {
+    try {
+      await cleanup.teardown(prisma);
+    } finally {
+      await closeServer(server);
+    }
+  }
+});
 
-    // 5. POST /requests with SECTION -> 422
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-test 3: Write Path Enforcement for Requests & TA Course Assignment
+// ─────────────────────────────────────────────────────────────────────────────
+test('WP-3 Batch 2 Task 3: Write Path Enforcement for Requests & TA Assignment', async () => {
+  const SUFFIX = 't3w2_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+  const passwordHash = await bcrypt.hash(crypto.randomUUID() + '!Aa1', 4);
+  const cleanup = new TestCleanupRegistry();
+  let server: http.Server | null = null;
+
+  try {
+    const srv = await createServer();
+    server = srv.server;
+    const baseUrl = srv.baseUrl;
+
+    const college = await prisma.college.create({
+      data: { name: `College_${SUFFIX}` },
+    });
+    cleanup.trackCollege(college.id);
+
+    const department = await prisma.department.create({
+      data: { name: `Dept_${SUFFIX}`, collegeId: college.id },
+    });
+    cleanup.trackDepartment(department.id);
+
+    const course = await prisma.course.create({
+      data: {
+        name: `Course_${SUFFIX}`,
+        courseCode: `CS_${SUFFIX.slice(-4)}`,
+        departmentId: department.id,
+        year: 1,
+        semester: 1,
+        credits: 3,
+        isPublished: true,
+      },
+    });
+    cleanup.trackCourse(course.id);
+
+    const adminUser = await prisma.user.create({
+      data: {
+        email: `admin_${SUFFIX}@unicore.test`,
+        password: passwordHash,
+        role: 'SUPER_ADMIN',
+        tokenVersion: 0,
+        isActive: true,
+      },
+    });
+    cleanup.trackUser(adminUser.id);
+    const adminToken = generateAccessToken(adminUser.id, 0);
+
+    const doctorUser = await prisma.user.create({
+      data: {
+        email: `doc_${SUFFIX}@unicore.test`,
+        password: passwordHash,
+        role: 'DOCTOR',
+        tokenVersion: 0,
+        isActive: true,
+      },
+    });
+    cleanup.trackUser(doctorUser.id);
+    const doctorToken = generateAccessToken(doctorUser.id, 0);
+
+    const doctor = await prisma.doctor.create({
+      data: {
+        userId: doctorUser.id,
+        firstName: 'Doc',
+        lastName: `T3_${SUFFIX}`,
+        doctorId: `DOC_${SUFFIX.slice(-4)}`,
+        departmentId: department.id,
+      },
+    });
+    cleanup.trackDoctor(doctor.id);
+
+    const taUser = await prisma.user.create({
+      data: {
+        email: `ta_${SUFFIX}@unicore.test`,
+        password: passwordHash,
+        role: 'TEACHING_ASSISTANT',
+        tokenVersion: 0,
+        isActive: true,
+      },
+    });
+    cleanup.trackUser(taUser.id);
+
+    const ta = await prisma.teachingAssistant.create({
+      data: {
+        userId: taUser.id,
+        firstName: 'TA',
+        lastName: `T3_${SUFFIX}`,
+        employeeId: `TA_${SUFFIX.slice(-4)}`,
+        departmentId: department.id,
+      },
+    });
+    cleanup.trackTA(ta.id);
+
+    // 1. POST /requests with SECTION -> 422
     const postReqSecRes = await fetch(`${baseUrl}/requests`, {
       method: 'POST',
       headers: {
@@ -475,8 +702,8 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
     });
     assert.equal(postReqSecRes.status, 422, 'POST /requests with SECTION proposedData must return 422');
 
-    // 6. PUT /requests/:id/approve with SECTION -> 422
-    changeReq = await prisma.scheduleChangeRequest.create({
+    // 2. PUT /requests/:id/approve with SECTION -> 422
+    const changeReq = await prisma.scheduleChangeRequest.create({
       data: {
         requesterId: doctorUser.id,
         courseId: course.id,
@@ -494,6 +721,7 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
         status: 'PENDING',
       },
     });
+    cleanup.trackChangeRequest(changeReq.id);
 
     const approveSecRes = await fetch(`${baseUrl}/requests/${changeReq.id}/approve`, {
       method: 'PUT',
@@ -505,7 +733,7 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
     });
     assert.equal(approveSecRes.status, 422, 'Approving request with SECTION slotType must return 422');
 
-    // 7. POST /teaching-assistants/:id/assign-course with SECTION -> 422, LAB -> 200 (control)
+    // 3. POST /teaching-assistants/:id/assign-course with SECTION -> 422, LAB -> 200 (control)
     const assignTaSecRes = await fetch(`${baseUrl}/teaching-assistants/${ta.id}/assign-course`, {
       method: 'POST',
       headers: {
@@ -539,63 +767,15 @@ test('WP-3 Batch 2 Task 3: Slot Type Unification (SECTION/TUTORIAL mapped to LAB
       }),
     });
     assert.equal(assignTaLabRes.status, 200, 'assignTACourse with LAB control must return 200');
+    const assignTaLabBody = await assignTaLabRes.json();
+    if (assignTaLabBody.data?.id) {
+      cleanup.trackSlot(assignTaLabBody.data.id);
+    }
   } finally {
-    // Teardown
     try {
-      if (changeReq?.id) {
-        await prisma.scheduleChangeRequest.deleteMany({ where: { id: changeReq.id } });
-      }
-      if (timetable?.id) {
-        await prisma.scheduleSlot.deleteMany({ where: { timetableId: timetable.id } });
-        await prisma.timetable.deleteMany({ where: { id: timetable.id } });
-      }
-      if (course?.id) {
-        await prisma.scheduleSlot.deleteMany({ where: { courseId: course.id } });
-        await prisma.scheduleChangeRequest.deleteMany({ where: { courseId: course.id } });
-        await prisma.enrollment.deleteMany({ where: { courseId: course.id } });
-      }
-      if (student?.id) {
-        await prisma.student.deleteMany({ where: { id: student.id } });
-      }
-      if (ta?.id) {
-        await prisma.teachingAssistant.deleteMany({ where: { id: ta.id } });
-      }
-      if (doctor?.id) {
-        await prisma.doctor.deleteMany({ where: { id: doctor.id } });
-      }
-      if (course?.id) {
-        await prisma.course.deleteMany({ where: { id: course.id } });
-      }
-      if (department?.id) {
-        await prisma.department.deleteMany({ where: { id: department.id } });
-      }
-      if (college?.id) {
-        await prisma.college.deleteMany({ where: { id: college.id } });
-      }
-      if (adminUser?.id) {
-        await prisma.auditLog.deleteMany({ where: { userId: adminUser.id } });
-        await prisma.user.deleteMany({ where: { id: adminUser.id } });
-      }
-      if (doctorUser?.id) {
-        await prisma.auditLog.deleteMany({ where: { userId: doctorUser.id } });
-        await prisma.user.deleteMany({ where: { id: doctorUser.id } });
-      }
-      if (taUser?.id) {
-        await prisma.auditLog.deleteMany({ where: { userId: taUser.id } });
-        await prisma.user.deleteMany({ where: { id: taUser.id } });
-      }
-      if (studentUser?.id) {
-        await prisma.auditLog.deleteMany({ where: { userId: studentUser.id } });
-        await prisma.user.deleteMany({ where: { id: studentUser.id } });
-      }
-    } catch (cleanupErr) {
-      console.warn('Teardown cleanup error:', cleanupErr);
+      await cleanup.teardown(prisma);
     } finally {
-      if (server) {
-        server.closeAllConnections?.();
-        await new Promise<void>((resolve) => server.close(() => resolve()));
-      }
-      await prisma.$disconnect().catch(() => {});
+      await closeServer(server);
     }
   }
 });

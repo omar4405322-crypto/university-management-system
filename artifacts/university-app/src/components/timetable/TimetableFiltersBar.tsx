@@ -66,7 +66,7 @@ export default function TimetableFiltersBar({
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 flex-wrap">
       {/* ── Selects ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-4 flex-wrap flex-1">
-        {!isCollegeAdmin && (
+        {!isCollegeAdmin && !isDeptAdminLocked && (
           <select
             className={`w-full md:w-56 ${SELECT_CLASS}`}
             value={filters.collegeId || ''}
@@ -87,24 +87,26 @@ export default function TimetableFiltersBar({
         )}
 
         {/* Department */}
-        <select
-          className={`w-full md:w-56 ${SELECT_CLASS}`}
-          value={filters.departmentId}
-          onChange={(e) => update('departmentId', e.target.value)}
-          disabled={isDeptAdminLocked || (!isCollegeAdmin && !filters.collegeId && departments.length === 0)}
-          aria-label={t('timetables.selectDept', 'Select Department')}
-        >
-          <option value="">
-            {loadingDepts
-              ? t('common.loading', 'Loading...')
-              : t('timetables.selectDept', 'Select Department')}
-          </option>
-          {departments.map((d) => (
-            <option key={d.id} value={String(d.id)}>
-              {isRTL ? d.nameAr || d.name : d.name}
+        {!isDeptAdminLocked && (
+          <select
+            className={`w-full md:w-56 ${SELECT_CLASS}`}
+            value={filters.departmentId}
+            onChange={(e) => update('departmentId', e.target.value)}
+            disabled={!isCollegeAdmin && !filters.collegeId && departments.length === 0}
+            aria-label={t('timetables.selectDept', 'Select Department')}
+          >
+            <option value="">
+              {loadingDepts
+                ? t('common.loading', 'Loading...')
+                : t('timetables.selectDept', 'Select Department')}
             </option>
-          ))}
-        </select>
+            {departments.map((d) => (
+              <option key={d.id} value={String(d.id)}>
+                {isRTL ? d.nameAr || d.name : d.name}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* Academic Year */}
         <select

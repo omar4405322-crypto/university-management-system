@@ -40,6 +40,14 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
 import TimetableModal from './TimetableModal';
+import {
+  isSelectionAllowedForRole,
+  toggleOne,
+  isAllPageSelected,
+  isSomePageSelected,
+  toggleCurrentPage,
+  clearSelection
+} from '../../utils/scheduleSelectionRules';
 import { logger } from '../../lib/logger';
 import { useToast } from '../../context/ToastContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -49,7 +57,7 @@ export type { TimetableItem };
 const TimetableManagement = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { scopeParams, isCollegeAdmin } = useScope();
+  const { scopeParams, isCollegeAdmin, hideCollegeSelector, hideDepartmentSelector } = useScope();
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -87,7 +95,7 @@ const TimetableManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTimetable, setEditingTimetable] = useState<TimetableItem | null>(null);
 
-  const canManage = user?.role ? ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) : false;
+  const canManage = isSelectionAllowedForRole(user?.role);
 
   // 1. Fetch Metadata (Colleges & Departments)
   useEffect(() => {
@@ -244,35 +252,33 @@ const TimetableManagement = () => {
     return filteredTimetables.slice((page - 1) * pageSize, page * pageSize);
   }, [filteredTimetables, page, pageSize]);
 
-  // Multi-Selection Logic
-  const allFilteredIds = useMemo(() => filteredTimetables.map((t) => t.id), [filteredTimetables]);
-  const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
-  const isSomeSelected = allFilteredIds.some((id) => selectedIds.has(id)) && !isAllSelected;
+  // Multi-Selection Logic (Current Page Only)
+  const currentPageIds = useMemo(() => paginatedTimetables.map((t) => t.id), [paginatedTimetables]);
+  const isAllSelected = isAllPageSelected(selectedIds, currentPageIds);
+  const isSomeSelected = isSomePageSelected(selectedIds, currentPageIds);
 
   const handleToggleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        allFilteredIds.forEach((id) => next.delete(id));
-        return next;
-      });
-    } else {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        allFilteredIds.forEach((id) => next.add(id));
-        return next;
-      });
-    }
+    setSelectedIds((prev) => toggleCurrentPage(prev, currentPageIds));
   };
 
   const handleToggleSelect = (id: number | string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setSelectedIds((prev) => toggleOne(prev, id));
   };
+
+  // Clear selection when filters, page, or viewMode change
+  useEffect(() => {
+    setSelectedIds((prev) => (prev.size > 0 ? clearSelection() : prev));
+  }, [
+    search,
+    selectedCollege,
+    selectedDept,
+    selectedYear,
+    selectedSemester,
+    statusFilter,
+    page,
+    pageSize,
+    viewMode,
+  ]);
 
   // Bulk Delete
   const confirmBulkDelete = async () => {
@@ -285,7 +291,7 @@ const TimetableManagement = () => {
       );
       await Promise.allSettled(deletePromises);
       showToast(t('timetables.bulkDeleteSuccess', `تم حذف ${count} جداول دراسية بنجاح`, { count }), 'success');
-      setSelectedIds(new Set());
+      setSelectedIds(clearSelection());
       setBulkDeleteModalOpen(false);
       fetchTimetables();
     } catch (err) {
@@ -481,7 +487,7 @@ const TimetableManagement = () => {
         </div>
 
         {/* College Selector */}
-        {!isCollegeAdmin && (
+        {!hideCollegeSelector && (
           <select
             value={selectedCollege}
             onChange={(e) => {
@@ -501,19 +507,21 @@ const TimetableManagement = () => {
         )}
 
         {/* Department Selector */}
-        <select
-          value={selectedDept}
-          onChange={(e) => setSelectedDept(e.target.value)}
-          aria-label={t('common.allDepartments', 'All Departments')}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="">{t('common.allDepartments', 'All Departments')}</option>
-          {filteredDepartments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {isRTL ? d.nameAr || d.name : d.name}
-            </option>
-          ))}
-        </select>
+        {!hideDepartmentSelector && (
+          <select
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value)}
+            aria-label={t('common.allDepartments', 'All Departments')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('common.allDepartments', 'All Departments')}</option>
+            {filteredDepartments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {isRTL ? d.nameAr || d.name : d.name}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* Academic Year */}
         <select
@@ -554,35 +562,7 @@ const TimetableManagement = () => {
           <option value="DRAFT">{t('timetables.draftStatus', 'Draft')}</option>
         </select>
 
-        {/* Select All Button */}
-        {canManage && allFilteredIds.length > 0 && (
-          <button
-            type="button"
-            onClick={handleToggleSelectAll}
-            className={`h-8.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              isAllSelected
-                ? 'bg-brand-primary-500 text-white border-brand-primary-500 shadow-xs'
-                : isSomeSelected
-                ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-primary-700 dark:text-brand-primary-300 border-brand-primary-300'
-                : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300'
-            }`}
-            title={isAllSelected ? t('timetables.deselectAll', 'إلغاء تحديد الكل') : t('timetables.selectAll', 'تحديد الكل')}
-            aria-label={isAllSelected ? t('timetables.deselectAll', 'إلغاء تحديد الكل') : t('timetables.selectAll', 'تحديد الكل')}
-          >
-            {isAllSelected ? (
-              <CheckSquare size={14} />
-            ) : isSomeSelected ? (
-              <MinusSquare size={14} />
-            ) : (
-              <Square size={14} />
-            )}
-            <span>
-              {isAllSelected
-                ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
-                : (isRTL ? 'تحديد الكل' : 'Select All')}
-            </span>
-          </button>
-        )}
+
 
         {/* Clear Filters */}
         {hasActiveFilters && (
@@ -660,11 +640,15 @@ const TimetableManagement = () => {
         /* MODE A: RESPONSIVE CARDS GRID VIEW */
         <div className="space-y-3">
           {/* Dedicated Select All Header Bar for Cards View */}
-          {canManage && allFilteredIds.length > 0 && (
+          {canManage && currentPageIds.length > 0 && (
             <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
               <button
                 type="button"
                 onClick={handleToggleSelectAll}
+                aria-label={isAllSelected
+                  ? t('timetables.deselectAllPage', 'Deselect all on this page')
+                  : `${t('timetables.selectAllPage', 'Select all on this page')} (${currentPageIds.length})`}
+                aria-checked={isAllSelected ? 'true' : isSomeSelected ? 'mixed' : 'false'}
                 className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-brand-primary-600 transition-colors cursor-pointer"
               >
                 {isAllSelected ? (
@@ -676,13 +660,13 @@ const TimetableManagement = () => {
                 )}
                 <span>
                   {isAllSelected
-                    ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
-                    : (isRTL ? `تحديد جميع الجداول (${allFilteredIds.length})` : `Select All Timetables (${allFilteredIds.length})`)}
+                    ? t('timetables.deselectAllPage', 'Deselect all on this page')
+                    : `${t('timetables.selectAllPage', 'Select all on this page')} (${currentPageIds.length})`}
                 </span>
               </button>
               {selectedIds.size > 0 && (
                 <span className="text-xs font-bold text-brand-primary-700 dark:text-brand-primary-300 bg-brand-primary-50 dark:bg-brand-primary-950/50 px-2.5 py-1 rounded-xl border border-brand-primary-200 dark:border-brand-primary-800">
-                  {isRTL ? `تم تحديد ${selectedIds.size} من أصل ${allFilteredIds.length}` : `Selected ${selectedIds.size} of ${allFilteredIds.length}`}
+                  {isRTL ? `تم تحديد ${selectedIds.size} من أصل ${currentPageIds.length}` : `Selected ${selectedIds.size} of ${currentPageIds.length}`}
                 </span>
               )}
             </div>
@@ -876,8 +860,9 @@ const TimetableManagement = () => {
                         type="button"
                         onClick={handleToggleSelectAll}
                         className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
-                        title={isAllSelected ? t('schedules.deselectAll', 'Deselect All') : t('schedules.selectAll', 'Select All')}
-                        aria-label={isAllSelected ? t('schedules.deselectAll', 'Deselect All') : t('schedules.selectAll', 'Select All')}
+                        title={isAllSelected ? t('timetables.deselectAllPage', 'Deselect all on this page') : t('timetables.selectAllPage', 'Select all on this page')}
+                        aria-label={isAllSelected ? t('timetables.deselectAllPage', 'Deselect all on this page') : t('timetables.selectAllPage', 'Select all on this page')}
+                        aria-checked={isAllSelected ? 'true' : isSomeSelected ? 'mixed' : 'false'}
                       >
                         {isAllSelected ? (
                           <CheckSquare size={16} className="text-brand-primary-600" />
@@ -1078,7 +1063,7 @@ const TimetableManagement = () => {
       {canManage && (
         <BulkActionToolbar
           selectedCount={selectedIds.size}
-          onClear={() => setSelectedIds(new Set())}
+          onClear={() => setSelectedIds(clearSelection())}
           onExport={handleBulkExport}
           onDelete={() => setBulkDeleteModalOpen(true)}
         />

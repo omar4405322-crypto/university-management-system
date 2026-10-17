@@ -1,21 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import http from 'node:http';
+import bcrypt from 'bcryptjs';
 import prisma from '../src/utils/prismaClient';
 import { generateAccessToken } from '../src/utils/jwt.utils';
 import app from '../src/app';
+import { TestCleanupRegistry } from './testCleanup.utils';
 
 test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-dept & already-assigned only; rejects out-of-dept and null-dept)', async () => {
   const SUFFIX = `c1_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const passwordHash = await bcrypt.hash(crypto.randomUUID() + '!Aa1', 4);
+  const cleanup = new TestCleanupRegistry();
   let server: http.Server | null = null;
-
-  // Track created entities for hermetic cleanup
-  const createdUserIds: number[] = [];
-  const createdTaIds: string[] = [];
-  const createdDeptIds: number[] = [];
-  let courseId: number | null = null;
-  let timetableId: number | null = null;
-  let slotId: number | null = null;
 
   try {
     server = http.createServer(app);
@@ -33,7 +30,7 @@ test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-de
         collegeId: college.id,
       },
     });
-    createdDeptIds.push(dept1.id);
+    cleanup.trackDepartment(dept1.id);
 
     const dept2 = await prisma.department.create({
       data: {
@@ -41,7 +38,7 @@ test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-de
         collegeId: college.id,
       },
     });
-    createdDeptIds.push(dept2.id);
+    cleanup.trackDepartment(dept2.id);
 
     const course = await prisma.course.create({
       data: {
@@ -53,19 +50,19 @@ test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-de
         departmentId: dept1.id,
       },
     });
-    courseId = course.id;
+    cleanup.trackCourse(course.id);
 
     // 2. Setup Super Admin
     const adminUser = await prisma.user.create({
       data: {
         email: `admin_${SUFFIX}@unicore.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'SUPER_ADMIN',
         tokenVersion: 0,
         isActive: true,
       },
     });
-    createdUserIds.push(adminUser.id);
+    cleanup.trackUser(adminUser.id);
     const adminToken = generateAccessToken(adminUser.id, 0);
 
     // 3. Setup 4 TAs:
@@ -73,13 +70,14 @@ test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-de
     const u1 = await prisma.user.create({
       data: {
         email: `ta1_indept_${SUFFIX}@unicore.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'TEACHING_ASSISTANT',
         tokenVersion: 0,
         isActive: true,
       },
     });
-    createdUserIds.push(u1.id);
+    cleanup.trackUser(u1.id);
+
     const taInDept = await prisma.teachingAssistant.create({
       data: {
         userId: u1.id,
@@ -90,19 +88,20 @@ test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-de
         status: 'ACTIVE',
       },
     });
-    createdTaIds.push(taInDept.id);
+    cleanup.trackTA(taInDept.id);
 
     // TA 2: Out-of-department (dept2, unassigned) -> MUST NOT be suggested
     const u2 = await prisma.user.create({
       data: {
         email: `ta2_outdept_${SUFFIX}@unicore.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'TEACHING_ASSISTANT',
         tokenVersion: 0,
         isActive: true,
       },
     });
-    createdUserIds.push(u2.id);
+    cleanup.trackUser(u2.id);
+
     const taOutDept = await prisma.teachingAssistant.create({
       data: {
         userId: u2.id,
@@ -113,19 +112,20 @@ test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-de
         status: 'ACTIVE',
       },
     });
-    createdTaIds.push(taOutDept.id);
+    cleanup.trackTA(taOutDept.id);
 
     // TA 3: Null-department (departmentId: null) -> MUST NOT be suggested
     const u3 = await prisma.user.create({
       data: {
         email: `ta3_nulldept_${SUFFIX}@unicore.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'TEACHING_ASSISTANT',
         tokenVersion: 0,
         isActive: true,
       },
     });
-    createdUserIds.push(u3.id);
+    cleanup.trackUser(u3.id);
+
     const taNullDept = await prisma.teachingAssistant.create({
       data: {
         userId: u3.id,
@@ -136,19 +136,20 @@ test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-de
         status: 'ACTIVE',
       },
     });
-    createdTaIds.push(taNullDept.id);
+    cleanup.trackTA(taNullDept.id);
 
     // TA 4: Out-of-department (dept2), BUT assigned to Course C1 -> MUST be suggested
     const u4 = await prisma.user.create({
       data: {
         email: `ta4_assigned_${SUFFIX}@unicore.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'TEACHING_ASSISTANT',
         tokenVersion: 0,
         isActive: true,
       },
     });
-    createdUserIds.push(u4.id);
+    cleanup.trackUser(u4.id);
+
     const taAssigned = await prisma.teachingAssistant.create({
       data: {
         userId: u4.id,
@@ -159,7 +160,7 @@ test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-de
         status: 'ACTIVE',
       },
     });
-    createdTaIds.push(taAssigned.id);
+    cleanup.trackTA(taAssigned.id);
 
     // Create Timetable and slot assigning TA 4 to course
     const tb = await prisma.timetable.create({
@@ -172,7 +173,7 @@ test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-de
         status: 'PUBLISHED',
       },
     });
-    timetableId = tb.id;
+    cleanup.trackTimetable(tb.id);
 
     const slot = await prisma.scheduleSlot.create({
       data: {
@@ -187,7 +188,7 @@ test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-de
         isArchived: false,
       },
     });
-    slotId = slot.id;
+    cleanup.trackSlot(slot.id);
 
     // 4. Call GET /api/teaching-assistants/suggested?courseId=<courseId>
     const res = await fetch(`${baseUrl}/teaching-assistants/suggested?courseId=${course.id}`, {
@@ -225,20 +226,13 @@ test('C1: GET /api/teaching-assistants/suggested enforces strict TA scope (in-de
       `Null-department TA (id: ${taNullDept.id}) MUST NOT be suggested`
     );
   } finally {
-    if (slotId) await prisma.scheduleSlot.deleteMany({ where: { id: slotId } });
-    if (timetableId) await prisma.timetable.deleteMany({ where: { id: timetableId } });
-    if (courseId) await prisma.course.deleteMany({ where: { id: courseId } });
-    if (createdTaIds.length > 0) {
-      await prisma.teachingAssistant.deleteMany({ where: { id: { in: createdTaIds } } });
-    }
-    if (createdUserIds.length > 0) {
-      await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
-    }
-    if (createdDeptIds.length > 0) {
-      await prisma.department.deleteMany({ where: { id: { in: createdDeptIds } } });
-    }
-    if (server) {
-      await new Promise<void>((resolve) => server!.close(() => resolve()));
+    try {
+      await cleanup.teardown(prisma);
+    } finally {
+      if (server) {
+        server.closeAllConnections?.();
+        await new Promise<void>((resolve) => server!.close(() => resolve()));
+      }
     }
   }
 });

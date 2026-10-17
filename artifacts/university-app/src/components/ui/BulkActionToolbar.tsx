@@ -41,12 +41,17 @@ const BulkActionToolbar: React.FC<BulkActionToolbarProps> = ({
   if (selectedCount === 0) return null;
 
   return createPortal(
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-5 py-2.5 rounded-2xl shadow-[0_12px_40px_rgb(0,0,0,0.18)] border border-slate-200 dark:border-slate-700 animate-in slide-in-from-bottom-8 fade-in duration-300">
-      <div className="flex items-center gap-2 border-r border-slate-200 dark:border-slate-700 pr-3.5 rtl:pr-0 rtl:border-r-0 rtl:border-l rtl:pl-3.5">
-        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand-primary-500 text-white text-xs font-black">
+    <div
+      role="region"
+      aria-label={isRTL ? 'إجراءات التحديد الجماعي' : 'Bulk actions'}
+      aria-live="polite"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3.5 sm:px-5 py-2.5 rounded-2xl shadow-[0_12px_40px_rgb(0,0,0,0.18)] border border-slate-200 dark:border-slate-700 animate-in slide-in-from-bottom-8 fade-in duration-300 max-w-[calc(100vw-1.5rem)]"
+    >
+      <div className="flex items-center gap-2 border-r border-slate-200 dark:border-slate-700 pr-3 sm:pr-3.5 rtl:pr-0 rtl:border-r-0 rtl:border-l rtl:pl-3 sm:rtl:pl-3.5 flex-shrink-0">
+        <span className="inline-flex items-center justify-center min-w-6 h-6 px-1 rounded-full bg-brand-primary-500 text-white text-xs font-black">
           {selectedCount}
         </span>
-        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+        <span className="text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
           {isRTL ? 'محدد' : 'Selected'}
         </span>
       </div>
@@ -144,10 +149,10 @@ const BulkActionToolbar: React.FC<BulkActionToolbarProps> = ({
         {children}
       </div>
 
-      <div className="border-l border-slate-200 dark:border-slate-700 pl-3.5 rtl:pl-0 rtl:border-l-0 rtl:border-r rtl:pr-3.5">
+      <div className="border-l border-slate-200 dark:border-slate-700 pl-3 sm:pl-3.5 rtl:pl-0 rtl:border-l-0 rtl:border-r rtl:pr-3 sm:rtl:pr-3.5 flex-shrink-0">
         <button
           onClick={onClear}
-          className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+          className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary-500"
           aria-label={t('common.clear', 'Clear')}
           title={isRTL ? 'إلغاء التحديد' : 'Clear selection'}
         >

@@ -5,10 +5,12 @@ import bcrypt from 'bcryptjs';
 import prisma from '../src/utils/prismaClient';
 import { generateAccessToken } from '../src/utils/jwt.utils';
 import app from '../src/app';
+import { TestCleanupRegistry } from './testCleanup.utils';
 
 test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollments, attendance, and transcripts', async () => {
   const suffix = `c2_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
   const passwordHash = await bcrypt.hash(`Secret_${suffix}_${Math.random()}`, 4);
+  const cleanup = new TestCleanupRegistry();
 
   // Capture baseline counts for touched models to verify hermetic cleanup
   const preCounts = {
@@ -20,6 +22,9 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
     enrollment: await prisma.enrollment.count(),
     scheduleSlot: await prisma.scheduleSlot.count(),
     attendance: await prisma.attendance.count(),
+    auditLog: await prisma.auditLog.count(),
+    notification: await prisma.notification.count(),
+    refreshToken: await prisma.refreshToken.count(),
   };
 
   const dept = await prisma.department.findFirst({
@@ -28,11 +33,6 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
   assert.ok(dept, 'A seeded department must exist');
 
   let server: http.Server | null = null;
-  const createdUserIds: number[] = [];
-  const createdCourseIds: number[] = [];
-  const createdStudentIds: number[] = [];
-  const createdSlotIds: number[] = [];
-  const createdAttendanceIds: number[] = [];
 
   try {
     server = http.createServer(app);
@@ -58,8 +58,9 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
       },
       include: { doctor: true },
     });
-    createdUserIds.push(docUser.id);
+    cleanup.trackUser(docUser.id);
     const doctor = docUser.doctor!;
+    cleanup.trackDoctor(doctor.id);
 
     // 2. Create TA user and profile in department D
     const taUser = await prisma.user.create({
@@ -77,8 +78,9 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
       },
       include: { teachingAssistant: true },
     });
-    createdUserIds.push(taUser.id);
+    cleanup.trackUser(taUser.id);
     const ta = taUser.teachingAssistant!;
+    cleanup.trackTA(ta.id);
 
     // 3. Create Course A (assigned to TA via slot) and Course B (unassigned to TA, same department)
     const courseA = await prisma.course.create({
@@ -92,7 +94,7 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
         isPublished: true,
       },
     });
-    createdCourseIds.push(courseA.id);
+    cleanup.trackCourse(courseA.id);
 
     const courseB = await prisma.course.create({
       data: {
@@ -105,7 +107,7 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
         isPublished: true,
       },
     });
-    createdCourseIds.push(courseB.id);
+    cleanup.trackCourse(courseB.id);
 
     // 4. Create ScheduleSlot for TA in Course A
     const slotA = await prisma.scheduleSlot.create({
@@ -119,7 +121,7 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
         teachingAssistantId: ta.id,
       },
     });
-    createdSlotIds.push(slotA.id);
+    cleanup.trackSlot(slotA.id);
 
     // Create ScheduleSlot for Doctor in Course B (no TA slot)
     const slotB = await prisma.scheduleSlot.create({
@@ -133,7 +135,7 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
         doctorId: doctor.id,
       },
     });
-    createdSlotIds.push(slotB.id);
+    cleanup.trackSlot(slotB.id);
 
     // 5. Create Student A (enrolled in Course A) and Student B (enrolled in Course B)
     const stuUserA = await prisma.user.create({
@@ -153,9 +155,9 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
       },
       include: { student: true },
     });
-    createdUserIds.push(stuUserA.id);
+    cleanup.trackUser(stuUserA.id);
     const studentA = stuUserA.student!;
-    createdStudentIds.push(studentA.id);
+    cleanup.trackStudent(studentA.id);
 
     const stuUserB = await prisma.user.create({
       data: {
@@ -174,9 +176,9 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
       },
       include: { student: true },
     });
-    createdUserIds.push(stuUserB.id);
+    cleanup.trackUser(stuUserB.id);
     const studentB = stuUserB.student!;
-    createdStudentIds.push(studentB.id);
+    cleanup.trackStudent(studentB.id);
 
     // Enroll Student A in Course A, Student B in Course B
     await prisma.enrollment.create({
@@ -209,7 +211,7 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
         recordedById: taUser.id,
       },
     });
-    createdAttendanceIds.push(attA.id);
+    cleanup.trackAttendance(attA.id);
 
     const attB = await prisma.attendance.create({
       data: {
@@ -221,7 +223,7 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
         recordedById: docUser.id,
       },
     });
-    createdAttendanceIds.push(attB.id);
+    cleanup.trackAttendance(attB.id);
 
     const taToken = generateAccessToken(taUser.id, taUser.tokenVersion);
 
@@ -296,26 +298,14 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
       `TA must NOT read transcript for unassigned student B in same department (Expected 403 or 404, got ${resTransB.status})`
     );
   } finally {
-    // Hermetic cleanup in reverse foreign key order
-    if (server) await new Promise<void>((resolve) => server!.close(() => resolve()));
-
-    if (createdAttendanceIds.length > 0) {
-      await prisma.attendance.deleteMany({ where: { id: { in: createdAttendanceIds } } });
-    }
-    if (createdSlotIds.length > 0) {
-      await prisma.scheduleSlot.deleteMany({ where: { id: { in: createdSlotIds } } });
-    }
-    if (createdStudentIds.length > 0) {
-      await prisma.enrollment.deleteMany({ where: { studentId: { in: createdStudentIds } } });
-      await prisma.student.deleteMany({ where: { id: { in: createdStudentIds } } });
-    }
-    if (createdCourseIds.length > 0) {
-      await prisma.course.deleteMany({ where: { id: { in: createdCourseIds } } });
-    }
-    if (createdUserIds.length > 0) {
-      await prisma.teachingAssistant.deleteMany({ where: { userId: { in: createdUserIds } } });
-      await prisma.doctor.deleteMany({ where: { userId: { in: createdUserIds } } });
-      await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
+    // Hermetic cleanup via TestCleanupRegistry
+    try {
+      if (server) {
+        server.closeAllConnections?.();
+        await new Promise<void>((resolve) => server!.close(() => resolve()));
+      }
+    } finally {
+      await cleanup.teardown(prisma);
     }
 
     // Verify row counts of every touched model are strictly restored to pre-test baseline
@@ -328,6 +318,9 @@ test('C2 MAJOR: TEACHING_ASSISTANT scope beyond tasks across courses, enrollment
       enrollment: await prisma.enrollment.count(),
       scheduleSlot: await prisma.scheduleSlot.count(),
       attendance: await prisma.attendance.count(),
+      auditLog: await prisma.auditLog.count(),
+      notification: await prisma.notification.count(),
+      refreshToken: await prisma.refreshToken.count(),
     };
 
     assert.deepEqual(postCounts, preCounts, 'Touched model row counts must be strictly restored to pre-test values');

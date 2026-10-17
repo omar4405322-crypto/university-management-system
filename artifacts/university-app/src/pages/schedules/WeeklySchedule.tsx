@@ -30,6 +30,7 @@ import ScheduleHeader from '../../components/timetable/ScheduleHeader';
 import ScheduleToolbar from '../../components/timetable/ScheduleToolbar';
 import { ScheduleView } from '../../components/timetable/ScheduleView';
 import { generateHourlyTimes } from '../../utils/scheduleConfig';
+import { getScheduleFilterPermissions, API_SCHEDULE_DAYS } from '../../utils/scheduleFilterRules';
 import { logger } from '../../lib/logger';
 import type { College, Department } from '../../types/timetable.types';
 import type { TimetableDayRecord, ScheduleSlot } from './DoctorSchedule';
@@ -48,7 +49,10 @@ export function WeeklySchedule({ isStudentView }: WeeklyScheduleProps = {}) {
 
   const isStudent = isStudentView || user?.role === 'STUDENT' || location.pathname.includes('/student');
   const canManage = user?.role ? ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) : false;
-  const { scopeParams, isCollegeAdmin } = useScope();
+  const { scopeParams, isCollegeAdmin, hideCollegeSelector, hideDepartmentSelector } = useScope();
+
+  const effectiveRole = isStudent ? 'STUDENT' : user?.role;
+  const filterPermissions = useMemo(() => getScheduleFilterPermissions(effectiveRole), [effectiveRole]);
 
   // Metadata Lists (Colleges & Departments for Admins/Staff)
   const [colleges, setColleges] = useState<College[]>([]);
@@ -60,6 +64,8 @@ export function WeeklySchedule({ isStudentView }: WeeklyScheduleProps = {}) {
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [selectedDayFilter, setSelectedDayFilter] = useState('');
   const [selectedSlotType, setSelectedSlotType] = useState('all');
   const [scheduleViewMode, setScheduleViewMode] = useState<'grid' | 'agenda'>('grid');
 
@@ -204,12 +210,40 @@ export function WeeklySchedule({ isStudentView }: WeeklyScheduleProps = {}) {
     return () => clearInterval(interval);
   }, [fetchTargetedTimetable]);
 
+  // Enrolled courses derived from loaded schedule slots
+  const enrolledCourses = useMemo(() => {
+    const map = new Map<number | string, { id: number | string; name: string; courseCode?: string }>();
+    rawSlots.forEach((slot) => {
+      const c = slot.course;
+      if (c?.id) {
+        map.set(c.id, {
+          id: c.id,
+          name: c.name || '',
+          courseCode: c.courseCode || (c as any).code || '',
+        });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [rawSlots]);
+
   // Multi-dimensional client-side filtering
   const filteredSlots = useMemo(() => {
     return rawSlots.filter((slot) => {
       // Slot Type Filter
       if (selectedSlotType !== 'all' && slot.slotType !== selectedSlotType) {
         return false;
+      }
+
+      // Course Filter (own enrolled courses for student)
+      if (selectedCourse) {
+        const cId = slot.course?.id;
+        if (!cId || String(cId) !== String(selectedCourse)) return false;
+      }
+
+      // Day of Week Filter (canonical API day values)
+      if (selectedDayFilter && selectedDayFilter !== 'all') {
+        const slotDay = String(slot.dayOfWeek || '').trim().toUpperCase();
+        if (slotDay !== selectedDayFilter.toUpperCase()) return false;
       }
 
       // Academic Year Filter
@@ -261,7 +295,7 @@ export function WeeklySchedule({ isStudentView }: WeeklyScheduleProps = {}) {
 
       return true;
     });
-  }, [rawSlots, selectedSlotType, selectedYear, selectedSemester, selectedDept, selectedCollege, searchQuery]);
+  }, [rawSlots, selectedSlotType, selectedCourse, selectedDayFilter, selectedYear, selectedSemester, selectedDept, selectedCollege, searchQuery]);
 
   // Group filtered slots into Days Record for ScheduleView
   const timetableRecord = useMemo<TimetableDayRecord>(() => {
@@ -328,6 +362,8 @@ export function WeeklySchedule({ isStudentView }: WeeklyScheduleProps = {}) {
     setSelectedDept('');
     setSelectedYear('');
     setSelectedSemester('');
+    setSelectedCourse('');
+    setSelectedDayFilter('');
     setSelectedSlotType('all');
     setSearchQuery('');
   };
@@ -365,11 +401,13 @@ export function WeeklySchedule({ isStudentView }: WeeklyScheduleProps = {}) {
         onSearchChange={setSearchQuery}
         searchPlaceholder={t('schedules.searchWeeklySchedulePlaceholder')}
         hasActiveFilters={Boolean(
-          selectedCollege ||
-          selectedDept ||
-          selectedYear ||
-          selectedSemester ||
-          selectedSlotType !== 'all' ||
+          (filterPermissions.college && canManage && !isCollegeAdmin && !hideCollegeSelector && selectedCollege) ||
+          (filterPermissions.department && canManage && !hideDepartmentSelector && selectedDept) ||
+          (filterPermissions.year && selectedYear) ||
+          (filterPermissions.semester && selectedSemester) ||
+          (filterPermissions.course && selectedCourse) ||
+          (filterPermissions.day && selectedDayFilter) ||
+          (filterPermissions.type && selectedSlotType !== 'all') ||
           searchQuery
         )}
         onResetFilters={resetFilters}
@@ -377,7 +415,7 @@ export function WeeklySchedule({ isStudentView }: WeeklyScheduleProps = {}) {
         onViewModeChange={setScheduleViewMode}
       >
         {/* College Filter (Admins / Staff) */}
-        {canManage && !isCollegeAdmin && (
+        {filterPermissions.college && canManage && !isCollegeAdmin && !hideCollegeSelector && (
           <select
             value={selectedCollege}
             onChange={(e) => handleCollegeChange(e.target.value)}
@@ -394,7 +432,7 @@ export function WeeklySchedule({ isStudentView }: WeeklyScheduleProps = {}) {
         )}
 
         {/* Department Filter (Admins / Staff) */}
-        {canManage && (
+        {filterPermissions.department && canManage && !hideDepartmentSelector && (
           <select
             value={selectedDept}
             onChange={(e) => setSelectedDept(e.target.value)}
@@ -411,45 +449,85 @@ export function WeeklySchedule({ isStudentView }: WeeklyScheduleProps = {}) {
           </select>
         )}
 
+        {/* Course Filter (own enrolled courses only for students, built from loaded data) */}
+        {filterPermissions.course && enrolledCourses.length > 0 && (
+          <select
+            value={selectedCourse}
+            onChange={(e) => setSelectedCourse(e.target.value)}
+            aria-label={t('schedules.filterByCourse', 'Filter by course')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer max-w-[200px]"
+          >
+            <option value="">{t('schedules.allCourses', 'All Courses')}</option>
+            {enrolledCourses.map((c) => (
+              <option key={c.id} value={String(c.id)}>
+                {c.courseCode ? `${c.courseCode} - ${c.name}` : c.name}
+              </option>
+            ))}
+          </select>
+        )}
+
         {/* Academic Year */}
-        <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(e.target.value)}
-          aria-label={isRTL ? 'تصفية حسب السنة' : 'Filter by year'}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="">{isRTL ? 'كل السنوات' : 'All Years'}</option>
-          {[1, 2, 3, 4].map((yr) => (
-            <option key={yr} value={yr.toString()}>
-              {isRTL ? `الفرقة ${yr}` : `Year ${yr}`}
-            </option>
-          ))}
-        </select>
+        {filterPermissions.year && (
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            aria-label={t('schedules.filterByYear', 'Filter by year')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{isRTL ? 'كل السنوات' : 'All Years'}</option>
+            {[1, 2, 3, 4].map((yr) => (
+              <option key={yr} value={yr.toString()}>
+                {isRTL ? `الفرقة ${yr}` : `Year ${yr}`}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* Semester */}
-        <select
-          value={selectedSemester}
-          onChange={(e) => setSelectedSemester(e.target.value)}
-          aria-label={isRTL ? 'تصفية حسب الفصل الدراسي' : 'Filter by semester'}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="">{isRTL ? 'كل الفصول' : 'All Semesters'}</option>
-          <option value="1">{isRTL ? 'الفصل 1' : 'Sem 1'}</option>
-          <option value="2">{isRTL ? 'الفصل 2' : 'Sem 2'}</option>
-          <option value="3">{isRTL ? 'الصيفي' : 'Summer'}</option>
-        </select>
+        {filterPermissions.semester && (
+          <select
+            value={selectedSemester}
+            onChange={(e) => setSelectedSemester(e.target.value)}
+            aria-label={t('schedules.filterBySemester', 'Filter by semester')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{isRTL ? 'كل الفصول' : 'All Semesters'}</option>
+            <option value="1">{isRTL ? 'الفصل 1' : 'Sem 1'}</option>
+            <option value="2">{isRTL ? 'الفصل 2' : 'Sem 2'}</option>
+            <option value="3">{isRTL ? 'الصيفي' : 'Summer'}</option>
+          </select>
+        )}
 
         {/* Session Type */}
-        <select
-          value={selectedSlotType}
-          onChange={(e) => setSelectedSlotType(e.target.value)}
-          aria-label={isRTL ? 'نوع الحصة' : 'Session type'}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="all">{isRTL ? 'كل الحصص' : 'All Sessions'}</option>
-          <option value="LECTURE">{isRTL ? 'محاضرات نظري' : 'Lectures'}</option>
-          <option value="LAB">{isRTL ? 'معامل تطبيقية' : 'Labs'}</option>
-        </select>
+        {filterPermissions.type && (
+          <select
+            value={selectedSlotType}
+            onChange={(e) => setSelectedSlotType(e.target.value)}
+            aria-label={t('schedules.filterBySessionType', 'Session type')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="all">{t('schedules.allSessions', 'All Sessions')}</option>
+            <option value="LECTURE">{t('schedule.lecture', 'Lectures')}</option>
+            <option value="LAB">{t('schedule.lab', 'Labs')}</option>
+          </select>
+        )}
+
+        {/* Day Filter */}
+        {filterPermissions.day && (
+          <select
+            value={selectedDayFilter}
+            onChange={(e) => setSelectedDayFilter(e.target.value)}
+            aria-label={t('schedules.filterByDay', 'Filter by day')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('schedules.allDays', 'All Days')}</option>
+            {API_SCHEDULE_DAYS.map((day) => (
+              <option key={day} value={day}>
+                {t(`days.${day.toLowerCase()}`, day)}
+              </option>
+            ))}
+          </select>
+        )}
       </ScheduleToolbar>
 
       {/* ========================================================================= */}

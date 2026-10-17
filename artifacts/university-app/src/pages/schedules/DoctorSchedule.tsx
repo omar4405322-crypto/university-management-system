@@ -41,6 +41,8 @@ import ScheduleToolbar from '../../components/timetable/ScheduleToolbar';
 import { ScheduleView } from '../../components/timetable/ScheduleView';
 import { generateHourlyTimes } from '../../utils/scheduleConfig';
 import { logger } from '../../lib/logger';
+import useScope from '../../hooks/useScope';
+import { getScheduleFilterPermissions, API_SCHEDULE_DAYS } from '../../utils/scheduleFilterRules';
 
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -99,6 +101,9 @@ export function DoctorSchedule() {
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { hideCollegeSelector, hideDepartmentSelector } = useScope();
+
+  const filterPermissions = useMemo(() => getScheduleFilterPermissions(user?.role), [user?.role]);
 
   // Metadata Lists
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
@@ -113,6 +118,9 @@ export function DoctorSchedule() {
   const [selectedDeptId, setSelectedDeptId] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedSemester, setSelectedSemester] = useState<string>('');
+  const [selectedCourse, setSelectedCourse] = useState<string>('');
+  const [selectedDayFilter, setSelectedDayFilter] = useState<string>('');
+  const [selectedSlotType, setSelectedSlotType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showConflictsOnly, setShowConflictsOnly] = useState<boolean>(false);
   const [scheduleViewMode, setScheduleViewMode] = useState<'grid' | 'agenda'>('grid');
@@ -189,7 +197,7 @@ export function DoctorSchedule() {
     return departmentsList.filter((d) => d.collegeId === colId);
   }, [departmentsList, selectedCollegeId]);
 
-  // 2. Fetch the filtered schedule page (lectures only)
+  // 2. Fetch the filtered schedule page
   const fetchSchedule = useCallback(async () => {
     try {
       setLoading(true);
@@ -200,7 +208,7 @@ export function DoctorSchedule() {
         departmentId: selectedDeptId !== 'all' ? selectedDeptId : undefined,
         year: selectedYear || undefined,
         semester: selectedSemester || undefined,
-        slotType: 'LECTURE',
+        slotType: selectedSlotType !== 'all' ? selectedSlotType : undefined,
         page,
         limit,
       });
@@ -210,19 +218,15 @@ export function DoctorSchedule() {
           ? res.data
           : res.data?.schedules || res.data?.data || [];
       }
-      // Exclude Lab slots since they have their dedicated TA Schedule section
-      const lectureSlots = slotsData.filter(
-        (slot: any) => slot.slotType !== 'LAB'
-      );
-      setRawSlots(lectureSlots);
-      setPagination(res.pagination || { total: lectureSlots.length, totalPages: 1 });
+      setRawSlots(slotsData);
+      setPagination(res.pagination || { total: slotsData.length, totalPages: 1 });
     } catch (err: any) {
       logger.error('Error fetching university schedule:', err);
       setError(err.message || t('common.fetchError', 'Failed to load schedules'));
     } finally {
       setLoading(false);
     }
-  }, [page, selectedCollegeId, selectedDeptId, selectedDoctorId, selectedSemester, selectedYear, t]);
+  }, [page, selectedCollegeId, selectedDeptId, selectedDoctorId, selectedSemester, selectedYear, selectedSlotType, t]);
 
   useEffect(() => {
     fetchSchedule();
@@ -230,42 +234,85 @@ export function DoctorSchedule() {
 
   useEffect(() => {
     setPage(1);
-  }, [selectedCollegeId, selectedDeptId, selectedDoctorId, selectedSemester, selectedYear]);
+  }, [selectedCollegeId, selectedDeptId, selectedDoctorId, selectedSemester, selectedYear, selectedSlotType]);
+
+  // Distinct courses owned/taught in the loaded schedule slots
+  const ownCourses = useMemo(() => {
+    const courseMap = new Map<string, { id: string | number; name: string; courseCode?: string }>();
+    rawSlots.forEach((slot) => {
+      const c = slot.course;
+      if (c && (c.id || c.name)) {
+        const key = String(c.id || c.name);
+        if (!courseMap.has(key)) {
+          courseMap.set(key, {
+            id: c.id ?? key,
+            name: c.name || c.courseCode || String(c.id),
+            courseCode: c.courseCode,
+          });
+        }
+      }
+    });
+    return Array.from(courseMap.values());
+  }, [rawSlots]);
+
+  // Academic years present in own courses / loaded slots
+  const availableYears = useMemo(() => {
+    if (user?.role === 'DOCTOR') {
+      const yrs = Array.from(
+        new Set(rawSlots.map((s) => s.course?.year || s.year).filter((y): y is number => Boolean(y)))
+      ).sort((a, b) => a - b);
+      return yrs.length > 0 ? yrs : [1, 2, 3, 4];
+    }
+    return [1, 2, 3, 4];
+  }, [user?.role, rawSlots]);
 
   // 3. Multi-Dimensional Master Filtering Logic
   const filteredSlots = useMemo(() => {
     return rawSlots.filter((slot) => {
-      // Exclude Lab slots (they belong exclusively to TA Schedule)
-      if (slot.slotType === 'LAB') return false;
-
       // Doctor Filter
-      if (selectedDoctorId && selectedDoctorId !== 'all') {
+      if (filterPermissions.doctor && selectedDoctorId && selectedDoctorId !== 'all') {
         const slotDocId = String(slot.doctorId || slot.doctor?.id || '');
         if (slotDocId !== selectedDoctorId) return false;
       }
 
       // College Filter
-      if (selectedCollegeId && selectedCollegeId !== 'all') {
+      if (filterPermissions.college && !hideCollegeSelector && selectedCollegeId && selectedCollegeId !== 'all') {
         const colId = slot.course?.department?.collegeId || slot.course?.department?.college?.id;
         if (String(colId) !== String(selectedCollegeId)) return false;
       }
 
       // Department Filter
-      if (selectedDeptId && selectedDeptId !== 'all') {
+      if (filterPermissions.department && !hideDepartmentSelector && selectedDeptId && selectedDeptId !== 'all') {
         const deptId = slot.course?.departmentId || slot.course?.department?.id;
         if (String(deptId) !== String(selectedDeptId)) return false;
       }
 
       // Academic Year Filter
-      if (selectedYear) {
+      if (filterPermissions.year && selectedYear) {
         const yr = parseInt(selectedYear, 10);
         if (slot.course?.year !== yr && slot.year !== yr) return false;
       }
 
       // Semester Filter
-      if (selectedSemester) {
+      if (filterPermissions.semester && selectedSemester) {
         const sem = parseInt(selectedSemester, 10);
         if (slot.course?.semester !== sem && slot.semester !== sem) return false;
+      }
+
+      // Course Filter (Own courses)
+      if (filterPermissions.course && selectedCourse) {
+        const cid = String(slot.courseId || slot.course?.id || slot.course?.name || '');
+        if (cid !== selectedCourse) return false;
+      }
+
+      // Session Type Filter
+      if (filterPermissions.type && selectedSlotType && selectedSlotType !== 'all') {
+        if (slot.slotType !== selectedSlotType) return false;
+      }
+
+      // Day Filter (canonical API day string)
+      if (filterPermissions.day && selectedDayFilter) {
+        if (String(slot.dayOfWeek).toUpperCase() !== selectedDayFilter.toUpperCase()) return false;
       }
 
       // Search Query Filter
@@ -293,11 +340,17 @@ export function DoctorSchedule() {
     });
   }, [
     rawSlots,
+    filterPermissions,
+    hideCollegeSelector,
+    hideDepartmentSelector,
     selectedDoctorId,
     selectedCollegeId,
     selectedDeptId,
     selectedYear,
     selectedSemester,
+    selectedCourse,
+    selectedSlotType,
+    selectedDayFilter,
     searchQuery,
   ]);
 
@@ -471,6 +524,9 @@ export function DoctorSchedule() {
     setSelectedDeptId('all');
     setSelectedYear('');
     setSelectedSemester('');
+    setSelectedCourse('');
+    setSelectedDayFilter('');
+    setSelectedSlotType('all');
     setSearchQuery('');
     setShowConflictsOnly(false);
   };
@@ -501,11 +557,14 @@ export function DoctorSchedule() {
         onSearchChange={setSearchQuery}
         searchPlaceholder={t('schedules.searchDoctorSchedulePlaceholder')}
         hasActiveFilters={Boolean(
-          selectedDoctorId !== 'all' ||
-          selectedCollegeId !== 'all' ||
-          selectedDeptId !== 'all' ||
-          selectedYear ||
-          selectedSemester ||
+          (filterPermissions.doctor && selectedDoctorId !== 'all') ||
+          (filterPermissions.college && !hideCollegeSelector && selectedCollegeId !== 'all') ||
+          (filterPermissions.department && !hideDepartmentSelector && selectedDeptId !== 'all') ||
+          (filterPermissions.year && selectedYear) ||
+          (filterPermissions.semester && selectedSemester) ||
+          (filterPermissions.course && selectedCourse) ||
+          (filterPermissions.day && selectedDayFilter) ||
+          (filterPermissions.type && selectedSlotType !== 'all') ||
           searchQuery ||
           showConflictsOnly
         )}
@@ -514,7 +573,7 @@ export function DoctorSchedule() {
         onViewModeChange={setScheduleViewMode}
       >
         {/* Doctor Switcher (Admins & Staff) */}
-        {(isAdmin || user?.role !== 'DOCTOR') && (
+        {filterPermissions.doctor && (
           <div className="w-56">
             <SearchableSelect
               options={doctorOptions}
@@ -533,66 +592,122 @@ export function DoctorSchedule() {
         )}
 
         {/* College Filter */}
-        <select
-          value={selectedCollegeId}
-          onChange={(e) => {
-            setSelectedCollegeId(e.target.value);
-            setSelectedDeptId('all');
-          }}
-          aria-label={isRTL ? 'كل الكليات' : 'All Colleges'}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="all">{isRTL ? 'كل الكليات' : 'All Colleges'}</option>
-          {collegesList.map((col) => (
-            <option key={col.id} value={col.id}>
-              {isRTL ? col.nameAr || col.name : col.name}
-            </option>
-          ))}
-        </select>
+        {filterPermissions.college && !hideCollegeSelector && (
+          <select
+            value={selectedCollegeId}
+            onChange={(e) => {
+              setSelectedCollegeId(e.target.value);
+              setSelectedDeptId('all');
+            }}
+            aria-label={t('schedules.allColleges', 'All Colleges')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="all">{t('schedules.allColleges', 'All Colleges')}</option>
+            {collegesList.map((col) => (
+              <option key={col.id} value={col.id}>
+                {isRTL ? col.nameAr || col.name : col.name}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* Department Filter */}
-        <select
-          value={selectedDeptId}
-          onChange={(e) => setSelectedDeptId(e.target.value)}
-          disabled={selectedCollegeId === 'all' && filteredDepartments.length === 0}
-          aria-label={isRTL ? 'كل الأقسام' : 'All Departments'}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer disabled:opacity-50"
-        >
-          <option value="all">{isRTL ? 'كل الأقسام' : 'All Departments'}</option>
-          {filteredDepartments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {isRTL ? d.nameAr || d.name : d.name}
-            </option>
-          ))}
-        </select>
+        {filterPermissions.department && !hideDepartmentSelector && (
+          <select
+            value={selectedDeptId}
+            onChange={(e) => setSelectedDeptId(e.target.value)}
+            disabled={selectedCollegeId === 'all' && filteredDepartments.length === 0}
+            aria-label={t('schedules.allDepartments', 'All Departments')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer disabled:opacity-50"
+          >
+            <option value="all">{t('schedules.allDepartments', 'All Departments')}</option>
+            {filteredDepartments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {isRTL ? d.nameAr || d.name : d.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Course Filter (Own courses for Doctor) */}
+        {filterPermissions.course && (
+          <select
+            value={selectedCourse}
+            onChange={(e) => setSelectedCourse(e.target.value)}
+            aria-label={t('schedules.filterByCourse', 'Filter by Course')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('schedules.allCourses', 'All Courses')}</option>
+            {ownCourses.map((c) => (
+              <option key={c.id} value={String(c.id)}>
+                {c.courseCode ? `[${c.courseCode}] ` : ''}{c.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Session Type Filter */}
+        {filterPermissions.type && (
+          <select
+            value={selectedSlotType}
+            onChange={(e) => setSelectedSlotType(e.target.value)}
+            aria-label={t('schedules.filterBySessionType', 'Filter by Session Type')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="all">{t('schedules.allSessions', 'All Sessions')}</option>
+            <option value="LECTURE">{t('schedules.lecture', 'Lecture')}</option>
+            <option value="LAB">{t('schedules.lab', 'Lab / Section')}</option>
+          </select>
+        )}
+
+        {/* Day Filter */}
+        {filterPermissions.day && (
+          <select
+            value={selectedDayFilter}
+            onChange={(e) => setSelectedDayFilter(e.target.value)}
+            aria-label={t('schedules.filterByDay', 'Filter by Day')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('schedules.allDays', 'All Days')}</option>
+            {API_SCHEDULE_DAYS.map((d) => (
+              <option key={d} value={d}>
+                {t(`days.${d.toLowerCase()}`, d)}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* Academic Year */}
-        <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(e.target.value)}
-          aria-label={isRTL ? 'تصفية حسب السنة' : 'Filter by year'}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="">{isRTL ? 'كل السنوات' : 'All Years'}</option>
-          {[1, 2, 3, 4].map((yr) => (
-            <option key={yr} value={yr}>
-              {isRTL ? `الفرقة ${yr}` : `Year ${yr}`}
-            </option>
-          ))}
-        </select>
+        {filterPermissions.year && (
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            aria-label={t('schedules.filterByYear', 'Filter by year')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('schedules.allYears', 'All Years')}</option>
+            {availableYears.map((yr) => (
+              <option key={yr} value={yr}>
+                {t('schedules.yearOption', { year: yr, defaultValue: `Year ${yr}` })}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* Semester */}
-        <select
-          value={selectedSemester}
-          onChange={(e) => setSelectedSemester(e.target.value)}
-          aria-label={isRTL ? 'تصفية حسب الفصل الدراسي' : 'Filter by semester'}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="">{isRTL ? 'كل الفصول' : 'All Semesters'}</option>
-          <option value="1">{isRTL ? 'الفصل 1' : 'Sem 1'}</option>
-          <option value="2">{isRTL ? 'الفصل 2' : 'Sem 2'}</option>
-          <option value="3">{isRTL ? 'الصيفي' : 'Summer'}</option>
-        </select>
+        {filterPermissions.semester && (
+          <select
+            value={selectedSemester}
+            onChange={(e) => setSelectedSemester(e.target.value)}
+            aria-label={t('schedules.filterBySemester', 'Filter by semester')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('schedules.allSemesters', 'All Semesters')}</option>
+            <option value="1">{t('schedules.semesterOption', { semester: 1, defaultValue: 'Sem 1' })}</option>
+            <option value="2">{t('schedules.semesterOption', { semester: 2, defaultValue: 'Sem 2' })}</option>
+            <option value="3">{t('schedules.semesterSummer', 'Summer')}</option>
+          </select>
+        )}
 
         {/* Conflicts Toggle */}
         {conflictCount > 0 && (

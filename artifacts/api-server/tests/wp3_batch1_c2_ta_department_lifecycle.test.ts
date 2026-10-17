@@ -1,19 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import http from 'node:http';
+import bcrypt from 'bcryptjs';
 import prisma from '../src/utils/prismaClient';
 import { generateAccessToken } from '../src/utils/jwt.utils';
 import app from '../src/app';
+import { TestCleanupRegistry } from './testCleanup.utils';
 
 test('C2: TA department lifecycle (required on create -> 422, scope enforcement -> 403, update null TA -> appears in suggestions)', async () => {
   const SUFFIX = `c2_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const passwordHash = await bcrypt.hash(crypto.randomUUID() + '!Aa1', 4);
+  const cleanup = new TestCleanupRegistry();
   let server: http.Server | null = null;
-
-  const createdUserIds: number[] = [];
-  const createdTaIds: string[] = [];
-  const createdDeptIds: number[] = [];
-  let createdCollegeId: number | null = null;
-  let courseId: number | null = null;
 
   try {
     server = http.createServer(app);
@@ -30,7 +29,7 @@ test('C2: TA department lifecycle (required on create -> 422, scope enforcement 
         name: `College2_${SUFFIX}`,
       },
     });
-    createdCollegeId = secondaryCollege.id;
+    cleanup.trackCollege(secondaryCollege.id);
 
     const deptPrimary = await prisma.department.create({
       data: {
@@ -38,7 +37,7 @@ test('C2: TA department lifecycle (required on create -> 422, scope enforcement 
         collegeId: primaryCollege.id,
       },
     });
-    createdDeptIds.push(deptPrimary.id);
+    cleanup.trackDepartment(deptPrimary.id);
 
     const deptSecondary = await prisma.department.create({
       data: {
@@ -46,7 +45,7 @@ test('C2: TA department lifecycle (required on create -> 422, scope enforcement 
         collegeId: secondaryCollege.id,
       },
     });
-    createdDeptIds.push(deptSecondary.id);
+    cleanup.trackDepartment(deptSecondary.id);
 
     // Setup course in deptPrimary
     const course = await prisma.course.create({
@@ -59,32 +58,32 @@ test('C2: TA department lifecycle (required on create -> 422, scope enforcement 
         departmentId: deptPrimary.id,
       },
     });
-    courseId = course.id;
+    cleanup.trackCourse(course.id);
 
     // 2. Setup Super Admin & College Admin (scoped to primaryCollege)
     const superAdmin = await prisma.user.create({
       data: {
         email: `super_${SUFFIX}@unicore.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'SUPER_ADMIN',
         tokenVersion: 0,
         isActive: true,
       },
     });
-    createdUserIds.push(superAdmin.id);
+    cleanup.trackUser(superAdmin.id);
     const superToken = generateAccessToken(superAdmin.id, 0);
 
     const collegeAdmin = await prisma.user.create({
       data: {
         email: `col_admin_${SUFFIX}@unicore.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'COLLEGE_ADMIN',
         managedCollegeId: primaryCollege.id,
         tokenVersion: 0,
         isActive: true,
       },
     });
-    createdUserIds.push(collegeAdmin.id);
+    cleanup.trackUser(collegeAdmin.id);
     const collegeAdminToken = generateAccessToken(collegeAdmin.id, 0);
 
     // ── Check 1: create without departmentId -> 422 ───────────────────────────
@@ -99,12 +98,12 @@ test('C2: TA department lifecycle (required on create -> 422, scope enforcement 
         lastName: 'TA',
         employeeId: `TA_NOD_${SUFFIX}`,
         email: `nodept_${SUFFIX}@unicore.test`,
-        password: 'Password123!',
+        password: passwordHash,
       }),
     });
     const createNoDeptJson: any = await createNoDeptRes.json();
-    if (createNoDeptJson.data?.id) createdTaIds.push(createNoDeptJson.data.id);
-    if (createNoDeptJson.data?.userId) createdUserIds.push(createNoDeptJson.data.userId);
+    if (createNoDeptJson.data?.id) cleanup.trackTA(createNoDeptJson.data.id);
+    if (createNoDeptJson.data?.userId) cleanup.trackUser(createNoDeptJson.data.userId);
     assert.equal(
       createNoDeptRes.status,
       422,
@@ -124,7 +123,7 @@ test('C2: TA department lifecycle (required on create -> 422, scope enforcement 
         lastName: 'TA',
         employeeId: `TA_OOS_${SUFFIX}`,
         email: `outofscope_${SUFFIX}@unicore.test`,
-        password: 'Password123!',
+        password: passwordHash,
         departmentId: deptSecondary.id,
       }),
     });
@@ -140,13 +139,13 @@ test('C2: TA department lifecycle (required on create -> 422, scope enforcement 
     const nullTaUser = await prisma.user.create({
       data: {
         email: `null_ta_${SUFFIX}@unicore.test`,
-        password: 'Password123!',
+        password: passwordHash,
         role: 'TEACHING_ASSISTANT',
         tokenVersion: 0,
         isActive: true,
       },
     });
-    createdUserIds.push(nullTaUser.id);
+    cleanup.trackUser(nullTaUser.id);
 
     const nullTa = await prisma.teachingAssistant.create({
       data: {
@@ -158,7 +157,7 @@ test('C2: TA department lifecycle (required on create -> 422, scope enforcement 
         status: 'ACTIVE',
       },
     });
-    createdTaIds.push(nullTa.id);
+    cleanup.trackTA(nullTa.id);
 
     // Verify null-dept TA is NOT suggested for course in deptPrimary
     const beforeUpdateRes = await fetch(`${baseUrl}/teaching-assistants/suggested?courseId=${course.id}`, {
@@ -204,42 +203,13 @@ test('C2: TA department lifecycle (required on create -> 422, scope enforcement 
     );
     assert.equal(suggestedAfter.reason, 'Same Department');
   } finally {
-    if (server) {
-      await new Promise<void>((resolve) => server!.close(() => resolve()));
-    }
-
-    // Clean up course
-    if (courseId) {
-      await prisma.course.delete({ where: { id: courseId } }).catch(() => {});
-    }
-
-    // Clean up TAs
-    if (createdTaIds.length > 0) {
-      await prisma.teachingAssistant.deleteMany({
-        where: { id: { in: createdTaIds } },
-      }).catch(() => {});
-    }
-
-    // Clean up users
-    if (createdUserIds.length > 0) {
-      await prisma.auditLog.deleteMany({
-        where: { userId: { in: createdUserIds } },
-      }).catch(() => {});
-      await prisma.user.deleteMany({
-        where: { id: { in: createdUserIds } },
-      }).catch(() => {});
-    }
-
-    // Clean up departments
-    if (createdDeptIds.length > 0) {
-      await prisma.department.deleteMany({
-        where: { id: { in: createdDeptIds } },
-      }).catch(() => {});
-    }
-
-    // Clean up college
-    if (createdCollegeId) {
-      await prisma.college.delete({ where: { id: createdCollegeId } }).catch(() => {});
+    try {
+      await cleanup.teardown(prisma);
+    } finally {
+      if (server) {
+        server.closeAllConnections?.();
+        await new Promise<void>((resolve) => server!.close(() => resolve()));
+      }
     }
   }
 });

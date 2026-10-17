@@ -874,6 +874,72 @@ paths:
                 items:
                   $ref: "#/components/schemas/ExamItem"
 
+  /schedules:
+    get:
+      operationId: getSchedulesAlias
+      tags: [schedules]
+      summary: Compatibility alias for weekly timetable (Deprecated)
+      deprecated: true
+      description: "Legacy compatibility alias for GET /api/schedules/week. Returns identical schedule payloads with Deprecation: true and Link headers. Use /api/schedules/week instead."
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/LimitQuery"
+        - name: slotType
+          in: query
+          description: Normalized slot type
+          schema:
+            type: string
+            enum: [LECTURE, LAB]
+        - name: dayOfWeek
+          in: query
+          description: Day of the week
+          schema:
+            type: string
+            enum: [SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY]
+        - name: courseId
+          in: query
+          description: Filter by course ID
+          schema:
+            type: integer
+        - name: year
+          in: query
+          description: Academic year
+          schema:
+            type: integer
+        - name: departmentId
+          in: query
+          description: Department ID
+          schema:
+            type: integer
+        - name: doctorId
+          in: query
+          description: Doctor ID
+          schema:
+            type: integer
+        - name: teachingAssistantId
+          in: query
+          description: Teaching Assistant identifier
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Timetable grid (identical to /schedules/week)
+          headers:
+            Deprecation:
+              schema:
+                type: boolean
+                example: true
+            Link:
+              schema:
+                type: string
+                example: '</api/schedules/week>; rel="successor-version"'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleGridResponse"
+
   /schedules/week:
     get:
       operationId: getWeeklySchedule
@@ -881,6 +947,46 @@ paths:
       summary: Get unified weekly timetable grid
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PageQuery"
+        - $ref: "#/components/parameters/LimitQuery"
+        - name: slotType
+          in: query
+          description: Filter by normalized slot type (LECTURE or LAB)
+          schema:
+            type: string
+            enum: [LECTURE, LAB]
+        - name: dayOfWeek
+          in: query
+          description: Day of week
+          schema:
+            type: string
+            enum: [SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY]
+        - name: courseId
+          in: query
+          description: Filter by course ID
+          schema:
+            type: integer
+        - name: year
+          in: query
+          description: Academic year filter
+          schema:
+            type: integer
+        - name: departmentId
+          in: query
+          description: Department ID filter
+          schema:
+            type: integer
+        - name: doctorId
+          in: query
+          description: Doctor ID filter
+          schema:
+            type: integer
+        - name: teachingAssistantId
+          in: query
+          description: Teaching assistant ID filter
+          schema:
+            type: string
       responses:
         "200":
           description: Timetable grid
@@ -888,6 +994,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScheduleGridResponse"
+
 
   /payments:
     get:

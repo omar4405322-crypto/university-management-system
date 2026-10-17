@@ -43,6 +43,15 @@ import type { ScheduleSlot, TimetableDayRecord } from './DoctorSchedule';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
+import { getScheduleFilterPermissions } from '../../utils/scheduleFilterRules';
+import {
+  isSelectionAllowedForRole,
+  toggleOne,
+  isAllPageSelected,
+  isSomePageSelected,
+  toggleCurrentPage,
+  clearSelection
+} from '../../utils/scheduleSelectionRules';
 import { formatSlotType } from '../../utils/slotType';
 import { useSearchParams } from 'react-router-dom';
 import ScheduleModal from './ScheduleModal';
@@ -66,7 +75,8 @@ const getSessionBadgeStyle = (type: string) => {
 const SchedulesList = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { scopeParams, isCollegeAdmin } = useScope();
+  const { scopeParams, isCollegeAdmin, hideCollegeSelector, hideDepartmentSelector } = useScope();
+  const filterPermissions = useMemo(() => getScheduleFilterPermissions(user?.role), [user?.role]);
   const { isRTL } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
@@ -124,7 +134,7 @@ const SchedulesList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ScheduleSlot | null>(null);
 
-  const canManage = user?.role ? ['SUPER_ADMIN', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN'].includes(user.role) : false;
+  const canManage = isSelectionAllowedForRole(user?.role);
 
   // 1. Fetch Metadata
   useEffect(() => {
@@ -403,35 +413,39 @@ const SchedulesList = () => {
     return filteredSchedules.slice(start, start + pageSize);
   }, [filteredSchedules, page, pageSize]);
 
-  // Multi-Selection Logic
-  const allFilteredIds = useMemo(() => filteredSchedules.map((s) => s.id).filter((id): id is number | string => id !== undefined), [filteredSchedules]);
-  const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
-  const isSomeSelected = allFilteredIds.some((id) => selectedIds.has(id)) && !isAllSelected;
+  // Multi-Selection Logic (Current Page Only)
+  const currentPageIds = useMemo(
+    () => paginatedSchedules.map((s) => s.id).filter((id): id is number | string => id !== undefined),
+    [paginatedSchedules]
+  );
+  const isAllSelected = isAllPageSelected(selectedIds, currentPageIds);
+  const isSomeSelected = isSomePageSelected(selectedIds, currentPageIds);
 
   const handleToggleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        allFilteredIds.forEach((id) => next.delete(id));
-        return next;
-      });
-    } else {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        allFilteredIds.forEach((id) => next.add(id));
-        return next;
-      });
-    }
+    setSelectedIds((prev) => toggleCurrentPage(prev, currentPageIds));
   };
 
   const handleToggleSelect = (id: number | string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setSelectedIds((prev) => toggleOne(prev, id));
   };
+
+  // Clear selection when filters, page, or viewMode change
+  useEffect(() => {
+    setSelectedIds((prev) => (prev.size > 0 ? clearSelection() : prev));
+  }, [
+    search,
+    selectedCollege,
+    selectedDept,
+    selectedYear,
+    selectedSemester,
+    selectedSlotType,
+    filterMissingRoom,
+    filterMissingDoctor,
+    filterConflictsOnly,
+    page,
+    pageSize,
+    viewMode,
+  ]);
 
   // Bulk Delete Selected Sessions
   const confirmBulkDelete = async () => {
@@ -444,7 +458,7 @@ const SchedulesList = () => {
       );
       await Promise.allSettled(deletePromises);
       showToast(t('schedules.bulkDeleteSuccess', `تم حذف ${count} حصة دراسية بنجاح`, { count }), 'success');
-      setSelectedIds(new Set());
+      setSelectedIds(clearSelection());
       setBulkDeleteModalOpen(false);
       fetchSchedules();
     } catch (err) {
@@ -516,11 +530,11 @@ const SchedulesList = () => {
 
   const hasActiveFilters =
     search.trim() !== '' ||
-    selectedCollege !== '' ||
-    selectedDept !== '' ||
-    selectedYear !== '' ||
-    selectedSemester !== '' ||
-    selectedSlotType !== 'all' ||
+    (filterPermissions.college && !hideCollegeSelector && selectedCollege !== '') ||
+    (filterPermissions.department && !hideDepartmentSelector && selectedDept !== '') ||
+    (filterPermissions.year && selectedYear !== '') ||
+    (filterPermissions.semester && selectedSemester !== '') ||
+    (filterPermissions.type && selectedSlotType !== 'all') ||
     filterMissingRoom ||
     filterMissingDoctor ||
     filterConflictsOnly;
@@ -696,7 +710,7 @@ const SchedulesList = () => {
         </div>
 
         {/* College Selector */}
-        {!isCollegeAdmin && (
+        {filterPermissions.college && !hideCollegeSelector && (
           <select
             value={selectedCollege}
             onChange={(e) => {
@@ -715,18 +729,20 @@ const SchedulesList = () => {
         )}
 
         {/* Department Selector */}
-        <select
-          value={selectedDept}
-          onChange={(e) => setSelectedDept(e.target.value)}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="">{t('common.allDepartments', 'All Departments')}</option>
-          {filteredDepartments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {isRTL ? d.nameAr || d.name : d.name}
-            </option>
-          ))}
-        </select>
+        {filterPermissions.department && !hideDepartmentSelector && (
+          <select
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value)}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('common.allDepartments', 'All Departments')}</option>
+            {filteredDepartments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {isRTL ? d.nameAr || d.name : d.name}
+              </option>
+            ))}
+          </select>
+        )}
 
         {canManage && (
           <select
@@ -741,70 +757,47 @@ const SchedulesList = () => {
         )}
 
         {/* Academic Year */}
-        <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(e.target.value)}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="">{t('schedules.academicDivision', 'Year')}: {t('common.all', 'All')}</option>
-          <option value="1">{t('common.year', 'Year')} 1</option>
-          <option value="2">{t('common.year', 'Year')} 2</option>
-          <option value="3">{t('common.year', 'Year')} 3</option>
-          <option value="4">{t('common.year', 'Year')} 4</option>
-        </select>
+        {filterPermissions.year && (
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('schedules.academicDivision', 'Year')}: {t('common.all', 'All')}</option>
+            <option value="1">{t('common.year', 'Year')} 1</option>
+            <option value="2">{t('common.year', 'Year')} 2</option>
+            <option value="3">{t('common.year', 'Year')} 3</option>
+            <option value="4">{t('common.year', 'Year')} 4</option>
+          </select>
+        )}
 
         {/* Semester */}
-        <select
-          value={selectedSemester}
-          onChange={(e) => setSelectedSemester(e.target.value)}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="">{t('schedule.allSemesters', 'Semester')}: {t('common.all', 'All')}</option>
-          <option value="1">{t('schedule.semester1', 'Sem 1')}</option>
-          <option value="2">{t('schedule.semester2', 'Sem 2')}</option>
-          <option value="3">{t('schedule.semester3', 'Summer')}</option>
-        </select>
+        {filterPermissions.semester && (
+          <select
+            value={selectedSemester}
+            onChange={(e) => setSelectedSemester(e.target.value)}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+          >
+            <option value="">{t('schedule.allSemesters', 'Semester')}: {t('common.all', 'All')}</option>
+            <option value="1">{t('schedule.semester1', 'Sem 1')}</option>
+            <option value="2">{t('schedule.semester2', 'Sem 2')}</option>
+            <option value="3">{t('schedule.semester3', 'Summer')}</option>
+          </select>
+        )}
 
         {/* Session Type */}
-        <select
-          value={selectedSlotType}
-          onChange={(e) => setSelectedSlotType(e.target.value)}
-          className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
-        >
-          <option value="all">{t('common.all', 'All Types')}</option>
-          <option value="LECTURE">{t('schedule.lecture', 'Lectures')}</option>
-          <option value="LAB">{t('schedule.lab', 'Labs')}</option>
-        </select>
-
-        {/* Select All Button */}
-        {canManage && allFilteredIds.length > 0 && (
-          <button
-            type="button"
-            onClick={handleToggleSelectAll}
-            className={`h-8.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              isAllSelected
-                ? 'bg-brand-primary-500 text-white border-brand-primary-500 shadow-xs'
-                : isSomeSelected
-                ? 'bg-brand-primary-50 dark:bg-brand-primary-950/40 text-brand-primary-700 dark:text-brand-primary-300 border-brand-primary-300'
-                : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300'
-            }`}
-            title={isAllSelected ? t('schedules.deselectAll', 'إلغاء تحديد الكل') : t('schedules.selectAll', 'تحديد الكل')}
-            aria-label={isAllSelected ? t('schedules.deselectAll', 'إلغاء تحديد الكل') : t('schedules.selectAll', 'تحديد الكل')}
+        {filterPermissions.type && (
+          <select
+            value={selectedSlotType}
+            onChange={(e) => setSelectedSlotType(e.target.value)}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
           >
-            {isAllSelected ? (
-              <CheckSquare size={14} />
-            ) : isSomeSelected ? (
-              <MinusSquare size={14} />
-            ) : (
-              <Square size={14} />
-            )}
-            <span>
-              {isAllSelected
-                ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
-                : (isRTL ? 'تحديد الكل' : 'Select All')}
-            </span>
-          </button>
+            <option value="all">{t('common.all', 'All Types')}</option>
+            <option value="LECTURE">{t('schedule.lecture', 'Lectures')}</option>
+            <option value="LAB">{t('schedule.lab', 'Labs')}</option>
+          </select>
         )}
+
 
         {/* Clear Filters */}
         {hasActiveFilters && (
@@ -890,14 +883,15 @@ const SchedulesList = () => {
         /* MODE B: RESPONSIVE CARDS VIEW */
         <div className="space-y-3">
           {/* Dedicated Select All Header Bar for Cards View */}
-          {canManage && allFilteredIds.length > 0 && (
+          {canManage && currentPageIds.length > 0 && (
             <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs">
               <button
                 type="button"
                 onClick={handleToggleSelectAll}
                 aria-label={isAllSelected
-                  ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
-                  : (isRTL ? `تحديد جميع الحصص (${allFilteredIds.length})` : `Select All Sessions (${allFilteredIds.length})`)}
+                  ? t('schedules.deselectAllPage', 'Deselect all on this page')
+                  : `${t('schedules.selectAllPage', 'Select all on this page')} (${currentPageIds.length})`}
+                aria-checked={isAllSelected ? 'true' : isSomeSelected ? 'mixed' : 'false'}
                 className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-brand-primary-600 transition-colors cursor-pointer"
               >
                 {isAllSelected ? (
@@ -909,13 +903,13 @@ const SchedulesList = () => {
                 )}
                 <span>
                   {isAllSelected
-                    ? (isRTL ? 'إلغاء تحديد الكل' : 'Deselect All')
-                    : (isRTL ? `تحديد جميع الحصص (${allFilteredIds.length})` : `Select All Sessions (${allFilteredIds.length})`)}
+                    ? t('schedules.deselectAllPage', 'Deselect all on this page')
+                    : `${t('schedules.selectAllPage', 'Select all on this page')} (${currentPageIds.length})`}
                 </span>
               </button>
               {selectedIds.size > 0 && (
                 <span className="text-xs font-bold text-brand-primary-700 dark:text-brand-primary-300 bg-brand-primary-50 dark:bg-brand-primary-950/50 px-2.5 py-1 rounded-xl border border-brand-primary-200 dark:border-brand-primary-800">
-                  {isRTL ? `تم تحديد ${selectedIds.size} من أصل ${allFilteredIds.length}` : `Selected ${selectedIds.size} of ${allFilteredIds.length}`}
+                  {isRTL ? `تم تحديد ${selectedIds.size} من أصل ${currentPageIds.length}` : `Selected ${selectedIds.size} of ${currentPageIds.length}`}
                 </span>
               )}
             </div>
@@ -1130,8 +1124,9 @@ const SchedulesList = () => {
                         type="button"
                         onClick={handleToggleSelectAll}
                         className="text-slate-400 hover:text-brand-primary-600 focus:outline-none transition-colors"
-                        title={isAllSelected ? t('schedules.deselectAll', 'Deselect All') : t('schedules.selectAll', 'Select All')}
-                        aria-label={isAllSelected ? t('schedules.deselectAll', 'Deselect All') : t('schedules.selectAll', 'Select All')}
+                        title={isAllSelected ? t('schedules.deselectAllPage', 'Deselect all on this page') : t('schedules.selectAllPage', 'Select all on this page')}
+                        aria-label={isAllSelected ? t('schedules.deselectAllPage', 'Deselect all on this page') : t('schedules.selectAllPage', 'Select all on this page')}
+                        aria-checked={isAllSelected ? 'true' : isSomeSelected ? 'mixed' : 'false'}
                       >
                         {isAllSelected ? (
                           <CheckSquare size={16} className="text-brand-primary-600" />
@@ -1364,7 +1359,7 @@ const SchedulesList = () => {
       {canManage && (
         <BulkActionToolbar
           selectedCount={selectedIds.size}
-          onClear={() => setSelectedIds(new Set())}
+          onClear={() => setSelectedIds(clearSelection())}
           onExport={handleBulkExport}
           onDelete={() => setBulkDeleteModalOpen(true)}
         />
