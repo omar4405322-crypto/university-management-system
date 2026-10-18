@@ -4,6 +4,47 @@ import catchAsync from '../utils/catchAsync';
 import { NotFoundError, AppError, AuthorizationError } from '../utils/appError';
 import { getRoomCoordinateAccessWhere } from '../utils/roomScope.utils';
 import { auditLog } from '../utils/audit.utils';
+import { RoomService } from '../services/room.service';
+
+export const getRooms = catchAsync(async (req: Request, res: Response) => {
+  const { search, page, limit, includeInactive } = req.query as Record<string, string>;
+
+  const result = await RoomService.getRooms({
+    search,
+    page,
+    limit,
+    includeInactive,
+  });
+
+  res.json({
+    success: true,
+    data: result,
+  });
+});
+
+export const createRoom = catchAsync(async (req: Request, res: Response) => {
+  const room = await RoomService.createRoom(req.body, req);
+
+  res.status(201).json({
+    success: true,
+    data: room,
+  });
+});
+
+export const updateRoom = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const roomId = Number(rawId);
+  if (!Number.isSafeInteger(roomId) || roomId <= 0) {
+    return next(new AppError('Room ID must be a positive integer', 400));
+  }
+
+  const updatedRoom = await RoomService.updateRoom(roomId, req.body, req);
+
+  res.json({
+    success: true,
+    data: updatedRoom,
+  });
+});
 
 export const updateRoomCoordinates = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;

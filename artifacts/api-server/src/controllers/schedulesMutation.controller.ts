@@ -18,6 +18,7 @@ import {
   ValidationError,
 } from '../utils/appError';
 import { TimetableService } from '../services/timetable.service';
+import { SchedulePlacementService, executeSchedulePlacement } from '../services/schedulePlacement.service';
 import { Prisma } from '@prisma/client';
 import { requireExistingCourseStaffAssignments } from '../utils/scheduleAssignment.utils';
 import { normalizeSlotType } from '../utils/slotType.utils';
@@ -137,53 +138,62 @@ export const createSchedule = catchAsync(
       if (foundTb) effectiveTimetableId = foundTb.id;
     }
 
-    let scheduleSlot;
-    try {
-      scheduleSlot = await prisma.$transaction(
-        async (tx) => {
+    const scheduleSlot = await executeSchedulePlacement(
+      {
+        dayOfWeek,
+        startTime,
+        endTime,
+        room,
+        roomId: req.body.roomId ? parseInt(req.body.roomId as string, 10) : undefined,
+        termId: req.body.termId ? parseInt(req.body.termId as string, 10) : undefined,
+        courseId: parseInt(courseId as string, 10),
+        doctorId: parsedDoctorId,
+        groupId: parsedGroupId,
+        teachingAssistantId: effectiveTeachingAssistantId,
+        departmentId: course.departmentId,
+        academicYear: course.year,
+        semester: course.semester,
+      },
+      async (tx, placementResult) => {
+        const finalRoomId = placementResult.resolvedRoom
+          ? placementResult.resolvedRoom.id
+          : req.body.roomId
+          ? parseInt(req.body.roomId as string, 10)
+          : null;
+        const finalRoomName = placementResult.resolvedRoom
+          ? placementResult.resolvedRoom.name
+          : room
+          ? String(room).trim()
+          : null;
+        const finalTermId = placementResult.resolvedTerm?.id;
+
+        return tx.scheduleSlot.create({
+          data: {
+            courseId: parseInt(courseId as string, 10),
+            doctorId: parsedDoctorId,
+            groupId: parsedGroupId,
+            slotType: slotType || 'LECTURE',
+            dayOfWeek,
+            startTime,
+            endTime,
+            room: finalRoomName,
+            roomId: finalRoomId,
+            termId: finalTermId,
+            teachingAssistantId: effectiveTeachingAssistantId,
+            timetableId: effectiveTimetableId,
+          },
+        });
+      },
+      {
+        beforePlacement: async (tx) => {
           await requireExistingCourseStaffAssignments(tx, {
             courseId: course.id,
             doctorId: parsedDoctorId,
             teachingAssistantId: effectiveTeachingAssistantId,
           });
-
-          await TimetableService.checkConflicts(
-            {
-              dayOfWeek,
-              startTime,
-              endTime,
-              room,
-              courseId: parseInt(courseId as string),
-              doctorId: parsedDoctorId,
-              groupId: parsedGroupId,
-              teachingAssistantId: effectiveTeachingAssistantId,
-            },
-            tx
-          );
-
-          return tx.scheduleSlot.create({
-            data: {
-              courseId: parseInt(courseId as string),
-              doctorId: parsedDoctorId,
-              groupId: parsedGroupId,
-              slotType: slotType || 'LECTURE',
-              dayOfWeek,
-              startTime,
-              endTime,
-              room,
-              teachingAssistantId: effectiveTeachingAssistantId,
-              timetableId: effectiveTimetableId,
-            },
-          });
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
-      );
-    } catch (err: unknown) {
-      if ((err as { code?: string })?.code === 'P2034') {
-        return next(new ConflictError('Scheduling conflict: another booking was committed simultaneously. Please retry.'));
       }
-      throw err;
-    }
+    );
 
     const normalizedSlot = {
       ...scheduleSlot,
@@ -290,35 +300,45 @@ export const updateSchedule = catchAsync(
       if (foundTb) targetTimetableId = foundTb.id;
     }
 
-    const scheduleSlot = await prisma.$transaction(
-      async (tx) => {
-        const doctorNeedsAssignmentProof =
-          newDoctorId !== null && (newDoctorId !== existing.doctorId || newCourseId !== existing.courseId);
-        const teachingAssistantNeedsAssignmentProof =
-          newTeachingAssistantId !== null &&
-          (newTeachingAssistantId !== existing.teachingAssistantId || newCourseId !== existing.courseId);
+    const placementInput = {
+      dayOfWeek: dayOfWeek || existing.dayOfWeek,
+      startTime: startTime || existing.startTime,
+      endTime: endTime || existing.endTime,
+      room: req.body.room !== undefined ? req.body.room : (req.body.roomId !== undefined ? undefined : existing.room),
+      roomId: req.body.roomId !== undefined ? (req.body.roomId ? parseInt(req.body.roomId as string, 10) : null) : (req.body.room !== undefined ? undefined : existing.roomId),
+      termId: req.body.termId !== undefined ? (req.body.termId ? parseInt(req.body.termId as string, 10) : null) : (existing.termId ?? undefined),
+      courseId: newCourseId,
+      doctorId: newDoctorId,
+      groupId: newGroupId,
+      teachingAssistantId: newTeachingAssistantId,
+      excludeSlotId: slotId,
+      departmentId: existing.course?.departmentId ?? undefined,
+      academicYear: existing.course?.year ?? undefined,
+      semester: existing.course?.semester ?? undefined,
+    };
 
-        await requireExistingCourseStaffAssignments(tx, {
-          courseId: newCourseId,
-          doctorId: doctorNeedsAssignmentProof ? newDoctorId : undefined,
-          teachingAssistantId: teachingAssistantNeedsAssignmentProof ? newTeachingAssistantId : undefined,
-          excludeSlotId: slotId,
-        });
+    const doctorNeedsAssignmentProof =
+      newDoctorId !== null && (newDoctorId !== existing.doctorId || newCourseId !== existing.courseId);
+    const teachingAssistantNeedsAssignmentProof =
+      newTeachingAssistantId !== null &&
+      (newTeachingAssistantId !== existing.teachingAssistantId || newCourseId !== existing.courseId);
 
-        await TimetableService.checkConflicts(
-          {
-            dayOfWeek: dayOfWeek || existing.dayOfWeek,
-            startTime: startTime || existing.startTime,
-            endTime: endTime || existing.endTime,
-            room: room !== undefined ? room : existing.room,
-            courseId: newCourseId,
-            doctorId: newDoctorId,
-            groupId: newGroupId,
-            teachingAssistantId: newTeachingAssistantId,
-            excludeSlotId: slotId,
-          },
-          tx
-        );
+    const scheduleSlot = await executeSchedulePlacement(
+      placementInput,
+      async (tx, placementResult) => {
+        const finalRoomId = placementResult.resolvedRoom
+          ? placementResult.resolvedRoom.id
+          : req.body.roomId !== undefined
+          ? (req.body.roomId ? parseInt(req.body.roomId as string, 10) : null)
+          : (req.body.room !== undefined ? null : existing.roomId);
+
+        const finalRoomName = placementResult.resolvedRoom
+          ? placementResult.resolvedRoom.name
+          : req.body.room !== undefined
+          ? (req.body.room ? String(req.body.room).trim() : null)
+          : existing.room;
+
+        const finalTermId = placementResult.resolvedTerm?.id ?? existing.termId;
 
         return tx.scheduleSlot.update({
           where: { id: slotId },
@@ -326,7 +346,9 @@ export const updateSchedule = catchAsync(
             dayOfWeek,
             startTime,
             endTime,
-            room,
+            room: finalRoomName,
+            roomId: finalRoomId,
+            termId: finalTermId,
             teachingAssistantId: newTeachingAssistantId,
             courseId: newCourseId,
             doctorId: newDoctorId,
@@ -336,7 +358,18 @@ export const updateSchedule = catchAsync(
           },
         });
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      {
+        beforePlacement: async (tx) => {
+          if (doctorNeedsAssignmentProof || teachingAssistantNeedsAssignmentProof) {
+            await requireExistingCourseStaffAssignments(tx, {
+              courseId: newCourseId,
+              doctorId: doctorNeedsAssignmentProof ? newDoctorId : undefined,
+              teachingAssistantId: teachingAssistantNeedsAssignmentProof ? newTeachingAssistantId : undefined,
+              excludeSlotId: slotId,
+            });
+          }
+        },
+      }
     );
 
     const normalizedSlot = {

@@ -49,6 +49,8 @@ model User {
   uploadedKnowledgeDocuments KnowledgeDocument[]        @relation("DocumentCreator")
   uploadedKnowledgeVersions  KnowledgeDocumentVersion[] @relation("VersionUploader")
   quickActionUsages          AIQuickActionUsage[]
+  approvedTACrossDepartmentApprovals TACrossDepartmentApproval[] @relation("ApprovedTACrossDepartmentApprovals")
+  revokedTACrossDepartmentApprovals  TACrossDepartmentApproval[] @relation("RevokedTACrossDepartmentApprovals")
   isActive                   Boolean                    @default(true)
   deactivatedAt              DateTime?
 
@@ -357,6 +359,7 @@ model Course {
   scheduleSlots          ScheduleSlot[]
   scheduleChangeRequests ScheduleChangeRequest[]
   materials              CourseMaterial[]
+  taCrossDepartmentApprovals TACrossDepartmentApproval[]
 
   @@index([courseCode])
   @@index([departmentId])
@@ -481,12 +484,15 @@ model Timetable {
 
   fileUrl       String? // If they prefer uploading a PDF/Image
   status        TimetableStatus @default(DRAFT)
+  termId        Int?
+  term          AcademicTerm?   @relation(fields: [termId], references: [id], onDelete: Restrict)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   scheduleSlots ScheduleSlot[]
 
   @@unique([collegeId, departmentId, academicYear, semester])
   @@index([collegeId, departmentId])
+  @@index([termId])
 }
 
 enum TimetableStatus {
@@ -669,6 +675,7 @@ model TeachingAssistant {
   joinedAt       DateTime    @default(now())
 
   scheduleSlots ScheduleSlot[]
+  crossDepartmentApprovals TACrossDepartmentApproval[]
 
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
@@ -710,6 +717,7 @@ model Room {
   latitude  Float?
   longitude Float?
   radius    Int      @default(100)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -727,6 +735,8 @@ model ScheduleSlot {
   group       StudentGroup? @relation(fields: [groupId], references: [id])
   timetableId Int?
   timetable   Timetable?    @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+  termId      Int?
+  term        AcademicTerm? @relation(fields: [termId], references: [id], onDelete: Restrict)
 
   dayOfWeek  String
   startTime  String
@@ -759,6 +769,7 @@ model ScheduleSlot {
   @@index([dayOfWeek, teachingAssistantId])
   @@index([isArchived])
   @@index([roomId])
+  @@index([termId])
 }
 
 model ScheduleOverride {
@@ -1198,10 +1209,12 @@ model AcademicTerm {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  enrollments Enrollment[]
-  quizzes     Quiz[]
-  exams       Exam[]
-  tasks       Task[]
+  enrollments   Enrollment[]
+  quizzes       Quiz[]
+  exams         Exam[]
+  tasks         Task[]
+  timetables    Timetable[]
+  scheduleSlots ScheduleSlot[]
 
   @@index([academicYearId])
   @@index([isCurrent])
@@ -1211,5 +1224,33 @@ enum TermType {
   FALL
   SPRING
   SUMMER
+}
+
+enum TAApprovalStatus {
+  APPROVED
+  REVOKED
+}
+
+model TACrossDepartmentApproval {
+  id                  Int               @id @default(autoincrement())
+  teachingAssistantId String
+  teachingAssistant   TeachingAssistant @relation(fields: [teachingAssistantId], references: [id], onDelete: Cascade)
+  courseId            Int
+  course              Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status              TAApprovalStatus  @default(APPROVED)
+  reason              String?
+  approvedByUserId    Int
+  approvedByUser      User              @relation("ApprovedTACrossDepartmentApprovals", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  revokedByUserId     Int?
+  revokedByUser       User?             @relation("RevokedTACrossDepartmentApprovals", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+  revokedAt           DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@unique([teachingAssistantId, courseId])
+  @@index([teachingAssistantId])
+  @@index([courseId])
+  @@index([approvedByUserId])
+  @@index([revokedByUserId])
 }
 

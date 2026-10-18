@@ -4,6 +4,7 @@ import catchAsync from '../utils/catchAsync';
 import { AppError, NotFoundError, AuthorizationError, ValidationError } from '../utils/appError';
 import { auditLog } from '../utils/audit.utils';
 import { TimetableService } from '../services/timetable.service';
+import { SchedulePlacementService, assertValidPlacement } from '../services/schedulePlacement.service';
 import { Prisma } from '@prisma/client';
 import {
   getAdminMutationScopeWhere,
@@ -202,16 +203,46 @@ export const approveRequest = catchAsync(async (req: Request, res: Response, nex
     }
 
     if (changeReq.type === 'NEW_SLOT') {
-      await TimetableService.checkConflicts({
-        dayOfWeek: data.dayOfWeek,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        room: data.room,
-        courseId: changeReq.courseId,
-        doctorId: data.doctorId ? parseInt(data.doctorId) : null,
-        groupId: data.groupId ? parseInt(data.groupId) : null,
-        teachingAssistantId: data.teachingAssistantId,
-      }, tx);
+      let timetableId: number | undefined;
+      const course = await tx.course.findUnique({ where: { id: changeReq.courseId } });
+      if (course?.departmentId) {
+        const foundTb = await tx.timetable.findFirst({
+          where: {
+            departmentId: course.departmentId,
+            academicYear: course.year,
+            semester: course.semester,
+          },
+        });
+        if (foundTb) timetableId = foundTb.id;
+      }
+
+      const placementResult = await assertValidPlacement(
+        {
+          dayOfWeek: data.dayOfWeek,
+          startTime: data.startTime,
+          endTime: data.endTime,
+          room: data.room,
+          roomId: data.roomId ? Number(data.roomId) : undefined,
+          termId: data.termId ? Number(data.termId) : undefined,
+          courseId: changeReq.courseId,
+          doctorId: data.doctorId ? parseInt(data.doctorId) : null,
+          groupId: data.groupId ? parseInt(data.groupId) : null,
+          teachingAssistantId: data.teachingAssistantId,
+          departmentId: course?.departmentId,
+          academicYear: course?.year,
+          semester: course?.semester,
+        },
+        { tx }
+      );
+
+      const finalRoomId = placementResult.resolvedRoom
+        ? placementResult.resolvedRoom.id
+        : data.roomId ? Number(data.roomId) : null;
+      const finalRoomName = placementResult.resolvedRoom
+        ? placementResult.resolvedRoom.name
+        : (data.room ? String(data.room).trim() : null);
+      const finalTermId = placementResult.resolvedTerm?.id;
+
       await tx.scheduleSlot.create({
         data: {
           courseId: changeReq.courseId,
@@ -221,38 +252,88 @@ export const approveRequest = catchAsync(async (req: Request, res: Response, nex
           dayOfWeek: data.dayOfWeek,
           startTime: data.startTime,
           endTime: data.endTime,
-          room: data.room,
-          teachingAssistantId: data.teachingAssistantId
-        }
+          room: finalRoomName,
+          roomId: finalRoomId,
+          termId: finalTermId,
+          teachingAssistantId: data.teachingAssistantId,
+          timetableId,
+        },
       });
     } else if (changeReq.type === 'UPDATE_SLOT') {
       if (!changeReq.scheduleSlotId) throw new AppError('scheduleSlotId required for UPDATE_SLOT', 400);
       if (!scopedSlot) throw new AuthorizationError('Schedule slot is outside your managed scope');
-      await TimetableService.checkConflicts({
-        dayOfWeek: data.dayOfWeek || scopedSlot.dayOfWeek,
-        startTime: data.startTime || scopedSlot.startTime,
-        endTime: data.endTime || scopedSlot.endTime,
-        room: data.room !== undefined ? data.room : scopedSlot.room,
-        courseId: changeReq.courseId,
-        doctorId: data.doctorId !== undefined ? (data.doctorId ? parseInt(data.doctorId) : null) : scopedSlot.doctorId,
-        groupId: data.groupId !== undefined ? (data.groupId ? parseInt(data.groupId) : null) : scopedSlot.groupId,
-        teachingAssistantId: data.teachingAssistantId !== undefined ? data.teachingAssistantId : scopedSlot.teachingAssistantId,
-        excludeSlotId: changeReq.scheduleSlotId
-      }, tx);
+      const course = await tx.course.findUnique({ where: { id: changeReq.courseId } });
+
+      const placementResult = await assertValidPlacement(
+        {
+          dayOfWeek: data.dayOfWeek || scopedSlot.dayOfWeek,
+          startTime: data.startTime || scopedSlot.startTime,
+          endTime: data.endTime || scopedSlot.endTime,
+          room: data.room !== undefined ? data.room : (data.roomId !== undefined ? undefined : scopedSlot.room),
+          roomId: data.roomId !== undefined ? (data.roomId ? Number(data.roomId) : null) : (data.room !== undefined ? undefined : scopedSlot.roomId),
+          termId: data.termId !== undefined ? (data.termId ? Number(data.termId) : null) : (scopedSlot.termId ?? undefined),
+          courseId: changeReq.courseId,
+          doctorId: data.doctorId !== undefined ? (data.doctorId ? parseInt(data.doctorId) : null) : scopedSlot.doctorId,
+          groupId: data.groupId !== undefined ? (data.groupId ? parseInt(data.groupId) : null) : scopedSlot.groupId,
+          teachingAssistantId: data.teachingAssistantId !== undefined ? data.teachingAssistantId : scopedSlot.teachingAssistantId,
+          excludeSlotId: changeReq.scheduleSlotId,
+          departmentId: course?.departmentId,
+          academicYear: course?.year,
+          semester: course?.semester,
+        },
+        { tx }
+      );
+
+      const finalRoomId = placementResult.resolvedRoom
+        ? placementResult.resolvedRoom.id
+        : data.roomId !== undefined ? (data.roomId ? Number(data.roomId) : null) : (data.room !== undefined ? null : scopedSlot.roomId);
+      const finalRoomName = placementResult.resolvedRoom
+        ? placementResult.resolvedRoom.name
+        : (data.room !== undefined ? (data.room ? String(data.room).trim() : null) : scopedSlot.room);
+      const finalTermId = placementResult.resolvedTerm?.id ?? scopedSlot.termId;
+
       await tx.scheduleSlot.update({
         where: { id: changeReq.scheduleSlotId },
         data: {
           dayOfWeek: data.dayOfWeek,
           startTime: data.startTime,
           endTime: data.endTime,
-          room: data.room,
+          room: finalRoomName,
+          roomId: finalRoomId,
+          termId: finalTermId,
           teachingAssistantId: data.teachingAssistantId,
           slotType: data.slotType,
-        }
+        },
       });
     } else if (changeReq.type === 'DELETE_SLOT') {
       if (!changeReq.scheduleSlotId) throw new AppError('scheduleSlotId required for DELETE_SLOT', 400);
       if (!scopedSlot) throw new AuthorizationError('Schedule slot is outside your managed scope');
+
+      const slotEvidence = await tx.scheduleSlot.findFirst({
+        where: {
+          id: changeReq.scheduleSlotId,
+          OR: [{ attendanceSessions: { some: {} } }, { attendances: { some: {} } }],
+        },
+        select: {
+          id: true,
+          attendanceSessions: { select: { id: true }, take: 1 },
+          attendances: { select: { id: true }, take: 1 },
+        },
+      });
+      const hasAttendanceEvidence =
+        Boolean(slotEvidence) &&
+        ((slotEvidence?.attendanceSessions?.length ?? 0) > 0 ||
+          (slotEvidence?.attendances?.length ?? 0) > 0 ||
+          (slotEvidence?.attendanceSessions === undefined &&
+            slotEvidence?.attendances === undefined &&
+            !('courseId' in (slotEvidence as any))));
+
+      if (hasAttendanceEvidence) {
+        throw new AppError(
+          'Cannot delete schedule slot: attendance evidence exists. Archive the slot instead to preserve historical session requirements.',
+          409
+        );
+      }
       await tx.scheduleSlot.delete({ where: { id: changeReq.scheduleSlotId } });
     } else if (changeReq.type === 'OVERRIDE') {
       if (!changeReq.scheduleSlotId) throw new AppError('scheduleSlotId required for OVERRIDE', 400);

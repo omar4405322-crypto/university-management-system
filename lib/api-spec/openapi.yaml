@@ -923,6 +923,31 @@ paths:
           description: Teaching Assistant identifier
           schema:
             type: string
+        - name: collegeId
+          in: query
+          description: Filter by college ID
+          schema:
+            type: integer
+        - name: semester
+          in: query
+          description: Semester filter (1 or 2)
+          schema:
+            type: integer
+        - name: timetableId
+          in: query
+          description: Timetable ID filter
+          schema:
+            type: integer
+        - name: roomId
+          in: query
+          description: Room ID filter
+          schema:
+            type: integer
+        - name: termId
+          in: query
+          description: Academic term ID filter
+          schema:
+            type: integer
       responses:
         "200":
           description: Timetable grid (identical to /schedules/week)
@@ -987,6 +1012,31 @@ paths:
           description: Teaching assistant ID filter
           schema:
             type: string
+        - name: collegeId
+          in: query
+          description: Filter by college ID
+          schema:
+            type: integer
+        - name: semester
+          in: query
+          description: Semester filter (1 or 2)
+          schema:
+            type: integer
+        - name: timetableId
+          in: query
+          description: Timetable ID filter
+          schema:
+            type: integer
+        - name: roomId
+          in: query
+          description: Room ID filter
+          schema:
+            type: integer
+        - name: termId
+          in: query
+          description: Academic term ID filter
+          schema:
+            type: integer
       responses:
         "200":
           description: Timetable grid
@@ -994,6 +1044,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScheduleGridResponse"
+
+  /schedules/check-conflict:
+    post:
+      operationId: checkScheduleConflict
+      tags: [schedules]
+      summary: Check for schedule conflicts before slot creation or update
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckScheduleConflictRequest"
+      responses:
+        "200":
+          description: Conflict check results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckScheduleConflictResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
 
 
   /payments:
@@ -2039,6 +2116,140 @@ components:
               room:
                 type: string
                 nullable: true
+
+    CheckScheduleConflictRequest:
+      type: object
+      required:
+        - dayOfWeek
+        - startTime
+        - endTime
+      properties:
+        dayOfWeek:
+          type: integer
+          minimum: 1
+          maximum: 7
+        startTime:
+          type: string
+          example: "09:00"
+        endTime:
+          type: string
+          example: "11:00"
+        room:
+          type: string
+          nullable: true
+        roomId:
+          type: integer
+          nullable: true
+        termId:
+          type: integer
+          nullable: true
+        doctorId:
+          type: integer
+          nullable: true
+        doctorName:
+          type: string
+          nullable: true
+        teachingAssistantId:
+          type: integer
+          nullable: true
+        taName:
+          type: string
+          nullable: true
+        courseId:
+          type: integer
+          nullable: true
+        courseName:
+          type: string
+          nullable: true
+        departmentId:
+          type: integer
+          nullable: true
+        academicYear:
+          type: integer
+          nullable: true
+        semester:
+          type: integer
+          nullable: true
+        groupId:
+          type: integer
+          nullable: true
+        excludeSlotId:
+          type: integer
+          nullable: true
+
+    CheckScheduleConflictResponse:
+      type: object
+      required:
+        - success
+        - hasConflict
+        - conflicts
+      properties:
+        success:
+          type: boolean
+        hasConflict:
+          type: boolean
+        conflicts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleConflictItem"
+        resolvedTerm:
+          $ref: "#/components/schemas/ResolvedTermInfo"
+        resolvedRoom:
+          $ref: "#/components/schemas/ResolvedRoomInfo"
+
+    ScheduleConflictItem:
+      type: object
+      required:
+        - type
+        - messageAr
+        - messageEn
+      properties:
+        type:
+          type: string
+          enum:
+            - NO_ACTIVE_TERM
+            - ROOM_COLLISION
+            - DOCTOR_COLLISION
+            - TA_COLLISION
+            - GROUP_COLLISION
+            - TA_CROSS_DEPARTMENT_UNAPPROVED
+            - PAST_TERM_IMMUTABLE
+            - AMBIGUOUS_DOCTOR
+            - AMBIGUOUS_TA
+        messageAr:
+          type: string
+        messageEn:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    ResolvedTermInfo:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        academicYearId:
+          type: integer
+        isCurrent:
+          type: boolean
+
+    ResolvedRoomInfo:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        capacity:
+          type: integer
+        building:
+          type: string
+          nullable: true
 
     PaymentRecord:
       type: object

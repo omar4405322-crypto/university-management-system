@@ -60,6 +60,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './utils/swagger';
 import academicYearsRoutes from './routes/academicYears.routes';
 import academicTermsRoutes from './routes/academicTerms.routes';
+import taApprovalRoutes from './routes/taApproval.routes';
 
 const app: Application = express();
 app.set('trust proxy', 1);
@@ -305,6 +306,7 @@ app.use('/api/requests', protect, requestsRoutes);
 app.use('/api/rooms', protect, roomRoutes);
 app.use('/api/academic-years', academicYearsRoutes);
 app.use('/api/academic-terms', academicTermsRoutes);
+app.use('/api/ta-cross-department-approvals', protect, taApprovalRoutes);
 if (process.env.NODE_ENV !== 'production') {
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }

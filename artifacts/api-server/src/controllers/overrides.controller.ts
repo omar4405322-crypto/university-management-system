@@ -4,6 +4,7 @@ import { auditLog } from '../utils/audit.utils';
 import catchAsync from '../utils/catchAsync';
 import { NotFoundError, ValidationError, AuthorizationError } from '../utils/appError';
 import { TimetableService } from '../services/timetable.service';
+import { SchedulePlacementService, executeSchedulePlacement } from '../services/schedulePlacement.service';
 import { Prisma } from '@prisma/client';
 import { requireExistingCourseStaffAssignments } from '../utils/scheduleAssignment.utils';
 import { getAdminMutationScopeWhere } from '../utils/adminMutationScope.utils';
@@ -125,44 +126,56 @@ export const createOverride = catchAsync(async (req: Request, res: Response, nex
     return next(new ValidationError('An override already exists for this slot in the specified date range'));
   }
 
-  const override = await prisma.$transaction(async (tx) => {
-    await requireOverrideReplacementStaffAssignments(
-      tx,
-      req.user!,
-      slot.courseId,
-      replacementDoctorId,
-      replacementTeachingAssistantId
-    );
-
-    // Conflict Check (Against Base Schedule)
-    await TimetableService.checkConflicts({
+  const override = await executeSchedulePlacement(
+    {
       dayOfWeek: dayOfWeek || slot.dayOfWeek,
       startTime: startTime || slot.startTime,
       endTime: endTime || slot.endTime,
       room: room !== undefined ? room : slot.room,
+      roomId: req.body.roomId ? Number(req.body.roomId) : undefined,
       courseId: slot.courseId,
       doctorId: replacementDoctorId ?? slot.doctorId,
       groupId: slot.groupId,
       teachingAssistantId: replacementTeachingAssistantId ?? slot.teachingAssistantId,
-      excludeSlotId: slotId, // We exclude the slot being overridden so it doesn't conflict with itself
-    }, tx);
+      excludeSlotId: slotId,
+      termId: slot.termId ?? undefined,
+      departmentId: slot.course?.departmentId ?? undefined,
+      academicYear: slot.course?.year ?? undefined,
+      semester: slot.course?.semester ?? undefined,
+    },
+    async (tx, placementResult) => {
+      const finalRoomName = placementResult.resolvedRoom
+        ? placementResult.resolvedRoom.name
+        : (room !== undefined ? (room ? String(room).trim() : null) : slot.room);
 
-    return tx.scheduleOverride.create({
-      data: {
-        scheduleSlotId: slotId,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        room,
-        dayOfWeek,
-        startTime,
-        endTime,
-        doctorId: replacementDoctorId ?? null,
-        teachingAssistantId: replacementTeachingAssistantId ?? null,
-        reason,
-        createdBy: req.user!.id,
+      return tx.scheduleOverride.create({
+        data: {
+          scheduleSlotId: slotId,
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          room: finalRoomName,
+          dayOfWeek,
+          startTime,
+          endTime,
+          doctorId: replacementDoctorId ?? null,
+          teachingAssistantId: replacementTeachingAssistantId ?? null,
+          reason,
+          createdBy: req.user!.id,
+        },
+      });
+    },
+    {
+      beforePlacement: async (tx) => {
+        await requireOverrideReplacementStaffAssignments(
+          tx,
+          req.user!,
+          slot.courseId,
+          replacementDoctorId,
+          replacementTeachingAssistantId
+        );
       },
-    });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    }
+  );
 
   auditLog('CREATE_OVERRIDE', 'ScheduleOverride', override.id.toString(), req);
   res.status(201).json({ success: true, data: override });

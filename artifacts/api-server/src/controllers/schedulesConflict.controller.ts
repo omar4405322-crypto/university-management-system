@@ -16,6 +16,7 @@ import catchAsync from '../utils/catchAsync';
 import { AuthorizationError } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
 import { TimetableService } from '../services/timetable.service';
+import { SchedulePlacementService } from '../services/schedulePlacement.service';
 import { resolveDoctorByName, resolveTaByName } from './schedulesStaffResolver';
 
 export const checkScheduleConflict = catchAsync(
@@ -256,11 +257,13 @@ export const checkScheduleConflict = catchAsync(
       }
     }
 
-    const serviceConflicts = await TimetableService.findConflicts({
+    const placementResult = await SchedulePlacementService.findPlacementConflicts({
       dayOfWeek,
       startTime,
       endTime,
       room,
+      roomId: req.body.roomId !== undefined && req.body.roomId !== null && req.body.roomId !== '' ? Number(req.body.roomId) : undefined,
+      termId: req.body.termId !== undefined && req.body.termId !== null && req.body.termId !== '' ? Number(req.body.termId) : undefined,
       doctorId: targetDoctorId,
       teachingAssistantId: targetTaId,
       courseId: resolvedCourseId,
@@ -271,12 +274,14 @@ export const checkScheduleConflict = catchAsync(
       excludeSlotId: excludeSlotId ? Number(excludeSlotId) : undefined,
     });
 
-    const allConflicts = [...initialConflicts, ...serviceConflicts];
+    const allConflicts = [...initialConflicts, ...placementResult.conflicts];
 
     return res.json({
       success: true,
       hasConflict: allConflicts.length > 0,
       conflicts: allConflicts,
+      resolvedTerm: placementResult.resolvedTerm,
+      resolvedRoom: placementResult.resolvedRoom,
     });
   }
 );

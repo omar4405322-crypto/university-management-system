@@ -11,6 +11,7 @@ export interface CleanupEntities {
   studentIds?: number[];
   doctorIds?: number[];
   taIds?: (string | number)[];
+  approvalIds?: number[];
   courseIds?: number[];
   groupIds?: number[];
   roomIds?: number[];
@@ -53,6 +54,7 @@ export async function cleanupTestEntities(prisma: PrismaClient, entities: Cleanu
   const studentIds = dedupe(entities.studentIds);
   const doctorIds = dedupe(entities.doctorIds);
   const taIds = dedupe(entities.taIds?.map(String));
+  const approvalIds = dedupe(entities.approvalIds);
   const courseIds = dedupe(entities.courseIds);
   const groupIds = dedupe(entities.groupIds);
   const roomIds = dedupe(entities.roomIds);
@@ -139,6 +141,17 @@ export async function cleanupTestEntities(prisma: PrismaClient, entities: Cleanu
     await prisma.timetable.deleteMany({ where: { id: { in: timetableIds } } }).catch(() => {});
   }
 
+  // 8.5 TA Cross-Department Approvals (before TA, Course, and User profiles)
+  if (approvalIds.length > 0) {
+    await (prisma as any).tACrossDepartmentApproval.deleteMany({ where: { id: { in: approvalIds } } }).catch(() => {});
+  }
+  if (taIds.length > 0) {
+    await (prisma as any).tACrossDepartmentApproval.deleteMany({ where: { teachingAssistantId: { in: taIds } } }).catch(() => {});
+  }
+  if (courseIds.length > 0) {
+    await (prisma as any).tACrossDepartmentApproval.deleteMany({ where: { courseId: { in: courseIds } } }).catch(() => {});
+  }
+
   // 9. Staff & Student Profiles (before User and Departments)
   if (studentIds.length > 0) {
     await prisma.student.deleteMany({ where: { id: { in: studentIds } } }).catch(() => {});
@@ -209,6 +222,7 @@ export class TestCleanupRegistry {
     studentIds: [],
     doctorIds: [],
     taIds: [],
+    approvalIds: [],
     courseIds: [],
     groupIds: [],
     roomIds: [],
@@ -246,6 +260,9 @@ export class TestCleanupRegistry {
   }
   trackTA(...ids: (string | number | null | undefined)[]) {
     for (const id of ids) if (id) this.entities.taIds!.push(id);
+  }
+  trackTAApproval(...ids: (number | null | undefined)[]) {
+    for (const id of ids) if (id) this.entities.approvalIds!.push(id);
   }
   trackCourse(...ids: (number | null | undefined)[]) {
     for (const id of ids) if (id) this.entities.courseIds!.push(id);

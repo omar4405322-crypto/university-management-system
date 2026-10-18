@@ -8,7 +8,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../utils/prismaClient';
-import { Prisma } from '@prisma/client';
+import { Prisma, SlotType } from '@prisma/client';
 import { auditLog } from '../utils/audit.utils';
 import {
   getEffectiveActiveDoctorWhere,
@@ -19,6 +19,7 @@ import catchAsync from '../utils/catchAsync';
 import { AuthorizationError, ValidationError } from '../utils/appError';
 import { MAX_SCHEDULE_SYNC_SLOTS } from '../utils/requestLimits';
 import { StaffResolveResult } from './schedulesStaffResolver';
+import { SchedulePlacementService, executeSyncGrid, PlacementInput } from '../services/schedulePlacement.service';
 
 // ── In-memory staff matchers (work on pre-fetched dept arrays) ────────────────
 
@@ -211,8 +212,11 @@ export const syncGridToMaster = catchAsync(
     let skippedCount = 0;
     const skippedSlots: Array<{ courseName: string; reason: string }> = [];
 
-    const updatesToRun: Array<{ where: { id: number }; data: Prisma.ScheduleSlotUpdateInput }> = [];
-    const createsToRun: Prisma.ScheduleSlotCreateManyInput[] = [];
+    interface SyncItem extends PlacementInput {
+      existingSlotId?: number;
+      slotType?: string;
+    }
+    const preparedItems: SyncItem[] = [];
 
     for (const slot of slots as Array<Record<string, unknown>>) {
       const {
@@ -342,30 +346,36 @@ export const syncGridToMaster = catchAsync(
 
       if (existingSlot) {
         existingSlotMap.delete(slotKey);
-        updatesToRun.push({
-          where: { id: existingSlot.id },
-          data: {
-            endTime: typeof endTime === 'string' ? endTime : '11:00',
-            room: room !== undefined ? (room ? String(room).trim() : null) : existingSlot.room,
-            slotType: effectiveSlotType || existingSlot.slotType,
-            ...(doctorId ? { doctor: { connect: { id: doctorId } }, teachingAssistantId: null } : {}),
-            ...(teachingAssistantId ? { teachingAssistantId, doctorId: null } : {}),
-            ...(timetableId ? { timetableId } : {}),
-          } as Prisma.ScheduleSlotUpdateInput,
-        });
-      } else if (doctorId || teachingAssistantId) {
-        createsToRun.push({
+        preparedItems.push({
+          existingSlotId: existingSlot.id,
           courseId: course.id,
-          groupId: null,
+          dayOfWeek: normalizedDay,
+          startTime: normalizedStartTime,
+          endTime: typeof endTime === 'string' ? endTime : '11:00',
+          room: room !== undefined ? (room ? String(room).trim() : null) : existingSlot.room,
+          roomId: (slot as any).roomId ? Number((slot as any).roomId) : undefined,
+          termId: (slot as any).termId ? Number((slot as any).termId) : undefined,
           doctorId,
           teachingAssistantId,
           timetableId,
-          slotType: effectiveSlotType,
+          slotType: effectiveSlotType || existingSlot.slotType,
+          departmentId: parsedDeptId,
+        });
+      } else if (doctorId || teachingAssistantId) {
+        preparedItems.push({
+          courseId: course.id,
           dayOfWeek: normalizedDay,
           startTime: normalizedStartTime,
           endTime: typeof endTime === 'string' ? endTime : '11:00',
           room: room ? String(room).trim() : null,
-        } as Prisma.ScheduleSlotCreateManyInput);
+          roomId: (slot as any).roomId ? Number((slot as any).roomId) : undefined,
+          termId: (slot as any).termId ? Number((slot as any).termId) : undefined,
+          doctorId,
+          teachingAssistantId,
+          timetableId,
+          slotType: effectiveSlotType,
+          departmentId: parsedDeptId,
+        });
       } else {
         skippedCount++;
         skippedSlots.push({
@@ -377,16 +387,73 @@ export const syncGridToMaster = catchAsync(
       syncedCount++;
     }
 
-    // 5. Batch database execution
-    if (updatesToRun.length > 0 || createsToRun.length > 0) {
-      await prisma.$transaction([
-        ...updatesToRun.map((u) =>
-          prisma.scheduleSlot.update({ where: u.where, data: u.data })
-        ),
-        ...(createsToRun.length > 0
-          ? [prisma.scheduleSlot.createMany({ data: createsToRun })]
-          : []),
-      ]);
+    // 5. Batch database execution with transactional placement validation
+    if (preparedItems.length > 0) {
+      const excludedSlotIds = preparedItems
+        .map((s) => s.existingSlotId)
+        .filter((id): id is number => typeof id === 'number');
+      await executeSyncGrid(
+        preparedItems,
+        async (tx, validationResults) => {
+          for (let i = 0; i < preparedItems.length; i++) {
+            const item = preparedItems[i];
+            const { placementResult } = validationResults[i];
+
+            const finalRoomId = placementResult.resolvedRoom
+              ? placementResult.resolvedRoom.id
+              : item.roomId ?? null;
+            const finalRoomName = placementResult.resolvedRoom
+              ? placementResult.resolvedRoom.name
+              : item.room;
+            const finalTermId = placementResult.resolvedTerm?.id;
+
+            if (item.existingSlotId) {
+              await tx.scheduleSlot.update({
+                where: { id: item.existingSlotId },
+                data: {
+                  isArchived: false,
+                  dayOfWeek: item.dayOfWeek,
+                  startTime: item.startTime,
+                  endTime: item.endTime,
+                  room: finalRoomName,
+                  roomId: finalRoomId,
+                  termId: finalTermId,
+                  slotType: (item.slotType as SlotType) || undefined,
+                  ...(item.doctorId !== undefined
+                    ? item.doctorId !== null
+                      ? { doctorId: item.doctorId, teachingAssistantId: null }
+                      : { doctorId: null }
+                    : {}),
+                  ...(item.teachingAssistantId !== undefined
+                    ? item.teachingAssistantId !== null
+                      ? { teachingAssistantId: item.teachingAssistantId, doctorId: null }
+                      : { teachingAssistantId: null }
+                    : {}),
+                  ...(item.timetableId ? { timetableId: item.timetableId } : {}),
+                },
+              });
+            } else {
+              await tx.scheduleSlot.create({
+                data: {
+                  courseId: item.courseId!,
+                  doctorId: item.doctorId,
+                  teachingAssistantId: item.teachingAssistantId,
+                  groupId: item.groupId ?? null,
+                  slotType: (item.slotType as SlotType) || 'LECTURE',
+                  dayOfWeek: item.dayOfWeek,
+                  startTime: item.startTime,
+                  endTime: item.endTime,
+                  room: finalRoomName,
+                  roomId: finalRoomId,
+                  termId: finalTermId,
+                  timetableId: item.timetableId,
+                },
+              });
+            }
+          }
+        },
+        { excludedSlotIds }
+      );
     }
 
     auditLog('SYNC_GRID_TO_MASTER', 'ScheduleSlot', '0', req);

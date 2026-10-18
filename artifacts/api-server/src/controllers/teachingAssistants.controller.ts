@@ -14,6 +14,7 @@ import {
   getAdminMutationTargetWhere,
 } from '../utils/adminMutationScope.utils';
 import { TimetableService } from '../services/timetable.service';
+import { SchedulePlacementService, executeSchedulePlacement } from '../services/schedulePlacement.service';
 import { replacePasswordAndRevokeAllUserSessions } from '../services/session.service';
 import { assertPasswordStrength } from '../utils/passwordPolicy';
 import { normalizeSlotType } from '../utils/slotType.utils';
@@ -316,54 +317,74 @@ export const assignTACourse = catchAsync(async (req: Request, res: Response, nex
   const rawType = slotType || existingSlot?.slotType || 'LAB';
   const targetType = normalizeSlotType(rawType);
 
-  // Check conflicts across university
-  await TimetableService.checkConflicts({
-    dayOfWeek: targetDay,
-    startTime: targetStart,
-    endTime: targetEnd,
-    room: targetRoom,
-    courseId: course.id,
-    teachingAssistantId: taId,
-    excludeSlotId: existingSlot?.id,
-  });
+  // Check conflicts across university via SchedulePlacementService (including cross-department TA authorization)
+  await executeSchedulePlacement(
+    {
+      dayOfWeek: targetDay,
+      startTime: targetStart,
+      endTime: targetEnd,
+      room: targetRoom,
+      roomId: req.body.roomId ? Number(req.body.roomId) : undefined,
+      termId: req.body.termId ? Number(req.body.termId) : (existingSlot?.termId ?? undefined),
+      courseId: course.id,
+      teachingAssistantId: taId,
+      excludeSlotId: existingSlot?.id,
+      departmentId: course.departmentId,
+      academicYear: course.year,
+      semester: course.semester,
+    },
+    async (tx, placementResult) => {
+      const finalRoomId = placementResult.resolvedRoom
+        ? placementResult.resolvedRoom.id
+        : req.body.roomId ? Number(req.body.roomId) : (existingSlot?.roomId ?? null);
+      const finalRoomName = placementResult.resolvedRoom
+        ? placementResult.resolvedRoom.name
+        : targetRoom;
+      const finalTermId = placementResult.resolvedTerm?.id ?? existingSlot?.termId;
 
-  if (existingSlot) {
-    await prisma.scheduleSlot.update({
-      where: { id: existingSlot.id },
-      data: {
-        dayOfWeek: targetDay,
-        startTime: targetStart,
-        endTime: targetEnd,
-        room: targetRoom,
-        slotType: targetType,
-      }
-    });
-  } else {
-    let timetableId: number | undefined;
-    if (course.departmentId) {
-      const foundTb = await prisma.timetable.findFirst({
-        where: {
-          departmentId: course.departmentId,
-          academicYear: course.year,
-          semester: course.semester,
+      if (existingSlot) {
+        await tx.scheduleSlot.update({
+          where: { id: existingSlot.id },
+          data: {
+            dayOfWeek: targetDay,
+            startTime: targetStart,
+            endTime: targetEnd,
+            room: finalRoomName,
+            roomId: finalRoomId,
+            termId: finalTermId,
+            slotType: targetType,
+          },
+        });
+      } else {
+        let timetableId: number | undefined;
+        if (course.departmentId) {
+          const foundTb = await tx.timetable.findFirst({
+            where: {
+              departmentId: course.departmentId,
+              academicYear: course.year,
+              semester: course.semester,
+            },
+          });
+          if (foundTb) timetableId = foundTb.id;
         }
-      });
-      if (foundTb) timetableId = foundTb.id;
-    }
 
-    await prisma.scheduleSlot.create({
-      data: {
-        courseId: course.id,
-        teachingAssistantId: taId,
-        slotType: targetType,
-        dayOfWeek: targetDay,
-        startTime: targetStart,
-        endTime: targetEnd,
-        room: targetRoom,
-        timetableId,
+        await tx.scheduleSlot.create({
+          data: {
+            courseId: course.id,
+            teachingAssistantId: taId,
+            slotType: targetType,
+            dayOfWeek: targetDay,
+            startTime: targetStart,
+            endTime: targetEnd,
+            room: finalRoomName,
+            roomId: finalRoomId,
+            termId: finalTermId,
+            timetableId,
+          },
+        });
       }
-    });
-  }
+    }
+  );
 
   auditLog('ASSIGN_TA_COURSE', 'TeachingAssistant', String(taId), req);
 

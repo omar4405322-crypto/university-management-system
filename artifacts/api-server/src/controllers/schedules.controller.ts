@@ -54,6 +54,8 @@ export const getWeeklyTimetable = catchAsync(
       courseId,
       doctorId,
       teachingAssistantId,
+      roomId,
+      termId,
       year,
       semester,
       timetableId,
@@ -89,6 +91,8 @@ export const getWeeklyTimetable = catchAsync(
     const parsedCollegeId = parsePositiveInt(collegeId, 'collegeId');
     const parsedCourseId = parsePositiveInt(courseId, 'courseId');
     const parsedDoctorId = parsePositiveInt(doctorId, 'doctorId');
+    const parsedRoomId = parsePositiveInt(roomId, 'roomId');
+    const parsedTermId = parsePositiveInt(termId, 'termId');
     const parsedYear = parsePositiveInt(year, 'year');
     const parsedSemester = parsePositiveInt(semester, 'semester');
     const parsedTimetableId = parsePositiveInt(timetableId, 'timetableId');
@@ -177,6 +181,9 @@ export const getWeeklyTimetable = catchAsync(
       }
       if (parsedCollegeId !== undefined && student.department?.collegeId && parsedCollegeId !== student.department.collegeId) {
         throw new AuthorizationError('Cannot access schedules outside your college');
+      }
+      if (parsedYear !== undefined && parsedYear !== student.year) {
+        throw new AuthorizationError('Cannot access schedules outside your academic year');
       }
 
       const enrollments = await prisma.enrollment.findMany({
@@ -372,13 +379,19 @@ export const getWeeklyTimetable = catchAsync(
 
       const assignedSlots = await prisma.scheduleSlot.findMany({
         where: { teachingAssistantId: ta.id, timetable: { status: 'PUBLISHED' } },
-        select: { courseId: true, doctorId: true },
+        select: { courseId: true, doctorId: true, course: { select: { year: true } } },
       });
       const assignedCourseIds = new Set(assignedSlots.map((s) => s.courseId));
       const assignedDoctorIds = new Set(assignedSlots.map((s) => s.doctorId).filter(Boolean));
+      const taCourseYears = new Set(
+        assignedSlots.map((s) => s.course?.year).filter((y): y is number => typeof y === 'number')
+      );
 
       if (parsedCourseId !== undefined && !assignedCourseIds.has(parsedCourseId)) {
         throw new AuthorizationError('Cannot access schedules for unassigned course');
+      }
+      if (parsedYear !== undefined && !taCourseYears.has(parsedYear)) {
+        throw new AuthorizationError('Cannot access schedules for a year with no assigned courses');
       }
       if (parsedDoctorId !== undefined && !assignedDoctorIds.has(parsedDoctorId)) {
         throw new AuthorizationError('Cannot access schedules for another doctor');
@@ -462,6 +475,8 @@ export const getWeeklyTimetable = catchAsync(
       if (parsedCourseId) whereClause.courseId = parsedCourseId;
       if (parsedYear) whereClause.course.year = parsedYear;
       if (parsedSemester) whereClause.course.semester = parsedSemester;
+      if (parsedRoomId) whereClause.roomId = parsedRoomId;
+      if (parsedTermId) whereClause.termId = parsedTermId;
       if (normalizedSlotType) {
         whereClause.slotType = getSlotTypePrismaCondition(normalizedSlotType);
       }
@@ -528,6 +543,8 @@ export const getWeeklyTimetable = catchAsync(
       if (parsedCourseId) whereClause.courseId = parsedCourseId;
       if (parsedYear) whereClause.course.year = parsedYear;
       if (parsedSemester) whereClause.course.semester = parsedSemester;
+      if (parsedRoomId) whereClause.roomId = parsedRoomId;
+      if (parsedTermId) whereClause.termId = parsedTermId;
       if (normalizedSlotType) {
         whereClause.slotType = getSlotTypePrismaCondition(normalizedSlotType);
       }
@@ -538,8 +555,15 @@ export const getWeeklyTimetable = catchAsync(
       whereClause = {};
       if (parsedDoctorId) {
         whereClause.doctorId = parsedDoctorId;
-      } else if (rawTAId) {
+      }
+      if (rawTAId) {
         whereClause.teachingAssistantId = rawTAId;
+      }
+      if (parsedRoomId) {
+        whereClause.roomId = parsedRoomId;
+      }
+      if (parsedTermId) {
+        whereClause.termId = parsedTermId;
       }
       if (parsedDeptId) {
         whereClause.course = { departmentId: parsedDeptId };
@@ -560,6 +584,12 @@ export const getWeeklyTimetable = catchAsync(
 
     if (parsedTimetableId) {
       whereClause.timetableId = parsedTimetableId;
+    }
+    if (parsedRoomId && whereClause.roomId === undefined) {
+      whereClause.roomId = parsedRoomId;
+    }
+    if (parsedTermId && whereClause.termId === undefined) {
+      whereClause.termId = parsedTermId;
     }
 
     const [scheduleSlots, total] = await Promise.all([
