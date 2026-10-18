@@ -498,6 +498,24 @@ export function TASchedule() {
           </select>
         )}
 
+        {/* Department Filter */}
+        {filterPermissions.department && !hideDepartmentSelector && (
+          <select
+            value={selectedDeptId}
+            onChange={(e) => setSelectedDeptId(e.target.value)}
+            disabled={selectedCollegeId === 'all' && filteredDepartments.length === 0}
+            aria-label={t('schedules.allDepartments', 'All Departments')}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer disabled:opacity-50"
+          >
+            <option value="all">{t('schedules.allDepartments', 'All Departments')}</option>
+            {filteredDepartments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {isRTL ? d.nameAr || d.name : d.name}
+              </option>
+            ))}
+          </select>
+        )}
+
         {/* Course Filter (Assigned only for TA) */}
         {filterPermissions.course && (
           <select

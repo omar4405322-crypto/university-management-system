@@ -212,7 +212,7 @@ export const updateOverride = catchAsync(async (req: Request, res: Response, nex
 
   const existing = await prisma.scheduleOverride.findFirst({
     where: getScopedScheduleOverrideWhere(req.user!, overrideId),
-    include: { scheduleSlot: true }
+    include: { scheduleSlot: { include: { course: true } } }
   });
   if (!existing) return next(new NotFoundError('Override not found'));
 
@@ -223,50 +223,67 @@ export const updateOverride = catchAsync(async (req: Request, res: Response, nex
     return next(new ValidationError('startDate must be before or equal to endDate'));
   }
 
-  const override = await prisma.$transaction(async (tx) => {
-    await requireOverrideReplacementStaffAssignments(
-      tx,
-      req.user!,
-      existing.scheduleSlot.courseId,
-      replacementDoctorId,
-      replacementTeachingAssistantId
-    );
+  const slot = existing.scheduleSlot;
+  const effectiveDoctorId = replacementDoctorId === undefined
+    ? existing.doctorId ?? slot.doctorId
+    : replacementDoctorId ?? slot.doctorId;
+  const effectiveTeachingAssistantId = replacementTeachingAssistantId === undefined
+    ? existing.teachingAssistantId ?? slot.teachingAssistantId
+    : replacementTeachingAssistantId ?? slot.teachingAssistantId;
+  const requestedRoom = room !== undefined ? room : (existing.room || slot.room);
+  const requestedRoomId = req.body.roomId !== undefined && req.body.roomId !== null && req.body.roomId !== ''
+    ? Number(req.body.roomId)
+    : undefined;
 
-    const effectiveDoctorId = replacementDoctorId === undefined
-      ? existing.doctorId ?? existing.scheduleSlot.doctorId
-      : replacementDoctorId ?? existing.scheduleSlot.doctorId;
-    const effectiveTeachingAssistantId = replacementTeachingAssistantId === undefined
-      ? existing.teachingAssistantId ?? existing.scheduleSlot.teachingAssistantId
-      : replacementTeachingAssistantId ?? existing.scheduleSlot.teachingAssistantId;
-
-    // Conflict Check
-    await TimetableService.checkConflicts({
-      dayOfWeek: dayOfWeek || existing.dayOfWeek || existing.scheduleSlot.dayOfWeek,
-      startTime: startTime || existing.startTime || existing.scheduleSlot.startTime,
-      endTime: endTime || existing.endTime || existing.scheduleSlot.endTime,
-      room: room !== undefined ? room : (existing.room || existing.scheduleSlot.room),
-      courseId: existing.scheduleSlot.courseId,
+  const override = await executeSchedulePlacement(
+    {
+      dayOfWeek: dayOfWeek || existing.dayOfWeek || slot.dayOfWeek,
+      startTime: startTime || existing.startTime || slot.startTime,
+      endTime: endTime || existing.endTime || slot.endTime,
+      room: requestedRoom,
+      roomId: requestedRoomId,
+      courseId: slot.courseId,
       doctorId: effectiveDoctorId,
-      groupId: existing.scheduleSlot.groupId,
+      groupId: slot.groupId,
       teachingAssistantId: effectiveTeachingAssistantId,
       excludeSlotId: existing.scheduleSlotId,
-    }, tx);
+      termId: slot.termId ?? undefined,
+      departmentId: slot.course?.departmentId ?? undefined,
+      academicYear: slot.course?.year ?? undefined,
+      semester: slot.course?.semester ?? undefined,
+    },
+    async (tx, placementResult) => {
+      const finalRoomName = placementResult.resolvedRoom
+        ? placementResult.resolvedRoom.name
+        : (room !== undefined ? (room ? String(room).trim() : null) : existing.room);
 
-    return tx.scheduleOverride.update({
-      where: { id: overrideId },
-      data: {
-        startDate: newStartDate,
-        endDate: newEndDate,
-        room,
-        dayOfWeek,
-        startTime,
-        endTime,
-        doctorId: replacementDoctorId,
-        teachingAssistantId: replacementTeachingAssistantId,
-        reason,
+      return tx.scheduleOverride.update({
+        where: { id: overrideId },
+        data: {
+          startDate: newStartDate,
+          endDate: newEndDate,
+          room: finalRoomName,
+          dayOfWeek,
+          startTime,
+          endTime,
+          doctorId: replacementDoctorId,
+          teachingAssistantId: replacementTeachingAssistantId,
+          reason,
+        },
+      });
+    },
+    {
+      beforePlacement: async (tx) => {
+        await requireOverrideReplacementStaffAssignments(
+          tx,
+          req.user!,
+          slot.courseId,
+          replacementDoctorId,
+          replacementTeachingAssistantId
+        );
       },
-    });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    }
+  );
 
   auditLog('UPDATE_OVERRIDE', 'ScheduleOverride', override.id.toString(), req);
   res.json({ success: true, data: override });

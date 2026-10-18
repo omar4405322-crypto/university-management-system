@@ -19,6 +19,7 @@ interface SearchableSelectProps {
   isRTL?: boolean;
   className?: string;
   icon?: React.ReactNode;
+  id?: string;
 }
 
 export default function SearchableSelect({
@@ -31,7 +32,8 @@ export default function SearchableSelect({
   disabled = false,
   isRTL = false,
   className = '',
-  icon
+  icon,
+  id
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -87,6 +89,7 @@ export default function SearchableSelect({
     <div ref={containerRef} className={`relative w-full ${className}`}>
       {/* Trigger Button */}
       <button
+        id={id}
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}

@@ -86,7 +86,7 @@ test('Hermetic Cleanup Helper: purges all created rows even when test body throw
     const adminUser = await prisma.user.create({
       data: {
         email: `adm_${SUFFIX}@example.test`,
-        password: 'hash',
+        password: `hash_${SUFFIX}_adm`,
         role: 'SUPER_ADMIN',
         tokenVersion: 0,
         isActive: true,
@@ -97,7 +97,7 @@ test('Hermetic Cleanup Helper: purges all created rows even when test body throw
     const docUser = await prisma.user.create({
       data: {
         email: `doc_${SUFFIX}@example.test`,
-        password: 'hash',
+        password: `hash_${SUFFIX}_doc`,
         role: 'DOCTOR',
         tokenVersion: 0,
         isActive: true,
@@ -118,7 +118,7 @@ test('Hermetic Cleanup Helper: purges all created rows even when test body throw
     const taUser = await prisma.user.create({
       data: {
         email: `ta_${SUFFIX}@example.test`,
-        password: 'hash',
+        password: `hash_${SUFFIX}_ta`,
         role: 'TEACHING_ASSISTANT',
         tokenVersion: 0,
         isActive: true,
@@ -139,7 +139,7 @@ test('Hermetic Cleanup Helper: purges all created rows even when test body throw
     const stuUser = await prisma.user.create({
       data: {
         email: `stu_${SUFFIX}@example.test`,
-        password: 'hash',
+        password: `hash_${SUFFIX}_stu`,
         role: 'STUDENT',
         tokenVersion: 0,
         isActive: true,

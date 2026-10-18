@@ -7,19 +7,35 @@ import useScope from '../../hooks/useScope';
 import { useTimetableData } from '../../hooks/useTimetableData';
 import TimetableFiltersBar from '../../components/timetable/TimetableFiltersBar';
 import TimeSlotCell from '../../components/timetable/TimeSlotCell';
-import SlotModal from '../../components/timetable/SlotModal';
+import { PlacementWizardModal, type WizardSlotForm } from '../../components/timetable/builder';
+import ScheduleHeader from '../../components/timetable/ScheduleHeader';
 import { OverrideModal } from '../../components/timetable/OverrideModal';
 import { SkeletonTable } from '../../components/ui/skeleton';
 import { TimeRange } from '../../components/ui/TimeRange';
-import { PageHeader } from '../../components/ui/PageHeader';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import timetableService from '../../services/timetable.service';
 import schedulesService from '../../services/schedules.service';
+import teachingAssistantsService from '../../services/teachingAssistants.service';
+import roomsService, { Room } from '../../services/rooms.service';
 import { notifyScheduleChange, subscribeToScheduleChanges } from '../../utils/scheduleSync';
 import type { TimetableFilters, SlotsMap, Day } from '../../types/timetable.types';
 import type { SlotEntry } from '../../types/timetable.types';
 import { generateTimeSlots } from '../../utils/scheduleConfig';
-import type { SlotFormValues } from '../../components/timetable/SlotModal';
+
+export interface SlotFormValues {
+  courseName: string;
+  courseId?: number;
+  doctorName: string;
+  doctorId?: number;
+  teachingAssistantId?: string;
+  room: string;
+  roomId?: number | null;
+  slotType: 'LECTURE' | 'LAB';
+  groupName?: string;
+  dayOfWeek?: string;
+  startTime?: string;
+  endTime?: string;
+}
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const DAYS: Day[] = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
@@ -137,6 +153,52 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
     refetch,
   } = useTimetableData(filters, collegeId, deptId, user?.role);
 
+  // ── Admin Grid Filters (T3) ──────────────────────────────────────────────────
+  const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [selectedTAId, setSelectedTAId] = useState('');
+  const [selectedRoomId, setSelectedRoomId] = useState('');
+
+  const [teachingAssistants, setTeachingAssistants] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+
+  React.useEffect(() => {
+    teachingAssistantsService
+      .getTeachingAssistants({ limit: 100, ...scopeParams })
+      .then((res: any) => {
+        const arr = res?.data?.teachingAssistants || (Array.isArray(res?.data) ? res.data : []);
+        setTeachingAssistants(arr);
+      })
+      .catch(() => {});
+
+    roomsService
+      .getRooms({ limit: 100 })
+      .then((res: any) => {
+        const arr = res?.data?.rooms || (Array.isArray(res?.data) ? res.data : []);
+        setRooms(arr);
+      })
+      .catch(() => {});
+  }, [scopeParams]);
+
+  // Filtered slots according to doctor, TA, room (OD-50: Term filter removed from TimetableGrid)
+  const filteredGridSlots = useMemo(() => {
+    if (!selectedDoctorId && !selectedTAId && !selectedRoomId) {
+      return slots;
+    }
+    const filtered: SlotsMap = {};
+    for (const [key, slot] of Object.entries(slots)) {
+      if (selectedDoctorId && String(slot.doctorId) !== String(selectedDoctorId)) continue;
+      if (selectedTAId && String(slot.teachingAssistantId) !== String(selectedTAId)) continue;
+      if (selectedRoomId) {
+        const roomObj = rooms.find((r) => String(r.id) === String(selectedRoomId));
+        if (roomObj && slot.room !== roomObj.name && String((slot as any).roomId) !== String(selectedRoomId)) {
+          continue;
+        }
+      }
+      filtered[key] = slot;
+    }
+    return filtered;
+  }, [slots, selectedDoctorId, selectedTAId, selectedRoomId, rooms]);
+
   // Real-time synchronization subscription from Tables Management page
   React.useEffect(() => {
     const unsubscribe = subscribeToScheduleChanges(() => {
@@ -204,69 +266,90 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
   }, [slotToDelete, isRTL, showToast, setSlots]);
 
   // ── Save slot to local map ───────────────────────────────────────────────────
-  const handleSaveSlot = useCallback(() => {
-    if (!form.courseName || !dialog) return;
-    const key = `${dialog.day}_${dialog.slot}`;
+  const handleSaveSlot = useCallback(
+    (draft?: WizardSlotForm) => {
+      const targetCourseName = draft?.courseName || form.courseName;
+      if (!targetCourseName || !dialog) return false;
+      const key = `${dialog.day}_${dialog.slot}`;
 
-    // 1. Check if course is already scheduled on the same day
-    const sameCourseConflict = Object.entries(slots).find(
-      ([k, v]) => k !== key && k.startsWith(`${dialog.day}_`) && v.courseName === form.courseName
-    );
-    if (sameCourseConflict) {
+      // 1. Check if course is already scheduled on the same day
+      const sameCourseConflict = Object.entries(slots).find(
+        ([k, v]) => k !== key && k.startsWith(`${dialog.day}_`) && v.courseName === targetCourseName
+      );
+      if (sameCourseConflict) {
+        showToast(
+          isRTL
+            ? `المادة "${targetCourseName}" مجدولة بالفعل في هذا اليوم`
+            : `Course "${targetCourseName}" is already scheduled on this day`,
+          'error'
+        );
+        return false;
+      }
+
+      // 2. Check if doctor is already scheduled on the same time slot in local timetable
+      const targetDoctorName = draft ? draft.doctorName : form.doctorName;
+      if (targetDoctorName) {
+        const sameDoctorConflict = Object.entries(slots).find(
+          ([k, v]) => k !== key && k.endsWith(`_${dialog.slot}`) && v.doctorName === targetDoctorName
+        );
+        if (sameDoctorConflict) {
+          showToast(
+            isRTL
+              ? `المحاضر "${targetDoctorName}" محجوز بالفعل في هذا الوقت`
+              : `Instructor "${targetDoctorName}" is already booked for this slot`,
+            'error'
+          );
+          return false;
+        }
+      }
+
+      // 3. Check if room is occupied in local timetable at the same time slot
+      const targetRoom = draft ? (draft.roomName || draft.legacyRoomName || '') : form.room;
+      if (targetRoom) {
+        const sameRoomConflict = Object.entries(slots).find(
+          ([k, v]) => k !== key && k.endsWith(`_${dialog.slot}`) && v.room && v.room.toLowerCase() === targetRoom.toLowerCase()
+        );
+        if (sameRoomConflict) {
+          showToast(
+            isRTL
+              ? `القاعة "${targetRoom}" محجوزة بالفعل في هذه الفترة`
+              : `Room "${targetRoom}" is already reserved for this slot`,
+            'error'
+          );
+          return false;
+        }
+      }
+
+      const newSlot: SlotEntry = draft
+        ? {
+            courseName: draft.courseName,
+            courseId: draft.courseId ? Number(draft.courseId) : undefined,
+            doctorName: draft.doctorName,
+            doctorId: draft.doctorId ? Number(draft.doctorId) : undefined,
+            teachingAssistantId: draft.teachingAssistantId || undefined,
+            room: draft.roomName || draft.legacyRoomName || '',
+            roomId: draft.roomId || undefined,
+            slotType: draft.slotType,
+            timetableId: timetableId ?? null,
+          }
+        : { ...form, timetableId: timetableId ?? null };
+
+      setSlots((prev) => ({
+        ...prev,
+        [key]: newSlot,
+      }));
+      setHasUnsavedChanges(true);
+      setDialog(null);
       showToast(
         isRTL
-          ? `المادة "${form.courseName}" مجدولة بالفعل في هذا اليوم`
-          : `Course "${form.courseName}" is already scheduled on this day`,
-        'error'
+          ? 'تمت إضافة الحصة للمسودة 📝 — انقر على "حفظ ومزامنة الجدول" لتثبيتها'
+          : 'Slot added to draft 📝 — click "Save & Sync Timetable" to persist to database',
+        'success'
       );
-      return;
-    }
-
-    // 2. Check if doctor is already scheduled on the same time slot in local timetable
-    if (form.doctorName) {
-      const sameDoctorConflict = Object.entries(slots).find(
-        ([k, v]) => k !== key && k.endsWith(`_${dialog.slot}`) && v.doctorName === form.doctorName
-      );
-      if (sameDoctorConflict) {
-        showToast(
-          isRTL
-            ? `المحاضر "${form.doctorName}" محجوز بالفعل في هذا الوقت`
-            : `Instructor "${form.doctorName}" is already booked for this slot`,
-          'error'
-        );
-        return;
-      }
-    }
-
-    // 3. Check if room is occupied in local timetable at the same time slot
-    if (form.room) {
-      const sameRoomConflict = Object.entries(slots).find(
-        ([k, v]) => k !== key && k.endsWith(`_${dialog.slot}`) && v.room.toLowerCase() === form.room.toLowerCase()
-      );
-      if (sameRoomConflict) {
-        showToast(
-          isRTL
-            ? `القاعة "${form.room}" محجوزة بالفعل في هذه الفترة`
-            : `Room "${form.room}" is already reserved for this slot`,
-          'error'
-        );
-        return;
-      }
-    }
-
-    setSlots((prev) => ({
-      ...prev,
-      [key]: { ...form, timetableId: timetableId ?? null },
-    }));
-    setHasUnsavedChanges(true);
-    setDialog(null);
-    showToast(
-      isRTL
-        ? 'تمت إضافة الحصة للمسودة 📝 — انقر على "حفظ ومزامنة الجدول" لتثبيتها'
-        : 'Slot added to draft 📝 — click "Save & Sync Timetable" to persist to database',
-      'success'
-    );
-  }, [form, dialog, slots, timetableId, showToast, setSlots, isRTL]);
+      return true;
+    },
+    [form, dialog, slots, timetableId, showToast, setSlots, isRTL]
+  );
 
   // ── Audit Conflicts across the entire grid ───────────────────────────────────
   const handleAuditConflicts = useCallback(async () => {
@@ -426,15 +509,13 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
     <div className="section-gap animate-in fade-in duration-500">
       {/* Page Header when rendered standalone */}
       {showHeader && (
-        <PageHeader
+        <ScheduleHeader
           title={pageTitle}
           subtitle={pageSubtitle}
-          action={{
-            label: isRTL ? 'العودة للأقسام' : 'Back to Departments',
-            icon: isRTL ? ChevronRight : ChevronLeft,
-            onClick: () => navigate('/departments'),
-            className: '!bg-slate-100 dark:!bg-slate-800 !text-slate-700 dark:!text-slate-200 hover:!bg-slate-200 dark:hover:!bg-slate-700 !rounded-xl !border !border-slate-200 dark:!border-slate-700 transition-all font-bold text-xs',
-          }}
+          canManage={canManage}
+          onManage={() => navigate('/schedules-management')}
+          onRefresh={refetch}
+          isRefreshing={loadingSlots}
         />
       )}
 
@@ -489,6 +570,72 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
         onAuditConflicts={handleAuditConflicts}
       />
 
+      {/* Admin Filters Bar (T3) */}
+      {canManage && (
+        <div className="flex flex-wrap items-center gap-2 p-2.5 bg-brand-bg-card border border-brand-border rounded-xl mb-3 text-xs">
+          <span className="font-bold text-brand-text-muted">{t('common.filters', 'Admin Filters')}:</span>
+
+          {/* Doctor filter */}
+          <select
+            value={selectedDoctorId}
+            onChange={(e) => setSelectedDoctorId(e.target.value)}
+            className="h-8 px-2.5 bg-brand-bg-subtle border border-brand-border rounded-lg text-brand-text-primary text-xs cursor-pointer"
+            aria-label={isRTL ? 'Filter by Doctor (تصفية حسب الدكتور)' : 'Filter by Doctor'}
+          >
+            <option value="">{isRTL ? 'كل أعضاء هيئة التدريس' : 'All Doctors'}</option>
+            {doctors.map((doc: any) => (
+              <option key={doc.id} value={doc.id}>
+                {doc.firstName} {doc.lastName}
+              </option>
+            ))}
+          </select>
+
+          {/* TA filter */}
+          <select
+            value={selectedTAId}
+            onChange={(e) => setSelectedTAId(e.target.value)}
+            className="h-8 px-2.5 bg-brand-bg-subtle border border-brand-border rounded-lg text-brand-text-primary text-xs cursor-pointer"
+            aria-label={isRTL ? 'Filter by Teaching Assistant (تصفية حسب المعيد)' : 'Filter by Teaching Assistant'}
+          >
+            <option value="">{isRTL ? 'كل المعيدين' : 'All Teaching Assistants'}</option>
+            {teachingAssistants.map((ta: any) => (
+              <option key={ta.id} value={ta.id}>
+                {ta.firstName} {ta.lastName}
+              </option>
+            ))}
+          </select>
+
+          {/* Room filter */}
+          <select
+            value={selectedRoomId}
+            onChange={(e) => setSelectedRoomId(e.target.value)}
+            className="h-8 px-2.5 bg-brand-bg-subtle border border-brand-border rounded-lg text-brand-text-primary text-xs cursor-pointer"
+            aria-label={isRTL ? 'Filter by Room (تصفية حسب القاعة)' : 'Filter by Room'}
+          >
+            <option value="">{isRTL ? 'كل القاعات' : 'All Rooms'}</option>
+            {rooms.map((r: any) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+
+          {(selectedDoctorId || selectedTAId || selectedRoomId) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDoctorId('');
+                setSelectedTAId('');
+                setSelectedRoomId('');
+              }}
+              className="text-xs text-rose-600 hover:text-rose-700 font-semibold px-2 py-1 cursor-pointer"
+            >
+              {t('common.clear', 'Clear')}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Master Timetable Grid */}
       <div className="bg-brand-bg-card border border-brand-border rounded-2xl shadow-soft overflow-hidden relative">
         {loadingSlots && (
@@ -531,7 +678,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
                   </th>
                   {DAYS.map((day) => {
                     const key = `${day}_${slot}`;
-                    const entry = slots[key];
+                    const entry = filteredGridSlots[key];
                     return (
                       <td key={key} className="p-2 border-e border-brand-border last:border-e-0 align-top">
                         <TimeSlotCell
@@ -579,7 +726,7 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
           )}
           {timeSlots.map((slot) => {
             const key = `${selectedDay}_${slot}`;
-            const entry = slots[key];
+            const entry = filteredGridSlots[key];
             return (
               <div key={slot} className="bg-brand-bg-card border border-brand-border rounded-2xl p-4 shadow-sm flex flex-col gap-3">
                 <div className="flex justify-between items-center border-b border-brand-border/50 pb-2">
@@ -604,20 +751,47 @@ export default function TimetableGrid({ showHeader = true }: TimetableGridProps)
         </div>
       </div>
 
-      {/* Modal Dialog */}
+      {/* Placement Wizard Modal */}
       {dialog && (
-        <SlotModal
+        <PlacementWizardModal
           isOpen={Boolean(dialog)}
-          dialogContext={dialog}
-          form={form}
-          courses={courses}
-          doctors={doctors}
-          loadingCourses={loadingCourses}
-          collegeId={collegeId}
-          isRTL={isRTL}
-          onChange={setForm}
+          initialSlot={{
+            courseName: form.courseName,
+            courseId: form.courseId,
+            doctorName: form.doctorName,
+            doctorId: form.doctorId,
+            teachingAssistantId: form.teachingAssistantId,
+            room: form.room,
+            roomId: form.roomId,
+            slotType: form.slotType,
+            day: dialog.day,
+            dayOfWeek: dialog.day,
+            startTime: form.startTime || dialog.slot?.split('-')[0] || '09:00',
+            endTime: form.endTime || dialog.slot?.split('-')[1] || '11:00',
+            departmentId: filters.departmentId,
+            collegeId: filters.collegeId,
+            academicYear: filters.academicYear,
+            semester: filters.semester,
+            timetableId: timetableId ?? undefined,
+          }}
+          defaultDepartmentId={filters.departmentId}
+          defaultCollegeId={filters.collegeId}
+          defaultYear={filters.academicYear}
+          defaultSemester={filters.semester}
+          defaultDay={dialog.day}
+          defaultSlotTime={dialog.slot}
+          slotTypeSelectId="slot-type"
+          onSaveDraft={(draft) => handleSaveSlot(draft)}
           onClose={() => setDialog(null)}
-          onSubmit={handleSaveSlot}
+          onSuccess={() => {
+            setDialog(null);
+            refetch();
+            notifyScheduleChange();
+            showToast(
+              isRTL ? 'تم حفظ الحصة بنجاح' : 'Schedule slot placed successfully',
+              'success'
+            );
+          }}
         />
       )}
 

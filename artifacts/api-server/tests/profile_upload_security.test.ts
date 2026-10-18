@@ -177,6 +177,7 @@ async function runUploadSecurityTests() {
 
       console.log('✓ Suite 1 passed (Absent/partial config uses the default avatar with zero disk writes)');
     } finally {
+      prodServer.closeAllConnections?.();
       await new Promise<void>((resolve) => prodServer.close(() => resolve()));
     }
 
@@ -296,6 +297,7 @@ async function runUploadSecurityTests() {
 
       console.log('✓ Suite 2 passed (Local-disk magic byte detection and safe extensions fully working)');
     } finally {
+      devServer.closeAllConnections?.();
       await new Promise<void>((resolve) => devServer.close(() => resolve()));
     }
 

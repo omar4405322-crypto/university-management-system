@@ -789,6 +789,48 @@ test('wp3_3b_schedule_placement_wiring: Step 0 spy test and T1-T5 placement wiri
       assert.equal(overrideRes.status, 409, 'Override colliding on room must return 409');
     });
 
+    await t.test('T4: updateOverride routes through placement service (past-term lock -> 409)', async () => {
+      const pastSlot = await prisma.scheduleSlot.create({
+        data: {
+          courseId: course1.id,
+          doctorId: doctor1.id,
+          dayOfWeek: 'MONDAY',
+          startTime: '08:00',
+          endTime: '10:00',
+          termId: pastAcademicTerm.id,
+          slotType: 'LECTURE',
+        },
+      });
+      cleanup.trackSlot(pastSlot.id);
+
+      const pastOverride = await prisma.scheduleOverride.create({
+        data: {
+          scheduleSlotId: pastSlot.id,
+          startDate: new Date('2026-10-20T00:00:00Z'),
+          endDate: new Date('2026-10-27T00:00:00Z'),
+          dayOfWeek: 'MONDAY',
+          startTime: '08:00',
+          endTime: '10:00',
+          createdBy: adminUser.id,
+        },
+      });
+      cleanup.trackOverride(pastOverride.id);
+
+      const updatePastRes = await fetch(`${baseUrl}/schedules/overrides/${pastOverride.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${tokenAdmin}`,
+        },
+        body: JSON.stringify({
+          startDate: '2026-10-20T00:00:00Z',
+          endDate: '2026-10-27T00:00:00Z',
+          reason: 'Test past term lock update',
+        }),
+      });
+      assert.equal(updatePastRes.status, 409, 'Updating override on past-term slot must return 409 PAST_TERM_LOCKED');
+    });
+
     // ─────────────────────────────────────────────────────────────────────────
     // T5: Admin filters & OD-34 scope enforcement on GET /api/schedules/week
     // ─────────────────────────────────────────────────────────────────────────

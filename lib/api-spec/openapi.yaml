@@ -2207,13 +2207,16 @@ components:
         type:
           type: string
           enum:
+            - ROOM_OCCUPIED
+            - DOCTOR_BUSY
+            - TA_BUSY
+            - GROUP_CONFLICT
+            - PAST_TERM_LOCKED
             - NO_ACTIVE_TERM
-            - ROOM_COLLISION
-            - DOCTOR_COLLISION
-            - TA_COLLISION
-            - GROUP_COLLISION
-            - TA_CROSS_DEPARTMENT_UNAPPROVED
-            - PAST_TERM_IMMUTABLE
+            - INVALID_TERM
+            - ROOM_NOT_FOUND
+            - ROOM_INACTIVE
+            - UNAPPROVED_CROSS_DEPARTMENT_TA
             - AMBIGUOUS_DOCTOR
             - AMBIGUOUS_TA
         messageAr:

@@ -40,6 +40,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import useScope from '../../hooks/useScope';
 import TimetableModal from './TimetableModal';
+import ScheduleHeader from '../../components/timetable/ScheduleHeader';
 import {
   isSelectionAllowedForRole,
   toggleOne,
@@ -348,74 +349,61 @@ const TimetableManagement = () => {
 
   return (
     <div className="section-gap animate-in fade-in duration-500 space-y-4 w-full min-w-0 pb-20">
-      {/* 1. Sleek Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="page-title flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-brand-primary-500/10 text-brand-primary-600 dark:text-brand-primary-400">
-              <Calendar size={22} />
-            </span>
-            {t('timetables.managementTitle', 'General Timetable Records')}
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-            {t('timetables.managementSubtitle', 'Manage and publish master class timetables')}
-          </p>
-        </div>
+      {/* 1. Shared Schedule Header */}
+      <ScheduleHeader
+        title={t('timetables.managementTitle', 'General Timetable Records')}
+        subtitle={t('timetables.managementSubtitle', 'Manage and publish master class timetables')}
+        canManage={canManage}
+        onManage={() => {
+          setEditingTimetable(null);
+          setIsModalOpen(true);
+        }}
+        onRefresh={fetchTimetables}
+        isRefreshing={loading}
+      />
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* View Mode Switcher (Cards vs List) */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setViewMode('CARD')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                viewMode === 'CARD'
-                  ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <LayoutGrid size={14} />
-              <span>{t('timetables.viewCardView', 'Cards')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('LIST')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                viewMode === 'LIST'
-                  ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <List size={14} />
-              <span>{t('timetables.viewListView', 'List')}</span>
-            </button>
-          </div>
-
-          {/* Refresh Button */}
+      {/* View Switcher & Action Bar */}
+      <div className="flex items-center justify-between gap-2.5 flex-wrap">
+        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
           <button
             type="button"
-            onClick={fetchTimetables}
-            className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all border border-slate-200 dark:border-slate-700 active:scale-95 shadow-2xs"
-            title={t('common.refresh', 'Refresh')}
+            onClick={() => setViewMode('CARD')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'CARD'
+                ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
           >
-            <RotateCw size={15} className={loading ? 'animate-spin' : ''} />
+            <LayoutGrid size={14} />
+            <span>{t('timetables.viewCardView', 'Cards')}</span>
           </button>
-
-          {/* Create Timetable Button */}
-          {canManage && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingTimetable(null);
-                setIsModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold text-xs shadow-sm shadow-brand-primary-500/20 active:scale-95 transition-all"
-            >
-              <Plus size={15} />
-              <span>{t('timetables.createTimetable', 'New Timetable')}</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setViewMode('LIST')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'LIST'
+                ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <List size={14} />
+            <span>{t('timetables.viewListView', 'List')}</span>
+          </button>
         </div>
+
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditingTimetable(null);
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold text-xs shadow-sm shadow-brand-primary-500/20 active:scale-95 transition-all"
+          >
+            <Plus size={15} />
+            <span>{t('timetables.createTimetable', 'New Timetable')}</span>
+          </button>
+        )}
       </div>
 
       {/* ========================================================================= */}

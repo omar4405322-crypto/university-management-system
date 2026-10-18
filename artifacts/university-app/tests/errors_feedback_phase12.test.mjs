@@ -149,7 +149,7 @@ describe('Phase 12 — Inline Form Field Error Accessibility', () => {
   const FORM_MODALS = [
     'pages/courses/CourseModal.tsx',
     'pages/finance/AddPaymentModal.tsx',
-    'pages/schedules/ScheduleModal.tsx',
+    'components/timetable/builder/Step3TimeRoom.tsx',
     'pages/schedules/TimetableModal.tsx',
   ];
 
@@ -197,7 +197,7 @@ describe('Phase 12 — i18n Symmetry & Fallback Hygiene', () => {
 
   it('no literal dummy key fallback t("key", "key") in touched Phase 12 files', () => {
     const files = [
-      'pages/schedules/ScheduleModal.tsx',
+      'components/timetable/builder/Step3TimeRoom.tsx',
       'pages/finance/FinanceDashboard.tsx',
       'pages/registration/RegistrationRequests.tsx',
     ];

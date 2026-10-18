@@ -70,7 +70,7 @@ describe('Schedules & Timetable: 2-Type Enforcement & Persistence Live Browser S
     await context.close();
   });
 
-  it('Pillar 1 & 2: ScheduleModal enforces strictly 2 types, TA string ID, and allows Lecture & Lab', async () => {
+  it('Pillar 1 & 2: PlacementWizardModal enforces strictly 2 types, TA string ID, and allows Lecture & Lab', async () => {
     let createdPayloads = [];
 
     const { context, page } = await mockSessionPage(browser, {
@@ -108,7 +108,10 @@ describe('Schedules & Timetable: 2-Type Enforcement & Persistence Live Browser S
         contentType: 'application/json',
         body: JSON.stringify({
           success: true,
-          data: [{ id: 41, name: 'Operating Systems', code: 'CS301', departmentId: 1, year: 2, semester: 1 }],
+          data: {
+            courses: [{ id: 41, name: 'Operating Systems', code: 'CS301', courseCode: 'CS301', departmentId: 1, year: 2, semester: 1 }],
+            pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+          },
         }),
       });
     });
@@ -119,7 +122,12 @@ describe('Schedules & Timetable: 2-Type Enforcement & Persistence Live Browser S
         contentType: 'application/json',
         body: JSON.stringify({
           success: true,
-          data: [{ id: 12, firstName: 'Dr. Mahmoud', lastName: 'Hassan', departmentId: 1 }],
+          data: {
+            doctors: [{ id: 12, firstName: 'Dr. Mahmoud', lastName: 'Hassan', departmentId: 1 }],
+            total: 1,
+            page: 1,
+            totalPages: 1,
+          },
         }),
       });
     });
@@ -130,7 +138,54 @@ describe('Schedules & Timetable: 2-Type Enforcement & Persistence Live Browser S
         contentType: 'application/json',
         body: JSON.stringify({
           success: true,
-          data: [{ id: 'clxyz1234567890', firstName: 'Eng. Sarah', lastName: 'Adel', departmentId: 1 }],
+          data: {
+            teachingAssistants: [{ id: 'clxyz1234567890', firstName: 'Eng. Sarah', lastName: 'Adel', departmentId: 1 }],
+            total: 1,
+            page: 1,
+            totalPages: 1,
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/rooms**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            rooms: [{ id: 1, name: 'Hall 101', capacity: 100, isActive: true }],
+            pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/schedules/check-conflict**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          hasConflict: false,
+          conflicts: [],
+          resolvedTerm: { id: 1, name: 'Fall 2024' },
+          resolvedRoom: { id: 1, name: 'Hall 101' },
+        }),
+      });
+    });
+
+    await page.route('**/api/teaching-assistants/cross-department-approvals**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            approvals: [],
+            pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+          },
         }),
       });
     });
@@ -188,7 +243,7 @@ describe('Schedules & Timetable: 2-Type Enforcement & Persistence Live Browser S
     await context.close();
   });
 
-  it('Pillar 1 & 2: TimetableGrid SlotModal strictly 2 types & Unsaved Changes Banner appears', async () => {
+  it('Pillar 1 & 2: TimetableGrid PlacementWizardModal strictly 2 types & Unsaved Changes Banner appears', async () => {
     const { context, page } = await mockSessionPage(browser, {
       role: 'SUPER_ADMIN',
       language: 'en',
@@ -217,13 +272,34 @@ describe('Schedules & Timetable: 2-Type Enforcement & Persistence Live Browser S
       });
     });
 
+    let postScheduleCount = 0;
+    await page.route('**/api/schedules', async (route) => {
+      if (route.request().method() === 'POST') {
+        postScheduleCount++;
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true, data: { id: 999 } }),
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true, data: [] }),
+        });
+      }
+    });
+
     await page.route('**/api/courses**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           success: true,
-          data: [{ id: 41, name: 'Operating Systems', code: 'CS301', departmentId: 1 }],
+          data: {
+            courses: [{ id: 41, name: 'Operating Systems', code: 'CS301', courseCode: 'CS301', departmentId: 1 }],
+            pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
+          },
         }),
       });
     });
@@ -234,7 +310,70 @@ describe('Schedules & Timetable: 2-Type Enforcement & Persistence Live Browser S
         contentType: 'application/json',
         body: JSON.stringify({
           success: true,
-          data: [{ id: 12, firstName: 'Dr. Mahmoud', lastName: 'Hassan', departmentId: 1 }],
+          data: {
+            doctors: [{ id: 12, firstName: 'Dr. Mahmoud', lastName: 'Hassan', departmentId: 1 }],
+            total: 1,
+            page: 1,
+            totalPages: 1,
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/teaching-assistants**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            teachingAssistants: [{ id: 'clxyz1234567890', firstName: 'Eng. Sarah', lastName: 'Adel', departmentId: 1 }],
+            total: 1,
+            page: 1,
+            totalPages: 1,
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/rooms**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            rooms: [{ id: 1, name: 'Hall 101', capacity: 100, isActive: true }],
+            pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/schedules/check-conflict**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          hasConflict: false,
+          conflicts: [],
+          resolvedTerm: { id: 1, name: 'Fall 2024' },
+          resolvedRoom: { id: 1, name: 'Hall 101' },
+        }),
+      });
+    });
+
+    await page.route('**/api/teaching-assistants/cross-department-approvals**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            approvals: [],
+            pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+          },
         }),
       });
     });
@@ -251,7 +390,7 @@ describe('Schedules & Timetable: 2-Type Enforcement & Persistence Live Browser S
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ success: true, data: [] }),
+        body: JSON.stringify({ success: true, data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 1 } }),
       });
     });
 
@@ -267,13 +406,17 @@ describe('Schedules & Timetable: 2-Type Enforcement & Persistence Live Browser S
     await slotTypeSelect.waitFor({ state: 'visible', timeout: 5000 });
 
     const slotOptions = await slotTypeSelect.locator('option').evaluateAll((opts) => opts.map((o) => ({ value: o.value, text: o.text })));
-    console.log('TimetableGrid SlotModal options:', slotOptions);
+    console.log('TimetableGrid PlacementWizardModal options:', slotOptions);
 
-    assert.equal(slotOptions.length, 2, 'SlotModal must have strictly 2 options');
+    assert.equal(slotOptions.length, 2, 'PlacementWizardModal must have strictly 2 options');
     const slotValues = slotOptions.map((o) => o.value);
     assert.deepEqual(slotValues.sort(), ['LAB', 'LECTURE'].sort());
-    assert.equal(slotValues.includes('SECTION'), false, 'SECTION must not exist in SlotModal');
-    assert.equal(slotValues.includes('TUTORIAL'), false, 'TUTORIAL must not exist in SlotModal');
+    assert.equal(slotValues.includes('SECTION'), false, 'SECTION must not exist in PlacementWizardModal');
+    assert.equal(slotValues.includes('TUTORIAL'), false, 'TUTORIAL must not exist in PlacementWizardModal');
+
+    // Step 1: Verify save draft button is NOT present early on step 1
+    const step1SaveBtn = page.locator('#wizard-save-draft-btn');
+    assert.equal(await step1SaveBtn.count(), 0, 'No save draft button should render on step 1');
 
     // Select course from SearchableSelect inside dialog
     const courseSelectTrigger = page.locator('[role="dialog"]').locator('button').filter({ hasText: /Select Course|Course/i }).first();
@@ -285,9 +428,38 @@ describe('Schedules & Timetable: 2-Type Enforcement & Persistence Live Browser S
     // Select Slot Type
     await page.selectOption('#slot-type', 'LECTURE');
 
-    // Click save button inside modal dialog
-    const modalSaveBtn = page.locator('[role="dialog"]').locator('button').filter({ hasText: /Add Class Slot|Save|حفظ|إضافة/i }).last();
-    await modalSaveBtn.click();
+    // Click Next to advance to Step 2 (Instructor)
+    const nextBtn = page.locator('#wizard-next-btn');
+    await nextBtn.click();
+
+    // Step 2: Instructor Assignment - select doctor
+    const doctorBtn = page.locator('[role="dialog"]').locator('button').filter({ hasText: /Dr\. Mahmoud Hassan/i }).first();
+    await doctorBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await doctorBtn.click();
+
+    // Click Next to advance to Step 3 (Time & Hall)
+    await nextBtn.click();
+
+    // Step 3: Time & Hall - select Room
+    const roomBtn = page.locator('[role="dialog"]').locator('button').filter({ hasText: /Hall 101/i }).first();
+    await roomBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await roomBtn.click();
+
+    // Click Next to advance to Step 4 (Review & Placement)
+    await nextBtn.click();
+
+    // Step 4: Review & Conflict Check - wait for check to complete and click primary save button
+    const commitBtn = page.locator('#wizard-commit-btn');
+    await commitBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await page.waitForFunction(() => {
+      const btn = document.querySelector('#wizard-commit-btn');
+      return btn && !btn.hasAttribute('disabled');
+    }, { timeout: 10000 });
+
+    await commitBtn.click();
+
+    // Verify ZERO POST /api/schedules requests were made!
+    assert.equal(postScheduleCount, 0, 'Draft commit must make ZERO POST /api/schedules requests');
 
     // Verify Unsaved Changes Banner appears prominently!
     const unsavedBanner = page.getByText(/You have unsaved changes|لديك تعديلات غير محفوظة/i).first();

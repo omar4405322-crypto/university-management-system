@@ -24,7 +24,9 @@ import {
   CalendarDays,
   CheckSquare,
   Square,
-  MinusSquare
+  MinusSquare,
+  Archive,
+  Download
 } from 'lucide-react';
 import Card, { StatCard } from '../../components/ui/card';
 import Button from '../../components/ui/button';
@@ -37,6 +39,10 @@ import schedulesService from '../../services/schedules.service';
 import collegeService from '../../services/college.service';
 import departmentService from '../../services/department.service';
 import coursesService from '../../services/courses.service';
+import doctorsService from '../../services/doctors.service';
+import teachingAssistantsService from '../../services/teachingAssistants.service';
+import roomsService, { Room } from '../../services/rooms.service';
+import academicTermService, { AcademicTermData } from '../../services/academicTerm.service';
 import type { ApiResponse } from '../../types/models';
 import type { College, Department, Course } from '../../types/timetable.types';
 import type { ScheduleSlot, TimetableDayRecord } from './DoctorSchedule';
@@ -54,7 +60,8 @@ import {
 } from '../../utils/scheduleSelectionRules';
 import { formatSlotType } from '../../utils/slotType';
 import { useSearchParams } from 'react-router-dom';
-import ScheduleModal from './ScheduleModal';
+import { PlacementWizardModal } from '../../components/timetable/builder';
+import ScheduleHeader from '../../components/timetable/ScheduleHeader';
 import { ScheduleView } from '../../components/timetable/ScheduleView';
 import { generateHourlyTimes } from '../../utils/scheduleConfig';
 import { logger } from '../../lib/logger';
@@ -119,6 +126,18 @@ const SchedulesList = () => {
   const [filterConflictsOnly, setFilterConflictsOnly] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
 
+  // Admin Filter States (T3)
+  const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [selectedTAId, setSelectedTAId] = useState('');
+  const [selectedRoomId, setSelectedRoomId] = useState('');
+  const [selectedTermId, setSelectedTermId] = useState('');
+
+  // Metadata states
+  const [doctorsList, setDoctorsList] = useState<any[]>([]);
+  const [taList, setTaList] = useState<any[]>([]);
+  const [roomsList, setRoomsList] = useState<Room[]>([]);
+  const [termsList, setTermsList] = useState<AcademicTermData[]>([]);
+
   // Pagination State
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -127,6 +146,8 @@ const SchedulesList = () => {
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [isBulkArchiving, setIsBulkArchiving] = useState(false);
+  const [bulkArchiveModalOpen, setBulkArchiveModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ScheduleSlot | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -140,10 +161,14 @@ const SchedulesList = () => {
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
-        const [collegesRes, deptsRes, coursesRes] = await Promise.all([
+        const [collegesRes, deptsRes, coursesRes, doctorsRes, tasRes, roomsRes, termsRes] = await Promise.all([
           collegeService.getColleges({ limit: 100 }).catch((): ApiResponse<any> => ({ success: false, data: [] })),
           departmentService.getDepartments({ limit: 200 }).catch((): ApiResponse<any> => ({ success: false, data: [] })),
           coursesService.getCourses({ limit: 300 }).catch((): ApiResponse<any> => ({ success: false, data: [] })),
+          doctorsService.getDoctors({ limit: 200, ...scopeParams }).catch((): ApiResponse<any> => ({ success: false, data: [] })),
+          teachingAssistantsService.getTeachingAssistants({ limit: 200, ...scopeParams }).catch((): ApiResponse<any> => ({ success: false, data: [] })),
+          roomsService.getRooms({ limit: 200 }).catch((): ApiResponse<any> => ({ success: false, data: [] })),
+          academicTermService.getAcademicTerms().catch((): ApiResponse<any> => ({ success: false, data: [] })),
         ]);
 
         if (collegesRes.success || collegesRes.data) {
@@ -166,13 +191,41 @@ const SchedulesList = () => {
             : coursesRes.data?.courses || coursesRes.data?.data || [];
           setCourses(arr);
         }
+
+        if (doctorsRes.success || doctorsRes.data) {
+          const arr = Array.isArray(doctorsRes.data)
+            ? doctorsRes.data
+            : (doctorsRes.data as any)?.doctors || (doctorsRes.data as any)?.data || [];
+          setDoctorsList(arr);
+        }
+
+        if (tasRes.success || tasRes.data) {
+          const arr = Array.isArray(tasRes.data)
+            ? tasRes.data
+            : (tasRes.data as any)?.teachingAssistants || (tasRes.data as any)?.data || [];
+          setTaList(arr);
+        }
+
+        if (roomsRes.success || roomsRes.data) {
+          const arr = Array.isArray(roomsRes.data)
+            ? roomsRes.data
+            : (roomsRes.data as any)?.rooms || (roomsRes.data as any)?.data || [];
+          setRoomsList(arr);
+        }
+
+        if (termsRes.success || termsRes.data) {
+          const arr = Array.isArray(termsRes.data)
+            ? termsRes.data
+            : (termsRes.data as any)?.terms || (termsRes.data as any)?.data || [];
+          setTermsList(arr);
+        }
       } catch (err) {
         logger.error('Error fetching metadata:', err);
       }
     };
 
     fetchMetadata();
-  }, []);
+  }, [scopeParams]);
 
   // Cascading departments for selected college
   const filteredDepartments = useMemo(() => {
@@ -180,6 +233,24 @@ const SchedulesList = () => {
     const colId = parseInt(selectedCollege, 10);
     return departments.filter((d) => d.collegeId === colId);
   }, [departments, selectedCollege]);
+
+  // Cascading role-scoped doctors
+  const filteredDoctors = useMemo(() => {
+    return doctorsList.filter((doc) => {
+      if (selectedDept && doc.departmentId && String(doc.departmentId) !== String(selectedDept)) return false;
+      if (selectedCollege && doc.department?.collegeId && String(doc.department?.collegeId) !== String(selectedCollege)) return false;
+      return true;
+    });
+  }, [doctorsList, selectedDept, selectedCollege]);
+
+  // Cascading role-scoped TAs
+  const filteredTAs = useMemo(() => {
+    return taList.filter((ta) => {
+      if (selectedDept && ta.departmentId && String(ta.departmentId) !== String(selectedDept)) return false;
+      if (selectedCollege && ta.department?.collegeId && String(ta.department?.collegeId) !== String(selectedCollege)) return false;
+      return true;
+    });
+  }, [taList, selectedDept, selectedCollege]);
 
   // 2. Fetch Master Schedules
   const fetchSchedules = useCallback(async () => {
@@ -190,6 +261,11 @@ const SchedulesList = () => {
         ...scopeParams,
         ...(showArchived ? { isArchived: 'true' } : {}),
       };
+      if (selectedDoctorId) params.doctorId = selectedDoctorId;
+      if (selectedTAId) params.teachingAssistantId = selectedTAId;
+      if (selectedRoomId) params.roomId = selectedRoomId;
+      if (selectedTermId) params.termId = selectedTermId;
+
       const result = await schedulesService.getAllSchedules(params);
       if (result.success || result.data) {
         const rawData = result.data as ScheduleSlot[] | { schedules?: ScheduleSlot[]; data?: ScheduleSlot[] } | null;
@@ -205,7 +281,7 @@ const SchedulesList = () => {
     } finally {
       setLoading(false);
     }
-  }, [scopeParams, showArchived, t, showToast]);
+  }, [scopeParams, showArchived, selectedDoctorId, selectedTAId, selectedRoomId, selectedTermId, t, showToast]);
 
   useEffect(() => {
     fetchSchedules();
@@ -377,6 +453,23 @@ const SchedulesList = () => {
         if (!matches) return false;
       }
 
+      // Doctor Filter (T3)
+      if (selectedDoctorId && String(s.doctorId || s.doctor?.id) !== String(selectedDoctorId)) return false;
+
+      // TA Filter (T3)
+      if (selectedTAId && String(s.teachingAssistantId || s.teachingAssistant?.id) !== String(selectedTAId)) return false;
+
+      // Room Filter (T3)
+      if (selectedRoomId) {
+        const selectedRoomObj = roomsList.find((r) => String(r.id) === String(selectedRoomId));
+        const roomNameMatch = selectedRoomObj && (s.room === selectedRoomObj.name || (s as any).roomId === selectedRoomObj.id);
+        const roomIdMatch = (s as any).roomId && String((s as any).roomId) === String(selectedRoomId);
+        if (!roomNameMatch && !roomIdMatch) return false;
+      }
+
+      // Term Filter (T3)
+      if (selectedTermId && (s as any).termId && String((s as any).termId) !== String(selectedTermId)) return false;
+
       return true;
     });
   }, [
@@ -386,6 +479,11 @@ const SchedulesList = () => {
     selectedYear,
     selectedSemester,
     selectedSlotType,
+    selectedDoctorId,
+    selectedTAId,
+    selectedRoomId,
+    selectedTermId,
+    roomsList,
     filterMissingRoom,
     filterMissingDoctor,
     filterConflictsOnly,
@@ -402,6 +500,10 @@ const SchedulesList = () => {
     selectedYear,
     selectedSemester,
     selectedSlotType,
+    selectedDoctorId,
+    selectedTAId,
+    selectedRoomId,
+    selectedTermId,
     filterMissingRoom,
     filterMissingDoctor,
     filterConflictsOnly,
@@ -468,6 +570,27 @@ const SchedulesList = () => {
     }
   };
 
+  // Bulk Archive Selected Sessions (T4: OD-40)
+  const confirmBulkArchive = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      setIsBulkArchiving(true);
+      const results = await Promise.allSettled(
+        Array.from(selectedIds).map((id) => schedulesService.archiveSchedule(String(id)))
+      );
+      const succeeded = results.filter((r) => r.status === 'fulfilled' && (r.value as any)?.success !== false).length;
+      const failed = results.length - succeeded;
+      showToast(`${succeeded} succeeded / ${failed} failed`, succeeded > 0 ? 'success' : 'error');
+      setSelectedIds(clearSelection());
+      setBulkArchiveModalOpen(false);
+      fetchSchedules();
+    } catch (_error) {
+      showToast(t('common.error', 'Error archiving sessions'), 'error');
+    } finally {
+      setIsBulkArchiving(false);
+    }
+  };
+
   // Bulk Export Selected Sessions
   const handleBulkExport = () => {
     const selectedList = filteredSchedules.filter((s) => s.id !== undefined && selectedIds.has(s.id));
@@ -526,6 +649,10 @@ const SchedulesList = () => {
     setFilterMissingRoom(false);
     setFilterMissingDoctor(false);
     setFilterConflictsOnly(false);
+    setSelectedDoctorId('');
+    setSelectedTAId('');
+    setSelectedRoomId('');
+    setSelectedTermId('');
   };
 
   const hasActiveFilters =
@@ -535,92 +662,85 @@ const SchedulesList = () => {
     (filterPermissions.year && selectedYear !== '') ||
     (filterPermissions.semester && selectedSemester !== '') ||
     (filterPermissions.type && selectedSlotType !== 'all') ||
+    selectedDoctorId !== '' ||
+    selectedTAId !== '' ||
+    selectedRoomId !== '' ||
+    selectedTermId !== '' ||
     filterMissingRoom ||
     filterMissingDoctor ||
     filterConflictsOnly;
 
   return (
     <div className="section-gap animate-in fade-in duration-500 space-y-4 w-full min-w-0 pb-20">
-      {/* 1. Sleek Page Header */}
-      <div className="page-header-row">
-        <div>
-          <h1 className="page-title flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-brand-primary-500/10 text-brand-primary-600 dark:text-brand-primary-400">
-              <Calendar size={22} />
-            </span>
-            {t('schedules.managementTitle', 'Schedules & Sessions Management')}
-          </h1>
-          <p className="page-subtitle">
-            {t('schedules.managementSubtitle', 'Manage class schedules, halls, faculty members, and student groups')}
-          </p>
-        </div>
+      {/* 1. Shared Schedule Header */}
+      <ScheduleHeader
+        title={t('schedules.managementTitle', 'Schedules & Sessions Management')}
+        subtitle={t('schedules.managementSubtitle', 'Manage class schedules, halls, faculty members, and student groups')}
+        canManage={canManage}
+        onManage={() => {
+          setEditingSchedule(null);
+          setIsModalOpen(true);
+        }}
+        onRefresh={fetchSchedules}
+        isRefreshing={loading}
+      />
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* View Mode Switcher (List, Cards, Grid) */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => handleViewModeChange('LIST')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                viewMode === 'LIST'
-                  ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <List size={14} />
-              <span>{t('schedules.viewListView', 'List')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleViewModeChange('CARD')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                viewMode === 'CARD'
-                  ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <LayoutGrid size={14} />
-              <span>{t('schedules.viewCardView', 'Cards')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleViewModeChange('GRID')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                viewMode === 'GRID'
-                  ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <CalendarDays size={14} />
-              <span>{t('schedules.viewTimetableGrid', 'Timetable')}</span>
-            </button>
-          </div>
-
-          {/* Refresh Button */}
+      {/* View Switcher & Action Bar */}
+      <div className="flex items-center justify-between gap-2.5 flex-wrap">
+        {/* View Mode Switcher (List, Cards, Grid) */}
+        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
           <button
             type="button"
-            onClick={fetchSchedules}
-            className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all border border-slate-200 dark:border-slate-700 shadow-2xs active:scale-95"
-            title={t('common.refresh', 'Refresh')}
+            onClick={() => handleViewModeChange('LIST')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'LIST'
+                ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
           >
-            <RotateCw size={15} className={loading ? 'animate-spin' : ''} />
+            <List size={14} />
+            <span>{t('schedules.viewListView', 'List')}</span>
           </button>
-
-          {/* Create Session Button */}
-          {canManage && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingSchedule(null);
-                setIsModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold text-xs shadow-sm shadow-brand-primary-500/20 active:scale-95 transition-all"
-            >
-              <Plus size={15} />
-              <span>{t('schedules.createSession', 'New Session')}</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => handleViewModeChange('CARD')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'CARD'
+                ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <LayoutGrid size={14} />
+            <span>{t('schedules.viewCardView', 'Cards')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleViewModeChange('GRID')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'GRID'
+                ? 'bg-white dark:bg-slate-700 text-brand-primary-600 dark:text-brand-primary-300 shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <CalendarDays size={14} />
+            <span>{t('schedules.viewTimetableGrid', 'Timetable')}</span>
+          </button>
         </div>
+
+        {/* Create Session Button */}
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditingSchedule(null);
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold text-xs shadow-sm shadow-brand-primary-500/20 active:scale-95 transition-all"
+          >
+            <Plus size={15} />
+            <span>{t('schedules.createSession', 'New Session')}</span>
+          </button>
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -795,6 +915,74 @@ const SchedulesList = () => {
             <option value="all">{t('common.all', 'All Types')}</option>
             <option value="LECTURE">{t('schedule.lecture', 'Lectures')}</option>
             <option value="LAB">{t('schedule.lab', 'Labs')}</option>
+          </select>
+        )}
+
+        {/* Doctor Filter (T3) */}
+        {canManage && (
+          <select
+            value={selectedDoctorId}
+            onChange={(e) => setSelectedDoctorId(e.target.value)}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+            aria-label={isRTL ? 'Filter by Doctor (تصفية حسب الدكتور)' : 'Filter by Doctor'}
+          >
+            <option value="">{isRTL ? 'كل أعضاء هيئة التدريس' : 'All Doctors'}</option>
+            {filteredDoctors.map((doc: any) => (
+              <option key={doc.id} value={doc.id}>
+                {doc.firstName} {doc.lastName}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Teaching Assistant Filter (T3) */}
+        {canManage && (
+          <select
+            value={selectedTAId}
+            onChange={(e) => setSelectedTAId(e.target.value)}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+            aria-label={isRTL ? 'Filter by Teaching Assistant (تصفية حسب المعيد)' : 'Filter by Teaching Assistant'}
+          >
+            <option value="">{isRTL ? 'كل المعيدين' : 'All Teaching Assistants'}</option>
+            {filteredTAs.map((ta: any) => (
+              <option key={ta.id} value={ta.id}>
+                {ta.firstName} {ta.lastName}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Room Filter (T3) */}
+        {canManage && (
+          <select
+            value={selectedRoomId}
+            onChange={(e) => setSelectedRoomId(e.target.value)}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+            aria-label={isRTL ? 'Filter by Room (تصفية حسب القاعة)' : 'Filter by Room'}
+          >
+            <option value="">{isRTL ? 'كل القاعات' : 'All Rooms'}</option>
+            {roomsList.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Academic Term Filter (T3) */}
+        {canManage && (
+          <select
+            value={selectedTermId}
+            onChange={(e) => setSelectedTermId(e.target.value)}
+            className="h-8.5 px-3 text-xs border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1.5 focus:ring-brand-primary-500 cursor-pointer"
+            aria-label={isRTL ? 'Filter by Academic Term (تصفية حسب الفصل الأكاديمي)' : 'Filter by Academic Term'}
+          >
+            <option value="">{isRTL ? 'كل الفصول الأكاديمية' : 'All Academic Terms'}</option>
+            {termsList.map((term) => (
+              <option key={term.id} value={term.id}>
+                {term.name}
+              </option>
+            ))}
           </select>
         )}
 
@@ -1355,15 +1543,62 @@ const SchedulesList = () => {
         </Card>
       )}
 
-      {/* 4. Standard Bottom Floating BulkActionToolbar */}
+      {/* 4. Standard Bottom Floating BulkActionToolbar (T4: OD-40 Bulk Archive) */}
       {canManage && (
         <BulkActionToolbar
           selectedCount={selectedIds.size}
           onClear={() => setSelectedIds(clearSelection())}
-          onExport={handleBulkExport}
-          onDelete={() => setBulkDeleteModalOpen(true)}
-        />
+        >
+          {/* Export */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBulkExport}
+            className="h-8 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all rounded-xl"
+          >
+            <Download size={14} className="mr-1.5 rtl:mr-0 rtl:ml-1.5" />
+            {t('common.export', 'Export')}
+          </Button>
+
+          {/* Amber Archive Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setBulkArchiveModalOpen(true)}
+            className="h-8 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:text-amber-700 transition-all rounded-xl"
+          >
+            <Archive size={14} className="mr-1.5 rtl:mr-0 rtl:ml-1.5" />
+            {isRTL ? 'أرشفة' : 'Archive'}
+          </Button>
+
+          {/* Delete */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setBulkDeleteModalOpen(true)}
+            className="h-8 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-700 transition-all rounded-xl"
+          >
+            <Trash2 size={14} className="mr-1.5 rtl:mr-0 rtl:ml-1.5" />
+            {t('common.delete', 'Delete')}
+          </Button>
+        </BulkActionToolbar>
       )}
+
+      {/* Bulk Sessions Archive Confirmation Modal (T4) */}
+      <ConfirmDeleteModal
+        isOpen={bulkArchiveModalOpen}
+        itemName={`${selectedIds.size} ${isRTL ? 'حصص دراسية' : 'sessions'}`}
+        onClose={() => !isBulkArchiving && setBulkArchiveModalOpen(false)}
+        onConfirm={confirmBulkArchive}
+        loading={isBulkArchiving}
+        title={isRTL ? 'تأكيد أرشفة الحصص المحددة' : 'Confirm Archive Selected Sessions'}
+        confirmLabel={isRTL ? 'أرشفة الحصص المحددة' : 'Archive Selected'}
+        message={
+          isRTL
+            ? `هل أنت متأكد من أرشفة ${selectedIds.size} حصة دراسية محددة؟ سيتم نقلها إلى الأرشيف.`
+            : `Are you sure you want to archive ${selectedIds.size} selected schedule sessions? They will be moved to archived status.`
+        }
+      />
 
       {/* Single Session Delete Confirmation Modal */}
       <ConfirmDeleteModal
@@ -1397,16 +1632,39 @@ const SchedulesList = () => {
         }
       />
 
-      {/* Schedule Edit / Create Modal */}
+      {/* Schedule Edit / Create Placement Wizard Modal */}
       {isModalOpen && (
-        <ScheduleModal
+        <PlacementWizardModal
           isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);
             setEditingSchedule(null);
           }}
-          schedule={editingSchedule}
-          courses={courses}
+          initialSlot={editingSchedule ? {
+            id: editingSchedule.id,
+            departmentId: (editingSchedule as any).departmentId || editingSchedule.course?.departmentId || (editingSchedule as any).course?.department?.id || (editingSchedule as any).department?.id || selectedDept,
+            collegeId: (editingSchedule as any).collegeId || (editingSchedule as any).course?.department?.collegeId || (editingSchedule as any).department?.collegeId || selectedCollege,
+            academicYear: (editingSchedule as any).academicYear || editingSchedule.year || editingSchedule.course?.year || selectedYear || 1,
+            semester: editingSchedule.semester || editingSchedule.course?.semester || selectedSemester || 1,
+            courseId: editingSchedule.courseId || editingSchedule.course?.id,
+            courseName: editingSchedule.course?.name,
+            doctorId: editingSchedule.doctorId || editingSchedule.doctor?.id,
+            doctorName: editingSchedule.doctor ? `${editingSchedule.doctor.firstName || ''} ${editingSchedule.doctor.lastName || ''}`.trim() : undefined,
+            teachingAssistantId: (editingSchedule as any).teachingAssistantId || (editingSchedule as any).teachingAssistant?.id,
+            slotType: editingSchedule.slotType,
+            dayOfWeek: editingSchedule.dayOfWeek,
+            startTime: editingSchedule.startTime,
+            endTime: editingSchedule.endTime,
+            room: editingSchedule.room,
+            roomId: (editingSchedule as any).roomId,
+            groupId: editingSchedule.groupId || editingSchedule.group?.id,
+            groupName: editingSchedule.group?.name,
+          } : null}
+          defaultDepartmentId={selectedDept}
+          defaultCollegeId={selectedCollege}
+          defaultYear={selectedYear}
+          defaultSemester={selectedSemester}
+          slotTypeSelectId="schedule-slot-type-select"
           onSuccess={() => {
             setIsModalOpen(false);
             setEditingSchedule(null);
