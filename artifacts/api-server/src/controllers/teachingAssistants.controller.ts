@@ -672,6 +672,24 @@ export const deleteTeachingAssistant = catchAsync(async (req: Request, res: Resp
     );
   }
 
+  const hasGradeEntries = await prisma.courseGradeEntry.findFirst({
+    where: {
+      OR: [
+        { draftedById: ta.userId },
+        { publishedById: ta.userId },
+      ],
+    },
+    select: { id: true },
+  });
+  if (hasGradeEntries) {
+    return next(
+      new AppError(
+        'Cannot delete teaching assistant with drafted grade entries. Grade records must be preserved.',
+        409
+      )
+    );
+  }
+
   await prisma.$transaction(async (tx: any) => {
     await tx.teachingAssistant.delete({ where: { id: ta.id } });
     await tx.user.delete({ where: { id: ta.userId } });

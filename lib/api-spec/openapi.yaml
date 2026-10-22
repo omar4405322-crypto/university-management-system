@@ -625,6 +625,284 @@ paths:
               schema:
                 $ref: "#/components/schemas/CourseListResponse"
 
+  /courses/{courseId}/grade-structure:
+    get:
+      operationId: getCourseGradeStructure
+      tags: [courses]
+      summary: Get course grade structure
+      description: Returns configured grade components, total points, pass mark, and lock status for a course in a given term
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: termId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Course grade structure details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseGradeStructureResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    put:
+      operationId: updateCourseGradeStructure
+      tags: [courses]
+      summary: Update course grade structure
+      description: Upserts grade components and pass mark for a course in a given term with serializable isolation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: termId
+          in: query
+          required: false
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseGradeStructureInput"
+      responses:
+        "200":
+          description: Updated course grade structure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseGradeStructureResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /courses/{courseId}/gradebook:
+    get:
+      operationId: getCourseGradebook
+      tags: [courses]
+      summary: Get course gradebook
+      description: Returns course grade structure and enrolled students with grade entries for a given term
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: termId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Gradebook data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseGradebookResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /courses/{courseId}/gradebook/draft:
+    post:
+      operationId: saveCourseGradebookDraft
+      tags: [courses]
+      summary: Save gradebook draft entries
+      description: Atomically creates, updates, or clears draft grade entries with serializable transaction isolation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: termId
+          in: query
+          required: false
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseGradebookDraftInput"
+      responses:
+        "200":
+          description: Draft entries saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseGradebookDraftResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /courses/{courseId}/gradebook/publish:
+    post:
+      operationId: publishCourseGradebook
+      tags: [courses]
+      summary: Publish gradebook entries and evaluate enrollment completion
+      description: Flips draft entries to published and evaluates completeness and final grades with serializable transaction isolation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: termId
+          in: query
+          required: false
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enrollmentIds:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        "200":
+          description: Gradebook published successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /courses/{courseId}/gradebook/correct:
+    post:
+      operationId: correctCourseGradebook
+      tags: [courses]
+      summary: Correct published grade entries
+      description: Atomically corrects published manual grade entries and recomputes completion with optimistic concurrency locking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: termId
+          in: query
+          required: false
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [corrections]
+              properties:
+                corrections:
+                  type: array
+                  items:
+                    type: object
+                    required: [enrollmentId, componentId, version, reason]
+                    properties:
+                      enrollmentId:
+                        type: integer
+                      componentId:
+                        type: integer
+                      score:
+                        type: number
+                        nullable: true
+                      isAbsent:
+                        type: boolean
+                      version:
+                        type: integer
+                      reason:
+                        type: string
+      responses:
+        "200":
+          description: Corrections applied successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
   /courses/{id}:
     get:
       operationId: getCourseById
@@ -647,6 +925,33 @@ paths:
                 $ref: "#/components/schemas/CourseDetail"
         "404":
           $ref: "#/components/responses/NotFoundError"
+
+  /enrollments/my-grades:
+    get:
+      operationId: getMyGrades
+      tags: [enrollment]
+      summary: Get student personal grades and component breakdowns
+      description: Returns published grade entries, components, pass mark, and completion status for authenticated student
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Student grades report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
 
   /enrollments:
     get:
@@ -2342,4 +2647,274 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    CourseGradeComponentItem:
+      type: object
+      required:
+        - id
+        - name
+        - maxPoints
+        - source
+        - displayOrder
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        nameAr:
+          type: string
+          nullable: true
+        maxPoints:
+          type: number
+        source:
+          type: string
+          enum: [AUTO_QUIZ, AUTO_ATTENDANCE, MANUAL]
+        displayOrder:
+          type: integer
+
+    CourseGradeStructureData:
+      type: object
+      required:
+        - courseId
+        - termId
+        - termName
+        - totalPoints
+        - components
+        - isLocked
+      properties:
+        courseId:
+          type: integer
+        termId:
+          type: integer
+        termName:
+          type: string
+        totalPoints:
+          type: number
+        passMark:
+          type: number
+          nullable: true
+        components:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseGradeComponentItem"
+        isLocked:
+          type: boolean
+
+    CourseGradeStructureResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/CourseGradeStructureData"
+
+    CourseGradeComponentInputItem:
+      type: object
+      required:
+        - name
+        - maxPoints
+        - source
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        nameAr:
+          type: string
+          nullable: true
+        maxPoints:
+          type: number
+        source:
+          type: string
+          enum: [AUTO_QUIZ, AUTO_ATTENDANCE, MANUAL]
+        displayOrder:
+          type: integer
+
+    CourseGradeStructureInput:
+      type: object
+      required:
+        - components
+      properties:
+        passMark:
+          type: number
+          nullable: true
+        components:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseGradeComponentInputItem"
+
+    CourseGradebookGradeItem:
+      type: object
+      required:
+        - componentId
+        - componentName
+        - maxPoints
+        - source
+        - isAbsent
+      properties:
+        componentId:
+          type: integer
+        componentName:
+          type: string
+        maxPoints:
+          type: number
+        source:
+          type: string
+          enum: [AUTO_QUIZ, AUTO_ATTENDANCE, MANUAL]
+        value:
+          type: number
+          nullable: true
+        score:
+          type: number
+          nullable: true
+        isAbsent:
+          type: boolean
+        status:
+          type: string
+          nullable: true
+          enum: [DRAFT, PUBLISHED]
+        version:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    CourseGradebookStudentItem:
+      type: object
+      required:
+        - studentId
+        - enrollmentId
+        - firstName
+        - lastName
+        - studentIdCode
+        - status
+        - grades
+      properties:
+        studentId:
+          type: integer
+        enrollmentId:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        studentIdCode:
+          type: string
+        groupId:
+          type: integer
+          nullable: true
+        status:
+          type: string
+        grades:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseGradebookGradeItem"
+
+    CourseGradebookData:
+      type: object
+      required:
+        - courseId
+        - termId
+        - termName
+        - structure
+        - students
+      properties:
+        courseId:
+          type: integer
+        termId:
+          type: integer
+        termName:
+          type: string
+        structure:
+          type: object
+          required:
+            - id
+            - totalPoints
+            - components
+          properties:
+            id:
+              type: integer
+            totalPoints:
+              type: number
+            passMark:
+              type: number
+              nullable: true
+            components:
+              type: array
+              items:
+                $ref: "#/components/schemas/CourseGradeComponentItem"
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseGradebookStudentItem"
+
+    CourseGradebookResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/CourseGradebookData"
+
+    CourseGradebookDraftEntryInput:
+      type: object
+      required:
+        - enrollmentId
+        - componentId
+        - isAbsent
+      properties:
+        enrollmentId:
+          type: integer
+        componentId:
+          type: integer
+        score:
+          type: number
+          nullable: true
+        isAbsent:
+          type: boolean
+        version:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+
+    CourseGradebookDraftInput:
+      type: object
+      required:
+        - entries
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseGradebookDraftEntryInput"
+
+    CourseGradebookDraftResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required:
+            - courseId
+            - termId
+            - savedCount
+          properties:
+            courseId:
+              type: integer
+            termId:
+              type: integer
+            savedCount:
+              type: integer
+
 

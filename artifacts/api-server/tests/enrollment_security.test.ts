@@ -8,7 +8,7 @@ import {
 } from '../src/controllers/enrollment.controller';
 import { EnrollmentService } from '../src/services/enrollment.service';
 import enrollmentRouter from '../src/routes/enrollment.routes';
-import { AuthorizationError } from '../src/utils/appError';
+import { AuthorizationError, ConflictError } from '../src/utils/appError';
 
 // Helper to invoke an Express controller with mock req/res
 async function invokeController(
@@ -278,7 +278,7 @@ async function runEnrollmentSecurityTests() {
       return null;
     };
 
-    // 4a. Doctor grading enrollment 2001 (not taught by Doctor 5) must fail
+    // 4a. Doctor grading enrollment 2001 rejected with 409 Conflict pointing to gradebook
     await assert.rejects(
       async () => {
         await invokeController(updateGrade, {
@@ -288,25 +288,33 @@ async function runEnrollmentSecurityTests() {
         });
       },
       (err: any) => {
-        assert.ok(err instanceof AuthorizationError);
-        assert.match(err.message, /not authorized for this enrollment/i);
+        assert.ok(err instanceof ConflictError);
+        assert.match(err.message, /gradebook publish service/i);
+        assert.strictEqual(err.statusCode, 409);
         return true;
       },
-      'Doctor should be rejected from grading courses they do not teach'
+      'Doctor should be rejected with 409 pointing to gradebook publish'
     );
 
-    // 4b. Doctor grading enrollment 1001 (taught by Doctor 5) must succeed
-    updatedGradeData = null;
-    const gradeResult = await invokeController(updateGrade, {
-      user: doctorUser,
-      params: { id: '1001' },
-      body: { finalGrade: 85 },
-    });
-    assert.equal(gradeResult.data.data.finalGrade, 85);
-    assert.equal(gradeResult.data.data.status, 'COMPLETED');
-    assert.equal(updatedGradeData.data.finalGrade, 85);
+    // 4b. Doctor grading enrollment 1001 rejected with 409 Conflict pointing to gradebook
+    await assert.rejects(
+      async () => {
+        await invokeController(updateGrade, {
+          user: doctorUser,
+          params: { id: '1001' },
+          body: { finalGrade: 85 },
+        });
+      },
+      (err: any) => {
+        assert.ok(err instanceof ConflictError);
+        assert.match(err.message, /gradebook publish service/i);
+        assert.strictEqual(err.statusCode, 409);
+        return true;
+      },
+      'Doctor grading must be rejected with 409 pointing to gradebook publish'
+    );
 
-    // 4c. Department Admin grading enrollment 2001 (outside Dept 3) must fail
+    // 4c. Department Admin grading enrollment 2001 rejected with 409 Conflict
     await assert.rejects(
       async () => {
         await invokeController(updateGrade, {
@@ -316,12 +324,14 @@ async function runEnrollmentSecurityTests() {
         });
       },
       (err: any) => {
-        assert.ok(err instanceof AuthorizationError);
+        assert.ok(err instanceof ConflictError);
+        assert.match(err.message, /gradebook publish service/i);
+        assert.strictEqual(err.statusCode, 409);
         return true;
       },
-      'Department admin should be rejected from grading courses outside their department'
+      'Department admin grading must be rejected with 409 pointing to gradebook publish'
     );
-    console.log('✓ PATCH /api/enrollments/:id/grade scoping verified for DOCTOR and DEPARTMENT_ADMIN');
+    console.log('✓ PATCH /api/enrollments/:id/grade discontinued rejection verified for DOCTOR and DEPARTMENT_ADMIN');
 
     // =========================================================================
     // 5. POST /api/enrollments/sync-all: Middleware restriction

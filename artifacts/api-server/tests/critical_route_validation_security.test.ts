@@ -60,8 +60,8 @@ try {
       { studentId: "invalid", courseId: 1, semester: 1, academicYear: 2026 },
     ],
     ["/enrollments/not-an-id", "DELETE"],
-    ["/enrollments/not-an-id/grade", "PATCH", { finalGrade: 90 }],
-    ["/enrollments/1/grade", "PATCH", { finalGrade: "not-a-grade" }],
+    ["/courses/not-an-id/gradebook", "GET"],
+    ["/courses/not-an-id/grade-structure", "GET"],
     ["/timetable", "POST", { collegeId: "invalid" }],
     ["/timetable/not-an-id", "PUT", { title: "Updated" }],
     ["/exams/questions/not-an-id", "DELETE"],
@@ -77,6 +77,12 @@ try {
       `${method} ${path} must reject malformed input in the route validation layer`,
     );
   }
+
+  // S7 Single writer: Discontinued legacy route rejects all authorized callers with 409 (validation never runs first)
+  const resDiscontinued1 = await request("/enrollments/not-an-id/grade", "PATCH", { finalGrade: 90 });
+  assert.equal(resDiscontinued1.status, 409, "PATCH /enrollments/not-an-id/grade must reject with 409 Conflict");
+  const resDiscontinued2 = await request("/enrollments/1/grade", "PATCH", { finalGrade: "not-a-grade" });
+  assert.equal(resDiscontinued2.status, 409, "PATCH /enrollments/1/grade must reject with 409 Conflict");
 } finally {
   await new Promise<void>((resolve, reject) =>
     server.close((error) => (error ? reject(error) : resolve())),

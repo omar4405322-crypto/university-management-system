@@ -205,6 +205,7 @@ class EnrollmentService {
         );
       }
 
+
       const updated = await prisma.enrollment.updateMany({
         where: { id: enrollment.id, status: "ENROLLED" },
         data: { status: "WITHDRAWN" },
@@ -234,6 +235,7 @@ class EnrollmentService {
         `Enrollment is ${enrollment.status} and cannot be withdrawn`,
       );
     }
+
 
     const updated = await prisma.enrollment.updateMany({
       where: { id: enrollmentIdOrStudentId, status: "ENROLLED" },

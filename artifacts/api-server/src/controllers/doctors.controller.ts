@@ -696,6 +696,19 @@ export const deleteDoctor = catchAsync(async (req: Request, res: Response, next:
     return next(new AppError(`Cannot delete doctor: This doctor has ${blockingItems.join(' and ')}. Reassign them before deletion.`, 400));
   }
 
+  const hasGradeEntries = await prisma.courseGradeEntry.findFirst({
+    where: {
+      OR: [
+        { draftedById: doctor.userId },
+        { publishedById: doctor.userId },
+      ],
+    },
+    select: { id: true },
+  });
+  if (hasGradeEntries) {
+    return next(new AppError('Cannot delete doctor with drafted or published grade entries. Grade records must be preserved.', 409));
+  }
+
   await prisma.$transaction(async (tx: any) => {
 
 

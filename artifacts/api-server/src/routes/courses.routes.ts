@@ -5,6 +5,14 @@ import { authorize } from '../middleware/auth.middleware';
 import { courseValidation, courseUpdateValidation, idParamValidation } from '../validations/academic.validation';
 import validate from '../middleware/validate.middleware';
 import materialUpload from '../middleware/materialUpload.middleware';
+import {
+  gradeStructureGetValidation,
+  gradeStructurePutValidation,
+} from '../validations/gradeStructure.validation';
+import {
+  gradebookGetValidation,
+  gradebookPostDraftValidation,
+} from '../validations/gradebook.validation';
 
 // GET routes are accessible by all authenticated users
 router.get('/', coursesController.getAllCourses);
@@ -21,6 +29,44 @@ router.get(
   idParamValidation,
   validate,
   coursesController.getCourseRoster
+);
+router.get(
+  '/:courseId/grade-structure',
+  gradeStructureGetValidation,
+  validate,
+  coursesController.getGradeStructure
+);
+router.put(
+  '/:courseId/grade-structure',
+  gradeStructurePutValidation,
+  validate,
+  coursesController.updateGradeStructure
+);
+router.get(
+  '/:courseId/gradebook',
+  gradebookGetValidation,
+  validate,
+  coursesController.getGradebook
+);
+router.post(
+  '/:courseId/gradebook/draft',
+  gradebookPostDraftValidation,
+  validate,
+  coursesController.saveGradebookDraft
+);
+router.post(
+  '/:courseId/gradebook/publish',
+  authorize('DOCTOR'),
+  gradebookGetValidation,
+  validate,
+  coursesController.publishGradebook
+);
+router.post(
+  '/:courseId/gradebook/correct',
+  authorize('DOCTOR'),
+  gradebookGetValidation,
+  validate,
+  coursesController.correctGradebook
 );
 router.get('/:id', idParamValidation, validate, coursesController.getCourseById);
 

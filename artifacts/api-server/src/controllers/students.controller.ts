@@ -618,7 +618,7 @@ export const updateStudent = catchAsync(async (req: Request, res: Response, next
 });
 
 async function getStudentProtectedDeletionRecords(tx: any, studentId: number) {
-  const [protectedEnrollment, gradedQuiz, gradedTask, gradedExam, payment] =
+  const [protectedEnrollment, gradedQuiz, gradedTask, gradedExam, payment, gradeEntry] =
     await Promise.all([
       tx.enrollment.findFirst({
         where: {
@@ -643,12 +643,19 @@ async function getStudentProtectedDeletionRecords(tx: any, studentId: number) {
         where: { studentId },
         select: { id: true },
       }),
+      tx.courseGradeEntry?.findFirst
+        ? tx.courseGradeEntry.findFirst({
+            where: { enrollment: { studentId } },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
     ]);
 
   return {
     enrollmentHistory: Boolean(protectedEnrollment),
     gradedSubmission: Boolean(gradedQuiz || gradedTask || gradedExam),
     paymentHistory: Boolean(payment),
+    gradeHistory: Boolean(gradeEntry),
   };
 }
 
@@ -668,6 +675,25 @@ async function purgeStudentAndUser(
           409
         );
       }
+    }
+
+    const hasGradeEntries = tx.courseGradeEntry?.findFirst
+      ? await tx.courseGradeEntry.findFirst({
+          where: {
+            OR: [
+              { enrollment: { studentId } },
+              { draftedById: userId },
+              { publishedById: userId },
+            ],
+          },
+          select: { id: true },
+        })
+      : null;
+    if (hasGradeEntries) {
+      throw new AppError(
+        'Cannot delete student with existing grade entries. Academic records must be preserved.',
+        409
+      );
     }
 
     // Delete in order: many-to-many first, then direct relations, then student, then user

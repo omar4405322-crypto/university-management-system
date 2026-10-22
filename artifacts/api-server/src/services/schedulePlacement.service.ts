@@ -2,6 +2,7 @@ import { Prisma, AcademicTerm, Room } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { ConflictError, AuthorizationError, NotFoundError } from '../utils/appError';
 import { TimetableService } from './timetable.service';
+import { isTermPast } from '../utils/termLock.utils';
 
 export interface PlacementInput {
   dayOfWeek: string;
@@ -86,7 +87,7 @@ export class SchedulePlacementService {
     }
 
     // Past-term lock: term not current and endDate < now
-    if (resolvedTerm && !resolvedTerm.isCurrent && new Date(resolvedTerm.endDate) < new Date()) {
+    if (isTermPast(resolvedTerm)) {
       conflicts.push({
         type: 'PAST_TERM_LOCKED',
         messageAr: 'لا يمكن التعديل أو الجدولة في فصل دراسي منتهٍ.',

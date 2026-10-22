@@ -51,6 +51,8 @@ model User {
   quickActionUsages          AIQuickActionUsage[]
   approvedTACrossDepartmentApprovals TACrossDepartmentApproval[] @relation("ApprovedTACrossDepartmentApprovals")
   revokedTACrossDepartmentApprovals  TACrossDepartmentApproval[] @relation("RevokedTACrossDepartmentApprovals")
+  gradeEntriesDrafted                CourseGradeEntry[]         @relation("GradeEntryDraftedBy")
+  gradeEntriesPublished              CourseGradeEntry[]         @relation("GradeEntryPublishedBy")
   isActive                   Boolean                    @default(true)
   deactivatedAt              DateTime?
 
@@ -360,6 +362,7 @@ model Course {
   scheduleChangeRequests ScheduleChangeRequest[]
   materials              CourseMaterial[]
   taCrossDepartmentApprovals TACrossDepartmentApproval[]
+  gradeStructures            CourseGradeStructure[]
 
   @@index([courseCode])
   @@index([departmentId])
@@ -639,6 +642,8 @@ model Enrollment {
   termId                 Int?
   term                   AcademicTerm?            @relation(fields: [termId], references: [id], onDelete: Restrict)
   finalGrade             Float?
+  finalPointsEarned      Float?
+  finalPointsMax         Float?
   status                 EnrollmentStatus         @default(ENROLLED)
   customAbsenceThreshold Float?
   enrolledAt             DateTime                 @default(now())
@@ -646,6 +651,7 @@ model Enrollment {
   examSubmissions        ExamSubmission[]
   quizSubmissions        QuizSubmission[]
   taskSubmissions        TaskSubmission[]
+  gradeEntries           CourseGradeEntry[]
 
   @@unique([studentId, courseId, semester, academicYear])
   @@index([studentId])
@@ -918,6 +924,7 @@ model AttendanceSession {
   roomMismatchWarning      Boolean      @default(false)
   createdAt                DateTime     @default(now())
   expiresAt                DateTime
+  sessionPoints            Float?
   attendances              Attendance[]
 
   @@index([scheduleSlotId])
@@ -1215,6 +1222,7 @@ model AcademicTerm {
   tasks         Task[]
   timetables    Timetable[]
   scheduleSlots ScheduleSlot[]
+  gradeStructures CourseGradeStructure[]
 
   @@index([academicYearId])
   @@index([isCurrent])
@@ -1252,5 +1260,75 @@ model TACrossDepartmentApproval {
   @@index([courseId])
   @@index([approvedByUserId])
   @@index([revokedByUserId])
+}
+
+enum GradeComponentSource {
+  AUTO_QUIZ
+  AUTO_ATTENDANCE
+  MANUAL
+}
+
+enum GradeEntryStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model CourseGradeStructure {
+  id         Int                    @id @default(autoincrement())
+  courseId   Int
+  course     Course                 @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  termId     Int
+  term       AcademicTerm           @relation(fields: [termId], references: [id], onDelete: Restrict)
+  passMark   Float?
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  components CourseGradeComponent[]
+
+  @@unique([courseId, termId])
+  @@index([courseId])
+  @@index([termId])
+}
+
+model CourseGradeComponent {
+  id           Int                  @id @default(autoincrement())
+  structureId  Int
+  structure    CourseGradeStructure @relation(fields: [structureId], references: [id], onDelete: Restrict)
+  name         String
+  nameAr       String?
+  maxPoints    Float
+  source       GradeComponentSource
+  displayOrder Int
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  gradeEntries CourseGradeEntry[]
+
+  @@unique([structureId, name])
+  @@index([structureId])
+}
+
+model CourseGradeEntry {
+  id            Int                  @id @default(autoincrement())
+  enrollmentId  Int
+  enrollment    Enrollment           @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  componentId   Int
+  component     CourseGradeComponent @relation(fields: [componentId], references: [id], onDelete: Restrict)
+  score         Float?
+  isAbsent      Boolean              @default(false)
+  status        GradeEntryStatus     @default(DRAFT)
+  version       Int                  @default(1)
+  draftedById   Int?
+  draftedBy     User?                @relation("GradeEntryDraftedBy", fields: [draftedById], references: [id], onDelete: Restrict)
+  draftedAt     DateTime?
+  publishedById Int?
+  publishedBy   User?                @relation("GradeEntryPublishedBy", fields: [publishedById], references: [id], onDelete: Restrict)
+  publishedAt   DateTime?
+  notes         String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@unique([enrollmentId, componentId])
+  @@index([enrollmentId])
+  @@index([componentId])
+  @@index([status])
 }
 

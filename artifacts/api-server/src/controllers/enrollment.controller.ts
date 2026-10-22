@@ -11,6 +11,7 @@ import prisma from '../utils/prismaClient';
 import { auditLog } from '../utils/audit.utils';
 import { EnrollmentService } from '../services/enrollment.service';
 import { getScopeWhere } from '../utils/strictScope.utils';
+import * as studentGradesService from '../services/studentGrades.service';
 
 export const enrollStudent = catchAsync(async (req: Request, res: Response) => {
   const { studentId, courseId, semester, academicYear, termId } = req.body;
@@ -143,77 +144,27 @@ export const getEnrollments = catchAsync(async (req: Request, res: Response) => 
   res.json({ success: true, data: enrollments });
 });
 
-export const updateGrade = catchAsync(async (req: Request, res: Response) => {
-  const enrollmentId = parseInt(req.params.id as string);
-  if (isNaN(enrollmentId)) {
-    throw new AppError('Invalid enrollment ID', 400);
-  }
-
-  const { finalGrade } = req.body;
-
-  if (
-    typeof finalGrade !== 'number' ||
-    !Number.isFinite(finalGrade) ||
-    finalGrade < 0 ||
-    finalGrade > 100
-  ) {
-    throw new ValidationError('Grade must be a finite number between 0 and 100');
-  }
-
-  const existingEnrollment = await prisma.enrollment.findUnique({
-    where: { id: enrollmentId },
-  });
-
-  if (!existingEnrollment) {
-    throw new NotFoundError('Enrollment not found');
-  }
-
-  const enrollmentScope = getScopeWhere(req.user, 'enrollment');
-  const scopedEnrollment = await prisma.enrollment.findFirst({
-    where: {
-      AND: [{ id: enrollmentId }, enrollmentScope],
-    },
-  });
-
-  if (!scopedEnrollment) {
-    throw new AuthorizationError(
-      'Access denied: You are not authorized for this enrollment.'
-    );
-  }
-  if (scopedEnrollment.status !== 'ENROLLED') {
-    throw new ConflictError(
-      `Enrollment is ${scopedEnrollment.status} and cannot be graded`
-    );
-  }
-
-  const enrollment = await prisma.$transaction(async (tx) => {
-    const updated = await tx.enrollment.updateMany({
-      where: { id: enrollmentId, status: 'ENROLLED' },
-      data: {
-        finalGrade,
-        status: finalGrade >= 60 ? 'COMPLETED' : 'FAILED',
-      },
-    });
-    if (updated.count !== 1) {
-      throw new ConflictError('Enrollment is no longer eligible for grading');
-    }
-
-    const changed = await tx.enrollment.findUnique({
-      where: { id: enrollmentId },
-    });
-    if (!changed) {
-      throw new NotFoundError('Enrollment not found after grading');
-    }
-
-    await auditLog('UPDATE_GRADE', 'Enrollment', changed.id.toString(), req, {
-      finalGrade: { from: scopedEnrollment.finalGrade, to: finalGrade },
-      status: { from: scopedEnrollment.status, to: changed.status },
-    }, tx);
-    return changed;
-  });
-
-  res.json({ success: true, data: enrollment });
+/**
+ * @desc    Get current student's grades
+ * @route   GET /api/enrollments/my-grades
+ * @access  Private (STUDENT only)
+ */
+export const getMyGrades = catchAsync(async (req: Request, res: Response) => {
+  const data = await studentGradesService.getStudentMyGrades(req.user);
+  res.json({ success: true, data });
 });
+
+/**
+ * @desc    Update enrollment grade (Discontinued - S7)
+ * @route   PATCH /api/enrollments/:id/grade
+ * @access  Private (DOCTOR, COLLEGE_ADMIN, SUPER_ADMIN)
+ */
+export const updateGrade = catchAsync(async (req: Request, res: Response) => {
+  throw new ConflictError(
+    'Direct grading via PATCH /api/enrollments/:id/grade is discontinued. Use the gradebook publish service at POST /api/courses/:courseId/gradebook/publish instead.'
+  );
+});
+
 
 export const setCustomAbsenceThreshold = catchAsync(async (req: Request, res: Response) => {
   const enrollmentId = parseInt(req.params.id as string);

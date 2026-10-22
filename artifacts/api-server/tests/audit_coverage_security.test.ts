@@ -7,6 +7,8 @@ import { auditLog, SYSTEM_AUDIT_ACTORS } from '../src/utils/audit.utils';
 import { updateRoomCoordinates } from '../src/controllers/room.controller';
 import { TaskService } from '../src/services/task.service';
 import { updateGrade as updateEnrollmentGrade } from '../src/controllers/enrollment.controller';
+import { publishGradebook } from '../src/services/gradebookPublish.service';
+import { correctGradebook } from '../src/services/gradebookCorrection.service';
 
 function invoke(handler: any, req: any): Promise<{ body?: any; error?: any }> {
   return new Promise((resolve) => {
@@ -157,46 +159,180 @@ async function taskGradeWritesOneAccurateAuditEvent() {
 }
 
 async function enrollmentGradeRecordsActualPreviousValue() {
-  const originals = {
-    findUnique: prisma.enrollment.findUnique,
-    findFirst: prisma.enrollment.findFirst,
-    transaction: prisma.$transaction,
-  };
-  let write: any;
+  const result = await invoke(updateEnrollmentGrade, {
+    params: { id: '50' },
+    body: { finalGrade: 75 },
+    user: { id: 1, email: 'admin@example.com', role: 'SUPER_ADMIN' },
+  });
+  // S7 Single writer: updateGrade is discontinued and returns 409 Conflict pointing to gradebook
+  assert.equal(result.error?.statusCode, 409);
+  assert.match(result.error?.message, /gradebook publish service/i);
+
+  const originalCourseFindUnique = prisma.course.findUnique;
+  const originalAcademicTermFindUnique = prisma.academicTerm.findUnique;
+  const originalScheduleSlotFindFirst = prisma.scheduleSlot.findFirst;
+  const originalTransaction = prisma.$transaction;
+
+  const writes: any[] = [];
+  const futureEndDate = new Date(Date.now() + 86400000 * 30);
+
   try {
-    (prisma.enrollment.findUnique as any) = async () => ({
-      id: 50,
-      status: 'ENROLLED',
-      finalGrade: 55,
+    (prisma.course.findUnique as any) = async () => ({ id: 101 });
+    (prisma.academicTerm.findUnique as any) = async () => ({
+      id: 5,
+      name: 'Fall 2026',
+      isCurrent: true,
+      endDate: futureEndDate,
+      isActive: true,
     });
-    (prisma.enrollment.findFirst as any) = async () => ({
-      id: 50,
-      status: 'ENROLLED',
-      finalGrade: 55,
-    });
-    (prisma as any).$transaction = async (callback: any) => callback({
-      enrollment: {
-        updateMany: async () => ({ count: 1 }),
-        findUnique: async () => ({ id: 50, status: 'COMPLETED', finalGrade: 75 }),
-      },
-      auditLog: {
-        create: async ({ data }: any) => {
-          write = data;
-          return { id: 1 };
+    (prisma.scheduleSlot.findFirst as any) = async () => ({ id: 1 });
+
+    (prisma as any).$transaction = async (callback: any) =>
+      callback({
+        courseGradeStructure: {
+          findUnique: async () => ({
+            id: 20,
+            courseId: 101,
+            termId: 5,
+            passMark: 60,
+            components: [
+              { id: 301, name: 'Midterm', maxPoints: 40, source: 'MANUAL', displayOrder: 1 },
+              { id: 302, name: 'Final', maxPoints: 60, source: 'MANUAL', displayOrder: 2 },
+            ],
+          }),
         },
+        enrollment: {
+          findMany: async () => [
+            {
+              id: 50,
+              studentId: 80,
+              courseId: 101,
+              termId: 5,
+              status: 'FAILED',
+              finalPointsEarned: 45,
+              finalPointsMax: 100,
+              finalGrade: 45,
+              gradeEntries: [
+                { id: 1001, enrollmentId: 50, componentId: 301, score: 30, isAbsent: false, status: 'DRAFT', version: 1 },
+                { id: 1002, enrollmentId: 50, componentId: 302, score: 55, isAbsent: false, status: 'DRAFT', version: 1 },
+              ],
+            },
+          ],
+          findFirst: async () => ({ id: 50, status: 'COMPLETED' }),
+          findUnique: async () => ({
+            id: 50,
+            studentId: 80,
+            courseId: 101,
+            termId: 5,
+            status: 'COMPLETED',
+            finalPointsEarned: 85,
+            finalPointsMax: 100,
+            finalGrade: 85,
+            gradeEntries: [
+              { id: 1001, enrollmentId: 50, componentId: 301, score: 20, isAbsent: false, status: 'PUBLISHED', version: 3 },
+              { id: 1002, enrollmentId: 50, componentId: 302, score: 55, isAbsent: false, status: 'PUBLISHED', version: 2 },
+            ],
+          }),
+          update: async ({ data }: any) => ({ id: 50, ...data }),
+        },
+        courseGradeEntry: {
+          findUnique: async () => ({
+            id: 1001,
+            enrollmentId: 50,
+            componentId: 301,
+            score: 30,
+            isAbsent: false,
+            status: 'PUBLISHED',
+            version: 2,
+          }),
+          update: async ({ where, data }: any) => ({
+            id: where.id,
+            enrollmentId: 50,
+            componentId: 301,
+            score: data.score ?? 30,
+            isAbsent: data.isAbsent ?? false,
+            status: data.status ?? 'PUBLISHED',
+            version: 3,
+          }),
+        },
+        auditLog: {
+          create: async ({ data }: any) => {
+            writes.push(data);
+            return { id: writes.length };
+          },
+        },
+      });
+
+    const doctorActor = { id: 9, email: 'doc@example.com', role: 'DOCTOR', doctor: { id: 90 } };
+    const reqAudit = { user: doctorActor };
+
+    await publishGradebook(101, 5, doctorActor, reqAudit, {});
+    assert.equal(writes.length, 1);
+    const pubAudit = writes[0];
+    assert.equal(pubAudit.action, 'GRADE_PUBLISHED');
+    assert.equal(pubAudit.userId, 9);
+    assert.equal(pubAudit.actorEmail, 'doc@example.com');
+    assert.equal(pubAudit.userRole, 'DOCTOR');
+    assert.ok(Array.isArray(pubAudit.details.enrollments), 'GRADE_PUBLISHED must include changed enrollments list');
+    assert.equal(pubAudit.details.enrollments.length, 1);
+    assert.deepEqual(pubAudit.details.enrollments[0], {
+      enrollmentId: 50,
+      studentId: 80,
+      flippedEntryIds: [1001, 1002],
+      before: {
+        finalPointsEarned: 45,
+        finalPointsMax: 100,
+        finalGrade: 45,
+        status: 'FAILED',
+      },
+      after: {
+        finalPointsEarned: 85,
+        finalPointsMax: 100,
+        finalGrade: 85,
+        status: 'COMPLETED',
       },
     });
-    const result = await invoke(updateEnrollmentGrade, {
-      params: { id: '50' },
-      body: { finalGrade: 75 },
-      user: { id: 1, email: 'admin@example.com', role: 'SUPER_ADMIN' },
+
+    await correctGradebook(101, 5, doctorActor, reqAudit, {
+      corrections: [
+        {
+          enrollmentId: 50,
+          componentId: 301,
+          score: 20,
+          isAbsent: false,
+          version: 2,
+          reason: 'Re-evaluated midterm exam paper',
+        },
+      ],
     });
-    assert.equal(result.body?.success, true);
-    assert.deepEqual(write.details.finalGrade, { from: 55, to: 75 });
+    assert.equal(writes.length, 2);
+    const corrAudit = writes[1];
+    assert.equal(corrAudit.action, 'GRADE_CORRECTED');
+    assert.equal(corrAudit.userId, 9);
+    assert.equal(corrAudit.actorEmail, 'doc@example.com');
+    assert.equal(corrAudit.userRole, 'DOCTOR');
+    assert.equal(corrAudit.details.entries.length, 1);
+    assert.deepEqual(corrAudit.details.entries[0].before, { score: 30, isAbsent: false, version: 2 });
+    assert.deepEqual(corrAudit.details.entries[0].after, { score: 20, isAbsent: false, version: 3 });
+    assert.equal(corrAudit.details.entries[0].reason, 'Re-evaluated midterm exam paper');
+    assert.equal(corrAudit.details.enrollmentTotals.length, 1);
+    assert.deepEqual(corrAudit.details.enrollmentTotals[0].before, {
+      finalPointsEarned: 85,
+      finalPointsMax: 100,
+      finalGrade: 85,
+      status: 'COMPLETED',
+    });
+    assert.deepEqual(corrAudit.details.enrollmentTotals[0].after, {
+      finalPointsEarned: 75,
+      finalPointsMax: 100,
+      finalGrade: 75,
+      status: 'COMPLETED',
+    });
   } finally {
-    prisma.enrollment.findUnique = originals.findUnique;
-    prisma.enrollment.findFirst = originals.findFirst;
-    prisma.$transaction = originals.transaction;
+    prisma.course.findUnique = originalCourseFindUnique;
+    prisma.academicTerm.findUnique = originalAcademicTermFindUnique;
+    prisma.scheduleSlot.findFirst = originalScheduleSlotFindFirst;
+    prisma.$transaction = originalTransaction;
   }
 }
 

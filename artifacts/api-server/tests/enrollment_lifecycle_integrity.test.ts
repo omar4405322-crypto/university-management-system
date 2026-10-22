@@ -5,6 +5,10 @@ import { EnrollmentService } from '../src/services/enrollment.service';
 import { updateGrade } from '../src/controllers/enrollment.controller';
 import { approveRequest, rejectRequest } from '../src/controllers/auth.controller';
 import { ConflictError, ValidationError } from '../src/utils/appError';
+import {
+  evaluateGradeOutcome,
+  computeEnrollmentGradeTotals,
+} from '../src/utils/gradeMath.utils';
 
 async function invokeController(controller: any, req: any) {
   return new Promise<any>((resolve, reject) => {
@@ -114,11 +118,11 @@ async function runEnrollmentLifecycleIntegrityTests() {
           body: { finalGrade },
           user: { role: 'SUPER_ADMIN' },
         }),
-        ValidationError
+        ConflictError
       );
     }
     assert.equal(enrollmentWrites, 0);
-    console.log('✓ Missing, null, NaN, and infinite grades are rejected before writes');
+    console.log('✓ Discontinued PATCH /api/enrollments/:id/grade rejected with ConflictError before writes');
 
     (prisma.enrollment as any).findUnique = async () => ({
       id: 50,
@@ -176,20 +180,54 @@ async function runEnrollmentLifecycleIntegrityTests() {
       auditLog: { create: prisma.auditLog.create },
     });
 
-    await invokeController(updateGrade, {
-      params: { id: '50' },
-      body: { finalGrade: 59 },
-      user: { role: 'SUPER_ADMIN' },
-    });
+    await assert.rejects(
+      invokeController(updateGrade, {
+        params: { id: '50' },
+        body: { finalGrade: 59 },
+        user: { role: 'SUPER_ADMIN' },
+      }),
+      ConflictError
+    );
+    storedStatus = evaluateGradeOutcome(59.99, 60.0);
     assert.equal(storedStatus, 'FAILED');
+    const belowTotals = computeEnrollmentGradeTotals(
+      [
+        { id: 1, maxPoints: 40 },
+        { id: 2, maxPoints: 60 },
+      ],
+      [
+        { componentId: 1, score: 29.99, isAbsent: false },
+        { componentId: 2, score: 30.0, isAbsent: false },
+      ],
+      60.0
+    );
+    assert.equal(belowTotals.finalPointsEarned, 59.99);
+    assert.equal(belowTotals.status, 'FAILED');
 
     storedStatus = '';
-    await invokeController(updateGrade, {
-      params: { id: '50' },
-      body: { finalGrade: 60 },
-      user: { role: 'SUPER_ADMIN' },
-    });
+    await assert.rejects(
+      invokeController(updateGrade, {
+        params: { id: '50' },
+        body: { finalGrade: 60 },
+        user: { role: 'SUPER_ADMIN' },
+      }),
+      ConflictError
+    );
+    storedStatus = evaluateGradeOutcome(60.0, 60.0);
     assert.equal(storedStatus, 'COMPLETED');
+    const equalTotals = computeEnrollmentGradeTotals(
+      [
+        { id: 1, maxPoints: 40 },
+        { id: 2, maxPoints: 60 },
+      ],
+      [
+        { componentId: 1, score: 30.0, isAbsent: false },
+        { componentId: 2, score: 30.0, isAbsent: false },
+      ],
+      60.0
+    );
+    assert.equal(equalTotals.finalPointsEarned, 60.0);
+    assert.equal(equalTotals.status, 'COMPLETED');
     console.log('✓ Passing threshold remains consistent at finalGrade >= 60');
 
     for (const status of ['COMPLETED', 'BLOCKED']) {

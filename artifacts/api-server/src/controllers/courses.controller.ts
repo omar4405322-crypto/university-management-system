@@ -15,6 +15,15 @@ import {
 import { EnrollmentService } from '../services/enrollment.service';
 import { invalidateCache } from '../utils/redis.utils';
 import { normalizeSlotType } from '../utils/slotType.utils';
+import * as gradeStructureService from '../services/gradeStructure.service';
+import * as gradebookService from '../services/gradebook.service';
+import * as gradebookPublishService from '../services/gradebookPublish.service';
+import * as gradebookCorrectionService from '../services/gradebookCorrection.service';
+import {
+  validateSaveGradebookDraftInput,
+  validatePublishGradebookInput,
+  validateCorrectGradebookInput,
+} from '../validations/gradebook.validation';
 
 /**
  * @desc    Get all courses with advanced filtering, sorting and pagination
@@ -603,6 +612,14 @@ export const deleteCourse = catchAsync(async (req: Request, res: Response, next:
       throw new ConflictError('Cannot delete course with existing student quiz, task, or exam submissions. Student academic history must be preserved.');
     }
 
+    const hasGradeStructures = await tx.courseGradeStructure.findFirst({
+      where: { courseId },
+      select: { id: true },
+    });
+    if (hasGradeStructures) {
+      throw new ConflictError('Cannot delete course with grade structures. Grade records must be preserved.');
+    }
+
     // 1. Delete Attendance records linked directly or via schedule slots
     const slots = await tx.scheduleSlot.findMany({
       where: { courseId },
@@ -1093,3 +1110,120 @@ export const downloadCourseMaterial = catchAsync(
     fileStream.pipe(res);
   }
 );
+
+/**
+ * @desc    Get course grade structure for a specific academic term
+ * @route   GET /api/courses/:courseId/grade-structure
+ * @access  Private (SUPER_ADMIN, scoped COLLEGE/DEPARTMENT_ADMIN, assigned DOCTOR/TA, enrolled STUDENT)
+ */
+export const getGradeStructure = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const courseId = parseInt(req.params.courseId as string, 10);
+    const result = await gradeStructureService.getGradeStructure(
+      courseId,
+      req.query.termId,
+      req.user
+    );
+    res.json({ success: true, data: result });
+  }
+);
+
+/**
+ * @desc    Upsert course grade structure for a specific academic term
+ * @route   PUT /api/courses/:courseId/grade-structure
+ * @access  Private (SUPER_ADMIN, scoped COLLEGE/DEPARTMENT_ADMIN, assigned DOCTOR)
+ */
+export const updateGradeStructure = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const courseId = parseInt(req.params.courseId as string, 10);
+    const result = await gradeStructureService.upsertGradeStructure(
+      courseId,
+      req.query.termId,
+      req.user,
+      req,
+      {
+        passMark: req.body.passMark,
+        components: req.body.components,
+      }
+    );
+    res.json({ success: true, data: result });
+  }
+);
+
+/**
+ * @desc    Get course gradebook for a specific academic term
+ * @route   GET /api/courses/:courseId/gradebook
+ * @access  Private (SUPER_ADMIN, scoped COLLEGE/DEPARTMENT_ADMIN, assigned DOCTOR/TA)
+ */
+export const getGradebook = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const courseId = parseInt(req.params.courseId as string, 10);
+    const result = await gradebookService.getGradebook(
+      courseId,
+      req.query.termId,
+      req.user
+    );
+    res.json({ success: true, data: result });
+  }
+);
+
+/**
+ * @desc    Save draft grade entries for a course-term gradebook
+ * @route   POST /api/courses/:courseId/gradebook/draft
+ * @access  Private (Assigned DOCTOR, Assigned TA only)
+ */
+export const saveGradebookDraft = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const courseId = parseInt(req.params.courseId as string, 10);
+    const validatedInput = validateSaveGradebookDraftInput(req.body);
+    const result = await gradebookService.saveGradebookDraft(
+      courseId,
+      req.query.termId,
+      req.user,
+      req,
+      validatedInput
+    );
+    res.json({ success: true, data: result });
+  }
+);
+
+/**
+ * @desc    Publish course-term gradebook and evaluate completions
+ * @route   POST /api/courses/:courseId/gradebook/publish
+ * @access  Private (Assigned DOCTOR only)
+ */
+export const publishGradebook = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const courseId = parseInt(req.params.courseId as string, 10);
+    const validatedInput = validatePublishGradebookInput(req.body);
+    const result = await gradebookPublishService.publishGradebook(
+      courseId,
+      req.query.termId,
+      req.user,
+      req,
+      validatedInput
+    );
+    res.json({ success: true, data: result });
+  }
+);
+
+/**
+ * @desc    Correct published grade entries and recompute totals
+ * @route   POST /api/courses/:courseId/gradebook/correct
+ * @access  Private (Assigned DOCTOR only)
+ */
+export const correctGradebook = catchAsync(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const courseId = parseInt(req.params.courseId as string, 10);
+    const validatedInput = validateCorrectGradebookInput(req.body);
+    const result = await gradebookCorrectionService.correctGradebook(
+      courseId,
+      req.query.termId,
+      req.user,
+      req,
+      validatedInput
+    );
+    res.json({ success: true, data: result });
+  }
+);
+

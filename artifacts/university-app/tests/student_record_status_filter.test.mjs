@@ -10,6 +10,10 @@ const enrollmentController = readFileSync(
   new URL('../../api-server/src/controllers/enrollment.controller.ts', import.meta.url),
   'utf8'
 );
+const publishService = readFileSync(
+  new URL('../../api-server/src/services/gradebookPublish.service.ts', import.meta.url),
+  'utf8'
+);
 
 test('record filters use authoritative enrollment statuses', () => {
   assert.match(
@@ -25,7 +29,11 @@ test('record filters use authoritative enrollment statuses', () => {
 test('backend assigns the authoritative status at the passing threshold', () => {
   assert.match(
     enrollmentController,
-    /status:\s*finalGrade >= 60 \? 'COMPLETED' : 'FAILED'/
+    /gradebook publish service/
+  );
+  assert.match(
+    publishService,
+    /isPassed \? ['"]COMPLETED['"] : ['"]FAILED['"]/
   );
 });
 

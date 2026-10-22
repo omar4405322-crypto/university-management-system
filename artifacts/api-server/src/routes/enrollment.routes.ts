@@ -7,6 +7,7 @@ import {
   enrollStudent,
   withdrawStudent,
   getEnrollments,
+  getMyGrades,
   updateGrade,
   setCustomAbsenceThreshold,
   createExemptionPeriod,
@@ -41,14 +42,8 @@ const enrollStudentValidation = [
     .isInt({ min: 2000, max: 2100 })
     .withMessage("Academic year must be a valid calendar year"),
 ];
-const gradeValidation = [
-  ...enrollmentIdValidation,
-  body("finalGrade")
-    .isFloat({ min: 0, max: 100 })
-    .withMessage("Grade must be between 0 and 100")
-    .toFloat(),
-];
 
+router.get("/my-grades", protect, authorize("STUDENT"), getMyGrades);
 router.post("/sync-all", protect, authorize("SUPER_ADMIN"), syncAllEnrollments);
 router.post(
   "/",
@@ -92,8 +87,6 @@ router.patch(
   "/:id/grade",
   protect,
   authorize("DOCTOR", "COLLEGE_ADMIN", "SUPER_ADMIN"),
-  gradeValidation,
-  validate,
   updateGrade,
 );
 
