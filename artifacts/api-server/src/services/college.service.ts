@@ -1,5 +1,6 @@
+import { Prisma } from '@prisma/client';
 import prisma from '../utils/prismaClient';
-import { NotFoundError, ValidationError } from '../utils/appError';
+import { NotFoundError, ValidationError, ConflictError } from '../utils/appError';
 import {
   getEffectiveActiveDoctorWhere,
   getEffectiveActiveStudentWhere,
@@ -178,44 +179,76 @@ export const deleteCollege = async (
   collegeId: number,
   withinTransaction?: (tx: any) => Promise<void>
 ) => {
-  await prisma.$transaction(async (tx) => {
-    const departments = await tx.department.findMany({
-      where: { collegeId },
-    });
-    const deptIds = departments.map((d) => d.id);
-
-    if (deptIds.length > 0) {
-      await tx.student.updateMany({
-        where: { departmentId: { in: deptIds } },
-        data: { departmentId: null },
-      });
-      await tx.doctor.updateMany({
-        where: { departmentId: { in: deptIds } },
-        data: { departmentId: null },
-      });
-      await tx.course.updateMany({
-        where: { departmentId: { in: deptIds } },
-        data: { departmentId: null },
-      });
-      await tx.user.updateMany({
-        where: { departmentId: { in: deptIds } },
-        data: { departmentId: null },
-      });
-      await tx.registrationRequest.deleteMany({ where: { departmentId: { in: deptIds } } });
-
-      await tx.department.deleteMany({ where: { collegeId } });
-    }
-
-    await tx.user.updateMany({
-      where: { collegeId },
-      data: { collegeId: null },
-    });
-
-    await tx.college.delete({
-      where: { id: collegeId },
-    });
-    if (withinTransaction) await withinTransaction(tx);
+  const existing = await prisma.college.findUnique({
+    where: { id: collegeId },
+    include: {
+      _count: {
+        select: {
+          departments: true,
+          admins: true,
+          managedAdmins: true,
+          timetables: true,
+          knowledgeDocuments: true,
+        },
+      },
+    },
   });
+
+  if (!existing) {
+    throw new NotFoundError('College not found');
+  }
+
+  const linkedRecords = Object.entries(existing._count)
+    .filter(([, count]) => count > 0)
+    .map(([relation, count]) => `${count} ${relation}`);
+
+  if (linkedRecords.length > 0) {
+    throw new ConflictError(
+      `Cannot delete college: linked records remain (${linkedRecords.join(', ')}). Reassign or explicitly remove them first.`
+    );
+  }
+
+  try {
+    await prisma.$transaction(
+      async (tx) => {
+        const current = await tx.college.findUnique({
+          where: { id: collegeId },
+          include: {
+            _count: {
+              select: {
+                departments: true,
+                admins: true,
+                managedAdmins: true,
+                timetables: true,
+                knowledgeDocuments: true,
+              },
+            },
+          },
+        });
+        if (!current) throw new NotFoundError('College not found');
+
+        const concurrentLinks = Object.values(current._count).some((count) => count > 0);
+        if (concurrentLinks) {
+          throw new ConflictError(
+            'Cannot delete college: linked records changed during deletion. Reassign or explicitly remove them first.'
+          );
+        }
+
+        await tx.college.delete({
+          where: { id: collegeId },
+        });
+        if (withinTransaction) await withinTransaction(tx);
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+  } catch (err: any) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003') {
+      throw new ConflictError(
+        'Cannot delete college: foreign key constraint prevents deletion due to remaining linked records.'
+      );
+    }
+    throw err;
+  }
 };
 
 export const assignAdmin = async (collegeId: number, adminId: string | number) => {
