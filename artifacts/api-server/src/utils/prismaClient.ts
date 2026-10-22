@@ -1,7 +1,12 @@
 import { PrismaClient } from '@prisma/client';
+import { assertTestDatabase } from '../config/testDbGuard';
 
 declare global {
   var prisma: PrismaClient | undefined;
+}
+
+if (process.env.NODE_ENV?.trim().toLowerCase() === 'test') {
+  assertTestDatabase(process.env);
 }
 
 const prisma =
@@ -13,3 +18,4 @@ const prisma =
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
 
 export default prisma;
+

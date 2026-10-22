@@ -1,0 +1,33 @@
+name: unicore-test-db
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    security_opt:
+      - "no-new-privileges:true"
+    environment:
+      POSTGRES_DB: unicore_test
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in environment or .env.test}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in environment or .env.test}
+    ports:
+      - "5433:5432"
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d unicore_test",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  test_postgres_data:

@@ -54,6 +54,8 @@ Thumbs.db
 .env.*
 !.env.example
 !**/.env.example
+!.env.test.example
+!**/.env.test.example
 .tmp.driveupload/
 .env.local
 .env.*.local

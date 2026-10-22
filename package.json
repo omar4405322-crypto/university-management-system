@@ -15,8 +15,12 @@
     "test:api:unit": "node scripts/run-api-tests.mjs --unit",
     "test:api:integration": "node scripts/run-api-tests.mjs --integration",
     "test:web": "pnpm --filter @workspace/university-app test",
-    "test:coverage": "node --test --experimental-test-coverage \"artifacts/university-app/tests/*.test.mjs\"",
+    "test:coverage": "node --import ./scripts/test-preload.mjs --test --experimental-test-coverage \"artifacts/university-app/tests/*.test.mjs\"",
     "test:contract": "pnpm --filter @workspace/scripts exec tsx ./contract_drift_check.ts",
+    "test:db:up": "docker compose -f compose.test.yaml up -d",
+    "test:db:down": "docker compose -f compose.test.yaml down",
+    "test:db:deploy": "node --import ./scripts/test-preload.mjs ./artifacts/api-server/node_modules/prisma/build/index.js migrate deploy --schema=artifacts/api-server/prisma/schema.prisma",
+    "test:db:seed": "node --import ./scripts/test-preload.mjs ./artifacts/api-server/prisma/seed.cjs && node --import ./scripts/test-preload.mjs ./artifacts/api-server/prisma/seed.test-baseline.cjs",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "verify": "pnpm audit --prod --audit-level high && pnpm run lint && pnpm run build && pnpm run test"

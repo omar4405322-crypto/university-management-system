@@ -16,7 +16,7 @@
     "bootstrap:test-student": "tsx scripts/bootstrapTestStudent.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "test": "tsx --test"
+    "test": "tsx --import ../../scripts/test-preload.mjs --test"
   },
   "dependencies": {
     "@expo-google-fonts/cairo": "^0.4.2",
