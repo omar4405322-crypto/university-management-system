@@ -1036,6 +1036,65 @@ paths:
         "403":
           $ref: "#/components/responses/ForbiddenError"
 
+  /attendance/weights:
+    get:
+      operationId: getAttendanceWeights
+      tags: [attendance]
+      summary: Retrieve global attendance status weights (Super Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current attendance status weights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/AttendanceWeightsData"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+    put:
+      operationId: updateAttendanceWeights
+      tags: [attendance]
+      summary: Update global attendance status weights (Super Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                weights:
+                  $ref: "#/components/schemas/AttendanceWeightsUpdateInput"
+      responses:
+        "200":
+          description: Attendance status weights updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/AttendanceWeightsData"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
   /tasks:
     get:
       operationId: listTasks
@@ -2213,6 +2272,36 @@ components:
         timestamp:
           type: string
           format: date-time
+
+    AttendanceWeightsData:
+      type: object
+      required:
+        - LATE
+        - EXCUSED
+        - PENDING_REVIEW
+      properties:
+        LATE:
+          type: number
+          example: 0.5
+        EXCUSED:
+          type: number
+          example: 0.75
+        PENDING_REVIEW:
+          type: number
+          example: 0.0
+
+    AttendanceWeightsUpdateInput:
+      type: object
+      properties:
+        LATE:
+          type: number
+          example: 0.5
+        EXCUSED:
+          type: number
+          example: 0.75
+        PENDING_REVIEW:
+          type: number
+          example: 0.25
 
     TaskItem:
       type: object

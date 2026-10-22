@@ -53,6 +53,7 @@ model User {
   revokedTACrossDepartmentApprovals  TACrossDepartmentApproval[] @relation("RevokedTACrossDepartmentApprovals")
   gradeEntriesDrafted                CourseGradeEntry[]         @relation("GradeEntryDraftedBy")
   gradeEntriesPublished              CourseGradeEntry[]         @relation("GradeEntryPublishedBy")
+  attendanceWeightsUpdated           AttendanceStatusWeight[]   @relation("AttendanceStatusWeightUpdatedBy")
   isActive                   Boolean                    @default(true)
   deactivatedAt              DateTime?
 
@@ -930,6 +931,18 @@ model AttendanceSession {
   @@index([scheduleSlotId])
   @@index([isActive, expiresAt])
   @@index([doctorId])
+}
+
+model AttendanceStatusWeight {
+  id          Int              @id @default(autoincrement())
+  status      AttendanceStatus @unique
+  weight      Float
+  updatedById Int
+  updatedBy   User             @relation("AttendanceStatusWeightUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([updatedById])
 }
 
 model RfidDevice {

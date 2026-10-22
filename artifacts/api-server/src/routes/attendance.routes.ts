@@ -75,6 +75,20 @@ router.get(
 );
 
 router.get(
+  "/weights",
+  protect,
+  authorize("SUPER_ADMIN"),
+  attendanceController.getAttendanceWeights,
+);
+
+router.put(
+  "/weights",
+  protect,
+  authorize("SUPER_ADMIN"),
+  attendanceController.updateAttendanceWeights,
+);
+
+router.get(
   "/course/:courseId",
   protect,
   adminOrTeacher,

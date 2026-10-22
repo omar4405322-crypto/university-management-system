@@ -535,10 +535,24 @@ export const provisionRfidDevice = catchAsync(
     });
   }
 );
-
 export const listRfidDevices = catchAsync(
   async (_req: Request, res: Response) => {
     const data = await AttendanceService.listRfidDevices();
+    return res.json({ success: true, data });
+  }
+);
+
+export const getAttendanceWeights = catchAsync(
+  async (_req: Request, res: Response) => {
+    const data = await AttendanceService.getAttendanceWeights();
+    return res.json({ success: true, data });
+  }
+);
+
+export const updateAttendanceWeights = catchAsync(
+  async (req: Request, res: Response) => {
+    const weights = req.body?.weights !== undefined ? req.body.weights : req.body;
+    const data = await AttendanceService.updateAttendanceWeights(req.user!, weights, req);
     return res.json({ success: true, data });
   }
 );

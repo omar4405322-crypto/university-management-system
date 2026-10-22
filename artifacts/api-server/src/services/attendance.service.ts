@@ -6,6 +6,7 @@ import {
   AuthorizationError,
   ConflictError,
   NotFoundError,
+  ValidationError,
 } from '../utils/appError';
 import { getScopeWhere } from '../utils/scope.utils';
 import { auditLog } from '../utils/audit.utils';
@@ -1292,6 +1293,87 @@ class AttendanceService {
 
   static async listRfidDevices() {
     return AttendanceDeviceService.listRfidDevices();
+  }
+
+  static async getAttendanceWeights() {
+    const rows = await prisma.attendanceStatusWeight.findMany();
+    const map: Record<string, number> = {
+      LATE: 0.0,
+      EXCUSED: 0.0,
+      PENDING_REVIEW: 0.0,
+    };
+    for (const r of rows) {
+      if (r.status in map) {
+        map[r.status] = r.weight;
+      }
+    }
+    return map;
+  }
+
+  static async updateAttendanceWeights(
+    user: AuthActor,
+    rawWeights: unknown,
+    req?: any
+  ) {
+    if (!rawWeights || typeof rawWeights !== 'object' || Array.isArray(rawWeights)) {
+      throw new ValidationError('Weights payload must be an object');
+    }
+
+    const allowedStatuses = new Set(['LATE', 'EXCUSED', 'PENDING_REVIEW']);
+    const entries = Object.entries(rawWeights as Record<string, unknown>);
+
+    if (entries.length === 0) {
+      throw new ValidationError('At least one status weight must be provided');
+    }
+
+    for (const [status, val] of entries) {
+      if (!allowedStatuses.has(status)) {
+        throw new ValidationError(
+          `Status '${status}' cannot have a custom weight. Allowed statuses: LATE, EXCUSED, PENDING_REVIEW`
+        );
+      }
+      if (typeof val !== 'number' || !Number.isFinite(val)) {
+        throw new ValidationError(`Weight for '${status}' must be a finite number`);
+      }
+      if (val < 0 || val > 1) {
+        throw new ValidationError(`Weight for '${status}' must be between 0 and 1`);
+      }
+      if (/\.\d{3,}/.test(String(val)) || Math.abs(Math.round(val * 100) - val * 100) > 1e-6) {
+        throw new ValidationError(`Weight for '${status}' must have at most 2 decimal places`);
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const [status, val] of entries) {
+        const weight = Math.round((val as number) * 100) / 100;
+        await tx.attendanceStatusWeight.upsert({
+          where: { status: status as AttendanceStatus },
+          update: {
+            weight,
+            updatedById: user.id,
+          },
+          create: {
+            status: status as AttendanceStatus,
+            weight,
+            updatedById: user.id,
+          },
+        });
+      }
+    });
+
+    const auditReq = req || { user };
+    await auditLog(
+      'UPDATE_ATTENDANCE_WEIGHTS',
+      'AttendanceStatusWeight',
+      0,
+      auditReq,
+      {
+        weights: rawWeights,
+        updatedById: user.id,
+      }
+    );
+
+    return this.getAttendanceWeights();
   }
 }
 

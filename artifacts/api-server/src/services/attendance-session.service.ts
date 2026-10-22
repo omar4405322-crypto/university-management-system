@@ -1,5 +1,8 @@
 import prisma from '../utils/prismaClient';
-import { AppError, AuthorizationError, NotFoundError } from '../utils/appError';
+import { AppError, AuthorizationError, NotFoundError, ValidationError } from '../utils/appError';
+import { toHundredths } from '../utils/gradeMath.utils';
+import { resolveAcademicTerm } from './gradeStructure.service';
+import { runWithSerializationRetry } from './gradebookPublish.service';
 import speakeasy from 'speakeasy';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import attendanceEngine from '../attendance/attendance.engine';
@@ -216,9 +219,25 @@ class AttendanceSessionService {
       longitude?: number;
       radius?: number;
       gracePeriodMins?: number;
+      sessionPoints?: number | null;
     }
   ) {
-    const { scheduleSlotId, courseId, latitude, longitude, radius, gracePeriodMins } = params;
+    const { scheduleSlotId, courseId, latitude, longitude, radius, gracePeriodMins, sessionPoints } = params;
+
+    if (sessionPoints !== undefined && sessionPoints !== null) {
+      const pts = typeof sessionPoints === 'number' ? sessionPoints : Number(sessionPoints);
+      if (
+        typeof sessionPoints !== 'number' ||
+        !Number.isFinite(pts) ||
+        pts < 0 ||
+        Math.abs(Math.round(pts * 100) - pts * 100) > 1e-6 ||
+        /\.\d{3,}/.test(String(sessionPoints))
+      ) {
+        throw new ValidationError(
+          'sessionPoints must be a finite number >= 0 with at most 2 decimal places'
+        );
+      }
+    }
 
     const slotInclude = { course: true, roomRef: true } as const;
     let slot: Awaited<ReturnType<typeof prisma.scheduleSlot.findFirst<{ include: typeof slotInclude }>>> = null;
@@ -271,6 +290,12 @@ class AttendanceSessionService {
       throw new AuthorizationError(
         'You do not have permission to start a session for this section.'
       );
+    }
+
+    let termId = slot.termId;
+    if (!termId) {
+      const currentTerm = await resolveAcademicTerm();
+      termId = currentTerm.id;
     }
 
     const [hours, minutes] = (slot.endTime || '23:59').split(':').map(Number);
@@ -345,32 +370,96 @@ class AttendanceSessionService {
         ? Math.min(Math.max(Math.round(gracePeriodMins), 0), 30)
         : 15;
 
-    const session = await prisma.$transaction(
-      async (tx) => {
-        await tx.attendanceSession.updateMany({
-          where: { scheduleSlotId: slot!.id, isActive: true },
-          data: { isActive: false },
-        });
+    const session = await runWithSerializationRetry(async (tx) => {
+      let validatedPoints: number | null = null;
+      if (sessionPoints !== undefined && sessionPoints !== null) {
+        validatedPoints = sessionPoints;
 
-        return tx.attendanceSession.create({
-          data: {
-            scheduleSlotId: slot!.id,
-            doctorId: doctor?.id,
-            secretKey: encrypt(secret.base32),
-            latitude: finalLat,
-            longitude: finalLng,
-            radius: finalRadius,
-            facultyCapturedLatitude: reqLat,
-            facultyCapturedLongitude: reqLng,
-            roomMismatchWarning,
-            gracePeriodMins: finalGrace,
-            codeStepSeconds: 20,
-            expiresAt,
+        const structure = await tx.courseGradeStructure.findUnique({
+          where: {
+            courseId_termId: {
+              courseId: slot!.courseId,
+              termId: termId!,
+            },
+          },
+          include: {
+            components: {
+              where: { source: 'AUTO_ATTENDANCE' },
+            },
           },
         });
-      },
-      { isolationLevel: 'Serializable' }
-    );
+
+        const autoComp = structure?.components?.[0];
+        if (!autoComp) {
+          throw new ValidationError('Course term does not have an AUTO_ATTENDANCE component configured');
+        }
+
+        if (validatedPoints > autoComp.maxPoints) {
+          throw new ValidationError(
+            `sessionPoints ${validatedPoints} exceeds AUTO_ATTENDANCE component maxPoints ${autoComp.maxPoints}`
+          );
+        }
+
+        const term = await tx.academicTerm.findUnique({
+          where: { id: termId! },
+          select: { isCurrent: true },
+        });
+
+        const slotTermFilter = term?.isCurrent
+          ? {
+              courseId: slot!.courseId,
+              OR: [{ termId: termId! }, { termId: null }],
+            }
+          : {
+              courseId: slot!.courseId,
+              termId: termId!,
+            };
+
+        const existingSessions = await tx.attendanceSession.findMany({
+          where: {
+            scheduleSlot: slotTermFilter,
+            sessionPoints: { not: null },
+          },
+          select: { sessionPoints: true },
+        });
+
+        const existingHundredths = existingSessions.reduce(
+          (sum, s) => sum + toHundredths(s.sessionPoints ?? 0),
+          0
+        );
+        const newHundredths = toHundredths(validatedPoints);
+        const maxHundredths = toHundredths(autoComp.maxPoints);
+
+        if (existingHundredths + newHundredths > maxHundredths) {
+          throw new ValidationError(
+            `Cumulative sessionPoints (${(existingHundredths + newHundredths) / 100}) exceeds AUTO_ATTENDANCE component maxPoints (${autoComp.maxPoints})`
+          );
+        }
+      }
+
+      await tx.attendanceSession.updateMany({
+        where: { scheduleSlotId: slot!.id, isActive: true },
+        data: { isActive: false },
+      });
+
+      return tx.attendanceSession.create({
+        data: {
+          scheduleSlotId: slot!.id,
+          doctorId: doctor?.id,
+          secretKey: encrypt(secret.base32),
+          latitude: finalLat,
+          longitude: finalLng,
+          radius: finalRadius,
+          facultyCapturedLatitude: reqLat,
+          facultyCapturedLongitude: reqLng,
+          roomMismatchWarning,
+          gracePeriodMins: finalGrace,
+          codeStepSeconds: 20,
+          expiresAt,
+          sessionPoints: validatedPoints,
+        },
+      });
+    });
 
     return {
       sessionId: session.id,
@@ -386,6 +475,7 @@ class AttendanceSessionService {
       roomId: slot.roomId,
       roomNeedsCoordinates:
         slot.roomId && slot.roomRef?.latitude == null && reqLat !== null,
+      sessionPoints: session.sessionPoints,
     };
   }
 

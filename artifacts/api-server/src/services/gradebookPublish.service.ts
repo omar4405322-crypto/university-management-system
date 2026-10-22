@@ -32,23 +32,28 @@ export type GradeCalculatorFn = (
   ctx: GradeCalculatorContext
 ) => Promise<number> | number;
 
-const gradeCalculatorRegistry = new Map<string, GradeCalculatorFn>();
+function getGradeCalculatorRegistry(): Map<string, GradeCalculatorFn> {
+  if (!(globalThis as any).__gradeCalculatorRegistry) {
+    (globalThis as any).__gradeCalculatorRegistry = new Map<string, GradeCalculatorFn>();
+  }
+  return (globalThis as any).__gradeCalculatorRegistry as Map<string, GradeCalculatorFn>;
+}
 
 export function registerGradeCalculator(
   source: string,
   calculator: GradeCalculatorFn
 ): void {
-  gradeCalculatorRegistry.set(source, calculator);
+  getGradeCalculatorRegistry().set(source, calculator);
 }
 
 export function unregisterGradeCalculator(source: string): void {
-  gradeCalculatorRegistry.delete(source);
+  getGradeCalculatorRegistry().delete(source);
 }
 
 export function getGradeCalculator(
   source: string
 ): GradeCalculatorFn | undefined {
-  return gradeCalculatorRegistry.get(source);
+  return getGradeCalculatorRegistry().get(source);
 }
 
 /**
@@ -454,3 +459,7 @@ export async function publishGradebook(
     };
   });
 }
+
+// Auto-register built-in calculators
+import '../attendance/attendanceGradeCalculator';
+
