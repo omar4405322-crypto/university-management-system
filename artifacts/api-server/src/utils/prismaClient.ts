@@ -1,9 +1,15 @@
 import { PrismaClient } from '@prisma/client';
-import { assertTestDatabase } from '../config/testDbGuard';
+import { assertTestDatabase, assertTestRunnerEnvironment } from '../config/testDbGuard';
 
 declare global {
   var prisma: PrismaClient | undefined;
 }
+
+assertTestRunnerEnvironment({
+  env: process.env,
+  argv: process.argv,
+  execArgv: process.execArgv,
+});
 
 if (process.env.NODE_ENV?.trim().toLowerCase() === 'test') {
   assertTestDatabase(process.env);

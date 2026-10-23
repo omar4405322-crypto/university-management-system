@@ -153,3 +153,55 @@ export function assertTestDatabase(
     isTestEnv: true,
   };
 }
+
+export interface TestRunnerEnvironmentOptions {
+  env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+  argv?: string[];
+  execArgv?: string[];
+}
+
+/**
+ * Pure function to assert that test runner execution occurs strictly within a test environment (T-DB-2).
+ *
+ * Throws when the process execution context indicates a test runner invocation
+ * (e.g. NODE_TEST_CONTEXT present, --test flag in execArgv or argv, or a test file target in argv)
+ * but the normalized NODE_ENV is not 'test'.
+ *
+ * Security Invariants:
+ * - Pure function, no side effects.
+ * - Error messages NEVER echo environment variables, parameters, or URLs.
+ */
+export function assertTestRunnerEnvironment(
+  options: TestRunnerEnvironmentOptions = {}
+): void {
+  const env = options.env ?? process.env;
+  const argv = options.argv ?? process.argv ?? [];
+  const execArgv = options.execArgv ?? process.execArgv ?? [];
+
+  const rawNodeEnv = env?.NODE_ENV;
+  const normalizedNodeEnv = typeof rawNodeEnv === 'string' ? rawNodeEnv.trim().toLowerCase() : '';
+  const isTestEnv = normalizedNodeEnv === 'test';
+
+  const hasTestContext = env?.NODE_TEST_CONTEXT !== undefined && env?.NODE_TEST_CONTEXT !== '';
+  const hasTestFlag =
+    execArgv.some((arg) => typeof arg === 'string' && (arg === '--test' || arg.startsWith('--test=') || arg.startsWith('--test-'))) ||
+    argv.some((arg) => typeof arg === 'string' && (arg === '--test' || arg.startsWith('--test=') || arg.startsWith('--test-')));
+  const hasTestScript = argv.some((arg) => {
+    if (typeof arg !== 'string') return false;
+    const normalized = arg.replace(/\\/g, '/').toLowerCase();
+    return (
+      normalized.endsWith('.test.ts') ||
+      normalized.endsWith('.test.mjs') ||
+      normalized.endsWith('.test.js')
+    );
+  });
+
+  const isTestProcess = hasTestContext || hasTestFlag || hasTestScript;
+
+  if (isTestProcess && !isTestEnv) {
+    throw new Error(
+      'Refusing database connection: test runner execution detected but NODE_ENV is not "test". Test runs must use the test environment with a dedicated test database.'
+    );
+  }
+}
+

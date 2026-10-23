@@ -14,6 +14,7 @@
     "test:api": "node scripts/run-api-tests.mjs",
     "test:api:unit": "node scripts/run-api-tests.mjs --unit",
     "test:api:integration": "node scripts/run-api-tests.mjs --integration",
+    "test:file": "node --import ./scripts/test-preload.mjs --import ./artifacts/api-server/node_modules/tsx/dist/loader.mjs --test",
     "test:web": "pnpm --filter @workspace/university-app test",
     "test:coverage": "node --import ./scripts/test-preload.mjs --test --experimental-test-coverage \"artifacts/university-app/tests/*.test.mjs\"",
     "test:contract": "pnpm --filter @workspace/scripts exec tsx ./contract_drift_check.ts",
