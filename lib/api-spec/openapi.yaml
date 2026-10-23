@@ -2474,7 +2474,7 @@ components:
           type: number
         examType:
           type: string
-          enum: [MIDTERM, FINAL, PRACTICAL]
+          enum: [MIDTERM, FINAL, QUIZ, PRACTICAL]
         date:
           type: string
           format: date-time

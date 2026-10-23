@@ -9,6 +9,7 @@ import {
   isBoundedAntiCheatLogCollection,
   MAX_EXAM_CANCEL_REASON_LENGTH,
 } from "../utils/requestLimits";
+import { isAllowedExamType } from "../utils/examType.utils";
 
 router.get("/", examsController.getAllExams);
 router.get("/upcoming", examsController.getUpcomingExams);
@@ -19,6 +20,11 @@ router.get(
   examsController.getExamById,
 );
 
+const examTypeValidation = body("type")
+  .optional()
+  .custom((val) => isAllowedExamType(val))
+  .withMessage("Invalid exam type: only QUIZ is supported");
+
 const createExamValidation = [
   body("courseId").isInt().withMessage("Course ID must be an integer"),
   body("date").isISO8601().withMessage("Valid date is required"),
@@ -26,7 +32,7 @@ const createExamValidation = [
   body("endTime").notEmpty().withMessage("End time is required"),
   body("room").optional().trim(),
   body("location").optional().trim(),
-  body("type").optional().isIn(["MIDTERM", "FINAL", "QUIZ"]),
+  examTypeValidation,
 ];
 
 const updateExamValidation = [
@@ -35,7 +41,7 @@ const updateExamValidation = [
   body("startTime").optional().notEmpty().withMessage("Start time is required"),
   body("endTime").optional().notEmpty().withMessage("End time is required"),
   body("room").optional().trim(),
-  body("type").optional().isIn(["MIDTERM", "FINAL", "QUIZ"]),
+  examTypeValidation,
 ];
 
 router.post(

@@ -19,6 +19,7 @@ import {
   type StudentExamQuestionDto,
   type StudentExamReviewQuestionDto,
 } from "../utils/examAnswerReview.utils";
+import { assertAllowedExamType, ALLOWED_EXAM_TYPE } from "../utils/examType.utils";
 
 interface AnswerInputItem {
   questionId: string | number;
@@ -179,6 +180,8 @@ export const createExam = catchAsync(
     const { courseId, type, title, date, startTime, endTime, room, location } =
       req.body;
 
+    assertAllowedExamType(type);
+
     // Check if course exists
     const course = await prisma.course.findUnique({
       where: { id: parseInt(courseId as string) },
@@ -271,7 +274,7 @@ export const createExam = catchAsync(
           academicYear: resolvedAcademicYear,
           semester: resolvedSemester,
           termId: targetTermId,
-          type: type || "MIDTERM",
+          type: type || ALLOWED_EXAM_TYPE,
           title:
             title && String(title).trim() ? String(title).trim() : undefined,
           date: new Date(date as string),
@@ -328,9 +331,9 @@ export const createExam = catchAsync(
 
       if (studentUserIds.length > 0) {
         const examTypeTitle =
-          type === "FINAL"
+          exam.type === "FINAL"
             ? "الامتحان النهائي"
-            : type === "MIDTERM"
+            : exam.type === "MIDTERM"
               ? "امتحان منتصف الفصل"
               : "اختبار قصير";
 
@@ -376,6 +379,7 @@ export const createExam = catchAsync(
 export const updateExam = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { type, date, startTime, endTime, room } = req.body;
+    assertAllowedExamType(type);
     const id = parseInt(req.params.id as string);
 
     const examScope = (getScopeWhere(req.user!, "exam") || {}) as Prisma.ExamWhereInput;
