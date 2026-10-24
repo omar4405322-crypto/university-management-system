@@ -22,6 +22,14 @@ import {
 import { assertAllowedExamType, ALLOWED_EXAM_TYPE } from "../utils/examType.utils";
 import { EXAM_SUBMISSION_GRACE_MS } from "../utils/examTiming.utils";
 import { generateShuffleSeed } from "../utils/quizShuffle.utils";
+import { runWithSerializationRetry } from "../services/gradebookPublish.service";
+import {
+  assertExamNotLockedAfterAttempt,
+  validateGuardedText,
+  MAX_EXAM_TITLE_LENGTH,
+  MAX_EXAM_ROOM_LENGTH,
+  MAX_EXAM_TIME_LENGTH,
+} from "../utils/quizInputGuard.utils";
 
 interface AnswerInputItem {
   questionId: string | number;
@@ -183,6 +191,22 @@ export const createExam = catchAsync(
       req.body;
 
     assertAllowedExamType(type);
+
+    if (title !== undefined && title !== null) {
+      validateGuardedText(title, "title", MAX_EXAM_TITLE_LENGTH);
+    }
+    if (startTime !== undefined && startTime !== null) {
+      validateGuardedText(startTime, "startTime", MAX_EXAM_TIME_LENGTH, true);
+    }
+    if (endTime !== undefined && endTime !== null) {
+      validateGuardedText(endTime, "endTime", MAX_EXAM_TIME_LENGTH, true);
+    }
+    if (room !== undefined && room !== null) {
+      validateGuardedText(room, "room", MAX_EXAM_ROOM_LENGTH);
+    }
+    if (location !== undefined && location !== null) {
+      validateGuardedText(location, "location", MAX_EXAM_ROOM_LENGTH);
+    }
 
     // Check if course exists
     const course = await prisma.course.findUnique({
@@ -380,8 +404,22 @@ export const createExam = catchAsync(
 
 export const updateExam = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { type, date, startTime, endTime, room } = req.body;
+    const { type, title, date, startTime, endTime, room } = req.body;
     assertAllowedExamType(type);
+
+    if (title !== undefined && title !== null) {
+      validateGuardedText(title, "title", MAX_EXAM_TITLE_LENGTH);
+    }
+    if (startTime !== undefined && startTime !== null) {
+      validateGuardedText(startTime, "startTime", MAX_EXAM_TIME_LENGTH);
+    }
+    if (endTime !== undefined && endTime !== null) {
+      validateGuardedText(endTime, "endTime", MAX_EXAM_TIME_LENGTH);
+    }
+    if (room !== undefined && room !== null) {
+      validateGuardedText(room, "room", MAX_EXAM_ROOM_LENGTH);
+    }
+
     const id = parseInt(req.params.id as string);
 
     const examScope = (getScopeWhere(req.user!, "exam") || {}) as Prisma.ExamWhereInput;
@@ -401,6 +439,7 @@ export const updateExam = catchAsync(
         where: { id },
         data: {
           type,
+          title: title !== undefined ? (title ? String(title).trim() : null) : undefined,
           date: date ? new Date(date as string) : undefined,
           startTime,
           endTime,
@@ -438,16 +477,8 @@ export const deleteExam = catchAsync(
       return next(new AuthorizationError("Access denied"));
     }
 
-    await prisma.$transaction(async (tx) => {
-      const existingSubmission = await tx.examSubmission.findFirst({
-        where: { examId: id },
-        select: { id: true },
-      });
-      if (existingSubmission) {
-        throw new ConflictError(
-          "Cannot delete exam: student submissions exist. Retain or archive the exam instead."
-        );
-      }
+    await runWithSerializationRetry(async (tx) => {
+      await assertExamNotLockedAfterAttempt(tx, id, "delete exam");
 
       await tx.exam.delete({ where: { id } });
       await auditLog(

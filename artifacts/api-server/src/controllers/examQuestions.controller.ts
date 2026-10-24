@@ -18,6 +18,13 @@ import {
   permuteExamQuestions,
   permuteOptionOrder,
 } from "../utils/quizShuffle.utils";
+import {
+  assertExamNotLockedAfterAttempt,
+  validateGuardedText,
+  validateQuizPoints,
+  MAX_QUESTION_TEXT_LENGTH,
+  MAX_OPTION_TEXT_LENGTH,
+} from "../utils/quizInputGuard.utils";
 
 const CAIRO_TZ = "Africa/Cairo";
 
@@ -538,6 +545,22 @@ export const addExamQuestion = catchAsync(
       order,
     } = req.body;
 
+    validateGuardedText(text, "question text", MAX_QUESTION_TEXT_LENGTH, true);
+    if (optionA !== undefined && optionA !== null) {
+      validateGuardedText(optionA, "optionA", MAX_OPTION_TEXT_LENGTH);
+    }
+    if (optionB !== undefined && optionB !== null) {
+      validateGuardedText(optionB, "optionB", MAX_OPTION_TEXT_LENGTH);
+    }
+    if (optionC !== undefined && optionC !== null) {
+      validateGuardedText(optionC, "optionC", MAX_OPTION_TEXT_LENGTH);
+    }
+    if (optionD !== undefined && optionD !== null) {
+      validateGuardedText(optionD, "optionD", MAX_OPTION_TEXT_LENGTH);
+    }
+
+    const questionPoints = validateQuizPoints(points, false) ?? 1;
+
     const question = await runWithSerializationRetry(async (tx) => {
       const examScope: any = getScopeWhere(req.user!, "exam");
       const exam = await tx.exam.findFirst({
@@ -548,10 +571,7 @@ export const addExamQuestion = catchAsync(
       });
       if (!exam) throw new AuthorizationError("Access denied");
 
-      const questionPoints =
-        points !== undefined && points !== ""
-          ? parseInt(String(points), 10)
-          : 1;
+      await assertExamNotLockedAfterAttempt(tx, examId, "add question");
 
       if (exam.type === "QUIZ") {
         await assertQuizPointsCap(tx, exam.courseId, exam.termId, questionPoints);
@@ -594,6 +614,7 @@ export const addExamQuestion = catchAsync(
               : 1,
         },
       });
+
       await auditLog(
         "CREATE_EXAM_QUESTION",
         "ExamQuestion",
@@ -631,6 +652,25 @@ export const updateExamQuestion = catchAsync(
       order,
     } = req.body;
 
+    if (text !== undefined) {
+      validateGuardedText(text, "question text", MAX_QUESTION_TEXT_LENGTH, true);
+    }
+    if (optionA !== undefined && optionA !== null) {
+      validateGuardedText(optionA, "optionA", MAX_OPTION_TEXT_LENGTH);
+    }
+    if (optionB !== undefined && optionB !== null) {
+      validateGuardedText(optionB, "optionB", MAX_OPTION_TEXT_LENGTH);
+    }
+    if (optionC !== undefined && optionC !== null) {
+      validateGuardedText(optionC, "optionC", MAX_OPTION_TEXT_LENGTH);
+    }
+    if (optionD !== undefined && optionD !== null) {
+      validateGuardedText(optionD, "optionD", MAX_OPTION_TEXT_LENGTH);
+    }
+
+    const validatedPoints =
+      points !== undefined ? validateQuizPoints(points, true) : undefined;
+
     const updated = await runWithSerializationRetry(async (tx) => {
       const question = await tx.examQuestion.findUnique({
         where: { id: questionId },
@@ -645,6 +685,8 @@ export const updateExamQuestion = catchAsync(
         },
       });
       if (!exam) throw new AuthorizationError("Access denied");
+
+      await assertExamNotLockedAfterAttempt(tx, question.examId, "update question");
 
       const data: {
         text?: string;
@@ -670,8 +712,8 @@ export const updateExamQuestion = catchAsync(
         data.optionD = optionD ? String(optionD).trim() : null;
       if (correctAnswer !== undefined)
         data.correctAnswer = String(correctAnswer).trim();
-      if (points !== undefined && points !== "")
-        data.points = parseInt(String(points), 10);
+      if (validatedPoints !== undefined)
+        data.points = validatedPoints;
       if (order !== undefined && order !== "")
         data.order = parseInt(String(order), 10);
 
@@ -729,6 +771,8 @@ export const deleteExamQuestion = catchAsync(
         },
       });
       if (!exam) throw new AuthorizationError("Access denied");
+
+      await assertExamNotLockedAfterAttempt(tx, question.examId, "delete question");
 
       await tx.examQuestion.delete({ where: { id: questionId } });
       await auditLog(
