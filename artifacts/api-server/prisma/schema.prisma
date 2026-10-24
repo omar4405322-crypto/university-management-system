@@ -560,6 +560,7 @@ model ExamSubmission {
   antiCheatLogs Json?
   startedAt     DateTime             @default(now())
   submittedAt   DateTime?
+  shuffleSeed   Int?
   violations    ExamViolation[]
 
   @@unique([examId, studentId])

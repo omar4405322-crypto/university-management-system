@@ -21,6 +21,7 @@ import {
 } from "../utils/examAnswerReview.utils";
 import { assertAllowedExamType, ALLOWED_EXAM_TYPE } from "../utils/examType.utils";
 import { EXAM_SUBMISSION_GRACE_MS } from "../utils/examTiming.utils";
+import { generateShuffleSeed } from "../utils/quizShuffle.utils";
 
 interface AnswerInputItem {
   questionId: string | number;
@@ -533,6 +534,7 @@ export const startExamSession = catchAsync(
     }
 
     if (!submission) {
+      const shuffleSeed = generateShuffleSeed();
       try {
         submission = await prisma.examSubmission.create({
           data: {
@@ -541,6 +543,7 @@ export const startExamSession = catchAsync(
             enrollmentId: enrollment.id,
             answers: [],
             status: "PENDING",
+            shuffleSeed,
           },
         });
       } catch (err: unknown) {
@@ -583,9 +586,10 @@ export const startExamSession = catchAsync(
     const lastAcceptedSequence = submission
       ? await getLastAcceptedViolationSequence(submission.id)
       : 0;
+    const { shuffleSeed: _unusedSeed, ...safeSubmission } = (submission || {}) as any;
     res
       .status(201)
-      .json({ success: true, data: { ...submission, lastAcceptedSequence } });
+      .json({ success: true, data: { ...safeSubmission, lastAcceptedSequence } });
   },
 );
 
@@ -701,7 +705,6 @@ export const submitExam = catchAsync(
     const { score, maxScore } = calculateExamScore(
       questions,
       answersMap,
-      student.id,
     );
 
     const updatedSubmission = await prisma.$transaction(async (tx) => {
@@ -762,7 +765,8 @@ export const submitExam = catchAsync(
       return sub;
     });
 
-    res.json({ success: true, data: updatedSubmission });
+    const { shuffleSeed: _unused, ...safeSubmission } = (updatedSubmission || {}) as any;
+    res.json({ success: true, data: safeSubmission });
   },
 );
 
@@ -887,7 +891,8 @@ export const cancelExam = catchAsync(
       req,
     );
 
-    res.json({ success: true, data: updatedSubmission });
+    const { shuffleSeed: _unused, ...safeSubmission } = (updatedSubmission || {}) as any;
+    res.json({ success: true, data: safeSubmission });
   },
 );
 
@@ -936,7 +941,6 @@ export const getExamSubmissions = catchAsync(
         const { score: calcScore, maxScore: totalMax } = calculateExamScore(
           questions,
           answersMap,
-          sub.studentId,
         );
 
         return {
@@ -1036,10 +1040,11 @@ export const getMyExamSubmission = catchAsync(
       submission.id,
     );
 
+    const { shuffleSeed: _unused, ...safeSubmission } = (submission || {}) as any;
     res.json({
       success: true,
       data: {
-        ...submission,
+        ...safeSubmission,
         lastAcceptedSequence,
         questions,
       },

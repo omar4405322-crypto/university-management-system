@@ -14,6 +14,10 @@ import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { runWithSerializationRetry } from "../services/gradebookPublish.service";
 import { toHundredths } from "../utils/gradeMath.utils";
 import { EXAM_SUBMISSION_GRACE_MS } from "../utils/examTiming.utils";
+import {
+  permuteExamQuestions,
+  permuteOptionOrder,
+} from "../utils/quizShuffle.utils";
 
 const CAIRO_TZ = "Africa/Cairo";
 
@@ -374,48 +378,38 @@ export const getExamQuestions = catchAsync(
         orderBy: { order: "asc" },
       });
 
-      const studentId = student.id;
-      const processedQuestions = questions.map((q: any) => {
+      const permuted = permuteExamQuestions(
+        questions,
+        submission.shuffleSeed,
+        examId,
+      );
+
+      const processedQuestions = permuted.map((q: any) => {
         const { correctAnswer, ...rest } = q;
         const qType = (q.type || "").toUpperCase().replace("-", "_");
 
-        const availableLetters = ["A", "B", "C", "D"].filter(
-          (l) =>
-            q[`option${l}`] !== undefined &&
-            q[`option${l}`] !== null &&
-            String(q[`option${l}`]).trim().length > 0,
+        const availableKeys = ["optionA", "optionB", "optionC", "optionD"].filter(
+          (key) =>
+            q[key] !== undefined &&
+            q[key] !== null &&
+            String(q[key]).trim().length > 0,
         );
 
         const isMcq =
           qType === "MCQ" ||
           qType === "MULTIPLE_CHOICE" ||
-          (!qType && availableLetters.length > 0);
+          (!qType && availableKeys.length > 0);
 
-        if (isMcq && availableLetters.length > 1) {
-          const mapping = getMcqOptionMapping(
-            studentId,
+        if (isMcq) {
+          const optionOrder = permuteOptionOrder(
+            availableKeys,
+            submission.shuffleSeed,
+            examId,
             q.id,
-            availableLetters,
           );
-          const displayLetters = ["A", "B", "C", "D"].slice(
-            0,
-            availableLetters.length,
-          );
-          const shuffledOptions: Record<string, string | null> = {
-            optionA: null,
-            optionB: null,
-            optionC: null,
-            optionD: null,
-          };
-
-          displayLetters.forEach((dispLetter, idx) => {
-            const origLetter = mapping[idx];
-            shuffledOptions[`option${dispLetter}`] = q[`option${origLetter}`];
-          });
-
           return {
             ...rest,
-            ...shuffledOptions,
+            optionOrder,
           };
         }
 
