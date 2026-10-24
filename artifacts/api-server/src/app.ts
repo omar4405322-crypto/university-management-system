@@ -62,6 +62,7 @@ import academicYearsRoutes from './routes/academicYears.routes';
 import academicTermsRoutes from './routes/academicTerms.routes';
 import taApprovalRoutes from './routes/taApproval.routes';
 import './attendance/attendanceGradeCalculator';
+import './quiz/quizGradeCalculator';
 
 const app: Application = express();
 app.set('trust proxy', 1);

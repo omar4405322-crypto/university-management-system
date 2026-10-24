@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { Prisma } from "@prisma/client";
 import prisma from "../utils/prismaClient";
 import { auditLog } from "../utils/audit.utils";
 import catchAsync from "../utils/catchAsync";
@@ -6,9 +7,13 @@ import {
   NotFoundError,
   AuthorizationError,
   ValidationError,
+  ConflictError,
 } from "../utils/appError";
 import { getScopeWhere } from "../utils/scope.utils";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
+import { runWithSerializationRetry } from "../services/gradebookPublish.service";
+import { toHundredths } from "../utils/gradeMath.utils";
+import { EXAM_SUBMISSION_GRACE_MS } from "../utils/examTiming.utils";
 
 const CAIRO_TZ = "Africa/Cairo";
 
@@ -328,6 +333,42 @@ export const getExamQuestions = catchAsync(
 
       await verifyStudentExamAccess(exam, student.id);
 
+      // I2: Question-text gating: student without an in-progress submission (PENDING, started, before deadline) gets no questions
+      const submission = await prisma.examSubmission.findUnique({
+        where: { examId_studentId: { examId, studentId: student.id } },
+      });
+      if (!submission) {
+        return next(
+          new AuthorizationError("Exam session has not been started"),
+        );
+      }
+      if (submission.status !== "PENDING") {
+        return next(
+          new ConflictError("Exam submission is no longer pending"),
+        );
+      }
+
+      // Check deadline = min(windowEndMs, startedAtMs + durationMinutes) + grace
+      let windowEndMs: number | null = null;
+      if (exam.date && exam.endTime) {
+        const [h, m] = String(exam.endTime).split(":").map(Number);
+        if (!isNaN(h) && !isNaN(m)) {
+          const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
+          zonedDate.setHours(h, m, 0, 0);
+          windowEndMs = fromZonedTime(zonedDate, CAIRO_TZ).getTime();
+        }
+      }
+      const durationMinutes = Number((exam as any).durationMinutes) || 120;
+      const startedAtMs = submission.startedAt ? new Date(submission.startedAt).getTime() : Date.now();
+      const durationEndMs = startedAtMs + durationMinutes * 60 * 1000;
+      const deadlineMs = windowEndMs !== null ? Math.min(windowEndMs, durationEndMs) : durationEndMs;
+
+      if (Date.now() > deadlineMs + EXAM_SUBMISSION_GRACE_MS) {
+        return next(
+          new AuthorizationError("Exam submission window has closed"),
+        );
+      }
+
       const questions = await prisma.examQuestion.findMany({
         where: { examId },
         orderBy: { order: "asc" },
@@ -403,6 +444,91 @@ export const getExamQuestions = catchAsync(
   },
 );
 
+/**
+ * Helper to check cumulative quiz points cap across course-term QUIZ exams.
+ * Throws 422 QUIZ_POINTS_CAP_EXCEEDED if points exceed AUTO_QUIZ maxPoints.
+ */
+async function assertQuizPointsCap(
+  tx: Prisma.TransactionClient,
+  courseId: number,
+  termId: number | null | undefined,
+  additionalPoints: number,
+  currentQuestionId?: number,
+): Promise<void> {
+  // Resolve academic term (fallback to current term if null, OD-29)
+  let resolvedTermId = termId;
+  if (!resolvedTermId) {
+    const currentTerm = await tx.academicTerm.findFirst({
+      where: { isCurrent: true },
+      select: { id: true },
+    });
+    resolvedTermId = currentTerm?.id ?? null;
+  }
+
+  if (!resolvedTermId) {
+    return; // No term available, no grade structure possible
+  }
+
+  // Find AUTO_QUIZ component for this course-term
+  const autoQuizComp = await tx.courseGradeComponent.findFirst({
+    where: {
+      structure: {
+        courseId,
+        termId: resolvedTermId,
+      },
+      source: "AUTO_QUIZ",
+    },
+    select: { maxPoints: true },
+  });
+
+  if (!autoQuizComp) {
+    return; // No AUTO_QUIZ component on structure -> no cap
+  }
+
+  const term = await tx.academicTerm.findUnique({
+    where: { id: resolvedTermId },
+    select: { isCurrent: true },
+  });
+
+  const examFilter = term?.isCurrent
+    ? {
+        courseId,
+        type: "QUIZ" as const,
+        OR: [{ termId: resolvedTermId }, { termId: null }],
+      }
+    : {
+        courseId,
+        type: "QUIZ" as const,
+        termId: resolvedTermId,
+      };
+
+  // Aggregate current points across all questions of these QUIZ exams
+  const pointsAgg = await tx.examQuestion.aggregate({
+    where: {
+      exam: examFilter,
+      ...(currentQuestionId ? { id: { not: currentQuestionId } } : {}),
+    },
+    _sum: { points: true },
+  });
+
+  const existingPoints = pointsAgg._sum.points ?? 0;
+  const newTotal = existingPoints + additionalPoints;
+
+  if (toHundredths(newTotal) > toHundredths(autoQuizComp.maxPoints)) {
+    const err = new ValidationError(
+      `Cumulative quiz points exceed course-term AUTO_QUIZ component limit (QUIZ_POINTS_CAP_EXCEEDED)`,
+      [
+        {
+          code: "QUIZ_POINTS_CAP_EXCEEDED",
+          message: "Cumulative quiz points exceed course-term AUTO_QUIZ component limit",
+        },
+      ],
+    );
+    (err as any).code = "QUIZ_POINTS_CAP_EXCEEDED";
+    throw err;
+  }
+}
+
 export const addExamQuestion = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const examId = parseInt(req.params.id as string, 10);
@@ -418,16 +544,25 @@ export const addExamQuestion = catchAsync(
       order,
     } = req.body;
 
-    const examScope: any = getScopeWhere(req.user!, "exam");
-    const exam = await prisma.exam.findFirst({
-      where: {
-        id: examId,
-        ...(examScope && Object.keys(examScope).length ? examScope : {}),
-      },
-    });
-    if (!exam) return next(new AuthorizationError("Access denied"));
+    const question = await runWithSerializationRetry(async (tx) => {
+      const examScope: any = getScopeWhere(req.user!, "exam");
+      const exam = await tx.exam.findFirst({
+        where: {
+          id: examId,
+          ...(examScope && Object.keys(examScope).length ? examScope : {}),
+        },
+      });
+      if (!exam) throw new AuthorizationError("Access denied");
 
-    const question = await prisma.$transaction(async (tx) => {
+      const questionPoints =
+        points !== undefined && points !== ""
+          ? parseInt(String(points), 10)
+          : 1;
+
+      if (exam.type === "QUIZ") {
+        await assertQuizPointsCap(tx, exam.courseId, exam.termId, questionPoints);
+      }
+
       const created = await tx.examQuestion.create({
         data: {
           examId,
@@ -458,10 +593,7 @@ export const addExamQuestion = catchAsync(
                 : null
               : null,
           correctAnswer: String(correctAnswer).trim(),
-          points:
-            points !== undefined && points !== ""
-              ? parseInt(String(points), 10)
-              : 1,
+          points: questionPoints,
           order:
             order !== undefined && order !== ""
               ? parseInt(String(order), 10)
@@ -505,50 +637,54 @@ export const updateExamQuestion = catchAsync(
       order,
     } = req.body;
 
-    const question = await prisma.examQuestion.findUnique({
-      where: { id: questionId },
-    });
-    if (!question) return next(new NotFoundError("Question not found"));
+    const updated = await runWithSerializationRetry(async (tx) => {
+      const question = await tx.examQuestion.findUnique({
+        where: { id: questionId },
+      });
+      if (!question) throw new NotFoundError("Question not found");
 
-    const examScope: any = getScopeWhere(req.user!, "exam");
-    const exam = await prisma.exam.findFirst({
-      where: {
-        id: question.examId,
-        ...(examScope && Object.keys(examScope).length ? examScope : {}),
-      },
-    });
-    if (!exam) return next(new AuthorizationError("Access denied"));
+      const examScope: any = getScopeWhere(req.user!, "exam");
+      const exam = await tx.exam.findFirst({
+        where: {
+          id: question.examId,
+          ...(examScope && Object.keys(examScope).length ? examScope : {}),
+        },
+      });
+      if (!exam) throw new AuthorizationError("Access denied");
 
-    const data: {
-      text?: string;
-      type?: "MCQ" | "TRUE_FALSE" | "SHORT_ANSWER";
-      optionA?: string | null;
-      optionB?: string | null;
-      optionC?: string | null;
-      optionD?: string | null;
-      correctAnswer?: string;
-      points?: number;
-      order?: number;
-    } = {};
+      const data: {
+        text?: string;
+        type?: "MCQ" | "TRUE_FALSE" | "SHORT_ANSWER";
+        optionA?: string | null;
+        optionB?: string | null;
+        optionC?: string | null;
+        optionD?: string | null;
+        correctAnswer?: string;
+        points?: number;
+        order?: number;
+      } = {};
 
-    if (text !== undefined) data.text = String(text).trim();
-    if (type !== undefined) data.type = type;
-    if (optionA !== undefined)
-      data.optionA = optionA ? String(optionA).trim() : null;
-    if (optionB !== undefined)
-      data.optionB = optionB ? String(optionB).trim() : null;
-    if (optionC !== undefined)
-      data.optionC = optionC ? String(optionC).trim() : null;
-    if (optionD !== undefined)
-      data.optionD = optionD ? String(optionD).trim() : null;
-    if (correctAnswer !== undefined)
-      data.correctAnswer = String(correctAnswer).trim();
-    if (points !== undefined && points !== "")
-      data.points = parseInt(String(points), 10);
-    if (order !== undefined && order !== "")
-      data.order = parseInt(String(order), 10);
+      if (text !== undefined) data.text = String(text).trim();
+      if (type !== undefined) data.type = type;
+      if (optionA !== undefined)
+        data.optionA = optionA ? String(optionA).trim() : null;
+      if (optionB !== undefined)
+        data.optionB = optionB ? String(optionB).trim() : null;
+      if (optionC !== undefined)
+        data.optionC = optionC ? String(optionC).trim() : null;
+      if (optionD !== undefined)
+        data.optionD = optionD ? String(optionD).trim() : null;
+      if (correctAnswer !== undefined)
+        data.correctAnswer = String(correctAnswer).trim();
+      if (points !== undefined && points !== "")
+        data.points = parseInt(String(points), 10);
+      if (order !== undefined && order !== "")
+        data.order = parseInt(String(order), 10);
 
-    const updated = await prisma.$transaction(async (tx) => {
+      if (exam.type === "QUIZ" && data.points !== undefined) {
+        await assertQuizPointsCap(tx, exam.courseId, exam.termId, data.points, question.id);
+      }
+
       const changed = await tx.examQuestion.update({
         where: { id: questionId },
         data,
@@ -584,21 +720,22 @@ export const updateExamQuestion = catchAsync(
 export const deleteExamQuestion = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const questionId = parseInt(req.params.questionId as string);
-    const question = await prisma.examQuestion.findUnique({
-      where: { id: questionId },
-    });
-    if (!question) return next(new NotFoundError("Question not found"));
 
-    const examScope: any = getScopeWhere(req.user!, "exam");
-    const exam = await prisma.exam.findFirst({
-      where: {
-        id: question.examId,
-        ...(examScope && Object.keys(examScope).length ? examScope : {}),
-      },
-    });
-    if (!exam) return next(new AuthorizationError("Access denied"));
+    await runWithSerializationRetry(async (tx) => {
+      const question = await tx.examQuestion.findUnique({
+        where: { id: questionId },
+      });
+      if (!question) throw new NotFoundError("Question not found");
 
-    await prisma.$transaction(async (tx) => {
+      const examScope: any = getScopeWhere(req.user!, "exam");
+      const exam = await tx.exam.findFirst({
+        where: {
+          id: question.examId,
+          ...(examScope && Object.keys(examScope).length ? examScope : {}),
+        },
+      });
+      if (!exam) throw new AuthorizationError("Access denied");
+
       await tx.examQuestion.delete({ where: { id: questionId } });
       await auditLog(
         "DELETE_EXAM_QUESTION",
@@ -617,6 +754,7 @@ export const deleteExamQuestion = catchAsync(
         tx,
       );
     });
+
     res.json({ success: true, message: "Question deleted" });
   },
 );

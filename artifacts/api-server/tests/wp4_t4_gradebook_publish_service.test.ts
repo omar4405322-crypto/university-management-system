@@ -474,17 +474,20 @@ test('WP-4 T-4 AUTO Component Unavailable 409 and Injected Calculator Snapshot',
 
     const urlPub = `${baseUrl}/courses/${ctx.course.id}/gradebook/publish?termId=${ctx.termCurrent.id}`;
 
-    // 1. Without calculator registered, publish complete enrollment must return 409 AUTO_CALCULATOR_UNAVAILABLE
-    const resNoCalc = await fetch(urlPub, { method: 'POST', headers: docAuth, body: JSON.stringify({}) });
-    assert.strictEqual(resNoCalc.status, 409);
-    const jsonNoCalc = await resNoCalc.json();
-    assert.match(jsonNoCalc.message, /AUTO_CALCULATOR_UNAVAILABLE/i);
-
-    // 2. Inject fake calculator for AUTO_QUIZ
     const { registerGradeCalculator, unregisterGradeCalculator } = await import('../src/services/gradebookPublish.service');
-    registerGradeCalculator('AUTO_QUIZ', async () => 9.5);
+    const { calculateAutoQuiz } = await import('../src/quiz/quizGradeCalculator');
 
+    // 1. Without calculator registered, publish complete enrollment must return 409 AUTO_CALCULATOR_UNAVAILABLE
+    unregisterGradeCalculator('AUTO_QUIZ');
     try {
+      const resNoCalc = await fetch(urlPub, { method: 'POST', headers: docAuth, body: JSON.stringify({}) });
+      assert.strictEqual(resNoCalc.status, 409);
+      const jsonNoCalc = await resNoCalc.json();
+      assert.match(jsonNoCalc.message, /AUTO_CALCULATOR_UNAVAILABLE/i);
+
+      // 2. Inject fake calculator for AUTO_QUIZ
+      registerGradeCalculator('AUTO_QUIZ', async () => 9.5);
+
       const resWithCalc = await fetch(urlPub, { method: 'POST', headers: docAuth, body: JSON.stringify({}) });
       assert.strictEqual(resWithCalc.status, 200);
 
@@ -501,7 +504,7 @@ test('WP-4 T-4 AUTO Component Unavailable 409 and Injected Calculator Snapshot',
       assert.strictEqual(enr1?.finalPointsEarned, 10.0 + 25.0 + 50.0 + 9.5); // 94.5
       assert.strictEqual(enr1?.status, 'COMPLETED');
     } finally {
-      unregisterGradeCalculator('AUTO_QUIZ');
+      registerGradeCalculator('AUTO_QUIZ', calculateAutoQuiz);
     }
   } finally {
     await prisma.courseGradeEntry.deleteMany({ where: { componentId: autoComp.id } });

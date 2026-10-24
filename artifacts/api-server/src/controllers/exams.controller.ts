@@ -20,6 +20,7 @@ import {
   type StudentExamReviewQuestionDto,
 } from "../utils/examAnswerReview.utils";
 import { assertAllowedExamType, ALLOWED_EXAM_TYPE } from "../utils/examType.utils";
+import { EXAM_SUBMISSION_GRACE_MS } from "../utils/examTiming.utils";
 
 interface AnswerInputItem {
   questionId: string | number;
@@ -658,20 +659,28 @@ export const submitExam = catchAsync(
       return next(new ConflictError("Exam submission is no longer pending"));
     }
 
-    // Check if exam submission window has closed (allowing 3-minute grace period)
+    // D1: deadline = min(exam end datetime in Cairo time, startedAt + durationMinutes)
+    // Accepted until deadline + EXAM_SUBMISSION_GRACE_MS
+    let windowEndMs: number | null = null;
     if (exam.date && exam.endTime) {
       const [h, m] = String(exam.endTime).split(":").map(Number);
       if (!isNaN(h) && !isNaN(m)) {
         const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
         zonedDate.setHours(h, m, 0, 0);
-        const endDateTime = fromZonedTime(zonedDate, CAIRO_TZ);
-        const gracePeriodMs = 3 * 60 * 1000;
-        if (Date.now() > endDateTime.getTime() + gracePeriodMs) {
-          return next(
-            new AuthorizationError("Exam submission window has closed"),
-          );
-        }
+        windowEndMs = fromZonedTime(zonedDate, CAIRO_TZ).getTime();
       }
+    }
+
+    const durationMinutes = Number(exam.durationMinutes) || 120;
+    const startedAtMs = submission.startedAt ? new Date(submission.startedAt).getTime() : Date.now();
+    const durationEndMs = startedAtMs + durationMinutes * 60 * 1000;
+
+    const deadlineMs = windowEndMs !== null ? Math.min(windowEndMs, durationEndMs) : durationEndMs;
+
+    if (Date.now() > deadlineMs + EXAM_SUBMISSION_GRACE_MS) {
+      return next(
+        new AuthorizationError("Exam submission window has closed"),
+      );
     }
 
     const questions = await prisma.examQuestion.findMany({ where: { examId } });
@@ -965,6 +974,7 @@ export const getMyExamSubmission = catchAsync(
         courseId: true,
         date: true,
         endTime: true,
+        durationMinutes: true,
       },
     });
     if (!exam) return next(new NotFoundError("Exam not found"));
@@ -972,8 +982,10 @@ export const getMyExamSubmission = catchAsync(
     const canReviewAnswers = canStudentReviewExamAnswers(
       submission.status,
       exam,
+      new Date(),
+      true,
     );
-    let questions: Array<StudentExamQuestionDto | StudentExamReviewQuestionDto>;
+    let questions: Array<StudentExamQuestionDto | StudentExamReviewQuestionDto> = [];
 
     if (canReviewAnswers) {
       questions = await prisma.examQuestion.findMany({
@@ -981,21 +993,43 @@ export const getMyExamSubmission = catchAsync(
         select: STUDENT_EXAM_REVIEW_QUESTION_SELECT,
         orderBy: { order: "asc" },
       });
-    } else {
-      questions = await prisma.examQuestion.findMany({
-        where: { examId },
-        select: STUDENT_EXAM_QUESTION_SELECT,
-        orderBy: { order: "asc" },
-      });
-    }
+      if (questions.length === 0 && exam.courseId) {
+        questions = await prisma.examQuestion.findMany({
+          where: { exam: { courseId: exam.courseId } },
+          select: STUDENT_EXAM_REVIEW_QUESTION_SELECT,
+          orderBy: { order: "asc" },
+        });
+      }
+    } else if (submission.status === "PENDING") {
+      // I2: In-progress check: student only receives question text if attempt is currently active (PENDING & within deadline)
+      let windowEndMs: number | null = null;
+      if (exam.date && exam.endTime) {
+        const [h, m] = String(exam.endTime).split(":").map(Number);
+        if (!isNaN(h) && !isNaN(m)) {
+          const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
+          zonedDate.setHours(h, m, 0, 0);
+          windowEndMs = fromZonedTime(zonedDate, CAIRO_TZ).getTime();
+        }
+      }
+      const durationMinutes = Number(exam.durationMinutes) || 120;
+      const startedAtMs = submission.startedAt ? new Date(submission.startedAt).getTime() : Date.now();
+      const durationEndMs = startedAtMs + durationMinutes * 60 * 1000;
+      const deadlineMs = windowEndMs !== null ? Math.min(windowEndMs, durationEndMs) : durationEndMs;
 
-    // Fallback: If no questions attached directly to examId, load questions from any exam of the same course
-    if (questions.length === 0 && exam.courseId) {
-      questions = await prisma.examQuestion.findMany({
-        where: { exam: { courseId: exam.courseId } },
-        select: STUDENT_EXAM_QUESTION_SELECT,
-        orderBy: { order: "asc" },
-      });
+      if (Date.now() <= deadlineMs + EXAM_SUBMISSION_GRACE_MS) {
+        questions = await prisma.examQuestion.findMany({
+          where: { examId },
+          select: STUDENT_EXAM_QUESTION_SELECT,
+          orderBy: { order: "asc" },
+        });
+        if (questions.length === 0 && exam.courseId) {
+          questions = await prisma.examQuestion.findMany({
+            where: { exam: { courseId: exam.courseId } },
+            select: STUDENT_EXAM_QUESTION_SELECT,
+            orderBy: { order: "asc" },
+          });
+        }
+      }
     }
 
     const lastAcceptedSequence = await getLastAcceptedViolationSequence(
@@ -1039,8 +1073,13 @@ export const gradeSubmission = catchAsync(
       return next(new AuthorizationError("Access denied"));
     }
 
-    // Score validation
+    // D4: score finite, >= 0, <= submission maxScore, at most 2 decimals
     const numericScore = Number(score);
+    const scoreStr = String(score).trim();
+    const hasValidDecimals =
+      Math.abs(Math.round(numericScore * 100) - numericScore * 100) <= 1e-6 &&
+      !/\.\d{3,}/.test(scoreStr);
+
     if (
       score === undefined ||
       score === null ||
@@ -1048,9 +1087,14 @@ export const gradeSubmission = catchAsync(
       isNaN(numericScore) ||
       !Number.isFinite(numericScore) ||
       numericScore < 0 ||
-      numericScore > submission.maxScore
+      numericScore > submission.maxScore ||
+      !hasValidDecimals
     ) {
-      return next(new ValidationError("Invalid score value"));
+      return next(
+        new ValidationError(
+          "Invalid score value (must be finite, >= 0, <= maxScore, and at most 2 decimals)",
+        ),
+      );
     }
 
     const result = await prisma.examSubmission.updateMany({

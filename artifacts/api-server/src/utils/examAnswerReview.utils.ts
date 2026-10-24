@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { EXAM_SUBMISSION_GRACE_MS } from './examTiming.utils';
 
 const CAIRO_TZ = 'Africa/Cairo';
 
@@ -32,7 +33,8 @@ export type StudentExamReviewQuestionDto = Prisma.ExamQuestionGetPayload<{
 export function canStudentReviewExamAnswers(
   submissionStatus: string,
   exam: { date: Date | null; endTime: string | null },
-  now: Date = new Date()
+  now: Date = new Date(),
+  requireGrace: boolean = false
 ): boolean {
   if (submissionStatus !== 'GRADED' || !exam.date || !exam.endTime) {
     return false;
@@ -62,5 +64,10 @@ export function canStudentReviewExamAnswers(
   zonedExamDate.setHours(hours, minutes, 0, 0);
   const examEnd = fromZonedTime(zonedExamDate, CAIRO_TZ);
 
-  return now.getTime() >= examEnd.getTime();
+  const effectiveEnd = requireGrace
+    ? examEnd.getTime() + EXAM_SUBMISSION_GRACE_MS
+    : examEnd.getTime();
+
+  return now.getTime() >= effectiveEnd;
 }
+
