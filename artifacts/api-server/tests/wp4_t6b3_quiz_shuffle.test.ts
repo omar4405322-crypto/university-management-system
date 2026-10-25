@@ -559,23 +559,55 @@ test('(j) fixture student with non-identity MCQ mapping answers with original ke
     const baseUrl = await getTestBaseUrl();
     const { exam, questions } = await createQuizExam(ctx, 4);
 
-    // Verify or find a fixture student whose mapping is NOT identity on at least one question
     const availableLetters = ['A', 'B', 'C', 'D'];
     let nonIdentityFound = false;
+
+    // Check initial fixture questions for non-identity mapping
     for (const q of questions) {
+      if (q.type === 'MCQ') {
+        const mapping = getMcqOptionMapping(ctx.student.id, q.id, availableLetters);
+        if (mapping.some((val, idx) => val !== availableLetters[idx])) {
+          nonIdentityFound = true;
+          break;
+        }
+      }
+    }
+
+    // Fix by construction: keep adding fixture questions until non-identity mapping is found (bounded at 50)
+    while (!nonIdentityFound && questions.length < 50) {
+      const nextIdx = questions.length + 1;
+      const q = await prisma.examQuestion.create({
+        data: {
+          examId: exam.id,
+          text: `Question ${nextIdx} text`,
+          type: 'MCQ',
+          optionA: `OptA_${nextIdx}`,
+          optionB: `OptB_${nextIdx}`,
+          optionC: `OptC_${nextIdx}`,
+          optionD: `OptD_${nextIdx}`,
+          correctAnswer: 'B',
+          points: 1,
+          order: nextIdx,
+        },
+      });
+      questions.push(q);
       const mapping = getMcqOptionMapping(ctx.student.id, q.id, availableLetters);
       if (mapping.some((val, idx) => val !== availableLetters[idx])) {
         nonIdentityFound = true;
         break;
       }
     }
-    assert.ok(nonIdentityFound, 'Fixture student must have non-identity mapping on at least one question');
+
+    assert.ok(
+      nonIdentityFound,
+      `Failed to find non-identity option mapping for student ${ctx.student.id} across ${questions.length} questions (bounded at 50)`
+    );
 
     const stuAuth = { Authorization: `Bearer ${ctx.studentToken}`, 'Content-Type': 'application/json' };
     const resStart = await fetch(`${baseUrl}/exams/${exam.id}/start`, { method: 'POST', headers: stuAuth });
     assert.strictEqual(resStart.status, 201);
 
-    // Answer every MCQ with the ORIGINAL key of the correct option
+    // Answer ALL questions by ORIGINAL key
     const answersMap: Record<string, string> = {};
     for (const q of questions) {
       answersMap[q.id.toString()] = q.correctAnswer;
@@ -589,13 +621,20 @@ test('(j) fixture student with non-identity MCQ mapping answers with original ke
     assert.strictEqual(resSubmit.status, 200);
     const bodySubmit = await resSubmit.json();
 
+    const expectedScore = questions.reduce((sum, q) => sum + (q.points || 0), 0);
     assert.strictEqual(
       bodySubmit.data.score,
+      expectedScore,
+      `Expected full score ${expectedScore}, got ${bodySubmit.data.score}`,
+    );
+    assert.strictEqual(
       bodySubmit.data.maxScore,
-      `Expected full score ${bodySubmit.data.maxScore}, got ${bodySubmit.data.score}`,
+      expectedScore,
+      `Expected maxScore ${expectedScore}, got ${bodySubmit.data.maxScore}`,
     );
   } finally {
     await ctx.cleanup();
   }
 });
+
 

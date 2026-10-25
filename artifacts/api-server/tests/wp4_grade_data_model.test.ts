@@ -166,19 +166,20 @@ test('WP-4 T-1 Model Properties: Course has no grade columns, Enrollment has nul
     if (doctor?.id) await prisma.doctor.deleteMany({ where: { id: doctor.id } }).catch(() => {});
     if (doctorUser?.id) await prisma.user.deleteMany({ where: { id: doctorUser.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
-    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
 test('WP-4 T-1 Uniqueness: CourseGradeStructure unique([courseId, termId])', async () => {
   const suffix = makeSuffix('uq_struct');
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
   let structure: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: {
@@ -230,11 +231,13 @@ test('WP-4 T-1 Uniqueness: CourseGradeStructure unique([courseId, termId])', asy
     if (course?.id) await prisma.course.deleteMany({ where: { id: course.id } }).catch(() => {});
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
 test('WP-4 T-1 Uniqueness: CourseGradeComponent unique([structureId, name])', async () => {
   const suffix = makeSuffix('uq_comp');
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
@@ -242,7 +245,7 @@ test('WP-4 T-1 Uniqueness: CourseGradeComponent unique([structureId, name])', as
   let comp: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: {
@@ -302,11 +305,13 @@ test('WP-4 T-1 Uniqueness: CourseGradeComponent unique([structureId, name])', as
     if (course?.id) await prisma.course.deleteMany({ where: { id: course.id } }).catch(() => {});
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
 test('WP-4 T-1 Uniqueness: CourseGradeEntry unique([enrollmentId, componentId])', async () => {
   const suffix = makeSuffix('uq_entry');
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
@@ -318,7 +323,7 @@ test('WP-4 T-1 Uniqueness: CourseGradeEntry unique([enrollmentId, componentId])'
   let entry: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: {
@@ -383,18 +388,20 @@ test('WP-4 T-1 Uniqueness: CourseGradeEntry unique([enrollmentId, componentId])'
     if (course?.id) await prisma.course.deleteMany({ where: { id: course.id } }).catch(() => {});
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
 test('WP-4 T-1 Check Constraints: CourseGradeComponent maxPoints <= 0 fails', async () => {
   const suffix = makeSuffix('chk_comp');
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
   let structure: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: { name: `Course_${suffix}`, courseCode: `C_${suffix.slice(-6)}`, credits: 3, year: 1, semester: 1, departmentId: dept.id },
@@ -429,11 +436,13 @@ test('WP-4 T-1 Check Constraints: CourseGradeComponent maxPoints <= 0 fails', as
     if (course?.id) await prisma.course.deleteMany({ where: { id: course.id } }).catch(() => {});
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
 test('WP-4 T-1 Check Constraints: CourseGradeEntry absence & score invariants fail', async () => {
   const suffix = makeSuffix('chk_entry');
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
@@ -444,7 +453,7 @@ test('WP-4 T-1 Check Constraints: CourseGradeEntry absence & score invariants fa
   let comp: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: { name: `Course_${suffix}`, courseCode: `C_${suffix.slice(-6)}`, credits: 3, year: 1, semester: 1, departmentId: dept.id },
@@ -507,18 +516,20 @@ test('WP-4 T-1 Check Constraints: CourseGradeEntry absence & score invariants fa
     if (course?.id) await prisma.course.deleteMany({ where: { id: course.id } }).catch(() => {});
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
 test('WP-4 T-1 Restrict FK: AcademicTerm delete blocked by CourseGradeStructure (CourseGradeStructure_termId_fkey)', async () => {
   const suffix = makeSuffix('fk_term');
+  let college: any;
   let dept: any;
   let course: any;
   let termSolo: any;
   let structure: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: { name: `Course_${suffix}`, courseCode: `C_${suffix.slice(-6)}`, credits: 3, year: 1, semester: 1, departmentId: dept.id },
@@ -563,11 +574,13 @@ test('WP-4 T-1 Restrict FK: AcademicTerm delete blocked by CourseGradeStructure 
     if (termSolo?.id) await prisma.academicTerm.deleteMany({ where: { id: termSolo.id } }).catch(() => {});
     if (course?.id) await prisma.course.deleteMany({ where: { id: course.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
 test('WP-4 T-1 Restrict FK: CourseGradeStructure delete blocked by CourseGradeComponent (CourseGradeComponent_structureId_fkey)', async () => {
   const suffix = makeSuffix('fk_struct');
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
@@ -575,7 +588,7 @@ test('WP-4 T-1 Restrict FK: CourseGradeStructure delete blocked by CourseGradeCo
   let comp: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: { name: `Course_${suffix}`, courseCode: `C_${suffix.slice(-6)}`, credits: 3, year: 1, semester: 1, departmentId: dept.id },
@@ -608,11 +621,13 @@ test('WP-4 T-1 Restrict FK: CourseGradeStructure delete blocked by CourseGradeCo
     if (course?.id) await prisma.course.deleteMany({ where: { id: course.id } }).catch(() => {});
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
 test('WP-4 T-1 Restrict FK: CourseGradeComponent delete blocked by CourseGradeEntry (CourseGradeEntry_componentId_fkey)', async () => {
   const suffix = makeSuffix('fk_comp');
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
@@ -624,7 +639,7 @@ test('WP-4 T-1 Restrict FK: CourseGradeComponent delete blocked by CourseGradeEn
   let entry: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: { name: `Course_${suffix}`, courseCode: `C_${suffix.slice(-6)}`, credits: 3, year: 1, semester: 1, departmentId: dept.id },
@@ -673,11 +688,13 @@ test('WP-4 T-1 Restrict FK: CourseGradeComponent delete blocked by CourseGradeEn
     if (course?.id) await prisma.course.deleteMany({ where: { id: course.id } }).catch(() => {});
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
 test('WP-4 T-1 Restrict FK: Enrollment delete blocked by CourseGradeEntry (CourseGradeEntry_enrollmentId_fkey)', async () => {
   const suffix = makeSuffix('fk_enr');
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
@@ -689,7 +706,7 @@ test('WP-4 T-1 Restrict FK: Enrollment delete blocked by CourseGradeEntry (Cours
   let entry: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: { name: `Course_${suffix}`, courseCode: `C_${suffix.slice(-6)}`, credits: 3, year: 1, semester: 1, departmentId: dept.id },
@@ -738,11 +755,13 @@ test('WP-4 T-1 Restrict FK: Enrollment delete blocked by CourseGradeEntry (Cours
     if (course?.id) await prisma.course.deleteMany({ where: { id: course.id } }).catch(() => {});
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
 test('WP-4 T-1 Restrict FK: User delete blocked by CourseGradeEntry draftedById (CourseGradeEntry_draftedById_fkey)', async () => {
   const suffix = makeSuffix('fk_user_draft');
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
@@ -755,7 +774,7 @@ test('WP-4 T-1 Restrict FK: User delete blocked by CourseGradeEntry draftedById 
   let entry: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: { name: `Course_${suffix}`, courseCode: `C_${suffix.slice(-6)}`, credits: 3, year: 1, semester: 1, departmentId: dept.id },
@@ -809,11 +828,13 @@ test('WP-4 T-1 Restrict FK: User delete blocked by CourseGradeEntry draftedById 
     if (course?.id) await prisma.course.deleteMany({ where: { id: course.id } }).catch(() => {});
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
 test('WP-4 T-1 Restrict FK: User delete blocked by CourseGradeEntry publishedById (CourseGradeEntry_publishedById_fkey)', async () => {
   const suffix = makeSuffix('fk_user_pub');
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
@@ -826,7 +847,7 @@ test('WP-4 T-1 Restrict FK: User delete blocked by CourseGradeEntry publishedByI
   let entry: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: { name: `Course_${suffix}`, courseCode: `C_${suffix.slice(-6)}`, credits: 3, year: 1, semester: 1, departmentId: dept.id },
@@ -880,6 +901,7 @@ test('WP-4 T-1 Restrict FK: User delete blocked by CourseGradeEntry publishedByI
     if (course?.id) await prisma.course.deleteMany({ where: { id: course.id } }).catch(() => {});
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
@@ -888,13 +910,14 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/courses/:id returns 409 when gra
   const { adminUser, token } = await createAdminUser(suffix);
   const baseUrl = await getTestBaseUrl();
 
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
   let structure: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: { name: `Course_${suffix}`, courseCode: `C_${suffix.slice(-6)}`, credits: 3, year: 1, semester: 1, departmentId: dept.id },
@@ -922,6 +945,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/courses/:id returns 409 when gra
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
     if (adminUser?.id) await prisma.user.deleteMany({ where: { id: adminUser.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
@@ -930,6 +954,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/doctors/:id returns 409 when doc
   const { adminUser, token } = await createAdminUser(suffix);
   const baseUrl = await getTestBaseUrl();
 
+  let college: any;
   let dept: any;
   let docUser: any;
   let doctor: any;
@@ -943,7 +968,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/doctors/:id returns 409 when doc
   let entry: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
 
     docUser = await prisma.user.create({
@@ -999,6 +1024,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/doctors/:id returns 409 when doc
     if (docUser?.id) await prisma.user.deleteMany({ where: { id: docUser.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
     if (adminUser?.id) await prisma.user.deleteMany({ where: { id: adminUser.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
@@ -1007,6 +1033,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/teaching-assistants/:id returns 
   const { adminUser, token } = await createAdminUser(suffix);
   const baseUrl = await getTestBaseUrl();
 
+  let college: any;
   let dept: any;
   let taUser: any;
   let ta: any;
@@ -1020,7 +1047,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/teaching-assistants/:id returns 
   let entry: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
 
     taUser = await prisma.user.create({
@@ -1082,6 +1109,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/teaching-assistants/:id returns 
     if (taUser?.id) await prisma.user.deleteMany({ where: { id: taUser.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
     if (adminUser?.id) await prisma.user.deleteMany({ where: { id: adminUser.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
@@ -1090,6 +1118,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/students/:id returns 409 when st
   const { adminUser, token } = await createAdminUser(suffix);
   const baseUrl = await getTestBaseUrl();
 
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
@@ -1101,7 +1130,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/students/:id returns 409 when st
   let entry: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: { name: `Course_${suffix}`, courseCode: `C_${suffix.slice(-6)}`, credits: 3, year: 1, semester: 1, departmentId: dept.id },
@@ -1147,6 +1176,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/students/:id returns 409 when st
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
     if (adminUser?.id) await prisma.user.deleteMany({ where: { id: adminUser.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
@@ -1155,6 +1185,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/users/:id/confirmed-purge return
   const { adminUser, token } = await createAdminUser(suffix);
   const baseUrl = await getTestBaseUrl();
 
+  let college: any;
   let dept: any;
   let targetUser: any;
   let course: any;
@@ -1167,7 +1198,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/users/:id/confirmed-purge return
   let entry: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
 
     targetUser = await prisma.user.create({
@@ -1219,6 +1250,7 @@ test('WP-4 T-1 HTTP Deletion Guard: DELETE /api/users/:id/confirmed-purge return
     if (targetUser?.id) await prisma.user.deleteMany({ where: { id: targetUser.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
     if (adminUser?.id) await prisma.user.deleteMany({ where: { id: adminUser.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 
@@ -1227,6 +1259,7 @@ test('WP-4 T-1 Enrollment Status Change: DELETE /api/enrollments/:id succeeds (2
   const { adminUser, token } = await createAdminUser(suffix);
   const baseUrl = await getTestBaseUrl();
 
+  let college: any;
   let dept: any;
   let course: any;
   let term: any;
@@ -1238,7 +1271,7 @@ test('WP-4 T-1 Enrollment Status Change: DELETE /api/enrollments/:id succeeds (2
   let entry: any;
 
   try {
-    const college = await prisma.college.create({ data: { name: `College_${suffix}` } });
+    college = await prisma.college.create({ data: { name: `College_${suffix}` } });
     dept = await prisma.department.create({ data: { name: `Dept_${suffix}`, collegeId: college.id } });
     course = await prisma.course.create({
       data: { name: `Course_${suffix}`, courseCode: `C_${suffix.slice(-6)}`, credits: 3, year: 1, semester: 1, departmentId: dept.id },
@@ -1302,6 +1335,7 @@ test('WP-4 T-1 Enrollment Status Change: DELETE /api/enrollments/:id succeeds (2
     if (term?.id) await prisma.academicTerm.deleteMany({ where: { id: term.id } }).catch(() => {});
     if (dept?.id) await prisma.department.deleteMany({ where: { id: dept.id } }).catch(() => {});
     if (adminUser?.id) await prisma.user.deleteMany({ where: { id: adminUser.id } }).catch(() => {});
+    if (college?.id) await prisma.college.deleteMany({ where: { id: college.id } });
   }
 });
 

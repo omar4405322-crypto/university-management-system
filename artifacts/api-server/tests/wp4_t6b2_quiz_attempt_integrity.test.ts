@@ -6,6 +6,7 @@ import app from '../src/app';
 import { generateAccessToken } from '../src/utils/jwt.utils';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { EXAM_SUBMISSION_GRACE_MS } from '../src/utils/examTiming.utils';
+import { buildExamWindow, msUntilOpenWindowPossible } from './wp4_exam_window_helper';
 
 const CAIRO_TZ = 'Africa/Cairo';
 
@@ -229,11 +230,9 @@ test('I1: Student never receives correctAnswer before exam window + grace period
   let examId: number | null = null;
   let graceExamId: number | null = null;
   try {
-    // Exam date today, endTime in 2 hours (well in future)
-    const nowCairo = toZonedTime(new Date(), CAIRO_TZ);
-    const endHour = (nowCairo.getHours() + 2) % 24;
-    const endTimeStr = `${String(endHour).padStart(2, '0')}:00`;
-    const examDateStr = new Date().toISOString();
+    await new Promise((resolve) => setTimeout(resolve, msUntilOpenWindowPossible(new Date())));
+    // Exam date today, open window via helper
+    const openWindow = buildExamWindow(new Date(), 'open');
 
     const exam = await prisma.exam.create({
       data: {
@@ -243,9 +242,9 @@ test('I1: Student never receives correctAnswer before exam window + grace period
         semester: 1,
         title: `Quiz I1 ${suffix}`,
         type: 'QUIZ',
-        date: new Date(examDateStr),
-        startTime: '00:00',
-        endTime: endTimeStr,
+        date: openWindow.date,
+        startTime: openWindow.startTime,
+        endTime: openWindow.endTime,
         durationMinutes: 60,
       },
     });
@@ -310,9 +309,7 @@ test('I1: Student never receives correctAnswer before exam window + grace period
     // 5. Inside 3-minute grace period (endTime was 1 minute ago):
     // Window closed, but grace period is STILL ACTIVE for other students.
     // Review answers must NOT be available yet!
-    const graceEndMin = (nowCairo.getMinutes() - 1 + 60) % 60;
-    const graceEndHour = (nowCairo.getHours() - (nowCairo.getMinutes() === 0 ? 1 : 0) + 24) % 24;
-    const graceEndTimeStr = `${String(graceEndHour).padStart(2, '0')}:${String(graceEndMin).padStart(2, '0')}`;
+    const graceWindow = buildExamWindow(new Date(), 'grace');
     const graceExam = await prisma.exam.create({
       data: {
         courseId: ctx.course.id,
@@ -321,9 +318,9 @@ test('I1: Student never receives correctAnswer before exam window + grace period
         semester: 1,
         title: `Quiz Grace ${suffix}`,
         type: 'QUIZ',
-        date: new Date(examDateStr),
-        startTime: '00:00',
-        endTime: graceEndTimeStr,
+        date: graceWindow.date,
+        startTime: graceWindow.startTime,
+        endTime: graceWindow.endTime,
         durationMinutes: 60,
       },
     });
