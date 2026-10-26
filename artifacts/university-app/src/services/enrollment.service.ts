@@ -24,9 +24,6 @@ const enrollmentService = {
   getEnrollments: (params?: Record<string, unknown>): Promise<ApiResponse<any>> =>
     apiRequest(() => api.get('/enrollments', { params })),
 
-  updateGrade: (enrollmentId: number | string, finalGrade: number): Promise<ApiResponse<any>> =>
-    apiRequest(() => api.patch(`/enrollments/${enrollmentId}/grade`, { finalGrade })),
-
   setAbsenceThreshold: (
     enrollmentId: number | string,
     customAbsenceThreshold: number | null

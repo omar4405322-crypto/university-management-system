@@ -371,7 +371,7 @@ export const AdminExamRecordView: React.FC<AdminExamRecordViewProps> = ({
           <option value="ALL">{t("common.allTypes", "All Types")}</option>
           <option value="MIDTERM">{t("exams.types.midterm", "Midterm")}</option>
           <option value="FINAL">{t("exams.types.final", "Final")}</option>
-          <option value="PRACTICAL">{t("exams.types.practical", "Practical")}</option>
+          <option value="QUIZ">{t("exams.types.quiz", "Quiz")}</option>
         </select>
 
         {/* Submissions Filter */}

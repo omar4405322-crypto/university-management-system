@@ -36,7 +36,7 @@ import { calculateDuration, getDurationMinutes, DEFAULT_ANTI_CHEAT_SETTINGS } fr
 const schema = z.object({
   courseId: z.string().min(1, 'Course is required'),
   title: z.string().optional(),
-  type: z.enum(['MIDTERM', 'FINAL', 'QUIZ']),
+  type: z.literal('QUIZ'),
   date: z.string().min(1, 'Date is required'),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
@@ -113,7 +113,7 @@ const AddExamModal: React.FC<AddExamModalProps> = ({ isOpen, onClose, onSuccess 
     formState: { errors, isSubmitting },
   } = useForm<ExamFormData>({
     resolver: zodResolver(schema),
-    defaultValues: { courseId: '', title: '', type: 'MIDTERM', date: '', startTime: '09:00', endTime: '11:00', room: '' },
+    defaultValues: { courseId: '', title: '', type: 'QUIZ', date: '', startTime: '09:00', endTime: '11:00', room: '' },
   });
 
   const selectedCourseId = watch('courseId');
@@ -540,77 +540,21 @@ const AddExamModal: React.FC<AddExamModalProps> = ({ isOpen, onClose, onSuccess 
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            {/* MIDTERM */}
-            <div
-              onClick={() => {
-                setValue('type', 'MIDTERM');
-                if (!watch('title')) setValue('title', t('exams.midterm') || 'امتحان منتصف الفصل');
-              }}
-              className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-2 ${
-                selectedType === 'MIDTERM'
-                  ? 'border-amber-500 bg-amber-500/5 ring-2 ring-amber-500/20 shadow-sm'
-                  : 'border-slate-200 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-600'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-lg">
-                  {t('exams.typeMidterm')}
-                </span>
-                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedType === 'MIDTERM' ? 'border-amber-500 bg-amber-500' : 'border-slate-300'}`}>
-                  {selectedType === 'MIDTERM' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                </div>
-              </div>
-              <div>
-                <h4 className="font-extrabold text-xs text-slate-800 dark:text-white">{t('exams.midterm')}</h4>
-                <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{t('exams.midtermDesc')}</p>
-              </div>
-            </div>
-
-            {/* FINAL */}
-            <div
-              onClick={() => {
-                setValue('type', 'FINAL');
-                if (!watch('title')) setValue('title', t('exams.final') || 'الامتحان النهائي');
-              }}
-              className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-2 ${
-                selectedType === 'FINAL'
-                  ? 'border-rose-500 bg-rose-500/5 ring-2 ring-rose-500/20 shadow-sm'
-                  : 'border-slate-200 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-600'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/40 px-2 py-0.5 rounded-lg">
-                  {t('exams.typeFinal')}
-                </span>
-                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedType === 'FINAL' ? 'border-rose-500 bg-rose-500' : 'border-slate-300'}`}>
-                  {selectedType === 'FINAL' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                </div>
-              </div>
-              <div>
-                <h4 className="font-extrabold text-xs text-slate-800 dark:text-white">{t('exams.final')}</h4>
-                <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{t('exams.finalDesc')}</p>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 gap-3">
             {/* QUIZ */}
             <div
               onClick={() => {
                 setValue('type', 'QUIZ');
                 if (!watch('title')) setValue('title', t('exams.quiz') || 'اختبار قصير');
               }}
-              className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-2 ${
-                selectedType === 'QUIZ'
-                  ? 'border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/20 shadow-sm'
-                  : 'border-slate-200 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-600'
-              }`}
+              className="p-3.5 rounded-2xl border-2 border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/20 shadow-sm flex flex-col justify-between space-y-2 cursor-pointer"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-sky-700 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/40 px-2 py-0.5 rounded-lg">
                   {t('exams.typeQuiz')}
                 </span>
-                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${selectedType === 'QUIZ' ? 'border-sky-500 bg-sky-500' : 'border-slate-300'}`}>
-                  {selectedType === 'QUIZ' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                <div className="w-4 h-4 rounded-full border-2 border-sky-500 bg-sky-500 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
                 </div>
               </div>
               <div>

@@ -31,7 +31,7 @@ const parseTimeToMinutes = (time: string | undefined) => {
 const schema = z.object({
   courseId: z.string().min(1, 'Please select a course'),
   title: z.string().optional(),
-  type: z.enum(['MIDTERM', 'FINAL', 'QUIZ']),
+  type: z.literal('QUIZ'),
   date: z.string().min(1, 'Exam date is required'),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
@@ -64,7 +64,7 @@ const CreateExam = () => {
     defaultValues: {
       courseId: '',
       title: '',
-      type: 'MIDTERM',
+      type: 'QUIZ',
       date: '',
       startTime: '09:00',
       endTime: '11:00',
@@ -218,8 +218,6 @@ const CreateExam = () => {
                   className="w-full h-12 px-4 bg-brand-bg-page/50 border border-brand-border rounded-2xl text-sm font-bold text-brand-text-main focus:outline-none focus:ring-2 focus:ring-brand-green/20 transition-all appearance-none cursor-pointer"
                   {...register('type')}
                 >
-                  <option value="MIDTERM">{t('exams.typeMidterm', 'Midterm')}</option>
-                  <option value="FINAL">{t('exams.typeFinal', 'Final')}</option>
                   <option value="QUIZ">{t('exams.typeQuiz', 'Quiz')}</option>
                 </select>
                 {errors.type && <p id="exam-type-err" className="text-rose-500 text-xs mt-1">{errors.type.message}</p>}

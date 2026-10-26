@@ -13,7 +13,10 @@ import { getScopeWhere } from "../utils/scope.utils";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { runWithSerializationRetry } from "../services/gradebookPublish.service";
 import { toHundredths } from "../utils/gradeMath.utils";
-import { EXAM_SUBMISSION_GRACE_MS } from "../utils/examTiming.utils";
+import {
+  EXAM_SUBMISSION_GRACE_MS,
+  calculateAttemptDeadlineMs,
+} from "../utils/examTiming.utils";
 import {
   permuteExamQuestions,
   permuteOptionOrder,
@@ -360,19 +363,7 @@ export const getExamQuestions = catchAsync(
       }
 
       // Check deadline = min(windowEndMs, startedAtMs + durationMinutes) + grace
-      let windowEndMs: number | null = null;
-      if (exam.date && exam.endTime) {
-        const [h, m] = String(exam.endTime).split(":").map(Number);
-        if (!isNaN(h) && !isNaN(m)) {
-          const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
-          zonedDate.setHours(h, m, 0, 0);
-          windowEndMs = fromZonedTime(zonedDate, CAIRO_TZ).getTime();
-        }
-      }
-      const durationMinutes = Number((exam as any).durationMinutes) || 120;
-      const startedAtMs = submission.startedAt ? new Date(submission.startedAt).getTime() : Date.now();
-      const durationEndMs = startedAtMs + durationMinutes * 60 * 1000;
-      const deadlineMs = windowEndMs !== null ? Math.min(windowEndMs, durationEndMs) : durationEndMs;
+      const deadlineMs = calculateAttemptDeadlineMs(exam, submission.startedAt);
 
       if (Date.now() > deadlineMs + EXAM_SUBMISSION_GRACE_MS) {
         return next(

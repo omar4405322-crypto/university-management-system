@@ -1474,6 +1474,7 @@
     "submitConfirmAction": "Confirm Final Submission",
     "leaveExamTitle": "Leave Exam Page?",
     "leaveExamDesc": "Warning: You are currently in an active exam. Leaving may cause progress loss!",
+    "leaveTimeoutRecorded": "Leave grace period exceeded. Violation recorded for instructor review.",
     "stayInExam": "Stay & Continue",
     "leaveExam": "Leave Anyway",
     "submissionsTitle": "Student Exam Submissions & Grading",
@@ -1534,6 +1535,8 @@
     "examCancelledTitle": "Exam Cancelled",
     "examCancelledDesc": "Your exam has been automatically cancelled because you left the exam page for too long. Please contact your professor or teaching assistant.",
     "examCancelledReason": "Reason: Student left the exam and did not return within {{seconds}} seconds.",
+    "attemptCancelledTitle": "Attempt Cancelled",
+    "attemptCancelledDesc": "This exam attempt has been cancelled. You cannot submit or retake this exam. Please contact your instructor for further assistance.",
     "multiTabBlockedTitle": "Exam Already Open",
     "multiTabBlockedDesc": "This exam is already open in another browser tab or window. You cannot open it in multiple tabs simultaneously. Please close duplicate tabs and refresh.",
     "returnToExam": "Return to Exam",
@@ -1632,7 +1635,8 @@
     "types": {
       "midterm": "Midterm",
       "final": "Final",
-      "practical": "Practical"
+      "practical": "Practical",
+      "quiz": "Quiz"
     },
     "viewExamDetails": "View details for {{title}}",
     "selectExam": "Select exam {{title}}",

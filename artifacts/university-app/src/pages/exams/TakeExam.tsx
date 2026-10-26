@@ -39,11 +39,18 @@ import {
   isExamStarted,
   isExamEnded,
   getAntiCheatSettings,
-  shuffleQuestionsForStudent,
   formatDeviceInfo,
   getDefaultLeaveWarningMessage,
   calculateDistanceMeters,
 } from "./examUtils";
+import {
+  getMcqDisplayOptions,
+  calculateRemainingSeconds,
+  shouldRefetchQuestions,
+  resolveAttemptView,
+  canStartExam,
+  type ExamAttemptView,
+} from "./examAttempt.utils";
 
 const UNAVAILABLE_DEVICE_INFO: DeviceInfo = {
   deviceType: "Unknown",
@@ -79,9 +86,14 @@ const TakeExam = () => {
 
   const [exam, setExam] = useState<any>(null);
   const [questions, setQuestions] = useState<any[]>([]);
+  const questionsRef = useRef<any[]>(questions);
+  useEffect(() => {
+    questionsRef.current = questions;
+  }, [questions]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("PREPARING"); // PREPARING, IN_PROGRESS, COMPLETING, COMPLETED, CANCELLED
+  const [status, setStatus] = useState<ExamAttemptView>("PREPARING");
+  const [submission, setSubmission] = useState<any>(null);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [showBlockerModal, setShowBlockerModal] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -106,10 +118,31 @@ const TakeExam = () => {
     return saved ? JSON.parse(saved) : {};
   });
 
-  const [timeLeft, setTimeLeft] = useState(() => {
-    const saved = localStorage.getItem(`exam_timer_${id}`);
-    return saved ? parseInt(saved) : 0;
-  });
+  const [timeLeft, setTimeLeft] = useState(0);
+  const attemptTimingRef = useRef<{
+    attemptEndsAt: string;
+    serverNow: string;
+    clientReceivedPerfMs: number;
+  } | null>(null);
+
+  const updateAttemptTiming = useCallback(
+    (attemptEndsAt: string, serverNow: string) => {
+      const clientReceivedPerfMs = performance.now();
+      attemptTimingRef.current = {
+        attemptEndsAt,
+        serverNow,
+        clientReceivedPerfMs,
+      };
+      const remaining = calculateRemainingSeconds(
+        attemptEndsAt,
+        serverNow,
+        clientReceivedPerfMs,
+        clientReceivedPerfMs,
+      );
+      setTimeLeft(remaining);
+    },
+    [],
+  );
 
   // ── Anti-Cheat Hook ──────────────────────────────────────────────────────────
   const handleExamCancelledRef = useRef<() => void>(() => {});
@@ -124,7 +157,6 @@ const TakeExam = () => {
     leaveCount,
     isCountdownActive,
     countdownSeconds,
-    examCancelled,
     multiTabBlocked,
     refreshDeviceInfo,
     setSubmissionId,
@@ -192,7 +224,6 @@ const TakeExam = () => {
       logger.error("Failed to cancel exam", err);
     }
     localStorage.removeItem(`exam_answers_${id}`);
-    localStorage.removeItem(`exam_timer_${id}`);
     localStorage.removeItem(`exam_violations_${id}`);
     localStorage.removeItem(`exam_device_${id}`);
     localStorage.removeItem(`exam_leaves_${id}`);
@@ -212,32 +243,43 @@ const TakeExam = () => {
     }
   }, [answers, id, status]);
 
-  // Save timer to localStorage
-  useEffect(() => {
-    if (status === "IN_PROGRESS" && timeLeft > 0) {
-      localStorage.setItem(`exam_timer_${id}`, timeLeft.toString());
-    }
-  }, [timeLeft, id, status]);
-
   const handleSubmitExamRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
-  // Countdown timer logic
+  // Countdown timer logic: attemptEndsAt corrected by serverNow skew, auto-submit at zero
   useEffect(() => {
-    if (status !== "IN_PROGRESS" || timeLeft <= 0) return;
+    if (status !== "IN_PROGRESS") return;
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
+    const tick = () => {
+      if (attemptTimingRef.current) {
+        const { attemptEndsAt, serverNow, clientReceivedPerfMs } =
+          attemptTimingRef.current;
+        const remaining = calculateRemainingSeconds(
+          attemptEndsAt,
+          serverNow,
+          clientReceivedPerfMs,
+          performance.now(),
+        );
+        setTimeLeft(remaining);
+        if (remaining <= 0) {
           handleSubmitExamRef.current();
-          return 0;
         }
-        return prev - 1;
-      });
-    }, 1000);
+      } else {
+        setTimeLeft((prev) => {
+          if (prev <= 0) return 0;
+          if (prev <= 1) {
+            handleSubmitExamRef.current();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }
+    };
+
+    tick();
+    const timer = setInterval(tick, 1000);
 
     return () => clearInterval(timer);
-  }, [status, timeLeft]);
+  }, [status]);
 
   const fetchExam = useCallback(async () => {
     try {
@@ -250,6 +292,7 @@ const TakeExam = () => {
       try {
         const subResult = await examsService.getMyExamSubmission(id);
         if (subResult?.success && subResult.data?.id) {
+          setSubmission(subResult.data);
           setSubmissionId(subResult.data.id);
           if (typeof subResult.data.lastAcceptedSequence === "number") {
             setLastKnownSequence(subResult.data.lastAcceptedSequence);
@@ -262,16 +305,38 @@ const TakeExam = () => {
               setLastKnownSequence(seqRes.data.sequence);
             }
           }
+
+          const attemptView = resolveAttemptView(subResult.data.status);
+          setStatus(attemptView);
+
+          if (subResult.data.status === "PENDING") {
+            if (subResult.data.attemptEndsAt && subResult.data.serverNow) {
+              updateAttemptTiming(
+                subResult.data.attemptEndsAt,
+                subResult.data.serverNow,
+              );
+            }
+            // Re-fetch questions on reload of PENDING attempt
+            if (shouldRefetchQuestions(questionsRef.current, subResult.data.status)) {
+              const qRes = await examsService.getExamQuestions(id);
+              if (qRes?.success && Array.isArray(qRes.data)) {
+                setQuestions(qRes.data);
+              } else if (!qRes?.success) {
+                setError(qRes?.message || t("exams.loadError"));
+                return;
+              }
+            }
+          }
         }
       } catch (_subErr) {
         // Exam may not be started yet
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || t("exams.loadError"));
+      setError(err?.message || err?.response?.data?.message || t("exams.loadError"));
     } finally {
       setLoading(false);
     }
-  }, [id, setLastKnownSequence, setSubmissionId, t]);
+  }, [id, setLastKnownSequence, setSubmissionId, t, updateAttemptTiming]);
 
   useEffect(() => {
     fetchExam();
@@ -301,7 +366,6 @@ const TakeExam = () => {
 
       setStatus("COMPLETED");
       localStorage.removeItem(`exam_answers_${id}`);
-      localStorage.removeItem(`exam_timer_${id}`);
       localStorage.removeItem(`exam_violations_${id}`);
       localStorage.removeItem(`exam_device_${id}`);
       localStorage.removeItem(`exam_leaves_${id}`);
@@ -395,9 +459,16 @@ const TakeExam = () => {
       });
 
       if (startRes?.data?.id) {
+        setSubmission(startRes.data);
         setSubmissionId(startRes.data.id);
         if (typeof startRes.data.lastAcceptedSequence === "number") {
           setLastKnownSequence(startRes.data.lastAcceptedSequence);
+        }
+        if (startRes.data.attemptEndsAt && startRes.data.serverNow) {
+          updateAttemptTiming(
+            startRes.data.attemptEndsAt,
+            startRes.data.serverNow,
+          );
         }
       }
 
@@ -407,26 +478,11 @@ const TakeExam = () => {
       }
 
       const qRes = await examsService.getExamQuestions(id);
-      if (qRes.success) {
-        let fetchedQuestions = qRes.data;
-        // Shuffle questions if enabled
-        if (antiCheatSettings.shuffleQuestions && user?.id) {
-          fetchedQuestions = shuffleQuestionsForStudent(
-            fetchedQuestions,
-            user.id,
-          );
-        }
-        setQuestions(fetchedQuestions);
-      }
-
-      const duration = getDurationMinutes(
-        exam?.startTime,
-        exam?.endTime,
-        exam?.durationMinutes,
-      );
-      if (!localStorage.getItem(`exam_timer_${id}`)) {
-        setTimeLeft(duration * 60);
-        localStorage.setItem(`exam_timer_${id}`, (duration * 60).toString());
+      if (qRes?.success && Array.isArray(qRes.data)) {
+        setQuestions(qRes.data);
+      } else {
+        setError(qRes?.message || t("exams.startError"));
+        return;
       }
 
       setStatus("IN_PROGRESS");
@@ -439,7 +495,7 @@ const TakeExam = () => {
         console.warn("Could not enter fullscreen", e);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || t("exams.startError"));
+      setError(err?.message || err?.response?.data?.message || t("exams.startError"));
     } finally {
       setLoading(false);
     }
@@ -531,31 +587,36 @@ const TakeExam = () => {
     );
   }
 
-  // ── EXAM CANCELLED SCREEN ──────────────────────────────────────────────────
-  if (status === "CANCELLED" || examCancelled) {
+
+  // ── CANCELLED ATTEMPT SCREEN (READ-ONLY) ───────────────────────────────────
+  if (status === "CANCELLED") {
     return (
       <div className="max-w-xl mx-auto py-20 px-6 text-center">
-        <div className="p-8 bg-white dark:bg-slate-800 rounded-3xl border-2 border-rose-300 dark:border-rose-700 shadow-2xl">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-rose-500/10 flex items-center justify-center animate-pulse">
+        <div className="p-8 bg-white dark:bg-slate-800 rounded-3xl border-2 border-rose-300 dark:border-rose-700 shadow-2xl space-y-6">
+          <div className="w-20 h-20 mx-auto rounded-full bg-rose-500/10 flex items-center justify-center">
             <XCircle size={40} className="text-rose-500" />
           </div>
-          <h2 className="text-2xl font-black text-rose-600 dark:text-rose-400 mb-4">
-            {t("exams.examCancelledTitle")}
-          </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-300 font-semibold mb-4 leading-relaxed">
-            {t("exams.examCancelledDesc")}
-          </p>
-          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700/40 text-xs font-bold text-rose-600 dark:text-rose-400 mb-8">
-            {t("exams.examCancelledReason", {
-              seconds: antiCheatSettings.leaveGraceSeconds,
-            })}
+          <div>
+            <h2 className="text-2xl font-black text-rose-600 dark:text-rose-400 mb-2">
+              {t("exams.attemptCancelledTitle")}
+            </h2>
+            {(exam?.title || exam?.course?.name) && (
+              <p className="text-base font-bold text-slate-700 dark:text-slate-200">
+                {exam?.title || exam?.course?.name}
+              </p>
+            )}
           </div>
-          <Button
-            onClick={() => navigate("/exams")}
-            className="!bg-slate-800 hover:!bg-slate-900 text-white border-none"
-          >
-            {t("exams.backToExams")}
-          </Button>
+          <p className="text-sm text-slate-600 dark:text-slate-300 font-semibold leading-relaxed">
+            {t("exams.attemptCancelledDesc")}
+          </p>
+          <div className="pt-2">
+            <Button
+              onClick={() => navigate("/exams")}
+              className="!bg-slate-800 hover:!bg-slate-900 text-white border-none w-full py-3 rounded-2xl font-bold"
+            >
+              {t("exams.backToExams")}
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -771,12 +832,14 @@ const TakeExam = () => {
             </div>
 
             <div className="lg:col-span-1 space-y-6">
-              <Button
-                onClick={startExam}
-                className="w-full h-16 rounded-2xl shadow-xl shadow-brand-primary-500/20 text-lg font-black flex items-center justify-center gap-3 !bg-brand-primary-500 hover:!bg-brand-primary-600 text-white border-none"
-              >
-                {t("exams.startDigitalExam")}
-              </Button>
+              {canStartExam(Boolean(submission), status) && (
+                <Button
+                  onClick={startExam}
+                  className="w-full h-16 rounded-2xl shadow-xl shadow-brand-primary-500/20 text-lg font-black flex items-center justify-center gap-3 !bg-brand-primary-500 hover:!bg-brand-primary-600 text-white border-none"
+                >
+                  {t("exams.startDigitalExam")}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -880,15 +943,11 @@ const TakeExam = () => {
                   .toUpperCase()
                   .replace("-", "_");
 
-                // Collect direct options (optionA, optionB, optionC, optionD)
-                const directOpts = ["A", "B", "C", "D"]
-                  .map((letter) => ({
-                    code: letter,
-                    text:
-                      currentQuestion[`option${letter}`] ||
-                      currentQuestion[`option_${letter.toLowerCase()}`],
-                  }))
-                  .filter((o) => o.text && String(o.text).trim().length > 0);
+                // Get MCQ options formatted in server optionOrder with positional display letters A-D
+                const mcqOptions = getMcqDisplayOptions(currentQuestion);
+                const hasMcqOptions = mcqOptions.some(
+                  (o) => o.text && o.text.trim().length > 0,
+                );
 
                 const isTrueFalse =
                   qType === "TRUE_FALSE" ||
@@ -901,7 +960,7 @@ const TakeExam = () => {
                 const isMcq =
                   qType === "MCQ" ||
                   qType === "MULTIPLE_CHOICE" ||
-                  directOpts.length > 0;
+                  hasMcqOptions;
 
                 // 1. True / False Rendering
                 if (isTrueFalse) {
@@ -939,28 +998,21 @@ const TakeExam = () => {
                   );
                 }
 
-                // 2. MCQ Rendering
-                if (isMcq || directOpts.length > 0) {
-                  const optsToRender =
-                    directOpts.length > 0
-                      ? directOpts
-                      : [
-                          { code: "A", text: t("exams.optionA") },
-                          { code: "B", text: t("exams.optionB") },
-                          { code: "C", text: t("exams.optionC") },
-                          { code: "D", text: t("exams.optionD") },
-                        ];
-
+                // 2. MCQ Rendering (Server optionOrder with positional labels A-D, submitting original key)
+                if (isMcq || hasMcqOptions) {
                   return (
                     <div className="grid grid-cols-1 gap-4">
-                      {optsToRender.map((opt) => {
+                      {mcqOptions.map((opt) => {
                         const isSelected =
-                          answers[currentQuestion.id] === opt.code;
+                          answers[currentQuestion.id] === opt.originalKey;
                         return (
                           <button
-                            key={opt.code}
+                            key={opt.originalKey}
                             onClick={() =>
-                              handleAnswerSelect(currentQuestion.id, opt.code)
+                              handleAnswerSelect(
+                                currentQuestion.id,
+                                opt.originalKey,
+                              )
                             }
                             className={`flex items-center gap-5 p-5 rounded-3xl border-2 text-start transition-all duration-300 group ${
                               isSelected
@@ -975,7 +1027,7 @@ const TakeExam = () => {
                                   : "bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-500 group-hover:text-brand-primary-500"
                               }`}
                             >
-                              {opt.code}
+                              {opt.displayLetter}
                             </div>
                             <span
                               className={`text-base font-extrabold ${

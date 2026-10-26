@@ -20,7 +20,11 @@ import {
   type StudentExamReviewQuestionDto,
 } from "../utils/examAnswerReview.utils";
 import { assertAllowedExamType, ALLOWED_EXAM_TYPE } from "../utils/examType.utils";
-import { EXAM_SUBMISSION_GRACE_MS } from "../utils/examTiming.utils";
+import {
+  EXAM_SUBMISSION_GRACE_MS,
+  calculateAttemptDeadlineMs,
+  calculateAttemptEndsAt,
+} from "../utils/examTiming.utils";
 import { generateShuffleSeed } from "../utils/quizShuffle.utils";
 import { runWithSerializationRetry } from "../services/gradebookPublish.service";
 import {
@@ -618,9 +622,20 @@ export const startExamSession = catchAsync(
       ? await getLastAcceptedViolationSequence(submission.id)
       : 0;
     const { shuffleSeed: _unusedSeed, ...safeSubmission } = (submission || {}) as any;
+    const startedAt = submission?.startedAt ?? new Date();
+    const attemptEndsAt = calculateAttemptEndsAt(exam, startedAt);
+    const serverNow = new Date().toISOString();
     res
       .status(201)
-      .json({ success: true, data: { ...safeSubmission, lastAcceptedSequence } });
+      .json({
+        success: true,
+        data: {
+          ...safeSubmission,
+          lastAcceptedSequence,
+          attemptEndsAt,
+          serverNow,
+        },
+      });
   },
 );
 
@@ -696,21 +711,7 @@ export const submitExam = catchAsync(
 
     // D1: deadline = min(exam end datetime in Cairo time, startedAt + durationMinutes)
     // Accepted until deadline + EXAM_SUBMISSION_GRACE_MS
-    let windowEndMs: number | null = null;
-    if (exam.date && exam.endTime) {
-      const [h, m] = String(exam.endTime).split(":").map(Number);
-      if (!isNaN(h) && !isNaN(m)) {
-        const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
-        zonedDate.setHours(h, m, 0, 0);
-        windowEndMs = fromZonedTime(zonedDate, CAIRO_TZ).getTime();
-      }
-    }
-
-    const durationMinutes = Number(exam.durationMinutes) || 120;
-    const startedAtMs = submission.startedAt ? new Date(submission.startedAt).getTime() : Date.now();
-    const durationEndMs = startedAtMs + durationMinutes * 60 * 1000;
-
-    const deadlineMs = windowEndMs !== null ? Math.min(windowEndMs, durationEndMs) : durationEndMs;
+    const deadlineMs = calculateAttemptDeadlineMs(exam, submission.startedAt);
 
     if (Date.now() > deadlineMs + EXAM_SUBMISSION_GRACE_MS) {
       return next(
@@ -1037,19 +1038,7 @@ export const getMyExamSubmission = catchAsync(
       }
     } else if (submission.status === "PENDING") {
       // I2: In-progress check: student only receives question text if attempt is currently active (PENDING & within deadline)
-      let windowEndMs: number | null = null;
-      if (exam.date && exam.endTime) {
-        const [h, m] = String(exam.endTime).split(":").map(Number);
-        if (!isNaN(h) && !isNaN(m)) {
-          const zonedDate = toZonedTime(exam.date, CAIRO_TZ);
-          zonedDate.setHours(h, m, 0, 0);
-          windowEndMs = fromZonedTime(zonedDate, CAIRO_TZ).getTime();
-        }
-      }
-      const durationMinutes = Number(exam.durationMinutes) || 120;
-      const startedAtMs = submission.startedAt ? new Date(submission.startedAt).getTime() : Date.now();
-      const durationEndMs = startedAtMs + durationMinutes * 60 * 1000;
-      const deadlineMs = windowEndMs !== null ? Math.min(windowEndMs, durationEndMs) : durationEndMs;
+      const deadlineMs = calculateAttemptDeadlineMs(exam, submission.startedAt);
 
       if (Date.now() <= deadlineMs + EXAM_SUBMISSION_GRACE_MS) {
         questions = await prisma.examQuestion.findMany({
@@ -1071,6 +1060,10 @@ export const getMyExamSubmission = catchAsync(
       submission.id,
     );
 
+    const isPending = submission.status === "PENDING";
+    const attemptEndsAt = isPending ? calculateAttemptEndsAt(exam, submission.startedAt) : undefined;
+    const serverNow = isPending ? new Date().toISOString() : undefined;
+
     const { shuffleSeed: _unused, ...safeSubmission } = (submission || {}) as any;
     res.json({
       success: true,
@@ -1078,6 +1071,7 @@ export const getMyExamSubmission = catchAsync(
         ...safeSubmission,
         lastAcceptedSequence,
         questions,
+        ...(isPending ? { attemptEndsAt, serverNow } : {}),
       },
     });
   },
