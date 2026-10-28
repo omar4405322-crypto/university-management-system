@@ -79,7 +79,8 @@ export type Capability =
   | 'analytics.view'
   | 'notifications.view'
   | 'profile.view'
-  | 'settings.view';
+  | 'settings.view'
+  | 'gradebook.view';
 
 /**
  * Capability assignments per role derived from backend authorizations:
@@ -132,6 +133,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'notifications.view',
     'profile.view',
     'settings.view',
+    'gradebook.view',
   ],
 
   ADMIN: [
@@ -178,6 +180,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'notifications.view',
     'profile.view',
     'settings.view',
+    'gradebook.view',
   ],
 
   COLLEGE_ADMIN: [
@@ -216,6 +219,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'notifications.view',
     'profile.view',
     'settings.view',
+    'gradebook.view',
   ],
 
   DEPARTMENT_ADMIN: [
@@ -247,6 +251,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'notifications.view',
     'profile.view',
     'settings.view',
+    'gradebook.view',
   ],
 
   DOCTOR: [
@@ -269,6 +274,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'notifications.view',
     'profile.view',
     'settings.view',
+    'gradebook.view',
   ],
 
   TEACHING_ASSISTANT: [
@@ -283,6 +289,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'notifications.view',
     'profile.view',
     'settings.view',
+    'gradebook.view',
   ],
 
   STUDENT: [
@@ -385,6 +392,11 @@ export function canAccessRoute(
 ): boolean {
   if (!role) return false;
   if (role === 'SUPER_ADMIN') return true;
+
+  // Gradebook route check
+  if (routePath.includes('/gradebook')) {
+    return hasCapability(role, 'gradebook.view');
+  }
 
   // Direct map match
   const directCap = ROUTE_CAPABILITY_MAP[routePath];

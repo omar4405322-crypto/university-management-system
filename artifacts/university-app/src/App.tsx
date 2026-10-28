@@ -27,6 +27,7 @@ const ShaheenLabPage = import.meta.env.DEV ? lazy(() => import('./pages/ai/Shahe
 const AiAssistantPage = lazy(() => import('./pages/ai/AiAssistantPage'));
 const CoursesList = lazy(() => import('./pages/courses/CoursesList'));
 const CourseDetails = lazy(() => import('./pages/courses/CourseDetails'));
+const CourseGradebook = lazy(() => import('./pages/courses/CourseGradebook'));
 const DoctorsList = lazy(() => import('./pages/doctors/DoctorsList'));
 const DoctorDetails = lazy(() => import('./pages/doctors/DoctorDetails'));
 const TeachingAssistantsList = lazy(() => import('./pages/teaching-assistants/TeachingAssistantsList'));
@@ -240,6 +241,18 @@ const AppContent = () => {
                           <PageWrapper>
                             <CourseDetails />
                           </PageWrapper>
+                        }
+                      />
+                      <Route
+                        path="courses/:courseId/gradebook"
+                        element={
+                          <ProtectedRoute capability="gradebook.view">
+                            <PageWrapper>
+                              <LazyRoute>
+                                <CourseGradebook />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
                         }
                       />
                       <Route

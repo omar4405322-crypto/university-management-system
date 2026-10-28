@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  GraduationCap,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Badge from "../../components/ui/badge";
@@ -118,6 +119,18 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
   // Authorization checks
   const canManageRoster = useMemo(() => {
     return (
+      user?.role === "SUPER_ADMIN" ||
+      user?.role === "ADMIN" ||
+      user?.role === "COLLEGE_ADMIN" ||
+      user?.role === "DEPARTMENT_ADMIN"
+    );
+  }, [user?.role]);
+
+  // Doctor, TA, and the 3 admin roles (plus Super Admin) can access Gradebook. Student never sees the link.
+  const canAccessGradebook = useMemo(() => {
+    return (
+      user?.role === "DOCTOR" ||
+      user?.role === "TEACHING_ASSISTANT" ||
       user?.role === "SUPER_ADMIN" ||
       user?.role === "ADMIN" ||
       user?.role === "COLLEGE_ADMIN" ||
@@ -897,6 +910,18 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
                 </>
               )}
             </div>
+          )}
+
+          {canAccessGradebook && (
+            <button
+              onClick={() => navigate(`/courses/${actualId}/gradebook`)}
+              className="flex items-center gap-2 px-4 py-2 rounded-2xl font-bold text-xs shadow-sm transition-all border bg-brand-primary-500 hover:bg-brand-primary-600 text-white border-brand-primary-600 shadow-brand-primary-500/20"
+              title={t("gradebook.viewGradebook", "View Gradebook")}
+              data-testid="course-gradebook-entry-button"
+            >
+              <GraduationCap size={16} />
+              <span>{t("gradebook.entryButton", "Gradebook")}</span>
+            </button>
           )}
         </div>
       </div>
