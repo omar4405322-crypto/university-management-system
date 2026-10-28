@@ -82,7 +82,8 @@ export type Capability =
   | 'settings.view'
   | 'gradebook.view'
   | 'gradeStructure.view'
-  | 'gradeStructure.edit';
+  | 'gradeStructure.edit'
+  | 'myGrades.view';
 
 /**
  * Capability assignments per role derived from backend authorizations:
@@ -323,8 +324,11 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'notifications.view',
     'profile.view',
     'settings.view',
+    'myGrades.view',
   ],
 };
+
+const STUDENT_ONLY_CAPABILITIES: readonly Capability[] = ['myGrades.view'] as const;
 
 /**
  * Check if a role possesses a specific capability.
@@ -334,6 +338,9 @@ export function hasCapability(
   capability: Capability
 ): boolean {
   if (!role) return false;
+  if (STUDENT_ONLY_CAPABILITIES.includes(capability)) {
+    return role === 'STUDENT';
+  }
   if (role === 'SUPER_ADMIN') return true;
   const capabilities = ROLE_CAPABILITY_MATRIX[role as UserRole];
   return capabilities ? capabilities.includes(capability) : false;
@@ -387,6 +394,7 @@ export const ROUTE_CAPABILITY_MAP: Record<string, Capability> = {
   '/warnings': 'warnings.view',
   '/statistics': 'statistics.view',
   '/my-statistics': 'student_statistics.view',
+  '/my-grades': 'myGrades.view',
   '/record': 'records.view',
   '/finance': 'finance.view',
   '/analytics': 'analytics.view',
@@ -403,6 +411,12 @@ export function canAccessRoute(
   routePath: string
 ): boolean {
   if (!role) return false;
+
+  // Student-only grades route check
+  if (routePath === '/my-grades' || routePath.startsWith('/my-grades/')) {
+    return hasCapability(role, 'myGrades.view');
+  }
+
   if (role === 'SUPER_ADMIN') return true;
 
   // Grade structure route check

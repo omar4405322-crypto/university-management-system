@@ -7,6 +7,9 @@ import type {
   GradeStructureValidationResult,
   UpdateGradeStructurePayload,
   GradeStructureComponentInput,
+  StudentGradeComponentItem,
+  StudentCourseGradeItem,
+  StudentGradesTermGroup,
 } from '../types/gradebook';
 
 /**
@@ -626,4 +629,187 @@ export function buildGradeStructurePutPayload(
     components,
   };
 }
+
+/**
+ * Formats a grade numeric value with up to MAX_DECIMAL_PLACES (2) decimal places,
+ * without inventing trailing zeros for integers (e.g., 85 -> "85", 22.5 -> "22.5", 33.336 -> "33.34").
+ */
+export function formatGradeNumber(value: number | null | undefined): string {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value !== 'number' ||
+    !Number.isFinite(value)
+  ) {
+    return '';
+  }
+  const factor = Math.pow(10, MAX_DECIMAL_PLACES);
+  const rounded = Math.round(value * factor) / factor;
+  return String(rounded);
+}
+
+/**
+ * Maps backend student grades error messages and HTTP status codes to localized i18n keys.
+ */
+export function mapMyGradesError(rawError: unknown, status?: number): string {
+  const msg = typeof rawError === 'string' ? rawError : String((rawError as any)?.message || '');
+
+  if (
+    status === 401 ||
+    msg.includes('Authentication required') ||
+    msg.includes('No security token provided') ||
+    msg.includes('no longer exists') ||
+    msg.includes('account has been deactivated') ||
+    msg.includes('Session invalidated')
+  ) {
+    return 'myGrades.errors.unauthorized';
+  }
+
+  if (
+    status === 403 ||
+    msg.includes('Only students can access their personal grades') ||
+    msg.includes('does not have permission for this action') ||
+    msg.includes('Forbidden')
+  ) {
+    return 'myGrades.errors.forbidden';
+  }
+
+  if (status === 404 || msg.includes('Student profile not found')) {
+    return 'myGrades.errors.studentNotFound';
+  }
+
+  if (msg) {
+    console.warn('[MyGradesService] Unmapped error received:', { status, message: msg });
+  }
+  return 'myGrades.errors.generic';
+}
+
+/**
+ * Resolves the display state for a single student grade component.
+ * Checks isAbsent BEFORE score so backend score=0 on absent entries renders ABS, never "0/".
+ */
+export function resolveComponentDisplay(comp: StudentGradeComponentItem): {
+  state: 'PUBLISHED_SCORE' | 'ABSENT' | 'PENDING';
+  scoreText: string | null;
+  maxPointsText: string;
+  labelKey: string | null;
+} {
+  const maxPointsText = formatGradeNumber(comp.maxPoints);
+
+  if (!comp.isPublished) {
+    return {
+      state: 'PENDING',
+      scoreText: null,
+      maxPointsText,
+      labelKey: 'myGrades.pendingPublication',
+    };
+  }
+
+  if (comp.isAbsent === true) {
+    return {
+      state: 'ABSENT',
+      scoreText: null,
+      maxPointsText,
+      labelKey: 'myGrades.absent',
+    };
+  }
+
+  if (comp.score !== null && comp.score !== undefined && Number.isFinite(comp.score)) {
+    return {
+      state: 'PUBLISHED_SCORE',
+      scoreText: `${formatGradeNumber(comp.score)} / ${maxPointsText}`,
+      maxPointsText,
+      labelKey: null,
+    };
+  }
+
+  return {
+    state: 'PENDING',
+    scoreText: null,
+    maxPointsText,
+    labelKey: 'myGrades.pendingPublication',
+  };
+}
+
+/**
+ * Resolves the course totals display state.
+ * Shows totals and pass/fail status ONLY when the backend confirms totals are complete.
+ */
+export function resolveCourseTotalsDisplay(courseItem: StudentCourseGradeItem): {
+  isComplete: boolean;
+  totalPointsText: string | null;
+  percentageText: string | null;
+  status: string | null;
+  statusKey: string | null;
+  pendingKey: string | null;
+} {
+  const isComplete =
+    courseItem.finalPointsEarned !== null &&
+    courseItem.finalPointsEarned !== undefined &&
+    Number.isFinite(courseItem.finalPointsEarned) &&
+    courseItem.finalPointsMax !== null &&
+    courseItem.finalPointsMax !== undefined &&
+    Number.isFinite(courseItem.finalPointsMax) &&
+    courseItem.finalGrade !== null &&
+    courseItem.finalGrade !== undefined &&
+    Number.isFinite(courseItem.finalGrade) &&
+    (courseItem.status === 'COMPLETED' || courseItem.status === 'FAILED');
+
+  if (!isComplete) {
+    return {
+      isComplete: false,
+      totalPointsText: null,
+      percentageText: null,
+      status: null,
+      statusKey: null,
+      pendingKey: 'myGrades.totalsPending',
+    };
+  }
+
+  return {
+    isComplete: true,
+    totalPointsText: `${formatGradeNumber(courseItem.finalPointsEarned)} / ${formatGradeNumber(
+      courseItem.finalPointsMax
+    )}`,
+    percentageText: `${formatGradeNumber(courseItem.finalGrade)}%`,
+    status: courseItem.status,
+    statusKey:
+      courseItem.status === 'COMPLETED'
+        ? 'myGrades.status.COMPLETED'
+        : 'myGrades.status.FAILED',
+    pendingKey: null,
+  };
+}
+
+/**
+ * Groups student course grade items by academic term while preserving backend ordering.
+ */
+export function groupMyGradesByTerm(
+  items: ReadonlyArray<StudentCourseGradeItem>
+): StudentGradesTermGroup[] {
+  const groups: StudentGradesTermGroup[] = [];
+  const indexMap = new Map<string, number>();
+
+  for (const item of items) {
+    const termId = item.term?.id ?? item.termId ?? null;
+    const termName = item.term?.name ?? null;
+    const termKey = termId !== null ? `term-${termId}` : 'term-unassigned';
+
+    const existingIdx = indexMap.get(termKey);
+    if (existingIdx !== undefined) {
+      groups[existingIdx].courses.push(item);
+    } else {
+      indexMap.set(termKey, groups.length);
+      groups.push({
+        termKey,
+        termId,
+        termName,
+        courses: [item],
+      });
+    }
+  }
+
+  return groups;
+}
+
 

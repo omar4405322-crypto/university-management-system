@@ -198,4 +198,45 @@ export interface GradeStructureValidationResult {
   totalPoints: number;
 }
 
+export interface StudentGradeComponentItem {
+  componentId: number;
+  name: string;
+  nameAr: string | null;
+  maxPoints: number;
+  source: GradeComponentSource;
+  score: number | null;
+  isAbsent: boolean;
+  isPublished: boolean;
+}
+
+export interface StudentCourseGradeItem {
+  enrollmentId: number;
+  courseId: number;
+  termId: number;
+  course: {
+    id: number;
+    code: string;
+    name: string;
+    credits: number;
+  };
+  term: {
+    id: number;
+    name: string;
+  } | null;
+  passMark: number | null;
+  components: StudentGradeComponentItem[];
+  finalPointsEarned: number | null;
+  finalPointsMax: number | null;
+  finalGrade: number | null;
+  status: string | null;
+}
+
+export interface StudentGradesTermGroup {
+  termKey: string;
+  termId: number | null;
+  termName: string | null;
+  courses: StudentCourseGradeItem[];
+}
+
+
 

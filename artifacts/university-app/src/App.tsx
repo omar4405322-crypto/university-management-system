@@ -29,6 +29,7 @@ const CoursesList = lazy(() => import('./pages/courses/CoursesList'));
 const CourseDetails = lazy(() => import('./pages/courses/CourseDetails'));
 const CourseGradebook = lazy(() => import('./pages/courses/CourseGradebook'));
 const CourseGradeStructure = lazy(() => import('./pages/courses/CourseGradeStructure'));
+const MyGradesPage = lazy(() => import('./pages/grades/MyGradesPage'));
 const DoctorsList = lazy(() => import('./pages/doctors/DoctorsList'));
 const DoctorDetails = lazy(() => import('./pages/doctors/DoctorDetails'));
 const TeachingAssistantsList = lazy(() => import('./pages/teaching-assistants/TeachingAssistantsList'));
@@ -263,6 +264,18 @@ const AppContent = () => {
                             <PageWrapper>
                               <LazyRoute>
                                 <CourseGradeStructure />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="my-grades"
+                        element={
+                          <ProtectedRoute capability="myGrades.view">
+                            <PageWrapper>
+                              <LazyRoute>
+                                <MyGradesPage />
                               </LazyRoute>
                             </PageWrapper>
                           </ProtectedRoute>

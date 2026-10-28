@@ -1871,6 +1871,7 @@
     "warnings": "Absence Warnings",
     "statistics": "Academic Statistics",
     "myStatistics": "My Statistics",
+    "myGrades": "My Grades",
     "colleges": "Colleges",
     "courses": "Courses",
     "dashboard": "Dashboard",
@@ -3371,6 +3372,46 @@
       "duplicateAutoQuiz": "Only one Automatic (Quizzes) component is allowed.",
       "duplicateAutoAttendance": "Only one Automatic (Attendance) component is allowed.",
       "passMarkExceedsTotal": "Pass mark cannot exceed total points."
+    }
+  },
+  "myGrades": {
+    "title": "My Grades",
+    "subtitle": "Published course assessment results and completion outcomes.",
+    "emptyTitle": "No published grades yet",
+    "emptyDesc": "Your published course grades will appear here once released by your instructors.",
+    "noComponentsYet": "No published grade components are available for this course yet.",
+    "passMarkLabel": "Pass Mark",
+    "creditsLabel": "Credits",
+    "totalLabel": "Course Total",
+    "percentageLabel": "Percentage",
+    "statusLabel": "Outcome",
+    "totalsPending": "Course total and outcome are pending publication of all assessment components.",
+    "pendingPublication": "Pending publication",
+    "absent": "ABS",
+    "retry": "Retry",
+    "columns": {
+      "component": "Component",
+      "maxPoints": "Max Points",
+      "score": "Score"
+    },
+    "sources": {
+      "MANUAL": "Manual",
+      "AUTO_QUIZ": "Quizzes",
+      "AUTO_ATTENDANCE": "Attendance"
+    },
+    "status": {
+      "COMPLETED": "Passed",
+      "FAILED": "Failed"
+    },
+    "errors": {
+      "unauthorizedTitle": "Authentication Required",
+      "unauthorized": "Your session could not be verified. Please sign in or retry.",
+      "forbiddenTitle": "Access Restricted",
+      "forbidden": "Only students can view personal course grades.",
+      "studentNotFoundTitle": "Student Profile Not Found",
+      "studentNotFound": "We could not find a student profile linked to your account.",
+      "genericTitle": "Unable to Load Grades",
+      "generic": "An error occurred while loading your published grades. Please try again."
     }
   }
 }

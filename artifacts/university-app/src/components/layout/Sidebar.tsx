@@ -277,6 +277,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             capability: 'quizzes.view' as Capability,
           },
           {
+            title: 'nav.myGrades',
+            path: '/my-grades',
+            icon: CheckSquare,
+            capability: 'myGrades.view' as Capability,
+          },
+          {
             title: 'nav.record',
             path: '/record',
             icon: GraduationCap,

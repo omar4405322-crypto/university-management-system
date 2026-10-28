@@ -1,5 +1,6 @@
 import { apiRequest } from '../lib/apiClient';
 import type { ApiResponse } from '../types/models';
+import type { StudentCourseGradeItem } from '../types/gradebook';
 import api from './api';
 
 export interface EnrollStudentPayload {
@@ -9,7 +10,17 @@ export interface EnrollStudentPayload {
   academicYear: number | string;
 }
 
+export async function getMyGrades(): Promise<ApiResponse<StudentCourseGradeItem[]>> {
+  return apiRequest(
+    async () =>
+      api.get<ApiResponse<StudentCourseGradeItem[]>>('/enrollments/my-grades'),
+    { preferRawMessage: true }
+  );
+}
+
 const enrollmentService = {
+  getMyGrades,
+
   enrollStudent: (data: EnrollStudentPayload): Promise<ApiResponse<any>> =>
     apiRequest(() => api.post('/enrollments', {
       studentId: typeof data.studentId === 'string' ? parseInt(data.studentId, 10) : data.studentId,
