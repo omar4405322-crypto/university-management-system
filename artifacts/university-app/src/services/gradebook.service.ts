@@ -8,6 +8,8 @@ import type {
   PublishGradebookResult,
   CorrectGradebookResult,
   GradeCorrectionEntry,
+  GradeStructureData,
+  UpdateGradeStructurePayload,
 } from '../types/gradebook';
 
 export {
@@ -17,6 +19,14 @@ export {
   extractChangedDraftEntries,
   MIN_CORRECTION_REASON_LENGTH,
   MAX_CORRECTION_REASON_LENGTH,
+  MAX_POINTS_TECHNICAL_CEILING,
+  MAX_COMPONENT_NAME_LENGTH,
+  ALLOWED_GRADE_COMPONENT_SOURCES,
+  mapGradeStructureError,
+  computeLiveTotalPoints,
+  validateGradeStructureDraft,
+  isGradeStructureDirty,
+  buildGradeStructurePutPayload,
 } from '../utils/gradebook.utils';
 
 export const MAX_DECIMAL_PLACES = 2;
@@ -111,11 +121,52 @@ export async function correctGradebook(
   }, { preferRawMessage: true });
 }
 
+/**
+ * Fetches the course grade structure for a specific academic term (or active term if termId is omitted).
+ * Check res.success on every call.
+ */
+export async function getGradeStructure(
+  courseId: number | string,
+  termId?: number | string
+): Promise<ApiResponse<GradeStructureData>> {
+  return apiRequest(async () => {
+    const params: Record<string, unknown> = {};
+    if (termId !== undefined && termId !== null && termId !== '') {
+      params.termId = termId;
+    }
+    return api.get<ApiResponse<GradeStructureData>>(`/courses/${courseId}/grade-structure`, { params });
+  }, { preferRawMessage: true });
+}
+
+/**
+ * Upserts the course grade structure for a specific academic term.
+ * Check res.success on every call.
+ */
+export async function updateGradeStructure(
+  courseId: number | string,
+  payload: UpdateGradeStructurePayload,
+  termId?: number | string
+): Promise<ApiResponse<GradeStructureData>> {
+  return apiRequest(async () => {
+    const params: Record<string, unknown> = {};
+    if (termId !== undefined && termId !== null && termId !== '') {
+      params.termId = termId;
+    }
+    return api.put<ApiResponse<GradeStructureData>>(
+      `/courses/${courseId}/grade-structure`,
+      payload,
+      { params }
+    );
+  }, { preferRawMessage: true });
+}
+
 export const gradebookService = {
   getGradebook,
   saveGradebookDraft,
   publishGradebook,
   correctGradebook,
+  getGradeStructure,
+  updateGradeStructure,
   mapGradebookError,
   validateGradeScore,
   validateCorrectionReason,

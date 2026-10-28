@@ -80,7 +80,9 @@ export type Capability =
   | 'notifications.view'
   | 'profile.view'
   | 'settings.view'
-  | 'gradebook.view';
+  | 'gradebook.view'
+  | 'gradeStructure.view'
+  | 'gradeStructure.edit';
 
 /**
  * Capability assignments per role derived from backend authorizations:
@@ -134,6 +136,8 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'profile.view',
     'settings.view',
     'gradebook.view',
+    'gradeStructure.view',
+    'gradeStructure.edit',
   ],
 
   ADMIN: [
@@ -181,6 +185,8 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'profile.view',
     'settings.view',
     'gradebook.view',
+    'gradeStructure.view',
+    'gradeStructure.edit',
   ],
 
   COLLEGE_ADMIN: [
@@ -220,6 +226,8 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'profile.view',
     'settings.view',
     'gradebook.view',
+    'gradeStructure.view',
+    'gradeStructure.edit',
   ],
 
   DEPARTMENT_ADMIN: [
@@ -252,6 +260,8 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'profile.view',
     'settings.view',
     'gradebook.view',
+    'gradeStructure.view',
+    'gradeStructure.edit',
   ],
 
   DOCTOR: [
@@ -275,6 +285,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'profile.view',
     'settings.view',
     'gradebook.view',
+    'gradeStructure.view',
   ],
 
   TEACHING_ASSISTANT: [
@@ -290,6 +301,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'profile.view',
     'settings.view',
     'gradebook.view',
+    'gradeStructure.view',
   ],
 
   STUDENT: [
@@ -392,6 +404,11 @@ export function canAccessRoute(
 ): boolean {
   if (!role) return false;
   if (role === 'SUPER_ADMIN') return true;
+
+  // Grade structure route check
+  if (routePath.includes('/grade-structure')) {
+    return hasCapability(role, 'gradeStructure.view');
+  }
 
   // Gradebook route check
   if (routePath.includes('/gradebook')) {

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { hasCapability } from '../../config/capabilities';
 import Modal from '../../components/ui/Modal';
 import {
   gradebookService,
@@ -67,6 +68,10 @@ const CourseGradebook: React.FC = () => {
   const canEdit = useMemo(() => {
     return user?.role === 'DOCTOR' || user?.role === 'TEACHING_ASSISTANT';
   }, [user?.role]);
+  const canEditStructure = useMemo(
+    () => hasCapability(user?.role, 'gradeStructure.edit'),
+    [user?.role]
+  );
 
   // Component State
   const [loading, setLoading] = useState<boolean>(true);
@@ -518,16 +523,31 @@ const CourseGradebook: React.FC = () => {
         <p className="text-sm text-brand-text-secondary dark:text-brand-text-sub max-w-md mb-6 font-medium">
           {t(pageError.descKey, pageError.rawMessage || 'The requested gradebook could not be loaded.')}
         </p>
-        <Button
-          data-back-button="true"
-          onClick={handleBack}
-          variant="outline"
-          size="default"
-          className="rounded-xl flex items-center gap-2"
-        >
-          <ArrowLeft size={16} />
-          <span>{t('gradebook.back', 'Back to Course')}</span>
-        </Button>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button
+            data-back-button="true"
+            onClick={handleBack}
+            variant="outline"
+            size="default"
+            className="rounded-xl flex items-center gap-2"
+          >
+            <ArrowLeft size={16} />
+            <span>{t('gradebook.back', 'Back to Course')}</span>
+          </Button>
+          {pageError.status === 409 && canEditStructure && (
+            <Button
+              type="button"
+              data-configure-structure="true"
+              data-grade-structure-link="true"
+              onClick={() => navigate(`/courses/${activeCourseId}/grade-structure`)}
+              variant="default"
+              size="default"
+              className="rounded-xl flex items-center gap-2"
+            >
+              <span>{t('gradeStructure.configureButton', 'Configure Grade Structure')}</span>
+            </Button>
+          )}
+        </div>
       </div>
     );
   }

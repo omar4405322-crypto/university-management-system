@@ -150,3 +150,52 @@ export interface CorrectGradebookResult {
   enrollmentTotals: CorrectGradebookEnrollmentTotalsResult[];
 }
 
+export interface GradeStructureData {
+  courseId: number;
+  termId: number;
+  termName: string;
+  totalPoints: number;
+  passMark: number | null;
+  components: GradebookComponent[];
+  isLocked: boolean;
+}
+
+export interface GradeStructureComponentInput {
+  id?: number;
+  name: string;
+  nameAr?: string | null;
+  maxPoints: number;
+  source: GradeComponentSource;
+  displayOrder: number;
+}
+
+export interface UpdateGradeStructurePayload {
+  passMark: number | null;
+  components: GradeStructureComponentInput[];
+}
+
+export interface GradeStructureRowDraft {
+  rowKey?: string;
+  id?: number;
+  name: string;
+  nameAr: string;
+  maxPointsInput: string;
+  source: GradeComponentSource;
+}
+
+export interface GradeStructureRowValidation {
+  nameErrorKey: string | null;
+  nameArErrorKey: string | null;
+  maxPointsErrorKey: string | null;
+  sourceErrorKey: string | null;
+}
+
+export interface GradeStructureValidationResult {
+  valid: boolean;
+  formErrorKey: string | null;
+  passMarkErrorKey: string | null;
+  rowErrors: GradeStructureRowValidation[];
+  totalPoints: number;
+}
+
+

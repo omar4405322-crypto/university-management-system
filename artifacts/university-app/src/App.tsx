@@ -28,6 +28,7 @@ const AiAssistantPage = lazy(() => import('./pages/ai/AiAssistantPage'));
 const CoursesList = lazy(() => import('./pages/courses/CoursesList'));
 const CourseDetails = lazy(() => import('./pages/courses/CourseDetails'));
 const CourseGradebook = lazy(() => import('./pages/courses/CourseGradebook'));
+const CourseGradeStructure = lazy(() => import('./pages/courses/CourseGradeStructure'));
 const DoctorsList = lazy(() => import('./pages/doctors/DoctorsList'));
 const DoctorDetails = lazy(() => import('./pages/doctors/DoctorDetails'));
 const TeachingAssistantsList = lazy(() => import('./pages/teaching-assistants/TeachingAssistantsList'));
@@ -250,6 +251,18 @@ const AppContent = () => {
                             <PageWrapper>
                               <LazyRoute>
                                 <CourseGradebook />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="courses/:courseId/grade-structure"
+                        element={
+                          <ProtectedRoute capability="gradeStructure.view">
+                            <PageWrapper>
+                              <LazyRoute>
+                                <CourseGradeStructure />
                               </LazyRoute>
                             </PageWrapper>
                           </ProtectedRoute>
@@ -716,11 +729,13 @@ const AppContent = () => {
                       <Route
                         path="settings"
                         element={
-                          <PageWrapper>
-                            <LazyRoute>
-                              <SettingsPage />
-                            </LazyRoute>
-                          </PageWrapper>
+                          <ProtectedRoute capability="settings.view">
+                            <PageWrapper>
+                              <LazyRoute>
+                                <SettingsPage />
+                              </LazyRoute>
+                            </PageWrapper>
+                          </ProtectedRoute>
                         }
                       />
                       <Route

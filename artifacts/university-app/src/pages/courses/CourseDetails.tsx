@@ -13,8 +13,10 @@ import {
   Eye,
   EyeOff,
   GraduationCap,
+  Sliders,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { hasCapability } from "../../config/capabilities";
 import Badge from "../../components/ui/badge";
 import Breadcrumbs from "../../components/ui/Breadcrumbs";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
@@ -136,6 +138,11 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
       user?.role === "COLLEGE_ADMIN" ||
       user?.role === "DEPARTMENT_ADMIN"
     );
+  }, [user?.role]);
+
+  // Only SUPER_ADMIN, COLLEGE_ADMIN, DEPARTMENT_ADMIN (and ADMIN) see the Grade Structure editor link on CourseDetails.
+  const canEditGradeStructure = useMemo(() => {
+    return hasCapability(user?.role, "gradeStructure.edit");
   }, [user?.role]);
 
   // Derived Staff Assignments from Schedule Slots
@@ -910,6 +917,19 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
                 </>
               )}
             </div>
+          )}
+
+          {canEditGradeStructure && (
+            <button
+              onClick={() => navigate(`/courses/${actualId}/grade-structure`)}
+              className="flex items-center gap-2 px-4 py-2 rounded-2xl font-bold text-xs shadow-sm transition-all border bg-surface-card hover:bg-surface-subtle text-brand-text-primary dark:text-brand-text-main border-brand-border"
+              title={t("gradeStructure.entryButton", "Grade Structure")}
+              data-testid="course-grade-structure-entry-button"
+              data-grade-structure-link="true"
+            >
+              <Sliders size={16} />
+              <span>{t("gradeStructure.entryButton", "Grade Structure")}</span>
+            </button>
           )}
 
           {canAccessGradebook && (
