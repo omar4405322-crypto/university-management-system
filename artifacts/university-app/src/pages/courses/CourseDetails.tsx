@@ -140,9 +140,9 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
     );
   }, [user?.role]);
 
-  // Only SUPER_ADMIN, COLLEGE_ADMIN, DEPARTMENT_ADMIN (and ADMIN) see the Grade Structure editor link on CourseDetails.
-  const canEditGradeStructure = useMemo(() => {
-    return hasCapability(user?.role, "gradeStructure.edit");
+  // Staff and Admins with gradeStructure.view see the Grade Structure link on CourseDetails.
+  const canViewGradeStructure = useMemo(() => {
+    return hasCapability(user?.role, "gradeStructure.view");
   }, [user?.role]);
 
   // Derived Staff Assignments from Schedule Slots
@@ -919,7 +919,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
             </div>
           )}
 
-          {canEditGradeStructure && (
+          {canViewGradeStructure && (
             <button
               onClick={() => navigate(`/courses/${actualId}/grade-structure`)}
               className="flex items-center gap-2 px-4 py-2 rounded-2xl font-bold text-xs shadow-sm transition-all border bg-surface-card hover:bg-surface-subtle text-brand-text-primary dark:text-brand-text-main border-brand-border"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -81,6 +81,11 @@ const CourseGradebook: React.FC = () => {
   const [availableTerms, setAvailableTerms] = useState<AcademicTermOption[]>([]);
   const [selectedTermId, setSelectedTermId] = useState<number | null>(null);
 
+  // Ref tracking whether initial load has succeeded to prevent full-page unmount during refetches
+  const hasLoadedRef = useRef<boolean>(false);
+  // Ref tracking last loaded term ID to prevent redundant initial refetch
+  const lastLoadedTermIdRef = useRef<number | null | undefined>(undefined);
+
   // Search filter
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -158,7 +163,9 @@ const CourseGradebook: React.FC = () => {
   const fetchGradebookData = useCallback(
     async (termIdToFetch?: number | null) => {
       if (!activeCourseId) return;
-      setLoading(true);
+      if (!hasLoadedRef.current) {
+        setLoading(true);
+      }
       setPageError(null);
       setOptimisticConflict(false);
 
@@ -199,13 +206,16 @@ const CourseGradebook: React.FC = () => {
             });
           }
           setGradebook(null);
+          hasLoadedRef.current = false;
           return;
         }
 
         const data = res.data;
         setGradebook(data);
-        if (data.termId && !selectedTermId) {
-          setSelectedTermId(data.termId);
+        hasLoadedRef.current = true;
+        if (data.termId) {
+          lastLoadedTermIdRef.current = data.termId;
+          setSelectedTermId((prev) => prev ?? data.termId);
         }
 
         // Initialize cell edits state from existing cell values
@@ -229,14 +239,18 @@ const CourseGradebook: React.FC = () => {
           descKey: 'gradebook.errors.generic',
           rawMessage: String(err),
         });
+        hasLoadedRef.current = false;
       } finally {
         setLoading(false);
       }
     },
-    [activeCourseId, selectedTermId]
+    [activeCourseId]
   );
 
   useEffect(() => {
+    if (selectedTermId !== null && selectedTermId === lastLoadedTermIdRef.current) {
+      return;
+    }
     fetchGradebookData(selectedTermId);
   }, [fetchGradebookData, selectedTermId]);
 

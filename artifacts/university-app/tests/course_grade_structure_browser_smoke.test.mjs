@@ -299,15 +299,15 @@ describe('T-7c Browser Verification: Course Grade Structure Editor Smoke, Matrix
       });
       await setupStructureRoutes(page);
 
-      // CourseDetails does NOT show Grade Structure editor entry button for Doctor/TA
+      // CourseDetails shows Grade Structure entry button for Doctor/TA (M-161 read-only view)
       await page.goto(`${appServer.origin}/courses/1`, { waitUntil: 'networkidle' });
       await page.waitForSelector('[data-testid="course-gradebook-entry-button"]', {
         timeout: 8000,
       });
       assert.equal(
         await page.locator('[data-testid="course-grade-structure-entry-button"]').count(),
-        0,
-        `${role} must NOT see Grade Structure editor entry button on CourseDetails`
+        1,
+        `${role} must see Grade Structure entry button on CourseDetails`
       );
 
       // Direct navigation shows read-only structure with zero inputs
