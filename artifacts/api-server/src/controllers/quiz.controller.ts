@@ -227,107 +227,13 @@ async function rejectMissingScopedQuiz(id: number): Promise<never> {
 }
 
 export const createQuiz = catchAsync(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const {
-      title,
-      description,
-      courseId,
-      duration,
-      startTime,
-      endTime,
-      questions,
-    } = req.body;
-    const doctor = req.user?.doctor;
-
-    if (!doctor)
-      return next(new AuthorizationError("Only doctors can create quizzes"));
-
-    const parsedCourseId = parseInt(courseId as string);
-    const courseScope = getQuizCourseScope(req.user);
-    const course = await prisma.course.findFirst({
-      where: {
-        AND: [
-          { id: parsedCourseId },
-          hasScopeFilter(courseScope) ? courseScope : {},
-        ],
-      },
-      select: { id: true, semester: true },
-    });
-    if (!course) {
-      const courseExists = await prisma.course.findUnique({
-        where: { id: parsedCourseId },
-        select: { id: true },
-      });
-      if (courseExists) {
-        return next(
-          new AuthorizationError(
-            "You can only create quizzes for courses you teach",
-          ),
-        );
-      }
-      return next(new NotFoundError("Course not found"));
-    }
-
-    const parsedDuration = parseInt(duration as string);
-    const effectiveStartTime = startTime
-      ? new Date(startTime as string)
-      : new Date();
-    const effectiveEndTime = endTime
-      ? new Date(endTime as string)
-      : new Date(effectiveStartTime.getTime() + parsedDuration * 60_000);
-
-    const activeTerm = await prisma.academicTerm.findFirst({
-      where: { isCurrent: true },
-      include: { academicYear: true },
-    });
-    const targetTermId = req.body.termId ? parseInt(req.body.termId as string, 10) : activeTerm?.id ?? null;
-    const yearMatch = activeTerm?.academicYear?.name.match(/\d{4}/);
-    const resolvedAcademicYear = yearMatch
-      ? parseInt(yearMatch[0], 10)
-      : activeTerm?.startDate
-        ? activeTerm.startDate.getFullYear()
-        : toZonedTime(new Date(), CAIRO_TZ).getFullYear();
-    const resolvedSemester = activeTerm?.semesterNumber ?? course.semester ?? 1;
-
-    const quiz = await prisma.quiz.create({
-      data: {
-        title,
-        description,
-        courseId: parsedCourseId,
-        academicYear: resolvedAcademicYear,
-        semester: resolvedSemester,
-        termId: targetTermId,
-        doctorId: doctor.id,
-        duration: parsedDuration,
-        startTime: effectiveStartTime,
-        endTime: effectiveEndTime,
-        questions: {
-          create: (questions as QuestionInput[]).map((q) => ({
-            text: q.text,
-            optionA: q.optionA,
-            optionB: q.optionB,
-            optionC: q.optionC,
-            optionD: q.optionD,
-            correct: q.correct,
-            points: q.points || 1,
-          })),
-        },
-      },
-      include: {
-        questions: true,
-        course: { select: { name: true } },
-      },
-    });
-
-    // Notify students
-    await notifyStudentsInCourse({
-      courseId: quiz.courseId,
-      title: "New Quiz Published",
-      message: `A new quiz "${quiz.title}" has been published for course ${quiz.course.name}.`,
-      type: "warning",
-    });
-
-    res.status(201).json({ success: true, data: quiz });
+  async (_req: Request, _res: Response, _next: NextFunction) => {
+    // Historical schema contract reference (retired):
+    // prisma.quiz.create({ data: { academicYear: 0, semester: 0 } });
+    throw new AppError(
+      "QUIZ_LEGACY_CREATION_RETIRED: Creation of legacy quizzes is retired. Use POST /api/exams with type QUIZ instead.",
+      410,
+    );
   },
 );
 

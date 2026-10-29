@@ -643,13 +643,7 @@ const AppContent = () => {
                       />
                       <Route
                         path="quizzes/create"
-                        element={
-                          <ProtectedRoute capability="quizzes.create">
-                            <PageWrapper>
-                              <CreateQuiz />
-                            </PageWrapper>
-                          </ProtectedRoute>
-                        }
+                        element={<Navigate to="/exams/create" replace />}
                       />
                       <Route
                         path="quizzes/:id/take"

@@ -16,7 +16,7 @@ const router = express.Router();
 
 router.use(protect);
 
-router.post('/', authorize('DOCTOR'), quizValidation, validate, createQuiz);
+router.post('/', authorize('DOCTOR'), createQuiz);
 router.get('/', getQuizzes);
 router.get('/:id', functionalIdValidation, validate, getQuizById);
 router.post(

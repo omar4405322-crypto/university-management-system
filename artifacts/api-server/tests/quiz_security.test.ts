@@ -250,10 +250,11 @@ try {
     },
     user: doctor,
   });
-  assert.equal(deniedCreate.error?.statusCode, 403);
-  assert.deepEqual(capturedCourseWhere, {
-    AND: [{ id: 7 }, getQuizCourseScope(doctor)],
-  });
+  assert.equal(deniedCreate.error?.statusCode, 410);
+  assert.match(
+    deniedCreate.error?.message,
+    /^QUIZ_LEGACY_CREATION_RETIRED:/,
+  );
   assert.equal(quizCreateCalled, false);
 
   let transactionOptions: any;

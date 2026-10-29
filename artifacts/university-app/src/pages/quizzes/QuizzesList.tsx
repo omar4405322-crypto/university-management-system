@@ -154,17 +154,6 @@ const QuizzesList = () => {
             ? t('quizzes.subtitleDoctor', 'Manage your course quizzes')
             : t('quizzes.subtitleStudent', 'View and take your course quizzes')
         }
-        action={
-          isDoctor
-            ? {
-                label: t('quizzes.createQuiz', 'Create Quiz'),
-                onClick: () => navigate('/quizzes/create'),
-                icon: Plus,
-                className:
-                  'bg-brand-primary-500 hover:bg-brand-primary-600 text-white font-bold rounded-xl active:scale-95 transition-all flex items-center gap-2 px-4 py-2',
-              }
-            : undefined
-        }
       />
 
       {/* ========================================================================= */}
@@ -325,12 +314,7 @@ const QuizzesList = () => {
                         setSortBy('latest');
                       },
                     }
-                  : isDoctor
-                    ? {
-                        label: t('quizzes.createQuiz'),
-                        onClick: () => navigate('/quizzes/create'),
-                      }
-                    : undefined
+                  : undefined
               }
             />
           </div>
