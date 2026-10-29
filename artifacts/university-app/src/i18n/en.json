@@ -475,7 +475,13 @@
     "activeSession": "Active Session",
     "qrCode": "QR Code",
     "gpsLocation": "GPS Location",
-    "codeRefreshesEvery": "Code refreshes automatically every {{seconds}} seconds"
+    "codeRefreshesEvery": "Code refreshes automatically every {{seconds}} seconds",
+    "sessionPointsLabel": "Session Points (Optional)",
+    "sessionPointsPlaceholder": "Optional points",
+    "sessionPointsInvalid": "Enter a non-negative number with up to two decimal places.",
+    "sessionPointsCumulativeExceeded": "Cumulative session points exceed the maximum points allocated for the attendance component.",
+    "sessionPointsExceedsMax": "Session points exceed the maximum points allocated for the attendance component.",
+    "noAutoAttendanceComponent": "This course term does not have an automatic attendance grade component configured."
   },
   "auth": {
     "admin": "Admin",
@@ -1640,7 +1646,9 @@
     },
     "viewExamDetails": "View details for {{title}}",
     "selectExam": "Select exam {{title}}",
-    "deselectExam": "Deselect exam {{title}}"
+    "deselectExam": "Deselect exam {{title}}",
+    "quizLockedBanner": "This quiz is locked because student attempts already exist. Questions cannot be added, modified, or deleted.",
+    "quizLockedDeleteToast": "Cannot delete an exam that already has student attempts."
   },
   "doctors": {
     "activeProfessors": "Active Professors",

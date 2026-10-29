@@ -43,6 +43,7 @@ import Pagination from "../../components/ui/pagination";
 import ErrorState from "../../components/ui/ErrorState";
 import { useToast } from "../../context/ToastContext";
 import AddExamModal from "./AddExamModal";
+import { isQuizLockedError } from "../../utils/quizLock.utils";
 import {
   getExamStatus,
   getDaysUntil,
@@ -178,6 +179,15 @@ const ExamsList = () => {
     try {
       setDeleteLoading(true);
       const result = await examsService.deleteExam(deleteTarget.id);
+      if (!result.success) {
+        if (isQuizLockedError(result)) {
+          showToast(t("exams.quizLockedDeleteToast"), "error");
+        } else {
+          showToast(t("exams.deleteError", "Failed to delete exam"), "error");
+        }
+        setDeleteTarget(null);
+        return;
+      }
       if (result.success) {
         showToast(
           t("exams.deleteSuccess", "Exam deleted successfully"),
@@ -348,7 +358,23 @@ const ExamsList = () => {
       const deletePromises = Array.from(selectedIds).map((id) =>
         examsService.deleteExam(String(id)).catch((err) => ({ error: err })),
       );
-      await Promise.allSettled(deletePromises);
+      const results = await Promise.all(deletePromises);
+      const anyLocked = results.some((r: any) => isQuizLockedError(r));
+      const anyOtherFailure = results.some((r: any) => !r?.success && !isQuizLockedError(r));
+      if (anyLocked) {
+        showToast(t("exams.quizLockedDeleteToast"), "error");
+        setSelectedIds(new Set());
+        setIsBulkDeleteModalOpen(false);
+        fetchExams();
+        return;
+      }
+      if (anyOtherFailure) {
+        showToast(t("exams.deleteError", "Failed to delete exam"), "error");
+        setSelectedIds(new Set());
+        setIsBulkDeleteModalOpen(false);
+        fetchExams();
+        return;
+      }
       showToast(
         t("exams.bulkDeleteSuccess", `Successfully deleted ${count} exams`, {
           count,

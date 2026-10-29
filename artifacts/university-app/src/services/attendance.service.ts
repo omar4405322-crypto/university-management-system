@@ -44,6 +44,7 @@ export interface StartSessionParams {
   longitude?: number;
   radius?: number;
   gracePeriodMins?: number;
+  sessionPoints?: number | null;
 }
 
 export interface QrAttendanceParams {

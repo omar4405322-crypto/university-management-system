@@ -45,6 +45,7 @@ import Table, {
 import { ElapsedSessionTimer } from '../../components/attendance/ElapsedSessionTimer';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { validateSessionPoints, mapAttendanceStartError } from '../../utils/sessionPoints.utils';
 
 const GRACE_PERIOD_OPTIONS = [5, 10, 15, 20, 30];
 
@@ -178,6 +179,8 @@ export function FacultyAttendanceDashboard() {
   const [rosterSearch, setRosterSearch] = useState('');
   const [rosterFilter, setRosterFilter] = useState<'PRESENT' | 'LATE' | 'FLAGGED' | 'ALL' | 'ABSENT'>('ALL');
   const [gracePeriods, setGracePeriods] = useState<Record<number, number>>({});
+  const [sessionPointsInputs, setSessionPointsInputs] = useState<Record<number, string>>({});
+  const [sessionPointsErrors, setSessionPointsErrors] = useState<Record<number, string | null>>({});
 
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -330,6 +333,19 @@ export function FacultyAttendanceDashboard() {
   };
 
   const handleStartSession = async (courseId: number) => {
+    const rawSessionPoints = sessionPointsInputs[courseId] ?? '';
+    const validation = validateSessionPoints(rawSessionPoints);
+    if (!validation.valid) {
+      setSessionPointsErrors((prev) => ({
+        ...prev,
+        [courseId]: validation.errorKey,
+      }));
+      return;
+    }
+    setSessionPointsErrors((prev) => ({
+      ...prev,
+      [courseId]: null,
+    }));
     try {
       setLoading(true);
       setError(null);
@@ -342,6 +358,7 @@ export function FacultyAttendanceDashboard() {
         longitude: lng,
         radius: 100,
         gracePeriodMins: gracePeriods[courseId] ?? 15,
+        ...(validation.value !== undefined ? { sessionPoints: validation.value } : {}),
       });
       setActiveSession(res.data);
       setSelectedCourseId(courseId);
@@ -352,14 +369,14 @@ export function FacultyAttendanceDashboard() {
         return next;
       });
     } catch (err: any) {
-      let errorMessage =
-        err.response?.data?.message || t('attendance.startSessionError', 'Failed to start session');
+      const mapped = mapAttendanceStartError(err?.rawMessage, err?.status);
+      let errorMessage = mapped;
       if (
-        err.response?.status === 404 &&
-        typeof errorMessage === 'string' &&
-        errorMessage.includes('ScheduleSlot')
+        mapped.startsWith('attendance.')
+
+
       ) {
-        errorMessage = t('attendance.noScheduleSlot', 'No matching schedule slot found. Please contact administration to add a ScheduleSlot.');
+        errorMessage = t(mapped);
       }
       setError(errorMessage);
     } finally {
@@ -1240,6 +1257,54 @@ export function FacultyAttendanceDashboard() {
 
                     {/* Footer Controls: Grace Period & Start Session Button */}
                     <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-2 text-[11px]">
+                          <label
+                            htmlFor={`session-points-${course.id}`}
+                            className="text-slate-500 font-medium"
+                          >
+                            {t('attendance.sessionPointsLabel')}
+                          </label>
+                          <input
+                            id={`session-points-${course.id}`}
+                            type="text"
+                            inputMode="decimal"
+                            data-session-points-input="true"
+                            value={sessionPointsInputs[course.id] ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setSessionPointsInputs((prev) => ({
+                                ...prev,
+                                [course.id]: val,
+                              }));
+                              if (sessionPointsErrors[course.id]) {
+                                setSessionPointsErrors((prev) => ({
+                                  ...prev,
+                                  [course.id]: null,
+                                }));
+                              }
+                            }}
+                            placeholder={t('attendance.sessionPointsPlaceholder')}
+                            aria-invalid={Boolean(sessionPointsErrors[course.id])}
+                            aria-describedby={
+                              sessionPointsErrors[course.id]
+                                ? `session-points-error-${course.id}`
+                                : undefined
+                            }
+                            className="h-6 w-28 px-2 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-[11px] font-semibold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-primary-500"
+                          />
+                        </div>
+                        {sessionPointsErrors[course.id] && (
+                          <p
+                            id={`session-points-error-${course.id}`}
+                            data-session-points-error="true"
+                            role="alert"
+                            className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 leading-snug"
+                          >
+                            {t(sessionPointsErrors[course.id]!)}
+                          </p>
+                        )}
+                      </div>
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="text-slate-500 font-medium">فترة السماح:</span>
                         <select

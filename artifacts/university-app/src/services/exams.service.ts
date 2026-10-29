@@ -13,15 +13,15 @@ const examsService = {
 
   updateExam: (id: string | number, data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/exams/${id}`, data)),
 
-  deleteExam: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/exams/${id}`)),
+  deleteExam: (id: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/exams/${id}`), { preferRawMessage: true }),
 
   getExamQuestions: (examId: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.get(`/exams/${examId}/questions`)),
 
-  addExamQuestion: (examId: string | number, data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/exams/${examId}/questions`, data)),
+  addExamQuestion: (examId: string | number, data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/exams/${examId}/questions`, data), { preferRawMessage: true }),
 
-  updateExamQuestion: (questionId: string | number, data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/exams/questions/${questionId}`, data)),
+  updateExamQuestion: (questionId: string | number, data: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.put(`/exams/questions/${questionId}`, data), { preferRawMessage: true }),
 
-  deleteExamQuestion: (questionId: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/exams/questions/${questionId}`)),
+  deleteExamQuestion: (questionId: string | number): Promise<ApiResponse<any>> => apiRequest(() => api.delete(`/exams/questions/${questionId}`), { preferRawMessage: true }),
 
   startExamSession: (examId: string | number, data?: Record<string, unknown>): Promise<ApiResponse<any>> => apiRequest(() => api.post(`/exams/${examId}/start`, data)),
 

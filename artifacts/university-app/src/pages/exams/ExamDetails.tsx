@@ -31,6 +31,7 @@ import Breadcrumbs from '../../components/ui/Breadcrumbs';
 import ConfirmDeleteModal from '../../components/ui/ConfirmDeleteModal';
 import { useToast } from '../../context/ToastContext';
 import { getExamLabel, getDurationMinutes, getExamTimeWindowStatus } from './examUtils';
+import { isQuizLockedError } from '../../utils/quizLock.utils';
 
 const ExamDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -48,6 +49,7 @@ const ExamDetails: React.FC = () => {
 
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
+  const [isQuizLocked, setIsQuizLocked] = useState(false);
   const [newQuestion, setNewQuestion] = useState({
     text: '',
     type: 'MCQ',
@@ -127,9 +129,14 @@ const ExamDetails: React.FC = () => {
           points: 1,
         });
         showToast(t('exams.questionAddedSuccess'), 'success');
+      } else if (isQuizLockedError(qRes)) {
+        setIsQuizLocked(true);
+        setShowAddQuestion(false);
+      } else {
+        showToast(t('exams.addQuestionError'), 'error');
       }
-    } catch (err: any) {
-      showToast(err.response?.data?.message || t('exams.addQuestionError'), 'error');
+    } catch (_err: any) {
+      showToast(t('exams.addQuestionError'), 'error');
     } finally {
       setAddingQuestion(false);
     }
@@ -150,6 +157,12 @@ const ExamDetails: React.FC = () => {
       if (res.success) {
         setQuestions((prev) => prev.filter((q) => q.id !== deleteQuestionTarget));
         showToast(t('exams.questionDeletedSuccess'), 'success');
+        setDeleteQuestionTarget(null);
+      } else if (isQuizLockedError(res)) {
+        setIsQuizLocked(true);
+        setDeleteQuestionTarget(null);
+      } else {
+        showToast(t('exams.deleteQuestionError'), 'error');
         setDeleteQuestionTarget(null);
       }
     } catch (_err) {
@@ -483,6 +496,17 @@ const ExamDetails: React.FC = () => {
               {t('exams.addQuestion')}
             </Button>
           </div>
+
+          {isQuizLocked && (
+            <div
+              data-quiz-locked-banner="true"
+              role="alert"
+              className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 flex items-start gap-3 text-xs font-bold"
+            >
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <span>{t('exams.quizLockedBanner')}</span>
+            </div>
+          )}
 
           {/* Add Question Drawer Form */}
           {showAddQuestion && (

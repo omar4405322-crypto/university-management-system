@@ -481,7 +481,13 @@
     "activeSession": "جلسة نشطة",
     "qrCode": "رمز الاستجابة السريعة (QR)",
     "gpsLocation": "الموقع الجغرافي (GPS)",
-    "codeRefreshesEvery": "يتجدد الرمز تلقائياً كل {{seconds}} ثانية"
+    "codeRefreshesEvery": "يتجدد الرمز تلقائياً كل {{seconds}} ثانية",
+    "sessionPointsLabel": "درجات الجلسة (اختياري)",
+    "sessionPointsPlaceholder": "درجات اختيارية",
+    "sessionPointsInvalid": "أدخل رقماً غير سالب بحد أقصى منزلتين عشريتين.",
+    "sessionPointsCumulativeExceeded": "مجموع درجات الجلسات يتجاوز الحد الأقصى المخصص لمكون الحضور.",
+    "sessionPointsExceedsMax": "درجات الجلسة تتجاوز الحد الأقصى المخصص لمكون الحضور.",
+    "noAutoAttendanceComponent": "لم يتم إعداد مكون درجات حضور تلقائي لهذا المقرر في الفصل الدراسي الحالي."
   },
   "auth": {
     "admin": "مدير",
@@ -1646,7 +1652,9 @@
     },
     "viewExamDetails": "عرض تفاصيل امتحان {{title}}",
     "selectExam": "تحديد امتحان {{title}}",
-    "deselectExam": "إلغاء تحديد امتحان {{title}}"
+    "deselectExam": "إلغاء تحديد امتحان {{title}}",
+    "quizLockedBanner": "هذا الاختبار مقفل لوجود محاولات طلاب سابقة. لا يمكن إضافة الأسئلة أو تعديلها أو حذفها.",
+    "quizLockedDeleteToast": "لا يمكن حذف امتحان توجد له محاولات طلاب سابقة."
   },
   "doctors": {
     "activeProfessors": "الأساتذة النشطون",
