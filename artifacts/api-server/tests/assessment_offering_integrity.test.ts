@@ -147,9 +147,9 @@ function creationPathsWriteOfferingAndEnrollmentKeys() {
     examSource,
     /prisma\.examSubmission\.create\([\s\S]*enrollmentId: enrollment\.id/u,
   );
-  assert.match(
+  assert.doesNotMatch(
     quizSource,
-    /prisma\.quiz\.create\([\s\S]*academicYear:[\s\S]*semester:/u,
+    /prisma\.quiz\.create\(/u,
   );
   assert.match(
     quizSource,

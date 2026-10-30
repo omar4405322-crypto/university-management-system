@@ -228,8 +228,6 @@ async function rejectMissingScopedQuiz(id: number): Promise<never> {
 
 export const createQuiz = catchAsync(
   async (_req: Request, _res: Response, _next: NextFunction) => {
-    // Historical schema contract reference (retired):
-    // prisma.quiz.create({ data: { academicYear: 0, semester: 0 } });
     throw new AppError(
       "QUIZ_LEGACY_CREATION_RETIRED: Creation of legacy quizzes is retired. Use POST /api/exams with type QUIZ instead.",
       410,
