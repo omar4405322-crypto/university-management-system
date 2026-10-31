@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Modal from "../../../components/ui/Modal";
 import Button from "../../../components/ui/button";
+import { MAX_TASK_TITLE_LENGTH, MAX_TASK_DESCRIPTION_LENGTH } from "../../../utils/taskDeadline.utils";
 import type { TaskItem, CourseOption, CreateTaskFormData } from "../types";
 
 export interface TaskModalProps {
@@ -29,10 +30,12 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       z.object({
         title: z
           .string()
-          .min(1, t("tasks.titleRequired", "Task title is required")),
+          .min(1, t("tasks.titleRequired", "Task title is required"))
+          .max(MAX_TASK_TITLE_LENGTH, t("tasks.titleTooLong", { max: MAX_TASK_TITLE_LENGTH })),
         description: z
           .string()
-          .min(1, t("tasks.descriptionRequired", "Task description is required")),
+          .min(1, t("tasks.descriptionRequired", "Task description is required"))
+          .max(MAX_TASK_DESCRIPTION_LENGTH, t("tasks.descriptionTooLong", { max: MAX_TASK_DESCRIPTION_LENGTH })),
         courseId: z
           .string()
           .min(1, t("tasks.courseRequired", "Please select a course")),
@@ -118,6 +121,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             aria-describedby={errors.title ? "task-title-error" : undefined}
             type="text"
             className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-1.5 focus:ring-brand-primary-500 outline-none bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+            maxLength={MAX_TASK_TITLE_LENGTH}
             placeholder={t("tasks.taskTitle", "Assignment Title")}
             {...register("title")}
           />
@@ -143,6 +147,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               "tasks.taskDescription",
               "Assignment Instructions & Description",
             )}
+            maxLength={MAX_TASK_DESCRIPTION_LENGTH}
             {...register("description")}
           />
           {errors.description && (

@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
   Clock,
+  CheckCircle,
   CheckSquare,
   Square,
   Eye,
@@ -60,14 +61,14 @@ export const TasksCards: React.FC<TasksCardsProps> = ({
             ? Math.min(100, Math.round((subsCount / totalEnrolled) * 100))
             : 0;
         const isSelected = selectedIds.has(task.id);
-        const hasSubmission = Boolean(
-          task.mySubmission ||
-            (task.submissions && task.submissions.length > 0),
-        );
+        const mySub = task.mySubmission || task.submissions?.[0];
+        const hasSubmission = Boolean(mySub);
+        const isGraded = Boolean(mySub && mySub.score != null);
 
         return (
           <div
             key={task.id}
+            data-task-card="true"
             className={`rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between ${
               isSelected
                 ? "border-2 border-brand-primary-500 ring-2 ring-brand-primary-500/20 bg-brand-primary-500/[0.02] dark:bg-brand-primary-500/[0.04]"
@@ -166,22 +167,45 @@ export const TasksCards: React.FC<TasksCardsProps> = ({
             <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-2">
               {isStudent ? (
                 /* Student Submit Action */
-                <Button
-                  size="sm"
-                  onClick={() => onSubmit(task)}
-                  className={`w-full h-8 rounded-lg text-xs font-bold gap-1.5 cursor-pointer shadow-2xs ${
-                    overdue
-                      ? "bg-rose-600 hover:bg-rose-700 text-white"
-                      : "bg-brand-primary-600 hover:bg-brand-primary-700 text-white"
-                  }`}
-                >
-                  <FileUp size={13} />
-                  <span>
-                    {hasSubmission
-                      ? t("tasks.resubmitTask", "Resubmit Assignment")
-                      : t("tasks.submitTask", "Submit Assignment")}
-                  </span>
-                </Button>
+                overdue ? (
+                  <Button
+                    size="sm"
+                    disabled
+                    aria-disabled="true"
+                    className="w-full h-8 rounded-lg text-xs font-bold gap-1.5 opacity-60 cursor-not-allowed bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                  >
+                    <Clock size={13} />
+                    <span>{t("tasks.statusOverdue", "Overdue")}</span>
+                  </Button>
+                ) : isGraded && mySub ? (
+                  <Button
+                    size="sm"
+                    disabled
+                    aria-disabled="true"
+                    className="w-full h-8 rounded-lg text-xs font-bold gap-1.5 opacity-60 cursor-not-allowed bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                  >
+                    <CheckCircle size={13} />
+                    <span>
+                      {t("tasks.statusGraded", {
+                        score: mySub.score,
+                        maxScore: task.maxScore,
+                      })}
+                    </span>
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => onSubmit(task)}
+                    className="w-full h-8 rounded-lg text-xs font-bold gap-1.5 cursor-pointer shadow-2xs bg-brand-primary-600 hover:bg-brand-primary-700 text-white"
+                  >
+                    <FileUp size={13} />
+                    <span>
+                      {hasSubmission
+                        ? t("tasks.resubmitTask", "Resubmit Assignment")
+                        : t("tasks.submitTask", "Submit Assignment")}
+                    </span>
+                  </Button>
+                )
               ) : (
                 <>
                   {canGrade && (

@@ -10,6 +10,21 @@
 
 type CsvValue = string | number | boolean | null | undefined;
 
+function escapeCsvCell(val: CsvValue): string {
+  if (typeof val === 'number') {
+    return Number.isFinite(val) ? String(val) : '';
+  }
+  let s = val == null ? '' : String(val);
+  const trimmedLeading = s.replace(/^[ \f\v\u00a0]+/, '');
+  if (/^[=+\-@\t\r]/.test(trimmedLeading)) {
+    s = `'${s}`;
+  }
+  if (/[",\n\r]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
 function downloadCsv(data: Record<string, CsvValue>[], filename?: string): void;
 function downloadCsv(filename: string, headers: string[], rows: CsvValue[][]): void;
 function downloadCsv(
@@ -35,15 +50,9 @@ function downloadCsv(
     rows = Array.isArray(arg3) ? arg3 : [];
   }
 
-  const escape = (val: CsvValue): string => {
-    const s = val == null ? '' : String(val);
-    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-    return s;
-  };
-
   const lines = [
-    headers.map(escape).join(','),
-    ...rows.map((row) => (Array.isArray(row) ? row.map(escape).join(',') : '')),
+    headers.map(escapeCsvCell).join(','),
+    ...rows.map((row) => (Array.isArray(row) ? row.map(escapeCsvCell).join(',') : '')),
   ];
 
   const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -57,4 +66,4 @@ function downloadCsv(
   URL.revokeObjectURL(url);
 }
 
-export { downloadCsv };
+export { downloadCsv, escapeCsvCell };

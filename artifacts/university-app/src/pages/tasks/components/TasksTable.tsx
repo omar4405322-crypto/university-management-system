@@ -1,6 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Clock,
+  CheckCircle,
   CheckSquare,
   Square,
   MinusSquare,
@@ -122,6 +124,9 @@ export const TasksTable: React.FC<TasksTableProps> = ({
           <TableBody>
             {tasks.map((task) => {
               const overdue = isOverdue(task.dueDate);
+              const mySub = task.mySubmission || task.submissions?.[0];
+              const hasSubmission = Boolean(mySub);
+              const isGraded = Boolean(mySub && mySub.score != null);
               const subsCount = task._count?.submissions || 0;
               const isSelected = selectedIds.has(task.id);
 
@@ -207,6 +212,11 @@ export const TasksTable: React.FC<TasksTableProps> = ({
                           size="sm"
                           onClick={() => onGrade(task)}
                           className="h-7 px-2.5 bg-brand-primary-600 hover:bg-brand-primary-700 text-white rounded-lg text-xs font-bold gap-1 cursor-pointer"
+
+
+
+
+
                         >
                           <Eye size={12} />
                           <span>{isRTL ? "رصد" : "Grade"}</span>
@@ -231,11 +241,22 @@ export const TasksTable: React.FC<TasksTableProps> = ({
                       {isStudent && (
                         <Button
                           size="sm"
-                          onClick={() => onSubmit(task)}
-                          className="h-7 px-2.5 bg-brand-primary-600 hover:bg-brand-primary-700 text-white rounded-lg text-xs font-bold gap-1 cursor-pointer"
+                          disabled={overdue || isGraded}
+                          aria-disabled={overdue || isGraded}
+                          onClick={overdue || isGraded ? undefined : () => onSubmit(task)}
+                          className={`h-7 px-2.5 rounded-lg text-xs font-bold gap-1 ${overdue || isGraded ? "opacity-60 cursor-not-allowed bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400" : "bg-brand-primary-600 hover:bg-brand-primary-700 text-white cursor-pointer"}`}
+
+
+
+
+
                         >
-                          <FileUp size={12} />
-                          <span>{isRTL ? "تسليم" : "Submit"}</span>
+                          {overdue ? <Clock size={12} /> : isGraded ? <CheckCircle size={12} /> : <FileUp size={12} />}
+                          <span>
+                            {overdue ? t("tasks.statusOverdue", "Overdue") : isGraded && mySub ? t("tasks.statusGraded", { score: mySub.score, maxScore: task.maxScore }) : hasSubmission
+                              ? t("tasks.resubmitTask", "Resubmit")
+                              : t("tasks.submitTask", "Submit")}
+                          </span>
                         </Button>
                       )}
                     </div>

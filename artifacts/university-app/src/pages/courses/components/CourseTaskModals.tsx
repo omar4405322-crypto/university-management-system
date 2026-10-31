@@ -4,6 +4,13 @@ import { useTranslation } from "react-i18next";
 import Modal from "../../../components/ui/Modal";
 import Button from "../../../components/ui/button";
 import type { CourseTask } from "../types";
+import {
+  MAX_TASK_TITLE_LENGTH,
+  MAX_TASK_DESCRIPTION_LENGTH,
+  MAX_TASK_NOTES_LENGTH,
+  isTaskPastDue,
+} from "../../../utils/taskDeadline.utils";
+import { validateSubmissionInput } from "../../../utils/taskSubmissionUrl";
 
 export interface CreateTaskModalProps {
   isOpen: boolean;
@@ -81,7 +88,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             value={taskTitle}
             onChange={(e) => setTaskTitle(e.target.value)}
             className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:border-brand-primary-500"
-            placeholder="مثال: واجب الأسبوع الثالث"
+            maxLength={MAX_TASK_TITLE_LENGTH}
+            placeholder={t("tasks.taskTitle", "Assignment Title")}
           />
         </div>
 
@@ -95,7 +103,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             value={taskDesc}
             onChange={(e) => setTaskDesc(e.target.value)}
             className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:border-brand-primary-500"
-            placeholder="شرح المطلوب بالتفصيل..."
+            maxLength={MAX_TASK_DESCRIPTION_LENGTH}
+            placeholder={t("tasks.taskDescription", "Assignment Instructions & Description")}
           />
         </div>
 
@@ -170,10 +179,28 @@ export const SubmitTaskModal: React.FC<SubmitTaskModalProps> = ({
   const [submitFileUrl, setSubmitFileUrl] = useState("");
   const [taskError, setTaskError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isOverdue = isTaskPastDue(task?.dueDate);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTaskError("");
+    const validation = validateSubmissionInput({
+      fileUrl: submitFileUrl,
+      notes: submitNotes,
+    });
+    if (!validation.isValid) {
+      const errKey =
+        validation.fileUrlErrorKey ||
+        validation.notesErrorKey ||
+        validation.formErrorKey ||
+        "tasks.submissionContentRequired";
+      setTaskError(t(errKey, "Submission must include either a valid link or notes"));
+      return;
+    }
+    if (isOverdue) {
+      setTaskError(t("tasks.deadlinePassed", "The deadline for this task has passed"));
+      return;
+    }
     setIsSubmitting(true);
     try {
       await onSubmit({
@@ -184,7 +211,7 @@ export const SubmitTaskModal: React.FC<SubmitTaskModalProps> = ({
       setSubmitFileUrl("");
       onClose();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to submit task";
+      const msg = err instanceof Error ? err.message : t("tasks.submitError", "Failed to submit task");
       setTaskError(msg);
     } finally {
       setIsSubmitting(false);
@@ -200,6 +227,12 @@ export const SubmitTaskModal: React.FC<SubmitTaskModalProps> = ({
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+        {isOverdue && (
+          <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-600 rounded-xl text-xs font-bold flex items-center gap-2">
+            <AlertCircle size={16} />
+            <span>{t("tasks.deadlinePassed", "The deadline for this task has passed")}</span>
+          </div>
+        )}
         {taskError && (
           <div className="p-3 bg-red-50 dark:bg-red-950/20 text-red-600 rounded-xl text-xs font-bold flex items-center gap-2">
             <AlertCircle size={16} />
@@ -215,21 +248,30 @@ export const SubmitTaskModal: React.FC<SubmitTaskModalProps> = ({
             )}
           </label>
           <textarea
+            id="submit-notes"
             rows={3}
+            maxLength={MAX_TASK_NOTES_LENGTH}
             value={submitNotes}
             onChange={(e) => setSubmitNotes(e.target.value)}
             className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:border-brand-primary-500"
-            placeholder="اكتب أي ملاحظات موجهة لأستاذ المادة..."
+            placeholder={t(
+              "tasks.submissionNotes",
+              "Additional Notes for Instructor (Optional)"
+            )}
           />
         </div>
 
         <div>
           <label className="block text-xs font-bold text-brand-text-main mb-1">
-            رابط الملف / الإجابة (File URL)
+            {t(
+              "tasks.fileUrlLabel",
+              "Deliverable Link (Google Drive / GitHub / OneDrive)"
+            )}
           </label>
           <input
+            id="submit-file-url"
             type="url"
-            required
+            maxLength={500}
             value={submitFileUrl}
             onChange={(e) => setSubmitFileUrl(e.target.value)}
             className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:outline-none focus:border-brand-primary-500"
@@ -248,7 +290,7 @@ export const SubmitTaskModal: React.FC<SubmitTaskModalProps> = ({
           <Button
             type="submit"
             variant="primary"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isOverdue}
             className="text-xs py-2 px-5 shadow-md shadow-brand-primary-500/20"
           >
             {isSubmitting

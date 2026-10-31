@@ -20,6 +20,7 @@ import Button from "../../components/ui/button";
 import Badge from "../../components/ui/badge";
 import BulkActionToolbar from "../../components/ui/BulkActionToolbar";
 import { downloadCsv } from "../../utils/exportCsv";
+import { isTaskPastDue } from "../../utils/taskDeadline.utils";
 
 import { TaskModal } from "./components/TaskModal";
 import { TaskSubmitModal } from "./components/TaskSubmitModal";
@@ -147,7 +148,7 @@ export function TasksList() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const isOverdue = (dueDate: string | Date) => new Date(dueDate) < new Date();
+  const isOverdue = (dueDate: string | Date | null | undefined) => isTaskPastDue(dueDate);
 
   const fetchTasks = useCallback(
     async (isRefresh = false) => {

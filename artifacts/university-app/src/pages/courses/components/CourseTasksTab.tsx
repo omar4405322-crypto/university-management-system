@@ -10,6 +10,7 @@ import {
 import { useTranslation } from "react-i18next";
 import Button from "../../../components/ui/button";
 import Badge from "../../../components/ui/badge";
+import { isTaskPastDue } from "../../../utils/taskDeadline.utils";
 import type { CourseTask, CourseStudentSubmission } from "../types";
 
 export interface CourseTasksTabProps {
@@ -47,7 +48,7 @@ export const CourseTasksTab: React.FC<CourseTasksTabProps> = ({
             {t("tasks.title", "Tasks & Assignments")}
           </h3>
           <p className="text-xs text-brand-text-muted mt-1">
-            إدارة وتتبع التكاليف المطلوبة من الطلاب وتحديد مواعيد التسليم.
+            {t("tasks.subtitleDoctor", "Manage student assignments, grading, and submissions.")}
           </p>
         </div>
 
@@ -67,7 +68,7 @@ export const CourseTasksTab: React.FC<CourseTasksTabProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {tasks.map((task) => {
             const isOverdue =
-              task.dueDate && new Date(task.dueDate) < new Date();
+              isTaskPastDue(task.dueDate);
             const my = courseMySubmissions[task.id];
 
             return (
@@ -88,7 +89,7 @@ export const CourseTasksTab: React.FC<CourseTasksTabProps> = ({
                         <span className="text-[10px] font-bold uppercase tracking-widest text-brand-text-muted">
                           {task.maxScore
                             ? `${task.maxScore} ${t("tasks.maxPoints", "Total Points")}`
-                            : "تكليف أكاديمي"}
+                            : t("tasks.academicTask", "Academic Assignment")}
                         </span>
                       </div>
                     </div>
@@ -114,7 +115,7 @@ export const CourseTasksTab: React.FC<CourseTasksTabProps> = ({
                           ? t("tasks.statusSubmitted")
                           : isOverdue
                             ? t("tasks.statusOverdue")
-                            : "قيد التسليم"}
+                            : t("tasks.statusNotSubmitted", "Not Submitted")}
                     </Badge>
                   </div>
 
@@ -164,34 +165,49 @@ export const CourseTasksTab: React.FC<CourseTasksTabProps> = ({
                         {t("tasks.due", "Submission Deadline")}:{" "}
                         {task.dueDate
                           ? formatTaskDate(task.dueDate)
-                          : "غير محدد"}
+                          : t("common.unspecified", "Unspecified")}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-2">
                     {isStudent ? (
-                      my ? (
+                      isOverdue ? (
                         <Button
                           disabled
-                          className="text-[10px] py-1.5 px-3 opacity-60 w-full"
+                          aria-disabled="true"
+                          className="text-[10px] py-1.5 px-3 opacity-60 w-full cursor-not-allowed"
                         >
-                          <CheckCircle size={14} className="mr-1" />
-                          {t("tasks.statusSubmitted")}
+                          <Clock size={14} className="me-1" />
+                          {t("tasks.statusOverdue", "Overdue")}
+                        </Button>
+                      ) : my && my.score != null ? (
+                        <Button
+                          disabled
+                          aria-disabled="true"
+                          className="text-[10px] py-1.5 px-3 opacity-60 w-full cursor-not-allowed"
+                        >
+                          <CheckCircle size={14} className="me-1" />
+                          {t("tasks.statusGraded", {
+                            score: my.score,
+                            maxScore: task.maxScore,
+                          })}
+                        </Button>
+                      ) : my ? (
+                        <Button
+                          onClick={() => onSubmitTask(task)}
+                          className="text-[10px] py-1.5 px-3 w-full"
+                        >
+                          <FileUp size={14} className="me-1" />
+                          {t("tasks.resubmitTask", "Resubmit Assignment")}
                         </Button>
                       ) : (
                         <Button
                           onClick={() => onSubmitTask(task)}
-                          className={`text-[10px] py-1.5 px-3 w-full ${
-                            isOverdue
-                              ? "bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-500/20"
-                              : ""
-                          }`}
+                          className="text-[10px] py-1.5 px-3 w-full"
                         >
-                          <FileUp size={14} className="mr-1" />
-                          {isOverdue
-                            ? `${t("tasks.submitTask")} (${t("tasks.statusOverdue")})`
-                            : t("tasks.submitTask", "Submit Assignment")}
+                          <FileUp size={14} className="me-1" />
+                          {t("tasks.submitTask", "Submit Assignment")}
                         </Button>
                       )
                     ) : (
@@ -200,7 +216,7 @@ export const CourseTasksTab: React.FC<CourseTasksTabProps> = ({
                         onClick={() => onViewSubmissions(task)}
                         className="text-[10px] py-1.5 px-3 w-full"
                       >
-                        <CheckCircle size={14} className="mr-1" />
+                        <CheckCircle size={14} className="me-1" />
                         {t("tasks.viewSubmissions", "View Submissions")}
                       </Button>
                     )}
@@ -217,14 +233,14 @@ export const CourseTasksTab: React.FC<CourseTasksTabProps> = ({
             className="mx-auto text-brand-text-muted opacity-40 mb-3"
           />
           <h3 className="text-base font-bold text-brand-text-primary dark:text-brand-text-main">
-            لا توجد تكاليف مطلوبة لهذا المقرر حالياً
+            {t("tasks.noCourseTasks", "No assignments required for this course currently")}
           </h3>
           <p className="text-xs text-brand-text-muted mt-1">
-            عند إضافة تكليف جديد بواسطة أستاذ المادة يظهر هنا للطلاب للرفع
-            والتسليم.
+            {t("tasks.noCourseTasksDesc", "When a new assignment is added by the instructor, it will appear here for students to submit.")}
           </p>
         </div>
       )}
     </div>
   );
 };
+/* end */

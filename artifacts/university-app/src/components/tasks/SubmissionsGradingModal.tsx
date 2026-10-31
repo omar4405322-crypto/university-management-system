@@ -18,6 +18,7 @@ import taskService, {
 } from '../../services/task.service';
 import { EmptyState } from '../ui/EmptyState';
 import { getSubmissionDestinationHostname } from '../../utils/taskSubmissionUrl';
+import { MAX_TASK_FEEDBACK_LENGTH } from '../../utils/taskDeadline.utils';
 
 type StudentT = {
   id: number;
@@ -152,6 +153,10 @@ const SubmissionRow = memo(function SubmissionRowImpl({
 
   const handleSave = useCallback(async () => {
     if (!row.submission || saving || scoreError) return;
+    if (feedback.length > MAX_TASK_FEEDBACK_LENGTH) {
+      setSaveError(t('tasks.feedbackTooLong', { max: MAX_TASK_FEEDBACK_LENGTH }));
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
@@ -343,6 +348,7 @@ const SubmissionRow = memo(function SubmissionRowImpl({
                   setSaveError(null);
                 }}
                 disabled={saving}
+                maxLength={MAX_TASK_FEEDBACK_LENGTH}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-brand-border bg-brand-bg-card focus:ring-2 focus:ring-brand-primary-500 focus:outline-none"
               />
             </div>
