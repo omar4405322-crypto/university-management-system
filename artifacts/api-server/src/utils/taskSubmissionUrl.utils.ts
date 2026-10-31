@@ -37,8 +37,8 @@ export function validateTaskSubmissionUrl(
     throw new ValidationError('Task submission link must be a valid HTTP(S) URL');
   }
 
-  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-    throw new ValidationError('Task submission link must use HTTP or HTTPS');
+  if (parsedUrl.protocol !== 'https:') {
+    throw new ValidationError('Task submission link must use HTTPS');
   }
 
   const hostname = parsedUrl.hostname.toLowerCase().replace(/\.$/, '');

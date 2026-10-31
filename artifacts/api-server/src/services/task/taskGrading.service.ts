@@ -7,12 +7,16 @@ import {
 } from "../../utils/appError";
 import { auditLog } from "../../utils/audit.utils";
 import { validateTaskSubmissionUrl } from "../../utils/taskSubmissionUrl.utils";
-import { toZonedTime } from "date-fns-tz";
+import { validateGuardedText } from "../../utils/quizInputGuard.utils";
+import {
+  isTaskPastDue,
+  MAX_TASK_NOTES_LENGTH,
+  MAX_TASK_FEEDBACK_LENGTH,
+} from "../../utils/taskDeadline.utils";
 import type { AuthActor } from "../../types/auth.types";
 import { Prisma } from "@prisma/client";
 import { TaskScopeService } from "./taskScope.service";
 
-const CAIRO_TZ = "Africa/Cairo";
 
 export interface SubmitTaskDTO {
   notes?: string;
@@ -38,7 +42,18 @@ export class TaskGradingService {
     data: SubmitTaskDTO,
     reqSource?: AuditRequestSource,
   ): Promise<SubmitTaskResult> {
+    if (data.notes !== undefined && data.notes !== null) {
+      validateGuardedText(data.notes, "Notes", MAX_TASK_NOTES_LENGTH, false);
+    }
+
     const normalizedFileUrl = validateTaskSubmissionUrl(data.fileUrl);
+
+    const trimmedNotes = typeof data.notes === "string" ? data.notes.trim() : "";
+    if (!normalizedFileUrl && trimmedNotes.length === 0) {
+      throw new ValidationError(
+        "Submission must include either a valid fileUrl or notes",
+      );
+    }
 
     const student = await TaskScopeService.getStudentOrThrow(user.id);
 
@@ -87,11 +102,19 @@ export class TaskGradingService {
       const existingSubmission = await tx.taskSubmission.findUnique({
         where: { taskId_studentId: { taskId, studentId: student.id } },
       });
+
+      if (taskObj.dueDate && isTaskPastDue(taskObj.dueDate)) {
+        throw new ConflictError(
+          existingSubmission
+            ? "The deadline for this task has passed. Resubmission is not allowed."
+            : "The deadline for this task has passed. Submission is not allowed.",
+        );
+      }
+
       if (existingSubmission) {
-        const cairoNow = toZonedTime(new Date(), CAIRO_TZ);
-        if (taskObj.dueDate && taskObj.dueDate.getTime() < cairoNow.getTime()) {
+        if (existingSubmission.score !== null) {
           throw new ConflictError(
-            "The deadline for this task has passed. Resubmission is not allowed.",
+            "This task submission has already been graded and cannot be resubmitted.",
           );
         }
 
@@ -191,6 +214,10 @@ export class TaskGradingService {
       throw new ValidationError(
         "A valid expectedSubmittedAt submission revision is required",
       );
+    }
+
+    if (feedback !== undefined && feedback !== null) {
+      validateGuardedText(feedback, "Feedback", MAX_TASK_FEEDBACK_LENGTH, false);
     }
 
     const submission = await prisma.$transaction(async (tx) => {

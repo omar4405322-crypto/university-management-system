@@ -6,12 +6,19 @@ import {
 } from "../../utils/appError";
 import { notifyStudentsInCourse } from "../../utils/notification.utils";
 import { auditLog } from "../../utils/audit.utils";
+import { validateGuardedText } from "../../utils/quizInputGuard.utils";
+import {
+  MAX_TASK_TITLE_LENGTH,
+  MAX_TASK_DESCRIPTION_LENGTH,
+} from "../../utils/taskDeadline.utils";
 import { toZonedTime } from "date-fns-tz";
 import type { AuthActor } from "../../types/auth.types";
 import { Prisma } from "@prisma/client";
 import { TaskScopeService } from "./taskScope.service";
 
 const CAIRO_TZ = "Africa/Cairo";
+
+export type AuditRequestSource = Parameters<typeof auditLog>[3];
 
 export interface CreateTaskDTO {
   title: string;
@@ -54,7 +61,13 @@ export class TaskMutationsService {
     user: AuthActor,
     data: CreateTaskDTO,
     txClient?: Prisma.TransactionClient,
+    reqSource?: AuditRequestSource,
   ): Promise<TaskCreatedPayload> {
+    validateGuardedText(data.title, "Title", MAX_TASK_TITLE_LENGTH, true);
+    if (data.description !== undefined && data.description !== null) {
+      validateGuardedText(data.description, "Description", MAX_TASK_DESCRIPTION_LENGTH, false);
+    }
+
     const db = txClient ?? prisma;
     const doctor = await TaskScopeService.getDoctorOrThrow(user.id);
 
@@ -120,7 +133,22 @@ export class TaskMutationsService {
       txClient,
     );
 
-    await auditLog("CREATE_TASK", "Task", String(task.id), { userId: user.id }, undefined, txClient);
+    await auditLog(
+      "CREATE_TASK",
+      "Task",
+      String(task.id),
+      reqSource || { user },
+      {
+        after: {
+          title: task.title,
+          description: task.description,
+          courseId: task.courseId,
+          dueDate: task.dueDate,
+          maxScore: task.maxScore,
+        },
+      },
+      txClient,
+    );
 
     return task;
   }
@@ -129,6 +157,7 @@ export class TaskMutationsService {
     user: AuthActor,
     taskId: number,
     data: UpdateTaskDTO,
+    reqSource?: AuditRequestSource,
   ): Promise<TaskUpdatedPayload> {
     const existing = await prisma.task.findUnique({
       where: { id: taskId, NOT: { isDeleted: true } },
@@ -140,6 +169,13 @@ export class TaskMutationsService {
     }
 
     await TaskScopeService.ensureCourseOwnershipOrScope(user, existing);
+
+    if (data.title !== undefined) {
+      validateGuardedText(data.title, "Title", MAX_TASK_TITLE_LENGTH, true);
+    }
+    if (data.description !== undefined && data.description !== null) {
+      validateGuardedText(data.description, "Description", MAX_TASK_DESCRIPTION_LENGTH, false);
+    }
 
     const updateData: Prisma.TaskUpdateInput = {};
     if (data.title !== undefined) updateData.title = data.title;
@@ -196,7 +232,26 @@ export class TaskMutationsService {
       }
     }
 
-    auditLog("UPDATE_TASK", "Task", String(updated.id), { userId: user.id });
+    await auditLog(
+      "UPDATE_TASK",
+      "Task",
+      String(updated.id),
+      reqSource || { user },
+      {
+        before: {
+          title: existing.title,
+          description: existing.description,
+          dueDate: existing.dueDate,
+          maxScore: existing.maxScore,
+        },
+        after: {
+          title: updated.title,
+          description: updated.description,
+          dueDate: updated.dueDate,
+          maxScore: updated.maxScore,
+        },
+      },
+    );
 
     return updated;
   }
@@ -205,6 +260,7 @@ export class TaskMutationsService {
     user: AuthActor,
     taskId: number,
     force: boolean = false,
+    reqSource?: AuditRequestSource,
   ): Promise<DeleteTaskResult> {
     const existing = await prisma.task.findUnique({
       where: { id: taskId, NOT: { isDeleted: true } },
@@ -229,9 +285,12 @@ export class TaskMutationsService {
       await prisma.task.delete({
         where: { id: taskId },
       });
-      auditLog("DELETE_TASK", "Task", String(taskId), {
-        userId: user.id,
+      await auditLog("DELETE_TASK", "Task", String(taskId), reqSource || { user }, {
         force: true,
+        before: {
+          title: existing.title,
+          courseId: existing.courseId,
+        },
       });
       return {
         success: true,
@@ -248,9 +307,12 @@ export class TaskMutationsService {
       },
     });
 
-    auditLog("DELETE_TASK", "Task", String(taskId), {
-      userId: user.id,
+    await auditLog("DELETE_TASK", "Task", String(taskId), reqSource || { user }, {
       force: false,
+      before: {
+        title: existing.title,
+        courseId: existing.courseId,
+      },
     });
 
     return {

@@ -14,7 +14,7 @@ export const createTask = catchAsync(
       courseId: parseInt(courseId as string),
       dueDate: fromZonedTime(dueDate as string, 'Africa/Cairo'),
       maxScore: parseInt(maxScore as string) || 100,
-    });
+    }, undefined, req);
 
     return res.status(201).json({ success: true, data: task });
   }
@@ -81,7 +81,8 @@ export const updateTask = catchAsync(
         description,
         dueDate: dueDate != null ? fromZonedTime(dueDate as string, 'Africa/Cairo') : undefined,
         maxScore: maxScore != null ? parseInt(maxScore as string) : undefined,
-      }
+      },
+      req
     );
 
     return res.json({ success: true, data: updated });
@@ -97,7 +98,8 @@ export const deleteTask = catchAsync(
     const result = await TaskService.deleteTask(
       req.user!,
       parseInt(id as string),
-      forceHardDelete
+      forceHardDelete,
+      req
     );
 
     return res.json(result);

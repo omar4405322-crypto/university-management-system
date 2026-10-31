@@ -56,8 +56,8 @@ export type {
 };
 
 export class TaskService {
-  static createTask(user: AuthActor, data: CreateTaskDTO, txClient?: Prisma.TransactionClient) {
-    return TaskMutationsService.createTask(user, data, txClient);
+  static createTask(user: AuthActor, data: CreateTaskDTO, txClient?: Prisma.TransactionClient, reqSource?: AuditRequestSource) {
+    return TaskMutationsService.createTask(user, data, txClient, reqSource);
   }
 
   static getTasks(
@@ -72,16 +72,18 @@ export class TaskService {
     user: AuthActor,
     taskId: number,
     data: UpdateTaskDTO,
+    reqSource?: AuditRequestSource,
   ) {
-    return TaskMutationsService.updateTask(user, taskId, data);
+    return TaskMutationsService.updateTask(user, taskId, data, reqSource);
   }
 
   static deleteTask(
     user: AuthActor,
     taskId: number,
     force: boolean = false,
+    reqSource?: AuditRequestSource,
   ) {
-    return TaskMutationsService.deleteTask(user, taskId, force);
+    return TaskMutationsService.deleteTask(user, taskId, force, reqSource);
   }
 
   static submitTask(

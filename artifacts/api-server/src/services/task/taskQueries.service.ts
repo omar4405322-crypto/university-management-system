@@ -1,6 +1,6 @@
 import prisma from "../../utils/prismaClient";
 import { getScopeWhere } from "../../utils/scope.utils";
-import { toZonedTime, fromZonedTime } from "date-fns-tz";
+import { fromZonedTime } from "date-fns-tz";
 import type { AuthActor } from "../../types/auth.types";
 import { Prisma } from "@prisma/client";
 
@@ -58,7 +58,7 @@ export class TaskQueriesService {
     courseId?: number,
     opts?: GetTasksOptions,
   ): Promise<TaskQueryResult> {
-    const now = toZonedTime(new Date(), CAIRO_TZ);
+    const now = new Date();
     const where: Prisma.TaskWhereInput = { NOT: { isDeleted: true } };
 
     if (courseId) {
