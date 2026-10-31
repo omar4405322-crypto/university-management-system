@@ -158,7 +158,13 @@ export class TaskSubmissionsService {
         semester: taskObj.semester,
         status: "ENROLLED",
       };
-      if (Object.keys(studentWhere).length) {
+      if (status === "NOT_SUBMITTED") {
+        enrollmentWhere.taskSubmissions = { none: { taskId } };
+        enrollmentWhere.student = {
+          ...studentWhere,
+          taskSubmissions: { none: { taskId } },
+        };
+      } else if (Object.keys(studentWhere).length) {
         enrollmentWhere.student = studentWhere;
       }
 

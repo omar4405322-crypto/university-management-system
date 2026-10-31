@@ -32,7 +32,14 @@ export interface TaskPaginationMeta {
 
 export type TaskQueryResultItem = Prisma.TaskGetPayload<{
   include: {
-    course: { select: { name: true; courseCode: true; year: true } };
+    course: {
+      select: {
+        name: true;
+        courseCode: true;
+        year: true;
+        _count: { select: { enrollments: { where: { status: "ENROLLED" } } } };
+      };
+    };
     doctor: { select: { firstName: true; lastName: true; userId: true } };
     _count: { select: { submissions: true } };
   };
@@ -221,7 +228,20 @@ export class TaskQueriesService {
       prisma.task.findMany({
         where,
         include: {
-          course: { select: { name: true, courseCode: true, year: true } },
+          course: {
+            select: {
+              name: true,
+              courseCode: true,
+              year: true,
+              _count: {
+                select: {
+                  enrollments: {
+                    where: { status: "ENROLLED" },
+                  },
+                },
+              },
+            },
+          },
           doctor: { select: { firstName: true, lastName: true, userId: true } },
           _count: { select: { submissions: true } },
           ...(requestingStudentId

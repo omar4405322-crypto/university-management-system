@@ -54,11 +54,11 @@ export const TasksCards: React.FC<TasksCardsProps> = ({
       {tasks.map((task) => {
         const overdue = isOverdue(task.dueDate);
         const subsCount = task._count?.submissions || 0;
-        const totalEnrolled = task.course?._count?.enrollments || 30;
-        const progressPercent = Math.min(
-          100,
-          Math.round((subsCount / (totalEnrolled || 1)) * 100),
-        );
+        const totalEnrolled = task.course?._count?.enrollments;
+        const progressPercent =
+          typeof totalEnrolled === "number" && totalEnrolled > 0
+            ? Math.min(100, Math.round((subsCount / totalEnrolled) * 100))
+            : 0;
         const isSelected = selectedIds.has(task.id);
         const hasSubmission = Boolean(
           task.mySubmission ||
@@ -148,7 +148,8 @@ export const TasksCards: React.FC<TasksCardsProps> = ({
                       {t("tasks.submissions", "Submissions")}:
                     </span>
                     <span className="font-mono font-bold text-brand-primary-600 dark:text-brand-primary-400">
-                      {subsCount} {isRTL ? "تسليم" : "submitted"}
+                      {subsCount} / {totalEnrolled != null ? totalEnrolled : "—"}{" "}
+                      {isRTL ? "تسليم" : "submitted"}
                     </span>
                   </div>
                   <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">

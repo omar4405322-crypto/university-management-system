@@ -132,7 +132,7 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
               className="h-8.5 text-xs px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
             >
               <option value="">{t("tasks.allStatuses", "All Statuses")}</option>
-              <option value="PENDING">
+              <option value="ACTIVE">
                 {isDoctor
                   ? isRTL
                     ? "قيد الانتظار"
@@ -140,9 +140,6 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
                   : isRTL
                     ? "مطلوب تسليمه"
                     : "Due / Pending"}
-              </option>
-              <option value="COMPLETED">
-                {isRTL ? "تم التسليم" : "Completed"}
               </option>
               <option value="OVERDUE">
                 {isRTL ? "فات الموعد" : "Overdue"}
@@ -159,13 +156,13 @@ export const TasksFilterBar: React.FC<TasksFilterBarProps> = ({
               className="h-8.5 text-xs px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
             >
               <option value="">{t("tasks.sortBy", "Sort: Default")}</option>
-              <option value="due_asc">
+              <option value="DUE_DATE_ASC">
                 {isRTL ? "الموعد (الأقرب أولاً)" : "Due Date (Soonest)"}
               </option>
-              <option value="due_desc">
+              <option value="DUE_DATE_DESC">
                 {isRTL ? "الموعد (الأبعد أولاً)" : "Due Date (Furthest)"}
               </option>
-              <option value="created_desc">
+              <option value="CREATED_AT_DESC">
                 {isRTL ? "الأحدث إضافة" : "Newest Created"}
               </option>
             </select>

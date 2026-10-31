@@ -2473,6 +2473,7 @@
     "deleteError": "حدث خطأ أثناء حذف التكليف",
     "gradeSaved": "تم حفظ الدرجة بنجاح",
     "gradeError": "حدث خطأ أثناء حفظ الدرجة",
+    "gradeConflictError": "تم تعديل تسليم الواجب أثناء رصد الدرجة. يرجى إعادة تحميل أحدث نسخة وإعادة المحاولة.",
     "statusSubmitted": "تم التسليم",
     "statusGraded": "الدرجة: {{score}}/{{maxScore}}",
     "statusOverdue": "منتهي",

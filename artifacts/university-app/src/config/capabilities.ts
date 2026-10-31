@@ -124,7 +124,6 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'quizzes.view',
     'quizzes.create',
     'tasks.view',
-    'tasks.create',
     'tasks.grade',
     'attendance.view',
     'attendance.manage',
@@ -173,7 +172,6 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'quizzes.view',
     'quizzes.create',
     'tasks.view',
-    'tasks.create',
     'tasks.grade',
     'attendance.view',
     'attendance.manage',
@@ -329,6 +327,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
 };
 
 const STUDENT_ONLY_CAPABILITIES: readonly Capability[] = ['myGrades.view'] as const;
+const DOCTOR_ONLY_CAPABILITIES: readonly Capability[] = ['tasks.create'] as const;
 
 /**
  * Check if a role possesses a specific capability.
@@ -340,6 +339,9 @@ export function hasCapability(
   if (!role) return false;
   if (STUDENT_ONLY_CAPABILITIES.includes(capability)) {
     return role === 'STUDENT';
+  }
+  if (DOCTOR_ONLY_CAPABILITIES.includes(capability)) {
+    return role === 'DOCTOR';
   }
   if (role === 'SUPER_ADMIN') return true;
   const capabilities = ROLE_CAPABILITY_MATRIX[role as UserRole];

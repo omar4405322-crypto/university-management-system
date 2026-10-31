@@ -111,6 +111,7 @@ type SubmissionRowProps = {
   maxScore: number;
   taskId: number | string;
   onGradeSaved: (submissionId: number, updated: unknown) => void;
+  onConflict?: () => void;
 };
 
 const SubmissionRow = memo(function SubmissionRowImpl({
@@ -118,6 +119,7 @@ const SubmissionRow = memo(function SubmissionRowImpl({
   maxScore,
   taskId,
   onGradeSaved,
+  onConflict,
 }: SubmissionRowProps) {
   const { t } = useTranslation();
   const sub = row.submission;
@@ -134,7 +136,6 @@ const SubmissionRow = memo(function SubmissionRowImpl({
     setScore(sub && sub.score != null ? String(sub.score) : '');
     setFeedback(sub?.feedback ?? '');
     setLastSaved(!!(sub && sub.score != null));
-    setSaveError(null);
   }, [sub]);
 
   const parsedScore = score ? parseFloat(score) : NaN;
@@ -160,6 +161,7 @@ const SubmissionRow = memo(function SubmissionRowImpl({
         {
           score: Number.isNaN(parsedScore) ? 0 : parsedScore,
           feedback: feedback || null,
+          expectedSubmittedAt: row.submission.submittedAt,
         }
       );
       if (res?.success && res?.data) {
@@ -167,20 +169,51 @@ const SubmissionRow = memo(function SubmissionRowImpl({
         setSaveError(null);
         onGradeSaved(row.submission!.id, res.data);
       } else {
-        setSaveError(res?.message || t('tasks.saveGradeError', 'Failed to save grade'));
+        const is409 = Boolean(
+          res?.status === 409 ||
+          (res?.error as { status?: number; response?: { status?: number } })?.status === 409 ||
+          (res?.error as { status?: number; response?: { status?: number } })?.response?.status === 409
+        );
+
+        if (is409) {
+          setSaveError(
+            t(
+              'tasks.gradeConflictError',
+              'The task submission changed while it was being graded. Reload the latest revision and retry.'
+            )
+          );
+          onConflict?.();
+        } else {
+          setSaveError(res?.message || t('tasks.saveGradeError', 'Failed to save grade'));
+        }
       }
     } catch (err: unknown) {
-      const msg =
-        err && typeof err === 'object' && 'response' in err && (err as { response?: { data?: { message?: string } } }).response?.data?.message
-          ? (err as { response?: { data?: { message?: string } } }).response!.data!.message!
-          : err instanceof Error
-          ? err.message
-          : t('tasks.saveGradeError', 'Failed to save grade');
+      const is409 = Boolean(
+        err &&
+          typeof err === 'object' &&
+          ('status' in err && (err as { status?: number }).status === 409 ||
+           'response' in err && (err as { response?: { status?: number } }).response?.status === 409)
+      );
+
+      if (is409) {
+        onConflict?.();
+      }
+
+      const msg = is409
+        ? t(
+            'tasks.gradeConflictError',
+            'The task submission changed while it was being graded. Reload the latest revision and retry.'
+          )
+        : err && typeof err === 'object' && 'response' in err && (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        ? (err as { response?: { data?: { message?: string } } }).response!.data!.message!
+        : err instanceof Error
+        ? err.message
+        : t('tasks.saveGradeError', 'Failed to save grade');
       setSaveError(msg);
     } finally {
       setSaving(false);
     }
-  }, [row.submission, saving, scoreError, taskId, parsedScore, feedback, onGradeSaved, t]);
+  }, [row.submission, saving, scoreError, taskId, parsedScore, feedback, onGradeSaved, onConflict, t]);
 
   let statusBadgeVariant: 'success' | 'warning' | 'neutral' | 'danger' | 'info' = 'neutral';
   let statusBadgeLabel = '';
@@ -379,34 +412,37 @@ const SubmissionsGradingModal: React.FC<SubmissionsGradingModalProps> = ({
   }, [isOpen, task]);
 
   const taskId = task?.id;
-  const fetchData = useCallback(async () => {
-    if (!taskId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const params: GetTaskSubmissionsParams = { page, limit, status };
-      if (debouncedSearch) params.search = debouncedSearch;
-      if (studentYear !== 'ALL') params.studentYear = Number(studentYear);
-      const res = await taskService.getTaskSubmissions(taskId, params);
-      if (res?.success && res?.data) {
-        setRows(res.data.rows ?? []);
-        setPagination(res.data.pagination ?? null);
-        setSummary(res.data.summary ?? null);
-      } else {
+  const fetchData = useCallback(
+    async (showLoading = false) => {
+      if (!taskId) return;
+      if (showLoading) setLoading(true);
+      setError(null);
+      try {
+        const params: GetTaskSubmissionsParams = { page, limit, status };
+        if (debouncedSearch) params.search = debouncedSearch;
+        if (studentYear !== 'ALL') params.studentYear = Number(studentYear);
+        const res = await taskService.getTaskSubmissions(taskId, params);
+        if (res?.success && res?.data) {
+          setRows(res.data.rows ?? []);
+          setPagination(res.data.pagination ?? null);
+          setSummary(res.data.summary ?? null);
+        } else {
+          setRows([]);
+          setPagination(null);
+          setSummary(null);
+        }
+      } catch (e: any) {
+        setError(e?.message ?? 'Failed to load submissions');
         setRows([]);
-        setPagination(null);
-        setSummary(null);
+      } finally {
+        if (showLoading) setLoading(false);
       }
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to load submissions');
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [taskId, page, limit, status, debouncedSearch, studentYear]);
+    },
+    [taskId, page, limit, status, debouncedSearch, studentYear]
+  );
 
   useEffect(() => {
-    if (isOpen && taskId) fetchData();
+    if (isOpen && taskId) fetchData(true);
   }, [isOpen, taskId, fetchData]);
 
   const handleGradeSavedInRow = useCallback(
@@ -584,6 +620,7 @@ const SubmissionsGradingModal: React.FC<SubmissionsGradingModalProps> = ({
               maxScore={maxScore}
               taskId={task!.id}
               onGradeSaved={handleGradeSavedInRow}
+              onConflict={fetchData}
             />
           ))}
         </div>

@@ -28,6 +28,7 @@ import { TasksFilterBar } from "./components/TasksFilterBar";
 import { TasksCards } from "./components/TasksCards";
 import { TasksTable } from "./components/TasksTable";
 import { TasksKpiStats } from "./components/TasksKpiStats";
+import { hasCapability } from "../../config/capabilities";
 
 import type {
   TaskItem,
@@ -42,15 +43,18 @@ export function TasksList() {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === "ar";
   const { user } = useAuth();
-  const canManageTasks =
+  const canManageStaffTasks =
     user?.role === "DOCTOR" ||
     user?.role === "SUPER_ADMIN" ||
     user?.role === "COLLEGE_ADMIN" ||
     user?.role === "DEPARTMENT_ADMIN";
-  const canGradeTasks = canManageTasks;
+  const canManageTasks =
+    (user?.role === "DOCTOR" || user?.role === "SUPER_ADMIN") &&
+    hasCapability(user?.role, "tasks.create");
+  const canGradeTasks = canManageStaffTasks;
   const isTA = user?.role === "TEACHING_ASSISTANT";
-  const isStaff = canManageTasks || isTA;
-  const isDoctor = canManageTasks;
+  const isStaff = canManageStaffTasks || isTA;
+  const isDoctor = canManageStaffTasks;
   const isStudent = user?.role === "STUDENT";
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -601,7 +605,7 @@ export function TasksList() {
           selectedIds={selectedIds}
           onToggleSelect={handleToggleSelect}
           isDoctor={Boolean(isStaff)}
-          canManageTasks={Boolean(canManageTasks)}
+          canManageTasks={Boolean(canManageStaffTasks)}
           canGrade={Boolean(canGradeTasks)}
           isStudent={Boolean(isStudent)}
           isRTL={isRTL}
@@ -633,7 +637,7 @@ export function TasksList() {
           onSelectAll={handleToggleSelectAll}
           allSelected={isAllSelected}
           isDoctor={Boolean(isStaff)}
-          canManageTasks={Boolean(canManageTasks)}
+          canManageTasks={Boolean(canManageStaffTasks)}
           canGrade={Boolean(canGradeTasks)}
           isStudent={Boolean(isStudent)}
           isRTL={isRTL}

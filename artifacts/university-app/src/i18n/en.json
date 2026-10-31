@@ -2444,6 +2444,7 @@
     "deleteError": "Error deleting task",
     "gradeSaved": "Grade saved successfully",
     "gradeError": "Failed to save grade",
+    "gradeConflictError": "The task submission changed while it was being graded. Reload the latest revision and retry.",
     "statusSubmitted": "Submitted",
     "statusGraded": "Graded: {{score}}/{{maxScore}}",
     "statusOverdue": "Overdue",

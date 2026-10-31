@@ -222,11 +222,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
   }, [user, assignedDoctors, assignedTAs]);
 
   const canCreateTask = useMemo(() => {
-    return (
-      user?.role === "DOCTOR" ||
-      user?.role === "SUPER_ADMIN" ||
-      user?.role === "COLLEGE_ADMIN"
-    );
+    return hasCapability(user?.role, "tasks.create");
   }, [user?.role]);
 
   // Fetch Course Details
