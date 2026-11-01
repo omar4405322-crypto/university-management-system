@@ -21,7 +21,7 @@ async function captureMiddlewareError(middleware: any, request: Record<string, u
 async function runCourseMaterialAccessSecurityTests() {
   const originalCourseFindFirst = prisma.course.findFirst;
   const originalCourseFindUnique = prisma.course.findUnique;
-  const originalSlotFindFirst = prisma.scheduleSlot.findFirst;
+  const originalSlotFindFirst = prisma.scheduleSlot.findFirst; const originalTAFindUnique = prisma.teachingAssistant.findUnique;
   let capturedWhere: unknown;
   let courseExists = false;
   let slotExists = false;
@@ -35,7 +35,7 @@ async function runCourseMaterialAccessSecurityTests() {
       capturedWhere = args.where;
       return slotExists ? { id: 20 } : null;
     };
-    (prisma.course as any).findUnique = async () => ({ id: 10 });
+    (prisma.course as any).findUnique = async () => ({ id: 10, departmentId: 7 }); (prisma.teachingAssistant as any).findUnique = async (args: any) => (args.where?.id === '15' || args.where?.id === 15 ? { id: '15', departmentId: 7, userId: 150 } : null);
 
     assert.equal(await canUserManageCourseMaterials({ role: 'SUPER_ADMIN' }, 10), true);
     assert.equal(await canUserManageCourseMaterials({ role: 'STUDENT' }, 10), false);
@@ -83,7 +83,12 @@ async function runCourseMaterialAccessSecurityTests() {
       false,
       'Department membership must not substitute for a real doctor assignment'
     );
-    assert.deepEqual(capturedWhere, { courseId: 10, doctorId: 12 });
+    assert.deepEqual(capturedWhere, {
+      courseId: 10,
+      doctorId: 12,
+      isArchived: false,
+      OR: [{ termId: null }, { term: { isCurrent: true } }],
+    });
 
     slotExists = true;
     assert.equal(
@@ -100,12 +105,17 @@ async function runCourseMaterialAccessSecurityTests() {
       false,
       'TA department membership must not substitute for a real assignment'
     );
-    assert.deepEqual(capturedWhere, { courseId: 10, teachingAssistantId: 15 });
+    assert.deepEqual(capturedWhere, {
+      courseId: 10,
+      teachingAssistantId: 15,
+      isArchived: false,
+      OR: [{ termId: null }, { term: { isCurrent: true } }],
+    });
 
     slotExists = true;
     assert.equal(
       await canUserManageCourseMaterials(
-        { role: 'TEACHING_ASSISTANT', teachingAssistant: { id: 15 } },
+        { role: 'TEACHING_ASSISTANT', teachingAssistant: { id: 15 } }, 10), true); assert.equal(await canUserManageCourseMaterials({ role: 'TEACHING_ASSISTANT', teachingAssistant: { id: 99 } }, 10), false, 'TA with unapproved cross/null department must fail closed'); assert.equal(await canUserManageCourseMaterials({ role: 'TEACHING_ASSISTANT', teachingAssistant: { id: 15 } },
         10
       ),
       true
@@ -130,7 +140,7 @@ async function runCourseMaterialAccessSecurityTests() {
   } finally {
     (prisma.course as any).findFirst = originalCourseFindFirst;
     (prisma.course as any).findUnique = originalCourseFindUnique;
-    (prisma.scheduleSlot as any).findFirst = originalSlotFindFirst;
+    (prisma.scheduleSlot as any).findFirst = originalSlotFindFirst; (prisma.teachingAssistant as any).findUnique = originalTAFindUnique;
   }
 }
 

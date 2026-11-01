@@ -261,6 +261,28 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
     return next(new NotFoundError('Course not found'));
   }
 
+  // Threat T-A: Teaching assistant read scope: TA must be assigned to the course
+  if (req.user && req.user.role === 'TEACHING_ASSISTANT') {
+    const canManage = await canUserManageCourseMaterials(req.user, courseId);
+    if (!canManage) {
+      return next(new NotFoundError('Course not found'));
+    }
+  }
+
+  // Threat T-E: Student access to materials/tasks: WITHDRAWN and BLOCKED students denied access
+  if (req.user && req.user.role === 'STUDENT' && req.user.student?.id) {
+    const studentEnrollment = await prisma.enrollment.findFirst({
+      where: {
+        courseId,
+        studentId: req.user.student.id,
+      },
+      select: { status: true },
+    });
+    if (studentEnrollment && studentEnrollment.status !== 'ENROLLED') {
+      return next(new NotFoundError('Course not found'));
+    }
+  }
+
   const normalizedSlots = (course.scheduleSlots || []).map((slot: any) => ({
     ...slot,
     slotType: normalizeSlotType(slot.slotType),
@@ -737,10 +759,22 @@ export async function canUserManageCourseMaterials(user: AuthActor | undefined |
     return Boolean(scopedCourse);
   }
 
+  const slotTermFilter = {
+    isArchived: false,
+    OR: [
+      { termId: null },
+      { term: { isCurrent: true } },
+    ],
+  };
+
   if (user.role === 'DOCTOR') {
     if (!user.doctor?.id) return false;
     const slot = await prisma.scheduleSlot.findFirst({
-      where: { courseId, doctorId: user.doctor.id },
+      where: {
+        courseId,
+        doctorId: user.doctor.id,
+        ...slotTermFilter,
+      },
       select: { id: true },
     });
     return Boolean(slot);
@@ -749,10 +783,36 @@ export async function canUserManageCourseMaterials(user: AuthActor | undefined |
   if (user.role === 'TEACHING_ASSISTANT') {
     if (!user.teachingAssistant?.id) return false;
     const slot = await prisma.scheduleSlot.findFirst({
-      where: { courseId, teachingAssistantId: user.teachingAssistant.id as string },
+      where: {
+        courseId,
+        teachingAssistantId: user.teachingAssistant.id as any,
+        ...slotTermFilter,
+      },
       select: { id: true },
     });
-    return Boolean(slot);
+    if (!slot) return false;
+
+    // Check department ownership vs cross-department approval
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { departmentId: true },
+    });
+
+    if (!course) return false; const taRec = await prisma.teachingAssistant.findUnique({ where: { id: String(user.teachingAssistant.id) }, select: { departmentId: true, userId: true } }); const uId = taRec?.userId ?? (typeof user.id === 'number' ? user.id : undefined); const userRec = (taRec?.departmentId == null && uId) ? await prisma.user.findUnique({ where: { id: uId }, select: { departmentId: true } }) : null; const taHomeDeptId = taRec?.departmentId ?? userRec?.departmentId ?? null;
+    if (taHomeDeptId == null || course.departmentId == null || taHomeDeptId !== course.departmentId) {
+      const approval = await (prisma as any).tACrossDepartmentApproval?.findUnique({
+        where: {
+          teachingAssistantId_courseId: {
+            teachingAssistantId: String(user.teachingAssistant.id),
+            courseId,
+          },
+        },
+        select: { status: true },
+      });
+      return approval?.status === 'APPROVED';
+    }
+
+    return true;
   }
 
   return false;
@@ -805,22 +865,67 @@ export const uploadCourseMaterial = catchAsync(async (req: Request, res: Respons
   let fileSize: number | undefined = undefined;
   let fileType: string | undefined = undefined;
 
+  // Threat T-C: TA can only upload TUTORIAL materials
+  if (req.user.role === 'TEACHING_ASSISTANT') {
+    if (type === 'LECTURE') {
+      return res.status(403).json({
+        success: false,
+        message: 'Teaching assistants can only upload tutorial materials.',
+      });
+    }
+  }
+
+  // Threat T-B: Derive fileUrl on upload; accept body fileUrl ONLY as an HTTPS link
   if (req.file) {
     fileUrl = `/uploads/materials/${req.file.filename}`;
     fileName = req.file.originalname;
     fileSize = req.file.size;
     fileType = req.file.mimetype;
+  } else {
+    if (!fileUrl || typeof fileUrl !== 'string' || !fileUrl.trim()) {
+      return res.status(400).json({ success: false, message: 'File or link URL is required' });
+    }
+    const trimmedUrl = fileUrl.trim();
+    if (trimmedUrl.length > 2048) {
+      return res.status(400).json({ success: false, message: 'Material link URL is too long' });
+    }
+    const CONTROL_CHAR_PATTERN = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/;
+    const DANGEROUS_URI_PATTERN = /^(?:javascript|data|vbscript|file):/i;
+    if (CONTROL_CHAR_PATTERN.test(trimmedUrl) || DANGEROUS_URI_PATTERN.test(trimmedUrl)) {
+      return res.status(400).json({ success: false, message: 'Material link URL contains forbidden or dangerous patterns' });
+    }
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(trimmedUrl);
+    } catch {
+      return res.status(400).json({ success: false, message: 'Material link must be a valid URL' });
+    }
+    if (parsedUrl.protocol !== 'https:') {
+      return res.status(400).json({ success: false, message: 'Material link must use HTTPS' });
+    }
+    fileUrl = trimmedUrl;
+    fileName = undefined;
+    fileSize = undefined;
+    fileType = 'link';
   }
 
-  if (!title || !title.trim()) {
+  if (!title || typeof title !== 'string' || !title.trim()) {
     return res.status(400).json({ success: false, message: 'Material title is required' });
   }
-
-  if (!fileUrl) {
-    return res.status(400).json({ success: false, message: 'File or link URL is required' });
+  const CONTROL_CHAR_PATTERN = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/;
+  const TAG_LIKE_PATTERN = /<[A-Za-z/!?]/;
+  if (CONTROL_CHAR_PATTERN.test(title) || TAG_LIKE_PATTERN.test(title)) {
+    return res.status(400).json({ success: false, message: 'Material title contains forbidden characters or markup' });
+  }
+  if (description && typeof description === 'string') {
+    if (CONTROL_CHAR_PATTERN.test(description) || TAG_LIKE_PATTERN.test(description)) {
+      return res.status(400).json({ success: false, message: 'Material description contains forbidden characters or markup' });
+    }
   }
 
-  const materialType = type === 'TUTORIAL' ? 'TUTORIAL' : 'LECTURE';
+  const materialType = req.user.role === 'TEACHING_ASSISTANT'
+    ? 'TUTORIAL'
+    : (type === 'TUTORIAL' ? 'TUTORIAL' : 'LECTURE');
 
   const material = await prisma.courseMaterial.create({
     data: {
@@ -885,6 +990,16 @@ export const deleteCourseMaterial = catchAsync(async (req: Request, res: Respons
     return next(new NotFoundError('Course material not found'));
   }
 
+  // Threat T-C: TA can only delete their own TUTORIAL material
+  if (req.user.role === 'TEACHING_ASSISTANT') {
+    if (material.uploadedById !== req.user.id || material.type !== 'TUTORIAL') {
+      return res.status(403).json({
+        success: false,
+        message: 'Teaching assistants can only delete their own tutorial materials.',
+      });
+    }
+  }
+
   const isAuthorized =
     material.uploadedById === req.user.id || (await canUserManageCourseMaterials(req.user, courseId));
 
@@ -892,10 +1007,17 @@ export const deleteCourseMaterial = catchAsync(async (req: Request, res: Respons
     return res.status(403).json({ success: false, message: 'Access denied' });
   }
 
-  if (material.fileUrl && material.fileUrl.startsWith('/uploads/materials/')) {
+  // Threat T-B: delete may unlink only the material's own stored file inside the materials directory
+  if (
+    material.fileUrl &&
+    material.fileUrl.startsWith('/uploads/materials/') &&
+    !material.fileUrl.includes('..') &&
+    material.fileName
+  ) {
     const filename = path.basename(material.fileUrl);
-    const filePath = path.join(process.cwd(), 'uploads/materials', filename);
-    if (fs.existsSync(filePath)) {
+    const allowedDir = path.resolve(process.cwd(), 'uploads/materials');
+    const filePath = path.resolve(allowedDir, filename);
+    if (filePath.startsWith(allowedDir) && fs.existsSync(filePath)) {
       try {
         fs.unlinkSync(filePath);
       } catch (err) {
@@ -935,6 +1057,16 @@ export const toggleMaterialPublication = catchAsync(async (req: Request, res: Re
     return next(new NotFoundError('Course material not found'));
   }
 
+  // Threat T-C: TA can only toggle their own TUTORIAL material
+  if (req.user?.role === 'TEACHING_ASSISTANT') {
+    if (material.uploadedById !== req.user.id || material.type !== 'TUTORIAL') {
+      return res.status(403).json({
+        success: false,
+        message: 'Teaching assistants can only toggle publication of their own tutorial materials.',
+      });
+    }
+  }
+
   const isAuthorized = await canUserManageCourseMaterials(req.user, courseId);
   if (!isAuthorized) {
     return res.status(403).json({ success: false, message: 'Access denied' });
@@ -971,6 +1103,14 @@ export const toggleCoursePublication = catchAsync(async (req: Request, res: Resp
 
   if (!course) {
     return next(new NotFoundError('Course not found'));
+  }
+
+  // Threat T-C: TA cannot toggle course publication (only doctor and admins)
+  if (req.user?.role === 'TEACHING_ASSISTANT') {
+    return res.status(403).json({
+      success: false,
+      message: 'Teaching assistants cannot change course publication status.',
+    });
   }
 
   const isAuthorized = await canUserManageCourseMaterials(req.user, courseId);
