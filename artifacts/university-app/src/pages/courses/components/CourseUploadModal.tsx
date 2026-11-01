@@ -13,6 +13,7 @@ interface CourseUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   course: any;
+  isTA?: boolean;
   uploadType: "LECTURE" | "TUTORIAL";
   setUploadType: (type: "LECTURE" | "TUTORIAL") => void;
   materialTitle: string;
@@ -35,6 +36,7 @@ export const CourseUploadModal: React.FC<CourseUploadModalProps> = ({
   isOpen,
   onClose,
   course,
+  isTA = false,
   uploadType,
   setUploadType,
   materialTitle,
@@ -53,6 +55,7 @@ export const CourseUploadModal: React.FC<CourseUploadModalProps> = ({
   handleUploadSubmit,
 }) => {
   const { t } = useTranslation();
+  const effectiveUploadType = isTA ? "TUTORIAL" : uploadType;
 
   if (!isOpen) return null;
 
@@ -66,7 +69,7 @@ export const CourseUploadModal: React.FC<CourseUploadModalProps> = ({
             </div>
             <div>
               <h3 className="font-black text-lg text-brand-text-main">
-                {uploadType === "LECTURE"
+                {effectiveUploadType === "LECTURE"
                   ? t("courses.uploadLecture", "Upload New Lecture")
                   : t("courses.uploadTutorial", "Upload New Tutorial")}
               </h3>
@@ -132,23 +135,25 @@ export const CourseUploadModal: React.FC<CourseUploadModalProps> = ({
             <label className="block text-xs font-bold text-brand-text-main mb-1">
               {t("courses.materialType", "Material Category")}
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setUploadType("LECTURE")}
-                className={`p-3 rounded-2xl font-bold text-xs border text-center transition-all ${
-                  uploadType === "LECTURE"
-                    ? "bg-brand-primary-50 border-brand-primary-500 text-brand-primary-700 shadow-sm"
-                    : "bg-brand-bg-page border-brand-border text-brand-text-sub"
-                }`}
-              >
-                📘 محاضرة (Lecture)
-              </button>
+            <div className={`grid ${isTA ? "grid-cols-1" : "grid-cols-2"} gap-3`}>
+              {!isTA && (
+                <button
+                  type="button"
+                  onClick={() => setUploadType("LECTURE")}
+                  className={`p-3 rounded-2xl font-bold text-xs border text-center transition-all ${
+                    effectiveUploadType === "LECTURE"
+                      ? "bg-brand-primary-50 border-brand-primary-500 text-brand-primary-700 shadow-sm"
+                      : "bg-brand-bg-page border-brand-border text-brand-text-sub"
+                  }`}
+                >
+                  📘 محاضرة (Lecture)
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setUploadType("TUTORIAL")}
                 className={`p-3 rounded-2xl font-bold text-xs border text-center transition-all ${
-                  uploadType === "TUTORIAL"
+                  effectiveUploadType === "TUTORIAL"
                     ? "bg-purple-50 border-purple-500 text-purple-700 shadow-sm"
                     : "bg-brand-bg-page border-brand-border text-brand-text-sub"
                 }`}

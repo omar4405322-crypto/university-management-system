@@ -221,6 +221,9 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
     return false;
   }, [user, assignedDoctors, assignedTAs]);
 
+  const isTA = user?.role === "TEACHING_ASSISTANT";
+  const canToggleCoursePublication = canUpload && !isTA;
+
   const canCreateTask = useMemo(() => {
     return hasCapability(user?.role, "tasks.create");
   }, [user?.role]);
@@ -331,8 +334,20 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
   // Material Download
   const handleDownloadMaterial = async (item: CourseMaterial) => {
     if (!item) return;
-    if (item.fileUrl && (item.fileUrl.startsWith("http://") || item.fileUrl.startsWith("https://"))) {
-      window.open(item.fileUrl, "_blank", "noopener,noreferrer");
+    if (
+      item.fileType === "link" ||
+      (item.fileUrl && !item.fileUrl.startsWith("/uploads/materials/"))
+    ) {
+      if (item.fileUrl && /^https:\/\//i.test(item.fileUrl.trim())) {
+        try {
+          const parsed = new URL(item.fileUrl.trim());
+          if (parsed.protocol === "https:" && parsed.hostname) {
+            window.open(item.fileUrl.trim(), "_blank", "noopener,noreferrer");
+          }
+        } catch {
+          // ignore malformed external URL
+        }
+      }
       return;
     }
     const cId = actualId || course?.id;
@@ -374,7 +389,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
       setUploadError(null);
       const formData = new FormData();
       formData.append("title", materialTitle.trim());
-      formData.append("type", uploadType);
+      formData.append("type", isTA ? "TUTORIAL" : uploadType);
       if (materialDescription.trim()) {
         formData.append("description", materialDescription.trim());
       }
@@ -411,7 +426,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
 
   // Course Publication Toggle
   const handleToggleCoursePublication = async () => {
-    if (!actualId) return;
+    if (!actualId || isTA) return;
     try {
       setCourse((prev) => {
         if (!prev) return prev;
@@ -867,7 +882,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
             </div>
           )}
 
-          {canUpload ? (
+          {canToggleCoursePublication ? (
             <button
               onClick={handleToggleCoursePublication}
               className={`flex items-center gap-2 px-4 py-2 rounded-2xl font-bold text-xs shadow-sm transition-all border ${
@@ -980,11 +995,12 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
         <CourseMaterialsTab
           type="LECTURE"
           materials={lectures}
-          canUpload={canUpload}
+          canUpload={canUpload && !isTA}
+          isTA={isTA}
           userId={user?.id}
           downloadingMaterialId={downloadingMaterialId}
           onUpload={(type) => {
-            setUploadType(type);
+            setUploadType(isTA ? "TUTORIAL" : type);
             setIsUploadModalOpen(true);
           }}
           onTogglePublication={handleTogglePublication}
@@ -999,10 +1015,11 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
           type="TUTORIAL"
           materials={tutorials}
           canUpload={canUpload}
+          isTA={isTA}
           userId={user?.id}
           downloadingMaterialId={downloadingMaterialId}
           onUpload={(type) => {
-            setUploadType(type);
+            setUploadType(isTA ? "TUTORIAL" : type);
             setIsUploadModalOpen(true);
           }}
           onTogglePublication={handleTogglePublication}
@@ -1056,7 +1073,8 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         course={course}
-        uploadType={uploadType}
+        isTA={isTA}
+        uploadType={isTA ? "TUTORIAL" : uploadType}
         setUploadType={setUploadType}
         materialTitle={materialTitle}
         setMaterialTitle={setMaterialTitle}

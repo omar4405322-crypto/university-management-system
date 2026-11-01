@@ -12,6 +12,7 @@ import {
   Loader2,
   FileCode,
   Link as LinkIcon,
+  ExternalLink,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Card from "../../../components/ui/card";
@@ -22,6 +23,7 @@ export interface CourseMaterialsTabProps {
   type: "LECTURE" | "TUTORIAL";
   materials: CourseMaterial[];
   canUpload: boolean;
+  isTA?: boolean;
   userId?: number | string;
   downloadingMaterialId: number | string | null;
   onUpload: (type: "LECTURE" | "TUTORIAL") => void;
@@ -34,6 +36,7 @@ export const CourseMaterialsTab: React.FC<CourseMaterialsTabProps> = ({
   type,
   materials,
   canUpload,
+  isTA = false,
   userId,
   downloadingMaterialId,
   onUpload,
@@ -62,8 +65,27 @@ export const CourseMaterialsTab: React.FC<CourseMaterialsTabProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  const isLinkMaterial = (item: CourseMaterial): boolean => {
+    if (item.fileType === "link") return true;
+    if (item.fileUrl && !item.fileUrl.startsWith("/uploads/materials/")) return true;
+    return false;
+  };
+
+  const getSafeHttpsUrl = (fileUrl?: string | null): string | null => {
+    if (!fileUrl || typeof fileUrl !== "string") return null;
+    const trimmed = fileUrl.trim();
+    if (!/^https:\/\//i.test(trimmed)) return null;
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.protocol !== "https:" || !parsed.hostname) return null;
+      return trimmed;
+    } catch {
+      return null;
+    }
+  };
+
   const getMaterialIcon = (fileType?: string | null, fileUrl?: string | null) => {
-    if (fileUrl && (fileUrl.startsWith("http://") || fileUrl.startsWith("https://"))) {
+    if (fileType === "link" || (fileUrl && !fileUrl.startsWith("/uploads/materials/"))) {
       return <LinkIcon size={24} className="text-brand-primary-600" />;
     }
     if (!fileType) {
@@ -129,102 +151,133 @@ export const CourseMaterialsTab: React.FC<CourseMaterialsTabProps> = ({
 
       {materials.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {materials.map((item) => (
-            <Card
-              key={item.id}
-              className="p-5 border border-brand-border hover:shadow-md transition-shadow flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-2xl bg-brand-primary-50">
-                      {getMaterialIcon(item.fileType, item.fileUrl)}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-brand-text-main text-base">
-                        {item.title}
-                      </h4>
-                      <span className="text-xs text-brand-text-muted font-medium">
-                        {new Date(item.createdAt).toLocaleDateString(
-                          i18n.language === "ar" ? "ar-EG" : "en-US"
-                        )}
-                        {item.fileSize &&
-                          ` • ${formatFileSize(item.fileSize)}`}
-                      </span>
-                    </div>
-                  </div>
+          {materials.map((item) => {
+            const isLink = isLinkMaterial(item);
+            const safeHttpsUrl = isLink ? getSafeHttpsUrl(item.fileUrl) : null;
+            const canManageMaterial = isTA
+              ? Boolean(
+                  canUpload &&
+                    item.type === "TUTORIAL" &&
+                    userId != null &&
+                    item.uploadedById != null &&
+                    String(userId) === String(item.uploadedById)
+                )
+              : canUpload || (userId != null && userId === item.uploadedById);
 
-                  {/* Publication Status & Action Buttons if Authorized */}
-                  <div className="flex items-center gap-1.5">
-                    {item.isPublished === false ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                        مخفي - مسودة 🔴
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        منشور للطلاب 🟢
-                      </span>
-                    )}
-
-                    {(canUpload || userId === item.uploadedById) && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => onTogglePublication(item.id)}
-                          className="p-1.5 rounded-xl text-brand-text-muted hover:text-brand-primary-600 hover:bg-brand-primary-50 transition-colors"
-                          title={
-                            item.isPublished === false
-                              ? "نشر للطلاب"
-                              : "تغيير للمسودة وإخفاء عن الطلاب"
-                          }
-                        >
-                          {item.isPublished === false ? (
-                            <Eye size={18} className="text-emerald-600" />
-                          ) : (
-                            <EyeOff size={18} className="text-amber-600" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => onDeleteMaterial(item.id)}
-                          className="p-1.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-                          title={t("common.delete", "Delete")}
-                        >
-                          <Trash2 size={18} />
-                        </button>
+            return (
+              <Card
+                key={item.id}
+                className="p-5 border border-brand-border hover:shadow-md transition-shadow flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-3 rounded-2xl bg-brand-primary-50 shrink-0">
+                        {getMaterialIcon(item.fileType, item.fileUrl)}
                       </div>
-                    )}
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-brand-text-main text-base">
+                          {item.title}
+                        </h4>
+                        <span className="text-xs text-brand-text-muted font-medium">
+                          {new Date(item.createdAt).toLocaleDateString(
+                            i18n.language === "ar" ? "ar-EG" : "en-US"
+                          )}
+                          {isLink
+                            ? ` • ${t("courses.materialLinkLabel")}`
+                            : item.fileSize
+                              ? ` • ${formatFileSize(item.fileSize)}`
+                              : ""}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Publication Status & Action Buttons if Authorized */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {item.isPublished === false ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          مخفي - مسودة 🔴
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          منشور للطلاب 🟢
+                        </span>
+                      )}
+
+                      {canManageMaterial && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => onTogglePublication(item.id)}
+                            className="p-1.5 rounded-xl text-brand-text-muted hover:text-brand-primary-600 hover:bg-brand-primary-50 transition-colors"
+                            title={
+                              item.isPublished === false
+                                ? "نشر للطلاب"
+                                : "تغيير للمسودة وإخفاء عن الطلاب"
+                            }
+                          >
+                            {item.isPublished === false ? (
+                              <Eye size={18} className="text-emerald-600" />
+                            ) : (
+                              <EyeOff size={18} className="text-amber-600" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => onDeleteMaterial(item.id)}
+                            className="p-1.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
+                            title={t("common.delete", "Delete")}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  {item.description && (
+                    <p className="text-sm text-brand-text-sub font-medium mt-3 bg-brand-bg-page/50 p-3 rounded-xl">
+                      {item.description}
+                    </p>
+                  )}
                 </div>
 
-                {item.description && (
-                  <p className="text-sm text-brand-text-sub font-medium mt-3 bg-brand-bg-page/50 p-3 rounded-xl">
-                    {item.description}
-                  </p>
-                )}
-              </div>
+                <div className="flex items-center justify-between gap-2 flex-wrap border-t border-brand-border pt-4 mt-4 text-xs text-brand-text-muted">
+                  <span className="flex items-center gap-1 font-medium">
+                    <UserCheck size={14} className="text-brand-primary-600 shrink-0" />
+                    {t("courses.uploadedBy", "Uploaded by")}:{" "}
+                    {getUploaderName(item.uploadedBy)}
+                  </span>
 
-              <div className="flex items-center justify-between border-t border-brand-border pt-4 mt-4 text-xs text-brand-text-muted">
-                <span className="flex items-center gap-1 font-medium">
-                  <UserCheck size={14} className="text-brand-primary-600" />
-                  {t("courses.uploadedBy", "Uploaded by")}:{" "}
-                  {getUploaderName(item.uploadedBy)}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => onDownloadMaterial(item)}
-                  disabled={downloadingMaterialId === item.id}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-primary-600 text-white font-bold hover:bg-brand-primary-700 transition-colors disabled:opacity-50"
-                >
-                  {downloadingMaterialId === item.id ? (
-                    <Loader2 size={14} className="animate-spin" />
+                  {isLink ? (
+                    safeHttpsUrl ? (
+                      <a
+                        href={safeHttpsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-primary-600 text-white font-bold hover:bg-brand-primary-700 transition-colors shrink-0"
+                      >
+                        <ExternalLink size={14} />
+                        <span>{t("courses.openLink")}</span>
+                      </a>
+                    ) : null
                   ) : (
-                    <Download size={14} />
+                    <button
+                      type="button"
+                      onClick={() => onDownloadMaterial(item)}
+                      disabled={downloadingMaterialId === item.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-primary-600 text-white font-bold hover:bg-brand-primary-700 transition-colors disabled:opacity-50"
+                    >
+                      {downloadingMaterialId === item.id ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Download size={14} />
+                      )}
+                      <span>{t("courses.download", "Download / View")}</span>
+                    </button>
                   )}
-                  <span>{t("courses.download", "Download / View")}</span>
-                </button>
-              </div>
-            </Card>
-          ))}
+                </div>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-16 bg-brand-bg-card rounded-3xl border border-dashed border-brand-border p-8">

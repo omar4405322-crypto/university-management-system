@@ -906,6 +906,8 @@
     "noTutorialsYet": "لا توجد سكاشن أو تمارين مرفوعة لهذه المادة حتى الآن",
     "onlyInChargeCanUpload": "تنويه: يسمح فقط لأستاذ المادة والمعيد المسؤول برفع المحاضرات والسكاشن.",
     "download": "تحميل / عرض",
+    "openLink": "فتح الرابط",
+    "materialLinkLabel": "رابط",
     "deleteMaterialConfirm": "هل أنت متأكد من حذف هذه المادة الدراسية؟",
     "uploadedBy": "تم الرفع بواسطة",
     "deletedUploader": "مستخدم محذوف",
