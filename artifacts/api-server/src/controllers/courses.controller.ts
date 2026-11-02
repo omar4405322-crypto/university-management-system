@@ -62,6 +62,58 @@ export const getAllCourses = catchAsync(async (req: Request, res: Response, next
   if (req.user?.role === 'STUDENT') {
     queryFilters.push({ isPublished: true });
   }
+  if (req.user?.role === 'TEACHING_ASSISTANT') {
+    if (!req.user.teachingAssistant?.id) {
+      queryFilters.push({ id: -1 });
+    } else {
+      const taId = String(req.user.teachingAssistant.id);
+      const taRec = await prisma.teachingAssistant.findUnique({
+        where: { id: taId },
+        select: { departmentId: true, userId: true },
+      });
+      const uId = taRec?.userId ?? (typeof req.user.id === 'number' ? req.user.id : undefined);
+      const userRec =
+        taRec?.departmentId == null && uId
+          ? await prisma.user.findUnique({ where: { id: uId }, select: { departmentId: true } })
+          : null;
+      const taHomeDeptId = taRec?.departmentId ?? userRec?.departmentId ?? null;
+
+      const slotFilter: Prisma.ScheduleSlotWhereInput = {
+        teachingAssistantId: req.user.teachingAssistant.id as any,
+        isArchived: false,
+        OR: [{ termId: null }, { term: { isCurrent: true } }],
+      };
+
+      const deptApprovalFilter: Prisma.CourseWhereInput =
+        taHomeDeptId != null
+          ? {
+              OR: [
+                { departmentId: taHomeDeptId },
+                {
+                  taCrossDepartmentApprovals: {
+                    some: {
+                      teachingAssistantId: taId,
+                      status: 'APPROVED',
+                    },
+                  },
+                },
+              ],
+            }
+          : {
+              taCrossDepartmentApprovals: {
+                some: {
+                  teachingAssistantId: taId,
+                  status: 'APPROVED',
+                },
+              },
+            };
+
+      queryFilters.push({
+        scheduleSlots: { some: slotFilter },
+        ...deptApprovalFilter,
+      });
+    }
+  }
   if (collegeId !== undefined && collegeId !== '') {
     const parsedCollegeId = Number(collegeId);
     if (!Number.isSafeInteger(parsedCollegeId) || parsedCollegeId <= 0) {
@@ -252,7 +304,7 @@ export const getCourseById = catchAsync(async (req: Request, res: Response, next
     },
   });
 
-  if (!course) {
+  if (!course) { cleanupUploadedFile(req.file);
     return next(new NotFoundError('Course not found'));
   }
 
@@ -312,7 +364,7 @@ export const getCourseRoster = catchAsync(
 
     const course = await prisma.course.findUnique({ where: { id: courseId } });
 
-    if (!course) {
+    if (!course) { cleanupUploadedFile(req.file);
       return next(new NotFoundError('Course not found'));
     }
 
@@ -746,6 +798,45 @@ export const deleteCourse = catchAsync(async (req: Request, res: Response, next:
 /**
  * Helper to check if a user is allowed to upload/manage course materials for a specific course
  */
+/**
+ * Safely resolves and validates a target storage path within an allowed base directory.
+ * Uses path.resolve + path.relative to reject sibling prefixes (e.g. materials-evil),
+ * parent traversal ('..'), empty paths, and absolute escape paths.
+ */
+export function resolveSafeMaterialStoragePath(baseDir: string, targetPath: string): string | null {
+  if (!baseDir || !targetPath || typeof baseDir !== 'string' || typeof targetPath !== 'string') {
+    return null;
+  }
+  const resolvedBase = path.resolve(baseDir);
+  const resolvedTarget = path.resolve(targetPath);
+  const rel = path.relative(resolvedBase, resolvedTarget);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) {
+    return null;
+  }
+  return resolvedTarget;
+}
+
+/**
+ * Clean up uploaded file from disk on any rejection/error
+ */
+function cleanupUploadedFile(file: Express.Multer.File | undefined | null): void {
+  if (!file) return;
+  try {
+    const allowedDir = path.resolve(process.cwd(), 'uploads/materials');
+    let targetPath: string | null = null;
+    if (file.path) {
+      targetPath = resolveSafeMaterialStoragePath(allowedDir, file.path);
+    } else if (file.filename) {
+      targetPath = resolveSafeMaterialStoragePath(allowedDir, path.resolve(allowedDir, file.filename));
+    }
+    if (targetPath && fs.existsSync(targetPath)) {
+      fs.unlinkSync(targetPath);
+    }
+  } catch (err) {
+    console.error('Failed to cleanup rejected uploaded file:', err);
+  }
+}
+
 export async function canUserManageCourseMaterials(user: AuthActor | undefined | null, courseId: number): Promise<boolean> {
   if (!user || !Number.isInteger(courseId) || courseId <= 0) return false;
 
@@ -845,10 +936,11 @@ export const uploadCourseMaterial = catchAsync(async (req: Request, res: Respons
   const course = await prisma.course.findUnique({ where: { id: courseId } });
 
   if (!req.user) {
+    cleanupUploadedFile(req.file);
     return next(new AuthorizationError('Authentication required'));
   }
 
-  if (!course) {
+  if (!course) { cleanupUploadedFile(req.file);
     return next(new NotFoundError('Course not found'));
   }
 
@@ -856,7 +948,7 @@ export const uploadCourseMaterial = catchAsync(async (req: Request, res: Respons
   if (!isAuthorized) {
     return res.status(403).json({
       success: false,
-      message: 'Only the professor or teaching assistant in charge of this course can upload materials.',
+      message: (cleanupUploadedFile(req.file), 'Only the professor or teaching assistant in charge of this course can upload materials.'),
     });
   }
 
@@ -870,7 +962,7 @@ export const uploadCourseMaterial = catchAsync(async (req: Request, res: Respons
     if (type === 'LECTURE') {
       return res.status(403).json({
         success: false,
-        message: 'Teaching assistants can only upload tutorial materials.',
+        message: (cleanupUploadedFile(req.file), 'Teaching assistants can only upload tutorial materials.'),
       });
     }
   }
@@ -910,16 +1002,16 @@ export const uploadCourseMaterial = catchAsync(async (req: Request, res: Respons
   }
 
   if (!title || typeof title !== 'string' || !title.trim()) {
-    return res.status(400).json({ success: false, message: 'Material title is required' });
+    cleanupUploadedFile(req.file); return res.status(400).json({ success: false, message: 'Material title is required' });
   }
   const CONTROL_CHAR_PATTERN = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/;
   const TAG_LIKE_PATTERN = /<[A-Za-z/!?]/;
   if (CONTROL_CHAR_PATTERN.test(title) || TAG_LIKE_PATTERN.test(title)) {
-    return res.status(400).json({ success: false, message: 'Material title contains forbidden characters or markup' });
+    cleanupUploadedFile(req.file); return res.status(400).json({ success: false, message: 'Material title contains forbidden characters or markup' });
   }
   if (description && typeof description === 'string') {
     if (CONTROL_CHAR_PATTERN.test(description) || TAG_LIKE_PATTERN.test(description)) {
-      return res.status(400).json({ success: false, message: 'Material description contains forbidden characters or markup' });
+      cleanupUploadedFile(req.file); return res.status(400).json({ success: false, message: 'Material description contains forbidden characters or markup' });
     }
   }
 
@@ -927,7 +1019,7 @@ export const uploadCourseMaterial = catchAsync(async (req: Request, res: Respons
     ? 'TUTORIAL'
     : (type === 'TUTORIAL' ? 'TUTORIAL' : 'LECTURE');
 
-  const material = await prisma.courseMaterial.create({
+  let material: any; try { material = await prisma.courseMaterial.create({
     data: {
       title: title.trim(),
       description: description ? description.trim() : null,
@@ -953,7 +1045,7 @@ export const uploadCourseMaterial = catchAsync(async (req: Request, res: Respons
     },
   });
 
-  auditLog('UPLOAD_COURSE_MATERIAL', 'CourseMaterial', material.id.toString(), req);
+  } catch (err) { cleanupUploadedFile(req.file); throw err; } auditLog('UPLOAD_COURSE_MATERIAL', 'CourseMaterial', material.id.toString(), req);
 
   res.status(201).json({
     success: true,
@@ -979,6 +1071,7 @@ export const deleteCourseMaterial = catchAsync(async (req: Request, res: Respons
   }
 
   if (!req.user) {
+    cleanupUploadedFile(req.file);
     return next(new AuthorizationError('Authentication required'));
   }
 
@@ -1012,12 +1105,12 @@ export const deleteCourseMaterial = catchAsync(async (req: Request, res: Respons
     material.fileUrl &&
     material.fileUrl.startsWith('/uploads/materials/') &&
     !material.fileUrl.includes('..') &&
-    material.fileName
+    !material.fileUrl.startsWith('http://') && !material.fileUrl.startsWith('https://')
   ) {
     const filename = path.basename(material.fileUrl);
     const allowedDir = path.resolve(process.cwd(), 'uploads/materials');
-    const filePath = path.resolve(allowedDir, filename);
-    if (filePath.startsWith(allowedDir) && fs.existsSync(filePath)) {
+    const filePath = resolveSafeMaterialStoragePath(allowedDir, path.resolve(allowedDir, filename));
+    if (filePath && fs.existsSync(filePath)) {
       try {
         fs.unlinkSync(filePath);
       } catch (err) {
@@ -1101,7 +1194,7 @@ export const toggleCoursePublication = catchAsync(async (req: Request, res: Resp
 
   const course = await prisma.course.findUnique({ where: { id: courseId } });
 
-  if (!course) {
+  if (!course) { cleanupUploadedFile(req.file);
     return next(new NotFoundError('Course not found'));
   }
 
@@ -1141,7 +1234,8 @@ export const toggleCoursePublication = catchAsync(async (req: Request, res: Resp
 export const downloadCourseMaterial = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return next(new AuthorizationError('Authentication required'));
+      cleanupUploadedFile(req.file);
+    return next(new AuthorizationError('Authentication required'));
     }
 
     const courseId = parseInt(req.params.id as string, 10);
@@ -1215,9 +1309,9 @@ export const downloadCourseMaterial = catchAsync(
 
     const filename = path.basename(material.fileUrl);
     const allowedDir = path.resolve(process.cwd(), 'uploads/materials');
-    const resolvedPath = path.resolve(allowedDir, filename);
+    const resolvedPath = resolveSafeMaterialStoragePath(allowedDir, path.resolve(allowedDir, filename));
 
-    if (!resolvedPath.startsWith(allowedDir)) {
+    if (!resolvedPath) {
       return next(new AppError('Path traversal detected', 400));
     }
 

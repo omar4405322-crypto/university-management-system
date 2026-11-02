@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
 import bcrypt from 'bcryptjs';
 import prisma from '../src/utils/prismaClient';
 import { generateAccessToken } from '../src/utils/jwt.utils';
@@ -14,6 +16,7 @@ test('WP5-T4: Course, material, and TA scope hardening & threat model verificati
 
   // Tracking registries for strict hermetic teardown in reverse topological order
   const tracked = {
+    createdDiskFiles: [] as string[],
     materialIds: [] as number[],
     taskIds: [] as number[],
     enrollmentIds: [] as number[],
@@ -871,9 +874,341 @@ test('WP5-T4: Course, material, and TA scope hardening & threat model verificati
       assert.equal(resCourseF3.status, 200, `Same-department TA with department on TeachingAssistant row only must receive 200 for course details, got ${resCourseF3.status}`);
     });
 
+    // =========================================================================
+    // WP5-T5a-1 SCOPE TESTS
+    // =========================================================================
+
+    // T5-A (M-284): Multer stored file cleanup on rejection
+    await t.test('T5-A: uploadCourseMaterial removes stored file from uploads/materials on rejection (M-284)', async () => {
+      const uploadDir = path.resolve(process.cwd(), 'uploads/materials');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const taDept1 = await createTestTA(dept1.id);
+      const docDept1 = await createTestDoctor(dept1.id);
+      const courseT5A = await prisma.course.create({
+        data: {
+          name: `Course_T5A_${SUFFIX}`,
+          courseCode: `C5A_${SUFFIX.slice(-6).toUpperCase()}`,
+          credits: 3,
+          year: 1,
+          semester: 1,
+          isPublished: true,
+          departmentId: dept1.id,
+        },
+      });
+      tracked.courseIds.push(courseT5A.id);
+
+      const slotT5A = await prisma.scheduleSlot.create({
+        data: {
+          courseId: courseT5A.id,
+          teachingAssistantId: taDept1.ta.id,
+          dayOfWeek: 'Monday',
+          startTime: '08:00',
+          endTime: '10:00',
+          slotType: 'SECTION',
+          isArchived: false,
+        },
+      });
+      tracked.slotIds.push(slotT5A.id);
+
+      const docSlot = await prisma.scheduleSlot.create({
+        data: {
+          courseId: courseT5A.id,
+          doctorId: docDept1.doctor.id,
+          dayOfWeek: 'Tuesday',
+          startTime: '10:00',
+          endTime: '12:00',
+          slotType: 'LECTURE',
+          isArchived: false,
+        },
+      });
+      tracked.slotIds.push(docSlot.id);
+
+      const validPng = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=',
+        'base64'
+      );
+
+      // (1) TA attempts to upload LECTURE material -> 403
+      const fileMarker1 = `t5a_ta_${SUFFIX}.png`;
+      const form1 = new FormData();
+      form1.append('file', new Blob([validPng], { type: 'image/png' }), fileMarker1);
+      form1.append('title', `Tutorial Sheet ${SUFFIX}`);
+      form1.append('type', 'LECTURE');
+
+      const filesBefore1 = new Set(fs.readdirSync(uploadDir));
+      const res1 = await fetch(`${baseUrl}/courses/${courseT5A.id}/materials`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${taDept1.token}` },
+        body: form1,
+      });
+      const body1 = await res1.json();
+      console.log(`[PROOF T5-A TA 403] Status: ${res1.status}, Body: ${JSON.stringify(body1)}`);
+      assert.equal(res1.status, 403, `TA uploading LECTURE must return 403`);
+
+      const filesAfter1 = fs.readdirSync(uploadDir);
+      const newFiles1 = filesAfter1.filter(f => !filesBefore1.has(f) && f.includes(fileMarker1));
+      newFiles1.forEach(f => tracked.createdDiskFiles.push(path.join(uploadDir, f)));
+      console.log(`[PROOF T5-A DIR LISTING AFTER 403] Files: ${JSON.stringify(newFiles1)}`);
+      assert.equal(newFiles1.length, 0, `Orphan file must not remain in uploads/materials on 403 rejection; found: ${newFiles1.join(', ')}`);
+
+      // (2) Doctor attempts to upload with invalid title -> 400
+      const fileMarker2 = `t5a_doc_${SUFFIX}.png`;
+      const form2 = new FormData();
+      form2.append('file', new Blob([validPng], { type: 'image/png' }), fileMarker2);
+      form2.append('title', '<script>alert(1)</script>');
+      form2.append('type', 'LECTURE');
+
+      const filesBefore2 = new Set(fs.readdirSync(uploadDir));
+      const res2 = await fetch(`${baseUrl}/courses/${courseT5A.id}/materials`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${docDept1.token}` },
+        body: form2,
+      });
+      const body2 = await res2.json();
+      console.log(`[PROOF T5-A DOC 400] Status: ${res2.status}, Body: ${JSON.stringify(body2)}`);
+      assert.equal(res2.status, 400, `Upload with invalid title markup must return 400`);
+
+      const filesAfter2 = fs.readdirSync(uploadDir);
+      const newFiles2 = filesAfter2.filter(f => !filesBefore2.has(f) && f.includes(fileMarker2));
+      newFiles2.forEach(f => tracked.createdDiskFiles.push(path.join(uploadDir, f)));
+      console.log(`[PROOF T5-A DIR LISTING AFTER 400] Files: ${JSON.stringify(newFiles2)}`);
+      assert.equal(newFiles2.length, 0, `Orphan file must not remain in uploads/materials on 400 rejection; found: ${newFiles2.join(', ')}`);
+    });
+
+    // T5-B (W5-T5): Storage path resolvers reject sibling prefixes via path.resolve + path.relative
+    await t.test('T5-B: storage path resolvers reject sibling directory prefixes via path.relative (W5-T5)', async () => {
+      const { resolveSafeMaterialStoragePath } = await import('../src/controllers/courses.controller');
+
+      const allowedDir = path.resolve(process.cwd(), 'uploads/materials');
+      const siblingDir = path.resolve(process.cwd(), 'uploads/materials-evil');
+      const siblingFile = path.resolve(siblingDir, 'payload.pdf');
+
+      // Old startsWith logic: siblingFile.startsWith(allowedDir) evaluates to true on systems where prefix matches
+      // New resolver MUST reject sibling directories
+      const resolvedSibling = resolveSafeMaterialStoragePath(allowedDir, siblingFile);
+      assert.equal(resolvedSibling, null, 'resolveSafeMaterialStoragePath must reject sibling directories like materials-evil');
+
+      // Must reject parent traversal
+      const parentFile = path.resolve(allowedDir, '../secret.env');
+      assert.equal(resolveSafeMaterialStoragePath(allowedDir, parentFile), null, 'resolveSafeMaterialStoragePath must reject parent directory files');
+
+      // Must reject base directory itself
+      assert.equal(resolveSafeMaterialStoragePath(allowedDir, allowedDir), null, 'resolveSafeMaterialStoragePath must reject directory path itself');
+
+      // Must accept legitimate file inside allowedDir
+      const legitimateFile = path.resolve(allowedDir, 'legitimate.pdf');
+      assert.equal(resolveSafeMaterialStoragePath(allowedDir, legitimateFile), legitimateFile, 'resolveSafeMaterialStoragePath must accept files inside allowedDir');
+    });
+
+    // T5-C: deleteCourseMaterial unlinks file under /uploads/materials/ even when fileName is null
+    await t.test('T5-C: deleteCourseMaterial unlinks file under /uploads/materials/ even when fileName is null (T5-C)', async () => {
+      const uploadDir = path.resolve(process.cwd(), 'uploads/materials');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const doc = await createTestDoctor(dept1.id);
+      const courseT5C = await prisma.course.create({
+        data: {
+          name: `Course_T5C_${SUFFIX}`,
+          courseCode: `C5C_${SUFFIX.slice(-6).toUpperCase()}`,
+          credits: 3,
+          year: 1,
+          semester: 1,
+          isPublished: true,
+          departmentId: dept1.id,
+        },
+      });
+      tracked.courseIds.push(courseT5C.id);
+
+      const docSlot = await prisma.scheduleSlot.create({
+        data: {
+          courseId: courseT5C.id,
+          doctorId: doc.doctor.id,
+          dayOfWeek: 'Monday',
+          startTime: '10:00',
+          endTime: '12:00',
+          slotType: 'LECTURE',
+          isArchived: false,
+        },
+      });
+      tracked.slotIds.push(docSlot.id);
+
+      const testFileName = `t5c_disk_${SUFFIX}.png`;
+      const testFilePath = path.join(uploadDir, testFileName);
+      fs.writeFileSync(testFilePath, 'dummy-content');
+      tracked.createdDiskFiles.push(testFilePath);
+
+      // Material with null fileName
+      const matNullFileName = await prisma.courseMaterial.create({
+        data: {
+          courseId: courseT5C.id,
+          title: `Material Null FileName ${SUFFIX}`,
+          type: 'LECTURE',
+          fileUrl: `/uploads/materials/${testFileName}`,
+          fileName: null,
+          uploadedById: doc.user.id,
+        },
+      });
+      tracked.materialIds.push(matNullFileName.id);
+
+      assert.ok(fs.existsSync(testFilePath), 'Test file must exist before delete');
+      console.log(`[PROOF T5-C BEFORE DELETE] Disk file exists: ${fs.existsSync(testFilePath)} (${testFilePath})`);
+
+      const delRes = await fetch(`${baseUrl}/courses/${courseT5C.id}/materials/${matNullFileName.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${doc.token}` },
+      });
+      const delBody = await delRes.json();
+      console.log(`[PROOF T5-C AFTER DELETE] Status: ${delRes.status}, Body: ${JSON.stringify(delBody)}`);
+      console.log(`[PROOF T5-C AFTER DELETE] Disk file exists: ${fs.existsSync(testFilePath)} (${testFilePath})`);
+
+      assert.equal(delRes.status, 200, `Delete must succeed with 200`);
+      assert.equal(fs.existsSync(testFilePath), false, 'Disk file must be unlinked even when fileName is null');
+
+      // Missing file on disk must not throw 500
+      const matMissing = await prisma.courseMaterial.create({
+        data: {
+          courseId: courseT5C.id,
+          title: `Material Missing Disk ${SUFFIX}`,
+          type: 'LECTURE',
+          fileUrl: `/uploads/materials/already_gone_${SUFFIX}.pdf`,
+          fileName: `already_gone_${SUFFIX}.pdf`,
+          uploadedById: doc.user.id,
+        },
+      });
+      tracked.materialIds.push(matMissing.id);
+
+      const delMissingRes = await fetch(`${baseUrl}/courses/${courseT5C.id}/materials/${matMissing.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${doc.token}` },
+      });
+      assert.equal(delMissingRes.status, 200, `Delete when file missing on disk must succeed with 200`);
+
+      // External link material must not touch disk and must succeed
+      const matLink = await prisma.courseMaterial.create({
+        data: {
+          courseId: courseT5C.id,
+          title: `Material Link ${SUFFIX}`,
+          type: 'LECTURE',
+          fileUrl: `https://example.com/materials/link_${SUFFIX}.pdf`,
+          fileName: null,
+          uploadedById: doc.user.id,
+        },
+      });
+      tracked.materialIds.push(matLink.id);
+
+      const delLinkRes = await fetch(`${baseUrl}/courses/${courseT5C.id}/materials/${matLink.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${doc.token}` },
+      });
+      assert.equal(delLinkRes.status, 200, `Delete of link material must succeed with 200`);
+    });
+
+    // T5-D (M-270): TA course list must not return courses whose detail returns 404 for the same TA
+    await t.test('T5-D: TA course list must not return courses whose detail returns 404 for the same TA (M-270)', async () => {
+      const taDept1 = await createTestTA(dept1.id);
+
+      // (1) Cross-department course without approval
+      const courseCross = await prisma.course.create({
+        data: {
+          name: `Course_CrossUnapp_${SUFFIX}`,
+          courseCode: `CCU_${SUFFIX.slice(-6).toUpperCase()}`,
+          credits: 3,
+          year: 1,
+          semester: 1,
+          isPublished: true,
+          departmentId: dept2.id,
+        },
+      });
+      tracked.courseIds.push(courseCross.id);
+
+      const slotCross = await prisma.scheduleSlot.create({
+        data: {
+          courseId: courseCross.id,
+          teachingAssistantId: taDept1.ta.id,
+          dayOfWeek: 'Monday',
+          startTime: '10:00',
+          endTime: '12:00',
+          slotType: 'SECTION',
+          isArchived: false,
+        },
+      });
+      tracked.slotIds.push(slotCross.id);
+
+      // (2) Same-department course with ARCHIVED slot
+      const courseArchived = await prisma.course.create({
+        data: {
+          name: `Course_ArchivedSlot_${SUFFIX}`,
+          courseCode: `CAS_${SUFFIX.slice(-6).toUpperCase()}`,
+          credits: 3,
+          year: 1,
+          semester: 1,
+          isPublished: true,
+          departmentId: dept1.id,
+        },
+      });
+      tracked.courseIds.push(courseArchived.id);
+
+      const slotArchived = await prisma.scheduleSlot.create({
+        data: {
+          courseId: courseArchived.id,
+          teachingAssistantId: taDept1.ta.id,
+          dayOfWeek: 'Tuesday',
+          startTime: '14:00',
+          endTime: '16:00',
+          slotType: 'SECTION',
+          isArchived: true,
+        },
+      });
+      tracked.slotIds.push(slotArchived.id);
+
+      // Detail endpoint returns 404 for both
+      const detail1 = await fetch(`${baseUrl}/courses/${courseCross.id}`, {
+        headers: { Authorization: `Bearer ${taDept1.token}` },
+      });
+      assert.equal(detail1.status, 404, `Cross-department course without approval must return 404 on detail`);
+
+      const detail2 = await fetch(`${baseUrl}/courses/${courseArchived.id}`, {
+        headers: { Authorization: `Bearer ${taDept1.token}` },
+      });
+      assert.equal(detail2.status, 404, `Archived-slot course must return 404 on detail`);
+
+      // List endpoint GET /api/courses
+      const listRes = await fetch(`${baseUrl}/courses`, {
+        headers: { Authorization: `Bearer ${taDept1.token}` },
+      });
+      assert.equal(listRes.status, 200);
+      const listBody = await listRes.json();
+      const coursesList = Array.isArray(listBody.data) ? listBody.data : (listBody.data?.courses || []);
+      const listedIds = coursesList.map((c: any) => c.id);
+
+      assert.equal(
+        listedIds.includes(courseCross.id),
+        false,
+        `TA course list must NOT include cross-department course without approval (id ${courseCross.id})`
+      );
+      assert.equal(
+        listedIds.includes(courseArchived.id),
+        false,
+        `TA course list must NOT include course with archived slot (id ${courseArchived.id})`
+      );
+    });
+
   } finally {
     if (server) {
       await new Promise<void>((resolve) => server!.close(() => resolve()));
+    }
+
+    if (tracked.createdDiskFiles && tracked.createdDiskFiles.length > 0) {
+      for (const diskFile of tracked.createdDiskFiles) {
+        try {
+          if (fs.existsSync(diskFile)) fs.unlinkSync(diskFile);
+        } catch {}
+      }
     }
 
     // Teardown created records in strict reverse topological order
