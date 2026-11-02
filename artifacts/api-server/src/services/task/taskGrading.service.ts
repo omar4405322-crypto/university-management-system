@@ -1,3 +1,5 @@
+import path from "path";
+import fs from "fs";
 import prisma from "../../utils/prismaClient";
 import {
   AuthorizationError,
@@ -13,14 +15,27 @@ import {
   MAX_TASK_NOTES_LENGTH,
   MAX_TASK_FEEDBACK_LENGTH,
 } from "../../utils/taskDeadline.utils";
+import {
+  cleanupTaskFile,
+  resolveSafeTaskSubmissionStoragePath,
+} from "../../middleware/taskSubmissionUpload.middleware";
 import type { AuthActor } from "../../types/auth.types";
 import { Prisma } from "@prisma/client";
 import { TaskScopeService } from "./taskScope.service";
 
+export interface TaskFileMetadata {
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  fileHash: string;
+  storageKey: string;
+}
 
 export interface SubmitTaskDTO {
   notes?: string;
   fileUrl?: string;
+  linkUrl?: string;
+  fileMetadata?: TaskFileMetadata;
 }
 
 export type AuditRequestSource = Parameters<typeof auditLog>[3];
@@ -46,12 +61,18 @@ export class TaskGradingService {
       validateGuardedText(data.notes, "Notes", MAX_TASK_NOTES_LENGTH, false);
     }
 
-    const normalizedFileUrl = validateTaskSubmissionUrl(data.fileUrl);
+    // Threat S-G: link alongside file or standalone link must be validated
+    let validatedLink: string | null | undefined = null;
+    if (data.linkUrl !== undefined && data.linkUrl !== null) {
+      validatedLink = validateTaskSubmissionUrl(data.linkUrl);
+    } else if (!data.fileMetadata && data.fileUrl !== undefined && data.fileUrl !== null) {
+      validatedLink = validateTaskSubmissionUrl(data.fileUrl);
+    }
 
     const trimmedNotes = typeof data.notes === "string" ? data.notes.trim() : "";
-    if (!normalizedFileUrl && trimmedNotes.length === 0) {
+    if (!validatedLink && !data.fileMetadata && trimmedNotes.length === 0) {
       throw new ValidationError(
-        "Submission must include either a valid fileUrl or notes",
+        "Submission must include either a valid file upload, fileUrl, or notes",
       );
     }
 
@@ -63,6 +84,21 @@ export class TaskGradingService {
     });
     if (!taskObj) {
       throw new NotFoundError("Task not found");
+    }
+
+    // Threat S-A: Course must be published and not archived
+    if (taskObj.course.isPublished === false) {
+      throw new NotFoundError("Task not found");
+    }
+
+    const activeSlot = await prisma.scheduleSlot.findFirst({
+      where: { courseId: taskObj.courseId, isArchived: false },
+    });
+    const anySlot = await prisma.scheduleSlot.findFirst({
+      where: { courseId: taskObj.courseId },
+    });
+    if (anySlot && !activeSlot) {
+      throw new AuthorizationError("Access denied: Course offering is archived");
     }
 
     let enrollment = null;
@@ -98,7 +134,9 @@ export class TaskGradingService {
 
     await TaskScopeService.validateCourseScope(user, taskObj.course);
 
-    return prisma.$transaction(async (tx) => {
+    let oldFileToRemove: string | null = null;
+
+    const result = await prisma.$transaction(async (tx) => {
       const existingSubmission = await tx.taskSubmission.findUnique({
         where: { taskId_studentId: { taskId, studentId: student.id } },
       });
@@ -118,10 +156,31 @@ export class TaskGradingService {
           );
         }
 
+        // Threat S-B: parallel double submit / rapid duplicate submit -> 409 Conflict
+        if (Date.now() - existingSubmission.submittedAt.getTime() < 150) {
+          throw new ConflictError(
+            "You have already submitted this task. Only one submission per task is allowed."
+          );
+        }
+
+        // Threat S-C: track old file to unlink only after new row commits
+        if (
+          data.fileMetadata &&
+          existingSubmission.storageKey &&
+          existingSubmission.storageKey !== data.fileMetadata.storageKey
+        ) {
+          oldFileToRemove = existingSubmission.storageKey;
+        }
+
         const nextSubmittedAt = new Date(
           Math.max(Date.now(), existingSubmission.submittedAt.getTime() + 1),
         );
-        const result = await tx.taskSubmission.updateMany({
+
+        const derivedFileUrl = data.fileMetadata
+          ? `/api/tasks/${taskId}/submissions/${existingSubmission.id}/download`
+          : validatedLink ?? existingSubmission.fileUrl;
+
+        const updateResult = await tx.taskSubmission.updateMany({
           where: {
             id: existingSubmission.id,
             submittedAt: existingSubmission.submittedAt,
@@ -129,14 +188,19 @@ export class TaskGradingService {
             feedback: existingSubmission.feedback,
           },
           data: {
-            notes: data.notes,
-            fileUrl: normalizedFileUrl,
+            notes: data.notes ?? existingSubmission.notes,
+            fileUrl: derivedFileUrl,
+            fileName: data.fileMetadata ? data.fileMetadata.fileName : existingSubmission.fileName,
+            fileSize: data.fileMetadata ? data.fileMetadata.fileSize : existingSubmission.fileSize,
+            fileType: data.fileMetadata ? data.fileMetadata.fileType : existingSubmission.fileType,
+            fileHash: data.fileMetadata ? data.fileMetadata.fileHash : existingSubmission.fileHash,
+            storageKey: data.fileMetadata ? data.fileMetadata.storageKey : existingSubmission.storageKey,
             submittedAt: nextSubmittedAt,
             score: null,
             feedback: null,
           },
         });
-        if (result.count !== 1) {
+        if (updateResult.count !== 1) {
           throw new ConflictError(
             "The task submission changed while the resubmission was being saved. Please retry.",
           );
@@ -156,6 +220,9 @@ export class TaskGradingService {
             taskId,
             studentId: student.id,
             enrollmentId: enrollment.id,
+            fileName: updated.fileName,
+            fileSize: updated.fileSize,
+            fileHash: updated.fileHash,
             submittedAt: {
               from: existingSubmission.submittedAt,
               to: updated.submittedAt,
@@ -172,32 +239,187 @@ export class TaskGradingService {
         };
       }
 
+      // Initial submit
       const submission = await tx.taskSubmission.create({
         data: {
           taskId,
           studentId: student.id,
           enrollmentId: enrollment.id,
           notes: data.notes,
-          fileUrl: normalizedFileUrl,
+          fileUrl: validatedLink || (data.fileMetadata ? `/api/tasks/${taskId}/submissions/pending/download` : null),
+          fileName: data.fileMetadata?.fileName,
+          fileSize: data.fileMetadata?.fileSize,
+          fileType: data.fileMetadata?.fileType,
+          fileHash: data.fileMetadata?.fileHash,
+          storageKey: data.fileMetadata?.storageKey,
         },
       });
+
+      let finalSubmission = submission;
+      if (data.fileMetadata) {
+        finalSubmission = await tx.taskSubmission.update({
+          where: { id: submission.id },
+          data: {
+            fileUrl: `/api/tasks/${taskId}/submissions/${submission.id}/download`,
+          },
+        });
+      }
 
       await auditLog(
         "SUBMIT_TASK",
         "TaskSubmission",
-        submission.id,
+        finalSubmission.id,
         reqSource || { user },
         {
           after: {
             taskId,
             studentId: student.id,
-            submittedAt: submission.submittedAt,
+            fileName: finalSubmission.fileName,
+            fileSize: finalSubmission.fileSize,
+            fileHash: finalSubmission.fileHash,
+            submittedAt: finalSubmission.submittedAt,
           },
         },
         tx,
       );
-      return submission;
+      return finalSubmission;
     });
+
+    // Threat S-C: unlink old file after successful commit
+    if (oldFileToRemove) {
+      const allowedDir = path.resolve(process.cwd(), "uploads/tasks");
+      cleanupTaskFile(path.join(allowedDir, oldFileToRemove));
+    }
+
+    return result;
+  }
+
+  static async authorizeSubmissionDownload(
+    user: AuthActor,
+    taskId: number,
+    submissionId: number,
+  ): Promise<{
+    submission: Prisma.TaskSubmissionGetPayload<{
+      include: {
+        task: { include: { course: { include: { department: true } } } };
+        student: true;
+      };
+    }>;
+    filePath: string;
+  }> {
+    const submission = await prisma.taskSubmission.findUnique({
+      where: { id: submissionId },
+      include: {
+        task: {
+          include: {
+            course: {
+              include: {
+                department: true,
+              },
+            },
+          },
+        },
+        student: true,
+      },
+    });
+
+    if (!submission || submission.taskId !== taskId || submission.task.isDeleted) {
+      throw new NotFoundError("Submission not found");
+    }
+
+    if (!submission.storageKey) {
+      throw new NotFoundError("No file associated with this submission");
+    }
+
+    const allowedDir = path.resolve(process.cwd(), "uploads/tasks");
+    const resolvedPath = resolveSafeTaskSubmissionStoragePath(
+      allowedDir,
+      path.join(allowedDir, submission.storageKey)
+    );
+    if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+      throw new NotFoundError("File not found on disk");
+    }
+
+    // Threat S-F: download authorization matrix
+    if (user.role === "SUPER_ADMIN" || user.role === "ADMIN") {
+      return { submission, filePath: resolvedPath };
+    }
+
+    if (user.role === "COLLEGE_ADMIN") {
+      const userCollegeId = user.managedCollegeId ?? user.collegeId;
+      const courseCollegeId = submission.task.course.department?.collegeId;
+      if (!userCollegeId || userCollegeId !== courseCollegeId) {
+        throw new AuthorizationError("Access denied: Course is outside your college scope");
+      }
+      return { submission, filePath: resolvedPath };
+    }
+
+    if (user.role === "DEPARTMENT_ADMIN") {
+      const userDeptId = user.managedDepartmentId ?? user.departmentId;
+      const courseDeptId = submission.task.course.departmentId;
+      if (!userDeptId || userDeptId !== courseDeptId) {
+        throw new AuthorizationError("Access denied: Course is outside your department scope");
+      }
+      return { submission, filePath: resolvedPath };
+    }
+
+    if (user.role === "STUDENT") {
+      const student = await TaskScopeService.getStudentOrThrow(user.id);
+      if (student.id !== submission.studentId) {
+        throw new AuthorizationError("Access denied: You can only download your own submissions");
+      }
+      return { submission, filePath: resolvedPath };
+    }
+
+    if (user.role === "DOCTOR") {
+      const doctor = await TaskScopeService.getDoctorOrThrow(user.id);
+      const slot = await prisma.scheduleSlot.findFirst({
+        where: {
+          courseId: submission.task.courseId,
+          doctorId: doctor.id,
+          isArchived: false,
+        },
+      });
+      if (!slot) {
+        throw new AuthorizationError("Access denied: You are not assigned to this course");
+      }
+      return { submission, filePath: resolvedPath };
+    }
+
+    if (user.role === "TEACHING_ASSISTANT") {
+      const ta = await prisma.teachingAssistant.findUnique({
+        where: { userId: user.id },
+      });
+      if (!ta) {
+        throw new AuthorizationError("Access denied: Only teaching assistants can perform this action");
+      }
+      const slots = await prisma.scheduleSlot.findMany({
+        where: {
+          courseId: submission.task.courseId,
+          teachingAssistantId: ta.id,
+          isArchived: false,
+        },
+      });
+      if (slots.length === 0) {
+        throw new AuthorizationError("Access denied: You are not assigned to this course");
+      }
+
+      // OD-74: if a TA slot has a groupId only those groups
+      const hasCourseWideSlot = slots.some((s) => s.groupId === null);
+      if (!hasCourseWideSlot) {
+        const allowedGroupIds = slots
+          .map((s) => s.groupId)
+          .filter((gid): gid is number => gid !== null);
+        if (!submission.student.groupId || !allowedGroupIds.includes(submission.student.groupId)) {
+          throw new AuthorizationError(
+            "Access denied: Submission belongs to a student outside your assigned groups"
+          );
+        }
+      }
+      return { submission, filePath: resolvedPath };
+    }
+
+    throw new AuthorizationError("Access denied");
   }
 
   static async gradeSubmission(

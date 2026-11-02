@@ -3,6 +3,9 @@ import catchAsync from '../utils/catchAsync';
 import { TaskService } from '../services/task.service';
 import { ConflictError, ValidationError } from '../utils/appError';
 import { fromZonedTime } from 'date-fns-tz';
+import fs from 'fs';
+import { cleanupTaskFile } from '../middleware/taskSubmissionUpload.middleware';
+import { auditLog } from '../utils/audit.utils';
 
 export const createTask = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -109,17 +112,33 @@ export const deleteTask = catchAsync(
 export const submitTask = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
-    const { notes, fileUrl } = req.body;
+    const { notes, fileUrl, linkUrl } = req.body || {};
+
+    const fileMetadata = req.file
+      ? {
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          fileType: (req.file as any).detectedType || req.file.mimetype,
+          fileHash: (req.file as any).fileHash,
+          storageKey: (req.file as any).storageKey || req.file.filename,
+        }
+      : undefined;
 
     try {
       const submission = await TaskService.submitTask(
         req.user!,
         parseInt(id as string),
-        { notes, fileUrl },
+        { notes, fileUrl, linkUrl, fileMetadata },
         req
       );
-      return res.status(201).json({ success: true, data: submission });
+      const responseData = ('data' in (submission as any) && (submission as any).data)
+        ? (submission as any).data
+        : submission;
+      return res.status(201).json({ success: true, data: responseData });
     } catch (error: unknown) {
+      if (req.file?.path) {
+        cleanupTaskFile(req.file.path);
+      }
       if (
         typeof error === 'object' &&
         error !== null &&
@@ -138,6 +157,51 @@ export const submitTask = catchAsync(
       }
       throw error;
     }
+  }
+);
+
+export const downloadTaskSubmission = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const taskId = parseInt(req.params.id as string, 10);
+    const submissionId = parseInt(req.params.sid as string, 10);
+
+    if (Number.isNaN(taskId) || Number.isNaN(submissionId)) {
+      return next(new ValidationError('Invalid task or submission ID'));
+    }
+
+    const { submission, filePath } = await TaskService.authorizeSubmissionDownload(
+      req.user!,
+      taskId,
+      submissionId
+    );
+
+    await auditLog(
+      'DOWNLOAD_TASK_SUBMISSION',
+      'TaskSubmission',
+      submission.id,
+      req,
+      {
+        taskId,
+        studentId: submission.studentId,
+        fileName: submission.fileName,
+        fileSize: submission.fileSize,
+      }
+    );
+
+    const safeDownloadName = (submission.fileName || submission.storageKey || 'submission_file')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+
+    res.setHeader('Content-Disposition', `attachment; filename="${safeDownloadName}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (submission.fileType) {
+      res.setHeader('Content-Type', submission.fileType);
+    } else {
+      res.setHeader('Content-Type', 'application/octet-stream');
+    }
+
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', (err) => next(err));
+    stream.pipe(res);
   }
 );
 

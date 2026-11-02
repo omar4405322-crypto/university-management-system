@@ -464,6 +464,11 @@ model TaskSubmission {
   enrollmentId Int
   enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
   fileUrl      String?
+  fileName     String?
+  fileSize     Int?
+  fileType     String?
+  fileHash     String?
+  storageKey   String?
   notes        String?
   score        Float?
   feedback     String?

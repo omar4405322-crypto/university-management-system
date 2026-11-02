@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "TaskSubmission" ADD COLUMN IF NOT EXISTS "fileName" TEXT;
+ALTER TABLE "TaskSubmission" ADD COLUMN IF NOT EXISTS "fileSize" INTEGER;
+ALTER TABLE "TaskSubmission" ADD COLUMN IF NOT EXISTS "fileType" TEXT;
+ALTER TABLE "TaskSubmission" ADD COLUMN IF NOT EXISTS "fileHash" TEXT;
+ALTER TABLE "TaskSubmission" ADD COLUMN IF NOT EXISTS "storageKey" TEXT;

@@ -1136,6 +1136,19 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/TaskSubmissionRequest"
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                notes:
+                  type: string
+                linkUrl:
+                  type: string
+                fileUrl:
+                  type: string
       responses:
         "201":
           description: Submission recorded
@@ -1145,6 +1158,41 @@ paths:
                 $ref: "#/components/schemas/TaskSubmissionItem"
         "400":
           $ref: "#/components/responses/ValidationError"
+
+  /tasks/{id}/submissions/{sid}/download:
+    get:
+      operationId: downloadTaskSubmission
+      tags: [tasks]
+      summary: Download a student's task submission file
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+        - name: sid
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Download submission file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /quizzes:
     get:
@@ -2373,6 +2421,24 @@ components:
         score:
           type: number
           nullable: true
+        fileUrl:
+          type: string
+          nullable: true
+        fileName:
+          type: string
+          nullable: true
+        fileSize:
+          type: number
+          nullable: true
+        fileType:
+          type: string
+          nullable: true
+        fileHash:
+          type: string
+          nullable: true
+        storageKey:
+          type: string
+          nullable: true
 
     QuizItem:
       type: object
@@ -2859,6 +2925,24 @@ components:
         score:
           type: number
           nullable: true
+        fileUrl:
+          type: string
+          nullable: true
+        fileName:
+          type: string
+          nullable: true
+        fileSize:
+          type: number
+          nullable: true
+        fileType:
+          type: string
+          nullable: true
+        fileHash:
+          type: string
+          nullable: true
+        storageKey:
+          type: string
+          nullable: true
         isAbsent:
           type: boolean
         status:
@@ -2965,6 +3049,24 @@ components:
           type: integer
         score:
           type: number
+          nullable: true
+        fileUrl:
+          type: string
+          nullable: true
+        fileName:
+          type: string
+          nullable: true
+        fileSize:
+          type: number
+          nullable: true
+        fileType:
+          type: string
+          nullable: true
+        fileHash:
+          type: string
+          nullable: true
+        storageKey:
+          type: string
           nullable: true
         isAbsent:
           type: boolean

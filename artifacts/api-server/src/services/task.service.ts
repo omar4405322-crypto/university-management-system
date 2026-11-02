@@ -95,6 +95,14 @@ export class TaskService {
     return TaskGradingService.submitTask(user, taskId, data, reqSource);
   }
 
+  static authorizeSubmissionDownload(
+    user: AuthActor,
+    taskId: number,
+    submissionId: number,
+  ) {
+    return TaskGradingService.authorizeSubmissionDownload(user, taskId, submissionId);
+  }
+
   static gradeSubmission(
     user: AuthActor,
     taskId: number,

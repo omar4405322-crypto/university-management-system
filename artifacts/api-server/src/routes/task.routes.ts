@@ -5,6 +5,7 @@ import {
   updateTask,
   deleteTask,
   submitTask,
+  downloadTaskSubmission,
   gradeSubmission,
   getTaskSubmissions,
   getMySubmission,
@@ -13,6 +14,7 @@ import { protect, authorize } from '../middleware/auth.middleware';
 import { taskValidation, functionalIdValidation } from '../validations/functional.validation';
 import { body, param, query } from 'express-validator';
 import validate from '../middleware/validate.middleware';
+import { taskSubmissionUpload } from '../middleware/taskSubmissionUpload.middleware';
 
 const router = express.Router();
 
@@ -77,7 +79,22 @@ router.delete(
   deleteTask
 );
 
-router.post('/:id/submit', authorize('STUDENT'), functionalIdValidation, validate, submitTask);
+router.post(
+  '/:id/submit',
+  authorize('STUDENT'),
+  taskSubmissionUpload,
+  functionalIdValidation,
+  validate,
+  submitTask
+);
+
+router.get(
+  '/:id/submissions/:sid/download',
+  functionalIdValidation,
+  param('sid').isInt({ min: 1 }).withMessage('Invalid submission ID'),
+  validate,
+  downloadTaskSubmission
+);
 
 router.put(
   '/:id/submissions/:sid/grade',
