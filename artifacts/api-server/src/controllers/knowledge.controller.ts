@@ -180,6 +180,37 @@ export const archiveDocumentHandler = catchAsync(async (req: Request, res: Respo
   });
 });
 
+async function canUserManageDocument(actor: any, document: any): Promise<boolean> {
+  const role = actor.role?.toUpperCase();
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN') return true;
+
+  const collegeId = actor.managedCollegeId || actor.collegeId;
+  const deptId = actor.managedDepartmentId || actor.departmentId;
+
+  if (role === 'COLLEGE_ADMIN' && collegeId) {
+    if (document.scope === 'COLLEGE' && document.collegeId === collegeId) {
+      return true;
+    }
+    if (document.scope === 'DEPARTMENT' && document.departmentId) {
+      const dept = await prisma.department.findUnique({
+        where: { id: document.departmentId },
+        select: { collegeId: true },
+      });
+      if (dept && dept.collegeId === collegeId) {
+        return true;
+      }
+    }
+  }
+
+  if (role === 'DEPARTMENT_ADMIN' && deptId) {
+    if (document.scope === 'DEPARTMENT' && document.departmentId === deptId) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export const downloadDocumentHandler = catchAsync(async (req: Request, res: Response) => {
   const actor = req.user;
   if (!actor) {
@@ -256,6 +287,16 @@ export const downloadDocumentHandler = catchAsync(async (req: Request, res: Resp
 
   if (!targetVersion || !targetVersion.fileUrl) {
     throw new AppError('Document version file not found', 404);
+  }
+
+  // OD-114: Non-manager roles may download only the current version;
+  // roles that may upload/manage that document keep access to every version.
+  const isCurrentVersion = targetVersion.id === document.activeVersionId && !targetVersion.supersededAt;
+  if (!isCurrentVersion) {
+    const isManager = await canUserManageDocument(actor, document);
+    if (!isManager) {
+      throw new AppError('Only document managers can download superseded or non-current versions', 403);
+    }
   }
 
   const storage = getKnowledgeStorage();

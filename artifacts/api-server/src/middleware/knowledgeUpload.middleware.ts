@@ -137,6 +137,30 @@ export const knowledgeUpload = {
         }
         if (!req.file) return next();
 
+        let cleanedUp = false;
+        const cleanupUploadedTemp = () => {
+          if (cleanedUp) return;
+          cleanedUp = true;
+          if (req.file?.path) {
+            try {
+              if (fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+              }
+            } catch {
+              // Ignore if already unlinked
+            }
+          }
+        };
+
+        res.on('finish', cleanupUploadedTemp);
+        res.on('close', cleanupUploadedTemp);
+
+        const originalEnd = res.end.bind(res);
+        (res as any).end = function (...args: any[]) {
+          cleanupUploadedTemp();
+          return (originalEnd as any).apply(res, args);
+        };
+
         try {
           const verified = await verifyKnowledgeFile(req.file.path, req.file.originalname);
           req.file.mimetype = verified.mime;

@@ -48,12 +48,15 @@ export class LocalKnowledgeFileStorage implements IKnowledgeFileStorage {
   }
 
   resolveLocalPath(storageKey: string): string | null {
-    if (!storageKey) return null;
+    if (!storageKey || typeof storageKey !== 'string') return null;
     // Strip leading "knowledge/" prefix if present
     const cleanKey = storageKey.replace(/^knowledge\//, '');
-    const resolved = path.resolve(this.baseDir, cleanKey);
+    const resolvedBase = path.resolve(this.baseDir);
+    const resolvedTarget = path.resolve(this.baseDir, cleanKey);
+    const rel = path.relative(resolvedBase, resolvedTarget);
+    const resolved = resolvedTarget;
     // Path traversal defense: resolved path must start with baseDir
-    if (!resolved.startsWith(this.baseDir)) {
+    if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) {
       throw new AppError('Invalid storage path traversal attempt', 400);
     }
     return resolved;

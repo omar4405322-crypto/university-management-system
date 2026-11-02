@@ -376,31 +376,33 @@ export async function listKnowledgeDocuments(
   const collegeId = actor.managedCollegeId || actor.collegeId;
   const departmentId = actor.managedDepartmentId || actor.departmentId;
 
-  const where: any = {};
+  const andConditions: any[] = [];
 
   // Scope constraints
   if (role === 'COLLEGE_ADMIN' && collegeId) {
-    where.OR = [
+    andConditions.push({ OR: [
       { scope: 'GLOBAL' },
       { scope: 'COLLEGE', collegeId },
-    ];
+    ] });
   } else if (role === 'DEPARTMENT_ADMIN' && departmentId) {
-    where.OR = [
+    andConditions.push({ OR: [
       { scope: 'GLOBAL' },
       { scope: 'DEPARTMENT', departmentId },
-    ];
+    ] });
   }
 
-  if (filter.scope) where.scope = filter.scope;
-  if (filter.documentType) where.documentType = filter.documentType;
-  if (filter.status) where.status = filter.status;
+  if (filter.scope) andConditions.push({ scope: filter.scope });
+  if (filter.documentType) andConditions.push({ documentType: filter.documentType });
+  if (filter.status) andConditions.push({ status: filter.status });
   if (filter.search) {
-    where.OR = [
+    andConditions.push({ OR: [
       { title: { contains: filter.search, mode: 'insensitive' } },
       { titleAr: { contains: filter.search, mode: 'insensitive' } },
       { description: { contains: filter.search, mode: 'insensitive' } },
-    ];
+    ] });
   }
+
+  const where: any = andConditions.length > 0 ? { AND: andConditions } : {};
 
   const [total, documents] = await Promise.all([
     prisma.knowledgeDocument.count({ where }),

@@ -506,6 +506,235 @@ try {
   );
   assert.equal(textlessExtraction.isScannedOrTextless, true, 'Textless content must be flagged as scanned/textless');
 
+  // -------------------------------------------------------------
+  // 9. THREAT K-A (W5-T14): Knowledge Search Scope Overwrite Defense
+  // -------------------------------------------------------------
+  console.log('9. Testing K-A: Knowledge search scope filter combining with search (OR overwrite defense)...');
+  const uniqueMarkerKA = `WP5T5A2_KA_${Date.now()}`;
+
+  const contentA = Buffer.from('College 1 document content', 'utf8');
+  const docKA_Col1 = await createKnowledgeDocument(
+    collegeAdminActor,
+    {
+      title: `${uniqueMarkerKA} College 1 Document`,
+      documentType: 'POLICY',
+      scope: 'COLLEGE',
+      collegeId: testCollege1.id,
+    },
+    {
+      originalname: 'ka_col1.txt',
+      path: '',
+      mimetype: 'text/plain',
+      size: contentA.length,
+      fileHash: `hash-ka-col1-${uniqueMarkerKA}`,
+      buffer: contentA,
+    }
+  );
+
+  const contentB = Buffer.from('College 2 document content', 'utf8');
+  const docKA_Col2 = await createKnowledgeDocument(
+    otherCollegeAdminActor,
+    {
+      title: `${uniqueMarkerKA} College 2 Document`,
+      documentType: 'POLICY',
+      scope: 'COLLEGE',
+      collegeId: testCollege2.id,
+    },
+    {
+      originalname: 'ka_col2.txt',
+      path: '',
+      mimetype: 'text/plain',
+      size: contentB.length,
+      fileHash: `hash-ka-col2-${uniqueMarkerKA}`,
+      buffer: contentB,
+    }
+  );
+
+  // College 1 admin searches for the unique marker
+  const kaSearchRes = await fetch(`${baseUrl}/api/knowledge/documents?search=${uniqueMarkerKA}`, {
+    headers: { Authorization: `Bearer ${collegeAdminToken}` },
+  });
+  assert.equal(kaSearchRes.status, 200, 'Search request must succeed with 200');
+  const kaSearchBody = (await kaSearchRes.json()) as any;
+  assert.equal(kaSearchBody.success, true);
+
+  // The results MUST contain only College 1 document, NEVER College 2 document
+  const returnedIds = kaSearchBody.data.map((d: any) => d.id);
+  assert.ok(returnedIds.includes(docKA_Col1!.id), 'Must include College 1 document');
+  assert.ok(!returnedIds.includes(docKA_Col2!.id), 'Must NOT include College 2 document');
+  assert.equal(kaSearchBody.meta.total, 1, 'Total matching count must be exactly 1 within college scope');
+  assert.equal(kaSearchBody.data.length, 1, 'Returned documents must only contain College 1 document');
+
+  // -------------------------------------------------------------
+  // 10. THREAT K-B (W5-T14): Multer Temp File Cleanup on Every Exit Path
+  // -------------------------------------------------------------
+  console.log('10. Testing K-B: Multer temporary file cleanup on all exit paths (400, 403, 409)...');
+  const uploadDirKB = path.join(process.cwd(), 'uploads/knowledge');
+
+  // Case 1: Validation rejection (400) - missing document title
+  const markerVal = `kb_val_fail_${Date.now()}`;
+  const filesBeforeVal = fs.readdirSync(uploadDirKB).filter((f) => f.includes(markerVal));
+  assert.deepEqual(filesBeforeVal, [], 'Upload dir must not contain test file before upload');
+
+  const formVal = new FormData();
+  formVal.append('file', new Blob(['Valid document text content for validation test'], { type: 'text/plain' }), `${markerVal}.txt`);
+  formVal.append('scope', 'GLOBAL');
+  // title omitted -> 400 validation error
+
+  const resVal = await fetch(`${baseUrl}/api/knowledge/documents`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${superAdminToken}` },
+    body: formVal,
+  });
+  assert.equal(resVal.status, 400, 'Must return 400 validation rejection for missing title');
+  const filesAfterVal = fs.readdirSync(uploadDirKB).filter((f) => f.includes(markerVal));
+  assert.deepEqual(filesAfterVal, [], 'Temp multer file must be removed after validation rejection');
+
+  // Case 2: Unauthorized 403 - College 1 admin attempts creating document for College 2
+  const markerAuth = `kb_auth_fail_${Date.now()}`;
+  const filesBeforeAuth = fs.readdirSync(uploadDirKB).filter((f) => f.includes(markerAuth));
+  assert.deepEqual(filesBeforeAuth, [], 'Upload dir must not contain test file before upload');
+
+  const formAuth = new FormData();
+  formAuth.append('file', new Blob(['Valid document text content for auth test'], { type: 'text/plain' }), `${markerAuth}.txt`);
+  formAuth.append('title', `Unauthorized Doc ${markerAuth}`);
+  formAuth.append('scope', 'COLLEGE');
+  formAuth.append('collegeId', String(testCollege2.id));
+
+  const resAuth = await fetch(`${baseUrl}/api/knowledge/documents`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${collegeAdminToken}` },
+    body: formAuth,
+  });
+  assert.equal(resAuth.status, 403, 'Must return 403 for cross-college document upload');
+  const filesAfterAuth = fs.readdirSync(uploadDirKB).filter((f) => f.includes(markerAuth));
+  assert.deepEqual(filesAfterAuth, [], 'Temp multer file must be removed after unauthorized 403');
+
+  // Case 3: Processing error / Conflict 409 - Duplicate document fileHash
+  const markerDup = `kb_dup_fail_${Date.now()}`;
+  const filesBeforeDup = fs.readdirSync(uploadDirKB).filter((f) => f.includes(markerDup));
+  assert.deepEqual(filesBeforeDup, [], 'Upload dir must not contain test file before upload');
+
+  const dupContent = `Exact duplicate byte stream content for conflict test ${markerDup}`;
+  const formDup1 = new FormData();
+  formDup1.append('file', new Blob([dupContent], { type: 'text/plain' }), `${markerDup}_initial.txt`);
+  formDup1.append('title', `WP5T5A2 Initial Document ${markerDup}`);
+  formDup1.append('scope', 'GLOBAL');
+
+  const resDup1 = await fetch(`${baseUrl}/api/knowledge/documents`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${superAdminToken}` },
+    body: formDup1,
+  });
+  assert.equal(resDup1.status, 201, 'First upload must succeed with 201');
+  const filesAfterDup1 = fs.readdirSync(uploadDirKB).filter((f) => f.includes(markerDup));
+  assert.deepEqual(filesAfterDup1, [], 'Temp multer file must be removed after successful 201 upload');
+
+  const formDup2 = new FormData();
+  formDup2.append('file', new Blob([dupContent], { type: 'text/plain' }), `${markerDup}_second.txt`);
+  formDup2.append('title', `WP5T5A2 Duplicate Document ${markerDup}`);
+  formDup2.append('scope', 'GLOBAL');
+
+  const resDup2 = await fetch(`${baseUrl}/api/knowledge/documents`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${superAdminToken}` },
+    body: formDup2,
+  });
+  assert.equal(resDup2.status, 409, 'Must return 409 Conflict for duplicate document content');
+  const filesAfterDup2 = fs.readdirSync(uploadDirKB).filter((f) => f.includes(markerDup));
+  assert.deepEqual(filesAfterDup2, [], 'Temp multer file must be removed after duplicate conflict 409');
+
+  // -------------------------------------------------------------
+  // 11. THREAT K-C (W5-T5): Knowledge Storage Path Guard Sibling Prefix Defense
+  // -------------------------------------------------------------
+  console.log('11. Testing K-C: Knowledge storage path guard rejects sibling prefixes (resolveSafeMaterialStoragePath pattern)...');
+  const testStorage = new LocalKnowledgeFileStorage();
+
+  // A sibling directory attempt like '../knowledge-evil/secret.txt' must be rejected
+  assert.throws(
+    () => testStorage.resolveLocalPath('../knowledge-evil/secret.txt'),
+    /Invalid storage path traversal attempt/,
+    'Sibling prefix path traversal attempt must be rejected'
+  );
+
+  // Parent traversal attempt must be rejected
+  assert.throws(
+    () => testStorage.resolveLocalPath('../../etc/passwd'),
+    /Invalid storage path traversal attempt/,
+    'Parent traversal path must be rejected'
+  );
+
+  // Valid relative key must succeed
+  const validResolved = testStorage.resolveLocalPath('versions/valid_test.txt');
+  assert.ok(validResolved, 'Valid storage path must resolve');
+  assert.ok(validResolved.endsWith(path.join('versions', 'valid_test.txt')), 'Resolved path must point to valid subpath');
+
+  // -------------------------------------------------------------
+  // 12. THREAT K-D (W5-T14): Superseded Version Download Control (OD-114)
+  // -------------------------------------------------------------
+  console.log('12. Testing K-D: Non-managers restricted to current version; managers retain all-version access (OD-114)...');
+  const uniqueMarkerKD = `WP5T5A2_KD_${Date.now()}`;
+  const contentV1 = Buffer.from('Engineering Bylaw Version 1 Superseded Content', 'utf8');
+  const docKD = await createKnowledgeDocument(
+    collegeAdminActor,
+    {
+      title: `${uniqueMarkerKD} Document`,
+      documentType: 'BYLAW',
+      scope: 'COLLEGE',
+      collegeId: testCollege1.id,
+      versionTag: 'v1.0',
+    },
+    {
+      originalname: 'kd_v1.txt',
+      path: '',
+      mimetype: 'text/plain',
+      size: contentV1.length,
+      fileHash: `hash-kd-v1-${uniqueMarkerKD}`,
+      buffer: contentV1,
+    }
+  );
+  const version1Id = docKD!.activeVersionId!;
+
+  // Upload Version 2
+  const contentV2 = Buffer.from('Engineering Bylaw Version 2 Current Content', 'utf8');
+  const docKD_v2 = await uploadNewDocumentVersion(
+    collegeAdminActor,
+    docKD!.id,
+    {
+      originalname: 'kd_v2.txt',
+      path: '',
+      mimetype: 'text/plain',
+      size: contentV2.length,
+      fileHash: `hash-kd-v2-${uniqueMarkerKD}`,
+      buffer: contentV2,
+    },
+    { versionTag: 'v2.0' }
+  );
+  const version2Id = docKD_v2!.versions[0].id;
+  await activateDocumentVersion(collegeAdminActor, docKD!.id, version2Id);
+
+  // A. Non-manager student attempts downloading superseded Version 1 -> MUST be 403 Forbidden under OD-114
+  const studentDlV1 = await fetch(`${baseUrl}/api/knowledge/documents/${docKD!.id}/download/${version1Id}`, {
+    headers: { Authorization: `Bearer ${studentToken}` },
+  });
+  assert.equal(studentDlV1.status, 403, 'Non-manager student must be forbidden from downloading superseded version 1');
+
+  // B. Document manager (College Admin) downloads superseded Version 1 -> MUST succeed with 200
+  const managerDlV1 = await fetch(`${baseUrl}/api/knowledge/documents/${docKD!.id}/download/${version1Id}`, {
+    headers: { Authorization: `Bearer ${collegeAdminToken}` },
+  });
+  assert.equal(managerDlV1.status, 200, 'Document manager must be allowed to download historical/superseded version');
+  const managerV1Body = await managerDlV1.text();
+  assert.equal(managerV1Body, 'Engineering Bylaw Version 1 Superseded Content');
+
+  // C. Non-manager student downloads current active version -> MUST succeed with 200
+  const studentDlActive = await fetch(`${baseUrl}/api/knowledge/documents/${docKD!.id}/download`, {
+    headers: { Authorization: `Bearer ${studentToken}` },
+  });
+  assert.equal(studentDlActive.status, 200, 'Student must be allowed to download current active version');
+  const studentActiveBody = await studentDlActive.text();
+  assert.equal(studentActiveBody, 'Engineering Bylaw Version 2 Current Content');
+
   console.log('\n✅ ALL PHASE 11.1 HARDENING & PRODUCTION INTEGRITY TESTS PASSED!');
 } finally {
   server.close();
@@ -525,6 +754,22 @@ try {
   await prisma.knowledgeChunk.deleteMany({ where: { document: { title: 'Engineering College Bylaw' } } });
   await prisma.knowledgeDocumentVersion.deleteMany({ where: { document: { title: 'Engineering College Bylaw' } } });
   await prisma.knowledgeDocument.deleteMany({ where: { title: 'Engineering College Bylaw' } });
+  await prisma.knowledgeChunk.deleteMany({ where: { document: { title: { contains: 'WP5T5A2' } } } });
+  await prisma.knowledgeDocumentVersion.deleteMany({ where: { document: { title: { contains: 'WP5T5A2' } } } });
+  await prisma.knowledgeDocument.deleteMany({ where: { title: { contains: 'WP5T5A2' } } });
+  await prisma.knowledgeChunk.deleteMany({ where: { document: { title: { contains: 'kb_dup_fail' } } } });
+  await prisma.knowledgeDocumentVersion.deleteMany({ where: { document: { title: { contains: 'kb_dup_fail' } } } });
+  await prisma.knowledgeDocument.deleteMany({ where: { title: { contains: 'kb_dup_fail' } } });
+  try {
+    const knowledgeUploads = path.join(process.cwd(), 'uploads/knowledge');
+    if (fs.existsSync(knowledgeUploads)) {
+      fs.rmSync(knowledgeUploads, { recursive: true, force: true });
+    }
+    const rootUploads = path.resolve(__dirname, '../../uploads');
+    if (fs.existsSync(rootUploads) && fs.readdirSync(rootUploads).length === 0) {
+      fs.rmdirSync(rootUploads);
+    }
+  } catch {}
 
   await prisma.$disconnect();
 }
