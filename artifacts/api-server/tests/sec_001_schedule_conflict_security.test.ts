@@ -78,7 +78,9 @@ describe('SEC-001 Schedule Conflict Scope Regression Suite', () => {
       checkScheduleConflict
     );
 
-    const server = app.listen(0);
+    const server = await new Promise<any>((resolve) => {
+      const s = app.listen(0, '127.0.0.1', () => resolve(s));
+    });
     const port = (server.address() as any).port;
 
     try {

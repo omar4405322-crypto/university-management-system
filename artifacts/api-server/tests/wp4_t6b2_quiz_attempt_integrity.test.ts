@@ -182,7 +182,7 @@ test('C1: Doctor creates QUIZ via HTTP POST /api/exams without termId and adds q
         courseId: ctx.course.id,
         title: `Quiz C1 ${suffix}`,
         type: 'QUIZ',
-        date: '2026-11-01T00:00:00.000Z',
+        date: '2099-01-01T00:00:00.000Z',
         startTime: '10:00',
         endTime: '12:00',
       }),
