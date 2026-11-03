@@ -1025,6 +1025,251 @@ test('WP5-T5b-1: Student File Upload for Task Submissions - Backend Hardening & 
       assert.strictEqual(colMap.get('storageKey')?.is_nullable, 'YES', 'storageKey must be nullable');
     });
 
+    // -------------------------------------------------------------------------
+    // TEST SUITE: S-J M-336 Multi-dot filenames with safe segments accepted, dangerous extensions rejected
+    // -------------------------------------------------------------------------
+    await t.test('S-J: Multi-dot filenames with safe segments accepted, dangerous extensions and malformed names rejected, no disk orphans', async () => {
+      const taskMultiDot = await prisma.task.create({
+        data: {
+          title: `MultiDotTask_${SUFFIX}`,
+          description: 'Testing multi-dot filename rules',
+          courseId: course1.id,
+          doctorId: doctor1.id,
+          dueDate: futureDate,
+          maxScore: 100,
+          academicYear: 2026,
+          semester: 1,
+        },
+      });
+      tracked.taskIds.push(taskMultiDot.id);
+
+      // 1. report.v2.pdf must be 201 (currently 400 under double extension check)
+      const validMultiDotRes = await submitMultipartTask(taskMultiDot.id, tokens.student1, {
+        fileBuffer: VALID_PDF_BUFFER,
+        filename: 'report.v2.pdf',
+        contentType: 'application/pdf',
+      });
+      assert.strictEqual(
+        validMultiDotRes.status,
+        201,
+        `report.v2.pdf must be accepted with 201, got ${validMultiDotRes.status}`
+      );
+
+      // Verify DB row
+      const subRow = await prisma.taskSubmission.findUnique({
+        where: { id: validMultiDotRes.body.data.id },
+      });
+      assert.ok(subRow, 'Submission row must be created');
+      assert.strictEqual(subRow.fileName, 'report.v2.pdf');
+      assert.ok(subRow.storageKey, 'Storage key must be present');
+      assert.ok(fs.existsSync(path.join(uploadsTaskDir, subRow.storageKey)), 'Uploaded file must exist on disk');
+
+      // 2. Dangerous non-final dot-segments must stay 400
+      const taskDangerous = await prisma.task.create({
+        data: {
+          title: `DangerousTask_${SUFFIX}`,
+          description: 'Testing dangerous extension rejection',
+          courseId: course1.id,
+          doctorId: doctor1.id,
+          dueDate: futureDate,
+          maxScore: 100,
+          academicYear: 2026,
+          semester: 1,
+        },
+      });
+      tracked.taskIds.push(taskDangerous.id);
+
+      const beforeFiles = fs.existsSync(uploadsTaskDir) ? fs.readdirSync(uploadsTaskDir) : [];
+
+      const exeRes = await submitMultipartTask(taskDangerous.id, tokens.student1, {
+        fileBuffer: VALID_PDF_BUFFER,
+        filename: 'evil.exe.pdf',
+        contentType: 'application/pdf',
+      });
+      assert.strictEqual(exeRes.status, 400, `evil.exe.pdf must be rejected with 400, got ${exeRes.status}`);
+
+      const phpRes = await submitMultipartTask(taskDangerous.id, tokens.student1, {
+        fileBuffer: VALID_PNG_BUFFER,
+        filename: 'x.php.png',
+        contentType: 'image/png',
+      });
+      assert.strictEqual(phpRes.status, 400, `x.php.png must be rejected with 400, got ${phpRes.status}`);
+
+      const htmlRes = await submitMultipartTask(taskDangerous.id, tokens.student1, {
+        fileBuffer: VALID_PDF_BUFFER,
+        filename: 'a.HTML.pdf',
+        contentType: 'application/pdf',
+      });
+      assert.strictEqual(htmlRes.status, 400, `a.HTML.pdf must be rejected with 400, got ${htmlRes.status}`);
+
+      // 3. Names that are only dots or end with a dot stay rejected (400)
+      const onlyDotsRes = await submitMultipartTask(taskDangerous.id, tokens.student1, {
+        fileBuffer: VALID_PDF_BUFFER,
+        filename: '....',
+        contentType: 'application/pdf',
+      });
+      assert.strictEqual(onlyDotsRes.status, 400, `Only dots must be rejected with 400, got ${onlyDotsRes.status}`);
+
+      const dotEndRes = await submitMultipartTask(taskDangerous.id, tokens.student1, {
+        fileBuffer: VALID_PDF_BUFFER,
+        filename: 'report.pdf.',
+        contentType: 'application/pdf',
+      });
+      assert.strictEqual(dotEndRes.status, 400, `Filename ending with dot must be rejected with 400, got ${dotEndRes.status}`);
+
+      const dotsOnlyExtRes = await submitMultipartTask(taskDangerous.id, tokens.student1, {
+        fileBuffer: VALID_PDF_BUFFER,
+        filename: '...pdf',
+        contentType: 'application/pdf',
+      });
+      assert.strictEqual(dotsOnlyExtRes.status, 400, `...pdf must be rejected with 400, got ${dotsOnlyExtRes.status}`);
+
+      // 4. Verify no file left on disk after any rejection
+      const afterFiles = fs.existsSync(uploadsTaskDir) ? fs.readdirSync(uploadsTaskDir) : [];
+      assert.deepStrictEqual(
+        afterFiles,
+        beforeFiles,
+        'No orphan file must be left on disk after any rejected upload'
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // TEST SUITE: S-K M-338 UTF-8 Arabic fileName storage & RFC 5987 Content-Disposition
+    // -------------------------------------------------------------------------
+    await t.test('S-K: UTF-8 Arabic fileName stored in DB, RFC 5987 Content-Disposition, no CR/LF header injection', async () => {
+      const taskArabic = await prisma.task.create({
+        data: {
+          title: `ArabicTask_${SUFFIX}`,
+          description: 'Testing Arabic filename and RFC 5987 headers',
+          courseId: course1.id,
+          doctorId: doctor1.id,
+          dueDate: futureDate,
+          maxScore: 100,
+          academicYear: 2026,
+          semester: 1,
+        },
+      });
+      tracked.taskIds.push(taskArabic.id);
+
+      // 1. Upload file with Arabic name 'تقرير.pdf'
+      const arabicUploadRes = await submitMultipartTask(taskArabic.id, tokens.student1, {
+        fileBuffer: VALID_PDF_BUFFER,
+        filename: 'تقرير.pdf',
+        contentType: 'application/pdf',
+      });
+      assert.strictEqual(arabicUploadRes.status, 201, `Arabic upload must return 201, got ${arabicUploadRes.status}`);
+
+      const arabicSub = await prisma.taskSubmission.findUnique({
+        where: { id: arabicUploadRes.body.data.id },
+      });
+      assert.ok(arabicSub, 'Arabic submission record must exist in DB');
+      // Must be stored as the original display name, Unicode NFC
+      assert.strictEqual(
+        arabicSub.fileName,
+        'تقرير.pdf',
+        `DB fileName must equal 'تقرير.pdf', got '${arabicSub.fileName}'`
+      );
+      // storageKey stays ASCII and server-generated
+      assert.ok(
+        /^[a-zA-Z0-9._-]+$/.test(arabicSub.storageKey || ''),
+        `storageKey must be ASCII server-generated, got ${arabicSub.storageKey}`
+      );
+
+      // Download Content-Disposition header check
+      const arabicDownload = await downloadSubmission(taskArabic.id, arabicSub.id, tokens.student1);
+      assert.strictEqual(arabicDownload.status, 200);
+      const dispHeader = arabicDownload.contentDisposition || '';
+      assert.ok(dispHeader.startsWith('attachment;'), `Header must start with attachment;, got ${dispHeader}`);
+      // Must contain ASCII fallback
+      assert.ok(
+        dispHeader.includes('filename="______.pdf"') || dispHeader.includes('filename="'),
+        `Header must contain filename="<ASCII fallback>", got ${dispHeader}`
+      );
+      // Must contain RFC 5987 UTF-8 encoding
+      assert.ok(
+        dispHeader.includes("filename*=UTF-8''%D8%AA%D9%82%D8%B1%D9%8A%D8%B1.pdf"),
+        `Header must contain RFC 5987 encoding filename*=UTF-8''%D8%AA%D9%82%D8%B1%D9%8A%D8%B1.pdf, got ${dispHeader}`
+      );
+
+      // 2. Upload file with quotes plus CR/LF: must yield header with no CR/LF and no raw quote (no 500, no injection)
+      const taskQuoteCrLf = await prisma.task.create({
+        data: {
+          title: `QuoteCrLfTask_${SUFFIX}`,
+          description: 'Testing quote and CRLF header injection defense',
+          courseId: course1.id,
+          doctorId: doctor1.id,
+          dueDate: futureDate,
+          maxScore: 100,
+          academicYear: 2026,
+          semester: 1,
+        },
+      });
+      tracked.taskIds.push(taskQuoteCrLf.id);
+
+      const quoteCrLfUploadRes = await submitMultipartTask(taskQuoteCrLf.id, tokens.student1, {
+        fileBuffer: VALID_PDF_BUFFER,
+        filename: 'report"evil\r\nname.pdf',
+        contentType: 'application/pdf',
+      });
+      assert.strictEqual(quoteCrLfUploadRes.status, 201, `Quote/CRLF upload must succeed with 201, got ${quoteCrLfUploadRes.status}`);
+
+      const quoteCrLfSub = await prisma.taskSubmission.findUnique({
+        where: { id: quoteCrLfUploadRes.body.data.id },
+      });
+      assert.ok(quoteCrLfSub, 'Quote/CRLF submission record must exist');
+      // Quotes and CR/LF removed from stored fileName
+      assert.ok(!quoteCrLfSub.fileName?.includes('"'), 'Stored fileName must not contain quotes');
+      assert.ok(!quoteCrLfSub.fileName?.includes('\r'), 'Stored fileName must not contain CR');
+      assert.ok(!quoteCrLfSub.fileName?.includes('\n'), 'Stored fileName must not contain LF');
+
+      const quoteCrLfDownload = await downloadSubmission(taskQuoteCrLf.id, quoteCrLfSub.id, tokens.student1);
+      assert.strictEqual(quoteCrLfDownload.status, 200, `Download must return 200 without 500 error, got ${quoteCrLfDownload.status}`);
+      const quoteDisp = quoteCrLfDownload.contentDisposition || '';
+      assert.ok(!quoteDisp.includes('\r'), 'Content-Disposition must not contain CR');
+      assert.ok(!quoteDisp.includes('\n'), 'Content-Disposition must not contain LF');
+      // No raw extra quote inside the quoted filename string
+      const filenameMatch = quoteDisp.match(/filename="([^"]*)"/);
+      assert.ok(filenameMatch, 'Must contain a validly closed filename="..." attribute');
+
+      // 3. Old ASCII case still works
+      const taskAscii = await prisma.task.create({
+        data: {
+          title: `AsciiTask_${SUFFIX}`,
+          description: 'Testing standard ASCII filename download',
+          courseId: course1.id,
+          doctorId: doctor1.id,
+          dueDate: futureDate,
+          maxScore: 100,
+          academicYear: 2026,
+          semester: 1,
+        },
+      });
+      tracked.taskIds.push(taskAscii.id);
+
+      const asciiUploadRes = await submitMultipartTask(taskAscii.id, tokens.student1, {
+        fileBuffer: VALID_PDF_BUFFER,
+        filename: 'homework_final.pdf',
+        contentType: 'application/pdf',
+      });
+      assert.strictEqual(asciiUploadRes.status, 201);
+      const asciiSub = await prisma.taskSubmission.findUnique({
+        where: { id: asciiUploadRes.body.data.id },
+      });
+      assert.ok(asciiSub);
+      assert.strictEqual(asciiSub.fileName, 'homework_final.pdf');
+
+      const asciiDownload = await downloadSubmission(taskAscii.id, asciiSub.id, tokens.student1);
+      assert.strictEqual(asciiDownload.status, 200);
+      assert.ok(
+        asciiDownload.contentDisposition?.includes('filename="homework_final.pdf"'),
+        `ASCII download must include filename="homework_final.pdf", got ${asciiDownload.contentDisposition}`
+      );
+      assert.ok(
+        asciiDownload.contentDisposition?.includes("filename*=UTF-8''homework_final.pdf"),
+        `ASCII download must include filename*=UTF-8''homework_final.pdf, got ${asciiDownload.contentDisposition}`
+      );
+    });
+
   } finally {
     // Teardown HTTP server
     if (server) {

@@ -8,6 +8,7 @@ import { AppError } from '../utils/appError';
 import logger from '../utils/logger';
 
 export const TASK_SUBMISSION_MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB ceiling
+export const TASK_SUBMISSION_MAX_FILENAME_LENGTH = 255;
 
 export const ALLOWED_TASK_EXTENSIONS = new Set([
   'pdf',
@@ -26,6 +27,44 @@ export const ALLOWED_TASK_EXTENSIONS = new Set([
   'jpeg',
   'webp',
 ]);
+
+export const DANGEROUS_EXTENSIONS = new Set([
+  'exe',
+  'bat',
+  'cmd',
+  'com',
+  'scr',
+  'msi',
+  'js',
+  'mjs',
+  'vbs',
+  'ps1',
+  'sh',
+  'jar',
+  'php',
+  'asp',
+  'aspx',
+  'html',
+  'htm',
+  'svg',
+  'dll',
+  'lnk',
+]);
+
+/**
+ * Sanitizes original filename:
+ * - Unicode NFC normalization
+ * - Removes control characters (including null bytes, CR, LF), path separators (/ and \), and quotes (" ' `)
+ * - Enforces TASK_SUBMISSION_MAX_FILENAME_LENGTH
+ */
+export function sanitizeTaskSubmissionFileName(rawName: string): string {
+  if (!rawName || typeof rawName !== 'string') return '';
+  return rawName
+    .normalize('NFC')
+    .replace(/[\u0000-\u001F\u007F-\u009F/\\"'`]/g, '')
+    .trim()
+    .slice(0, TASK_SUBMISSION_MAX_FILENAME_LENGTH);
+}
 
 /**
  * Safely resolves and validates a target storage path within an allowed base directory.
@@ -69,6 +108,7 @@ const memoryUpload = multer({
   limits: {
     fileSize: TASK_SUBMISSION_MAX_FILE_SIZE,
   },
+  defParamCharset: 'utf8',
 });
 
 /**
@@ -111,25 +151,40 @@ export const taskSubmissionUpload = (
     }
 
     try {
-      const originalName = req.file.originalname || '';
+      const rawOriginalName = req.file.originalname || '';
 
       // Reject null bytes
-      if (originalName.includes('\0') || originalName.includes('%00')) {
+      if (rawOriginalName.includes('\0') || rawOriginalName.includes('%00')) {
         return next(new AppError('Filename contains invalid characters', 400));
       }
 
-      // Reject double extensions
-      const nameParts = originalName.split('.');
-      if (nameParts.length > 2) {
+      // Check for dot constraints:
+      // A name that is only dots or ends with a dot stays rejected
+      if (rawOriginalName.endsWith('.') || rawOriginalName.replace(/\./g, '').trim().length === 0) {
+        return next(new AppError('File must have an extension', 400));
+      }
+
+      const nameParts = rawOriginalName.split('.');
+      if (nameParts.length < 2) {
+        return next(new AppError('File must have an extension', 400));
+      }
+
+      // Reject when ANY non-final dot-segment, compared case-insensitively, is in dangerous extensions
+      const nonFinalSegments = nameParts.slice(0, -1);
+      if (nonFinalSegments.every((seg) => seg.trim().length === 0)) {
+        return next(new AppError('File must have an extension', 400));
+      }
+
+      const hasDangerousSegment = nonFinalSegments.some((seg) =>
+        DANGEROUS_EXTENSIONS.has(seg.toLowerCase())
+      );
+      if (hasDangerousSegment) {
         return next(
           new AppError(
-            'Double file extensions are not allowed for security reasons',
+            'Filename contains a dangerous extension pattern',
             400
           )
         );
-      }
-      if (nameParts.length < 2) {
-        return next(new AppError('File must have an extension', 400));
       }
 
       const ext = nameParts[nameParts.length - 1].toLowerCase();
@@ -141,6 +196,10 @@ export const taskSubmissionUpload = (
           )
         );
       }
+
+      // Sanitize display filename for storage (Unicode NFC, no control chars, quotes, path separators, length cap)
+      const sanitizedOriginalName = sanitizeTaskSubmissionFileName(rawOriginalName);
+      req.file.originalname = sanitizedOriginalName;
 
       // Check for executable binaries (MZ header)
       if (
@@ -231,10 +290,13 @@ export const taskSubmissionUpload = (
         .update(req.file.buffer)
         .digest('hex');
 
-      // Server-generated storage key
-      const sanitizedBase = nameParts[0]
-        .replace(/[^a-zA-Z0-9_-]/g, '_')
-        .slice(0, 50);
+      // Server-generated storage key (stays ASCII and server-generated)
+      const sanitizedBase =
+        nameParts
+          .slice(0, -1)
+          .join('_')
+          .replace(/[^a-zA-Z0-9_-]/g, '_')
+          .slice(0, 50) || 'file';
       const storageKey = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}-${sanitizedBase}.${ext}`;
 
       const uploadDir = path.resolve(process.cwd(), 'uploads/tasks');

@@ -4,8 +4,20 @@ import { TaskService } from '../services/task.service';
 import { ConflictError, ValidationError } from '../utils/appError';
 import { fromZonedTime } from 'date-fns-tz';
 import fs from 'fs';
-import { cleanupTaskFile } from '../middleware/taskSubmissionUpload.middleware';
+import {
+  cleanupTaskFile,
+  sanitizeTaskSubmissionFileName,
+} from '../middleware/taskSubmissionUpload.middleware';
 import { auditLog } from '../utils/audit.utils';
+
+/**
+ * RFC 5987 percent-encodes a string for HTTP headers (Content-Disposition filename*).
+ */
+export function encodeRFC5987(str: string): string {
+  return encodeURIComponent(str)
+    .replace(/['()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+    .replace(/\*/g, '%2A');
+}
 
 export const createTask = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -116,7 +128,7 @@ export const submitTask = catchAsync(
 
     const fileMetadata = req.file
       ? {
-          fileName: req.file.originalname,
+          fileName: sanitizeTaskSubmissionFileName(req.file.originalname),
           fileSize: req.file.size,
           fileType: (req.file as any).detectedType || req.file.mimetype,
           fileHash: (req.file as any).fileHash,
@@ -188,10 +200,15 @@ export const downloadTaskSubmission = catchAsync(
       }
     );
 
-    const safeDownloadName = (submission.fileName || submission.storageKey || 'submission_file')
-      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const rawFileName = submission.fileName || submission.storageKey || 'submission_file';
+    const cleanFileName = sanitizeTaskSubmissionFileName(rawFileName) || 'submission_file';
+    const asciiFallback = cleanFileName.replace(/[^a-zA-Z0-9._-]/g, '_') || 'submission_file';
+    const rfc5987Encoded = encodeRFC5987(cleanFileName);
 
-    res.setHeader('Content-Disposition', `attachment; filename="${safeDownloadName}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${asciiFallback}"; filename*=UTF-8''${rfc5987Encoded}`
+    );
     res.setHeader('X-Content-Type-Options', 'nosniff');
     if (submission.fileType) {
       res.setHeader('Content-Type', submission.fileType);

@@ -83,5 +83,7 @@ artifacts/video/
 artifacts/video-production/
 artifacts/api-server/uploads/conversations/
 artifacts/api-server/uploads/knowledge/
+uploads/tasks/
+artifacts/api-server/uploads/tasks/
 graphify-out/
 
