@@ -20,7 +20,8 @@ import Table, {
   TableCell,
   TableCaption,
 } from "../../../components/ui/table";
-import type { TaskItem } from "../types";
+import type { TaskItem, TaskSubmission } from "../types";
+import { formatTaskFileSize } from "../../../utils/taskSubmissionUrl";
 
 export interface TasksTableProps {
   tasks: TaskItem[];
@@ -40,6 +41,7 @@ export interface TasksTableProps {
   onDelete: (task: TaskItem) => void;
   onSubmit: (task: TaskItem) => void;
   renderStudentStatusBadge: (task: TaskItem) => React.ReactNode;
+  onDownload?: (task: TaskItem, sub: TaskSubmission) => void;
 }
 
 export const TasksTable: React.FC<TasksTableProps> = ({
@@ -60,6 +62,7 @@ export const TasksTable: React.FC<TasksTableProps> = ({
   onDelete,
   onSubmit,
   renderStudentStatusBadge,
+  onDownload,
 }) => {
   const { t } = useTranslation();
 
@@ -173,6 +176,33 @@ export const TasksTable: React.FC<TasksTableProps> = ({
                     <div className="text-[10px] text-slate-400 line-clamp-1 max-w-[200px]">
                       {task.description}
                     </div>
+                    {isStudent && mySub && mySub.fileName && (
+                      <div className="mt-1 flex items-center gap-1.5 text-[10px]">
+                        <span className="font-medium text-slate-700 dark:text-slate-300 truncate max-w-[120px]" title={mySub.fileName}>
+                          {mySub.fileName}
+                        </span>
+                        <span className="text-slate-400">({formatTaskFileSize(mySub.fileSize || 0)})</span>
+                        <button
+                          type="button"
+                          onClick={() => onDownload?.(task, mySub)}
+                          className="text-brand-primary-600 hover:underline font-bold cursor-pointer"
+                          aria-label={t("tasks.downloadSubmissionAria", { name: mySub.fileName, defaultValue: `Download ${mySub.fileName}` })}
+                        >
+                          {t("common.download", "Download")}
+                        </button>
+                      </div>
+                    )}
+                    {isStudent && mySub && mySub.fileUrl && (
+                      <a
+                        href={mySub.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 text-[10px] text-brand-primary-600 hover:underline font-medium inline-flex items-center gap-1"
+                      >
+                        <FileUp size={11} />
+                        <span>{t("tasks.submissionLink", "View submitted link")}</span>
+                      </a>
+                    )}
                   </TableCell>
                   <TableCell className="p-2.5 text-slate-600 dark:text-slate-300 text-[11px] truncate max-w-[150px]">
                     {task.course?.name}

@@ -4,13 +4,17 @@ import {
   Plus,
   Clock,
   CheckCircle,
+  Download,
   FileUp,
   MessageSquare,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import Button from "../../../components/ui/button";
 import Badge from "../../../components/ui/badge";
 import { isTaskPastDue } from "../../../utils/taskDeadline.utils";
+import taskService from "../../../services/task.service";
+import { formatTaskFileSize } from "../../../utils/taskSubmissionUrl";
 import type { CourseTask, CourseStudentSubmission } from "../types";
 
 export interface CourseTasksTabProps {
@@ -137,6 +141,43 @@ export const CourseTasksTab: React.FC<CourseTasksTabProps> = ({
                               date: formatTaskDate(my.submittedAt),
                             })}
                       </div>
+                      {my.fileName && (
+                        <div className="mt-1 flex items-center justify-between gap-2 text-xs bg-surface-subtle p-2 rounded-lg border border-brand-border">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <FileUp size={14} className="text-brand-primary-500 shrink-0" />
+                            <span className="truncate font-semibold text-brand-text-primary dark:text-brand-text-main text-[11px]" title={my.fileName}>
+                              {my.fileName}
+                            </span>
+                            {my.fileSize != null && (
+                              <span className="text-[10px] text-brand-text-muted shrink-0">
+                                ({formatTaskFileSize(my.fileSize)})
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await taskService.downloadSubmission(task.id, my.id, my.fileName || undefined);
+                              } catch (err: unknown) {
+                                const axiosErr = err as { status?: number; message?: string };
+                                const msg =
+                                  axiosErr?.status === 404
+                                    ? t('tasks.downloadNotFound', 'Submission file not found')
+                                    : axiosErr?.status === 403
+                                    ? t('errors.forbidden', 'You do not have permission to perform this action.')
+                                    : axiosErr?.message || t('tasks.downloadFailed', 'Failed to download submission');
+                                toast.error(msg);
+                              }
+                            }}
+                            aria-label={t('tasks.downloadSubmissionAria', { name: my.fileName, defaultValue: `Download ${my.fileName}` })}
+                            className="text-xs text-brand-primary-500 hover:underline font-bold inline-flex items-center gap-1 shrink-0"
+                          >
+                            <Download size={13} />
+                            <span>{t('tasks.downloadSubmission', 'Download')}</span>
+                          </button>
+                        </div>
+                      )}
                       {my.feedback && (
                         <div className="text-[10px] text-brand-text-sub bg-surface-subtle p-2 rounded-lg leading-relaxed flex items-start gap-1">
                           <MessageSquare

@@ -17,8 +17,14 @@ export interface TaskSubmission {
   status: "SUBMITTED" | "GRADED" | "LATE" | string;
   score?: number | null;
   submittedAt?: string;
-  fileUrl?: string;
-  notes?: string;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  fileType?: string | null;
+  fileHash?: string | null;
+  storageKey?: string | null;
+  notes?: string | null;
+  feedback?: string | null;
 }
 
 export interface TaskItem {

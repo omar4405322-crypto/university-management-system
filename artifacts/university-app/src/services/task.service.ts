@@ -57,8 +57,62 @@ const taskService = {
     ),
 
   submitTask: (
-    id: number | string, data: Record<string, unknown> | object): Promise<ApiResponse<any>> =>
-    apiRequest(() => api.post(`/tasks/${id}/submit`, data)),
+    id: number | string,
+    data: Record<string, unknown> | object | FormData
+  ): Promise<ApiResponse<any>> =>
+    apiRequest(() =>
+      api.post(`/tasks/${id}/submit`, data, {
+        headers:
+          typeof FormData !== 'undefined' && data instanceof FormData
+            ? { 'Content-Type': 'multipart/form-data' }
+            : undefined,
+      })
+    ),
+
+  downloadSubmission: async (
+    taskId: number | string,
+    submissionId: number | string,
+    fileName?: string
+  ): Promise<void> => {
+    try {
+      const response = await api.get(
+        `/tasks/${taskId}/submissions/${submissionId}/download`,
+        {
+          responseType: 'blob',
+        }
+      );
+      const contentType = response.headers['content-type'];
+      const blob = new Blob([response.data], {
+        type: typeof contentType === 'string' ? contentType : 'application/octet-stream',
+      });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName || 'submission_file';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: unknown; status?: number } };
+      if (axiosErr?.response?.data instanceof Blob) {
+        try {
+          const text = await (axiosErr.response.data as Blob).text();
+          const parsed = JSON.parse(text) as { message?: string; error?: string };
+          const msg =
+            parsed.message ||
+            parsed.error ||
+            `Download failed with status ${axiosErr.response.status}`;
+          const error = new Error(msg);
+          (error as any).status = axiosErr.response.status;
+          throw error;
+        } catch (e: unknown) {
+          if (e instanceof Error && e.message && !e.message.includes('JSON')) throw e;
+        }
+      }
+      throw err;
+    }
+  },
 
   gradeSubmission: (
     id: number | string,

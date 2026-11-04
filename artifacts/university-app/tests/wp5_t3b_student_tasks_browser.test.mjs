@@ -160,7 +160,18 @@ describe('WP5-T3b Browser Suite: Student Tasks UI, Guards & 24-Cell Matrix', () 
       const submitMatch = url.pathname.match(/\/api\/tasks\/(\d+)\/submit$/);
       if (method === 'POST' && submitMatch) {
         const taskId = parseInt(submitMatch[1], 10);
-        const postData = JSON.parse(route.request().postData() || '{}');
+        let postData = {};
+        const rawPost = route.request().postData() || '';
+        if (rawPost.startsWith('{')) {
+          try { postData = JSON.parse(rawPost); } catch {}
+        } else {
+          const fileUrlMatch = rawPost.match(/name="fileUrl"\r?\n\r?\n([^\r\n]+)/);
+          const notesMatch = rawPost.match(/name="notes"\r?\n\r?\n([^\r\n]+)/);
+          postData = {
+            fileUrl: fileUrlMatch ? fileUrlMatch[1] : undefined,
+            notes: notesMatch ? notesMatch[1] : undefined,
+          };
+        }
         capturedSubmitRequest = {
           taskId,
           method: 'POST',
@@ -400,6 +411,14 @@ describe('WP5-T3b Browser Suite: Student Tasks UI, Guards & 24-Cell Matrix', () 
     // Verify submit modal opens, fill valid URL, click submit and assert request key names and id types
     const submitModal = page.locator('div[role="dialog"]').first();
     await submitModal.waitFor({ state: 'visible', timeout: 5000 });
+
+    const fileInput = submitModal.locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: 'report.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4 test report content'),
+    });
+
     const urlInput = submitModal.locator('input#submit-file-url');
     await urlInput.fill('https://drive.google.com/file/d/submitted-course-task-2');
     const notesInput = submitModal.locator('textarea#submit-notes');
@@ -438,15 +457,20 @@ describe('WP5-T3b Browser Suite: Student Tasks UI, Guards & 24-Cell Matrix', () 
     const submitModal = page.locator('div[role="dialog"]').first();
     await submitModal.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Test blank submission error
+    // Test Submit is disabled when no file is chosen (OD-121)
     const modalSubmitBtn = submitModal.locator('button[type="submit"]');
-    await modalSubmitBtn.click();
+    assert.equal(await modalSubmitBtn.isDisabled(), true, 'Submit button must be disabled when no file is chosen');
 
-    // Inline error for blank submission must appear
+    // Choose file fixture
+    const fileInput = submitModal.locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: 'report.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4 test report content'),
+    });
+    assert.equal(await modalSubmitBtn.isDisabled(), false, 'Submit button must be enabled once a file is chosen');
+
     const blankError = submitModal.locator('p#submit-file-url-error');
-    await blankError.waitFor({ state: 'visible', timeout: 5000 });
-    const blankErrorText = await blankError.textContent();
-    assert.match(blankErrorText, /either a valid link or notes/i, 'Must display inline error for blank submission');
 
     // Test non-HTTPS link error
     const fileUrlInput = submitModal.locator('input#submit-file-url');

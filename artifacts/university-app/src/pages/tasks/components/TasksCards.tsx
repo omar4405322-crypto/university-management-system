@@ -11,7 +11,8 @@ import {
   FileUp,
 } from "lucide-react";
 import Button from "../../../components/ui/button";
-import type { TaskItem } from "../types";
+import type { TaskItem, TaskSubmission } from "../types";
+import { formatTaskFileSize } from "../../../utils/taskSubmissionUrl";
 
 export interface TasksCardsProps {
   tasks: TaskItem[];
@@ -29,6 +30,7 @@ export interface TasksCardsProps {
   onDelete: (task: TaskItem) => void;
   onSubmit: (task: TaskItem) => void;
   renderStudentStatusBadge: (task: TaskItem) => React.ReactNode;
+  onDownload?: (task: TaskItem, sub: TaskSubmission) => void;
 }
 
 export const TasksCards: React.FC<TasksCardsProps> = ({
@@ -47,6 +49,7 @@ export const TasksCards: React.FC<TasksCardsProps> = ({
   onDelete,
   onSubmit,
   renderStudentStatusBadge,
+  onDownload,
 }) => {
   const { t } = useTranslation();
 
@@ -136,9 +139,47 @@ export const TasksCards: React.FC<TasksCardsProps> = ({
                 {task.description}
               </p>
 
-              {/* Student Status Indicator */}
+              {/* Student Status Indicator & Submission File */}
               {isStudent && (
-                <div className="mb-3">{renderStudentStatusBadge(task)}</div>
+                <div className="mb-3 space-y-1.5">
+                  <div>{renderStudentStatusBadge(task)}</div>
+                  {mySub && mySub.fileName && (
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileUp size={14} className="text-brand-primary-600 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-800 dark:text-slate-100 truncate" title={mySub.fileName}>
+                            {mySub.fileName}
+                          </p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                            {mySub.fileSize ? formatTaskFileSize(mySub.fileSize) : ""}
+                            {mySub.fileSize && mySub.fileType ? " · " : ""}
+                            {mySub.fileType || ""}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onDownload?.(task, mySub)}
+                        className="text-xs text-brand-primary-600 hover:text-brand-primary-700 font-bold hover:underline shrink-0 cursor-pointer"
+                        aria-label={t("tasks.downloadSubmissionAria", { name: mySub.fileName, defaultValue: `Download ${mySub.fileName}` })}
+                      >
+                        {t("common.download", "Download")}
+                      </button>
+                    </div>
+                  )}
+                  {mySub && mySub.fileUrl && (
+                    <a
+                      href={mySub.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-brand-primary-600 hover:underline font-semibold inline-flex items-center gap-1"
+                    >
+                      <FileUp size={12} />
+                      <span>{t("tasks.submissionLink", "View submitted link")}</span>
+                    </a>
+                  )}
+                </div>
               )}
 
               {/* Doctor/Admin: Submissions Progress Bar */}

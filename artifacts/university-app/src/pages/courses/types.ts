@@ -92,6 +92,9 @@ export interface CourseStudentSubmission {
   feedback?: string | null;
   fileUrl?: string | null;
   content?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  fileType?: string | null;
 }
 
 export interface CourseEnrollmentRecord {

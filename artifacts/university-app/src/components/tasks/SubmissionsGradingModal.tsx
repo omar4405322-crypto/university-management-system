@@ -5,10 +5,12 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
+  Download,
   FileUp,
   Loader2,
   Search,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Modal from '../ui/Modal';
 import Badge from '../ui/badge';
 import Button from '../ui/button';
@@ -17,7 +19,10 @@ import taskService, {
   type GetTaskSubmissionsParams,
 } from '../../services/task.service';
 import { EmptyState } from '../ui/EmptyState';
-import { getSubmissionDestinationHostname } from '../../utils/taskSubmissionUrl';
+import {
+  formatTaskFileSize,
+  getSubmissionDestinationHostname,
+} from '../../utils/taskSubmissionUrl';
 import { MAX_TASK_FEEDBACK_LENGTH } from '../../utils/taskDeadline.utils';
 
 type StudentT = {
@@ -32,6 +37,9 @@ type SubmissionT = {
   id: number;
   studentId: number;
   fileUrl: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  fileType?: string | null;
   score: number | null;
   submittedAt: string;
   notes: string | null;
@@ -131,6 +139,26 @@ const SubmissionRow = memo(function SubmissionRowImpl({
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<boolean>(!!(sub && sub.score != null));
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = useCallback(async (s: SubmissionT) => {
+    if (!taskId || !s.id || downloading) return;
+    setDownloading(true);
+    try {
+      await taskService.downloadSubmission(taskId, s.id, s.fileName || undefined);
+    } catch (err: unknown) {
+      const axiosErr = err as { status?: number; message?: string };
+      const msg =
+        axiosErr?.status === 404
+          ? t('tasks.downloadNotFound', 'Submission file not found')
+          : axiosErr?.status === 403
+          ? t('errors.forbidden', 'You do not have permission to perform this action.')
+          : axiosErr?.message || t('tasks.downloadFailed', 'Failed to download submission');
+      toast.error(msg);
+    } finally {
+      setDownloading(false);
+    }
+  }, [taskId, downloading, t]);
 
   // Keep row controlled state in sync if the row's submission changes externally
   useEffect(() => {
@@ -265,6 +293,33 @@ const SubmissionRow = memo(function SubmissionRowImpl({
         </p>
         {sub?.notes && (
           <p className="text-xs text-brand-text-sub mt-2">{sub.notes}</p>
+        )}
+        {sub?.fileName && (
+          <div className="mt-2 space-y-1">
+            <div className="inline-flex items-center gap-1.5 text-xs text-brand-text-primary dark:text-brand-text-main font-semibold">
+              <FileUp size={14} className="text-brand-primary-500 shrink-0" />
+              <span className="truncate max-w-[220px]" title={sub.fileName}>{sub.fileName}</span>
+              {(sub.fileSize != null || sub.fileType) && (
+                <span className="text-[11px] text-brand-text-muted">
+                  {sub.fileSize != null ? `(${formatTaskFileSize(sub.fileSize)})` : ""}
+                  {sub.fileSize != null && sub.fileType ? " · " : ""}
+                  {sub.fileType || ""}
+                </span>
+              )}
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => handleDownload(sub)}
+                disabled={downloading}
+                aria-label={t('tasks.downloadSubmissionAria', { name: sub.fileName, defaultValue: `Download ${sub.fileName}` })}
+                className="text-xs text-brand-primary-500 hover:underline font-bold inline-flex items-center gap-1 disabled:opacity-50"
+              >
+                {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                {downloading ? t('tasks.downloading', 'Downloading...') : t('tasks.downloadSubmission', 'Download file')}
+              </button>
+            </div>
+          </div>
         )}
         {sub?.fileUrl && (
           <a

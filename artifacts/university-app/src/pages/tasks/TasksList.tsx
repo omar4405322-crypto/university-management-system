@@ -33,6 +33,7 @@ import { hasCapability } from "../../config/capabilities";
 
 import type {
   TaskItem,
+  TaskSubmission,
   CourseOption,
   CreateTaskFormData,
   SubmitTaskFormData,
@@ -334,7 +335,7 @@ export function TasksList() {
     }
   };
 
-  const onSubmitTask = async (data: SubmitTaskFormData) => {
+  const onSubmitTask = async (data: FormData) => {
     if (!selectedTask) return;
     try {
       const result = await taskService.submitTask(
@@ -349,10 +350,13 @@ export function TasksList() {
         setShowSubmitModal(false);
         fetchTasks(true);
       } else {
-        showToast(
-          result.message || t("tasks.submitError", "Error submitting task"),
-          "error",
-        );
+        const errorMsg =
+          result.status === 409
+            ? t("tasks.conflictAlreadySubmitted", "You have already submitted this task. Only one submission per task is allowed.")
+            : result.status === 403
+            ? t("errors.forbidden", "You do not have permission to perform this action.")
+            : result.message || t("tasks.submitError", "Error submitting task");
+        showToast(errorMsg, "error");
       }
     } catch (error: any) {
       showToast(
@@ -360,6 +364,20 @@ export function TasksList() {
           t("tasks.submitError", "Error submitting task"),
         "error",
       );
+    }
+  };
+
+  const handleDownloadSubmission = async (task: TaskItem, sub: TaskSubmission) => {
+    try {
+      await taskService.downloadSubmission(task.id, sub.id, sub.fileName || "submission_file");
+    } catch (err: any) {
+      const msg =
+        err?.status === 404
+          ? t("tasks.downloadNotFound", "Submission file not found")
+          : err?.status === 403
+          ? t("errors.forbidden", "You do not have permission to perform this action.")
+          : err?.message || t("tasks.downloadFailed", "Failed to download file");
+      showToast(msg, "error");
     }
   };
 
@@ -629,6 +647,7 @@ export function TasksList() {
             setShowSubmitModal(true);
           }}
           renderStudentStatusBadge={renderStudentStatusBadge}
+          onDownload={handleDownloadSubmission}
         />
       ) : (
         <TasksTable
@@ -661,6 +680,7 @@ export function TasksList() {
             setShowSubmitModal(true);
           }}
           renderStudentStatusBadge={renderStudentStatusBadge}
+          onDownload={handleDownloadSubmission}
         />
       )}
 

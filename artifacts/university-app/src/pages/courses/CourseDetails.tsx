@@ -35,7 +35,8 @@ import { CourseUploadModal } from "./components/CourseUploadModal";
 import { CourseOverviewTab } from "./components/CourseOverviewTab";
 import { CourseMaterialsTab } from "./components/CourseMaterialsTab";
 import { CourseTasksTab } from "./components/CourseTasksTab";
-import { CreateTaskModal, SubmitTaskModal } from "./components/CourseTaskModals";
+import { CreateTaskModal } from "./components/CourseTaskModals";
+import { TaskSubmitModal } from "../tasks/components/TaskSubmitModal";
 import type {
   CourseDetailsData,
   CourseMaterial,
@@ -574,24 +575,36 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
     }
   };
 
-  const handleSubmitTaskSubmit = async (data: {
-    fileUrl: string;
-    notes?: string;
-  }) => {
+  const handleSubmitTaskSubmit = async (formData: FormData) => {
     if (!selectedTask) return;
-    const res = await taskService.submitTask(selectedTask.id, {
-      notes: data.notes,
-      fileUrl: data.fileUrl,
-    });
-    if (res.success) {
+    try {
+      const result = await taskService.submitTask(selectedTask.id, formData);
+      if (result.success) {
+        showToast(
+          t("tasks.submitSuccess", "Task submitted successfully"),
+          "success"
+        );
+        setShowSubmitModal(false);
+        fetchCourseDetails();
+        fetchCourseMySubmissions();
+      } else {
+        const errorMsg =
+          result.status === 409
+            ? t("tasks.conflictAlreadySubmitted", "You have already submitted this task. Only one submission per task is allowed.")
+            : result.status === 403
+            ? t("errors.forbidden", "You do not have permission to perform this action.")
+            : result.status === 400
+            ? result.message || t("tasks.invalidFile", "Invalid file submission")
+            : result.message || t("tasks.submitError", "Error submitting task");
+        showToast(errorMsg, "error");
+      }
+    } catch (error: any) {
       showToast(
-        isRTL ? "تم تسليم التكليف بنجاح" : "Task submitted successfully",
-        "success"
+        error?.response?.data?.message ||
+          error?.message ||
+          t("tasks.submitError", "Error submitting task"),
+        "error"
       );
-      fetchCourseDetails();
-      fetchCourseMySubmissions();
-    } else {
-      throw new Error(res.message || "Failed to submit task");
     }
   };
 
@@ -1101,10 +1114,28 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
       />
 
       {/* SUBMIT TASK MODAL */}
-      <SubmitTaskModal
+      <TaskSubmitModal
         isOpen={showSubmitModal}
         onClose={() => setShowSubmitModal(false)}
-        task={selectedTask}
+        task={
+          selectedTask
+            ? {
+                id: selectedTask.id,
+                title: selectedTask.title,
+                description: selectedTask.description || "",
+                dueDate: selectedTask.dueDate,
+                maxScore: selectedTask.maxScore,
+                courseId: selectedTask.courseId,
+                course: course
+                  ? {
+                      id: course.id,
+                      name: course.name,
+                      courseCode: course.courseCode,
+                    }
+                  : undefined,
+              }
+            : null
+        }
         onSubmit={handleSubmitTaskSubmit}
       />
 
