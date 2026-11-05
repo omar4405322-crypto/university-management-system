@@ -54,6 +54,7 @@ model User {
   gradeEntriesDrafted                CourseGradeEntry[]         @relation("GradeEntryDraftedBy")
   gradeEntriesPublished              CourseGradeEntry[]         @relation("GradeEntryPublishedBy")
   attendanceWeightsUpdated           AttendanceStatusWeight[]   @relation("AttendanceStatusWeightUpdatedBy")
+  submissionIntegrityPoliciesUpdated SubmissionIntegrityPolicy[] @relation("SubmissionIntegrityPolicyUpdatedBy")
   isActive                   Boolean                    @default(true)
   deactivatedAt              DateTime?
 
@@ -477,6 +478,7 @@ model TaskSubmission {
   @@unique([taskId, studentId])
   @@index([taskId, studentId])
   @@index([studentId, taskId])
+  @@index([taskId, fileHash])
   @@index([enrollmentId])
 }
 
@@ -901,6 +903,7 @@ model CourseMaterial {
   fileName     String?
   fileSize     Int?
   fileType     String?
+  fileHash     String?
   isPublished  Boolean      @default(true)
   courseId     Int
   course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -947,6 +950,18 @@ model AttendanceStatusWeight {
   updatedBy   User             @relation("AttendanceStatusWeightUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+
+  @@index([updatedById])
+}
+
+model SubmissionIntegrityPolicy {
+  id                  Int      @id @default(1)
+  exactDuplicateBlock Boolean  @default(true)
+  similarityThreshold Float?
+  updatedById         Int
+  updatedBy           User     @relation("SubmissionIntegrityPolicyUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@index([updatedById])
 }

@@ -1095,6 +1095,62 @@ paths:
         "422":
           $ref: "#/components/responses/ValidationError"
 
+  /submission-integrity/policy:
+    get:
+      operationId: getSubmissionIntegrityPolicy
+      tags: [tasks]
+      summary: Retrieve submission integrity policy (Super Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Effective submission integrity policy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/SubmissionIntegrityPolicyData"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+    put:
+      operationId: updateSubmissionIntegrityPolicy
+      tags: [tasks]
+      summary: Update submission integrity policy (Super Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmissionIntegrityPolicyUpdateInput"
+      responses:
+        "200":
+          description: Submission integrity policy updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/SubmissionIntegrityPolicyData"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
   /tasks:
     get:
       operationId: listTasks
@@ -1188,11 +1244,11 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "401":
-          $ref: "#/components/responses/Unauthorized"
+          $ref: "#/components/responses/UnauthorizedError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/ForbiddenError"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/NotFoundError"
 
   /quizzes:
     get:
@@ -2350,6 +2406,43 @@ components:
         PENDING_REVIEW:
           type: number
           example: 0.25
+
+    SubmissionIntegrityPolicyData:
+      type: object
+      required:
+        - exactDuplicateBlock
+        - isDefault
+      properties:
+        id:
+          type: integer
+        exactDuplicateBlock:
+          type: boolean
+          example: true
+        similarityThreshold:
+          type: number
+          nullable: true
+          example: 0.85
+        isDefault:
+          type: boolean
+          example: false
+        updatedById:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SubmissionIntegrityPolicyUpdateInput:
+      type: object
+      properties:
+        exactDuplicateBlock:
+          type: boolean
+        similarityThreshold:
+          type: number
+          nullable: true
+          example: 0.85
 
     TaskItem:
       type: object
