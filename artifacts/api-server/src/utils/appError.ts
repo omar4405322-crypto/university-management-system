@@ -69,6 +69,17 @@ export class NotFoundError extends AppError {
 /**
  * Conflict errors (409)
  */
+export class DuplicateSubmissionError extends AppError {
+  public code: string;
+  constructor(
+    message: string = 'This file cannot be accepted because an identical submission already exists for this assignment. Please submit your own original work.'
+  ) {
+    super(message, 409);
+    this.code = 'DUPLICATE_SUBMISSION';
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
 export class ConflictError extends AppError {
   constructor(message: string) {
     super(message, 409);

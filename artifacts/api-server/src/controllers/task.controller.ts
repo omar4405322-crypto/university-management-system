@@ -151,6 +151,15 @@ export const submitTask = catchAsync(
       if (req.file?.path) {
         cleanupTaskFile(req.file.path);
       }
+      if ((error as any)?.code === 'DUPLICATE_SUBMISSION') {
+        return res.status(409).json({
+          success: false,
+          code: 'DUPLICATE_SUBMISSION',
+          message:
+            (error as any).message ||
+            'This file cannot be accepted because an identical submission already exists for this assignment. Please submit your own original work.',
+        });
+      }
       if (
         typeof error === 'object' &&
         error !== null &&

@@ -1,4 +1,5 @@
 import fs from 'fs';
+import crypto from 'node:crypto';
 import path from 'path';
 import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
@@ -968,7 +969,10 @@ export const uploadCourseMaterial = catchAsync(async (req: Request, res: Respons
   }
 
   // Threat T-B: Derive fileUrl on upload; accept body fileUrl ONLY as an HTTPS link
+  let fileHash: string | null = null;
   if (req.file) {
+    const fileBuffer = await fs.promises.readFile(req.file.path);
+    fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
     fileUrl = `/uploads/materials/${req.file.filename}`;
     fileName = req.file.originalname;
     fileSize = req.file.size;
@@ -1028,6 +1032,7 @@ export const uploadCourseMaterial = catchAsync(async (req: Request, res: Respons
       fileName,
       fileSize,
       fileType,
+      fileHash,
       courseId,
       uploadedById: req.user.id,
     },

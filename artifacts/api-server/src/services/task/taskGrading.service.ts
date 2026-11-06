@@ -5,6 +5,7 @@ import {
   AuthorizationError,
   NotFoundError,
   ConflictError,
+  DuplicateSubmissionError,
   ValidationError,
 } from "../../utils/appError";
 import { auditLog } from "../../utils/audit.utils";
@@ -22,6 +23,8 @@ import {
 import type { AuthActor } from "../../types/auth.types";
 import { Prisma } from "@prisma/client";
 import { TaskScopeService } from "./taskScope.service";
+import { SubmissionIntegrityService } from "../submissionIntegrity.service";
+import logger from "../../utils/logger";
 
 export interface TaskFileMetadata {
   fileName: string;
@@ -134,29 +137,64 @@ export class TaskGradingService {
 
     await TaskScopeService.validateCourseScope(user, taskObj.course);
 
+    const policy = await SubmissionIntegrityService.getEffectivePolicy();
     let oldFileToRemove: string | null = null;
 
-    const result = await prisma.$transaction(async (tx) => {
-      const existingSubmission = await tx.taskSubmission.findUnique({
-        where: { taskId_studentId: { taskId, studentId: student.id } },
-      });
+    let result: SubmitTaskResult;
+    try {
+      result = await prisma.$transaction(async (tx) => {
+        const existingSubmission = await tx.taskSubmission.findUnique({
+          where: { taskId_studentId: { taskId, studentId: student.id } },
+        });
 
-      if (taskObj.dueDate && isTaskPastDue(taskObj.dueDate)) {
-        throw new ConflictError(
-          existingSubmission
-            ? "The deadline for this task has passed. Resubmission is not allowed."
-            : "The deadline for this task has passed. Submission is not allowed.",
-        );
-      }
-
-      if (existingSubmission) {
-        if (existingSubmission.score !== null) {
+        if (taskObj.dueDate && isTaskPastDue(taskObj.dueDate)) {
           throw new ConflictError(
-            "This task submission has already been graded and cannot be resubmitted.",
+            existingSubmission
+              ? "The deadline for this task has passed. Resubmission is not allowed."
+              : "The deadline for this task has passed. Submission is not allowed.",
           );
         }
 
-        // Threat S-B: parallel double submit / rapid duplicate submit -> 409 Conflict
+        if (existingSubmission) {
+          if (existingSubmission.score !== null) {
+            throw new ConflictError(
+              "This task submission has already been graded and cannot be resubmitted.",
+            );
+          }
+        }
+
+        if (data.fileMetadata?.fileHash && policy.exactDuplicateBlock) {
+          // C3: pg_advisory_xact_lock keyed by (taskId, hash) inside submit transaction
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(${taskId}::int, hashtext(${data.fileMetadata.fileHash}))`;
+
+          // C6: A file whose hash equals a CourseMaterial.fileHash of the task's course is never blocked
+          const isCourseMaterial = await tx.courseMaterial.findFirst({
+            where: {
+              courseId: taskObj.courseId,
+              fileHash: data.fileMetadata.fileHash,
+            },
+            select: { id: true },
+          });
+
+          if (!isCourseMaterial) {
+            // C1, C2, C4, C5, C7: check for duplicate submission by another student for this task
+            const duplicateSubmission = await tx.taskSubmission.findFirst({
+              where: {
+                taskId,
+                fileHash: data.fileMetadata.fileHash,
+                studentId: { not: student.id },
+              },
+              select: { id: true },
+            });
+
+            if (duplicateSubmission) {
+              throw new DuplicateSubmissionError();
+            }
+          }
+        }
+
+        if (existingSubmission) {
+          // Threat S-B: parallel double submit / rapid duplicate submit -> 409 Conflict
         if (Date.now() - existingSubmission.submittedAt.getTime() < 150) {
           throw new ConflictError(
             "You have already submitted this task. Only one submission per task is allowed."
@@ -284,6 +322,26 @@ export class TaskGradingService {
       );
       return finalSubmission;
     });
+    } catch (txError) {
+      if ((txError as any)?.code === "DUPLICATE_SUBMISSION") {
+        try {
+          await auditLog(
+            "SUBMISSION_DUPLICATE_BLOCKED",
+            "TaskSubmission",
+            String(taskId),
+            reqSource || { user },
+            {
+              taskId,
+              fileHash: data.fileMetadata?.fileHash,
+              studentId: student.id,
+            }
+          );
+        } catch (auditErr) {
+          logger.warn("Failed to write audit log for blocked duplicate submission", { error: auditErr });
+        }
+      }
+      throw txError;
+    }
 
     // Threat S-C: unlink old file after successful commit
     if (oldFileToRemove) {

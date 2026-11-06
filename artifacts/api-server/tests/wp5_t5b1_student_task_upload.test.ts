@@ -22,6 +22,7 @@ const VALID_PDF_BUFFER = Buffer.from(
 );
 
 // Text buffer
+const VALID_PDF_BUFFER_S2 = Buffer.concat([VALID_PDF_BUFFER, Buffer.from('\n% distinct bytes for student 2\n')]);
 const VALID_TXT_BUFFER = Buffer.from('Hello UniCore assignment submission content\n', 'utf8');
 
 test('WP5-T5b-1: Student File Upload for Task Submissions - Backend Hardening & Threat Model', async (t) => {
@@ -622,7 +623,7 @@ test('WP5-T5b-1: Student File Upload for Task Submissions - Backend Hardening & 
 
       // 2. Student 2 submits on-time active task
       const s2Res = await submitMultipartTask(activeTask.id, tokens.student2, {
-        fileBuffer: VALID_PDF_BUFFER,
+        fileBuffer: VALID_PDF_BUFFER_S2,
         filename: 's2_initial.pdf',
         contentType: 'application/pdf',
       });
