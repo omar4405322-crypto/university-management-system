@@ -15,6 +15,10 @@ import { taskValidation, functionalIdValidation } from '../validations/functiona
 import { body, param, query } from 'express-validator';
 import validate from '../middleware/validate.middleware';
 import { taskSubmissionUpload } from '../middleware/taskSubmissionUpload.middleware';
+import {
+  getTaskSimilarityFlags,
+  decideTaskSimilarityFlag,
+} from '../controllers/submissionSimilarity.controller';
 
 const router = express.Router();
 
@@ -141,6 +145,18 @@ router.get(
   functionalIdValidation,
   validate,
   getMySubmission
+);
+
+router.get(
+  '/:id/similarity-flags',
+  authorize('DOCTOR', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN'),
+  getTaskSimilarityFlags
+);
+
+router.patch(
+  '/:id/similarity-flags/:flagId',
+  authorize('DOCTOR', 'ADMIN', 'COLLEGE_ADMIN', 'DEPARTMENT_ADMIN', 'SUPER_ADMIN'),
+  decideTaskSimilarityFlag
 );
 
 export default router;

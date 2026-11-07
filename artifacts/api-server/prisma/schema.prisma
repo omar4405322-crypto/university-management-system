@@ -57,6 +57,7 @@ model User {
   submissionIntegrityPoliciesUpdated SubmissionIntegrityPolicy[] @relation("SubmissionIntegrityPolicyUpdatedBy")
   isActive                   Boolean                    @default(true)
   deactivatedAt              DateTime?
+  similarityFlagsReviewed            SubmissionSimilarityFlag[] @relation("SimilarityFlagReviewedBy")
 
   @@index([role])
   @@index([email])
@@ -441,7 +442,8 @@ model Task {
   doctor       Doctor           @relation(fields: [doctorId], references: [id], onDelete: Restrict)
   dueDate      DateTime
   maxScore     Int              @default(100)
-  submissions  TaskSubmission[]
+  submissions     TaskSubmission[]
+  similarityFlags SubmissionSimilarityFlag[]
   createdAt    DateTime         @default(now())
   isDeleted    Boolean          @default(false)
   deletedAt    DateTime?
@@ -472,7 +474,10 @@ model TaskSubmission {
   storageKey   String?
   notes        String?
   score        Float?
-  feedback     String?
+  feedback           String?
+  fingerprint        TaskSubmissionFingerprint?
+  similarityFlagsAsA SubmissionSimilarityFlag[] @relation("SubmissionSimilarityFlagA")
+  similarityFlagsAsB SubmissionSimilarityFlag[] @relation("SubmissionSimilarityFlagB")
   submittedAt  DateTime   @default(now())
 
   @@unique([taskId, studentId])
@@ -1366,3 +1371,39 @@ model CourseGradeEntry {
   @@index([status])
 }
 
+
+model TaskSubmissionFingerprint {
+  id           String         @id @default(cuid())
+  submissionId Int            @unique
+  submission   TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  fileHash     String
+  status       String
+  signature    Bytes?
+  shingleCount Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model SubmissionSimilarityFlag {
+  id              String         @id @default(cuid())
+  taskId          Int
+  task            Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  submissionAId   Int
+  submissionA     TaskSubmission @relation("SubmissionSimilarityFlagA", fields: [submissionAId], references: [id], onDelete: Cascade)
+  submissionBId   Int
+  submissionB     TaskSubmission @relation("SubmissionSimilarityFlagB", fields: [submissionBId], references: [id], onDelete: Cascade)
+  fileHashA       String
+  fileHashB       String
+  similarityScore Float
+  thresholdUsed   Float
+  status          String         @default("PENDING")
+  reviewedById    Int?
+  reviewedBy      User?          @relation("SimilarityFlagReviewedBy", fields: [reviewedById], references: [id], onDelete: Restrict)
+  reviewedAt      DateTime?
+  reviewNote      String?
+  createdAt       DateTime       @default(now())
+
+  @@unique([submissionAId, submissionBId, fileHashA, fileHashB])
+  @@index([taskId, status])
+  @@index([submissionBId])
+}

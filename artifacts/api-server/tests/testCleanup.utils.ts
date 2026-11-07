@@ -114,12 +114,34 @@ export async function cleanupTestEntities(prisma: PrismaClient, entities: Cleanu
   // 6. Submissions & Metrics on Students / Enrollments
   if (studentIds.length > 0) {
     await prisma.studentSuccessMetric.deleteMany({ where: { studentId: { in: studentIds } } }).catch(() => {});
+    await prisma.submissionSimilarityFlag.deleteMany({
+      where: {
+        OR: [
+          { submissionA: { studentId: { in: studentIds } } },
+          { submissionB: { studentId: { in: studentIds } } },
+        ],
+      },
+    }).catch(() => {});
+    await prisma.taskSubmissionFingerprint.deleteMany({
+      where: { submission: { studentId: { in: studentIds } } },
+    }).catch(() => {});
     await prisma.taskSubmission.deleteMany({ where: { studentId: { in: studentIds } } }).catch(() => {});
     await prisma.quizSubmission.deleteMany({ where: { studentId: { in: studentIds } } }).catch(() => {});
     await prisma.examSubmission.deleteMany({ where: { studentId: { in: studentIds } } }).catch(() => {});
     await prisma.payment.deleteMany({ where: { studentId: { in: studentIds } } }).catch(() => {});
   }
   if (enrollmentIds.length > 0) {
+    await prisma.submissionSimilarityFlag.deleteMany({
+      where: {
+        OR: [
+          { submissionA: { enrollmentId: { in: enrollmentIds } } },
+          { submissionB: { enrollmentId: { in: enrollmentIds } } },
+        ],
+      },
+    }).catch(() => {});
+    await prisma.taskSubmissionFingerprint.deleteMany({
+      where: { submission: { enrollmentId: { in: enrollmentIds } } },
+    }).catch(() => {});
     await prisma.taskSubmission.deleteMany({ where: { enrollmentId: { in: enrollmentIds } } }).catch(() => {});
     await prisma.quizSubmission.deleteMany({ where: { enrollmentId: { in: enrollmentIds } } }).catch(() => {});
     await prisma.examSubmission.deleteMany({ where: { enrollmentId: { in: enrollmentIds } } }).catch(() => {});

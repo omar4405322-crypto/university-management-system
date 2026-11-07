@@ -1252,6 +1252,87 @@ paths:
         "404":
           $ref: "#/components/responses/NotFoundError"
 
+  /tasks/{id}/similarity-flags:
+    get:
+      operationId: listTaskSimilarityFlags
+      tags: [tasks]
+      summary: List similarity flags for a task
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of similarity flags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TaskSimilarityFlagItem"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /tasks/{id}/similarity-flags/{flagId}:
+    patch:
+      operationId: decideTaskSimilarityFlag
+      tags: [tasks]
+      summary: Review and decide on a task similarity flag
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: flagId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecideSimilarityFlagInput"
+      responses:
+        "200":
+          description: Flag reviewed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/TaskSimilarityFlagItem"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
   /quizzes:
     get:
       operationId: listQuizzes
@@ -2445,6 +2526,65 @@ components:
           type: number
           nullable: true
           example: 0.85
+
+    DecideSimilarityFlagInput:
+      type: object
+      required:
+        - decision
+      additionalProperties: false
+      properties:
+        decision:
+          type: string
+          enum: [CONFIRMED, DISMISSED]
+        note:
+          type: string
+          maxLength: 1000
+
+    TaskSimilaritySideItem:
+      type: object
+      properties:
+        submissionId:
+          type: integer
+        studentId:
+          type: string
+        studentName:
+          type: string
+        fileName:
+          type: string
+          nullable: true
+        submittedAt:
+          type: string
+          format: date-time
+
+    TaskSimilarityFlagItem:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, DISMISSED]
+        similarityScore:
+          type: number
+        thresholdUsed:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        reviewedById:
+          type: integer
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewNote:
+          type: string
+          nullable: true
+        submissionA:
+          $ref: "#/components/schemas/TaskSimilaritySideItem"
+        submissionB:
+          $ref: "#/components/schemas/TaskSimilaritySideItem"
 
     TaskItem:
       type: object
