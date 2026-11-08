@@ -20,7 +20,10 @@ async function buildAll() {
   }
 
   await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
+    entryPoints: {
+      index: path.resolve(artifactDir, "src/index.ts"),
+      "textExtraction.worker": path.resolve(artifactDir, "src/services/similarity/textExtraction.worker.ts"),
+    },
     platform: "node",
     bundle: true,
     format: "esm",
