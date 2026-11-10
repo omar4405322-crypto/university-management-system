@@ -25,6 +25,7 @@ import { Prisma } from "@prisma/client";
 import { TaskScopeService } from "./taskScope.service";
 import { SubmissionIntegrityService } from "../submissionIntegrity.service";
 import logger from "../../utils/logger";
+import { enqueueSubmissionSimilarity } from "../similarity/similarityRuntime";
 
 export interface TaskFileMetadata {
   fileName: string;
@@ -347,6 +348,11 @@ export class TaskGradingService {
     if (oldFileToRemove) {
       const allowedDir = path.resolve(process.cwd(), "uploads/tasks");
       cleanupTaskFile(path.join(allowedDir, oldFileToRemove));
+    }
+
+    if (data.fileMetadata) {
+      const submissionId = "data" in result ? result.data.id : result.id;
+      enqueueSubmissionSimilarity(submissionId);
     }
 
     return result;

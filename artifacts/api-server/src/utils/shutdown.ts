@@ -4,10 +4,19 @@ import prisma from "./prismaClient";
 import { closeRedis } from "./redis.utils";
 import { stopAllCronJobs } from "./cron";
 import { closeSocket } from "./socket";
+import { stopSimilarityRuntime } from "../services/similarity/similarityRuntime";
 
 import { isShuttingDown, setShuttingDown, resetShutdownState as resetLifecycle } from "./lifecycleState";
 
 export { isShuttingDown, setShuttingDown };
+
+export async function stopSimilarityShutdownStep(): Promise<void> {
+  try {
+    await stopSimilarityRuntime();
+  } catch (err: any) {
+    logger.warn(`[SHUTDOWN] Similarity runtime stop error: ${err?.message || err}`);
+  }
+}
 
 export interface ShutdownDependencies {
   server?: http.Server | null;
@@ -67,6 +76,12 @@ export const gracefulShutdown = (
           await deps.stopCron();
         } else {
           stopAllCronJobs();
+        }
+
+        try {
+          await stopSimilarityShutdownStep();
+        } catch (err: any) {
+          logger.warn(`[SHUTDOWN] Step 1 similarity stop error: ${err?.message || err}`);
         }
 
         // Step 2: Stop accepting new HTTP requests and drain active requests
