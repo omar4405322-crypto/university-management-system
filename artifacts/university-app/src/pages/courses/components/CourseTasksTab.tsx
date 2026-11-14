@@ -22,6 +22,7 @@ export interface CourseTasksTabProps {
   courseMySubmissions: Record<number, CourseStudentSubmission | null | undefined>;
   isStudent: boolean;
   canCreateTask: boolean;
+  canViewSubmissions?: boolean;
   formatTaskDate: (dateStr: string) => string;
   onCreateTask: () => void;
   onSubmitTask: (task: CourseTask) => void;
@@ -33,6 +34,7 @@ export const CourseTasksTab: React.FC<CourseTasksTabProps> = ({
   courseMySubmissions,
   isStudent,
   canCreateTask,
+  canViewSubmissions = false,
   formatTaskDate,
   onCreateTask,
   onSubmitTask,
@@ -251,7 +253,7 @@ export const CourseTasksTab: React.FC<CourseTasksTabProps> = ({
                           {t("tasks.submitTask", "Submit Assignment")}
                         </Button>
                       )
-                    ) : (
+                    ) : canViewSubmissions ? (
                       <Button
                         variant="outline"
                         onClick={() => onViewSubmissions(task)}
@@ -260,7 +262,7 @@ export const CourseTasksTab: React.FC<CourseTasksTabProps> = ({
                         <CheckCircle size={14} className="me-1" />
                         {t("tasks.viewSubmissions", "View Submissions")}
                       </Button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>

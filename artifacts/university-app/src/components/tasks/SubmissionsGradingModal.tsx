@@ -9,6 +9,7 @@ import {
   FileUp,
   Loader2,
   Search,
+  ShieldAlert,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../ui/Modal';
@@ -24,6 +25,14 @@ import {
   getSubmissionDestinationHostname,
 } from '../../utils/taskSubmissionUrl';
 import { MAX_TASK_FEEDBACK_LENGTH } from '../../utils/taskDeadline.utils';
+import { hasCapability } from '../../config/capabilities';
+import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { useTabListKeyboard } from '../../hooks/useTabListKeyboard';
+import submissionSimilarityService, {
+  type SubmissionSimilarityFlagItem,
+} from '../../services/submissionSimilarity.service';
+import { SimilarityFlagsPanel } from './SimilarityFlagsPanel';
 
 type StudentT = {
   id: number;
@@ -445,6 +454,15 @@ const SubmissionsGradingModal: React.FC<SubmissionsGradingModalProps> = ({
   onGradeSaved,
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const { isRTL } = useLanguage();
+  const tabKeyboard = useTabListKeyboard({ isRTL });
+  const canViewSimilarityFlags = hasCapability(user?.role, 'tasks.similarityFlags');
+
+  const [activeTab, setActiveTab] = useState<'submissions' | 'similarityFlags'>('submissions');
+  const [similarityFlags, setSimilarityFlags] = useState<SubmissionSimilarityFlagItem[]>([]);
+  const [flagsLoading, setFlagsLoading] = useState(false);
+  const [flagsError, setFlagsError] = useState<string | null>(null);
 
   // Filter state (kept inside modal, resets on task change)
   const [searchInput, setSearchInput] = useState('');
@@ -505,6 +523,57 @@ const SubmissionsGradingModal: React.FC<SubmissionsGradingModalProps> = ({
   useEffect(() => {
     if (isOpen && taskId) fetchData(true);
   }, [isOpen, taskId, fetchData]);
+
+  const tRef = React.useRef(t);
+  tRef.current = t;
+  const activeOpenTaskRef = React.useRef<string | number | null>(null);
+
+  const fetchSimilarityFlags = useCallback(async () => {
+    if (!taskId || !canViewSimilarityFlags) return;
+    const requestedTaskId = taskId;
+    setFlagsLoading(true);
+    setFlagsError(null);
+    const res = await submissionSimilarityService.listFlags(requestedTaskId);
+    if (activeOpenTaskRef.current !== requestedTaskId) return;
+    if (res.success && Array.isArray(res.data)) {
+      setSimilarityFlags(res.data);
+    } else {
+      setSimilarityFlags([]);
+      setFlagsError(
+        res.status === 403
+          ? tRef.current('errors.forbidden')
+          : res.message || tRef.current('tasks.similarityFlags.loadError')
+      );
+    }
+    setFlagsLoading(false);
+  }, [taskId, canViewSimilarityFlags]);
+
+  useEffect(() => {
+    if (isOpen && taskId) {
+      activeOpenTaskRef.current = taskId;
+      setActiveTab('submissions');
+      if (canViewSimilarityFlags) {
+        void fetchSimilarityFlags();
+      } else {
+        setSimilarityFlags([]);
+        setFlagsError(null);
+        setFlagsLoading(false);
+      }
+    } else {
+      activeOpenTaskRef.current = null;
+    }
+  }, [isOpen, taskId, canViewSimilarityFlags, fetchSimilarityFlags]);
+
+  const handleFlagUpdated = useCallback((updated: SubmissionSimilarityFlagItem) => {
+    setSimilarityFlags((prev) =>
+      prev.map((item) => (item.id === updated.id ? updated : item))
+    );
+  }, []);
+
+  const pendingFlagsCount = useMemo(
+    () => similarityFlags.filter((flag) => flag.status === 'PENDING').length,
+    [similarityFlags]
+  );
 
   const handleGradeSavedInRow = useCallback(
     (submissionId: number, updated: unknown) => {
@@ -573,6 +642,67 @@ const SubmissionsGradingModal: React.FC<SubmissionsGradingModalProps> = ({
           : task ? `${t('tasks.maxPoints')}: ${maxScore}` : undefined
       }
     >
+      {canViewSimilarityFlags && (
+        <div
+          role="tablist"
+          aria-label={t('tasks.similarityFlags.tabsAriaLabel')}
+          onKeyDown={tabKeyboard.handleKeyDown}
+          className="mb-4 flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 max-w-full w-fit overflow-x-auto"
+        >
+          <button
+            type="button"
+            role="tab"
+            id="submissions-modal-tab-submissions"
+            aria-controls="submissions-modal-panel-submissions"
+            aria-selected={activeTab === 'submissions'}
+            tabIndex={activeTab === 'submissions' ? 0 : -1}
+            onClick={() => setActiveTab('submissions')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'submissions'
+                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <span>{t('tasks.submissions')}</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            id="submissions-modal-tab-similarity"
+            aria-controls="submissions-modal-panel-similarity"
+            aria-selected={activeTab === 'similarityFlags'}
+            tabIndex={activeTab === 'similarityFlags' ? 0 : -1}
+            onClick={() => setActiveTab('similarityFlags')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'similarityFlags'
+                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <ShieldAlert size={14} aria-hidden="true" />
+            <span>{t('tasks.similarityFlags.tabLabel')}</span>
+            {!flagsLoading && !flagsError && (
+              <span
+                data-testid="similarity-flags-pending-badge"
+                aria-label={t('tasks.similarityFlags.pendingBadgeAria', {
+                  count: pendingFlagsCount,
+                })}
+                className="ms-1 inline-flex items-center justify-center rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[10px] font-bold tabular-nums"
+              >
+                {pendingFlagsCount}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {(!canViewSimilarityFlags || activeTab === 'submissions') && (
+        <div
+          role={canViewSimilarityFlags ? 'tabpanel' : undefined}
+          id={canViewSimilarityFlags ? 'submissions-modal-panel-submissions' : undefined}
+          aria-labelledby={canViewSimilarityFlags ? 'submissions-modal-tab-submissions' : undefined}
+        >
       {/* Summary bar */}
       {summary && (
         <div className="mb-4 p-4 rounded-2xl bg-surface-subtle dark:bg-slate-800/50 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -720,6 +850,28 @@ const SubmissionsGradingModal: React.FC<SubmissionsGradingModalProps> = ({
               <ChevronRight size={16} />
             </Button>
           </div>
+        </div>
+      )}
+        </div>
+      )}
+
+      {canViewSimilarityFlags && activeTab === 'similarityFlags' && taskId != null && (
+        <div
+          role="tabpanel"
+          id="submissions-modal-panel-similarity"
+          aria-labelledby="submissions-modal-tab-similarity"
+        >
+          <SimilarityFlagsPanel
+            taskId={taskId}
+            flags={similarityFlags}
+            loading={flagsLoading}
+            loadError={flagsError}
+            onRetry={() => {
+              void fetchSimilarityFlags();
+            }}
+            onRefreshFlags={fetchSimilarityFlags}
+            onFlagUpdated={handleFlagUpdated}
+          />
         </div>
       )}
     </Modal>

@@ -67,6 +67,7 @@ export type Capability =
   | 'tasks.view'
   | 'tasks.create'
   | 'tasks.grade'
+  | 'tasks.similarityFlags'
   | 'tasks.submit'
   | 'attendance.view'
   | 'attendance.manage'
@@ -126,6 +127,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'quizzes.create',
     'tasks.view',
     'tasks.grade',
+    'tasks.similarityFlags',
     'attendance.view',
     'attendance.manage',
     'warnings.view',
@@ -175,6 +177,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'quizzes.create',
     'tasks.view',
     'tasks.grade',
+    'tasks.similarityFlags',
     'attendance.view',
     'attendance.manage',
     'warnings.view',
@@ -216,6 +219,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'quizzes.view',
     'tasks.view',
     'tasks.grade',
+    'tasks.similarityFlags',
     'attendance.view',
     'attendance.manage',
     'knowledge_base.view',
@@ -250,6 +254,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'quizzes.view',
     'tasks.view',
     'tasks.grade',
+    'tasks.similarityFlags',
     'attendance.view',
     'attendance.manage',
     'knowledge_base.view',
@@ -278,6 +283,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'tasks.view',
     'tasks.create',
     'tasks.grade',
+    'tasks.similarityFlags',
     'attendance.view',
     'attendance.manage',
     'warnings.view',

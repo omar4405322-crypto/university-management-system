@@ -37,6 +37,7 @@ import { CourseMaterialsTab } from "./components/CourseMaterialsTab";
 import { CourseTasksTab } from "./components/CourseTasksTab";
 import { CreateTaskModal } from "./components/CourseTaskModals";
 import { TaskSubmitModal } from "../tasks/components/TaskSubmitModal";
+import { getTaskSubmissionConflictKey } from "../../utils/taskSubmissionError";
 import type {
   CourseDetailsData,
   CourseMaterial,
@@ -227,6 +228,10 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
 
   const canCreateTask = useMemo(() => {
     return hasCapability(user?.role, "tasks.create");
+  }, [user?.role]);
+
+  const canViewSubmissions = useMemo(() => {
+    return hasCapability(user?.role, "tasks.grade");
   }, [user?.role]);
 
   // Fetch Course Details
@@ -588,14 +593,14 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
         fetchCourseDetails();
         fetchCourseMySubmissions();
       } else {
-        const errorMsg =
-          result.status === 409
-            ? t("tasks.conflictAlreadySubmitted", "You have already submitted this task. Only one submission per task is allowed.")
-            : result.status === 403
-            ? t("errors.forbidden", "You do not have permission to perform this action.")
-            : result.status === 400
-            ? result.message || t("tasks.invalidFile", "Invalid file submission")
-            : result.message || t("tasks.submitError", "Error submitting task");
+        const conflictKey = getTaskSubmissionConflictKey(result);
+        const errorMsg = conflictKey
+          ? t(conflictKey)
+          : result.status === 403
+          ? t("errors.forbidden", "You do not have permission to perform this action.")
+          : result.status === 400
+          ? result.message || t("tasks.invalidFile", "Invalid file submission")
+          : result.message || t("tasks.submitError", "Error submitting task");
         showToast(errorMsg, "error");
       }
     } catch (error: any) {
@@ -1048,6 +1053,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({
           courseMySubmissions={courseMySubmissions}
           isStudent={user?.role === "STUDENT"}
           canCreateTask={canCreateTask}
+          canViewSubmissions={canViewSubmissions}
           formatTaskDate={formatTaskDate}
           onCreateTask={() => setShowTaskModal(true)}
           onSubmitTask={(task) => {

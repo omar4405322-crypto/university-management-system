@@ -30,6 +30,7 @@ import { TasksCards } from "./components/TasksCards";
 import { TasksTable } from "./components/TasksTable";
 import { TasksKpiStats } from "./components/TasksKpiStats";
 import { hasCapability } from "../../config/capabilities";
+import { getTaskSubmissionConflictKey } from "../../utils/taskSubmissionError";
 
 import type {
   TaskItem,
@@ -47,6 +48,7 @@ export function TasksList() {
   const { user } = useAuth();
   const canManageStaffTasks =
     user?.role === "DOCTOR" ||
+    user?.role === "ADMIN" ||
     user?.role === "SUPER_ADMIN" ||
     user?.role === "COLLEGE_ADMIN" ||
     user?.role === "DEPARTMENT_ADMIN";
@@ -350,12 +352,12 @@ export function TasksList() {
         setShowSubmitModal(false);
         fetchTasks(true);
       } else {
-        const errorMsg =
-          result.status === 409
-            ? t("tasks.conflictAlreadySubmitted", "You have already submitted this task. Only one submission per task is allowed.")
-            : result.status === 403
-            ? t("errors.forbidden", "You do not have permission to perform this action.")
-            : result.message || t("tasks.submitError", "Error submitting task");
+        const conflictKey = getTaskSubmissionConflictKey(result);
+        const errorMsg = conflictKey
+          ? t(conflictKey)
+          : result.status === 403
+          ? t("errors.forbidden", "You do not have permission to perform this action.")
+          : result.message || t("tasks.submitError", "Error submitting task");
         showToast(errorMsg, "error");
       }
     } catch (error: any) {
