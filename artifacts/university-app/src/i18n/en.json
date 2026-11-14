@@ -617,7 +617,23 @@
     "scheduleTimingConfig": "Schedule Timing Configuration",
     "scheduleTimingConfigDesc": "Configure daily lecture start time and duration intervals across the university.",
     "lectureStartTime": "Daily Schedule Start Time",
-    "scheduleStepMinutes": "Session Interval (Minutes)"
+    "scheduleStepMinutes": "Session Interval (Minutes)",
+    "submissionIntegrity": {
+      "tabLabel": "Submission Integrity",
+      "title": "Submission Integrity Policy",
+      "description": "Configure institution-wide duplicate blocking and similarity flagging thresholds for task submissions.",
+      "superAdminOnlyBadge": "SUPER ADMIN",
+      "loading": "Loading submission integrity policy...",
+      "defaultNotice": "No policy saved yet; system defaults apply.",
+      "exactDuplicateLabel": "Block exact duplicate submissions",
+      "exactDuplicateDesc": "Reject submissions with the exact same file hash as another student's submission in the same task.",
+      "similarityThresholdLabel": "Similarity flagging threshold",
+      "similarityThresholdHelper": "Leave empty = no similarity flagging (0 < value ≤ 1, up to 4 decimals).",
+      "invalidThresholdFormat": "Enter a decimal value greater than 0 and up to 1 with at most 4 decimal places, or leave empty.",
+      "saveSuccess": "Submission integrity policy saved successfully",
+      "saving": "Saving...",
+      "saveButton": "Save Policy"
+    }
   },
   "colleges": {
     "about": "About College",

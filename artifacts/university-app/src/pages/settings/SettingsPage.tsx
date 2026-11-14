@@ -18,6 +18,7 @@ import {
   Check,
   Sparkles,
   Sliders,
+  ShieldCheck,
 } from "lucide-react";
 import {
   getScheduleStartTime,
@@ -35,6 +36,8 @@ import api from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import { FEATURE_FLAGS } from "../../constants/featureFlags";
 import { useTabListKeyboard } from "../../hooks/useTabListKeyboard";
+import { hasCapability } from "../../config/capabilities";
+import { SubmissionIntegrityPolicyCard } from "../../components/settings/SubmissionIntegrityPolicyCard";
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -45,7 +48,7 @@ export function SettingsPage() {
   const tabKeyboard = useTabListKeyboard({ isRTL });
 
   const [activeTab, setActiveTab] = useState<
-    "account" | "security" | "appearance" | "system"
+    "account" | "security" | "appearance" | "system" | "integrity"
   >("account");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -82,6 +85,10 @@ export function SettingsPage() {
 
   const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(user?.role || "");
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
+  const canManageSubmissionIntegrity = hasCapability(
+    user?.role,
+    "submissionIntegrity.manage",
+  );
   const twoFactorEnabled = Boolean(user?.twoFactorEnabled);
 
   const handleAccountUpdate = async (e: any) => {
@@ -201,7 +208,7 @@ export function SettingsPage() {
     : "";
 
   const tabs: Array<{
-    id: "account" | "security" | "appearance" | "system";
+    id: "account" | "security" | "appearance" | "system" | "integrity";
     label: string;
     icon: React.ComponentType<{ size?: number; className?: string }>;
   }> = [
@@ -226,6 +233,15 @@ export function SettingsPage() {
             id: "system" as const,
             label: isRTL ? "إعدادات النظام والجدول" : "System & Timetable",
             icon: Sliders,
+          },
+        ]
+      : []),
+    ...(canManageSubmissionIntegrity
+      ? [
+          {
+            id: "integrity" as const,
+            label: t("settings.submissionIntegrity.tabLabel"),
+            icon: ShieldCheck,
           },
         ]
       : []),
@@ -254,7 +270,7 @@ export function SettingsPage() {
         role="tablist"
         aria-label={isRTL ? "أقسام الإعدادات" : "Settings Sections"}
         onKeyDown={tabKeyboard.handleKeyDown}
-        className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-fit overflow-x-auto"
+        className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 max-w-full w-fit overflow-x-auto"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -268,7 +284,7 @@ export function SettingsPage() {
               id={`settings-tab-${tab.id}`}
               tabIndex={isSelected ? 0 : -1}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 isSelected
                   ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs"
                   : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
@@ -717,6 +733,18 @@ export function SettingsPage() {
               </Button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ── Tab 5: Submission Integrity Policy (Super Admin Only) ── */}
+      {activeTab === "integrity" && canManageSubmissionIntegrity && (
+        <div
+          role="tabpanel"
+          id="settings-tab-panel-integrity"
+          aria-labelledby="settings-tab-integrity"
+          className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/90 dark:border-slate-700 p-5 shadow-2xs"
+        >
+          <SubmissionIntegrityPolicyCard />
         </div>
       )}
     </div>

@@ -83,7 +83,8 @@ export type Capability =
   | 'gradebook.view'
   | 'gradeStructure.view'
   | 'gradeStructure.edit'
-  | 'myGrades.view';
+  | 'myGrades.view'
+  | 'submissionIntegrity.manage';
 
 /**
  * Capability assignments per role derived from backend authorizations:
@@ -138,6 +139,7 @@ export const ROLE_CAPABILITY_MATRIX: Record<UserRole, readonly Capability[]> = {
     'gradebook.view',
     'gradeStructure.view',
     'gradeStructure.edit',
+    'submissionIntegrity.manage',
   ],
 
   ADMIN: [
