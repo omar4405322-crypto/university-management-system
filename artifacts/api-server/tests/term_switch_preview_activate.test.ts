@@ -4,6 +4,7 @@ import http from 'node:http';
 import app from '../src/app';
 import prisma from '../src/utils/prismaClient';
 import { generateAccessToken } from '../src/utils/jwt.utils';
+import { teardownTermSwitchFixture } from './termSwitchFixtureTeardown.utils';
 
 test('Term Switch Preview & Atomic Activation Test Suite (T3)', async () => {
   const runSuffix = `term_switch_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -208,49 +209,25 @@ test('Term Switch Preview & Atomic Activation Test Suite (T3)', async () => {
     assert.ok(autoEnrollAudit, 'Expected AuditLog entry for AUTO_ENROLLMENT_TRIGGERED');
 
   } finally {
-    try {
-      if (studentId && courseId) {
-        await prisma.enrollment.deleteMany({ where: { studentId } });
-      }
-      if (courseId) {
-        await prisma.course.deleteMany({ where: { id: courseId } });
-      }
-      if (studentId) {
-        await prisma.student.deleteMany({ where: { id: studentId } });
-      }
-      if (studentUserId) {
-        await prisma.user.deleteMany({ where: { id: studentUserId } });
-      }
-      if (departmentId) {
-        await prisma.department.deleteMany({ where: { id: departmentId } });
-      }
-      if (collegeId) {
-        await prisma.college.deleteMany({ where: { id: collegeId } });
-      }
-      if (term2Id) {
-        await prisma.academicTerm.deleteMany({ where: { id: term2Id } });
-      }
-      if (term1Id) {
-        await prisma.academicTerm.deleteMany({ where: { id: term1Id } });
-      }
-      if (yearId) {
-        await prisma.academicYear.deleteMany({ where: { id: yearId } });
-      }
-      if (prevActiveYearId) {
-        await prisma.academicYear.update({ where: { id: prevActiveYearId }, data: { isCurrent: true } }).catch(() => {});
-      }
-      if (prevActiveTermId) {
-        await prisma.academicTerm.update({ where: { id: prevActiveTermId }, data: { isCurrent: true } }).catch(() => {});
-      }
-      if (superAdminId) {
-        await prisma.auditLog.deleteMany({ where: { userId: superAdminId } });
-        await prisma.user.deleteMany({ where: { id: superAdminId } });
-      }
-    } catch {
-      // ignore teardown errors
-    }
+    const termIds = [term1Id, term2Id].filter((id): id is number => id !== undefined);
+    const failures = await teardownTermSwitchFixture(prisma, {
+      termIds,
+      yearId,
+      prevActiveYearId,
+      prevActiveTermId,
+      studentId,
+      courseId,
+      studentUserId,
+      superAdminId,
+      departmentId,
+      collegeId,
+    });
 
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await prisma.$disconnect();
+
+    if (failures.length > 0) {
+      throw new Error('term_switch teardown failed steps: ' + failures.join(', '));
+    }
   }
 });
