@@ -61,7 +61,7 @@ export class SubmissionSimilarityService {
       },
     });
     if (!taskObj) {
-      throw new NotFoundError('Task not found');
+      throw new NotFoundError('Task not found', 'SIMILARITY_TASK_NOT_FOUND');
     }
 
     await TaskScopeService.ensureCourseOwnershipOrScope(user, taskObj);
@@ -144,7 +144,7 @@ export class SubmissionSimilarityService {
     if (!parseResult.success) {
       const firstIssue = parseResult.error.issues[0];
       const message = firstIssue ? firstIssue.message : 'Validation failed';
-      throw new ValidationError(message, parseResult.error.issues);
+      throw new ValidationError(message, parseResult.error.issues, 'SIMILARITY_DECISION_INVALID');
     }
     const { decision, note } = parseResult.data;
 
@@ -153,12 +153,12 @@ export class SubmissionSimilarityService {
       where: { id: flagId, taskId },
     });
     if (!existingFlag) {
-      throw new NotFoundError('Similarity flag not found');
+      throw new NotFoundError('Similarity flag not found', 'SIMILARITY_FLAG_NOT_FOUND');
     }
 
     // 5. State check (409 if not PENDING)
     if (existingFlag.status !== 'PENDING') {
-      throw new ConflictError('Similarity flag has already been decided');
+      throw new ConflictError('Similarity flag has already been decided', 'SIMILARITY_FLAG_ALREADY_DECIDED');
     }
 
     // 6. Write in ONE transaction
@@ -178,7 +178,7 @@ export class SubmissionSimilarityService {
       });
 
       if (updateResult.count === 0) {
-        throw new ConflictError('Similarity flag has already been decided');
+        throw new ConflictError('Similarity flag has already been decided', 'SIMILARITY_FLAG_ALREADY_DECIDED');
       }
 
       await tx.auditLog.create({

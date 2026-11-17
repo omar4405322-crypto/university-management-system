@@ -76,7 +76,7 @@ export class TaskMutationsService {
       include: { department: true },
     });
     if (!course) {
-      throw new NotFoundError("Course not found");
+      throw new NotFoundError("Course not found", "TASK_COURSE_NOT_FOUND");
     }
 
     if (user.role === "DOCTOR") {
@@ -165,7 +165,7 @@ export class TaskMutationsService {
     });
 
     if (!existing) {
-      throw new NotFoundError("Task not found");
+      throw new NotFoundError("Task not found", "TASK_NOT_FOUND");
     }
 
     await TaskScopeService.ensureCourseOwnershipOrScope(user, existing);
@@ -194,6 +194,8 @@ export class TaskMutationsService {
       ) {
         throw new ValidationError(
           "Cannot set due date earlier than existing submissions",
+          [],
+          "TASK_DUE_DATE_BEFORE_SUBMISSIONS",
         );
       }
       updateData.dueDate = newDueDate;
@@ -271,7 +273,7 @@ export class TaskMutationsService {
     });
 
     if (!existing) {
-      throw new NotFoundError("Task not found");
+      throw new NotFoundError("Task not found", "TASK_NOT_FOUND");
     }
 
     await TaskScopeService.ensureCourseOwnershipOrScope(user, existing);
@@ -280,6 +282,7 @@ export class TaskMutationsService {
       if (existing._count.submissions > 0) {
         throw new ConflictError(
           `Cannot permanently delete task: has ${existing._count.submissions} existing submission(s). Use soft-delete instead.`,
+          "TASK_HAS_SUBMISSIONS",
         );
       }
       await prisma.task.delete({

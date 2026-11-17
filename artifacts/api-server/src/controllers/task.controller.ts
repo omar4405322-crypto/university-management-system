@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import catchAsync from '../utils/catchAsync';
 import { TaskService } from '../services/task.service';
-import { ConflictError, ValidationError } from '../utils/appError';
+import { ConflictError, DUPLICATE_SUBMISSION_DEFAULT_MESSAGE, ValidationError } from '../utils/appError';
 import { fromZonedTime } from 'date-fns-tz';
 import fs from 'fs';
 import {
@@ -43,7 +43,7 @@ export const getTasks = catchAsync(
     if (courseId !== undefined && courseId !== '') {
       const parsed = Number(courseId);
       if (!Number.isSafeInteger(parsed) || parsed <= 0) {
-        throw new ValidationError('Invalid courseId parameter');
+        throw new ValidationError('Invalid courseId parameter', [], 'TASK_INVALID_COURSE_ID');
       }
       parsedCourseId = parsed;
     }
@@ -52,7 +52,7 @@ export const getTasks = catchAsync(
     if (year !== undefined && year !== '') {
       const parsed = Number(year);
       if (!Number.isSafeInteger(parsed) || parsed <= 0) {
-        throw new ValidationError('Invalid year parameter');
+        throw new ValidationError('Invalid year parameter', [], 'TASK_INVALID_YEAR');
       }
       parsedYear = parsed;
     }
@@ -157,7 +157,7 @@ export const submitTask = catchAsync(
           code: 'DUPLICATE_SUBMISSION',
           message:
             (error as any).message ||
-            'This file cannot be accepted because an identical submission already exists for this assignment. Please submit your own original work.',
+            DUPLICATE_SUBMISSION_DEFAULT_MESSAGE,
         });
       }
       if (
@@ -172,7 +172,8 @@ export const submitTask = catchAsync(
       ) {
         return next(
           new ConflictError(
-            'You have already submitted this task. Only one submission per task is allowed.'
+            'You have already submitted this task. Only one submission per task is allowed.',
+            'TASK_ALREADY_SUBMITTED'
           )
         );
       }
@@ -187,7 +188,7 @@ export const downloadTaskSubmission = catchAsync(
     const submissionId = parseInt(req.params.sid as string, 10);
 
     if (Number.isNaN(taskId) || Number.isNaN(submissionId)) {
-      return next(new ValidationError('Invalid task or submission ID'));
+      return next(new ValidationError('Invalid task or submission ID', [], 'TASK_INVALID_SUBMISSION_PARAMS'));
     }
 
     const { submission, filePath } = await TaskService.authorizeSubmissionDownload(

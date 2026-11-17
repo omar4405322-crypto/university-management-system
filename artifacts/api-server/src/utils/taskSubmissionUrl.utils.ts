@@ -21,30 +21,32 @@ export function validateTaskSubmissionUrl(
 ): string | null | undefined {
   if (fileUrl === undefined || fileUrl === null) return fileUrl;
   if (typeof fileUrl !== 'string') {
-    throw new ValidationError('Task submission link must be a valid URL');
+    throw new ValidationError('Task submission link must be a valid URL', [], 'TASK_SUBMISSION_LINK_INVALID_TYPE');
   }
 
   const normalizedUrl = fileUrl.trim();
   if (!normalizedUrl) return null;
   if (normalizedUrl.length > 500) {
-    throw new ValidationError('Task submission link is too long');
+    throw new ValidationError('Task submission link is too long', [], 'TASK_SUBMISSION_LINK_TOO_LONG');
   }
 
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(normalizedUrl);
   } catch {
-    throw new ValidationError('Task submission link must be a valid HTTP(S) URL');
+    throw new ValidationError('Task submission link must be a valid HTTP(S) URL', [], 'TASK_SUBMISSION_LINK_MALFORMED');
   }
 
   if (parsedUrl.protocol !== 'https:') {
-    throw new ValidationError('Task submission link must use HTTPS');
+    throw new ValidationError('Task submission link must use HTTPS', [], 'TASK_SUBMISSION_LINK_HTTPS_REQUIRED');
   }
 
   const hostname = parsedUrl.hostname.toLowerCase().replace(/\.$/, '');
   if (!isApprovedHostname(hostname)) {
     throw new ValidationError(
-      `Task submission links must use an approved domain: ${APPROVED_TASK_SUBMISSION_DOMAINS.join(', ')}`
+      `Task submission links must use an approved domain: ${APPROVED_TASK_SUBMISSION_DOMAINS.join(', ')}`,
+      [],
+      'TASK_SUBMISSION_LINK_DOMAIN_NOT_ALLOWED'
     );
   }
 

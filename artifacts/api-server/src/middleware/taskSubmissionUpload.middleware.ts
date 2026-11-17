@@ -138,11 +138,12 @@ export const taskSubmissionUpload = (
         return next(
           new AppError(
             `File size exceeds maximum allowed limit of ${TASK_SUBMISSION_MAX_FILE_SIZE / (1024 * 1024)}MB`,
-            400
+            400,
+            'UPLOAD_FILE_TOO_LARGE'
           )
         );
       }
-      return next(new AppError(err.message || 'File upload error', 400));
+      return next(new AppError(err.message || 'File upload error', 400, 'UPLOAD_MULTER_ERROR'));
     }
 
     if (!req.file) {
@@ -155,24 +156,24 @@ export const taskSubmissionUpload = (
 
       // Reject null bytes
       if (rawOriginalName.includes('\0') || rawOriginalName.includes('%00')) {
-        return next(new AppError('Filename contains invalid characters', 400));
+        return next(new AppError('Filename contains invalid characters', 400, 'UPLOAD_INVALID_FILENAME'));
       }
 
       // Check for dot constraints:
       // A name that is only dots or ends with a dot stays rejected
       if (rawOriginalName.endsWith('.') || rawOriginalName.replace(/\./g, '').trim().length === 0) {
-        return next(new AppError('File must have an extension', 400));
+        return next(new AppError('File must have an extension', 400, 'UPLOAD_EXTENSION_MISSING'));
       }
 
       const nameParts = rawOriginalName.split('.');
       if (nameParts.length < 2) {
-        return next(new AppError('File must have an extension', 400));
+        return next(new AppError('File must have an extension', 400, 'UPLOAD_EXTENSION_MISSING'));
       }
 
       // Reject when ANY non-final dot-segment, compared case-insensitively, is in dangerous extensions
       const nonFinalSegments = nameParts.slice(0, -1);
       if (nonFinalSegments.every((seg) => seg.trim().length === 0)) {
-        return next(new AppError('File must have an extension', 400));
+        return next(new AppError('File must have an extension', 400, 'UPLOAD_EXTENSION_MISSING'));
       }
 
       const hasDangerousSegment = nonFinalSegments.some((seg) =>
@@ -182,7 +183,8 @@ export const taskSubmissionUpload = (
         return next(
           new AppError(
             'Filename contains a dangerous extension pattern',
-            400
+            400,
+            'UPLOAD_DANGEROUS_EXTENSION'
           )
         );
       }
@@ -192,7 +194,8 @@ export const taskSubmissionUpload = (
         return next(
           new AppError(
             `File extension .${ext} is not allowed. Allowed extensions: ${Array.from(ALLOWED_TASK_EXTENSIONS).join(', ')}`,
-            400
+            400,
+            'UPLOAD_EXTENSION_NOT_ALLOWED'
           )
         );
       }
@@ -208,7 +211,7 @@ export const taskSubmissionUpload = (
         req.file.buffer[1] === 0x5a
       ) {
         return next(
-          new AppError('Executable files (.exe) are strictly prohibited', 400)
+          new AppError('Executable files (.exe) are strictly prohibited', 400, 'UPLOAD_EXECUTABLE_PROHIBITED')
         );
       }
 
@@ -224,7 +227,7 @@ export const taskSubmissionUpload = (
           req.file.buffer[3] === 0x46; // %PDF
         if (!isPdfMagic && detected?.ext !== 'pdf') {
           return next(
-            new AppError('File content does not match .pdf extension', 400)
+            new AppError('File content does not match .pdf extension', 400, 'UPLOAD_CONTENT_MISMATCH')
           );
         }
       } else if (['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
@@ -234,7 +237,8 @@ export const taskSubmissionUpload = (
           return next(
             new AppError(
               `File content does not match .${ext} image extension`,
-              400
+              400,
+              'UPLOAD_CONTENT_MISMATCH'
             )
           );
         }
@@ -247,20 +251,21 @@ export const taskSubmissionUpload = (
           return next(
             new AppError(
               `File content does not match .${ext} archive/document extension`,
-              400
+              400,
+              'UPLOAD_CONTENT_MISMATCH'
             )
           );
         }
       } else if (ext === 'rar') {
         if (detected?.ext !== 'rar') {
           return next(
-            new AppError('File content does not match .rar extension', 400)
+            new AppError('File content does not match .rar extension', 400, 'UPLOAD_CONTENT_MISMATCH')
           );
         }
       } else if (ext === '7z') {
         if (detected?.ext !== '7z') {
           return next(
-            new AppError('File content does not match .7z extension', 400)
+            new AppError('File content does not match .7z extension', 400, 'UPLOAD_CONTENT_MISMATCH')
           );
         }
       } else if (['doc', 'xls', 'ppt'].includes(ext)) {
@@ -272,14 +277,15 @@ export const taskSubmissionUpload = (
           return next(
             new AppError(
               `File content does not match .${ext} document extension`,
-              400
+              400,
+              'UPLOAD_CONTENT_MISMATCH'
             )
           );
         }
       } else if (ext === 'txt') {
         if (req.file.buffer.includes(0) || detected !== undefined) {
           return next(
-            new AppError('File content is not valid plain text', 400)
+            new AppError('File content is not valid plain text', 400, 'UPLOAD_CONTENT_MISMATCH')
           );
         }
       }

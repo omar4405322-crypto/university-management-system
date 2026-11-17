@@ -44,18 +44,18 @@ export class SubmissionIntegrityService {
     req?: any
   ): Promise<SubmissionIntegrityPolicyData> {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
-      throw new ValidationError('Policy payload must be an object');
+      throw new ValidationError('Policy payload must be an object', [], 'INTEGRITY_POLICY_INVALID');
     }
 
     const entries = Object.entries(body as Record<string, unknown>);
     if (entries.length === 0) {
-      throw new ValidationError('At least one policy setting must be provided');
+      throw new ValidationError('At least one policy setting must be provided', [], 'INTEGRITY_POLICY_INVALID');
     }
 
     const allowedKeys = new Set(['exactDuplicateBlock', 'similarityThreshold']);
     for (const [key] of entries) {
       if (!allowedKeys.has(key)) {
-        throw new ValidationError(`Unknown field '${key}' in submission integrity policy payload`);
+        throw new ValidationError(`Unknown field '${key}' in submission integrity policy payload`, [], 'INTEGRITY_POLICY_INVALID');
       }
     }
 
@@ -64,7 +64,7 @@ export class SubmissionIntegrityService {
     let exactDuplicateBlock: boolean | undefined = undefined;
     if ('exactDuplicateBlock' in payload) {
       if (typeof payload.exactDuplicateBlock !== 'boolean') {
-        throw new ValidationError('exactDuplicateBlock must be a boolean');
+        throw new ValidationError('exactDuplicateBlock must be a boolean', [], 'INTEGRITY_POLICY_INVALID');
       }
       exactDuplicateBlock = payload.exactDuplicateBlock;
     }
@@ -75,11 +75,11 @@ export class SubmissionIntegrityService {
       if (val === null) {
         similarityThreshold = null;
       } else if (typeof val !== 'number' || !Number.isFinite(val)) {
-        throw new ValidationError('similarityThreshold must be a finite number or null');
+        throw new ValidationError('similarityThreshold must be a finite number or null', [], 'INTEGRITY_POLICY_INVALID');
       } else if (val <= 0 || val > 1) {
-        throw new ValidationError('similarityThreshold must be greater than 0 and less than or equal to 1');
+        throw new ValidationError('similarityThreshold must be greater than 0 and less than or equal to 1', [], 'INTEGRITY_POLICY_INVALID');
       } else if (/\.\d{5,}/.test(String(val)) || Math.abs(Math.round(val * 10000) - val * 10000) > 1e-6) {
-        throw new ValidationError('similarityThreshold must have at most 4 decimal places');
+        throw new ValidationError('similarityThreshold must have at most 4 decimal places', [], 'INTEGRITY_POLICY_INVALID');
       } else {
         similarityThreshold = Math.round(val * 10000) / 10000;
       }

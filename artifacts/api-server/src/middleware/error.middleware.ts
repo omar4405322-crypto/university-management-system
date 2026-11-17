@@ -50,13 +50,15 @@ const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFun
   if (isDev) {
     sendErrorDev(err, req, res, errorId);
   } else {
-    let error = { ...err };
-    error.message = err.message;
-    error.name = err.name;
-    error.stack = err.stack;
-    error.statusCode = err.statusCode;
-    error.status = err.status;
-    error.isOperational = err.isOperational;
+    let error = err instanceof AppError ? err : { ...err };
+    if (!(err instanceof AppError)) {
+      error.message = err.message;
+      error.name = err.name;
+      error.stack = err.stack;
+      error.statusCode = err.statusCode;
+      error.status = err.status;
+      error.isOperational = err.isOperational;
+    }
 
     // Handle specific Prisma errors
     if (err.code === 'P2002') error = handlePrismaUniqueConstraintError(err);
@@ -112,9 +114,13 @@ const sendErrorDev = (err: any, req: Request, res: Response, errorId: string) =>
     });
   }
 
+  const hasAppErrorCode =
+    err instanceof AppError && typeof err.code === 'string' && err.code.trim().length > 0;
+
   res.status(err.statusCode).json({
     success: false,
     status: err.status,
+    ...(hasAppErrorCode ? { code: err.code } : {}),
     errorId,
     error: err,
     message: err.message,
@@ -135,9 +141,13 @@ const sendErrorProd = (err: any, req: Request, res: Response, errorId: string) =
       code: err.code || err.name,
     });
 
+    const hasAppErrorCode =
+      err instanceof AppError && typeof err.code === 'string' && err.code.trim().length > 0;
+
     res.status(err.statusCode).json({
       success: false,
       status: err.status,
+      ...(hasAppErrorCode ? { code: err.code } : {}),
       message: err.message,
       errorId,
       errors: err.errors || undefined,

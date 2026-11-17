@@ -7,7 +7,7 @@ export const getTaskSimilarityFlags = catchAsync(
   async (req: Request, res: Response, _next: NextFunction) => {
     const taskId = Number(req.params.id);
     if (!Number.isSafeInteger(taskId) || taskId <= 0) {
-      throw new ValidationError('Invalid task ID');
+      throw new ValidationError('Invalid task ID', [], 'SIMILARITY_INVALID_TASK_ID');
     }
 
     const flags = await SubmissionSimilarityService.listFlags(req.user!, taskId);
@@ -19,11 +19,11 @@ export const decideTaskSimilarityFlag = catchAsync(
   async (req: Request, res: Response, _next: NextFunction) => {
     const taskId = Number(req.params.id);
     if (!Number.isSafeInteger(taskId) || taskId <= 0) {
-      throw new ValidationError('Invalid task ID');
+      throw new ValidationError('Invalid task ID', [], 'SIMILARITY_INVALID_TASK_ID');
     }
     const flagId = String(req.params.flagId || '').trim();
     if (!flagId) {
-      throw new ValidationError('Invalid flag ID');
+      throw new ValidationError('Invalid flag ID', [], 'SIMILARITY_INVALID_FLAG_ID');
     }
 
     const updated = await SubmissionSimilarityService.decideFlag(

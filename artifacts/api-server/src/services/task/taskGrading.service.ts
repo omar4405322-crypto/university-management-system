@@ -77,6 +77,8 @@ export class TaskGradingService {
     if (!validatedLink && !data.fileMetadata && trimmedNotes.length === 0) {
       throw new ValidationError(
         "Submission must include either a valid file upload, fileUrl, or notes",
+        [],
+        "TASK_SUBMISSION_EMPTY",
       );
     }
 
@@ -87,12 +89,12 @@ export class TaskGradingService {
       include: { course: { include: { department: true } } },
     });
     if (!taskObj) {
-      throw new NotFoundError("Task not found");
+      throw new NotFoundError("Task not found", "TASK_NOT_FOUND");
     }
 
     // Threat S-A: Course must be published and not archived
     if (taskObj.course.isPublished === false) {
-      throw new NotFoundError("Task not found");
+      throw new NotFoundError("Task not found", "TASK_NOT_FOUND");
     }
 
     const activeSlot = await prisma.scheduleSlot.findFirst({
@@ -102,7 +104,7 @@ export class TaskGradingService {
       where: { courseId: taskObj.courseId },
     });
     if (anySlot && !activeSlot) {
-      throw new AuthorizationError("Access denied: Course offering is archived");
+      throw new AuthorizationError("Access denied: Course offering is archived", "TASK_OFFERING_ARCHIVED");
     }
 
     let enrollment = null;
@@ -133,6 +135,9 @@ export class TaskGradingService {
         enrollment?.status === "BLOCKED"
           ? "Access denied: your enrollment for this task offering is blocked"
           : "Access denied: You are not enrolled in this task offering",
+        enrollment?.status === "BLOCKED"
+          ? "TASK_ENROLLMENT_BLOCKED"
+          : "TASK_NOT_ENROLLED",
       );
     }
 
@@ -153,6 +158,7 @@ export class TaskGradingService {
             existingSubmission
               ? "The deadline for this task has passed. Resubmission is not allowed."
               : "The deadline for this task has passed. Submission is not allowed.",
+            "TASK_DEADLINE_PASSED",
           );
         }
 
@@ -160,6 +166,7 @@ export class TaskGradingService {
           if (existingSubmission.score !== null) {
             throw new ConflictError(
               "This task submission has already been graded and cannot be resubmitted.",
+              "TASK_ALREADY_GRADED",
             );
           }
         }
@@ -198,7 +205,8 @@ export class TaskGradingService {
           // Threat S-B: parallel double submit / rapid duplicate submit -> 409 Conflict
         if (Date.now() - existingSubmission.submittedAt.getTime() < 150) {
           throw new ConflictError(
-            "You have already submitted this task. Only one submission per task is allowed."
+            "You have already submitted this task. Only one submission per task is allowed.",
+            "TASK_ALREADY_SUBMITTED",
           );
         }
 
@@ -242,13 +250,14 @@ export class TaskGradingService {
         if (updateResult.count !== 1) {
           throw new ConflictError(
             "The task submission changed while the resubmission was being saved. Please retry.",
+            "TASK_SUBMISSION_CHANGED",
           );
         }
         const updated = await tx.taskSubmission.findUnique({
           where: { id: existingSubmission.id },
         });
         if (!updated) {
-          throw new NotFoundError("Submission not found");
+          throw new NotFoundError("Submission not found", "TASK_SUBMISSION_NOT_FOUND");
         }
         await auditLog(
           "RESUBMIT_TASK",
@@ -388,11 +397,11 @@ export class TaskGradingService {
     });
 
     if (!submission || submission.taskId !== taskId || submission.task.isDeleted) {
-      throw new NotFoundError("Submission not found");
+      throw new NotFoundError("Submission not found", "TASK_SUBMISSION_NOT_FOUND");
     }
 
     if (!submission.storageKey) {
-      throw new NotFoundError("No file associated with this submission");
+      throw new NotFoundError("No file associated with this submission", "TASK_SUBMISSION_FILE_MISSING");
     }
 
     const allowedDir = path.resolve(process.cwd(), "uploads/tasks");
@@ -401,7 +410,7 @@ export class TaskGradingService {
       path.join(allowedDir, submission.storageKey)
     );
     if (!resolvedPath || !fs.existsSync(resolvedPath)) {
-      throw new NotFoundError("File not found on disk");
+      throw new NotFoundError("File not found on disk", "TASK_SUBMISSION_FILE_NOT_ON_DISK");
     }
 
     // Threat S-F: download authorization matrix
@@ -413,7 +422,7 @@ export class TaskGradingService {
       const userCollegeId = user.managedCollegeId ?? user.collegeId;
       const courseCollegeId = submission.task.course.department?.collegeId;
       if (!userCollegeId || userCollegeId !== courseCollegeId) {
-        throw new AuthorizationError("Access denied: Course is outside your college scope");
+        throw new AuthorizationError("Access denied: Course is outside your college scope", "TASK_COLLEGE_SCOPE_DENIED");
       }
       return { submission, filePath: resolvedPath };
     }
@@ -422,7 +431,7 @@ export class TaskGradingService {
       const userDeptId = user.managedDepartmentId ?? user.departmentId;
       const courseDeptId = submission.task.course.departmentId;
       if (!userDeptId || userDeptId !== courseDeptId) {
-        throw new AuthorizationError("Access denied: Course is outside your department scope");
+        throw new AuthorizationError("Access denied: Course is outside your department scope", "TASK_DEPARTMENT_SCOPE_DENIED");
       }
       return { submission, filePath: resolvedPath };
     }
@@ -430,7 +439,7 @@ export class TaskGradingService {
     if (user.role === "STUDENT") {
       const student = await TaskScopeService.getStudentOrThrow(user.id);
       if (student.id !== submission.studentId) {
-        throw new AuthorizationError("Access denied: You can only download your own submissions");
+        throw new AuthorizationError("Access denied: You can only download your own submissions", "TASK_SUBMISSION_OWNERSHIP_DENIED");
       }
       return { submission, filePath: resolvedPath };
     }
@@ -445,7 +454,7 @@ export class TaskGradingService {
         },
       });
       if (!slot) {
-        throw new AuthorizationError("Access denied: You are not assigned to this course");
+        throw new AuthorizationError("Access denied: You are not assigned to this course", "TASK_COURSE_ACCESS_DENIED");
       }
       return { submission, filePath: resolvedPath };
     }
@@ -455,7 +464,7 @@ export class TaskGradingService {
         where: { userId: user.id },
       });
       if (!ta) {
-        throw new AuthorizationError("Access denied: Only teaching assistants can perform this action");
+        throw new AuthorizationError("Access denied: Only teaching assistants can perform this action", "TASK_TA_PROFILE_REQUIRED");
       }
       const slots = await prisma.scheduleSlot.findMany({
         where: {
@@ -465,7 +474,7 @@ export class TaskGradingService {
         },
       });
       if (slots.length === 0) {
-        throw new AuthorizationError("Access denied: You are not assigned to this course");
+        throw new AuthorizationError("Access denied: You are not assigned to this course", "TASK_COURSE_ACCESS_DENIED");
       }
 
       // OD-74: if a TA slot has a groupId only those groups
@@ -476,14 +485,15 @@ export class TaskGradingService {
           .filter((gid): gid is number => gid !== null);
         if (!submission.student.groupId || !allowedGroupIds.includes(submission.student.groupId)) {
           throw new AuthorizationError(
-            "Access denied: Submission belongs to a student outside your assigned groups"
+            "Access denied: Submission belongs to a student outside your assigned groups",
+            "TASK_GROUP_SCOPE_DENIED"
           );
         }
       }
       return { submission, filePath: resolvedPath };
     }
 
-    throw new AuthorizationError("Access denied");
+    throw new AuthorizationError("Access denied", "TASK_ACCESS_DENIED");
   }
 
   static async gradeSubmission(
@@ -499,6 +509,8 @@ export class TaskGradingService {
     if (!expectedSubmittedAt || Number.isNaN(expectedRevision.getTime())) {
       throw new ValidationError(
         "A valid expectedSubmittedAt submission revision is required",
+        [],
+        "TASK_GRADE_REVISION_REQUIRED",
       );
     }
 
@@ -514,11 +526,11 @@ export class TaskGradingService {
         },
       });
       if (!existingSubmission) {
-        throw new NotFoundError("Submission not found");
+        throw new NotFoundError("Submission not found", "TASK_SUBMISSION_NOT_FOUND");
       }
 
       if (existingSubmission.task.isDeleted) {
-        throw new NotFoundError("Task not found");
+        throw new NotFoundError("Task not found", "TASK_NOT_FOUND");
       }
 
       if (user.role === "DOCTOR") {
@@ -526,6 +538,7 @@ export class TaskGradingService {
         if (existingSubmission.task.doctorId !== doctor.id) {
           throw new AuthorizationError(
             "Access denied: You did not create this task",
+            "TASK_CREATOR_REQUIRED",
           );
         }
       }
@@ -537,14 +550,16 @@ export class TaskGradingService {
 
       const numericScore = parseFloat(String(score));
       if (isNaN(numericScore)) {
-        throw new ValidationError("Invalid score value");
+        throw new ValidationError("Invalid score value", [], "TASK_SCORE_INVALID");
       }
       if (numericScore < 0) {
-        throw new ValidationError("Score cannot be negative");
+        throw new ValidationError("Score cannot be negative", [], "TASK_SCORE_NEGATIVE");
       }
       if (numericScore > existingSubmission.task.maxScore) {
         throw new ValidationError(
           `Score ${numericScore} exceeds maximum allowed score ${existingSubmission.task.maxScore}`,
+          [],
+          "TASK_SCORE_EXCEEDS_MAX",
         );
       }
 
@@ -564,13 +579,14 @@ export class TaskGradingService {
       if (result.count !== 1) {
         throw new ConflictError(
           "The task submission changed while it was being graded. Reload the latest revision and retry.",
+          "TASK_GRADE_STALE_REVISION",
         );
       }
       const updated = await tx.taskSubmission.findUnique({
         where: { id: submissionId },
       });
       if (!updated) {
-        throw new NotFoundError("Submission not found");
+        throw new NotFoundError("Submission not found", "TASK_SUBMISSION_NOT_FOUND");
       }
 
       await auditLog(
@@ -613,7 +629,7 @@ export class TaskGradingService {
       include: { course: true },
     });
     if (!taskObj) {
-      throw new NotFoundError("Task not found");
+      throw new NotFoundError("Task not found", "TASK_NOT_FOUND");
     }
 
     let enrollment = null;
@@ -642,6 +658,7 @@ export class TaskGradingService {
     if (!enrollment || enrollment.status !== "ENROLLED") {
       throw new AuthorizationError(
         "Access denied: You are not enrolled in this task offering",
+        "TASK_NOT_ENROLLED",
       );
     }
 

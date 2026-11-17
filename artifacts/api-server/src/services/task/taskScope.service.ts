@@ -18,7 +18,7 @@ export class TaskScopeService {
   static async getDoctorOrThrow(userId: number) {
     const doctor = await prisma.doctor.findUnique({ where: { userId } });
     if (!doctor) {
-      throw new AuthorizationError("Only doctors can perform this action");
+      throw new AuthorizationError("Only doctors can perform this action", "TASK_DOCTOR_PROFILE_REQUIRED");
     }
     return doctor;
   }
@@ -26,7 +26,7 @@ export class TaskScopeService {
   static async getStudentOrThrow(userId: number) {
     const student = await prisma.student.findUnique({ where: { userId } });
     if (!student) {
-      throw new AuthorizationError("Only students can perform this action");
+      throw new AuthorizationError("Only students can perform this action", "TASK_STUDENT_PROFILE_REQUIRED");
     }
     return student;
   }
@@ -42,19 +42,19 @@ export class TaskScopeService {
     } | undefined;
     if (courseScope && Object.keys(courseScope).length) {
       if (courseScope.id === -1) {
-        throw new AuthorizationError("Access denied");
+        throw new AuthorizationError("Access denied", "TASK_SCOPE_ACCESS_DENIED");
       }
       if (
         courseScope.department &&
         course.department?.collegeId !== courseScope.department.collegeId
       ) {
-        throw new AuthorizationError("Access denied");
+        throw new AuthorizationError("Access denied", "TASK_SCOPE_ACCESS_DENIED");
       }
       if (
         courseScope.departmentId &&
         course.departmentId !== courseScope.departmentId
       ) {
-        throw new AuthorizationError("Access denied");
+        throw new AuthorizationError("Access denied", "TASK_SCOPE_ACCESS_DENIED");
       }
     }
   }
@@ -69,6 +69,7 @@ export class TaskScopeService {
     if (!isAssigned) {
       throw new AuthorizationError(
         "Access denied: You are not assigned to teach this course",
+        "TASK_DOCTOR_NOT_ASSIGNED",
       );
     }
   }
@@ -82,6 +83,7 @@ export class TaskScopeService {
       if (task.doctorId !== doctor.id) {
         throw new AuthorizationError(
           "Access denied: You did not create this task",
+          "TASK_CREATOR_REQUIRED",
         );
       }
       return;
